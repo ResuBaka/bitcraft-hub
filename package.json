@@ -1,0 +1,26 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "format": "biome format ./pages ./logic ./server ./components ./layouts --write",
+    "format:check": "biome format ./pages ./logic ./server ./components ./layouts"
+  },
+  "dependencies": {
+    "nuxt": "^3.11.2",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "zod": "^3.22.4",
+    "fuse.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.6.4",
+    "vuetify": "^3.5.14",
+    "vuetify-nuxt-module": "^0.13.1"
+  }
+}
