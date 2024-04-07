@@ -32,3 +32,41 @@ export async function loadRoot() {
 export async function saveRoot() {
   await writeFile(rootFile, formatData(data));
 }
+
+export function getItem(itemId: string) {
+  return data.items.find(({ id }) => id === itemId);
+}
+
+export function addItem(item: Item) {
+  const index = data.items.findIndex(({ id }) => id === item.id);
+
+  if (index > -1) {
+    throw new Error("Item already exists");
+  }
+
+  data.items.push(item);
+
+  return data.items[index];
+}
+
+export function updateItem(item: Item) {
+  const index = data.items.findIndex(({ id }) => id === item.id);
+
+  if (index == -1) {
+    return null;
+  }
+
+  data.items[index] = item;
+
+  return data.items[index];
+}
+
+export function deleteItem(itemId: string) {
+  const index = data.items.findIndex(({ id }) => id === itemId);
+
+  if (index == -1) {
+    throw new Error("No Item exists");
+  }
+
+  data.items.splice(index, 1);
+}
