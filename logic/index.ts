@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Building, Item, Root } from "~/types";
+import type { Building, Item, Npc, Root } from "~/types";
 
 let rootFile = `${process.cwd()}/storage/root.json`;
 export let data: Root = {
@@ -120,4 +120,48 @@ export async function deleteBuilding(buildingId: string) {
   await saveRoot();
 
   data.buildings.splice(index, 1);
+}
+
+export function getNpc(npcId: string) {
+  return data.npcs.find(({ id }) => id === npcId);
+}
+
+export async function addNpc(npc: Npc) {
+  const index = data.npcs.findIndex(({ id }) => id === npc.id);
+
+  if (index > -1) {
+    throw new Error("Npc already exists");
+  }
+
+  data.npcs.push(npc);
+
+  await saveRoot();
+
+  return data.npcs[index];
+}
+
+export async function updateNpc(npc: Npc) {
+  const index = data.npcs.findIndex(({ id }) => id === npc.id);
+
+  if (index == -1) {
+    return null;
+  }
+
+  data.npcs[index] = npc;
+
+  await saveRoot();
+
+  return data.npcs[index];
+}
+
+export async function deleteNpc(npcId: string) {
+  const index = data.npcs.findIndex(({ id }) => id === npcId);
+
+  if (index == -1) {
+    throw new Error("No Npc exists");
+  }
+
+  await saveRoot();
+
+  data.npcs.splice(index, 1);
 }
