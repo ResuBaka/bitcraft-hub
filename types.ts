@@ -1,56 +1,71 @@
-type Item = {
-    title: string
+export interface Root {
+    professions: Profession[]
+    npcs: Npc[]
+    buildings: Building[]
+    items: Item[]
+}
+
+export interface Profession {
     id: string
-    building?: string
-    tier: number
-    tool?: string
-    skill?: string
-    creates: number
-    items: NeededItems[]
+    icon: any
 }
 
-type FullItem = {
-    title: string
+export interface Npc {
     id: string
-    building?: Building
-    tier: number
-    tool?: Tool
-    skill?: Skill
-    items: FullItem[]
-    amount?: number
+    name: string
+    recipes: Recipe[]
 }
 
-enum ToolType {
-    Axt = "axt",
-    Pickaxe = "pickaxe",
-    Hammer = "hammer",
-    Hoe = "hoe",
-    Knife = "knife",
-    Saw = "saw",
-    Quill = "quill",
-    Bow = "bow",
-    Rod = "rod",
-}
-
-type Building = {
-    title: string
+export interface Recipe {
     id: string
-    tier: number
-    items_can_be_crafted: string[]
+    name: string
+    input: Input[]
+    output: Output[]
 }
 
-type Skill = {
-    title: string
+export interface Input {
     id: string
-}
-
-type Tool = {
-    title: string
-    id: string
-    tier: number
-}
-
-type NeededItems = {
-    id: string,
+    type: string
     amount: number
+}
+
+export interface Output {
+    id: string
+    amount: number
+}
+
+export interface Building {
+    id: string
+    tier: string
+    name: string
+    requirement: Requirement[]
+    toCraft: ToCraft[]
+    recipes: Recipe[]
+}
+
+export interface Requirement {
+    id: string
+    type: string
+    level: number
+}
+
+export interface ToCraft {
+    id: string
+    amount: number
+}
+
+export interface Item {
+    id: string
+    tier: string
+    name: string
+    from: From[]
+    icon: any
+    requirement: Requirement[]
+    toCraft?: ToCraft[]
+    output?: number
+}
+
+export interface From {
+    id: string
+    type: string
 }

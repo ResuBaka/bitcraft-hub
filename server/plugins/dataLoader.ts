@@ -1,5 +1,5 @@
-import { loadItems } from "~/logic";
+import { loadRoot } from "~/logic";
 
 export default defineNitroPlugin(async (nitroApp) => {
-  await loadItems();
+  await loadRoot();
 });

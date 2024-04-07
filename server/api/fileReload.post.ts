@@ -1,8 +1,7 @@
-import { loadItems, loadBuildings } from "~/logic";
+import { loadRoot } from "~/logic";
 
 export default defineEventHandler(async (event) => {
   if (import.meta.dev) {
-    await loadItems();
-    await loadBuildings();
+    await loadRoot();
   }
 });
