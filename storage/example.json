@@ -11,17 +11,24 @@
   ],
   "npcs": [
     {
-      "id":  "T0_H",
+      "id": "T0_H",
       "name": "H",
       "recipes": [
         {
-          "id":  "T0_STH",
+          "id": "T0_STH",
           "name": "STH",
           "input": [
-            { "id": "T1_Hammer", "type": "item", "amount": 20 }
+            {
+              "id": "T1_Hammer",
+              "type": "item",
+              "amount": 20
+            }
           ],
           "output": [
-            { "id": "T3_Skiff",  "amount": 2 }
+            {
+              "id": "T3_Skiff",
+              "amount": 2
+            }
           ]
         }
       ]
@@ -29,24 +36,50 @@
   ],
   "buildings": [
     {
-      "id": "T1_Tanning Station",
-      "tier": "T1",
-      "name": "Tanning Station",
+      "id": "T2_Tanning Station",
+      "tier": "T2",
+      "name": "Tanning Station 3",
       "requirement": [
-        { "id": "T1_Hammer", "type": "item", "level": 10 },
-        { "id": "Carpentry", "type": "profession", "level": 10 }
+        {
+          "uuid": "0329a698-f741-4aa2-92a4-d45c632997ae",
+          "id": "T1_Hammer",
+          "type": "item",
+          "level": 10
+        },
+        {
+          "uuid": "05ec63e4-216c-4111-9e62-7fc914cccb1b",
+          "id": "Carpentry",
+          "type": "profession",
+          "level": 10
+        }
       ],
       "toCraft": [
-        { "id":  "T1_Wood", "amount": 2 },
-        { "id":  "T1_Crop Oil", "amount": 3}
+        {
+          "id": "T1_Wood",
+          "amount": 2
+        },
+        {
+          "id": "T1_Crop Oil",
+          "amount": 3
+        }
       ],
       "recipes": [
         {
-          "id":  "T1_Plank",
+          "id": "T1_Plank",
           "name": "STH",
           "requirement": [
-            { "id": "T1_Hammer", "type": "item", "level": 10 },
-            { "id": "Smithing", "type": "profession", "level": 10 }
+            {
+              "uuid": "bc1dbddb-b35b-46ea-b43d-f056c7bc0616",
+              "id": "T1_Hammer",
+              "type": "item",
+              "level": 10
+            },
+            {
+              "uuid": "fe0b148f-9230-493c-ae8c-cb4ccf7322f2",
+              "id": "Smithing",
+              "type": "profession",
+              "level": 10
+            }
           ]
         }
       ]
@@ -56,21 +89,47 @@
       "tier": "T1",
       "name": "Tanning Station",
       "requirement": [
-        { "id": "T1_Hammer_recipe", "type": "item", "level": 10 },
-        { "id": "Smithing", "type": "profession", "level": 10 }
+        {
+          "uuid": "147f5f4a-f363-4931-b2a9-977a8bf832f9",
+          "id": "T1_Hammer",
+          "type": "item",
+          "level": 10
+        },
+        {
+          "uuid": "d40f554f-151b-4cdd-bb66-ebf840ce46c2",
+          "id": "Smithing",
+          "type": "profession",
+          "level": 10
+        }
       ],
       "toCraft": [
-        { "id":  "T1_Wood", "amount": 2 },
-        { "id":  "T1_Crop Oil", "amount": 3}
+        {
+          "id": "T1_Wood",
+          "amount": 2
+        },
+        {
+          "id": "T1_Crop Oil",
+          "amount": 3
+        }
       ],
       "recipes": [
         {
-          "id":  "T1_Plank_recipe",
+          "id": "T1_Plank_recipe",
           "name": "STH",
           "output": 1,
           "requirement": [
-            { "id": "T1_Hammer", "type": "item", "level": 10 },
-            { "id": "Smithing", "type": "profession", "level": 10 }
+            {
+              "uuid": "067add5f-5456-44b0-93a6-5bd439f2d748",
+              "id": "T1_Hammer",
+              "type": "item",
+              "level": 10
+            },
+            {
+              "uuid": "ca865447-8634-40a9-be5b-e2f831a45dcd",
+              "id": "Smithing",
+              "type": "profession",
+              "level": 10
+            }
           ]
         }
       ]
@@ -84,8 +143,17 @@
       "from": [],
       "icon": null,
       "requirement": [
-        { "id": "T1_Hammer", "type": "item" },
-        { "id": "Forestry", "type": "profession", "level": 0 }
+        {
+          "uuid": "55acd649-b3f2-4c99-be76-f80928c6e468",
+          "id": "T1_Hammer",
+          "type": "item"
+        },
+        {
+          "uuid": "34ec5c4a-717d-46f7-aa33-7f6330a814c7",
+          "id": "Forestry",
+          "type": "profession",
+          "level": 0
+        }
       ]
     },
     {
@@ -93,18 +161,31 @@
       "tier": "T1",
       "name": "Hammer",
       "from": [
-        { "id": "T1_Smithing Station", "type": "building" }
+        {
+          "id": "T1_Smithing Station",
+          "type": "building"
+        }
       ],
       "icon": null,
       "requirement": [
-        { "id": "Smithing", "type": "profession", "level": 0 }
+        {
+          "uuid": "bebbc5c2-7953-4f9f-a752-a27b15f50310",
+          "id": "Smithing",
+          "type": "profession",
+          "level": 0
+        }
       ],
       "toCraft": [
-        { "id":  "T1_Handle", "amount": 1 },
-        { "id":  "T1_Ingot", "amount": 3 }
+        {
+          "id": "T1_Handle",
+          "amount": 1
+        },
+        {
+          "id": "T1_Ingot",
+          "amount": 3
+        }
       ],
       "output": 1
     }
-
   ]
 }
