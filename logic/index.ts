@@ -77,7 +77,6 @@ export async function deleteItem(itemId: string) {
   data.items.splice(index, 1);
 }
 
-
 export function getBuilding(buildingId: string) {
   return data.buildings.find(({ id }) => id === buildingId);
 }
