@@ -13,6 +13,28 @@ const {
   pending,
 } = useFetch<Building>(`/api/buildings/${route.params.id}`);
 
+const tooSaveRequirement = ref<Record<string, any>>({});
+
+const {
+  data: saveData,
+  status: saveStatus,
+  execute: saveBuilding,
+} = useFetch<Building>(
+  () =>
+    `/api/buildings/${route.params.id}/requirement/${tooSaveRequirement.value.uuid}`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    immediate: false,
+    watch: false,
+    onRequest(context) {
+      context.options.body = tooSaveRequirement.value;
+    },
+  },
+);
+
 const refresh = () => {
   refreshItems();
   refreshProfessions();
@@ -141,34 +163,33 @@ const deleteRequirement = (requirement: Requirement) => {
   refresh();
 };
 
-const saveRequirement = (requirement: Requirement) => {
+const saveRequirement = async (requirement: Requirement) => {
   if (!confirm("Are you sure you want to delete this requirement?")) {
     return;
   }
 
-  const { status, data } = useFetch(
-    `/api/buildings/${building.value.id}/requirement/${requirement.uuid}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...requirement,
-        level: Number(requirement.level),
-      }),
-    },
-  );
+  tooSaveRequirement.value = {
+    ...requirement,
+    level: Number(requirement.level),
+  };
 
-  if (requirementInEditMode.value.has(requirement.uuid)) {
-    requirementInEditMode.value.delete(requirement.uuid);
+  await saveBuilding();
+
+  if (saveStatus.value == "success") {
+    tooSaveRequirement.value = {};
+
+    if (requirementInEditMode.value.has(requirement.uuid)) {
+      requirementInEditMode.value.delete(requirement.uuid);
+    }
+
+    if (isInRequirementInEditMode.value.has(requirement.uuid)) {
+      isInRequirementInEditMode.value.delete(requirement.uuid);
+    }
+
+    refresh();
+  } else {
+    console.log("error", saveData.value);
   }
-
-  if (isInRequirementInEditMode.value.has(requirement.uuid)) {
-    isInRequirementInEditMode.value.delete(requirement.uuid);
-  }
-
-  refresh();
 };
 
 const addRequirement = () => {
