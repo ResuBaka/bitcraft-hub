@@ -37,7 +37,7 @@ export function getItem(itemId: string) {
   return data.items.find(({ id }) => id === itemId);
 }
 
-export function addItem(item: Item) {
+export async function addItem(item: Item) {
   const index = data.items.findIndex(({ id }) => id === item.id);
 
   if (index > -1) {
@@ -46,10 +46,12 @@ export function addItem(item: Item) {
 
   data.items.push(item);
 
+  await saveRoot();
+
   return data.items[index];
 }
 
-export function updateItem(item: Item) {
+export async function updateItem(item: Item) {
   const index = data.items.findIndex(({ id }) => id === item.id);
 
   if (index == -1) {
@@ -58,15 +60,19 @@ export function updateItem(item: Item) {
 
   data.items[index] = item;
 
+  await saveRoot();
+
   return data.items[index];
 }
 
-export function deleteItem(itemId: string) {
+export async function deleteItem(itemId: string) {
   const index = data.items.findIndex(({ id }) => id === itemId);
 
   if (index == -1) {
     throw new Error("No Item exists");
   }
+
+  await saveRoot();
 
   data.items.splice(index, 1);
 }

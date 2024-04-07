@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  updateItem(result.data);
+  await updateItem(result.data);
 
   setResponseStatus(event, 200, "Item updated");
 });
