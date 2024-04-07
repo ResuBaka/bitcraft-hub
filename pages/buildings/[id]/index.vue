@@ -52,7 +52,15 @@ const dev = import.meta.dev;
     <v-container>
       <v-card>
         <v-card-title>
-          <span class="text-h5">Building: {{ building.name }}</span>
+          <v-row>
+            <v-col >
+              <span class="text-h5">Building: {{ building.name }}</span>
+            </v-col>
+            <v-spacer></v-spacer>
+            <v-col cols="auto" align-self="end">
+              <v-btn :to="{ name: 'buildings-id-edit', params: { id: building.id } }">Edit</v-btn>
+            </v-col>
+          </v-row>
         </v-card-title>
 
         <v-card-text>
