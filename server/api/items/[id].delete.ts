@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  deleteItem(id);
+  await deleteItem(id);
 
   setResponseStatus(event, 200, "Item Deleted");
 });
