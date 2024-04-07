@@ -1,11 +1,14 @@
 <template>
   <v-app>
     <v-app-bar>
-      <v-toolbar-title>Bitcraft Item Wiki (Work in Progress and Better Name wanted)</v-toolbar-title>
+      <v-toolbar-title>BitCraft Chain Base (Work in Progress and Better Name wanted)</v-toolbar-title>
       <v-toolbar-items >
         <v-btn to="/">Home</v-btn>
-<!--        <v-btn to="/new">New</v-btn>-->
-<!--        <v-btn to="/buildings">Buildings</v-btn>-->
+        <v-btn to="/crafting">Crafting</v-btn>
+        <v-btn to="/items">Items</v-btn>
+        <v-btn to="/buildings">Buildings</v-btn>
+        <v-btn to="/npcs">NPCs</v-btn>
+        <v-btn to="/professions">Professions</v-btn>
         <v-btn v-if="devmode" @click="reloadFromDisk">Reload Disk</v-btn>
       </v-toolbar-items>
     </v-app-bar>
