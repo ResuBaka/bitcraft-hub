@@ -164,3 +164,47 @@ export async function deleteNpc(npcId: string) {
 
   data.npcs.splice(index, 1);
 }
+
+export function getProfession(professionId: string) {
+  return data.professions.find(({ id }) => id === professionId);
+}
+
+export async function addProfession(profession: Profession) {
+  const index = data.professions.findIndex(({ id }) => id === profession.id);
+
+  if (index > -1) {
+    throw new Error("Profession already exists");
+  }
+
+  data.professions.push(npc);
+
+  await saveRoot();
+
+  return data.professions[index];
+}
+
+export async function updateProfession(profession: Profession) {
+  const index = data.professions.findIndex(({ id }) => id === profession.id);
+
+  if (index == -1) {
+    return null;
+  }
+
+  data.professions[index] = profession;
+
+  await saveRoot();
+
+  return data.professions[index];
+}
+
+export async function deleteProfession(professionId: string) {
+  const index = data.professions.findIndex(({ id }) => id === professionId);
+
+  if (index == -1) {
+    throw new Error("No Profession exists");
+  }
+
+  await saveRoot();
+
+  data.professions.splice(index, 1);
+}
