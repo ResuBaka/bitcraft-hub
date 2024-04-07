@@ -20,7 +20,7 @@ const createProfession = async () => {
 
   console.log(JSON.stringify(newProfession.value, null, 2));
 
-  let temp = await fetch("/api/professions", {
+  let temp = await fetch(`/api/professions`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

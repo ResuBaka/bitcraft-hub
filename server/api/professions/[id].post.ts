@@ -1,6 +1,6 @@
 import { getProfession, updateProfession } from "~/logic";
 import type { Profession } from "~/types";
-import { zodNpc } from "~/logic/validations";
+import {zodProfession} from "~/logic/validations";
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id", { decode: true });
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const result = zodNpc.safeParse(body);
+  const result = zodProfession.safeParse(body);
 
   if (!result.success) {
     console.log("Profession Creation", result.error.format());

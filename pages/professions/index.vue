@@ -52,7 +52,6 @@ const deleteProfession = async (profession : Profession) => {
           <v-card-title><nuxt-link :to="{ name: 'professions-id', params: { id: profession.id } }">{{ profession.id }}</nuxt-link></v-card-title>
           <v-btn @click="deleteProfession(profession)">Delete</v-btn>
         </v-card>
-<!--        <profession @click="deleteProfessionConfirm" :profession="profession"></profession>-->
       </v-col>
     </v-row>
   </v-container>
