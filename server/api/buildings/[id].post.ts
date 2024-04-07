@@ -3,7 +3,7 @@ import type { Building } from "~/types";
 import { zodBuilding } from "~/logic/validations";
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, "id");
+  const id = getRouterParam(event, "id", { decode: true });
   const body = await readBody<Building>(event);
 
   if (!id) {
