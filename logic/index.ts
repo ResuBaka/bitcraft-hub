@@ -28,3 +28,7 @@ export async function loadRoot() {
 
   data = JSON.parse(await readFile(rootFile, "utf-8"));
 }
+
+export async function saveRoot() {
+  await writeFile(rootFile, formatData(data));
+}
