@@ -79,9 +79,9 @@ export async function deleteItem(itemId: string) {
     throw new Error("No Item exists");
   }
 
-  await saveRoot();
-
   data.items.splice(index, 1);
+
+  await saveRoot();
 }
 
 export function getBuilding(buildingId: string) {
@@ -267,9 +267,9 @@ export async function deleteNpc(npcId: string) {
     throw new Error("No Npc exists");
   }
 
-  await saveRoot();
-
   data.npcs.splice(index, 1);
+
+  await saveRoot();
 }
 
 export function getProfession(professionId: string) {
@@ -311,7 +311,7 @@ export async function deleteProfession(professionId: string) {
     throw new Error("No Profession exists");
   }
 
-  await saveRoot();
-
   data.professions.splice(index, 1);
+
+  await saveRoot();
 }
