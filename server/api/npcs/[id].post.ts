@@ -3,7 +3,7 @@ import type { Npc } from "~/types";
 import { zodNpc } from "~/logic/validations";
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, "id");
+  const id = getRouterParam(event, "id", { decode: true });
   const body = await readBody<Npc>(event);
 
   if (!id) {

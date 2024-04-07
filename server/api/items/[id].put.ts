@@ -4,7 +4,7 @@ import type { Item } from "~/types";
 import { zodItem } from "~/logic/validations";
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, "id");
+  const id = getRouterParam(event, "id", { decode: true });
   const body = await readBody<Item>(event);
 
   if (!id) {

@@ -1,7 +1,7 @@
 import { getBuilding } from "~/logic";
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, "id");
+  const id = getRouterParam(event, "id", { decode: true });
 
   if (!id) {
     throw createError({
