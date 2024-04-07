@@ -19,8 +19,9 @@ export interface Npc {
 export interface Recipe {
     id: string
     name: string
-    input: Input[]
-    output: Output[]
+    input?: Input[]
+    requirement?: Requirement[]
+    output?: Output[]
 }
 
 export interface Input {
@@ -46,8 +47,9 @@ export interface Building {
 export interface Requirement {
     id: string
     type: string
-    level: number
+    level?: number
 }
+
 
 export interface ToCraft {
     id: string

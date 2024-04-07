@@ -22,15 +22,6 @@ export const zodInput = z.object({
 
 export const zodInputs = z.array(zodInput);
 
-export const zodRecipe = z.object({
-  id: z.string(),
-  name: z.string(),
-  input: zodInputs,
-  output: zodOutputs,
-});
-
-export const zodRecipes = z.array(zodRecipe);
-
 export const zodToCraft = z.object({
   id: z.string(),
   amount: z.number(),
@@ -52,6 +43,16 @@ export const zodRequirement = z.object({
 });
 
 export const zodRequirements = z.array(zodRequirement);
+
+export const zodRecipe = z.object({
+  id: z.string(),
+  name: z.string(),
+  input: zodInputs.optional(),
+  output: zodOutputs.optional(),
+  requirement: zodRequirements.optional(),
+});
+
+export const zodRecipes = z.array(zodRecipe);
 
 export const zodBuilding = z.object({
   id: z.string(),
