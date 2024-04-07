@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Item, Root } from "~/types";
+import type { Building, Item, Root } from "~/types";
 
 let rootFile = `${process.cwd()}/storage/root.json`;
 export let data: Root = {
@@ -75,4 +75,49 @@ export async function deleteItem(itemId: string) {
   await saveRoot();
 
   data.items.splice(index, 1);
+}
+
+
+export function getBuilding(buildingId: string) {
+  return data.buildings.find(({ id }) => id === buildingId);
+}
+
+export async function addBuilding(building: Building) {
+  const index = data.buildings.findIndex(({ id }) => id === building.id);
+
+  if (index > -1) {
+    throw new Error("Building already exists");
+  }
+
+  data.buildings.push(building);
+
+  await saveRoot();
+
+  return data.buildings[index];
+}
+
+export async function updateBuilding(building: Building) {
+  const index = data.buildings.findIndex(({ id }) => id === building.id);
+
+  if (index == -1) {
+    return null;
+  }
+
+  data.buildings[index] = building;
+
+  await saveRoot();
+
+  return data.buildings[index];
+}
+
+export async function deleteBuilding(buildingId: string) {
+  const index = data.buildings.findIndex(({ id }) => id === buildingId);
+
+  if (index == -1) {
+    throw new Error("No Building exists");
+  }
+
+  await saveRoot();
+
+  data.buildings.splice(index, 1);
 }
