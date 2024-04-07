@@ -1,8 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Root } from "~/types";
+import type { Item, Root } from "~/types";
 
 let rootFile = `${process.cwd()}/storage/root.json`;
-let data: Root = {
+export let data: Root = {
   professions: [],
   npcs: [],
   buildings: [],
