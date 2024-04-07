@@ -1,9 +1,8 @@
 import { getProfession, addProfession } from "~/logic";
 import type { Profession } from "~/types";
-import {zodProfession} from "~/logic/validations";
+import { zodProfession } from "~/logic/validations";
 
 export default defineEventHandler(async (event) => {
-
   const body = await readBody<Profession>(event);
 
   const result = zodProfession.safeParse(body);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type {Profession} from "~/types";
+import type { Profession } from "~/types";
 
 const { data, refresh, pending } = useFetch<Profession[]>("/api/professions");
 
@@ -14,14 +14,14 @@ const filteredItems = computed(() => {
 
   if (search.value) {
     items = professions.value.filter((item) =>
-        item.id.toLowerCase().includes(search.value.toLowerCase()),
+      item.id.toLowerCase().includes(search.value.toLowerCase()),
     );
   }
 
   return items;
 });
 
-const deleteProfession = async (profession : Profession) => {
+const deleteProfession = async (profession: Profession) => {
   console.log(profession);
   const { status } = await useFetch(`/api/professions/${profession.id}`, {
     method: "DELETE",

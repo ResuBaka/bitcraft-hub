@@ -1,5 +1,12 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Profession, Building, Item, Npc, Root } from "~/types";
+import type {
+  Profession,
+  Building,
+  Item,
+  Npc,
+  Root,
+  Requirement,
+} from "~/types";
 
 let rootFile = `${process.cwd()}/storage/root.json`;
 export let data: Root = {
@@ -81,6 +88,10 @@ export function getBuilding(buildingId: string) {
   return data.buildings.find(({ id }) => id === buildingId);
 }
 
+export function getBuildingIndex(buildingId: string) {
+  return data.buildings.findIndex(({ id }) => id === buildingId);
+}
+
 export async function addBuilding(building: Building) {
   const index = data.buildings.findIndex(({ id }) => id === building.id);
 
@@ -116,9 +127,105 @@ export async function deleteBuilding(buildingId: string) {
     throw new Error("No Building exists");
   }
 
-  await saveRoot();
-
   data.buildings.splice(index, 1);
+
+  await saveRoot();
+}
+
+export function getBuildingRequirement(
+  buildingId: string,
+  requirementUUID: string,
+) {
+  const building = getBuilding(buildingId);
+
+  if (!building) {
+    throw new Error("Building not found");
+  }
+
+  console.log("Building", building, requirementUUID);
+  const index = building.requirement.findIndex(
+    ({ uuid }) => uuid === requirementUUID,
+  );
+
+  if (index == -1) {
+    throw new Error("Requirement not found");
+  }
+
+  return building.requirement[index];
+}
+
+export async function updateBuildingRequirement(
+  buildingId: string,
+  requirement: Requirement,
+) {
+  const building = getBuilding(buildingId);
+
+  if (!building) {
+    throw new Error("Building not found");
+  }
+
+  const index = building.requirement.findIndex(
+    ({ uuid }) => uuid === requirement.uuid,
+  );
+
+  if (index == -1) {
+    throw new Error("Requirement not found");
+  }
+
+  const buildingIndex = getBuildingIndex(buildingId);
+
+  data.buildings[buildingIndex].requirement[index] = requirement;
+
+  await saveRoot();
+}
+
+export async function addBuildingRequirement(
+  buildingId: string,
+  requirement: Requirement,
+) {
+  const building = getBuilding(buildingId);
+
+  if (!building) {
+    throw new Error("Building not found");
+  }
+
+  const index = building.requirement.findIndex(
+    ({ uuid }) => uuid === requirement.uuid,
+  );
+
+  if (index > -1) {
+    throw new Error("Requirement with Id already exists");
+  }
+
+  const buildingIndex = getBuildingIndex(buildingId);
+
+  data.buildings[buildingIndex].requirement.push(requirement);
+
+  await saveRoot();
+}
+
+export async function deleteBuildingRequirement(
+  buildingId: string,
+  requirementUUID: string,
+) {
+  const building = getBuilding(buildingId);
+
+  if (!building) {
+    throw new Error("Building not found");
+  }
+
+  const index = building.requirement.findIndex(
+    ({ uuid }) => uuid === requirementUUID,
+  );
+
+  if (index == -1) {
+    throw new Error("Requirement not found");
+  }
+  const buildingIndex = getBuildingIndex(buildingId);
+
+  data.buildings[buildingIndex].requirement.splice(index, 1);
+
+  await saveRoot();
 }
 
 export function getNpc(npcId: string) {

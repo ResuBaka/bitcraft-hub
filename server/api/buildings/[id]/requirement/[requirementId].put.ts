@@ -1,28 +1,43 @@
-import { getBuilding, addBuilding } from "~/logic";
+import {
+  addBuildingRequirement,
+  getBuilding,
+  getBuildingRequirement,
+} from "~/logic";
 import type { Building } from "~/types";
-import { zodBuilding } from "~/logic/validations";
+import { zodRequirement } from "~/logic/validations";
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id", { decode: true });
+  const requirementId = getRouterParam(event, "requirementId", {
+    decode: true,
+  });
+
   const body = await readBody<Building>(event);
 
   if (!id) {
     throw createError({
       statusCode: 400,
-      statusMessage: "ID is required",
+      statusMessage: "Missing building ID",
+    });
+  }
+
+  if (!requirementId) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Missing requirement ID",
     });
   }
 
   const building = getBuilding(id);
 
-  if (building) {
+  if (!building) {
     throw createError({
-      statusCode: 400,
-      statusMessage: "There is already an building with that id",
+      statusCode: 404,
+      statusMessage: "Building not found",
     });
   }
 
-  const result = zodBuilding.safeParse(body);
+  const result = zodRequirement.safeParse(body);
 
   if (!result.success) {
     console.log("Building Creation", result.error.format());
@@ -32,7 +47,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  await addBuilding(result.data);
+  await addBuildingRequirement(id, result.data);
 
   setResponseStatus(event, 200, "Building updated");
 });

@@ -37,6 +37,7 @@ export const zodFrom = z.object({
 export const zodFroms = z.array(zodFrom);
 
 export const zodRequirement = z.object({
+  uuid: z.string().uuid(),
   id: z.string(),
   type: z.string(),
   level: z.number(),

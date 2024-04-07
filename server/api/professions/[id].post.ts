@@ -1,6 +1,6 @@
 import { getProfession, updateProfession } from "~/logic";
 import type { Profession } from "~/types";
-import {zodProfession} from "~/logic/validations";
+import { zodProfession } from "~/logic/validations";
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id", { decode: true });

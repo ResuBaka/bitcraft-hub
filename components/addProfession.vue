@@ -1,12 +1,13 @@
 <script setup lang="ts">
 const tiers = ref<number[]>([1, 2, 3, 4, 5]);
 
-const { data, refresh, pending } = await useFetch<Profession[]>("/api/professions");
+const { data, refresh, pending } =
+  await useFetch<Profession[]>("/api/professions");
 
 const newProfession = ref({
   id: "",
-  icon: ""
-})
+  icon: "",
+});
 
 const valid = ref(false);
 const customId = ref(false);
@@ -36,13 +37,12 @@ const createProfession = async () => {
 const spaceRegex = /\s/g;
 
 watch(
-    () => newProfession.value.id,
-    () => {
-      if (!customId.value) {
-        newProfession.value.id = newProfession.value.id
-            .replace(spaceRegex, "_");
-      }
-    },
+  () => newProfession.value.id,
+  () => {
+    if (!customId.value) {
+      newProfession.value.id = newProfession.value.id.replace(spaceRegex, "_");
+    }
+  },
 );
 </script>
 

@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import type {Building} from "~/types";
+import type { Building } from "~/types";
 
 const route = useRoute();
 
-const {data, refresh, pending} = useFetch<Building>(
-    `/api/buildings/${route.params.id}`,
+const { data, refresh, pending } = useFetch<Building>(
+  `/api/buildings/${route.params.id}`,
 );
 
 const headers = ref([
-  {title: "Name", key: "name"},
-  {title: "Tier", key: "tier"},
-  {title: "Requirement", key: "requirement"},
-  {title: "Recipes", key: "recipes", sortable: false},
-  {title: "Actions", key: "actions", sortable: false, align: "end"},
+  { title: "Name", key: "name" },
+  { title: "Tier", key: "tier" },
+  { title: "Requirement", key: "requirement" },
+  { title: "Recipes", key: "recipes", sortable: false },
+  { title: "Actions", key: "actions", sortable: false, align: "end" },
 ]);
 const search = ref("");
 
 const building = computed<Building>(() => {
   return (
-      data.value || {
-        name: "",
-        tier: "1",
-        requirement: [],
-        recipes: [],
-        toCraft: [],
-        id: "",
-      }
+    data.value || {
+      name: "",
+      tier: "1",
+      requirement: [],
+      recipes: [],
+      toCraft: [],
+      id: "",
+    }
   );
 });
 

@@ -45,6 +45,7 @@ export interface Building {
 }
 
 export interface Requirement {
+    uuid: string
     id: string
     type: string
     level?: number
