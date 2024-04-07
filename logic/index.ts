@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { Building, Item, Npc, Root } from "~/types";
+import type { Profession, Building, Item, Npc, Root } from "~/types";
 
 let rootFile = `${process.cwd()}/storage/root.json`;
 export let data: Root = {
@@ -176,7 +176,7 @@ export async function addProfession(profession: Profession) {
     throw new Error("Profession already exists");
   }
 
-  data.professions.push(npc);
+  data.professions.push(profession);
 
   await saveRoot();
 
