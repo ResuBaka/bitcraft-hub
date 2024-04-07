@@ -229,14 +229,22 @@ const save = async () => {
       </v-toolbar>
     </template>
     <template v-slot:item.actions="{ item }">
+      <nuxt-link style="text-decoration: none; color: inherit;" :to="{ name: 'buildings-id', params: { id: item.id } }">
+        <v-icon
+            class="me-1"
+            size="small"
+        >
+          mdi-eye
+        </v-icon>
+      </nuxt-link>
       <v-icon
-          class="me-2"
           size="small"
           @click="editItem(item)"
       >
         mdi-pencil
       </v-icon>
       <v-icon
+          class="me-1"
           size="small"
           @click="deleteItem(item)"
       >
