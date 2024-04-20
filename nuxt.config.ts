@@ -2,6 +2,12 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
+  nitro: {
+    experimental: {
+      websocket: true,
+      tasks: true,
+    },
+  },
   modules: [
     'vuetify-nuxt-module'
   ],
