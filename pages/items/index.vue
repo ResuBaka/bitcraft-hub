@@ -128,7 +128,7 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <pre class="">{{ items?.[0] }}
+    <pre class="">{{ items?.items[0] }}
     </pre>
   </v-row>
   <v-row>
