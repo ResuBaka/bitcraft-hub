@@ -32,40 +32,28 @@ const producedInCraftingData = computed(() => {
     <v-card-text>
       <v-list>
         <v-list-item>
-          <v-list-item-content>
             <v-list-item-title>Description</v-list-item-title>
             <v-list-item-subtitle>{{ item.description }}</v-list-item-subtitle>
-          </v-list-item-content>
         </v-list-item>
         <v-list-item>
-          <v-list-item-content>
             <v-list-item-title>Volume</v-list-item-title>
             <v-list-item-subtitle>{{ item.volume }}</v-list-item-subtitle>
-          </v-list-item-content>
         </v-list-item>
         <v-list-item>
-          <v-list-item-content>
             <v-list-item-title>Tag</v-list-item-title>
             <v-list-item-subtitle>{{ item.tag }}</v-list-item-subtitle>
-          </v-list-item-content>
         </v-list-item>
         <v-list-item>
-          <v-list-item-content>
             <v-list-item-title>Tier</v-list-item-title>
             <v-list-item-subtitle>{{ item.tier }}</v-list-item-subtitle>
-          </v-list-item-content>
         </v-list-item>
         <v-list-item>
-          <v-list-item-content>
             <v-list-item-title>Model Asset Name</v-list-item-title>
             <v-list-item-subtitle>{{ item.model_asset_name }}</v-list-item-subtitle>
-          </v-list-item-content>
         </v-list-item>
         <v-list-item>
-          <v-list-item-content>
             <v-list-item-title>Icon Asset Name</v-list-item-title>
             <v-list-item-subtitle>{{ item.icon_asset_name }}</v-list-item-subtitle>
-          </v-list-item-content>
         </v-list-item>
         <v-expansion-panels multiple>
           <v-expansion-panel>

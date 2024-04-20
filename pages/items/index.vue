@@ -4,13 +4,50 @@ const { data: items } = useFetch('/api/bitcraft/items')
 const page = ref(1)
 const perPage = 30
 
-const currentItems = computed(() => {
-  return searchItems.value?.slice((page.value - 1) * perPage, page.value * perPage) ?? []
-})
 
 const tag = ref(null)
 const tier = ref(null)
 const search = ref<string | null>('')
+
+const route = useRoute()
+const router = useRouter()
+
+search.value = route.query.search as string ?? ''
+tag.value = route.query.tag as string ?? null
+
+const tmpTier = route.query.tier as string ?? null
+
+if (tmpTier) {
+  tier.value = parseInt(tmpTier)
+}
+
+const currentItems = computed(() => {
+  return searchItems.value?.slice((page.value - 1) * perPage, page.value * perPage) ?? []
+})
+
+
+watch(() => [search.value, tag.value, tier.value, page.value], () => {
+  const newQuery = {}
+
+  if (search.value) {
+    newQuery.search = search.value
+  }
+
+  if (tag.value) {
+    newQuery.tag = tag.value
+  }
+
+  if (tier.value) {
+    newQuery.tier = tier.value
+  }
+
+  if (page.value) {
+    newQuery.page = page.value
+  }
+
+  router.push({ query: newQuery })
+})
+
 
 const searchItems = computed(() => {
   return items.value?.filter((item: any) => {
