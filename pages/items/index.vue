@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { data: items } = useFetch('/api/bitcraft/items')
+
 
 const page = ref(1)
 const perPage = 30
@@ -16,15 +16,43 @@ search.value = route.query.search as string ?? ''
 tag.value = route.query.tag as string ?? null
 
 const tmpTier = route.query.tier as string ?? null
+const tmpPage = route.query.page as string ?? null
 
 if (tmpTier) {
   tier.value = parseInt(tmpTier)
 }
+if (tmpPage) {
+  page.value = parseInt(tmpPage)
+}
 
-const currentItems = computed(() => {
-  return searchItems.value?.slice((page.value - 1) * perPage, page.value * perPage) ?? []
+const { data: items } = useFetch(() => {
+  const url = new URLSearchParams()
+
+  if (search.value) {
+    url.append('search', search.value)
+  }
+
+  if (tag.value) {
+    url.append('tag', tag.value)
+  }
+
+  if (tier.value) {
+    url.append('tier', tier.value.toString())
+  }
+
+  if (page.value) {
+    url.append('page', page.value.toString())
+  }
+
+  const querys = url.toString()
+
+  if (querys) {
+    return `/api/bitcraft/items?${querys}`
+  }
+
+
+  return `/api/bitcraft/items`
 })
-
 
 watch(() => [search.value, tag.value, tier.value, page.value], () => {
   const newQuery = {}
@@ -49,43 +77,20 @@ watch(() => [search.value, tag.value, tier.value, page.value], () => {
 })
 
 
-const searchItems = computed(() => {
-  return items.value?.filter((item: any) => {
-    return (!tag.value || item.tag === tag.value) &&
-        (!tier.value || item.tier === tier.value) &&
-        (!search.value || item.name.toLowerCase().includes(search.value.toLowerCase()))
-  }) ?? []
+const currentItems = computed(() => {
+  return items.value?.items ?? []
 })
 
-
-const tags = ref([])
-
-watch(() => items.value, () => {
-  tags.value = items.value?.reduce((acc: string[], item: any) => {
-    if (!acc.includes(item.tag)) {
-      acc.push(item.tag)
-    }
-    return acc
-  }, []) ?? []
-
-  tags.value.sort()
+const tags = computed(() => {
+  return items.value?.tags ?? []
 })
 
-const tiers = ref([])
-
-watch(() => items.value, () => {
-  tiers.value = items.value?.reduce((acc: string[], item: any) => {
-    if (!acc.includes(item.tier)) {
-      acc.push(item.tier)
-    }
-    return acc
-  }, []) ?? []
-
-  tiers.value.sort((a, b) => a > b ? 1 : -1)
+const tiers = computed(() => {
+  return items.value?.tiers ?? []
 })
 
 const length = computed(() => {
-  return Math.ceil(searchItems.value?.length / perPage) ?? 0
+  return Math.ceil(items.value?.total / perPage) ?? 0
 })
 
 </script>
