@@ -4,13 +4,13 @@ const { item } = defineProps<{
   item: any
 }>()
 
-const { data: neededInCrafting } = useFetch('/api/bitcraft', {
+const { data: neededInCrafting } = useFetch('/api/bitcraft/recipes', {
   query: {
     neededInCrafting: item.id
   }
 })
 
-const { data: producedInCrafting } = useFetch('/api/bitcraft', {
+const { data: producedInCrafting } = useFetch('/api/bitcraft/recipes', {
   query: {
     producedInCrafting: item.id
   }
