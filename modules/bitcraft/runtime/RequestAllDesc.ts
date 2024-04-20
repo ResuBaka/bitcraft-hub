@@ -1,0 +1,72 @@
+import { readFile, writeFile } from "node:fs/promises";
+import SQLRequest from "./SQLRequest";
+let rootFolder = `${process.cwd()}/storage/Desc`;
+let allDescTables = [
+    "AchievementDesc",
+    "AlertDesc",
+    "BiomeDesc",
+    "BuffDesc",
+    "BuildingClaimDesc",
+    "BuildingDesc",
+    "BuildingPortalDesc",
+    "BuildingRepairsDesc",
+    "BuildingSpawnDesc",
+    "BuildingTypeDesc",
+    "CargoDesc",
+    "CharacterStatDesc",
+    "ChestRarityDesc",
+    "ClaimTechDesc",
+    "ClimbRequirementDesc",
+    "ClothingDesc",
+    "CollectibleDesc",
+    "CombatActionDesc",
+    "ConstructionRecipeDesc",
+    "CraftingRecipeDesc",
+    "DeconstructionRecipeDesc",
+    "EmoteDesc",
+    "EnemyAiParamsDesc",
+    "EnemyDesc",
+    "EnvironmentDebuffDesc",
+    "EquipmentDesc",
+    "ExtractionRecipeDesc",
+    "FoodDesc",
+    "InteriorInstanceDesc",
+    "InteriorNetworkDesc",
+    "InteriorPortalConnectionsDesc",
+    "InteriorShapeDesc",
+    "InteriorSpawnDesc",
+    "ItemConversionRecipeDesc",
+    "ItemDesc",
+    "ItemListDesc",
+    "KnowledgeScrollDesc",
+    "KnowledgeScrollTypeDesc",
+    "LootChestDesc",
+    "LootRarityDesc",
+    "LootTableDesc",
+    "NpcDesc",
+    "OnboardingRewardDesc",
+    "ParametersDesc",
+    "PavingTileDesc",
+    "ResourceClumpDesc",
+    "ResourceDesc",
+    "ResourceGrowthRecipeDesc",
+    "ResourcePlacementRecipeDesc",
+    "SecondaryKnowledgeDesc",
+    "SkillDesc",
+    "TargetingMatrixDesc",
+    "TeleportItemDesc",
+    "TerraformRecipeDesc",
+    "ToolDesc",
+    "ToolTypeDesc",
+    "TravelerTradeOrderDesc",
+    "VehicleDesc",
+    "WeaponDesc",
+    "WeaponTypeDesc"
+  ]  
+export default async function updateAllDesc() {
+    for (var descTable of allDescTables) {
+        const sql = `SELECT * FROM ${descTable}`
+        const result = await SQLRequest<any>(sql)
+        await writeFile(`${rootFolder}/${descTable}`,result)
+   }
+}
