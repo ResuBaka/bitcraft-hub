@@ -67,6 +67,6 @@ export default async function updateAllDesc() {
     for (var descTable of allDescTables) {
         const sql = `SELECT * FROM ${descTable}`
         const result = await SQLRequest<any>(sql)
-        await writeFile(`${rootFolder}/${descTable}`,result)
+        await writeFile(`${rootFolder}/${descTable}.json`, JSON.stringify(result))
    }
 }
