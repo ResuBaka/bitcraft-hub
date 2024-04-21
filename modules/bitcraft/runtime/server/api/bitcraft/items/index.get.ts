@@ -24,7 +24,8 @@ export default defineEventHandler((event) => {
     const rowsFilterted = rows?.filter((item: any) => {
         return (!tag || item.tag === tag) &&
             (!tier || item.tier === tier) &&
-            (!search || item.name.toLowerCase().includes(search.toLowerCase()))
+            ((!search || item.name.toLowerCase().includes(search.toLowerCase())) ||
+            (!search || (item.id.toString().includes(search))))
     }) ?? []
 
     return {
