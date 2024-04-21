@@ -1,11 +1,11 @@
 import SQLRequest from "../runtime/SQLRequest";
-import {getItemRefrenceFromRow, getItemsRefrenceFromRow, type ItemRefrence } from "../gamestate/item"
+import {getItemFromItemId, getItemRefrenceFromRow, getItemRowsFromRows, getItemsRefrenceFromRow, readItemRows, type ItemRefrence } from "../gamestate/item"
 import type { Entity } from "./entity";
 type ItemSlot = {
     volume: number
     contents?: ItemRefrence
 }
-interface  PlayerStateRow extends Entity {
+interface  InventoryStateRow extends Entity {
     pockets: ItemSlot[]
     inventory_index: number
     cargo_index: number
@@ -29,14 +29,14 @@ function getItemSlot(row: any){
 }
 
 export function getInventoryRowsFromRows(rows: any){
-    const PlayerStateRow: PlayerStateRow[] = []
+    const PlayerStateRow: InventoryStateRow[] = []
     for (const row of rows) {
         PlayerStateRow.push(getInventoryRowFromRow(row))
     }
     return PlayerStateRow
 }
 function getInventoryRowFromRow(row: any[]){
-    const InventoryState: PlayerStateRow = {
+    const InventoryState: InventoryStateRow = {
         entity_id: row[0],
         pockets: getItemSlots(row[1]),
         inventory_index: row[2],
@@ -44,6 +44,24 @@ function getInventoryRowFromRow(row: any[]){
         owner_entity_id: row[4]
     }
     return InventoryState
+}
+
+export function replaceInventoryItemsIdWithItems(rows: any){
+    for (const row of rows) {
+        replaceInventoryItemIdWithItem(row)
+    }
+    return rows
+}
+export function replaceInventoryItemIdWithItem(inventory: InventoryStateRow){
+    const items = getItemRowsFromRows(readItemRows())
+    for(const pocket  of inventory.pockets){
+        if(pocket.contents !== undefined){
+            const item = getItemFromItemId(items,pocket.contents)
+            //@ts-ignore
+            pocket.contents = item
+        }
+    }
+    return inventory
 }
 export async function SqlRequestInventoryByEntityId(entitys: Entity[]) {
     let sql= ""

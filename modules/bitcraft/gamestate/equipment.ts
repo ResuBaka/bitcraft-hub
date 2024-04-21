@@ -67,7 +67,7 @@ export function getEquipmentRowsFromRows(rows: any[][]) {
     }
     return EquipmentRows
 }
-export function replaceItemIdWithItem(Equipments: EquipmentStateRow[]){
+export function replaceEquipmentItemIdWithItem(Equipments: EquipmentStateRow[]){
     for(const Equipment of Equipments){
         for(const enteries of Object.entries(Equipment.equipment_slots)){
             const items = getItemRowsFromRows(readItemRows())
