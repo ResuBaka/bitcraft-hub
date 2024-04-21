@@ -134,7 +134,7 @@ function getEquipmentRowFromRow(row: any[]){
     }
     return PlayerState
 }
-export async function SqlRequestPlayers(entitys: {
+export async function SqlRequestEquipmentByEntityId(entitys: {
     entity_id: number
 }[]) {
     let sql= ""
