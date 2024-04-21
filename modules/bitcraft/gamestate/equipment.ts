@@ -65,7 +65,7 @@ type EquipmentStateRow = {
     entity_id: Number,
     equipment_slots: EquipmentSlots
 }
-export function getPlayerRowsFromRows(rows: any[][]) {
+export function getEquipmentRowsFromRows(rows: any[][]) {
     const EquipmentRows: EquipmentStateRow[] = []
     for (const row of rows) {
         EquipmentRows.push(getEquipmentRowFromRow(row))
