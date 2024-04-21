@@ -26,15 +26,11 @@ type PlayerStateRow = {
     teleport_location: any
 }
 export function getPlayerRowsFromRows(rows: any[][]) {
-    console.log("getItemRowsFromRows")
-    const itemRows: PlayerStateRow[] = []
+    const playerRows: PlayerStateRow[] = []
     for (const row of rows) {
-        console.log("working")
-        itemRows.push(getPlayerRowFromRow(row))
+        playerRows.push(getPlayerRowFromRow(row))
     }
-
-
-    return itemRows
+    return playerRows
 }
 
 function getPlayerRowFromRow(row: any[]){
@@ -56,7 +52,7 @@ function getPlayerRowFromRow(row: any[]){
     return PlayerState
 }
 
-export function SqlRequestPlayers() {
+export async function SqlRequestPlayers() {
     let sql = ""
     for(const username of usernames){
         if(sql.length === 0){
@@ -65,5 +61,6 @@ export function SqlRequestPlayers() {
             sql + ` or username = '${username}'`
         }
     }
-    return SQLRequest<any>(sql)
+    const result = await SQLRequest<any>(sql)
+    return result.row
 }
