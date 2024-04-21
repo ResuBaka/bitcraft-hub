@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import SQLRequest from "../runtime/SQLRequest";
-import {getItemRowsFromRows, readItemRows } from "../gamestate/item"
+import {getItemFromItemId, getItemRowsFromRows, readItemRows, type ItemRefrence } from "../gamestate/item"
+import type { Entity } from "./entity";
 let usernames = [
     "Sweets"
 ]
@@ -10,8 +11,7 @@ export async function loadFile(file: any) {
   
     return JSON.parse(await readFile(fileData, "utf-8"));
   }
-type PlayerState = {
-    entity_id: Number,
+interface PlayerState extends Entity {
     serial_id: Number,
     username: string
     eth_pub_key: string,
@@ -48,11 +48,6 @@ function transformPlayerState(input: any[][]){
     return PlayerStateArray
 }
 
-type ItemRefrence = {
-    item_id: Number,
-    quantity: Number
-}
-
 type EquipmentSlots = {
     main_hand?: ItemRefrence
     off_hand?: ItemRefrence
@@ -72,7 +67,17 @@ export function getEquipmentRowsFromRows(rows: any[][]) {
     }
     return EquipmentRows
 }
-
+export function replaceItemIdWithItem(Equipments: EquipmentStateRow[]){
+    for(const Equipment of Equipments){
+        for(const enteries of Object.entries(Equipment.equipment_slots)){
+            const items = getItemRowsFromRows(readItemRows())
+            const item = getItemFromItemId(items,enteries[1])
+            //@ts-ignore
+            Equipment.equipment_slots[enteries[0]] = item
+        }
+    }
+    return Equipments
+}
 function getEquipmentRowFromRow(row: any[]){
     const PlayerState: EquipmentStateRow = {
         entity_id: row[0] as unknown as number,
@@ -134,9 +139,7 @@ function getEquipmentRowFromRow(row: any[]){
     }
     return PlayerState
 }
-export async function SqlRequestEquipmentByEntityId(entitys: {
-    entity_id: number
-}[]) {
+export async function SqlRequestEquipmentByEntityId(entitys: Entity[]) {
     let sql= ""
     for(const player of entitys){
         if(sql.length === 0){
@@ -146,5 +149,5 @@ export async function SqlRequestEquipmentByEntityId(entitys: {
         }
     }
     const result = await SQLRequest<any>(sql)
-    return result.row
+    return result[0].rows
 }

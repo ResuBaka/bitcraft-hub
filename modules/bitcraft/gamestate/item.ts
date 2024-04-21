@@ -1,6 +1,6 @@
 import {readFileSync} from "node:fs";
 
-type ItemRow = {
+export type ItemRow = {
     id:    number
     name:    string
     description:    string
@@ -15,20 +15,24 @@ type ItemRow = {
     compendium_entry:    boolean
     item_list_id:    number
 }
+export type ItemRefrence = {
+    item_id: Number,
+    quantity: Number
+}
 
 
 export function getItemRowsFromRows(rows: any[][]) {
-    console.log("getItemRowsFromRows")
     const itemRows: ItemRow[] = []
     for (const row of rows) {
-        console.log("working")
         itemRows.push(getItemRowFromRow(row))
     }
 
 
     return itemRows
 }
-
+export function getItemFromItemId(items: ItemRow[], item_refrence: ItemRefrence) {
+    return items.filter((item) => item.id === item_refrence.item_id)[0]
+}
 function getItemRowFromRow(i: any[]) {
     return {
         id: i[0],
@@ -48,8 +52,5 @@ function getItemRowFromRow(i: any[]) {
 }
 
 export function readItemRows() {
-    console.log("itemRows")
-
-
     return JSON.parse(readFileSync(`${process.cwd()}/storage/Desc/ItemDesc.json`, 'utf8'))[0].rows;
 }
