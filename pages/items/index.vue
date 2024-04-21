@@ -1,6 +1,8 @@
 <script setup lang="ts">
 
 
+import {watchThrottled} from "@vueuse/shared";
+
 const page = ref(1)
 const perPage = 30
 
@@ -25,7 +27,7 @@ if (tmpPage) {
   page.value = parseInt(tmpPage)
 }
 
-const { data: items } = useFetch(() => {
+const { data: items, pending } = useFetch(() => {
   const url = new URLSearchParams()
 
   if (search.value) {
@@ -54,7 +56,7 @@ const { data: items } = useFetch(() => {
   return `/api/bitcraft/items`
 })
 
-watch(() => [search.value, tag.value, tier.value, page.value], () => {
+watchThrottled(() => [search.value, tag.value, tier.value, page.value], () => {
   const newQuery = {}
 
   if (search.value) {
@@ -74,7 +76,7 @@ watch(() => [search.value, tag.value, tier.value, page.value], () => {
   }
 
   router.push({ query: newQuery })
-})
+}, { throttle: 50 })
 
 
 const currentItems = computed(() => {
@@ -128,11 +130,14 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <pre class="">{{ items?.items[0] }}
-    </pre>
-  </v-row>
-  <v-row>
-    <v-col>{{ tags.length }}</v-col>
+    <v-expansion-panels multiple>
+      <v-expansion-panel>
+        <v-expansion-panel-title>Produced In Crafting</v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <pre>{{ items?.items[0] }}</pre>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
   </v-row>
   <v-row>
     <v-col>
@@ -140,10 +145,15 @@ const length = computed(() => {
           v-model="page"
           :length="length"
       ></v-pagination>
+      <v-progress-linear
+          color="yellow-darken-2"
+          indeterminate
+          :active="pending"
+      ></v-progress-linear>
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="3" v-for="item in currentItems" :key="item.id">
+    <v-col cols="12" md="4" v-for="item in currentItems" :key="item.id">
       <bitcraft-card-item :item="item"></bitcraft-card-item>
     </v-col>
   </v-row>
