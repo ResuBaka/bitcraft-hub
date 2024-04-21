@@ -1,15 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
 import SQLRequest from "../runtime/SQLRequest";
-import {getItemRowsFromRows, readItemRows } from "../gamestate/item"
-let usernames = [
-    "Sweets"
-]
 
-export async function loadFile(file: any) {
-    const fileData = await readFile(file);
-  
-    return JSON.parse(await readFile(fileData, "utf-8"));
-  }
 type PlayerStateRow = {
     entity_id: Number,
     serial_id: Number,
@@ -52,7 +42,7 @@ function getPlayerRowFromRow(row: any[]){
     return PlayerState
 }
 
-export async function SqlRequestPlayers() {
+export async function SqlRequestPlayersByUsername(usernames: string[]) {
     let sql = ""
     for(const username of usernames){
         if(sql.length === 0){
