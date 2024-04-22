@@ -1,0 +1,1 @@
+[{"schema":{"elements":[{"name":{"some":"id"},"algebraic_type":{"Builtin":{"I32":[]}}},{"name":{"some":"name"},"algebraic_type":{"Builtin":{"String":[]}}}]},"rows":[[1,"Lore Scroll"],[2,"Knowledge Scroll"]]}]
