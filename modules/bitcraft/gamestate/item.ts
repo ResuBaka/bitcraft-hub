@@ -18,10 +18,8 @@ type ItemRow = {
 
 
 export function getItemRowsFromRows(rows: any[][]) {
-    console.log("getItemRowsFromRows")
     const itemRows: ItemRow[] = []
     for (const row of rows) {
-        console.log("working")
         itemRows.push(getItemRowFromRow(row))
     }
 
@@ -48,8 +46,5 @@ function getItemRowFromRow(i: any[]) {
 }
 
 export function readItemRows() {
-    console.log("itemRows")
-
-
     return JSON.parse(readFileSync(`${process.cwd()}/storage/Desc/ItemDesc.json`, 'utf8'))[0].rows;
 }
