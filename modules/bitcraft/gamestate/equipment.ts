@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import SQLRequest from "../runtime/SQLRequest";
-import {getItemRowsFromRows, readItemRows } from "../gamestate/item"
+import {getItemFromItemId, getItemRefrenceFromRow, getItemRowsFromRows, readItemRows, type ItemRefrence } from "../gamestate/item"
+import type { Entity } from "./entity";
 let usernames = [
     "Sweets"
 ]
@@ -10,8 +11,7 @@ export async function loadFile(file: any) {
   
     return JSON.parse(await readFile(fileData, "utf-8"));
   }
-type PlayerState = {
-    entity_id: Number,
+interface PlayerState extends Entity {
     serial_id: Number,
     username: string
     eth_pub_key: string,
@@ -48,11 +48,6 @@ function transformPlayerState(input: any[][]){
     return PlayerStateArray
 }
 
-type ItemRefrence = {
-    item_id: Number,
-    quantity: Number
-}
-
 type EquipmentSlots = {
     main_hand?: ItemRefrence
     off_hand?: ItemRefrence
@@ -72,79 +67,57 @@ export function getEquipmentRowsFromRows(rows: any[][]) {
     }
     return EquipmentRows
 }
-
+export function replaceEquipmentItemIdWithItem(Equipments: EquipmentStateRow[]){
+    for(const Equipment of Equipments){
+        for(const enteries of Object.entries(Equipment.equipment_slots)){
+            const items = getItemRowsFromRows(readItemRows())
+            const item = getItemFromItemId(items,enteries[1])
+            //@ts-ignore
+            Equipment.equipment_slots[enteries[0]] = item
+        }
+    }
+    return Equipments
+}
 function getEquipmentRowFromRow(row: any[]){
-    const PlayerState: EquipmentStateRow = {
+    const EquipmentState: EquipmentStateRow = {
         entity_id: row[0] as unknown as number,
         equipment_slots: {}
     }
     //@ts-ignore
     if(Object.values(row[1][0][0])[0].length > 2){
-        PlayerState.equipment_slots.main_hand = {
-            //@ts-ignore
-            item_id:  Object.values(row[1][0][0])[0][0],
-            //@ts-ignore
-            quantity:  Object.values(row[1][0][0])[0][1]
-         }
+        EquipmentState.equipment_slots.main_hand = getItemRefrenceFromRow(row[1][0][0])
     }
      //@ts-ignore
     if(Object.values(row[1][1][0])[0].length > 2){
-        PlayerState.equipment_slots.off_hand = {
-            //@ts-ignore
-            item_id:  Object.values(row[1][1][0])[0][0],
-            //@ts-ignore
-            quantity:  Object.values(row[1][1][0])[0][1]
-         }
+        EquipmentState.equipment_slots.off_hand = getItemRefrenceFromRow(row[1][1][0])
     }
      //@ts-ignore
     if(Object.values(row[1][2][0])[0].length > 2){
-        PlayerState.equipment_slots.head_artifact = {
-            //@ts-ignore
-            item_id:  Object.values(row[1][2][0])[0][0],
-            //@ts-ignore
-            quantity:  Object.values(row[1][2][0])[0][1]
-         }
+        EquipmentState.equipment_slots.head_artifact = getItemRefrenceFromRow(row[1][2][0])
     }
      //@ts-ignore
     if(Object.values(row[1][3][0])[0].length > 2){
-        PlayerState.equipment_slots.torso_artifact = {
-            //@ts-ignore
-            item_id:  Object.values(row[1][3][0])[0][0],
-            //@ts-ignore
-            quantity:  Object.values(row[1][3][0])[0][1]
-         }
+        EquipmentState.equipment_slots.torso_artifact = getItemRefrenceFromRow(row[1][3][0])
     }
      //@ts-ignore
     if(Object.values(row[1][4][0])[0].length > 2){
-        PlayerState.equipment_slots.hand_artifact = {
-            //@ts-ignore
-            item_id:  Object.values(row[1][4][0])[0][0],
-            //@ts-ignore
-            quantity:  Object.values(row[1][4][0])[0][1]
-         }
+        EquipmentState.equipment_slots.hand_artifact = getItemRefrenceFromRow(row[1][4][0])
     }
      //@ts-ignore
     if(Object.values(row[1][5][0])[0].length > 2){
-        PlayerState.equipment_slots.feet_artifact = {
-            //@ts-ignore
-            item_id:  Object.values(row[1][5][0])[0][0],
-            //@ts-ignore
-            quantity:  Object.values(row[1][5][0])[0][1]
-         }
+        EquipmentState.equipment_slots.feet_artifact = getItemRefrenceFromRow(row[1][5][0])
     }
-    return PlayerState
+    return EquipmentState
 }
-export async function SqlRequestEquipmentByEntityId(entitys: {
-    entity_id: number
-}[]) {
+export async function SqlRequestEquipmentByEntityId(entitys: Entity[]) {
     let sql= ""
-    for(const player of entitys){
+    for(const entity of entitys){
         if(sql.length === 0){
-            sql = `SELECT * FROM EquipmentState WHERE entity_id = ${player.entity_id}`
+            sql = `SELECT * FROM EquipmentState WHERE entity_id = ${entity.entity_id}`
         }else{
-            sql + ` or entity_id = '${player.entity_id}'`
+            sql + ` or owner_entity_id = '${entity.entity_id}'`
         }
     }
     const result = await SQLRequest<any>(sql)
-    return result.row
+    return result[0].rows
 }

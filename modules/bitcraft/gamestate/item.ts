@@ -1,6 +1,7 @@
 import {readFileSync} from "node:fs";
+import type { Item } from "~/types";
 
-type ItemRow = {
+export type ItemRow = {
     id:    number
     name:    string
     description:    string
@@ -15,8 +16,37 @@ type ItemRow = {
     compendium_entry:    boolean
     item_list_id:    number
 }
+export type ItemRefrence = {
+    item_id: Number,
+    quantity: Number
+    item_type: "Item" | "Cargo"
+    durability?: Number
+}
+
+export function getItemsRefrenceFromRow(rows: any[][]) {
+    const itemRows: ItemRefrence[] = []
+    for (const row of rows) {
+        const item = getItemRefrenceFromRow(row)
+        if(item !== undefined){
+            itemRows.push(item)
+        }
+    }
 
 
+    return itemRows
+}
+export function getItemRefrenceFromRow(item: any[]) {
+    if(Object.keys(item)[0] === "0"){
+        const itemRefrence: ItemRefrence = {
+            item_id:  Object.values(item)[0][0],
+            quantity:  Object.values(item)[0][1],
+            item_type:  Object.keys(Object.values(item)[0][2])[0] === "0" ? "Item" : "Cargo"
+            }
+    
+    
+        return itemRefrence
+    }
+}
 export function getItemRowsFromRows(rows: any[][]) {
     const itemRows: ItemRow[] = []
     for (const row of rows) {
@@ -26,7 +56,9 @@ export function getItemRowsFromRows(rows: any[][]) {
 
     return itemRows
 }
-
+export function getItemFromItemId(items: ItemRow[], item_refrence: ItemRefrence) {
+    return items.filter((item) => item.id === item_refrence.item_id)[0]
+}
 function getItemRowFromRow(i: any[]) {
     return {
         id: i[0],

@@ -1,7 +1,7 @@
 import SQLRequest from "../runtime/SQLRequest";
+import type { Entity } from "./entity";
 
-type PlayerStateRow = {
-    entity_id: Number,
+interface  PlayerStateRow extends Entity {
     serial_id: Number,
     username: string
     eth_pub_key: string,
@@ -52,5 +52,5 @@ export async function SqlRequestPlayersByUsername(usernames: string[]) {
         }
     }
     const result = await SQLRequest<any>(sql)
-    return result.row
+    return result[0].rows
 }
