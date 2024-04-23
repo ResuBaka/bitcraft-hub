@@ -1,1 +1,0 @@
-[{"schema":{"elements":[{"name":{"some":"id"},"algebraic_type":{"Builtin":{"I32":[]}}},{"name":{"some":"name"},"algebraic_type":{"Builtin":{"String":[]}}},{"name":{"some":"buff_id"},"algebraic_type":{"Builtin":{"I32":[]}}}]},"rows":[[10003,"Teleport Crystal",30]]}]
