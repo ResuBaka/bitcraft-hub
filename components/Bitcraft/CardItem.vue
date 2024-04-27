@@ -62,9 +62,11 @@ const contetentToShow = ref('default')
                 v-bind="props"
                 @click="contetentToShow = 'neededInCrafting'"
             >
-              <v-icon >
-                mdi-call-split
-              </v-icon>
+              <v-badge color="error" :content="neededInCraftingData.length">
+                <v-icon >
+                  mdi-call-split
+                </v-icon>
+              </v-badge>
             </v-btn>
           </template>
           <span>neededInCrafting</span>
@@ -78,9 +80,11 @@ const contetentToShow = ref('default')
                 v-bind="props"
                 @click="contetentToShow = 'producedInCrafting'"
             >
-              <v-icon >
-                mdi-call-split
-              </v-icon>
+              <v-badge color="error" :content="producedInCraftingData.length">
+                <v-icon >
+                  mdi-call-split
+                </v-icon>
+              </v-badge>
             </v-btn>
           </template>
           <span>producedInCrafting</span>
