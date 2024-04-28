@@ -1,5 +1,5 @@
 import SQLRequest from "../runtime/SQLRequest";
-import {getItemFromItemId, getItemRefrenceFromRow, getItemRowsFromRows, getItemsRefrenceFromRow, readItemRows, type ItemRefrence } from "../gamestate/item"
+import {getItemFromItemId, getItemRefrenceFromRow, getItemRowsFromRows, getItemsRefrenceFromRow, readItemRows, type ExpendedRefrence, type ItemRefrence } from "../gamestate/item"
 import type { Entity } from "./entity";
 type ItemSlot = {
     volume: number
@@ -35,7 +35,7 @@ export function getInventoryRowsFromRows(rows: any){
     }
     return PlayerStateRow
 }
-function getInventoryRowFromRow(row: any[]){
+export function getInventoryRowFromRow(row: any[]){
     const InventoryState: InventoryStateRow = {
         entity_id: row[0],
         pockets: getItemSlots(row[1]),
@@ -45,7 +45,19 @@ function getInventoryRowFromRow(row: any[]){
     }
     return InventoryState
 }
-
+export function diffItemsInInventorys(oldInventory: InventoryStateRow, newInventory: InventoryStateRow){
+    let diff: {[key:number]: {old: ExpendedRefrence | undefined, new: ExpendedRefrence | undefined}} = {}
+    const oldInv = replaceInventoryItemIdWithItem(oldInventory)
+    const newInv = replaceInventoryItemIdWithItem(newInventory)
+    for(const pocketIndex of oldInventory.pockets.keys()){
+        const oldItem = JSON.stringify(oldInv.pockets[pocketIndex].contents)
+        const newItem = JSON.stringify(newInv.pockets[pocketIndex].contents)
+        if(oldItem !== newItem){
+            diff[pocketIndex] = {old: oldInv.pockets[pocketIndex].contents as ExpendedRefrence | undefined, new: newInv.pockets[pocketIndex].contents as ExpendedRefrence | undefined}
+        }
+    }
+    return diff
+}
 export function replaceInventoryItemsIdWithItems(rows: any){
     for (const row of rows) {
         replaceInventoryItemIdWithItem(row)
@@ -63,15 +75,20 @@ export function replaceInventoryItemIdWithItem(inventory: InventoryStateRow){
     }
     return inventory
 }
-export async function SqlRequestInventoryByEntityId(entitys: Entity[]) {
+export function SQLQueryInventoryByEntityId(entitys: Entity[]){
     let sql= ""
     for(const entity of entitys){
         if(sql.length === 0){
             sql = `SELECT * FROM InventoryState WHERE owner_entity_id = ${entity.entity_id}`
         }else{
-            sql + ` or owner_entity_id = '${entity.entity_id}'`
+            sql = sql + ` or owner_entity_id = ${entity.entity_id}`
         }
     }
-    const result = await SQLRequest<any>(sql)
+    return sql
+
+}
+
+export async function SqlRequestInventoryByEntityId(entitys: Entity[]) {
+    const result = await SQLRequest<any>(SQLQueryInventoryByEntityId(entitys))
     return result[0].rows
 }

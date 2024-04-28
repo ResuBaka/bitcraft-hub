@@ -1,7 +1,7 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 
-interface  PlayerStateRow extends Entity {
+export interface  PlayerStateRow extends Entity {
     serial_id: Number,
     username: string
     eth_pub_key: string,
@@ -19,6 +19,15 @@ export function getPlayerRowsFromRows(rows: any[][]) {
     const playerRows: PlayerStateRow[] = []
     for (const row of rows) {
         playerRows.push(getPlayerRowFromRow(row))
+    }
+    return playerRows
+}
+
+export function getPlayerEntityIdMapFromRows(rows: any[][]) {
+    const playerRows: Map<number,PlayerStateRow> = new Map()
+    for (const row of rows) {
+        const player =  getPlayerRowFromRow(row)
+        playerRows.set(player.entity_id,player)
     }
     return playerRows
 }
@@ -52,5 +61,9 @@ export async function SqlRequestPlayersByUsername(usernames: string[]) {
         }
     }
     const result = await SQLRequest<any>(sql)
+    return result[0].rows
+}
+export async function SqlRequestAllPlayers() {
+    const result = await SQLRequest<any>("SELECT * FROM PlayerState")
     return result[0].rows
 }

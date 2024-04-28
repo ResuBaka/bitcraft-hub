@@ -22,6 +22,12 @@ export type ItemRefrence = {
     item_type: "Item" | "Cargo"
     durability?: Number
 }
+export type  ExpendedRefrence = {
+    item: ItemRow
+    quantity: Number
+    item_type: "Item" | "Cargo"
+    durability?: Number
+}
 
 export function getItemsRefrenceFromRow(rows: any[][]) {
     const itemRows: ItemRefrence[] = []
@@ -57,7 +63,12 @@ export function getItemRowsFromRows(rows: any[][]) {
     return itemRows
 }
 export function getItemFromItemId(items: ItemRow[], item_refrence: ItemRefrence) {
-    return items.filter((item) => item.id === item_refrence.item_id)[0]
+    const item: ExpendedRefrence = {
+        ...item_refrence,
+        item: items.filter((item) => item.id === item_refrence.item_id)[0]
+    }
+    
+    return item
 }
 function getItemRowFromRow(i: any[]) {
     return {
