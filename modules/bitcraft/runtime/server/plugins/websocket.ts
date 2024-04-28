@@ -6,7 +6,7 @@ import { SQLQueryInventoryByEntityId, diffItemsInInventorys, getInventoryRowFrom
 import { ExpendedRefrence, ItemRefrence } from "~/modules/bitcraft/gamestate/item";
 import { PlayerStateRow, SqlRequestAllPlayers, SqlRequestPlayersByUsername, getPlayerEntityIdMapFromRows, getPlayerRowsFromRows } from "~/modules/bitcraft/gamestate/player";
 import { SqlRequestAllUsers, getUserMapFromRows } from "~/modules/bitcraft/gamestate/userState";
-import {readFile,writeFile} from "node:fs/promises";
+import {readFile,writeFile, appendFile} from "node:fs/promises";
 import path from "node:path";
 
 const storagePath = `${process.cwd()}/storage`
@@ -93,15 +93,14 @@ export default defineNitroPlugin(async (nitroApp) => {
                     info.playerEntityId = user
                     info.playerName = PlayerByEntityId.get(user)?.username
                 }
-                let data: any[]
-                try{
-                    const file = await readFile(`${storagePath}/Inventory/${oldInventory.entity_id}.json`)
-                    data = JSON.parse(file.toString())
-                }catch{
-                    data = []
+
+                await createFileIfNotExist(`${storagePath}/Inventory/${oldInventory.entity_id}.json`)
+
+                if (import.meta.dev) {
+                    await createFileIfNotExist(`${storagePath}/Inventory/${oldInventory.entity_id}_latest.json`)
+                    await writeFile(`${storagePath}/Inventory/${oldInventory.entity_id}_latest.json`,JSON.stringify(info,null,3))
                 }
-                data.push(info)
-                await writeFile(`${storagePath}/Inventory/${oldInventory.entity_id}.json`,JSON.stringify(data,null,3))
+                await appendFile(`${storagePath}/Inventory/${oldInventory.entity_id}.json`, `${JSON.stringify(info)}\n`)
             }
         })
         websocket.on("close", (a) => {
@@ -115,3 +114,11 @@ export default defineNitroPlugin(async (nitroApp) => {
         console.error("Error with bitcraft websocket connection :: ", error)
     }
 });
+
+async function createFileIfNotExist(path: string) {
+    try {
+        await readFile(path)
+    } catch {
+        await writeFile(path, "")
+    }
+}

@@ -3,14 +3,12 @@ import { getClaimDescriptionRowsFromRows, SqlRequestClaimDescriptionByPlayerEnti
 import { getBuildingStateRowsFromRows, SqlRequesttBuildingStateByClaimEntityId } from "../gamestate/buildingState";
 import { getBuildingDescIdMapFromRows, readBuildingDescRows } from "../gamestate/buildingDesc";
 import { SQLQueryInventoryByEntityId, SqlRequestInventoryByEntityId } from "../gamestate/inventory";
-import { Identity } from "@clockworklabs/spacetimedb-sdk";
 import SQLRequest from "./SQLRequest";
 let usernames = [
     "Ryuko"
 ]
 
 export default async function RequestAllPlayerInfo() {
-    console.log(await SqlRequestPlayersByUsername(usernames))
     const players = getPlayerRowsFromRows(await SqlRequestPlayersByUsername(usernames))
 
     const claim = getClaimDescriptionRowsFromRows( await SqlRequestClaimDescriptionByPlayerEntityId(players))
@@ -31,7 +29,5 @@ export default async function RequestAllPlayerInfo() {
         return false
     })
     const data = await SqlRequestInventoryByEntityId(chests)
-    const identity = new Identity("682c346aa967aff098ab0b202dfb1e14960c22762f147f0b22a8b5e40c1e08a9")
-    console.log(JSON.stringify(await SQLRequest(`SELECT * FROM UserState where UserState.identity='682c346aa967aff098ab0b202dfb1e14960c22762f147f0b22a8b5e40c1e08a9'`),null,3))
 }
 RequestAllPlayerInfo()
