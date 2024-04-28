@@ -1,7 +1,7 @@
 import WebSocket from "ws";
 import { getBuildingDescIdMapFromRows, readBuildingDescRows } from "~/modules/bitcraft/gamestate/buildingDesc";
 import { SqlRequesttBuildingStateByClaimEntityId, getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
-import { SqlRequestClaimDescriptionByPlayerEntityId, getClaimDescriptionRowsFromRows } from "~/modules/bitcraft/gamestate/claimDescription";
+import { SqlRequestClaimDescriptionByPlayerEntityId, getClaimDescriptionMapFromRows, getClaimDescriptionRowsFromRows } from "~/modules/bitcraft/gamestate/claimDescription";
 import { SQLQueryInventoryByEntityId, diffItemsInInventorys, getInventoryRowFromRow } from "~/modules/bitcraft/gamestate/inventory";
 import { ExpendedRefrence, ItemRefrence } from "~/modules/bitcraft/gamestate/item";
 import { PlayerStateRow, SqlRequestAllPlayers, SqlRequestPlayersByUsername, getPlayerEntityIdMapFromRows, getPlayerRowsFromRows } from "~/modules/bitcraft/gamestate/player";
@@ -9,7 +9,7 @@ import { SqlRequestAllUsers, getUserMapFromRows } from "~/modules/bitcraft/games
 import {readFile,writeFile} from "node:fs/promises";
 import path from "node:path";
 
-const storagePath = `${process.cwd()}/storage/Inventory`
+const storagePath = `${process.cwd()}/storage`
 let counter = 0
 export default defineNitroPlugin(async (nitroApp) => {
     const usersByIdenity = getUserMapFromRows(await SqlRequestAllUsers())
@@ -34,8 +34,9 @@ export default defineNitroPlugin(async (nitroApp) => {
                 "Ryuko"
             ]
             const players = getPlayerRowsFromRows(await SqlRequestPlayersByUsername(usernames))
-            const claim = getClaimDescriptionRowsFromRows( await SqlRequestClaimDescriptionByPlayerEntityId(players))
-            const buildingState = getBuildingStateRowsFromRows(await SqlRequesttBuildingStateByClaimEntityId(claim))
+            const claimSqlResult = await SqlRequestClaimDescriptionByPlayerEntityId(players)
+            const claims = getClaimDescriptionRowsFromRows(claimSqlResult)
+            const buildingState = getBuildingStateRowsFromRows(await SqlRequesttBuildingStateByClaimEntityId(claims))
             const buildingDescMap = getBuildingDescIdMapFromRows(readBuildingDescRows())
             const chests = buildingState.filter((buildingState) =>{
                 const buildingDesc = buildingDescMap.get(buildingState.building_description_id)
@@ -51,6 +52,16 @@ export default defineNitroPlugin(async (nitroApp) => {
                 }
                 return false
             })
+            await writeFile(`${storagePath}/claims.json`,JSON.stringify(claims,null,3))
+            const buildingsGroupByClaim = chests.reduce((group: any, product) => {
+                const { claim_entity_id } = product;
+                group[claim_entity_id] = group[claim_entity_id] ?? [];
+                group[claim_entity_id].push(product);
+                return group;
+              }, {});
+            for(const [key,value] of Object.entries(buildingsGroupByClaim)){
+                await writeFile(`${storagePath}/BuildingByClaimEntityId/${key}.json`,JSON.stringify(value,null,3))
+            }
             websocket.send(JSON.stringify({
                 "subscribe": {
                     query_strings: [
@@ -84,13 +95,13 @@ export default defineNitroPlugin(async (nitroApp) => {
                 }
                 let data: any[]
                 try{
-                    const file = await readFile(`${storagePath}/${oldInventory.entity_id}.json`)
+                    const file = await readFile(`${storagePath}/Inventory/${oldInventory.entity_id}.json`)
                     data = JSON.parse(file.toString())
                 }catch{
                     data = []
                 }
                 data.push(info)
-                await writeFile(`${storagePath}/${oldInventory.entity_id}.json`,JSON.stringify(data,null,3))
+                await writeFile(`${storagePath}/Inventory/${oldInventory.entity_id}.json`,JSON.stringify(data,null,3))
             }
         })
         websocket.on("close", (a) => {

@@ -47,6 +47,14 @@ export function getClaimDescriptionRowsFromRows(rows: any){
     }
     return PlayerStateRow
 }
+export function getClaimDescriptionMapFromRows(rows: any){
+    const PlayerStateRow: Map<number,ClaimDescriptionRow> = new Map()
+    for (const row of rows) {
+        const data = getClaimDescriptionRowFromRow(row)
+        PlayerStateRow.set(data.entity_id,data)
+    }
+    return PlayerStateRow
+}
 function getClaimDescriptionRowFromRow(row: any[]){
     const InventoryState: ClaimDescriptionRow = {
         entity_id: row[0],
