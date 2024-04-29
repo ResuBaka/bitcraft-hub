@@ -23,49 +23,17 @@ export default defineNitroPlugin(async (nitroApp) => {
                 "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
             },
             protocolVersion: 13,
+            maxPayload: 1024 * 1024 * 1024
         })
 
         websocket.on("error", (error) => {
             console.error("Error with bitcraft websocket connection :: ", error)
         })
-        websocket.on("open", async () => {
-            console.log("Connected")
-            let usernames = [
-                "Ryuko"
-            ]
-            const players = getPlayerRowsFromRows(await SqlRequestPlayersByUsername(usernames))
-            const claimSqlResult = await SqlRequestClaimDescriptionByPlayerEntityId(players)
-            const claims = getClaimDescriptionRowsFromRows(claimSqlResult)
-            const buildingState = getBuildingStateRowsFromRows(await SqlRequesttBuildingStateByClaimEntityId(claims))
-            const buildingDescMap = getBuildingDescIdMapFromRows(readBuildingDescRows())
-            const chests = buildingState.filter((buildingState) =>{
-                const buildingDesc = buildingDescMap.get(buildingState.building_description_id)
-                if(buildingDesc === undefined){
-                    return false
-                }
-                if(buildingDesc.name.includes("Chest")){
-                    return true
-            
-                }
-                if( buildingDesc.name.includes("Stockpile")){
-                    return true
-                }
-                return false
-            })
-            await writeFile(`${storagePath}/claims.json`,JSON.stringify(claims,null,3))
-            const buildingsGroupByClaim = chests.reduce((group: any, product) => {
-                const { claim_entity_id } = product;
-                group[claim_entity_id] = group[claim_entity_id] ?? [];
-                group[claim_entity_id].push(product);
-                return group;
-              }, {});
-            for(const [key,value] of Object.entries(buildingsGroupByClaim)){
-                await writeFile(`${storagePath}/BuildingByClaimEntityId/${key}.json`,JSON.stringify(value,null,3))
-            }
+        websocket.on("open", async () => {Q
             websocket.send(JSON.stringify({
                 "subscribe": {
                     query_strings: [
-                        SQLQueryInventoryByEntityId(chests)
+                        "SELECT * FROM InventoryState"
                     ]
                 }
             }))
@@ -76,6 +44,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if(jsonData.TransactionUpdate !== undefined){
                 const callerIdentiy: string = jsonData.TransactionUpdate.event.caller_identity
                 const table_updates = jsonData.TransactionUpdate.subscription_update.table_updates[0].table_row_operations
+                //console.log(table_updates[0].row)
                 const oldInventory = getInventoryRowFromRow(table_updates[0].row)
                 const info: {
                     identity: string, 
