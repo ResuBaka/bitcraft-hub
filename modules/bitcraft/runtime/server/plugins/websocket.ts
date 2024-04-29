@@ -2,7 +2,7 @@ import WebSocket from "ws";
 import { getBuildingDescIdMapFromRows, readBuildingDescRows } from "~/modules/bitcraft/gamestate/buildingDesc";
 import { SqlRequesttBuildingStateByClaimEntityId, getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 import { SqlRequestClaimDescriptionByPlayerEntityId, getClaimDescriptionMapFromRows, getClaimDescriptionRowsFromRows } from "~/modules/bitcraft/gamestate/claimDescription";
-import { SQLQueryInventoryByEntityId, diffItemsInInventorys, getInventoryRowFromRow } from "~/modules/bitcraft/gamestate/inventory";
+import { SQLQueryInventoryByEntityId, diffItemsInInventorys, getInventoryRowFromRow, replaceInventoryItemIdWithItem } from "~/modules/bitcraft/gamestate/inventory";
 import { ExpendedRefrence, ItemRefrence } from "~/modules/bitcraft/gamestate/item";
 import { PlayerStateRow, SqlRequestAllPlayers, SqlRequestPlayersByUsername, getPlayerEntityIdMapFromRows, getPlayerRowsFromRows } from "~/modules/bitcraft/gamestate/player";
 import { SqlRequestAllUsers, getUserMapFromRows } from "~/modules/bitcraft/gamestate/userState";
@@ -41,35 +41,60 @@ export default defineNitroPlugin(async (nitroApp) => {
         websocket.on("message", async (data: any) => {
             const jsonData = JSON.parse(data.toString())
             //console.log(JSON.stringify(jsonData, null, 2))
-            if(jsonData.TransactionUpdate !== undefined){
+            if(jsonData?.TransactionUpdate !== undefined){
                 const callerIdentiy: string = jsonData.TransactionUpdate.event.caller_identity
-                const table_updates = jsonData.TransactionUpdate.subscription_update.table_updates[0].table_row_operations
+                const table_updates = jsonData?.TransactionUpdate?.subscription_update?.table_updates[0]?.table_row_operations
                 //console.log(table_updates[0].row)
-                const oldInventory = getInventoryRowFromRow(table_updates[0].row)
-                const info: {
-                    identity: string, 
-                    playerName?: string
-                    playerEntityId?: number
-                    timestamp: number
-                    diff: {
-                    [key: number]: {
-                        old: ExpendedRefrence | undefined;
-                        new: ExpendedRefrence | undefined;
-                    };
-                }} = {timestamp: jsonData.TransactionUpdate.event.timestamp, identity: callerIdentiy, diff: diffItemsInInventorys(oldInventory,getInventoryRowFromRow(table_updates[1].row))}
-                const user = usersByIdenity.get(callerIdentiy)
-                if(user !== undefined){
-                    info.playerEntityId = user
-                    info.playerName = PlayerByEntityId.get(user)?.username
-                }
+                var orderedTables: {[key: string]: {delete: any,insert:any}} = table_updates.reduce((x: any, y: any) => {
+                    if(x[y.row[1]] === undefined){
+                        x[y.row[1]] = {}
+                    }
+                    x[y.row[1]][y.op] = y
+            
+                    return x;
+            
+                }, {});
+                for(const table of Object.values(orderedTables)){
+                    //console.log(table)
+                    let info: {
+                        inventory_id: number
+                        identity: string, 
+                        playerName?: string
+                        playerEntityId?: number
+                        timestamp: number
+                        created?: any
+                        deleted?: any
+                        diff?: {
+                        [key: number]: {
+                            old: ExpendedRefrence | undefined;
+                            new: ExpendedRefrence | undefined;
+                        };
+                    }}
+                    if(table?.delete?.row === undefined){
+                        const inventory = getInventoryRowFromRow(table?.insert?.row)
+                        info = {inventory_id: inventory.entity_id,timestamp: jsonData?.TransactionUpdate?.event?.timestamp, identity: callerIdentiy, created: replaceInventoryItemIdWithItem(inventory)}
+                    }else if(table?.insert?.row === undefined){
+                        const inventory = getInventoryRowFromRow(table?.delete?.row)
+                        info = {inventory_id: inventory.entity_id,timestamp: jsonData?.TransactionUpdate?.event?.timestamp, identity: callerIdentiy, deleted: replaceInventoryItemIdWithItem(inventory)}
+                    }else{
+                        const oldInventory = getInventoryRowFromRow(table?.delete?.row)
+                        const newInventory = getInventoryRowFromRow(table?.insert?.row)
+                        info = {inventory_id: oldInventory.entity_id, timestamp: jsonData?.TransactionUpdate?.event?.timestamp, identity: callerIdentiy, diff: diffItemsInInventorys(oldInventory,newInventory)}
+                    }
+                    const user = usersByIdenity.get(callerIdentiy)
+                    if(user !== undefined){
+                        info.playerEntityId = user
+                        info.playerName = PlayerByEntityId.get(user)?.username
+                    }
 
-                await createFileIfNotExist(`${storagePath}/Inventory/${oldInventory.entity_id}.json`)
+                    await createFileIfNotExist(`${storagePath}/Inventory/${info.inventory_id}.json`)
 
-                if (import.meta.dev) {
-                    await createFileIfNotExist(`${storagePath}/Inventory/${oldInventory.entity_id}_latest.json`)
-                    await writeFile(`${storagePath}/Inventory/${oldInventory.entity_id}_latest.json`,JSON.stringify(info,null,3))
+                    if (import.meta.dev) {
+                        await createFileIfNotExist(`${storagePath}/Inventory/${info.inventory_id}_latest.json`)
+                        await writeFile(`${storagePath}/Inventory/${info.inventory_id}_latest.json`,JSON.stringify(info,null,3))
+                    }
+                    await appendFile(`${storagePath}/Inventory/${info.inventory_id}.json`, `${JSON.stringify(info)}\n`)
                 }
-                await appendFile(`${storagePath}/Inventory/${oldInventory.entity_id}.json`, `${JSON.stringify(info)}\n`)
             }
         })
         websocket.on("close", (a) => {
