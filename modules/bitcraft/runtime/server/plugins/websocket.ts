@@ -29,7 +29,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         websocket.on("error", (error) => {
             console.error("Error with bitcraft websocket connection :: ", error)
         })
-        websocket.on("open", async () => {Q
+        websocket.on("open", async () => {
             websocket.send(JSON.stringify({
                 "subscribe": {
                     query_strings: [
