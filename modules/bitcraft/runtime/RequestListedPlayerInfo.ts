@@ -14,9 +14,7 @@ import {
   getBuildingDescIdMapFromRows,
   readBuildingDescRows,
 } from "../gamestate/buildingDesc";
-import {
-  SqlRequestInventoryByEntityId,
-} from "../gamestate/inventory";
+import { SqlRequestInventoryByEntityId } from "../gamestate/inventory";
 let usernames = ["Ryuko"];
 
 export default async function RequestAllPlayerInfo() {

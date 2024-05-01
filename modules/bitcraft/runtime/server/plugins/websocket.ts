@@ -4,9 +4,7 @@ import {
   getInventoryRowFromRow,
   replaceInventoryItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/inventory";
-import {
-  ExpendedRefrence,
-} from "~/modules/bitcraft/gamestate/item";
+import { ExpendedRefrence } from "~/modules/bitcraft/gamestate/item";
 import {
   SqlRequestAllPlayers,
   getPlayerEntityIdMapFromRows,
