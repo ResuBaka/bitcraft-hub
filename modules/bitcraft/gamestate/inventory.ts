@@ -8,6 +8,8 @@ import {
   type ItemRefrence,
 } from "../gamestate/item";
 import type { Entity } from "./entity";
+import { readFileSync } from "node:fs";
+
 type ItemSlot = {
   volume: number;
   contents?: ItemRefrence;
@@ -18,6 +20,22 @@ interface InventoryStateRow extends Entity {
   cargo_index: number;
   owner_entity_id: number;
 }
+
+export type InventoryChanged = {
+  inventory_id: number;
+  identity: string;
+  playerName?: string;
+  playerEntityId?: number;
+  timestamp: number;
+  created?: any;
+  deleted?: any;
+  diff?: {
+    [key: number]: {
+      old: ExpendedRefrence | undefined;
+      new: ExpendedRefrence | undefined;
+    };
+  };
+};
 
 function getItemSlots(rows: any) {
   const itemRows: ItemSlot[] = [];
@@ -111,4 +129,30 @@ export function SQLQueryInventoryByEntityId(entitys: Entity[]) {
 export async function SqlRequestInventoryByEntityId(entitys: Entity[]) {
   const result = await SQLRequest<any>(SQLQueryInventoryByEntityId(entitys));
   return result[0].rows;
+}
+
+export function readInventoryRows() {
+  return JSON.parse(
+    readFileSync(`${process.cwd()}/storage/State/InventoryState.json`, "utf8"),
+  )[0].rows;
+}
+
+export function readInventroyChanges(id: number) {
+  let file;
+  try {
+    file = readFileSync(
+      `${process.cwd()}/storage/Inventory/${id}.json`,
+      "utf8",
+    );
+  } catch {
+    return false;
+  }
+  const lines = file.split("\n");
+  const list: InventoryChanged[] = [];
+  for (const line of lines) {
+    if (line.length > 0) {
+      list.push(JSON.parse(line));
+    }
+  }
+  return list;
 }
