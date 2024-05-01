@@ -1,5 +1,7 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
+import {readFileSync} from "node:fs";
+
 interface  BuildingStateRow extends Entity {
     claim_entity_id: number
     direction_index: number
@@ -46,9 +48,13 @@ export async function SqlRequesttBuildingStateByClaimEntityId(entitys: Entity[])
         if(sql.length === 0){
             sql = `SELECT * FROM BuildingState WHERE claim_entity_id = ${entity.entity_id}`
         }else{
-            sql + ` or claim_entity_id = '${entity.entity_id}'`
+            sql = sql + ` or claim_entity_id = ${entity.entity_id}`
         }
     }
     const result = await SQLRequest<any>(sql)
     return result[0].rows
+}
+
+export function readBuildingStateRows() {
+    return JSON.parse(readFileSync(`${process.cwd()}/storage/State/BuildingState.json`, 'utf8'))[0].rows;
 }

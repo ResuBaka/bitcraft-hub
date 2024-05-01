@@ -1,5 +1,6 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
+import {readFileSync} from "node:fs";
 interface ClaimMember extends Entity {
     user_name: string
     inventory_permission: boolean
@@ -72,7 +73,10 @@ function getClaimDescriptionRowFromRow(row: any[]){
     }
     return InventoryState
 }
-
+export async function SQLRequestBuildingDescAllClaims(){
+    const result = await SQLRequest<any>("SELECT * FROM BuildingState where claim_entity_id > 0 ")
+    return result[0].rows
+}
 export async function SqlRequestClaimDescriptionByPlayerEntityId(entitys: Entity[]) {
     let sql= ""
     for(const entity of entitys){
@@ -84,4 +88,7 @@ export async function SqlRequestClaimDescriptionByPlayerEntityId(entitys: Entity
     }
     const result = await SQLRequest<any>(sql)
     return result[0].rows
+}
+export function readClaimRows() {
+    return JSON.parse(readFileSync(`${process.cwd()}/storage/State/ClaimDescriptionState.json`, 'utf8'))[0].rows;
 }
