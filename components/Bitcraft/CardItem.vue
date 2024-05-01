@@ -1,32 +1,29 @@
 <script setup lang="ts">
+const { item } = defineProps<{
+  item: any;
+}>();
 
-const {item} = defineProps<{
-  item: any
-}>()
-
-const {data: neededInCrafting} = useFetch('/api/bitcraft/recipes', {
+const { data: neededInCrafting } = useFetch("/api/bitcraft/recipes", {
   query: {
-    neededInCrafting: item.id
-  }
-})
+    neededInCrafting: item.id,
+  },
+});
 
-const {data: producedInCrafting} = useFetch('/api/bitcraft/recipes', {
+const { data: producedInCrafting } = useFetch("/api/bitcraft/recipes", {
   query: {
-    producedInCrafting: item.id
-  }
-})
+    producedInCrafting: item.id,
+  },
+});
 
 const neededInCraftingData = computed(() => {
-  return neededInCrafting.value ?? []
-})
+  return neededInCrafting.value ?? [];
+});
 
 const producedInCraftingData = computed(() => {
-  return producedInCrafting.value ?? []
-})
+  return producedInCrafting.value ?? [];
+});
 
-const contetentToShow = ref('default')
-
-
+const contetentToShow = ref("default");
 </script>
 
 <template>

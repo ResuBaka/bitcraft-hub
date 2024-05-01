@@ -1,9 +1,7 @@
 <script setup lang="ts">
-
-const {claim} = defineProps<{
-  claim: any
-
-}>()
+const { claim } = defineProps<{
+  claim: any;
+}>();
 
 /*const {data: buidlings} = useFetch('/api/bitcraft/buildings', {
   query: {
@@ -24,7 +22,6 @@ const buidlingsData = computed(() => {
 const ownerPlayerData = computed(() => {
   return owner_player.value ?? []
 })*/
-
 </script>
 
 <template>

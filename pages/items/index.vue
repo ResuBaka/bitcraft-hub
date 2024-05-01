@@ -1,100 +1,98 @@
 <script setup lang="ts">
+import { watchThrottled } from "@vueuse/shared";
 
+const page = ref(1);
+const perPage = 30;
 
-import {watchThrottled} from "@vueuse/shared";
+const tag = ref(null);
+const tier = ref(null);
+const search = ref<string | null>("");
 
-const page = ref(1)
-const perPage = 30
+const route = useRoute();
+const router = useRouter();
 
+search.value = (route.query.search as string) ?? "";
+tag.value = (route.query.tag as string) ?? null;
 
-const tag = ref(null)
-const tier = ref(null)
-const search = ref<string | null>('')
-
-const route = useRoute()
-const router = useRouter()
-
-search.value = route.query.search as string ?? ''
-tag.value = route.query.tag as string ?? null
-
-const tmpTier = route.query.tier as string ?? null
-const tmpPage = route.query.page as string ?? null
+const tmpTier = (route.query.tier as string) ?? null;
+const tmpPage = (route.query.page as string) ?? null;
 
 if (tmpTier) {
-  tier.value = parseInt(tmpTier)
+  tier.value = parseInt(tmpTier);
 }
 if (tmpPage) {
-  page.value = parseInt(tmpPage)
+  page.value = parseInt(tmpPage);
 }
 
 const { data: items, pending } = useFetch(() => {
-  const url = new URLSearchParams()
+  const url = new URLSearchParams();
 
   if (search.value) {
-    url.append('search', search.value)
+    url.append("search", search.value);
   }
 
   if (tag.value) {
-    url.append('tag', tag.value)
+    url.append("tag", tag.value);
   }
 
   if (tier.value) {
-    url.append('tier', tier.value.toString())
+    url.append("tier", tier.value.toString());
   }
 
   if (page.value) {
-    url.append('page', page.value.toString())
+    url.append("page", page.value.toString());
   }
 
-  const querys = url.toString()
+  const querys = url.toString();
 
   if (querys) {
-    return `/api/bitcraft/items?${querys}`
+    return `/api/bitcraft/items?${querys}`;
   }
 
+  return `/api/bitcraft/items`;
+});
 
-  return `/api/bitcraft/items`
-})
+watchThrottled(
+  () => [search.value, tag.value, tier.value, page.value],
+  () => {
+    const newQuery = {};
 
-watchThrottled(() => [search.value, tag.value, tier.value, page.value], () => {
-  const newQuery = {}
+    if (search.value) {
+      newQuery.search = search.value;
+    }
 
-  if (search.value) {
-    newQuery.search = search.value
-  }
+    if (tag.value) {
+      newQuery.tag = tag.value;
+    }
 
-  if (tag.value) {
-    newQuery.tag = tag.value
-  }
+    if (tier.value) {
+      newQuery.tier = tier.value;
+    }
 
-  if (tier.value) {
-    newQuery.tier = tier.value
-  }
+    if (page.value) {
+      newQuery.page = page.value;
+    }
 
-  if (page.value) {
-    newQuery.page = page.value
-  }
-
-  router.push({ query: newQuery })
-}, { throttle: 50 })
-
+    router.push({ query: newQuery });
+  },
+  { throttle: 50 },
+);
 
 const currentItems = computed(() => {
-  return items.value?.items ?? []
-})
+  return items.value?.items ?? [];
+});
 
 const tags = computed(() => {
-  return items.value?.tags ?? []
-})
+  return items.value?.tags ?? [];
+});
 
 const tiers = computed(() => {
-  return items.value?.tiers ?? []
-})
+  return items.value?.tiers ?? [];
+});
 
 const length = computed(() => {
-  return Math.ceil(items.value?.total / perPage) ?? 0
-})
-
+  return Math.ceil(items.value?.total / perPage) ?? 0;
+});
 </script>
 
 <template>

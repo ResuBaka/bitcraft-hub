@@ -8,7 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "format": "biome format ./pages ./logic ./server ./components ./layouts --write",
+    "format": "biome format ./pages ./logic ./server ./components ./layouts ./modules --write",
     "format:check": "biome format ./pages ./logic ./server ./components ./layouts"
   },
   "dependencies": {

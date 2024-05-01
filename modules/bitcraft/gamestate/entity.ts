@@ -1,3 +1,3 @@
 export interface Entity {
-    entity_id: number;
-  }
+  entity_id: number;
+}
