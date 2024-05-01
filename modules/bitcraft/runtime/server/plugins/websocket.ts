@@ -18,6 +18,7 @@ import { readFile, writeFile, appendFile } from "node:fs/promises";
 const storagePath = `${process.cwd()}/storage`;
 let counter = 0;
 export default defineNitroPlugin(async (nitroApp) => {
+    return
   const usersByIdenity = getUserMapFromRows(await SqlRequestAllUsers());
   const PlayerByEntityId = getPlayerEntityIdMapFromRows(
     await SqlRequestAllPlayers(),

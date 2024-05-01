@@ -49,7 +49,7 @@ const inventorys = computed(() => {
           <v-list-item>
             <v-list-item-title>Inventorys</v-list-item-title>
             <v-list-item v-for="inventory in inventorys">
-              <v-list-item-subtitle >{{ inventory }}</v-list-item-subtitle>
+              <v-list-item-subtitle >{{ inventory.entity_id }}</v-list-item-subtitle>
           </v-list-item>
           </v-list-item>
         </v-list>

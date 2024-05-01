@@ -1,6 +1,7 @@
 import {
   getInventoryRowsFromRows,
   readInventoryRows,
+  replaceInventoryItemIdWithItem
 } from "~/modules/bitcraft/gamestate/inventory";
 
 const rows = getInventoryRowsFromRows(readInventoryRows());
@@ -15,7 +16,6 @@ export default defineEventHandler((event) => {
   }
 
   const claims = rows.find((claims) => claims.entity_id == parseInt(id));
-
   if (!claims) {
     throw createError({
       statusCode: 404,
@@ -23,5 +23,5 @@ export default defineEventHandler((event) => {
     });
   }
 
-  return claims;
+  return replaceInventoryItemIdWithItem(claims);
 });
