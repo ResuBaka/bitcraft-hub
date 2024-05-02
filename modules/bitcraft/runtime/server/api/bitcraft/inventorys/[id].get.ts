@@ -1,7 +1,7 @@
 import {
   getInventoryRowsFromRows,
   readInventoryRows,
-  replaceInventoryItemIdWithItem
+  replaceInventoryItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/inventory";
 
 const rows = getInventoryRowsFromRows(readInventoryRows());

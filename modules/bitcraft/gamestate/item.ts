@@ -28,7 +28,7 @@ export type ExpendedRefrence = {
   durability?: Number;
 };
 
-export function getItemsRefrenceFromRow(rows: any[][]) {
+export function getItemsRefrenceFromRows(rows: any[][]) {
   const itemRows: ItemRefrence[] = [];
   for (const row of rows) {
     const item = getItemRefrenceFromRow(row);
@@ -40,16 +40,13 @@ export function getItemsRefrenceFromRow(rows: any[][]) {
   return itemRows;
 }
 export function getItemRefrenceFromRow(item: any[]) {
-  if (Object.keys(item)[0] === "0") {
-    const itemRefrence: ItemRefrence = {
-      item_id: Object.values(item)[0][0],
-      quantity: Object.values(item)[0][1],
-      item_type:
-        Object.keys(Object.values(item)[0][2])[0] === "0" ? "Item" : "Cargo",
-    };
+  const itemRefrence: ItemRefrence = {
+    item_id: item[0],
+    quantity: item[1],
+    item_type: Object.keys(item[2])[0] === "0" ? "Item" : "Cargo",
+  };
 
-    return itemRefrence;
-  }
+  return itemRefrence;
 }
 export function getItemRowsFromRows(rows: any[][]) {
   const itemRows: ItemRow[] = [];

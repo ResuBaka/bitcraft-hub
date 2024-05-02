@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import SQLRequest from "../runtime/SQLRequest";
 import {
   getItemFromItemId,
@@ -7,7 +8,7 @@ import {
   readItemRows,
   type ItemRefrence,
 } from "../gamestate/item";
-import type { Entity } from "./entity";
+import { getSome, type Entity } from "./entity";
 let usernames = ["Sweets"];
 
 export async function loadFile(file: any) {
@@ -92,37 +93,37 @@ function getEquipmentRowFromRow(row: any[]) {
   //@ts-ignore
   if (Object.values(row[1][0][0])[0].length > 2) {
     EquipmentState.equipment_slots.main_hand = getItemRefrenceFromRow(
-      row[1][0][0],
+      getSome(row[1][0][0]),
     );
   }
   //@ts-ignore
   if (Object.values(row[1][1][0])[0].length > 2) {
     EquipmentState.equipment_slots.off_hand = getItemRefrenceFromRow(
-      row[1][1][0],
+      getSome(row[1][1][0]),
     );
   }
   //@ts-ignore
   if (Object.values(row[1][2][0])[0].length > 2) {
     EquipmentState.equipment_slots.head_artifact = getItemRefrenceFromRow(
-      row[1][2][0],
+      getSome(row[1][2][0]),
     );
   }
   //@ts-ignore
   if (Object.values(row[1][3][0])[0].length > 2) {
     EquipmentState.equipment_slots.torso_artifact = getItemRefrenceFromRow(
-      row[1][3][0],
+      getSome(row[1][3][0]),
     );
   }
   //@ts-ignore
   if (Object.values(row[1][4][0])[0].length > 2) {
     EquipmentState.equipment_slots.hand_artifact = getItemRefrenceFromRow(
-      row[1][4][0],
+      getSome(row[1][4][0]),
     );
   }
   //@ts-ignore
   if (Object.values(row[1][5][0])[0].length > 2) {
     EquipmentState.equipment_slots.feet_artifact = getItemRefrenceFromRow(
-      row[1][5][0],
+      getSome(row[1][5][0]),
     );
   }
   return EquipmentState;
@@ -138,4 +139,11 @@ export async function SqlRequestEquipmentByEntityId(entitys: Entity[]) {
   }
   const result = await SQLRequest<any>(sql);
   return result[0].rows;
+}
+
+
+export function readEquipmentRows() {
+  return JSON.parse(
+    readFileSync(`${process.cwd()}/storage/State/EquipmentState.json`, "utf8"),
+  )[0].rows;
 }
