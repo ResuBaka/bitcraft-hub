@@ -4,8 +4,9 @@ import {
   replaceInventoryItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/inventory";
 
-const rows = getInventoryRowsFromRows(readInventoryRows());
 export default defineEventHandler((event) => {
+  const rows = getInventoryRowsFromRows(readInventoryRows());
+
   const id = getRouterParam(event, "id", { decode: true });
 
   if (!id) {

@@ -21,6 +21,5 @@ let usernames = ["Ryuko"];
 
 export default async function RequestAllPlayerInfo() {
   const equipments = getTradingOrderStateRowsFromRows(readTradeOrderStateRows())
-  console.log(equipments)
 }
 RequestAllPlayerInfo();
