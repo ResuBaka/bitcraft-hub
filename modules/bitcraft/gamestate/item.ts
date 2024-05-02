@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { getSome } from "./entity";
 
 export type ItemRow = {
   id: number;

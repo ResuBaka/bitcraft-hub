@@ -141,7 +141,6 @@ export async function SqlRequestEquipmentByEntityId(entitys: Entity[]) {
   return result[0].rows;
 }
 
-
 export function readEquipmentRows() {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/State/EquipmentState.json`, "utf8"),

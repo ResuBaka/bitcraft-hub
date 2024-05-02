@@ -7,7 +7,7 @@ import {
   type ExpendedRefrence,
   type ItemRefrence,
 } from "../gamestate/item";
-import type { Entity } from "./entity";
+import { getSome, type Entity } from "./entity";
 import { readFileSync } from "node:fs";
 
 type ItemSlot = {
@@ -45,9 +45,11 @@ function getItemSlots(rows: any) {
   return itemRows;
 }
 function getItemSlot(row: any) {
+  const contents = getSome(row[1]);
   const InventoryState: ItemSlot = {
     volume: row[0],
-    contents: getItemRefrenceFromRow(row[1]),
+    contents:
+      contents !== undefined ? getItemRefrenceFromRow(contents) : undefined,
   };
   return InventoryState;
 }

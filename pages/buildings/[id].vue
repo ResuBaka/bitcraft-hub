@@ -23,7 +23,7 @@ const { data: buildingsFetch, pending: buildingPending } = useFetch(() => {
 })
 
 const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
-  return `/api/bitcraft/inventory?owner_entity_id=${route.params.id}`
+  return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`
 })
 
 const building = computed(() => {
@@ -49,7 +49,8 @@ const inventorys = computed(() => {
           <v-list-item>
             <v-list-item-title>Inventorys</v-list-item-title>
             <v-list-item v-for="inventory in inventorys">
-              <v-list-item-subtitle >{{ inventory.entity_id }}</v-list-item-subtitle>
+              <v-list-item-subtitle ><a :href="'/inventorys/' + inventory.entity_id"
+        >{{ inventory.entity_id }}</a></v-list-item-subtitle>
           </v-list-item>
           </v-list-item>
         </v-list>
