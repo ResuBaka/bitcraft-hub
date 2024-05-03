@@ -50,11 +50,7 @@ const inventoryChanges = computed(() => {
     <v-col cols="12" md="2" v-for="items in inventory.pockets">
       <v-card v-if="items.contents !== undefined">
                 
-                <v-card-title >Quantity</v-card-title>
-                <v-card-subtitle >{{ items.contents.quantity }}</v-card-subtitle>
-  
-                <v-card-title >Name</v-card-title>
-                <v-card-subtitle >{{ items.contents.item.name }}</v-card-subtitle>
+        <bitcraft-item :item="items.contents"></bitcraft-item>
                 </v-card>
     </v-col>
   </v-row>
@@ -69,19 +65,11 @@ const inventoryChanges = computed(() => {
               </v-card>
                     <v-card  v-if="items.new !== undefined">
                     <v-card-title >new</v-card-title>
-                    <v-card-title>Quantity</v-card-title>
-                    <v-card-text >{{ items.new.quantity }}</v-card-text>
-      
-                    <v-card-title > Name </v-card-title>
-                    <v-card-text  >{{ items.new.item.name }}</v-card-text >
+                    <bitcraft-item :item="items.new"></bitcraft-item>
                   </v-card>
                   <v-card v-if="items.old !== undefined">
                     <v-card-title >Old</v-card-title>
-                    <v-card-title>Quantity</v-card-title>
-                    <v-card-text >{{ items.old.quantity }}</v-card-text>
-      
-                    <v-card-title > Name </v-card-title>
-                    <v-card-text  >{{ items.old.item.name }}</v-card-text >
+                    <bitcraft-item :item="items.old"></bitcraft-item>
                   </v-card>
                 </template>
         </v-col>

@@ -23,6 +23,7 @@ export type ItemRefrence = {
   durability?: Number;
 };
 export type ExpendedRefrence = {
+  item_id: Number;
   item: ItemRow;
   quantity: Number;
   item_type: "Item" | "Cargo";

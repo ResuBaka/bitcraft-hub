@@ -26,5 +26,12 @@ export default defineNuxtConfig({
         target: 'esnext',
       }
     }
+  },
+  runtimeConfig: {
+    bitcraft: {
+      websocket: {
+        enabled: false
+      }
+    }
   }
 })

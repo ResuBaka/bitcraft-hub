@@ -15,11 +15,28 @@ import {
   readBuildingDescRows,
 } from "../gamestate/buildingDesc";
 import { SqlRequestInventoryByEntityId } from "../gamestate/inventory";
-import { getEquipmentRowsFromRows, readEquipmentRows } from "../gamestate/equipment";
-import { getTradingOrderStateRowsFromRows, readTradeOrderStateRows } from "../gamestate/tradeOrder";
+import {
+  getEquipmentRowsFromRows,
+  readEquipmentRows,
+} from "../gamestate/equipment";
+import {
+  getTradingOrderStateRowsFromRows,
+  readTradeOrderStateRows,
+  replaceTradeOrderCargoIdWithCargo,
+  replaceTradeOrdersCargoIdWithCargo,
+} from "../gamestate/tradeOrder";
+import { readCargoStateRows } from "../gamestate/cargoState";
+import {
+  getCargoDescRowsFromRows,
+  readCargoDescRows,
+} from "../gamestate/cargoDesc";
 let usernames = ["Ryuko"];
 
 export default async function RequestAllPlayerInfo() {
-  const equipments = getTradingOrderStateRowsFromRows(readTradeOrderStateRows())
+  console.log(
+    replaceTradeOrdersCargoIdWithCargo(
+      getCargoDescRowsFromRows(readCargoDescRows()),
+    ),
+  );
 }
 RequestAllPlayerInfo();
