@@ -1,6 +1,9 @@
 import {
   getTradingOrderStateRowsFromRows,
   readTradeOrderStateRows,
+  replaceTradeOrderItemIdWithItem,
+  replaceTradeOrdersCargoIdWithCargo,
+  replaceTradeOrdersItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/tradeOrder";
 
 export default defineEventHandler((event) => {
@@ -22,7 +25,11 @@ export default defineEventHandler((event) => {
     }) ?? [];
 
   return {
-    claims: rowsFilterted.slice((page - 1) * perPage, page * perPage),
+    trade_orders: replaceTradeOrdersItemIdWithItem(
+      replaceTradeOrdersCargoIdWithCargo(
+        rowsFilterted.slice((page - 1) * perPage, page * perPage),
+      ),
+    ),
     total: rowsFilterted.length,
     page,
     perPage,

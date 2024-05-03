@@ -1,15 +1,30 @@
-import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
-import { getItemsRefrenceFromRows, type ItemRefrence } from "./item";
+import {
+  getItemFromItemId,
+  getItemRowsFromRows,
+  getItemsRefrenceFromRows,
+  readItemRows,
+  type ExpendedRefrence,
+  type ItemRefrence,
+  type ItemRow,
+} from "./item";
+import {
+  getCagoDescFromCargoId,
+  getCargoDescRowsFromRows,
+  readCargoDescRows,
+  type CargoDescRow,
+} from "./cargoDesc";
 
 interface TradingOrderStateRow extends Entity {
   building_entity_id: number;
   remaining_stock: any;
-  offer_items: ItemRefrence[];
-  offer_cargo_id: any;
-  required_items: any;
-  required_cargo_id: any;
+  offer_items: ItemRefrence[] | ExpendedRefrence[];
+  offer_cargo_id: number[];
+  offer_cargo?: CargoDescRow[];
+  required_items: ItemRefrence[];
+  required_cargo_id: number[];
+  required_cargo?: CargoDescRow[];
 }
 
 export function getTradingOrderStateRowsFromRows(rows: any) {
@@ -30,6 +45,67 @@ function getTradingOrderStateRowFromRow(row: any[]) {
     required_cargo_id: row[6],
   };
   return BuildingStateRow;
+}
+
+export function replaceTradeOrdersCargoIdWithCargo(rows: any) {
+  const list = [];
+  for (const row of rows) {
+    list.push(replaceTradeOrderCargoIdWithCargo(row));
+  }
+  return list;
+}
+
+export function replaceItems(
+  itemRows: ItemRow[],
+  itemRefrences: ItemRefrence[],
+) {
+  const list = [];
+  for (const itemRefrence of itemRefrences) {
+    list.push(getItemFromItemId(itemRows, itemRefrence));
+  }
+  return list;
+}
+
+export function replaceCargos(
+  itemRows: CargoDescRow[],
+  itemRefrences: number[],
+) {
+  const list = [];
+  for (const itemRefrence of itemRefrences) {
+    list.push(getCagoDescFromCargoId(itemRows, itemRefrence));
+  }
+  return list;
+}
+
+export function replaceTradeOrderItemIdWithItem(
+  tradeOrder: TradingOrderStateRow,
+) {
+  const cargo_rows = getItemRowsFromRows(readItemRows());
+  const expendedTradeOrder: TradingOrderStateRow = {
+    ...tradeOrder,
+    offer_items: replaceItems(cargo_rows, tradeOrder.offer_items),
+    required_items: replaceItems(cargo_rows, tradeOrder.required_items),
+  };
+  return expendedTradeOrder;
+}
+
+export function replaceTradeOrdersItemIdWithItem(rows: any) {
+  const list = [];
+  for (const row of rows) {
+    list.push(replaceTradeOrderItemIdWithItem(row));
+  }
+  return list;
+}
+export function replaceTradeOrderCargoIdWithCargo(
+  tradeOrder: TradingOrderStateRow,
+) {
+  const cargo_rows = getCargoDescRowsFromRows(readCargoDescRows());
+  const expendedTradeOrder: TradingOrderStateRow = {
+    ...tradeOrder,
+    offer_cargo: replaceCargos(cargo_rows, tradeOrder.offer_cargo_id),
+    required_cargo: replaceCargos(cargo_rows, tradeOrder.required_cargo_id),
+  };
+  return expendedTradeOrder;
 }
 
 export function readTradeOrderStateRows() {

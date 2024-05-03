@@ -1,9 +1,11 @@
 import {
-  getClaimDescriptionRowsFromRows,
-  readClaimRows,
-} from "~/modules/bitcraft/gamestate/claimDescription";
+  getTradingOrderStateRowsFromRows,
+  readTradeOrderStateRows,
+  replaceTradeOrderCargoIdWithCargo,
+  replaceTradeOrderItemIdWithItem,
+} from "~/modules/bitcraft/gamestate/tradeOrder";
 
-const rows = getClaimDescriptionRowsFromRows(readClaimRows());
+const rows = getTradingOrderStateRowsFromRows(readTradeOrderStateRows());
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });
 
@@ -23,5 +25,7 @@ export default defineEventHandler((event) => {
     });
   }
 
-  return claims;
+  return replaceTradeOrderItemIdWithItem(
+    replaceTradeOrderCargoIdWithCargo(claims),
+  );
 });
