@@ -18,7 +18,6 @@ export default defineEventHandler((event) => {
     );
   }
   if (neededToCraft) {
-    console.log(neededToCraft)
     return getAllConsumedItemsFromItem(rows,neededToCraft)
     return
   }
