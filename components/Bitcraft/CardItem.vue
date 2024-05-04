@@ -15,12 +15,22 @@ const { data: producedInCrafting } = useFetch("/api/bitcraft/recipes", {
   },
 });
 
+const { data: neededToCraft } = useFetch("/api/bitcraft/recipes", {
+  query: {
+    neededToCraft: item.id,
+  },
+});
+
 const neededInCraftingData = computed(() => {
   return neededInCrafting.value ?? [];
 });
 
 const producedInCraftingData = computed(() => {
   return producedInCrafting.value ?? [];
+});
+
+const neededToCraftData = computed(() => {
+  return neededToCraft.value ?? [];
 });
 
 const contetentToShow = ref("default");
@@ -57,6 +67,22 @@ const contetentToShow = ref("default");
             <v-btn
                 icon
                 v-bind="props"
+                @click="contetentToShow = 'neededToCraft'"
+            >
+                <v-icon >
+                  mdi-chart-bar-stacked
+                </v-icon>
+            </v-btn>
+          </template>
+          <span>producedInCrafting</span>
+        </v-tooltip>
+        <v-tooltip
+            location="bottom"
+        >
+          <template v-slot:activator="{ props }">
+            <v-btn
+                icon
+                v-bind="props"
                 @click="contetentToShow = 'neededInCrafting'"
             >
               <v-badge color="error" :content="neededInCraftingData.length">
@@ -84,10 +110,11 @@ const contetentToShow = ref("default");
               </v-badge>
             </v-btn>
           </template>
-          <span>producedInCrafting</span>
+          <span>neededToCraft</span>
         </v-tooltip>
       </template>
     </v-toolbar>
+    
 
     <v-card-text>
       <template v-if="contetentToShow == 'default'">
@@ -131,6 +158,11 @@ const contetentToShow = ref("default");
             <v-list-item-subtitle>ItemId: {{ crafting.crafted_item_stacks[0].item_id }}</v-list-item-subtitle>
             <v-list-item-subtitle>Experience: {{ crafting.completion_experience[0].quantity }}</v-list-item-subtitle>
           </v-list-item>
+        </v-list>
+      </template>
+      <template v-if="contetentToShow == 'neededToCraft'">
+        <v-list>
+          <bitcraft-item-stack :items="neededToCraft"></bitcraft-item-stack>
         </v-list>
       </template>
       <template v-if="contetentToShow == 'producedInCrafting'">
