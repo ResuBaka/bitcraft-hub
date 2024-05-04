@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
-
 const page = ref(1);
 const perPage = 30;
 
@@ -58,8 +57,14 @@ const inventoryChanges = computed(() => {
         <v-col cols="12" md="2" v-for="inventoryChange in inventoryChanges">
           <template v-for="items of inventoryChange.diff">
             <v-card>
-            <v-card-title >Player</v-card-title>
+                    <v-card-title >Player</v-card-title>
                     <v-card-subtitle >{{ inventoryChange.playerName }}</v-card-subtitle>
+              </v-card>
+              <v-card>
+                    <v-card-title >Timestamp Local</v-card-title>
+                    <v-card-text >{{ new Date(inventoryChange.timestamp / 1000) }}</v-card-text>
+                    <v-card-title >Timestamp UTC</v-card-title>
+                    <v-card-text >{{ new Date(inventoryChange.timestamp / 1000).toUTCString() }}</v-card-text>
               </v-card>
                     <v-card  v-if="items.new !== undefined">
                     <v-card-title >new</v-card-title>
