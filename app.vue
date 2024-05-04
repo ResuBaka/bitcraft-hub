@@ -5,21 +5,37 @@
 </template>
 
 <script setup lang="ts">
+const mq = window.matchMedia('(prefers-color-scheme: dark)')
+const configStore = useConfigStore()
+const theme = useTheme()
+
+const themeSwitch = (e) => {
+  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
+}
 onBeforeMount(() => {
-  const mq = window.matchMedia('(prefers-color-scheme: dark)')
-  const themeCookie = useCookie('theme')
 
-  const themeSwitch = (e) => {
-    theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
-  }
-  const theme = useTheme()
 
-  if (themeCookie.value && themeCookie.value === 'dark') {
+
+  if (configStore.theme === 'dark') {
     theme.global.name.value = 'dark'
-  } else if (themeCookie.value && themeCookie.value === 'light') {
+    mq.removeEventListener('change', themeSwitch)
+  } else if (configStore.theme === 'light') {
     theme.global.name.value = 'light'
     mq.removeEventListener('change', themeSwitch)
-  } else {
+  } else if (configStore.theme === 'system') {
+    theme.global.name.value = mq.matches ? 'dark' : 'light'
+    mq.addEventListener('change', themeSwitch)
+  }
+})
+
+watch(() => configStore.theme, (newValue) => {
+  if (newValue === 'dark') {
+    theme.global.name.value = 'dark'
+    mq.removeEventListener('change', themeSwitch)
+  } else if (newValue === 'light') {
+    theme.global.name.value = 'light'
+    mq.removeEventListener('change', themeSwitch)
+  } else if (newValue === 'system') {
     theme.global.name.value = mq.matches ? 'dark' : 'light'
     mq.addEventListener('change', themeSwitch)
   }

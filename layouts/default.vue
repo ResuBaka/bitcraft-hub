@@ -15,6 +15,7 @@
       <v-divider />
       <v-container class="px-3 py-3">
         <v-radio-group
+            v-model="configStore.theme"
             class="mb-2"
             color="primary"
             true-icon="mdi-check-circle-outline"
@@ -58,22 +59,22 @@
   </v-app>
 </template>
 <script setup lang="ts">
-const themeCookie = useCookie("theme");
+const configStore = useConfigStore();
 const configDrawer = ref(false);
 
 const items = [
   {
-    text: "light",
+    text: "Light",
     icon: "mdi-white-balance-sunny",
     value: "light",
   },
   {
-    text: "dark",
+    text: "Dark",
     icon: "mdi-weather-night",
     value: "dark",
   },
   {
-    text: "system",
+    text: "System",
     icon: "mdi-desktop-tower-monitor",
     value: "system",
   },
