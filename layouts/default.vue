@@ -1,5 +1,39 @@
 <template>
   <v-app>
+    <v-navigation-drawer
+        v-model="configDrawer"
+        location="right"
+        temporary
+        mobile
+    >
+      <v-toolbar flat title="(WIP) Settings">
+        <template #append>
+          <v-btn icon="mdi-close" variant="flat" @click="configDrawer = false">
+          </v-btn>
+        </template>
+      </v-toolbar>
+      <v-divider />
+      <v-container class="px-3 py-3">
+        <v-radio-group
+            class="mb-2"
+            color="primary"
+            true-icon="mdi-check-circle-outline"
+            hide-details
+        >
+          <v-radio
+              v-for="(item, i) in items"
+              :key="i"
+              :value="item.value"
+          >
+            <template #label>
+              <v-icon :icon="item.icon" start />
+
+              {{ item.text }}
+            </template>
+          </v-radio>
+        </v-radio-group>
+      </v-container>
+    </v-navigation-drawer>
     <v-app-bar>
       <v-toolbar-title>BitCraft Chain Base (Work in Progress and Better Name wanted)</v-toolbar-title>
       <v-toolbar-items >
@@ -12,8 +46,10 @@
 <!--        <v-btn to="/npcs">NPCs</v-btn>-->
 <!--        <v-btn to="/professions">Professions</v-btn>-->
 <!--        <v-btn v-if="devmode" @click="reloadFromDisk">Reload Disk</v-btn>-->
+        <v-btn icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>
       </v-toolbar-items>
     </v-app-bar>
+
     <v-main>
         <v-container fluid>
           <NuxtPage />
@@ -22,6 +58,31 @@
   </v-app>
 </template>
 <script setup lang="ts">
+const themeCookie = useCookie("theme");
+const configDrawer = ref(false);
+
+const items = [
+  {
+    text: "light",
+    icon: "mdi-white-balance-sunny",
+    value: "light",
+  },
+  {
+    text: "dark",
+    icon: "mdi-weather-night",
+    value: "dark",
+  },
+  {
+    text: "system",
+    icon: "mdi-desktop-tower-monitor",
+    value: "system",
+  },
+];
+
+const toggelConfigDrawer = () => {
+  configDrawer.value = !configDrawer.value;
+};
+
 const devmode = import.meta.dev;
 const reloadFromDisk = () => {
   useFetch("/api/fileReload", {

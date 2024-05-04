@@ -30,10 +30,7 @@ const contetentToShow = ref("default");
   <v-card>
     <v-toolbar color="transparent">
       <v-toolbar-title>{{ item.name }} : {{ item.id }}</v-toolbar-title>
-
       <template v-slot:append>
-
-
         <v-tooltip
             location="bottom"
         >
@@ -89,9 +86,9 @@ const contetentToShow = ref("default");
       </template>
     </v-toolbar>
 
-    <v-card-text>
+    <v-card-text class="bg-surface-light">
       <template v-if="contetentToShow == 'default'">
-        <v-list>
+        <v-list class="bg-surface-light">
           <v-list-item>
             <v-list-item-title>Description</v-list-item-title>
             <v-list-item-subtitle>{{ item.description }}</v-list-item-subtitle>
@@ -119,7 +116,7 @@ const contetentToShow = ref("default");
         </v-list>
       </template>
       <template v-if="contetentToShow == 'neededInCrafting'">
-        <v-list>
+        <v-list class="bg-surface-light">
           <v-list-item v-for="crafting in neededInCraftingData" :key="crafting.id">
             <v-list-item-title>
               <bitcraft-card-item-crafting-name :item="item" :template="crafting.name"
@@ -134,7 +131,7 @@ const contetentToShow = ref("default");
         </v-list>
       </template>
       <template v-if="contetentToShow == 'producedInCrafting'">
-        <v-list>
+        <v-list class="bg-surface-light">
           <v-list-item v-for="crafting in producedInCraftingData" :key="crafting.id">
             <v-list-item-title>
               <bitcraft-card-item-crafting-name :item="item" :template="crafting.name"

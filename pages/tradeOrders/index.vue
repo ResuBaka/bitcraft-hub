@@ -96,9 +96,8 @@ const length = computed(() => {
 
     </v-toolbar>
 
-    <v-card-text>
-        <v-list>
-          <v-list>
+    <v-card-text class="bg-surface-light">
+        <v-list class="bg-surface-light">
           <v-list-item>
             <v-list-item-title>remaining_stock</v-list-item-title>
             <v-list-item-subtitle>{{ claim.remaining_stock }}</v-list-item-subtitle>
@@ -123,8 +122,7 @@ const length = computed(() => {
             <v-list-item-title>required_cargo</v-list-item-title>
             <v-list-item-subtitle>{{ claim.required_cargo_id }} ::  {{ claim.required_cargo }}</v-list-item-subtitle>
             </v-list-item>
-              </v-list>
-              </v-list>
+          </v-list>
     </v-card-text>
   </v-card>
     </v-col>

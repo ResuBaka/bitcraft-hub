@@ -1,38 +1,35 @@
 <script setup lang="ts">
+import { watchThrottled } from "@vueuse/shared";
 
+const page = ref(1);
+const perPage = 30;
 
-import {watchThrottled} from "@vueuse/shared";
+const search = ref<string | null>("");
 
-const page = ref(1)
-const perPage = 30
+const route = useRoute();
+const router = useRouter();
 
-const search = ref<string | null>('')
-
-const route = useRoute()
-const router = useRouter()
-
-const tmpPage = route.query.page as string ?? null
+const tmpPage = (route.query.page as string) ?? null;
 
 if (tmpPage) {
-  page.value = parseInt(tmpPage)
+  page.value = parseInt(tmpPage);
 }
 
 const { data: buildingsFetch, pending: buildingPending } = useFetch(() => {
-     console.log(`/api/bitcraft/buildings/${route.params.id}`)
-  return `/api/bitcraft/buildings/${route.params.id}`
-})
+  console.log(`/api/bitcraft/buildings/${route.params.id}`);
+  return `/api/bitcraft/buildings/${route.params.id}`;
+});
 
 const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
-  return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`
-})
+  return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
+});
 
 const building = computed(() => {
-  return buildingsFetch.value ?? undefined
-})
+  return buildingsFetch.value ?? undefined;
+});
 const inventorys = computed(() => {
-  return inventoryFetch.value?.buildings ?? []
-})
-
+  return inventoryFetch.value?.buildings ?? [];
+});
 </script>
 
 <template>
@@ -49,8 +46,8 @@ const inventorys = computed(() => {
           <v-list-item>
             <v-list-item-title>Inventorys</v-list-item-title>
             <v-list-item v-for="inventory in inventorys">
-              <v-list-item-subtitle ><a :href="'/inventorys/' + inventory.entity_id"
-        >{{ inventory.entity_id }}</a></v-list-item-subtitle>
+              <v-list-item-subtitle ><nuxt-link :href="'/inventorys/' + inventory.entity_id"
+        >{{ inventory.entity_id }}</nuxt-link></v-list-item-subtitle>
           </v-list-item>
           </v-list-item>
         </v-list>

@@ -1,67 +1,65 @@
 <script setup lang="ts">
+import { watchThrottled } from "@vueuse/shared";
 
+const page = ref(1);
+const perPage = 30;
 
-import {watchThrottled} from "@vueuse/shared";
+const search = ref<string | null>("");
 
-const page = ref(1)
-const perPage = 30
+const route = useRoute();
+const router = useRouter();
 
-const search = ref<string | null>('')
-
-const route = useRoute()
-const router = useRouter()
-
-const tmpPage = route.query.page as string ?? null
+const tmpPage = (route.query.page as string) ?? null;
 
 if (tmpPage) {
-  page.value = parseInt(tmpPage)
+  page.value = parseInt(tmpPage);
 }
 
 const { data: claims, pending } = useFetch(() => {
-  const url = new URLSearchParams()
+  const url = new URLSearchParams();
 
   if (search.value) {
-    url.append('search', search.value)
+    url.append("search", search.value);
   }
-
 
   if (page.value) {
-    url.append('page', page.value.toString())
+    url.append("page", page.value.toString());
   }
 
-  const querys = url.toString()
+  const querys = url.toString();
 
   if (querys) {
-    return `/api/bitcraft/claims?${querys}`
+    return `/api/bitcraft/claims?${querys}`;
   }
 
+  return `/api/bitcraft/claims`;
+});
 
-  return `/api/bitcraft/claims`
-})
+watchThrottled(
+  () => [search.value, page.value],
+  () => {
+    const newQuery = {};
 
-watchThrottled(() => [search.value, page.value], () => {
-  const newQuery = {}
+    if (search.value) {
+      newQuery.search = search.value;
+    }
 
-  if (search.value) {
-    newQuery.search = search.value
-  }
+    if (page.value) {
+      newQuery.page = page.value;
+    }
 
-  if (page.value) {
-    newQuery.page = page.value
-  }
-
-  router.push({ query: newQuery })
-}, { throttle: 50 })
-
+    router.push({ query: newQuery });
+  },
+  { throttle: 50 },
+);
 
 const currentClaims = computed(() => {
-  return claims.value?.claims ?? []
-})
+  return claims.value?.claims ?? [];
+});
 
 const length = computed(() => {
-  return Math.ceil(claims.value?.total / perPage) ?? 0
-})
-
+  return Math.ceil(claims.value?.total / perPage) ?? 0;
+});
 </script>
 
 <template>

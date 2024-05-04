@@ -43,7 +43,7 @@ export async function startWebsocket(
       },
     );
 
-    websocket.on("error", (error) => {
+    websocket.on("error", (error: any) => {
       console.error("Error with bitcraft websocket connection :: ", error);
     });
     websocket.on("open", async () => {
@@ -143,9 +143,9 @@ export async function startWebsocket(
         }
       }
     });
-    websocket.on("close", (a) => {
+    websocket.on("close", (close: any) => {
       console.log("Disconnected");
-      console.error(a);
+      console.error(close);
       console.log("Disconnected");
     });
   } catch (error) {

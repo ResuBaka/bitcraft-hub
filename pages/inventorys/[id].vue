@@ -1,39 +1,37 @@
 <script setup lang="ts">
+import { watchThrottled } from "@vueuse/shared";
 
+const page = ref(1);
+const perPage = 30;
 
-import {watchThrottled} from "@vueuse/shared";
+const search = ref<string | null>("");
 
-const page = ref(1)
-const perPage = 30
+const route = useRoute();
+const router = useRouter();
 
-const search = ref<string | null>('')
-
-const route = useRoute()
-const router = useRouter()
-
-const tmpPage = route.query.page as string ?? null
+const tmpPage = (route.query.page as string) ?? null;
 
 if (tmpPage) {
-  page.value = parseInt(tmpPage)
+  page.value = parseInt(tmpPage);
 }
 
 const { data: inventoryFetch, pending: InventoryPending } = useFetch(() => {
-     console.log(`/api/bitcraft/inventorys/${route.params.id}`)
-  return `/api/bitcraft/inventorys/${route.params.id}`
-})
+  console.log(`/api/bitcraft/inventorys/${route.params.id}`);
+  return `/api/bitcraft/inventorys/${route.params.id}`;
+});
 
-const { data: InventoryChangesFetch, pending: InventoryChangesPending } = useFetch(() => {
-     console.log(`/api/bitcraft/inventorys/changes${route.params.id}`)
-  return `/api/bitcraft/inventorys/changes/${route.params.id}`
-})
+const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
+  useFetch(() => {
+    console.log(`/api/bitcraft/inventorys/changes${route.params.id}`);
+    return `/api/bitcraft/inventorys/changes/${route.params.id}`;
+  });
 
 const inventory = computed(() => {
-  return inventoryFetch.value ?? undefined
-})
+  return inventoryFetch.value ?? undefined;
+});
 const inventoryChanges = computed(() => {
-  return InventoryChangesFetch.value ?? []
-})
-
+  return InventoryChangesFetch.value ?? [];
+});
 </script>
 
 <template>
