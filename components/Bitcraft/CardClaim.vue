@@ -27,7 +27,7 @@ const ownerPlayerData = computed(() => {
 <template>
   <v-card>
       <template v-slot:title>
-        <nuxt-link class="text-decoration-none text-white font-weight-black" :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
+        <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
         >{{ claim.name }} : {{ claim.entity_id }}</nuxt-link>
       </template>
     <v-card-text  class="bg-surface-light">
