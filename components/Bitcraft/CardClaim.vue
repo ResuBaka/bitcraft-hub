@@ -66,7 +66,6 @@ const computedClass = computed(() => {
         </tr>
         </tbody>
       </v-table>
-        <
     </v-card-text>
   </v-card>
 </template>
