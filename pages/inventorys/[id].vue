@@ -4,6 +4,26 @@ const page = ref(1);
 const perPage = 30;
 
 const search = ref<string | null>("");
+const nDate = Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+const nUTCData = Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+  timeZone: "UTC",
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -62,9 +82,9 @@ const inventoryChanges = computed(() => {
               </v-card>
               <v-card>
                     <v-card-title >Timestamp Local</v-card-title>
-                    <v-card-text >{{ new Date(inventoryChange.timestamp / 1000) }}</v-card-text>
+                    <v-card-text >{{ nDate.format(new Date(inventoryChange.timestamp / 1000)) }}</v-card-text>
                     <v-card-title >Timestamp UTC</v-card-title>
-                    <v-card-text >{{ new Date(inventoryChange.timestamp / 1000).toUTCString() }}</v-card-text>
+                    <v-card-text >{{ nUTCData.format(new Date(inventoryChange.timestamp / 1000)) }}</v-card-text>
               </v-card>
                     <v-card  v-if="items.new !== undefined">
                     <v-card-title >new</v-card-title>
