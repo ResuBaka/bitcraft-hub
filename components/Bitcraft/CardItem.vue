@@ -34,6 +34,16 @@ const neededToCraftData = computed(() => {
 });
 
 const contetentToShow = ref("default");
+
+const theme = useTheme();
+
+const computedClass = computed(() => {
+  return {
+    "bg-surface-light": theme.global.current.value.dark,
+    "bg-grey-lighten-3": !theme.global.current.value.dark,
+  };
+});
+
 </script>
 
 <template>
@@ -113,9 +123,9 @@ const contetentToShow = ref("default");
     </v-toolbar>
     
 
-    <v-card-text class="bg-surface-light">
+    <v-card-text :class="computedClass">
       <template v-if="contetentToShow == 'default'">
-        <v-table class="bg-surface-light" density="compact">
+        <v-table :class="computedClass" density="compact">
           <tbody>
             <tr style='text-align: right'>
               <th>Description:</th>
@@ -137,7 +147,7 @@ const contetentToShow = ref("default");
         </v-table>
       </template>
       <template v-if="contetentToShow == 'neededInCrafting'">
-        <v-list class="bg-surface-light">
+        <v-list :class="computedClass">
           <v-list-item v-for="crafting in neededInCraftingData" :key="crafting.id">
             <v-list-item-title>
               <bitcraft-card-item-crafting-name :item="item" :template="crafting.name"
@@ -155,7 +165,7 @@ const contetentToShow = ref("default");
         </v-list>
       </template>
       <template v-if="contetentToShow == 'producedInCrafting'">
-        <v-list class="bg-surface-light">
+        <v-list :class="computedClass">
           <v-list-item v-for="crafting in producedInCraftingData" :key="crafting.id">
             <v-list-item-title>
               <bitcraft-card-item-crafting-name :item="item" :template="crafting.name"

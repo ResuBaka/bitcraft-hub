@@ -2,7 +2,7 @@
 import { watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 30;
+const perPage = 16;
 
 const search = ref<string | null>("");
 
@@ -24,6 +24,11 @@ const { data: claims, pending } = useFetch(() => {
 
   if (page.value) {
     url.append("page", page.value.toString());
+  }
+
+
+  if (perPage) {
+    url.append("perPage", perPage.toString());
   }
 
   const querys = url.toString();
@@ -60,6 +65,15 @@ const currentClaims = computed(() => {
 const length = computed(() => {
   return Math.ceil(claims.value?.total / perPage) ?? 0;
 });
+
+const theme = useTheme();
+
+const computedClass = computed(() => {
+  return {
+    "bg-surface-light": theme.global.current.value.dark,
+    "bg-grey-lighten-3": !theme.global.current.value.dark,
+  };
+});
 </script>
 
 <template>
@@ -88,16 +102,16 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="4" v-for="claim in currentClaims" :key="claim.entity_id">
-      <v-card  v-if="claim !== undefined">
-    <v-toolbar color="transparent">
+    <v-col cols="12" md="3" v-for="claim in currentClaims" :key="claim.entity_id">
+    <v-card  v-if="claim !== undefined">
+    <v-toolbar density="compact" color="transparent">
       <v-toolbar-title>
         {{ claim.entity_id }}</v-toolbar-title>
 
     </v-toolbar>
 
-    <v-card-text class="bg-surface-light">
-        <v-list class="bg-surface-light">
+    <v-card-text :class="computedClass">
+        <v-list :class="computedClass">
           <v-list-item>
             <v-list-item-title>remaining_stock</v-list-item-title>
             <v-list-item-subtitle>{{ claim.remaining_stock }}</v-list-item-subtitle>

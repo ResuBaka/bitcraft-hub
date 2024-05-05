@@ -25,16 +25,20 @@ interface ClaimDescriptionRow {
 }
 
 export default defineEventHandler((event) => {
-  let { search, page } = getQuery(event);
+  let { search, page, perPage } = getQuery(event);
 
   const rows = getClaimDescriptionRowsFromRows(readClaimRows());
-
-  const perPage = 30;
 
   if (page) {
     page = parseInt(page);
   } else {
     page = 1;
+  }
+
+  if (perPage) {
+    perPage = parseInt(perPage);
+  } else {
+    perPage = 16;
   }
 
   const rowsFilterted =

@@ -2,7 +2,7 @@
 import { watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 30;
+const perPage = 16;
 
 const search = ref<string | null>("");
 
@@ -24,6 +24,10 @@ const { data: claims, pending } = useFetch(() => {
 
   if (page.value) {
     url.append("page", page.value.toString());
+  }
+
+  if (perPage) {
+    url.append("page", perPage.toString());
   }
 
   const querys = url.toString();
@@ -88,7 +92,7 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="4" v-for="claim in currentClaims" :key="claim.entity_id">
+    <v-col cols="12" md="3" v-for="claim in currentClaims" :key="claim.entity_id">
       <bitcraft-card-claim :claim="claim"></bitcraft-card-claim>
     </v-col>
   </v-row>
