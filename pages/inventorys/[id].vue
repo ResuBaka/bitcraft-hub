@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
 const page = ref(1);
 const perPage = 30;
 
@@ -51,55 +50,93 @@ const inventory = computed(() => {
 const inventoryChanges = computed(() => {
   return InventoryChangesFetch.value ?? [];
 });
+
+const headersPockets = [
+  { title: "Name", key: "contents.item.name" },
+  { title: "Quantity", key: "contents.quantity", align: "end" },
+];
+
+const headersChanges = [
+  { title: "Player", key: "playerName" },
+  { title: "Timestamp Local", key: "timestamp" },
+  { title: "Timestamp UTC", key: "timestamp_utc" },
+  {
+    title: "New",
+    align: "center",
+    children: [
+      { title: "New Quantity", key: "diff.new.quantity" },
+      { title: "New Name", key: "diff.new.item.name" },
+    ],
+  },
+  {
+    title: "Old",
+    align: "center",
+    children: [
+      { title: "Old Quantity", key: "diff.old.quantity" },
+      { title: "Old Name", key: "diff.old.item.name" },
+    ],
+  },
+];
+
+const changes = computed(() => {
+  return inventoryChanges.value.map((change) => {
+    const data = new Date(change.timestamp / 1000);
+    let newDiff = undefined;
+    let oldDiff = undefined;
+
+    if (change.diff) {
+      for (const diff in change.diff) {
+        if (change.diff[diff].new !== undefined) {
+          newDiff = change.diff[diff].new;
+        }
+        if (change.diff[diff].old !== undefined) {
+          oldDiff = change.diff[diff].old;
+        }
+      }
+    }
+
+    return {
+      playerName: change.playerName,
+      timestamp: data,
+      timestamp_utc: data,
+      diff: {
+        new: newDiff,
+        old: oldDiff,
+      },
+    };
+  });
+});
 </script>
 
 <template>
-    <v-card  v-if="inventory !== undefined">
+  <template  v-if="inventory !== undefined">
+    <v-card class="mb-5">
     <v-toolbar color="transparent">
-      <v-toolbar-title >{{ inventory.entity_id }}</v-toolbar-title>
+      <v-toolbar-title >Inventory: {{ inventory.entity_id }}</v-toolbar-title>
 
     </v-toolbar>
 
     <v-card-text>
-      <v-card-title>Current State</v-card-title>
-      <v-row>
-        
-    <v-col cols="12" md="2" v-for="items in inventory.pockets">
-      <v-card v-if="items.contents !== undefined">
-                
-        <bitcraft-item :item="items.contents"></bitcraft-item>
-                </v-card>
-    </v-col>
-  </v-row>
-  <v-card-title>Changes</v-card-title>
-
-  <v-row >
-        <v-col cols="12" md="2" v-for="inventoryChange in inventoryChanges">
-          <template v-for="items of inventoryChange.diff">
-            <v-card>
-                    <v-card-title >Player</v-card-title>
-                    <v-card-subtitle >{{ inventoryChange.playerName }}</v-card-subtitle>
-              </v-card>
-              <v-card>
-                    <v-card-title >Timestamp Local</v-card-title>
-                    <v-card-text >{{ nDate.format(new Date(inventoryChange.timestamp / 1000)) }}</v-card-text>
-                    <v-card-title >Timestamp UTC</v-card-title>
-                    <v-card-text >{{ nUTCData.format(new Date(inventoryChange.timestamp / 1000)) }}</v-card-text>
-              </v-card>
-                    <v-card  v-if="items.new !== undefined">
-                    <v-card-title >new</v-card-title>
-                    <bitcraft-item :item="items.new"></bitcraft-item>
-                  </v-card>
-                  <v-card v-if="items.old !== undefined">
-                    <v-card-title >Old</v-card-title>
-                    <bitcraft-item :item="items.old"></bitcraft-item>
-                  </v-card>
-                </template>
-        </v-col>
-      </v-row>
+      <v-card-title>Current Items</v-card-title>
+      <v-data-table :headers="headersPockets" :items="inventory.pockets.filter((item) => !!item.contents)">
+      </v-data-table>
     </v-card-text>
-    
-  </v-card>
+    </v-card>
+    <v-spacer></v-spacer>
+    <v-card>
+      <v-card-title>Changes</v-card-title>
+      <v-card-text>
+        <v-data-table :headers="headersChanges" :items="changes">
+          <template v-slot:item.timestamp="{ item }">
+            {{ nDate.format(item.timestamp) }}
+          </template>
+          <template v-slot:item.timestamp_utc="{ item }">
+            {{ nUTCData.format(item.timestamp) }}
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+  </template>
 </template>
 
 <style scoped>
