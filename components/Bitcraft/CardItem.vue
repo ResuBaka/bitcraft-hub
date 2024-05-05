@@ -81,7 +81,7 @@ const computedClass = computed(() => {
                 </v-icon>
             </v-btn>
           </template>
-          <span>producedInCrafting</span>
+          <span>neededToCraft</span>
         </v-tooltip>
         <v-tooltip
             location="bottom"
@@ -117,7 +117,7 @@ const computedClass = computed(() => {
               </v-badge>
             </v-btn>
           </template>
-          <span>neededToCraft</span>
+          <span>producedInCrafting</span>
         </v-tooltip>
       </template>
     </v-toolbar>
