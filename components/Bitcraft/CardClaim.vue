@@ -22,6 +22,16 @@ const buidlingsData = computed(() => {
 const ownerPlayerData = computed(() => {
   return owner_player.value ?? []
 })*/
+
+const theme = useTheme();
+
+const computedClass = computed(() => {
+  return {
+    "bg-surface-light": theme.global.current.value.dark,
+    "bg-grey-lighten-3": !theme.global.current.value.dark,
+  };
+});
+
 </script>
 
 <template>
@@ -30,31 +40,33 @@ const ownerPlayerData = computed(() => {
         <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
         >{{ claim.name }} : {{ claim.entity_id }}</nuxt-link>
       </template>
-    <v-card-text  class="bg-surface-light">
-        <v-list class="bg-surface-light">
-          <v-list-item>
-            <v-list-item-title>Owner</v-list-item-title>
-            <v-list-item-subtitle>{{ claim.owner_player_entity_id }}</v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title>Supplies</v-list-item-title>
-            <v-list-item-subtitle>{{ claim.supplies }}</v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title>Tiles</v-list-item-title>
-            <v-list-item-subtitle>{{ claim.tiles }}</v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title>Location</v-list-item-title>
-            <v-list-item-subtitle>{{ claim.location }}</v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title>Members</v-list-item-title>
-            <v-list-item v-for="member in claim.members" :key="member.user_name">
-              <v-list-item-subtitle>{{ member.user_name }}</v-list-item-subtitle>
-          </v-list-item>
-          </v-list-item>
-        </v-list>
+    <v-card-text  :class="computedClass">
+      <v-table :class="computedClass" density="compact">
+        <tbody>
+        <tr style='text-align: right'>
+          <th>Owner:</th>
+          <td>{{claim.owner_player_entity_id}}</td>
+        </tr>
+        <tr style='text-align: right'>
+          <th>Supplies:</th>
+          <td>{{ parseInt(claim.supplies) }}</td>
+        </tr>
+        <tr style='text-align: right'>
+          <th>Tiles:</th>
+          <td>{{ claim.tiles }}</td>
+        </tr>
+        <tr style='text-align: right'>
+          <th>Location:</th>
+          <td>{{ claim.location[0][0] }} x {{ claim.location[0][1] }}</td>
+        </tr>
+        <tr style='text-align: right'>
+          <th>Members:</th>
+          <td v-if="claim.members.lenght">{{ claim.members.map(m => m.user_name).join(", ") }}</td>
+          <td v-else>None</td>
+        </tr>
+        </tbody>
+      </v-table>
+        <
     </v-card-text>
   </v-card>
 </template>
