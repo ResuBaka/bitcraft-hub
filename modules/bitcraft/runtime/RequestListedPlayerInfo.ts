@@ -33,11 +33,9 @@ import {
 let usernames = ["Ryuko"];
 
 export default async function RequestAllPlayerInfo() {
-  console.log(
-    replaceTradeOrdersCargoIdWithCargo(
-      getCargoDescRowsFromRows(readCargoDescRows()),
-    ),
-  );
+  replaceTradeOrdersCargoIdWithCargo(
+    getCargoDescRowsFromRows(readCargoDescRows()),
+  )
 }
 
 RequestAllPlayerInfo();

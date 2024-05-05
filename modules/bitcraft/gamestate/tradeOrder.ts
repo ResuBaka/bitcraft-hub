@@ -71,6 +71,8 @@ export function replaceCargos(
   itemRefrences: number[],
 ) {
   const list = [];
+  if (!itemRefrences) return list;
+
   for (const itemRefrence of itemRefrences) {
     list.push(getCagoDescFromCargoId(itemRows, itemRefrence));
   }
