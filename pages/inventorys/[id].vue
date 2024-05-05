@@ -106,6 +106,13 @@ const changes = computed(() => {
     };
   });
 });
+
+const backgroundColorRow = ({ index }) => {
+  return {
+    class: index % 2 === 0 ? "" : "bg-surface-light",
+  }
+};
+
 </script>
 
 <template>
@@ -118,7 +125,7 @@ const changes = computed(() => {
 
     <v-card-text>
       <v-card-title>Current Items</v-card-title>
-      <v-data-table :headers="headersPockets" :items="inventory.pockets.filter((item) => !!item.contents)">
+      <v-data-table density="compact" :headers="headersPockets" :items="inventory.pockets.filter((item) => !!item.contents)" :row-props="backgroundColorRow">
       </v-data-table>
     </v-card-text>
     </v-card>
@@ -126,7 +133,7 @@ const changes = computed(() => {
     <v-card>
       <v-card-title>Changes</v-card-title>
       <v-card-text>
-        <v-data-table :headers="headersChanges" :items="changes">
+        <v-data-table density="compact" :headers="headersChanges" :items="changes" :row-props="backgroundColorRow">
           <template v-slot:item.timestamp="{ item }">
             {{ nDate.format(item.timestamp) }}
           </template>
