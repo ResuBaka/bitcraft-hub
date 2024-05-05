@@ -4,11 +4,10 @@ import {
 } from "~/modules/bitcraft/gamestate/item";
 
 export default defineEventHandler((event) => {
-  let { tag, tier, search, page } = getQuery(event);
+  let { tag, tier, search, page, perPage } = getQuery(event);
 
   const rows = getItemRowsFromRows(readItemRows());
 
-  const perPage = 30;
   if (tier) {
     tier = parseInt(tier);
   }
@@ -17,6 +16,11 @@ export default defineEventHandler((event) => {
     page = parseInt(page);
   } else {
     page = 1;
+  }
+  if (perPage) {
+    perPage = parseInt(perPage);
+  } else {
+    perPage = 16;
   }
 
   const rowsFilterted =
