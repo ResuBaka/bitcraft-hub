@@ -143,6 +143,7 @@ export async function startWebsocket(
         }
       }
     });
+
     websocket.on("close", (close: any) => {
       console.log("Disconnected");
       console.error(close);

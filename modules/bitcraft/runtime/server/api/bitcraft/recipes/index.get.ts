@@ -1,4 +1,5 @@
 import {
+  getAllConsumedItemsFromItem,
   getCraftingRecipesFromRows,
   readCraftingRecipeRows,
 } from "~/modules/bitcraft/gamestate/rerecipe";
@@ -6,7 +7,7 @@ import {
 const rows = getCraftingRecipesFromRows(readCraftingRecipeRows());
 
 export default defineEventHandler((event) => {
-  const { neededInCrafting, producedInCrafting } = getQuery(event);
+  const { neededInCrafting, producedInCrafting, neededToCraft } = getQuery(event);
 
   if (neededInCrafting) {
     return rows.filter(
@@ -15,6 +16,10 @@ export default defineEventHandler((event) => {
           return cis.item_id == neededInCrafting;
         }).length > 0,
     );
+  }
+  if (neededToCraft) {
+    return getAllConsumedItemsFromItem(rows,neededToCraft)
+    return
   }
 
   if (producedInCrafting) {

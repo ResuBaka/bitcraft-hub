@@ -1,3 +1,4 @@
+
 import {
   getPlayerRowsFromRows,
   SqlRequestPlayersByUsername,
@@ -39,4 +40,5 @@ export default async function RequestAllPlayerInfo() {
     ),
   );
 }
+
 RequestAllPlayerInfo();
