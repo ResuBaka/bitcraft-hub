@@ -59,27 +59,12 @@ const headersChanges = [
   { title: "Player", key: "playerName" },
   { title: "Timestamp Local", key: "timestamp" },
   { title: "Timestamp UTC", key: "timestamp_utc" },
-  {
-    title: "New",
-    align: "center",
-    children: [
-      { title: "New Quantity", key: "diff.new.quantity" },
-      { title: "New Name", key: "diff.new.item.name" },
-    ],
-  },
-  {
-    title: "Old",
-    align: "center",
-    children: [
-      { title: "Old Quantity", key: "diff.old.quantity" },
-      { title: "Old Name", key: "diff.old.item.name" },
-    ],
-  },
+  { title: "Diff", key: "diff" },
 ];
 
 const changes = computed(() => {
-  const changes = []
-  for(const change of inventoryChanges.value){
+  const changes = [];
+  for (const change of inventoryChanges.value) {
     const data = new Date(change.timestamp / 1000);
     if (change.diff) {
       for (const diff in change.diff) {
@@ -91,30 +76,59 @@ const changes = computed(() => {
         if (change.diff[diff].old !== undefined) {
           oldDiff = change.diff[diff].old;
         }
+
+        let type = "";
+        let amountDiff = 0;
+
+        if (newDiff !== undefined && oldDiff !== undefined) {
+          amountDiff = newDiff.quantity - oldDiff.quantity;
+          type = amountDiff > 0 ? "increase" : "decrease";
+        } else if (newDiff !== undefined) {
+          type = "create";
+          amountDiff = newDiff.quantity;
+        } else if (oldDiff !== undefined) {
+          type = "delete";
+          amountDiff = oldDiff.quantity;
+        }
+
         changes.push({
-      playerName: change.playerName,
-      timestamp: data,
-      timestamp_utc: data,
-      diff: {
-        new: newDiff,
-        old: oldDiff,
-      },
-    })
+          playerName: change.playerName,
+          timestamp: data,
+          timestamp_utc: data,
+          diff: {
+            type: type,
+            old: oldDiff,
+            new: newDiff,
+            amountDiff: amountDiff,
+            item: {
+              name: newDiff?.item?.name ?? oldDiff?.item?.name,
+              id: newDiff?.item?.id ?? oldDiff?.item?.id,
+            },
+          },
+        });
       }
     }
   }
-    return changes.filter((change) => {
-      return !search.value || change?.diff?.new?.item?.name?.toLowerCase().includes(search.value.toLowerCase()) ||
-      change?.diff?.old?.item?.name?.toLowerCase().includes(search.value.toLowerCase())
-    }) ?? [];
+  return (
+    changes.filter((change) => {
+      return (
+        !search.value ||
+        change?.diff?.new?.item?.name
+          ?.toLowerCase()
+          .includes(search.value.toLowerCase()) ||
+        change?.diff?.old?.item?.name
+          ?.toLowerCase()
+          .includes(search.value.toLowerCase())
+      );
+    }) ?? []
+  );
 });
 
 const backgroundColorRow = ({ index }) => {
   return {
     class: index % 2 === 0 ? "" : "bg-surface-light",
-  }
+  };
 };
-
 </script>
 
 <template>
@@ -152,6 +166,12 @@ const backgroundColorRow = ({ index }) => {
           </template>
           <template v-slot:item.timestamp_utc="{ item }">
             {{ nUTCData.format(item.timestamp) }}
+          </template>
+          <template v-slot:item.diff="{ value }">
+            <template v-if="value.type === 'delete'"><v-icon color="red">mdi-delete-empty</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
+            <template v-if="value.type === 'create'"><v-icon color="green">mdi-plus</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
+            <template v-if="value.type === 'increase'"><v-icon color="green">mdi-arrow-up-bold-outline</v-icon> {{ value.old.quantity }} -> {{ value.new.quantity }} = <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
+            <template v-if="value.type === 'decrease'"><v-icon color="red">mdi-arrow-down-bold-outline</v-icon> {{ value.old.quantity }} -> {{ value.new.quantity }} = <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
           </template>
         </v-data-table>
       </v-card-text>
