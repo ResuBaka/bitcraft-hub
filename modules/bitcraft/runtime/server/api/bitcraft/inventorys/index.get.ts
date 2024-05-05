@@ -1,12 +1,9 @@
-import {
-  getInventoryRowsFromRows,
-  readInventoryRows,
-} from "~/modules/bitcraft/gamestate/inventory";
+import { getInventorys } from "~/modules/bitcraft/gamestate/inventory";
 
 export default defineEventHandler((event) => {
   let { search, page, owner_entity_id } = getQuery(event);
 
-  let rows = getInventoryRowsFromRows(readInventoryRows());
+  let rows = getInventorys();
 
   const perPage = 30;
   if (owner_entity_id) {

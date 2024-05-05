@@ -1,7 +1,4 @@
-import {
-  getInventoryRowsFromRows,
-  readInventroyChanges,
-} from "~/modules/bitcraft/gamestate/inventory";
+import { readInventroyChanges } from "~/modules/bitcraft/gamestate/inventory";
 
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });

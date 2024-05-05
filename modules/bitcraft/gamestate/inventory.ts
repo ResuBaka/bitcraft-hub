@@ -54,13 +54,25 @@ function getItemSlot(row: any) {
   return InventoryState;
 }
 
-export function getInventoryRowsFromRows(rows: any) {
-  const PlayerStateRow: InventoryStateRow[] = [];
-  for (const row of rows) {
-    PlayerStateRow.push(getInventoryRowFromRow(row));
-  }
-  return PlayerStateRow;
+let InventoryStateRows: InventoryStateRow[] = [];
+
+export function saveParsedInventorys(rows: InventoryStateRow[]) {
+  InventoryStateRows = rows;
 }
+
+export function parseInventorys(rows: any[]) {
+  const localInventoryStateRows: InventoryStateRow[] = [];
+  for (const row of rows) {
+    localInventoryStateRows.push(getInventoryRowFromRow(row));
+  }
+
+  return localInventoryStateRows;
+}
+
+export function getInventorys() {
+  return InventoryStateRows;
+}
+
 export function getInventoryRowFromRow(row: any[]) {
   const InventoryState: InventoryStateRow = {
     entity_id: row[0],
