@@ -43,7 +43,6 @@ const computedClass = computed(() => {
     "bg-grey-lighten-3": !theme.global.current.value.dark,
   };
 });
-
 </script>
 
 <template>

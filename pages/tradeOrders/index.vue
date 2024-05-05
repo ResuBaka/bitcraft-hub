@@ -26,7 +26,6 @@ const { data: claims, pending } = useFetch(() => {
     url.append("page", page.value.toString());
   }
 
-
   if (perPage) {
     url.append("perPage", perPage.toString());
   }

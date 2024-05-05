@@ -7,7 +7,8 @@ import {
 const rows = getCraftingRecipesFromRows(readCraftingRecipeRows());
 
 export default defineEventHandler((event) => {
-  const { neededInCrafting, producedInCrafting, neededToCraft } = getQuery(event);
+  const { neededInCrafting, producedInCrafting, neededToCraft } =
+    getQuery(event);
 
   if (neededInCrafting) {
     return rows.filter(
@@ -18,8 +19,8 @@ export default defineEventHandler((event) => {
     );
   }
   if (neededToCraft) {
-    return getAllConsumedItemsFromItem(rows,neededToCraft)
-    return
+    return getAllConsumedItemsFromItem(rows, neededToCraft);
+    return;
   }
 
   if (producedInCrafting) {

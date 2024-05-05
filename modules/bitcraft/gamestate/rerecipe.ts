@@ -1,20 +1,20 @@
 import { readFileSync } from "node:fs";
 
 type ItemStack = {
-  item_id: 2090002,
-  quantity: 2,
-  item_type: any,
-  discovery_score: 1,
-  consumption_chance: 1,
-}
+  item_id: 2090002;
+  quantity: 2;
+  item_type: any;
+  discovery_score: 1;
+  consumption_chance: 1;
+};
 type ItemStackWithInner = {
-  item_id: 2090002,
-  quantity: 2,
-  item_type: any,
-  discovery_score: 1,
-  consumption_chance: 1,
-  inner?: ItemStackWithInner[][]
-}
+  item_id: 2090002;
+  quantity: 2;
+  item_type: any;
+  discovery_score: 1;
+  consumption_chance: 1;
+  inner?: ItemStackWithInner[][];
+};
 type CraftingRecipeRow = {
   id: number;
   name: string;
@@ -154,39 +154,53 @@ function toCraftedItemStacksRequirement(rows: number[][]) {
 
   return temp;
 }
-export function getAllConsumedItemsFromItem(rows: CraftingRecipeRow[],item_id: number): ItemStackWithInner[][]{
-    const posibilities = rows.filter(
-      (recipe) =>
-        recipe.crafted_item_stacks.filter((cis) => {
-          return cis.item_id == item_id;
-        }).length > 0,
+export function getAllConsumedItemsFromItem(
+  rows: CraftingRecipeRow[],
+  item_id: number,
+): ItemStackWithInner[][] {
+  const posibilities = rows.filter(
+    (recipe) =>
+      recipe.crafted_item_stacks.filter((cis) => {
+        return cis.item_id == item_id;
+      }).length > 0,
+  );
+  const list = [];
+  for (const posibilitie of posibilities) {
+    list.push(
+      getAllConsumedItemsFromStack(rows, posibilitie, [posibilitie.id]),
     );
-    const list = []
-    for(const posibilitie of posibilities){
-      list.push(getAllConsumedItemsFromStack(rows,posibilitie,[posibilitie.id]))
-    }
-    return list
   }
+  return list;
+}
 
-export function getAllConsumedItemsFromStack(rows: CraftingRecipeRow[],item: CraftingRecipeRow,alreadyUsed: number[]): ItemStackWithInner[]{
-  for(const itemstack of item.consumed_item_stacks as ItemStackWithInner[]){
+export function getAllConsumedItemsFromStack(
+  rows: CraftingRecipeRow[],
+  item: CraftingRecipeRow,
+  alreadyUsed: number[],
+): ItemStackWithInner[] {
+  for (const itemstack of item.consumed_item_stacks as ItemStackWithInner[]) {
     const posibilities = rows.filter(
       (recipe) =>
         recipe.crafted_item_stacks.filter((cis) => {
           return cis.item_id == itemstack.item_id;
         }).length > 0,
     );
-    const list = []
-    for(const posibilitie of posibilities){
-      if(alreadyUsed.includes(posibilitie.id)){
-        continue
+    const list = [];
+    for (const posibilitie of posibilities) {
+      if (alreadyUsed.includes(posibilitie.id)) {
+        continue;
       }
-      list.push(getAllConsumedItemsFromStack(rows,posibilitie,[...alreadyUsed, posibilitie.id]))
+      list.push(
+        getAllConsumedItemsFromStack(rows, posibilitie, [
+          ...alreadyUsed,
+          posibilitie.id,
+        ]),
+      );
     }
-    itemstack.inner  = list
+    itemstack.inner = list;
   }
 
-  return item.consumed_item_stacks
+  return item.consumed_item_stacks;
 }
 export function readCraftingRecipeRows(): any[][] {
   return JSON.parse(

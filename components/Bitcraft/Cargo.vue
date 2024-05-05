@@ -1,8 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
-    cargo: any;
-  }>();
-
+  cargo: any;
+}>();
 </script>
 
 <template>
