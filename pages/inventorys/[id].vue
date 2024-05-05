@@ -1,82 +1,149 @@
 <script setup lang="ts">
+const page = ref(1);
+const perPage = 30;
 
+const search = ref<string | null>("");
+const nDate = Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
 
-import {watchThrottled} from "@vueuse/shared";
+const nUTCData = Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+  timeZone: "UTC",
+});
 
-const page = ref(1)
-const perPage = 30
+const route = useRoute();
+const router = useRouter();
 
-const search = ref<string | null>('')
-
-const route = useRoute()
-const router = useRouter()
-
-const tmpPage = route.query.page as string ?? null
+const tmpPage = (route.query.page as string) ?? null;
 
 if (tmpPage) {
-  page.value = parseInt(tmpPage)
+  page.value = parseInt(tmpPage);
 }
 
 const { data: inventoryFetch, pending: InventoryPending } = useFetch(() => {
-     console.log(`/api/bitcraft/inventorys/${route.params.id}`)
-  return `/api/bitcraft/inventorys/${route.params.id}`
-})
+  console.log(`/api/bitcraft/inventorys/${route.params.id}`);
+  return `/api/bitcraft/inventorys/${route.params.id}`;
+});
 
-const { data: InventoryChangesFetch, pending: InventoryChangesPending } = useFetch(() => {
-     console.log(`/api/bitcraft/inventorys/changes${route.params.id}`)
-  return `/api/bitcraft/inventorys/changes/${route.params.id}`
-})
+const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
+  useFetch(() => {
+    console.log(`/api/bitcraft/inventorys/changes${route.params.id}`);
+    return `/api/bitcraft/inventorys/changes/${route.params.id}`;
+  });
 
 const inventory = computed(() => {
-  return inventoryFetch.value ?? undefined
-})
+  return inventoryFetch.value ?? undefined;
+});
 const inventoryChanges = computed(() => {
-  return InventoryChangesFetch.value ?? []
-})
+  return InventoryChangesFetch.value ?? [];
+});
+
+const headersPockets = [
+  { title: "Name", key: "contents.item.name" },
+  { title: "Quantity", key: "contents.quantity", align: "end" },
+];
+
+const headersChanges = [
+  { title: "Player", key: "playerName" },
+  { title: "Timestamp Local", key: "timestamp" },
+  { title: "Timestamp UTC", key: "timestamp_utc" },
+  {
+    title: "New",
+    align: "center",
+    children: [
+      { title: "New Quantity", key: "diff.new.quantity" },
+      { title: "New Name", key: "diff.new.item.name" },
+    ],
+  },
+  {
+    title: "Old",
+    align: "center",
+    children: [
+      { title: "Old Quantity", key: "diff.old.quantity" },
+      { title: "Old Name", key: "diff.old.item.name" },
+    ],
+  },
+];
+
+const changes = computed(() => {
+  return inventoryChanges.value.map((change) => {
+    const data = new Date(change.timestamp / 1000);
+    let newDiff = undefined;
+    let oldDiff = undefined;
+
+    if (change.diff) {
+      for (const diff in change.diff) {
+        if (change.diff[diff].new !== undefined) {
+          newDiff = change.diff[diff].new;
+        }
+        if (change.diff[diff].old !== undefined) {
+          oldDiff = change.diff[diff].old;
+        }
+      }
+    }
+
+    return {
+      playerName: change.playerName,
+      timestamp: data,
+      timestamp_utc: data,
+      diff: {
+        new: newDiff,
+        old: oldDiff,
+      },
+    };
+  });
+});
+
+const backgroundColorRow = ({ index }) => {
+  return {
+    class: index % 2 === 0 ? "" : "bg-surface-light",
+  }
+};
 
 </script>
 
 <template>
-    <v-card  v-if="inventory !== undefined">
+  <template  v-if="inventory !== undefined">
+    <v-card class="mb-5">
     <v-toolbar color="transparent">
-      <v-toolbar-title >{{ inventory.entity_id }}</v-toolbar-title>
+      <v-toolbar-title >Inventory: {{ inventory.entity_id }}</v-toolbar-title>
 
     </v-toolbar>
 
     <v-card-text>
-      <v-card-title>Current State</v-card-title>
-      <v-row>
-        
-    <v-col cols="12" md="2" v-for="items in inventory.pockets">
-      <v-card v-if="items.contents !== undefined">
-                
-        <bitcraft-item :item="items.contents"></bitcraft-item>
-                </v-card>
-    </v-col>
-  </v-row>
-  <v-card-title>Changes</v-card-title>
-
-  <v-row >
-        <v-col cols="12" md="2" v-for="inventoryChange in inventoryChanges">
-          <template v-for="items of inventoryChange.diff">
-            <v-card>
-            <v-card-title >Player</v-card-title>
-                    <v-card-subtitle >{{ inventoryChange.playerName }}</v-card-subtitle>
-              </v-card>
-                    <v-card  v-if="items.new !== undefined">
-                    <v-card-title >new</v-card-title>
-                    <bitcraft-item :item="items.new"></bitcraft-item>
-                  </v-card>
-                  <v-card v-if="items.old !== undefined">
-                    <v-card-title >Old</v-card-title>
-                    <bitcraft-item :item="items.old"></bitcraft-item>
-                  </v-card>
-                </template>
-        </v-col>
-      </v-row>
+      <v-card-title>Current Items</v-card-title>
+      <v-data-table density="compact" :headers="headersPockets" :items="inventory.pockets.filter((item) => !!item.contents)" :row-props="backgroundColorRow">
+      </v-data-table>
     </v-card-text>
-    
-  </v-card>
+    </v-card>
+    <v-spacer></v-spacer>
+    <v-card>
+      <v-card-title>Changes</v-card-title>
+      <v-card-text>
+        <v-data-table density="compact" :headers="headersChanges" :items="changes" :row-props="backgroundColorRow">
+          <template v-slot:item.timestamp="{ item }">
+            {{ nDate.format(item.timestamp) }}
+          </template>
+          <template v-slot:item.timestamp_utc="{ item }">
+            {{ nUTCData.format(item.timestamp) }}
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+  </template>
 </template>
 
 <style scoped>

@@ -12,6 +12,7 @@
     "format:check": "biome format ./pages ./logic ./server ./components ./layouts"
   },
   "dependencies": {
+    "@pinia/nuxt": "^0.5.1",
     "nuxt": "^3.11.2",
     "vue": "^3.4.23",
     "vue-router": "^4.3.0",
@@ -20,7 +21,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.6.4",
-    "vuetify": "^3.5.14",
-    "vuetify-nuxt-module": "^0.13.1"
+    "@types/ws": "^8.5.10",
+    "vuetify": "^3.6.3",
+    "vuetify-nuxt-module": "^0.13.5"
   }
 }

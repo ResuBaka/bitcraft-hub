@@ -96,9 +96,8 @@ const length = computed(() => {
 
     </v-toolbar>
 
-    <v-card-text>
-        <v-list>
-          <v-list>
+    <v-card-text class="bg-surface-light">
+        <v-list class="bg-surface-light">
           <v-list-item>
             <v-list-item-title>remaining_stock</v-list-item-title>
             <v-list-item-subtitle>{{ claim.remaining_stock }}</v-list-item-subtitle>
@@ -111,9 +110,7 @@ const length = computed(() => {
           </v-list-item>
           <v-list-item>
             <v-list-item-title>offer_cargo</v-list-item-title>
-            <v-list-item v-for="offer_cargo of claim.offer_cargo">
-              <bitcraft-cargo :cargo="offer_cargo"></bitcraft-cargo>
-            </v-list-item>
+            <v-list-item-subtitle>{{ claim.offer_cargo_id }} :: {{ claim.offer_cargo }}</v-list-item-subtitle>
           </v-list-item>
           <v-list-item>
             <v-list-item-title>required_items</v-list-item-title>
@@ -123,12 +120,9 @@ const length = computed(() => {
           </v-list-item>
           <v-list-item>
             <v-list-item-title>required_cargo</v-list-item-title>
-            <v-list-item v-for="required_cargo of claim.required_cargo">
-              <bitcraft-cargo :cargo="required_cargo"></bitcraft-cargo>
+            <v-list-item-subtitle>{{ claim.required_cargo_id }} ::  {{ claim.required_cargo }}</v-list-item-subtitle>
             </v-list-item>
-            </v-list-item>
-              </v-list>
-              </v-list>
+          </v-list>
     </v-card-text>
   </v-card>
     </v-col>

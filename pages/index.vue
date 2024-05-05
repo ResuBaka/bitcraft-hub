@@ -28,17 +28,11 @@ const filteredItems = computed(() => {
 </script>
 
 <template>
-  <v-container>
   <v-row>
-    <v-col cols="12">
-      <v-text-field v-model="search"></v-text-field>
+    <v-col col="12" md="4">
+      <v-card >
+        <v-card-title>Items</v-card-title>
+      </v-card>
     </v-col>
   </v-row>
-
-  <v-row>
-    <v-col v-for="item in filteredItems" :key="item.id" cols="6" md="4">
-      <item @delete="deleteItem" :item="item"></item>
-    </v-col>
-  </v-row>
-  </v-container>
 </template>

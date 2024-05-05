@@ -2,7 +2,7 @@
 import { watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 30;
+const perPage = 16;
 
 const tag = ref(null);
 const tier = ref(null);
@@ -41,6 +41,10 @@ const { data: items, pending } = useFetch(() => {
 
   if (page.value) {
     url.append("page", page.value.toString());
+  }
+
+  if (perPage) {
+    url.append("perPage", perPage.toString());
   }
 
   const querys = url.toString();
@@ -127,22 +131,9 @@ const length = computed(() => {
       ></v-select>
     </v-col>
   </v-row>
-  <v-row>
-    <v-expansion-panels multiple>
-      <v-expansion-panel>
-        <v-expansion-panel-title>Produced In Crafting</v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <pre>{{ items?.items[0] }}</pre>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-    </v-expansion-panels>
-  </v-row>
+
   <v-row>
     <v-col>
-      <v-pagination
-          v-model="page"
-          :length="length"
-      ></v-pagination>
       <v-progress-linear
           color="yellow-darken-2"
           indeterminate
@@ -151,8 +142,16 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="4" v-for="item in currentItems" :key="item.id">
+    <v-col cols="12" md="3" v-for="item in currentItems" :key="item.id">
       <bitcraft-card-item :item="item"></bitcraft-card-item>
+    </v-col>
+  </v-row>
+  <v-row>
+    <v-col cols="12">
+      <v-pagination
+          v-model="page"
+          :length="length"
+      ></v-pagination>
     </v-col>
   </v-row>
 </template>
