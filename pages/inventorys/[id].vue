@@ -2,7 +2,7 @@
 const page = ref(1);
 const perPage = 30;
 
-const search = ref<string | null>("");
+const search = ref<string | undefined>("");
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "2-digit",
@@ -25,7 +25,6 @@ const nUTCData = Intl.DateTimeFormat(undefined, {
 });
 
 const route = useRoute();
-const router = useRouter();
 
 const tmpPage = (route.query.page as string) ?? null;
 
@@ -79,23 +78,20 @@ const headersChanges = [
 ];
 
 const changes = computed(() => {
-  return inventoryChanges.value.map((change) => {
+  const changes = []
+  for(const change of inventoryChanges.value){
     const data = new Date(change.timestamp / 1000);
-    let newDiff = undefined;
-    let oldDiff = undefined;
-
     if (change.diff) {
       for (const diff in change.diff) {
+        let newDiff = undefined;
+        let oldDiff = undefined;
         if (change.diff[diff].new !== undefined) {
           newDiff = change.diff[diff].new;
         }
         if (change.diff[diff].old !== undefined) {
           oldDiff = change.diff[diff].old;
         }
-      }
-    }
-
-    return {
+        changes.push({
       playerName: change.playerName,
       timestamp: data,
       timestamp_utc: data,
@@ -103,8 +99,14 @@ const changes = computed(() => {
         new: newDiff,
         old: oldDiff,
       },
-    };
-  });
+    })
+      }
+    }
+  }
+    return changes.filter((change) => {
+      return !search.value || change?.diff?.new?.item?.name?.toLowerCase().includes(search.value.toLowerCase()) ||
+      change?.diff?.old?.item?.name?.toLowerCase().includes(search.value.toLowerCase())
+    }) ?? [];
 });
 
 const backgroundColorRow = ({ index }) => {
@@ -133,6 +135,17 @@ const backgroundColorRow = ({ index }) => {
     <v-card>
       <v-card-title>Changes</v-card-title>
       <v-card-text>
+        <v-row>
+    <v-col>
+      <v-text-field
+          v-model="search"
+          label="Search"
+          outlined
+          dense
+          clearable
+      ></v-text-field>
+    </v-col>
+  </v-row>
         <v-data-table density="compact" :headers="headersChanges" :items="changes" :row-props="backgroundColorRow">
           <template v-slot:item.timestamp="{ item }">
             {{ nDate.format(item.timestamp) }}
