@@ -56,10 +56,12 @@ const headersPockets = [
 ];
 
 const headersChanges = [
-  { title: "Player", key: "playerName" },
-  { title: "Timestamp Local", key: "timestamp" },
-  { title: "Timestamp UTC", key: "timestamp_utc" },
-  { title: "Diff", key: "diff" },
+  { title: "Player", key: "playerName", align: "start" },
+  { title: "Timestamp Local", key: "timestamp", align: "start" },
+  { title: "Timestamp UTC", key: "timestamp_utc", align: "start" },
+  { title: "Diff", key: "diff", align: "center" },
+  { title: "Old Amount", key: "diff.old", align: "end" },
+  { title: "New Amount", key: "diff.new", align: "end" },
 ];
 
 const changes = computed(() => {
@@ -170,8 +172,14 @@ const backgroundColorRow = ({ index }) => {
           <template v-slot:item.diff="{ value }">
             <template v-if="value.type === 'delete'"><v-icon color="red">mdi-delete-empty</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
             <template v-if="value.type === 'create'"><v-icon color="green">mdi-plus</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
-            <template v-if="value.type === 'increase'"><v-icon color="green">mdi-arrow-up-bold-outline</v-icon> {{ value.old.quantity }} -> {{ value.new.quantity }} = <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
-            <template v-if="value.type === 'decrease'"><v-icon color="red">mdi-arrow-down-bold-outline</v-icon> {{ value.old.quantity }} -> {{ value.new.quantity }} = <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
+            <template v-if="value.type === 'increase'"><v-icon color="green">mdi-arrow-up-bold-outline</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
+            <template v-if="value.type === 'decrease'"><v-icon color="red">mdi-arrow-down-bold-outline</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
+          </template>
+          <template v-slot:item.diff.old="{ value, item }">
+            <template v-if="value !== undefined">{{ value.quantity }}</template>
+          </template>
+          <template v-slot:item.diff.new="{ value, item }">
+            <template v-if="value !== undefined"><div :class="{ 'text-red': item.diff.amountDiff < 0, 'text-green': item.diff.amountDiff > 0 }">{{ value.quantity }}</div></template>
           </template>
         </v-data-table>
       </v-card-text>
