@@ -25,6 +25,7 @@ RUN ls -la /usr/src/app
 # [optional] tests & build
 ENV NODE_ENV=production
 RUN bun run build
+RUN rm -rf node_modules
 
 # copy production dependencies and source code into final image
 FROM base AS release
