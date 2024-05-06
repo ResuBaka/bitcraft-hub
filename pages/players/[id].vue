@@ -15,11 +15,11 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-const { data: playerFetch, pending: playerPnding } = await useFetch(() => {
+const { data: playerFetch, pending: playerPnding } = useFetch(() => {
   console.log(`/api/bitcraft/players/${route.params.id}`);
   return `/api/bitcraft/players/${route.params.id}`;
 });
-const { data: inventoryFetch, pending: inventoryPending } = await useFetch(() => {
+const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
   return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
 });
 
@@ -33,11 +33,12 @@ const player = computed(() => {
 
 </script>
 
-<template >
-  <v-progress-linear v-if="playerPnding">
-
-  </v-progress-linear>
-  <template v-if="player">
+<template>
+  <v-layout class="justify-center" v-if="playerPnding">
+    <v-progress-circular  indeterminate >
+    </v-progress-circular>
+  </v-layout>
+  <template v-else-if="player">
     <v-banner class="text-high-emphasis font-weight-black">Player: {{ player?.username }}</v-banner>
     <v-card>
       <v-card-text  :class="computedClass">
@@ -71,9 +72,13 @@ const player = computed(() => {
     <v-card variant="text">
       <v-card-title>Inventory's</v-card-title>
       <v-card-text>
-        <template v-for="(inventory, index) in inventorys">
+        <template v-if="!inventoryPending" v-for="(inventory, index) in inventorys">
           <bitcraft-inventory  :class="{ 'mt-5': index > 0 }" :inventory="inventory"></bitcraft-inventory>
         </template>
+        <v-layout class="justify-center" v-else>
+          <v-progress-circular  indeterminate >
+          </v-progress-circular>
+        </v-layout>
       </v-card-text>
     </v-card>
   </template>
