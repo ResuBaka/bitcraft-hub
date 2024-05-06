@@ -1,9 +1,9 @@
 <script setup lang="ts">
-const {inventory} = defineProps<{
-    inventory: any;
+const { inventory } = defineProps<{
+  inventory: any;
 }>();
 
-console.log(inventory)
+console.log(inventory);
 const search = ref<string | undefined>("");
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -26,6 +26,46 @@ const nUTCData = Intl.DateTimeFormat(undefined, {
   timeZone: "UTC",
 });
 
+function timeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  const interval = Math.floor(seconds / 31536000);
+  if (interval > 1) {
+    return interval + " years ago";
+  }
+  if (interval === 1) {
+    return interval + " year ago";
+  }
+  const months = Math.floor(seconds / 2628000);
+  if (months > 1) {
+    return months + " months ago";
+  }
+  if (months === 1) {
+    return months + " month ago";
+  }
+  const days = Math.floor(seconds / 86400);
+  if (days > 1) {
+    return days + " days ago";
+  }
+  if (days === 1) {
+    return days + " day ago";
+  }
+  const hours = Math.floor(seconds / 3600);
+  if (hours > 1) {
+    return hours + " hours ago";
+  }
+  if (hours === 1) {
+    return hours + " hour ago";
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes > 1) {
+    return minutes + " minutes ago";
+  }
+  if (minutes === 1) {
+    return minutes + " minute ago";
+  }
+  return "just now";
+}
+
 const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
   useFetch(() => {
     console.log(`/api/bitcraft/inventorys/changes${inventory.entity_id}`);
@@ -43,11 +83,15 @@ const headersPockets = [
 
 const headersChanges = [
   { title: "Player", key: "playerName", align: "start" },
-  { title: "Timestamp Local", key: "timestamp", align: "start" },
-  { title: "Timestamp UTC", key: "timestamp_utc", align: "start" },
   { title: "Diff", key: "diff", align: "center" },
-  { title: "Old Amount", key: "diff.old", align: "end" },
-  { title: "New Amount", key: "diff.new", align: "end" },
+  { title: "Old Amount", key: "diff.old", align: "end", maxWidth: "100px" },
+  { title: "New Amount", key: "diff.new", align: "end", maxWidth: "100px" },
+  {
+    title: "Timestamp Since",
+    key: "timestamp_diff",
+    align: "end",
+    maxWidth: "100px",
+  },
 ];
 
 const changes = computed(() => {
@@ -70,7 +114,11 @@ const changes = computed(() => {
 
         if (newDiff !== undefined && oldDiff !== undefined) {
           amountDiff = newDiff.quantity - oldDiff.quantity;
-          type = amountDiff > 0 ? "increase" : "decrease";
+          if (newDiff.item_id !== oldDiff.item_id) {
+            type = "swap";
+          } else {
+            type = amountDiff > 0 ? "increase" : "decrease";
+          }
         } else if (newDiff !== undefined) {
           type = "create";
           amountDiff = newDiff.quantity;
@@ -83,6 +131,7 @@ const changes = computed(() => {
           playerName: change.playerName,
           timestamp: data,
           timestamp_utc: data,
+          timestamp_diff: data,
           diff: {
             type: type,
             old: oldDiff,
@@ -107,8 +156,7 @@ const changes = computed(() => {
         change?.diff?.old?.item?.name
           ?.toLowerCase()
           .includes(search.value.toLowerCase()) ||
-        change?.playerName?.toLowerCase()
-          .includes(search.value.toLowerCase())
+        change?.playerName?.toLowerCase().includes(search.value.toLowerCase())
       );
     }) ?? []
   );
@@ -157,11 +205,15 @@ const backgroundColorRow = ({ index }) => {
           <template v-slot:item.timestamp_utc="{ item }">
             {{ nUTCData.format(item.timestamp) }}
           </template>
+          <template v-slot:item.timestamp_diff="{ value }">
+            {{ timeAgo(value, 'minute') }}
+          </template>
           <template v-slot:item.diff="{ value }">
             <template v-if="value.type === 'delete'"><v-icon color="red">mdi-delete-empty</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
             <template v-if="value.type === 'create'"><v-icon color="green">mdi-plus</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
             <template v-if="value.type === 'increase'"><v-icon color="green">mdi-arrow-up-bold-outline</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
             <template v-if="value.type === 'decrease'"><v-icon color="red">mdi-arrow-down-bold-outline</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
+            <template v-if="value.type === 'swap'"><b class="text-red">{{ value.old.item.name }}</b> <v-icon color="pink">mdi-swap-horizontal</v-icon> <b class="text-green">{{ value.new.item.name }}</b></template>
           </template>
           <template v-slot:item.diff.old="{ value, item }">
             <template v-if="value !== undefined">{{ value.quantity }}</template>
