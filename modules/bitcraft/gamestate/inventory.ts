@@ -166,10 +166,35 @@ export function readInventroyChanges(id: number) {
   }
   const lines = file.split("\n");
   const list: InventoryChanged[] = [];
-  for (const line of lines) {
-    if (line.length > 0) {
-      list.push(JSON.parse(line));
+  lineLoop: for (const line of lines) {
+    if (line.length === 0) {
+      continue;
     }
+
+    const data = JSON.parse(line);
+
+    for (const diffEntry in data.diff) {
+      const diff = data.diff[diffEntry];
+      if (diff.old !== undefined && diff.new !== undefined) {
+        if (diff.old.item_id === diff.new.item_id) {
+          console.log("diff", JSON.stringify(diff, null, 2));
+        }
+        if (itemWasMoved(diff)) {
+          continue lineLoop;
+        }
+      }
+    }
+
+    list.push(data);
   }
+
+  console.log("list.length", list.length);
   return list;
+}
+
+function itemWasMoved(diff: any) {
+  return (
+    diff.old.item_id === diff.new.item_id &&
+    diff.old.quantity === diff.new.quantity
+  );
 }
