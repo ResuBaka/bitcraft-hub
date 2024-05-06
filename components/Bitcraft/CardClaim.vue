@@ -60,7 +60,12 @@ const computedClass = computed(() => {
         </tr>
         <tr style='text-align: right'>
           <th>Members:</th>
-          <td v-if="claim.members.lenght">{{ claim.members.map(m => m.user_name).join(", ") }}</td>
+          <td v-if="claim.members.length > 0">
+            <template v-for="member of claim.members">
+              <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'players-id', params: { id: member.entity_id } }"
+        >{{ member.user_name }}</nuxt-link>,
+            </template>
+          </td>
           <td v-else>None</td>
         </tr>
         </tbody>

@@ -68,7 +68,8 @@ console.log(claim);
             <v-list-item-title>Members</v-list-item-title>
             <v-row>
     <v-col cols="12" md="3" v-for="member in claim.members" :key="member.user_name">
-      <v-list-item-subtitle>{{ member.user_name }}</v-list-item-subtitle>
+      <v-list-item-subtitle><nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'players-id', params: { id: member.entity_id } }"
+        >{{ member.user_name }}</nuxt-link></v-list-item-subtitle>
     </v-col>
   </v-row>
           <v-list-item>
