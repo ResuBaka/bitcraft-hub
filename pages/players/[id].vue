@@ -72,13 +72,17 @@ const player = computed(() => {
     <v-card variant="text">
       <v-card-title>Inventory's</v-card-title>
       <v-card-text>
+        <v-row>
         <template v-if="!inventoryPending" v-for="(inventory, index) in inventorys">
-          <bitcraft-inventory  :class="{ 'mt-5': index > 0 }" :inventory="inventory"></bitcraft-inventory>
+          <v-col cols="12" md="6">
+            <bitcraft-inventory :inventory="inventory"></bitcraft-inventory>
+          </v-col>
         </template>
         <v-layout class="justify-center" v-else>
           <v-progress-circular  indeterminate >
           </v-progress-circular>
         </v-layout>
+        </v-row>
       </v-card-text>
     </v-card>
   </template>
