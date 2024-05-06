@@ -104,8 +104,8 @@ const computedClass = computed(() => {
     <v-col cols="12" md="3" v-for="claim in currentClaims" :key="claim.entity_id">
     <v-card  v-if="claim !== undefined">
     <v-toolbar density="compact" color="transparent">
-      <v-toolbar-title>
-        {{ claim.entity_id }}</v-toolbar-title>
+      <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'buildings-id', params: { id: claim.building_entity_id } }"
+        >{{ claim.entity_id }} : {{ claim.building_entity_id }}</nuxt-link>
 
     </v-toolbar>
 

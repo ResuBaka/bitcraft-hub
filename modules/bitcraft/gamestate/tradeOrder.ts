@@ -47,10 +47,10 @@ function getTradingOrderStateRowFromRow(row: any[]) {
   return BuildingStateRow;
 }
 
-export function replaceTradeOrdersCargoIdWithCargo(rows: any) {
+export function replaceTradeOrdersCargoIdWithCargo(rows: any, cargo_rows:CargoDescRow[]) {
   const list = [];
   for (const row of rows) {
-    list.push(replaceTradeOrderCargoIdWithCargo(row));
+    list.push(replaceTradeOrderCargoIdWithCargo(row,cargo_rows));
   }
   return list;
 }
@@ -81,27 +81,27 @@ export function replaceCargos(
 
 export function replaceTradeOrderItemIdWithItem(
   tradeOrder: TradingOrderStateRow,
+  items: ItemRow[]
 ) {
-  const cargo_rows = getItemRowsFromRows(readItemRows());
   const expendedTradeOrder: TradingOrderStateRow = {
     ...tradeOrder,
-    offer_items: replaceItems(cargo_rows, tradeOrder.offer_items),
-    required_items: replaceItems(cargo_rows, tradeOrder.required_items),
+    offer_items: replaceItems(items, tradeOrder.offer_items),
+    required_items: replaceItems(items, tradeOrder.required_items),
   };
   return expendedTradeOrder;
 }
 
-export function replaceTradeOrdersItemIdWithItem(rows: any) {
+export function replaceTradeOrdersItemIdWithItem(rows: any,items: ItemRow[]) {
   const list = [];
   for (const row of rows) {
-    list.push(replaceTradeOrderItemIdWithItem(row));
+    list.push(replaceTradeOrderItemIdWithItem(row,items));
   }
   return list;
 }
 export function replaceTradeOrderCargoIdWithCargo(
   tradeOrder: TradingOrderStateRow,
+  cargo_rows: CargoDescRow[]
 ) {
-  const cargo_rows = getCargoDescRowsFromRows(readCargoDescRows());
   const expendedTradeOrder: TradingOrderStateRow = {
     ...tradeOrder,
     offer_cargo: replaceCargos(cargo_rows, tradeOrder.offer_cargo_id),
