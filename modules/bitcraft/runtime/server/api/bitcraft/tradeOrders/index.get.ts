@@ -36,7 +36,7 @@ export default defineEventHandler((event) => {
   } else {
     perPage = 16;
   }
-  const searchLowerCase = search.toLowerCase();
+  const searchLowerCase = search?.toLowerCase();
 
   const rowsFilterted = rows.filter(
     ({ offer_items, required_items, offer_cargo, required_cargo }) =>
