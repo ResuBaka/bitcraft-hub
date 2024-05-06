@@ -47,10 +47,13 @@ function getTradingOrderStateRowFromRow(row: any[]) {
   return BuildingStateRow;
 }
 
-export function replaceTradeOrdersCargoIdWithCargo(rows: any, cargo_rows:CargoDescRow[]) {
+export function replaceTradeOrdersCargoIdWithCargo(
+  rows: any,
+  cargo_rows: CargoDescRow[],
+) {
   const list = [];
   for (const row of rows) {
-    list.push(replaceTradeOrderCargoIdWithCargo(row,cargo_rows));
+    list.push(replaceTradeOrderCargoIdWithCargo(row, cargo_rows));
   }
   return list;
 }
@@ -81,7 +84,7 @@ export function replaceCargos(
 
 export function replaceTradeOrderItemIdWithItem(
   tradeOrder: TradingOrderStateRow,
-  items: ItemRow[]
+  items: ItemRow[],
 ) {
   const expendedTradeOrder: TradingOrderStateRow = {
     ...tradeOrder,
@@ -91,16 +94,16 @@ export function replaceTradeOrderItemIdWithItem(
   return expendedTradeOrder;
 }
 
-export function replaceTradeOrdersItemIdWithItem(rows: any,items: ItemRow[]) {
+export function replaceTradeOrdersItemIdWithItem(rows: any, items: ItemRow[]) {
   const list = [];
   for (const row of rows) {
-    list.push(replaceTradeOrderItemIdWithItem(row,items));
+    list.push(replaceTradeOrderItemIdWithItem(row, items));
   }
   return list;
 }
 export function replaceTradeOrderCargoIdWithCargo(
   tradeOrder: TradingOrderStateRow,
-  cargo_rows: CargoDescRow[]
+  cargo_rows: CargoDescRow[],
 ) {
   const expendedTradeOrder: TradingOrderStateRow = {
     ...tradeOrder,

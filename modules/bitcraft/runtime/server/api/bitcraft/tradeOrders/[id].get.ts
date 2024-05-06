@@ -1,12 +1,17 @@
-import { getCargoDescRowsFromRows, readCargoDescRows } from "~/modules/bitcraft/gamestate/cargoDesc";
-import { getItemRowsFromRows, readItemRows } from "~/modules/bitcraft/gamestate/item";
+import {
+  getCargoDescRowsFromRows,
+  readCargoDescRows,
+} from "~/modules/bitcraft/gamestate/cargoDesc";
+import {
+  getItemRowsFromRows,
+  readItemRows,
+} from "~/modules/bitcraft/gamestate/item";
 import {
   getTradingOrderStateRowsFromRows,
   readTradeOrderStateRows,
   replaceTradeOrderCargoIdWithCargo,
   replaceTradeOrderItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/tradeOrder";
-
 
 const items = getItemRowsFromRows(readItemRows());
 const cargo_rows = getCargoDescRowsFromRows(readCargoDescRows());
@@ -31,6 +36,7 @@ export default defineEventHandler((event) => {
   }
 
   return replaceTradeOrderItemIdWithItem(
-    replaceTradeOrderCargoIdWithCargo(claims,cargo_rows),items,
+    replaceTradeOrderCargoIdWithCargo(claims, cargo_rows),
+    items,
   );
 });
