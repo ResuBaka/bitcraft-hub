@@ -171,6 +171,7 @@ const backgroundColorRow = ({ index }) => {
 
 <template>
   <template  v-if="inventory !== undefined">
+    <div v-bind="$attrs">
     <v-card class="mb-5">
     <v-toolbar color="transparent">
       <v-toolbar-title >Inventory: {{ inventory.entity_id }}</v-toolbar-title>
@@ -224,6 +225,7 @@ const backgroundColorRow = ({ index }) => {
         </v-data-table>
       </v-card-text>
     </v-card>
+    </div>
   </template>
 </template>
 
