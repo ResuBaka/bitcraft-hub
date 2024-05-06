@@ -20,7 +20,6 @@ export default defineEventHandler((event) => {
   }
   if (neededToCraft) {
     return getAllConsumedItemsFromItem(rows, neededToCraft);
-    return;
   }
 
   if (producedInCrafting) {

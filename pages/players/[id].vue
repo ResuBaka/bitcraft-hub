@@ -23,6 +23,15 @@ const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
   return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
 });
 
+const { data: experienceFetch} = useFetch(() => {
+  console.log(`/api/bitcraft/experience/${route.params.id}`);
+  return `/api/bitcraft/experience/${route.params.id}`;
+});
+
+const expeirence = computed(() => {
+  return experienceFetch.value ?? undefined;
+});
+console.log(expeirence)
 const inventorys = computed(() => {
   return inventoryFetch.value?.inventorys ?? [];
 });
@@ -64,6 +73,22 @@ const player = computed(() => {
             <th>time_signed_in:</th>
             <td>{{ player.time_signed_in }}</td>
           </tr>
+          </tbody>
+        </v-table>
+        <v-table :class="computedClass" density="compact">
+          <tbody v-if="expeirence !== undefined">
+            <tr style='text-align: right'>
+              <th>Skills</th>
+              <td>Experience</td>
+              <td>Level</td>
+              <td>Rank</td>
+            </tr>
+            <tr v-for="[skill,xp_info] of Object.entries(expeirence.experience_stacks)" style='text-align: right'>
+              <th>{{skill}}</th>
+              <td>{{xp_info.experience}}</td>
+              <td>{{xp_info.level}}</td>
+              <td>#{{xp_info.rank}}</td>
+            </tr>
           </tbody>
         </v-table>
       </v-card-text>
