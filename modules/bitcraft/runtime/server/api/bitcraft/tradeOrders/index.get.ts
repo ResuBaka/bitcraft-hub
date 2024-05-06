@@ -36,20 +36,22 @@ export default defineEventHandler((event) => {
   } else {
     perPage = 16;
   }
+  const searchLowerCase = search.toLowerCase();
+
   const rowsFilterted = rows.filter(
-    (trade_order) =>
+    ({ offer_items, required_items, offer_cargo, required_cargo }) =>
       !search ||
-      trade_order.offer_items.filter((item) => {
-        return item.item.name.toLowerCase().includes(search.toLowerCase());
+      offer_items.filter(({ item }) => {
+        return item.name.toLowerCase().includes(searchLowerCase);
       }).length > 0 ||
-      trade_order.required_items.filter((item) => {
-        return item.item.name.toLowerCase().includes(search.toLowerCase());
+      required_items.filter(({ item }) => {
+        return item.name.toLowerCase().includes(searchLowerCase);
       }).length > 0 ||
-      trade_order.offer_cargo.filter((cargo) => {
-        return cargo.name.toLowerCase().includes(search.toLowerCase());
+      offer_cargo.filter(({ name }) => {
+        return name.toLowerCase().includes(searchLowerCase);
       }).length > 0 ||
-      trade_order.required_cargo.filter((cargo) => {
-        return cargo.name.toLowerCase().includes(search.toLowerCase());
+      required_cargo.filter(({ name }) => {
+        return name.toLowerCase().includes(searchLowerCase);
       }).length > 0,
   );
   return {
