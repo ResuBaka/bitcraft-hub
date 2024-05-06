@@ -6,6 +6,7 @@ import {
   readItemRows,
   type ExpendedRefrence,
   type ItemRefrence,
+  type ItemRow,
 } from "../gamestate/item";
 import { getSome, type Entity } from "./entity";
 import { readFileSync } from "node:fs";
@@ -111,14 +112,16 @@ export function diffItemsInInventorys(
   }
   return diff;
 }
-export function replaceInventoryItemsIdWithItems(rows: any) {
+export function replaceInventoryItemsIdWithItems(rows: any, items: ItemRow[]) {
   for (const row of rows) {
-    replaceInventoryItemIdWithItem(row);
+    replaceInventoryItemIdWithItem(row, items);
   }
   return rows;
 }
-export function replaceInventoryItemIdWithItem(inventory: InventoryStateRow) {
-  const items = getItemRowsFromRows(readItemRows());
+export function replaceInventoryItemIdWithItem(
+  inventory: InventoryStateRow,
+  items: ItemRow[],
+) {
   for (const pocket of inventory.pockets) {
     if (pocket.contents !== undefined) {
       const item = getItemFromItemId(items, pocket.contents);

@@ -1,9 +1,16 @@
-import { getInventorys } from "~/modules/bitcraft/gamestate/inventory";
+import {
+  getInventorys,
+  replaceInventoryItemsIdWithItems,
+} from "~/modules/bitcraft/gamestate/inventory";
+import {
+  getItemRowsFromRows,
+  readItemRows,
+} from "~/modules/bitcraft/gamestate/item";
 
+const items = getItemRowsFromRows(readItemRows());
+const rows = replaceInventoryItemsIdWithItems(getInventorys(), items);
 export default defineEventHandler((event) => {
   let { search, page, owner_entity_id } = getQuery(event);
-
-  let rows = getInventorys();
 
   const perPage = 30;
   if (owner_entity_id) {

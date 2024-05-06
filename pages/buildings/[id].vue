@@ -46,8 +46,7 @@ const inventorys = computed(() => {
           <v-list-item>
             <v-list-item-title>Inventorys</v-list-item-title>
             <v-list-item v-for="inventory in inventorys">
-              <v-list-item-subtitle ><nuxt-link :href="'/inventorys/' + inventory.entity_id"
-        >{{ inventory.entity_id }}</nuxt-link></v-list-item-subtitle>
+              <bitcraft-inventory :inventory="inventory"></bitcraft-inventory>
           </v-list-item>
           </v-list-item>
         </v-list>

@@ -2,6 +2,12 @@ import {
   getInventorys,
   replaceInventoryItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/inventory";
+import {
+  getItemRowsFromRows,
+  readItemRows,
+} from "~/modules/bitcraft/gamestate/item";
+
+const items = getItemRowsFromRows(readItemRows());
 
 export default defineEventHandler((event) => {
   const rows = getInventorys();
@@ -23,5 +29,5 @@ export default defineEventHandler((event) => {
     });
   }
 
-  return replaceInventoryItemIdWithItem(claims);
+  return replaceInventoryItemIdWithItem(claims, items);
 });
