@@ -42,6 +42,7 @@
 <!--        <v-btn to="/crafting">Crafting</v-btn>-->
         <v-btn to="/items">Items</v-btn>
         <v-btn to="/claims">Claims</v-btn>
+        <v-btn to="/players">Players</v-btn>
         <v-btn to="/tradeOrders">Trade orders</v-btn>
 <!--        <v-btn to="/buildings">Buildings</v-btn>-->
 <!--        <v-btn to="/npcs">NPCs</v-btn>-->

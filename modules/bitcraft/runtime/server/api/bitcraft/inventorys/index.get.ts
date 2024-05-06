@@ -35,7 +35,7 @@ export default defineEventHandler((event) => {
     }) ?? [];
 
   return {
-    buildings: rowsFilterted.slice((page - 1) * perPage, page * perPage),
+    inventorys: rowsFilterted.slice((page - 1) * perPage, page * perPage),
     total: rowsFilterted.length,
     page,
     perPage,

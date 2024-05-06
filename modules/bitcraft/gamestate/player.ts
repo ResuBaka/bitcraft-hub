@@ -1,5 +1,6 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
+import { readFileSync } from "node:fs";
 
 export interface PlayerStateRow extends Entity {
   serial_id: Number;
@@ -66,4 +67,10 @@ export async function SqlRequestPlayersByUsername(usernames: string[]) {
 export async function SqlRequestAllPlayers() {
   const result = await SQLRequest<any>("SELECT * FROM PlayerState");
   return result[0].rows;
+}
+
+export function readPlayerStateRows() {
+  return JSON.parse(
+    readFileSync(`${process.cwd()}/storage/State/PlayerState.json`, "utf8"),
+  )[0].rows;
 }

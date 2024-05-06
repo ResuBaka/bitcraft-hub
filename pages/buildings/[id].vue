@@ -28,7 +28,7 @@ const building = computed(() => {
   return buildingsFetch.value ?? undefined;
 });
 const inventorys = computed(() => {
-  return inventoryFetch.value?.buildings ?? [];
+  return inventoryFetch.value?.inventorys ?? [];
 });
 </script>
 
