@@ -326,7 +326,7 @@ const levelingData = [
 export function XPToLevel(xp:number){
   for(const data of levelingData){
     if(xp < data.xp){
-      return data.level
+      return data.level - 1
     }
   }
   return 100
