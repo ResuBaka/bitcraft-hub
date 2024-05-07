@@ -374,6 +374,9 @@ export function extendExperienceRowFromRow(expeirence: ExpeirenceStateRow,leader
   const data: ExtendedSkills = {}
   console.log(expeirence)
   for(const skill of skills){
+    if(skill.name === "ANY"){
+      continue
+    }
     data[skill.name] = {
       experience: expeirence.experience_stacks[skill.id],
       level: XPToLevel(expeirence.experience_stacks[skill.id]),
