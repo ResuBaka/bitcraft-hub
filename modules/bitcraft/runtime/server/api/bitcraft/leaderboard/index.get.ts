@@ -2,6 +2,7 @@ import {
   getExperienceRowsFromRows,
   readExperienceStateRows,
   getLeaderboard,
+  XPToLevel,
   type ExpeirenceStateRow,
 } from "~/modules/bitcraft/gamestate/experienceState";
 import { getPlayerRowsFromRows, readPlayerStateRows } from "~/modules/bitcraft/gamestate/player";
@@ -32,32 +33,35 @@ export default defineEventHandler((event) => {
     }
   }
 
-  const pid = playerIDs.values().next().value;
-  console.log("PID", pid)
-  console.log(rows.find(r => r.entity_id === pid));
-
   const expTable = rows
-  .map(r => ({
-    entity_id: r.entity_id,
-     exp: Object.values(r.experience_stacks).reduce((a, b) => a + b, 0)
-  }))
-  .sort((a, b) => b.exp - a.exp)
-  .slice(0, 100);
+    .map(r => ({
+      entity_id: r.entity_id,
+      exp: Object.values(r.experience_stacks).reduce((a, b) => a + b, 0)
+    }))
+    .sort((a, b) => b.exp - a.exp)
+    .slice(0, 100);
 
   for (const entity of expTable) {
     playerIDs.add(entity.entity_id);
   }
 
-  // const sortedTable = expTable.sort((a, b) => b.exp - a.exp);
+  const lvlTable = rows
+    .map(r => ({
+      entity_id: r.entity_id,
+      lvl: Object.values(r.experience_stacks).map(a => XPToLevel(a)).reduce((a, b) => a + b, 0)
+    }))
+    .sort((a, b) => b.lvl - a.lvl)
+    .slice(0, 100);
 
-  // console.log(expTable.find(p => p.entity_id === pid))
-  // console.log(sortedTable.slice(0,5));
-  console.log(expTable);
 
+  for (const entity of lvlTable) {
+    playerIDs.add(entity.entity_id);
+  }
+  
   const players = playerRows.filter((p) => playerIDs.has(p.entity_id)).map((p) => ({
     entityID: p.entity_id,
     entityName: p.username
   }));
 
-  return { skills: skills.filter(s => s.id !== 1), leaderboard: top100, players: players, topExp: expTable };
+  return { skills: skills.filter(s => s.id !== 1), leaderboard: top100, players: players, expTable: expTable, lvlTable: lvlTable };
 });
