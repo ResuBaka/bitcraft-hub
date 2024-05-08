@@ -311,41 +311,40 @@ function XPToLevel(xp: number) {
     return 100
 }
 
-const { data: leaderboard, pending } = useFetch(() => {
-    return `/api/bitcraft/leaderboard`;
-});
+function entityIdToName(entityId: number): string {
+    if (!leaderboard.value?.players) {
+        return entityId.toString();
+    }
+    else {
+        return leaderboard.value.players.find(p => p.entityID === entityId)?.entityName ?? entityId.toString();
+    }
+}
 
-const backgroundColorRow = ({ index }) => {
-    return {
-        class: index % 2 === 0 ? "" : "bg-surface-light",
-    };
-};
+const { data: leaderboard, pending, error, refresh } = await useFetch('/api/bitcraft/leaderboard', {
+    onResponse({ request, response, options }) {        
+        //console.log(response);
+    },
+})
 
 const headers = [
     { title: 'Rank', value: 'rank' },
     { title: 'Player', value: 'player' },
     { title: 'Level', value: 'level' },
     { title: 'Experience', value: 'exp' },
-]
-
-const leaderB1 = computed(() => {
-
-    console.log(lb1);
-    return (
-        lb1.value ?? []
-    );
-})
+];
 
 const topPlayers = computed(() => {
-    return leaderboard?.value?.leaderboard ?? []
+    return leaderboard?.value?.leaderboard ?? {}
 });
 
 const skills = computed(() => {
     return leaderboard?.value?.skills ?? []
 });
 
-console.log(topPlayers);
-console.log(skills);
+let selectedSkills = ref("Fishing");
+const selectedCategory = computed(() => {
+    return selectedSkills.value
+});
 
 </script>
 
@@ -354,72 +353,66 @@ console.log(skills);
 </style>
 
 <template>
-    <div>
-        <v-container class="mb-6 pa-0">
-            <v-row align="start" no-gutters>
-                <v-col lass="v-col-12 pa-0">
-                    <div class="mb-2">
-                        <v-sheet class="pa-2 ma-0">
-                            <h1>Leaderboards</h1>
-                        </v-sheet>
-                    </div>
-                    <div class="d-flex justify-space-between skill-buttons mb-3">
-                        <v-btn :variant="flat">Total experience</v-btn>
-                        <v-btn :variant="flat">Total level</v-btn>
-                        <v-btn :variant="flat">Farming</v-btn>
-                        <v-btn :variant="flat">Fishing</v-btn>
-                        <v-btn :variant="flat">Tailoring</v-btn>
-                    </div>
-                    <div class="d-flex justify-space-between skill-buttons mb-3">
-                        <v-btn :variant="flat" :active="true">Forestry</v-btn>
-                        <v-btn :variant="flat">Foraging</v-btn>
-                        <v-btn :variant="flat">Masonry</v-btn>
-                        <v-btn :variant="flat">Smithing</v-btn>
-                        <v-btn :variant="flat">Scholar</v-btn>
-                    </div>
-                    <div class="d-flex justify-space-between skill-buttons mb-3">
-                        <v-btn :variant="flat">Hunting</v-btn>
-                        <v-btn :variant="flat">Mining</v-btn>
-                        <v-btn :variant="flat">Carpentry</v-btn>
-                        <v-btn :variant="flat">Cooking</v-btn>
-                        <v-btn :variant="flat">Leatherworking</v-btn>
-                    </div>
-                </v-col>
-
-            </v-row>
-            <v-row>
-                <v-col lass="v-col-12 pa-0">
-                    <v-data-table density="compact" :items="topPlayers['Forestry']" :key="entity_id" :headers="headers"
-                        items-per-page="100">
-                        <template v-slot:headers="{ columns }">
-                            <tr>
-                                <template v-for="column in columns" :key="column.key">
-                                    <th :class="{
-                                        'text-left': column.key === 'rank',
-                                        'text-center': column.key === 'player' || column.key === 'level',
-                                        'text-right': column.key === 'exp'
-                                    }">
-                                        <span>{{ column.title }}</span>
-                                    </th>
-                                </template>
-                            </tr>
-                        </template>
-                        <template v-slot:item="{ item, index }">
-                            <tr>
-                                <td># {{ index + 1 }}</td>
-                                <td class="text-center">
-                                    <NuxtLink :to="{path: 'players/' + item.entity_id }">
-                                        {{ item.entity_id }}
-                                    </NuxtLink>
-                                </td>
-                                <td class="text-center">{{ XPToLevel(item.experience_stacks[2]) }}</td>
-                                <td class="text-right">{{ item.experience_stacks[2] }}</td>
-                            </tr>
-                        </template>
-                        <template #bottom></template>
-                    </v-data-table>
-                </v-col>
-            </v-row>
-        </v-container>
-    </div>
+    <v-layout class="justify-center" v-if="pending">
+        <v-progress-circular indeterminate>
+        </v-progress-circular>
+    </v-layout>
+    <template v-else-if="!pending">
+        <div>
+            <v-container class="mb-6 pa-0">
+                <v-row align="start" no-gutters>
+                    <v-col class="v-col-12 pa-0">
+                        <div class="mb-2">
+                            <v-sheet class="pa-2 ma-0">
+                                <h1>Leaderboards</h1>
+                            </v-sheet>
+                        </div>
+                        <div class="d-flex justify-space-between skill-buttons mb-3">
+                            <v-btn :variant="'flat'">Total experience</v-btn>
+                            <v-btn :variant="'flat'">Total level</v-btn>
+                            <v-btn v-for="i in skills.slice(0,3)" :variant="'flat'" @click="selectedSkills = i.name" :active="selectedSkills === i.name">{{ i.name }}</v-btn>
+                        </div>
+                        <div class="d-flex justify-space-between skill-buttons mb-3">
+                            <v-btn v-for="i in skills.slice(3,8)" :variant="'flat'" @click="selectedSkills = i.name" :active="selectedSkills === i.name">{{ i.name }}</v-btn>
+                        </div>
+                        <div class="d-flex justify-space-between skill-buttons mb-3">
+                            <v-btn v-for="i in skills.slice(8,14)" :variant="'flat'" @click="selectedSkills = i.name" :active="selectedSkills === i.name">{{ i.name }}</v-btn>
+                        </div>
+                    </v-col>
+                </v-row>
+                <v-row>
+                    <v-col lass="v-col-12 pa-0">
+                        <v-data-table density="compact" :items="topPlayers[selectedCategory]"  :headers="headers" items-per-page="100">
+                            <template v-slot:headers="{ columns }">
+                                <tr>
+                                    <template v-for="column in columns" :key="column.key">
+                                        <th :class="{
+                                            'text-left': column.key === 'rank',
+                                            'text-center': column.key === 'player' || column.key === 'level',
+                                            'text-right': column.key === 'exp'
+                                        }">
+                                            <span>{{ column.title }}</span>
+                                        </th>
+                                    </template>
+                                </tr>
+                            </template>
+                            <template v-slot:item="{ item, index }">
+                                <tr>
+                                    <td># {{ index + 1 }}</td>
+                                    <td class="text-center">
+                                        <NuxtLink :to="{ path: 'players/' + item.entity_id }">
+                                            {{ entityIdToName(item.entity_id) }}
+                                        </NuxtLink>
+                                    </td>
+                                    <td class="text-center">{{ XPToLevel(item.experience_stacks[skills.find(s => s.name === selectedSkills)?.id ?? 0]) }}</td>
+                                    <td class="text-right">{{ item.experience_stacks[skills.find(s => s.name === selectedSkills)?.id ?? 0] }}</td>
+                                </tr>
+                            </template>
+                            <template #bottom></template>
+                        </v-data-table>
+                    </v-col>
+                </v-row>
+            </v-container>
+        </div>
+    </template>
 </template>
