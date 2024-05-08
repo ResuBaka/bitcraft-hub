@@ -38,7 +38,7 @@
     <v-app-bar>
       <v-toolbar-title>BitCraft Chain Base (Work in Progress and Better Name wanted)</v-toolbar-title>
       <v-toolbar-items >
-        <v-btn to="/">Home</v-btn>
+        <v-btn to="/">Leaderboards</v-btn>
 <!--        <v-btn to="/crafting">Crafting</v-btn>-->
         <v-btn to="/items">Items</v-btn>
         <v-btn to="/claims">Claims</v-btn>

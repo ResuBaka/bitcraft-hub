@@ -322,16 +322,9 @@ function entityIdToName(entityId: number): string {
 
 const { data: leaderboard, pending, error, refresh } = await useFetch('/api/bitcraft/leaderboard', {
     onResponse({ request, response, options }) {        
-        //console.log(response);
+        console.log(response);
     },
 })
-
-const headers = [
-    { title: 'Rank', value: 'rank' },
-    { title: 'Player', value: 'player' },
-    { title: 'Level', value: 'level' },
-    { title: 'Experience', value: 'exp' },
-];
 
 const topPlayers = computed(() => {
     return leaderboard?.value?.leaderboard ?? {}
@@ -339,6 +332,10 @@ const topPlayers = computed(() => {
 
 const skills = computed(() => {
     return leaderboard?.value?.skills ?? []
+});
+
+const topPlayersByExp = computed(() => {
+    return leaderboard?.value?.topExp ?? []
 });
 
 let selectedSkills = ref("Fishing");
@@ -368,7 +365,7 @@ const selectedCategory = computed(() => {
                             </v-sheet>
                         </div>
                         <div class="d-flex justify-space-between skill-buttons mb-3">
-                            <v-btn :variant="'flat'">Total experience</v-btn>
+                            <v-btn :variant="'flat'" @click="selectedSkills = 'by_exp'" :active="selectedSkills === 'by_exp'">Total experience</v-btn>
                             <v-btn :variant="'flat'">Total level</v-btn>
                             <v-btn v-for="i in skills.slice(0,3)" :variant="'flat'" @click="selectedSkills = i.name" :active="selectedSkills === i.name">{{ i.name }}</v-btn>
                         </div>
@@ -380,9 +377,17 @@ const selectedCategory = computed(() => {
                         </div>
                     </v-col>
                 </v-row>
-                <v-row>
+                <v-row v-if="selectedSkills !== 'by_exp'">
                     <v-col lass="v-col-12 pa-0">
-                        <v-data-table density="compact" :items="topPlayers[selectedCategory]"  :headers="headers" items-per-page="100">
+                        <v-data-table density="compact" 
+                        :items="topPlayers[selectedCategory]"  
+                        :headers="[
+                                    { title: 'Rank', value: 'rank' },
+                                    { title: 'Player', value: 'player' },
+                                    { title: 'Level', value: 'level' },
+                                    { title: 'Experience', value: 'exp' }
+                                ]" 
+                        items-per-page="100">
                             <template v-slot:headers="{ columns }">
                                 <tr>
                                     <template v-for="column in columns" :key="column.key">
@@ -406,6 +411,44 @@ const selectedCategory = computed(() => {
                                     </td>
                                     <td class="text-center">{{ XPToLevel(item.experience_stacks[skills.find(s => s.name === selectedSkills)?.id ?? 0]) }}</td>
                                     <td class="text-right">{{ item.experience_stacks[skills.find(s => s.name === selectedSkills)?.id ?? 0] }}</td>
+                                </tr>
+                            </template>
+                            <template #bottom></template>
+                        </v-data-table>
+                    </v-col>
+                </v-row>
+                <v-row v-if="selectedSkills === 'by_exp'">
+                    <v-col lass="v-col-12 pa-0">
+                        <v-data-table density="compact" 
+                        :items="topPlayersByExp"  
+                        :headers="[
+                                    { title: 'Rank', value: 'rank' },
+                                    { title: 'Player', value: 'player' },
+                                    { title: 'Experience', value: 'exp' }
+                                ]" 
+                        items-per-page="100">
+                            <template v-slot:headers="{ columns }">
+                                <tr>
+                                    <template v-for="column in columns" :key="column.key">
+                                        <th :class="{
+                                            'text-left': column.key === 'rank',
+                                            'text-center': column.key === 'player',
+                                            'text-right': column.key === 'exp'
+                                        }">
+                                            <span>{{ column.title }}</span>
+                                        </th>
+                                    </template>
+                                </tr>
+                            </template>
+                            <template v-slot:item="{ item, index }">
+                                <tr>
+                                    <td># {{ index + 1 }}</td>
+                                    <td class="text-center">
+                                        <NuxtLink :to="{ path: 'players/' + item.entity_id }">
+                                            {{ entityIdToName(item.entity_id) }}
+                                        </NuxtLink>
+                                    </td>                                    
+                                    <td class="text-right">{{ item.exp }}</td>
                                 </tr>
                             </template>
                             <template #bottom></template>
