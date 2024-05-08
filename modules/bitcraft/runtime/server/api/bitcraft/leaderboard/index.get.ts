@@ -4,6 +4,7 @@ import {
   getLeaderboard,
   XPToLevel,
   type ExpeirenceStateRow,
+  type ExtendedExpeirenceStateRow,
 } from "~/modules/bitcraft/gamestate/experienceState";
 import { getPlayerRowsFromRows, readPlayerStateRows } from "~/modules/bitcraft/gamestate/player";
 import {
@@ -17,7 +18,7 @@ const leaderboard: Record<string, ExpeirenceStateRow[]> = getLeaderboard(skills,
 const playerRows = getPlayerRowsFromRows(readPlayerStateRows());
 
 export default defineEventHandler((event) => {
-  const top100: Record<string, ExpeirenceStateRow[]> = {};
+  const top100: Record<string, ExtendedExpeirenceStateRow[]> = {};
   const playerIDs = new Set<number>();
 
   for (const key of Object.keys(leaderboard)) {
@@ -25,8 +26,32 @@ export default defineEventHandler((event) => {
     const skillIndex = skills.find((s) => s.name === key)?.id;
 
     if (skillIndex) {
-      const sorted = values.sort((a, b) => b.experience_stacks[skillIndex] - a.experience_stacks[skillIndex]).slice(0, 100);
-      top100[key] = sorted;
+      const sorted = values
+        .sort((a, b) => b.experience_stacks[skillIndex] - a.experience_stacks[skillIndex])
+        .slice(0, 100);
+
+      top100[key] = sorted.map(s => {
+        const extRow: ExtendedExpeirenceStateRow = {
+          entity_id: s.entity_id,
+          experience_stacks: {}
+        };
+        for (const [key, value] of Object.entries(s.experience_stacks)) {
+          if (key === 'ANY') {
+            continue;
+          }
+          
+          const index = parseInt(key);
+          const skillName = skills.find(s => s.id === index)?.name;
+          if (skillName) {
+            extRow.experience_stacks[skillName] = {
+              experience: value,
+              level: XPToLevel(value)
+            }
+          }
+        }
+        return extRow;
+      });
+
       for (const player of sorted) {
         playerIDs.add(player.entity_id);
       }
@@ -57,11 +82,13 @@ export default defineEventHandler((event) => {
   for (const entity of lvlTable) {
     playerIDs.add(entity.entity_id);
   }
-  
-  const players = playerRows.filter((p) => playerIDs.has(p.entity_id)).map((p) => ({
-    entityID: p.entity_id,
-    entityName: p.username
-  }));
+
+  const players = playerRows
+    .filter((p) => playerIDs.has(p.entity_id))
+    .map((p) => ({
+      entityID: p.entity_id,
+      entityName: p.username
+    }));
 
   return { skills: skills.filter(s => s.id !== 1), leaderboard: top100, players: players, expTable: expTable, lvlTable: lvlTable };
 });
