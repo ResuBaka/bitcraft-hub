@@ -2,8 +2,6 @@ import SQLRequest from "../runtime/SQLRequest";
 import {
   getItemFromItemId,
   getItemRefrenceFromRow,
-  getItemRowsFromRows,
-  readItemRows,
   type ExpendedRefrence,
   type ItemRefrence,
   type ItemRow,
@@ -11,7 +9,7 @@ import {
 import { getSome, type Entity } from "./entity";
 import { readFileSync } from "node:fs";
 
-type ItemSlot = {
+export type ItemSlot = {
   volume: number;
   contents?: ItemRefrence;
 };
@@ -38,14 +36,14 @@ export type InventoryChanged = {
   };
 };
 
-function getItemSlots(rows: any) {
+function getItemSlots(rows: any): ItemSlot[] {
   const itemRows: ItemSlot[] = [];
   for (const row of rows) {
     itemRows.push(getItemSlot(row));
   }
   return itemRows;
 }
-function getItemSlot(row: any) {
+function getItemSlot(row: any): ItemSlot {
   const contents = getSome(row[1]);
   const InventoryState: ItemSlot = {
     volume: row[0],
@@ -57,11 +55,11 @@ function getItemSlot(row: any) {
 
 let InventoryStateRows: InventoryStateRow[] = [];
 
-export function saveParsedInventorys(rows: InventoryStateRow[]) {
+export function saveParsedInventorys(rows: InventoryStateRow[]): void {
   InventoryStateRows = rows;
 }
 
-export function parseInventorys(rows: any[]) {
+export function parseInventorys(rows: any[]): InventoryStateRow[] {
   const localInventoryStateRows: InventoryStateRow[] = [];
   for (const row of rows) {
     localInventoryStateRows.push(getInventoryRowFromRow(row));
@@ -74,7 +72,7 @@ export function getInventorys(): InventoryStateRow[] {
   return InventoryStateRows;
 }
 
-export function getInventoryRowFromRow(row: any[]) {
+export function getInventoryRowFromRow(row: any[]): InventoryStateRow {
   const InventoryState: InventoryStateRow = {
     entity_id: row[0],
     pockets: getItemSlots(row[1]),
@@ -115,7 +113,7 @@ export function diffItemsInInventorys(
 export function replaceInventoryItemsIdWithItems(
   rows: InventoryStateRow[],
   items: ItemRow[],
-) {
+): InventoryStateRow[] {
   for (const row of rows) {
     replaceInventoryItemIdWithItem(row, items);
   }
@@ -134,7 +132,7 @@ export function replaceInventoryItemIdWithItem(
   }
   return inventory;
 }
-export function SQLQueryInventoryByEntityId(entitys: Entity[]) {
+export function SQLQueryInventoryByEntityId(entitys: Entity[]): string {
   let sql = "";
   for (const entity of entitys) {
     if (sql.length === 0) {
@@ -146,7 +144,9 @@ export function SQLQueryInventoryByEntityId(entitys: Entity[]) {
   return sql;
 }
 
-export async function SqlRequestInventoryByEntityId(entitys: Entity[]) {
+export async function SqlRequestInventoryByEntityId(
+  entitys: Entity[],
+): Promise<any> {
   const result = await SQLRequest<any>(SQLQueryInventoryByEntityId(entitys));
   return result[0].rows;
 }
@@ -157,7 +157,7 @@ export function readInventoryRows() {
   )[0].rows;
 }
 
-export function readInventroyChanges(id: number) {
+export function readInventroyChanges(id: number): false | InventoryChanged[] {
   let file;
   try {
     file = readFileSync(
@@ -195,7 +195,7 @@ export function readInventroyChanges(id: number) {
   return list;
 }
 
-function itemWasMoved(diff: any) {
+function itemWasMoved(diff: any): boolean {
   return (
     diff.old.item_id === diff.new.item_id &&
     diff.old.quantity === diff.new.quantity

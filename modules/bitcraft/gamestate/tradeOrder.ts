@@ -2,19 +2,12 @@ import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
 import {
   getItemFromItemId,
-  getItemRowsFromRows,
   getItemsRefrenceFromRows,
-  readItemRows,
   type ExpendedRefrence,
   type ItemRefrence,
   type ItemRow,
 } from "./item";
-import {
-  getCagoDescFromCargoId,
-  getCargoDescRowsFromRows,
-  readCargoDescRows,
-  type CargoDescRow,
-} from "./cargoDesc";
+import { getCagoDescFromCargoId, type CargoDescRow } from "./cargoDesc";
 
 export interface TradingOrderStateRow extends Entity {
   building_entity_id: number;
@@ -27,14 +20,16 @@ export interface TradingOrderStateRow extends Entity {
   required_cargo?: CargoDescRow[];
 }
 
-export function getTradingOrderStateRowsFromRows(rows: any) {
+export function getTradingOrderStateRowsFromRows(
+  rows: any[],
+): TradingOrderStateRow[] {
   const BuildingStateRow: TradingOrderStateRow[] = [];
   for (const row of rows) {
     BuildingStateRow.push(getTradingOrderStateRowFromRow(row));
   }
   return BuildingStateRow;
 }
-function getTradingOrderStateRowFromRow(row: any[]) {
+function getTradingOrderStateRowFromRow(row: any[]): TradingOrderStateRow {
   const BuildingStateRow: TradingOrderStateRow = {
     entity_id: row[0],
     building_entity_id: row[1],
@@ -48,10 +43,10 @@ function getTradingOrderStateRowFromRow(row: any[]) {
 }
 
 export function replaceTradeOrdersCargoIdWithCargo(
-  rows: any,
+  rows: any[],
   cargo_rows: CargoDescRow[],
-) {
-  const list = [];
+): TradingOrderStateRow[] {
+  const list: TradingOrderStateRow[] = [];
   for (const row of rows) {
     list.push(replaceTradeOrderCargoIdWithCargo(row, cargo_rows));
   }
@@ -61,8 +56,8 @@ export function replaceTradeOrdersCargoIdWithCargo(
 export function replaceItems(
   itemRows: ItemRow[],
   itemRefrences: ItemRefrence[],
-) {
-  const list = [];
+): ExpendedRefrence[] {
+  const list: ExpendedRefrence[] = [];
   for (const itemRefrence of itemRefrences) {
     list.push(getItemFromItemId(itemRows, itemRefrence));
   }
@@ -72,8 +67,8 @@ export function replaceItems(
 export function replaceCargos(
   itemRows: CargoDescRow[],
   itemRefrences: number[],
-) {
-  const list = [];
+): CargoDescRow[] {
+  const list: CargoDescRow[] = [];
   if (!itemRefrences) return list;
 
   for (const itemRefrence of itemRefrences) {
@@ -85,7 +80,7 @@ export function replaceCargos(
 export function replaceTradeOrderItemIdWithItem(
   tradeOrder: TradingOrderStateRow,
   items: ItemRow[],
-) {
+): TradingOrderStateRow {
   const expendedTradeOrder: TradingOrderStateRow = {
     ...tradeOrder,
     offer_items: replaceItems(items, tradeOrder.offer_items),
@@ -94,8 +89,11 @@ export function replaceTradeOrderItemIdWithItem(
   return expendedTradeOrder;
 }
 
-export function replaceTradeOrdersItemIdWithItem(rows: any, items: ItemRow[]) {
-  const list = [];
+export function replaceTradeOrdersItemIdWithItem(
+  rows: any[],
+  items: ItemRow[],
+): TradingOrderStateRow[] {
+  const list: TradingOrderStateRow[] = [];
   for (const row of rows) {
     list.push(replaceTradeOrderItemIdWithItem(row, items));
   }

@@ -1,17 +1,17 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 
-interface userStateRow extends Entity {
+export interface UserStateRow extends Entity {
   identity: string;
 }
-export function getUserowsFromRows(rows: any[][]) {
-  const playerRows: userStateRow[] = [];
+export function getUserowsFromRows(rows: any[]) {
+  const playerRows: UserStateRow[] = [];
   for (const row of rows) {
     playerRows.push(getUserRowFromRow(row));
   }
   return playerRows;
 }
-export function getUserMapFromRows(rows: any[][]) {
+export function getUserMapFromRows(rows: any[]) {
   const playerRows: Map<string, number> = new Map();
   for (const row of rows) {
     const user = getUserRowFromRow(row);
@@ -20,7 +20,7 @@ export function getUserMapFromRows(rows: any[][]) {
   return playerRows;
 }
 function getUserRowFromRow(row: any[]) {
-  const PlayerState: userStateRow = {
+  const PlayerState: UserStateRow = {
     entity_id: row[0] as unknown as number,
     identity: row[1][0],
   };

@@ -26,7 +26,7 @@ export interface CargoDescRow {
   rarity: any;
 }
 
-export function getCargoDescRowsFromRows(rows: any) {
+export function getCargoDescRowsFromRows(rows: any): CargoDescRow[] {
   const BuildingStateRow: CargoDescRow[] = [];
   for (const row of rows) {
     BuildingStateRow.push(getCargoDescRowFromRow(row));
@@ -37,11 +37,11 @@ export function getCargoDescRowsFromRows(rows: any) {
 export function getCagoDescFromCargoId(
   cargo_rows: CargoDescRow[],
   cargo_id: number,
-) {
+): CargoDescRow {
   return cargo_rows.filter((cargo) => cargo.id === cargo_id)[0];
 }
 
-function getCargoDescRowFromRow(row: any[]) {
+function getCargoDescRowFromRow(row: any[]): CargoDescRow {
   const BuildingStateRow: CargoDescRow = {
     id: row[0],
     name: row[1],
@@ -69,7 +69,7 @@ function getCargoDescRowFromRow(row: any[]) {
   return BuildingStateRow;
 }
 
-export function readCargoDescRows() {
+export function readCargoDescRows(): any[] {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/Desc/CargoDesc.json`, "utf8"),
   )[0].rows;

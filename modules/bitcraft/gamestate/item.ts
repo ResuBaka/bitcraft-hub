@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { getSome } from "./entity";
 
 export type ItemRow = {
   id: number;
@@ -30,7 +29,7 @@ export type ExpendedRefrence = {
   durability?: Number;
 };
 
-export function getItemsRefrenceFromRows(rows: any[][]) {
+export function getItemsRefrenceFromRows(rows: any[]): ItemRefrence[] {
   const itemRows: ItemRefrence[] = [];
   for (const row of rows) {
     const item = getItemRefrenceFromRow(row);
@@ -41,7 +40,7 @@ export function getItemsRefrenceFromRows(rows: any[][]) {
 
   return itemRows;
 }
-export function getItemRefrenceFromRow(item: any[]) {
+export function getItemRefrenceFromRow(item: any[]): ItemRefrence {
   const itemRefrence: ItemRefrence = {
     item_id: item[0],
     quantity: item[1],
@@ -50,7 +49,7 @@ export function getItemRefrenceFromRow(item: any[]) {
 
   return itemRefrence;
 }
-export function getItemRowsFromRows(rows: any[]) {
+export function getItemRowsFromRows(rows: any[]): ItemRow[] {
   const itemRows: ItemRow[] = [];
   for (const row of rows) {
     itemRows.push(getItemRowFromRow(row));
@@ -69,7 +68,7 @@ export function getItemFromItemId(
 
   return item;
 }
-function getItemRowFromRow(i: any[]) {
+function getItemRowFromRow(i: any[]): ItemRow {
   return {
     id: i[0],
     name: i[1],

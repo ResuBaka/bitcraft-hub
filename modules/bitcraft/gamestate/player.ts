@@ -16,7 +16,7 @@ export interface PlayerStateRow extends Entity {
   favorite_crafting_recipes: any;
   teleport_location: any;
 }
-export function getPlayerRowsFromRows(rows: any[][]) {
+export function getPlayerRowsFromRows(rows: any[]): PlayerStateRow[] {
   const playerRows: PlayerStateRow[] = [];
   for (const row of rows) {
     playerRows.push(getPlayerRowFromRow(row));
@@ -24,7 +24,9 @@ export function getPlayerRowsFromRows(rows: any[][]) {
   return playerRows;
 }
 
-export function getPlayerEntityIdMapFromRows(rows: any[][]) {
+export function getPlayerEntityIdMapFromRows(
+  rows: any[],
+): Map<number, PlayerStateRow> {
   const playerRows: Map<number, PlayerStateRow> = new Map();
   for (const row of rows) {
     const player = getPlayerRowFromRow(row);
@@ -33,7 +35,7 @@ export function getPlayerEntityIdMapFromRows(rows: any[][]) {
   return playerRows;
 }
 
-function getPlayerRowFromRow(row: any[]) {
+function getPlayerRowFromRow(row: any[]): PlayerStateRow {
   const PlayerState: PlayerStateRow = {
     entity_id: row[0] as unknown as number,
     serial_id: row[1] as unknown as number,
@@ -52,7 +54,9 @@ function getPlayerRowFromRow(row: any[]) {
   return PlayerState;
 }
 
-export async function SqlRequestPlayersByUsername(usernames: string[]) {
+export async function SqlRequestPlayersByUsername(
+  usernames: string[],
+): Promise<any> {
   let sql = "";
   for (const username of usernames) {
     if (sql.length === 0) {
@@ -64,12 +68,12 @@ export async function SqlRequestPlayersByUsername(usernames: string[]) {
   const result = await SQLRequest<any>(sql);
   return result[0].rows;
 }
-export async function SqlRequestAllPlayers() {
+export async function SqlRequestAllPlayers(): Promise<any> {
   const result = await SQLRequest<any>("SELECT * FROM PlayerState");
   return result[0].rows;
 }
 
-export function readPlayerStateRows() {
+export function readPlayerStateRows(): any[] {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/State/PlayerState.json`, "utf8"),
   )[0].rows;

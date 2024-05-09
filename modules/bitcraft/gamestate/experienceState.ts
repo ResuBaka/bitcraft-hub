@@ -1,16 +1,16 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
-import { getSkillRowsFromRows, type SkillDescRow } from "./skillDesc";
+import { type SkillDescRow } from "./skillDesc";
 
-type Skills = {
+export type Skills = {
   [skill_id: string]: number;
 };
 export interface ExpeirenceStateRow extends Entity {
   experience_stacks: Skills;
 }
 
-type ExtendedSkills = {
+export type ExtendedSkills = {
   [skill_name: string]: {
     experience: number;
     rank?: number;
@@ -422,7 +422,7 @@ const levelingData = [
     xp: 37554230,
   },
 ];
-export function XPToLevel(xp: number) {
+export function XPToLevel(xp: number): number {
   for (const data of levelingData) {
     if (xp < data.xp) {
       return data.level - 1;
@@ -430,7 +430,7 @@ export function XPToLevel(xp: number) {
   }
   return 100;
 }
-function getExperience(rows: any[]) {
+function getExperience(rows: any[]): Skills {
   const skills: Skills = {};
   for (const row of rows) {
     skills[row[0]] = row[1];
@@ -455,7 +455,7 @@ export function getLeaderboard(
   }
   return leaderboard;
 }
-export function getExperienceRowsFromRows(rows: any[][]) {
+export function getExperienceRowsFromRows(rows: any[][]): ExpeirenceStateRow[] {
   const playerRows: ExpeirenceStateRow[] = [];
   for (const row of rows) {
     playerRows.push(getExperienceRowFromRow(row));
@@ -463,7 +463,7 @@ export function getExperienceRowsFromRows(rows: any[][]) {
   return playerRows;
 }
 
-function getExperienceRowFromRow(row: any[]) {
+function getExperienceRowFromRow(row: any[]): ExpeirenceStateRow {
   const PlayerState: ExpeirenceStateRow = {
     entity_id: row[0] as unknown as number,
     experience_stacks: getExperience(row[1]),
@@ -477,7 +477,7 @@ export function extendExperienceRowFromRow(
     [key: string]: ExpeirenceStateRow[];
   },
   skills: SkillDescRow[],
-) {
+): ExtendedExpeirenceStateRow {
   const data: ExtendedSkills = {};
   console.log(expeirence);
   for (const skill of skills) {
@@ -500,12 +500,12 @@ export function extendExperienceRowFromRow(
   return experienceData;
 }
 
-export async function SqlRequestAllPlayers() {
+export async function SqlRequestAllPlayers(): Promise<any> {
   const result = await SQLRequest<any>("SELECT * FROM ExperienceState");
   return result[0].rows;
 }
 
-export function readExperienceStateRows() {
+export function readExperienceStateRows(): any[] {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/State/ExperienceState.json`, "utf8"),
   )[0].rows;

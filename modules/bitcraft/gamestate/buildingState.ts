@@ -2,7 +2,7 @@ import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
 
-interface BuildingStateRow extends Entity {
+export interface BuildingStateRow extends Entity {
   claim_entity_id: number;
   direction_index: number;
   building_description_id: number;
@@ -10,14 +10,14 @@ interface BuildingStateRow extends Entity {
   nickname: string;
 }
 
-export function getBuildingStateRowsFromRows(rows: any) {
+export function getBuildingStateRowsFromRows(rows: any): BuildingStateRow[] {
   const BuildingStateRow: BuildingStateRow[] = [];
   for (const row of rows) {
     BuildingStateRow.push(getBuildingStateRowFromRow(row));
   }
   return BuildingStateRow;
 }
-function getBuildingStateRowFromRow(row: any[]) {
+function getBuildingStateRowFromRow(row: any[]): BuildingStateRow {
   const BuildingStateRow: BuildingStateRow = {
     entity_id: row[0],
     claim_entity_id: row[1],
@@ -31,7 +31,7 @@ function getBuildingStateRowFromRow(row: any[]) {
 
 export async function SqlRequestBuildingStateByConstuctorPlayerEntityId(
   entitys: Entity[],
-) {
+): Promise<any> {
   let sql = "";
   for (const entity of entitys) {
     if (sql.length === 0) {
@@ -46,7 +46,7 @@ export async function SqlRequestBuildingStateByConstuctorPlayerEntityId(
 
 export async function SqlRequesttBuildingStateByClaimEntityId(
   entitys: Entity[],
-) {
+): Promise<any> {
   let sql = "";
   for (const entity of entitys) {
     if (sql.length === 0) {
@@ -59,7 +59,7 @@ export async function SqlRequesttBuildingStateByClaimEntityId(
   return result[0].rows;
 }
 
-export function readBuildingStateRows() {
+export function readBuildingStateRows(): any[] {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/State/BuildingState.json`, "utf8"),
   )[0].rows;

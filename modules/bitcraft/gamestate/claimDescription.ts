@@ -1,14 +1,14 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
-interface ClaimMember extends Entity {
+export interface ClaimMember extends Entity {
   user_name: string;
   inventory_permission: boolean;
   build_permission: boolean;
   officer_permission: boolean;
   co_owner_permission: boolean;
 }
-interface ClaimDescriptionRow extends Entity {
+export interface ClaimDescriptionRow extends Entity {
   owner_player_entity_id: number;
   owner_building_entity_id: number;
   name: string;
@@ -22,14 +22,14 @@ interface ClaimDescriptionRow extends Entity {
   treasury: number;
 }
 
-function getClaimMembers(rows: any) {
+function getClaimMembers(rows: any): ClaimMember[] {
   const itemRows: ClaimMember[] = [];
   for (const row of rows) {
     itemRows.push(getClaimMember(row));
   }
   return itemRows;
 }
-function getClaimMember(row: any) {
+function getClaimMember(row: any): ClaimMember {
   const InventoryState: ClaimMember = {
     entity_id: row[0],
     user_name: row[1],
@@ -41,14 +41,18 @@ function getClaimMember(row: any) {
   return InventoryState;
 }
 
-export function getClaimDescriptionRowsFromRows(rows: any) {
+export function getClaimDescriptionRowsFromRows(
+  rows: any[],
+): ClaimDescriptionRow[] {
   const PlayerStateRow: ClaimDescriptionRow[] = [];
   for (const row of rows) {
     PlayerStateRow.push(getClaimDescriptionRowFromRow(row));
   }
   return PlayerStateRow;
 }
-export function getClaimDescriptionMapFromRows(rows: any) {
+export function getClaimDescriptionMapFromRows(
+  rows: any[],
+): Map<number, ClaimDescriptionRow> {
   const PlayerStateRow: Map<number, ClaimDescriptionRow> = new Map();
   for (const row of rows) {
     const data = getClaimDescriptionRowFromRow(row);
@@ -56,7 +60,7 @@ export function getClaimDescriptionMapFromRows(rows: any) {
   }
   return PlayerStateRow;
 }
-function getClaimDescriptionRowFromRow(row: any[]) {
+function getClaimDescriptionRowFromRow(row: any[]): ClaimDescriptionRow {
   const InventoryState: ClaimDescriptionRow = {
     entity_id: row[0],
     owner_player_entity_id: row[1],
@@ -73,7 +77,7 @@ function getClaimDescriptionRowFromRow(row: any[]) {
   };
   return InventoryState;
 }
-export async function SQLRequestBuildingDescAllClaims() {
+export async function SQLRequestBuildingDescAllClaims(): Promise<any> {
   const result = await SQLRequest<any>(
     "SELECT * FROM BuildingState where claim_entity_id > 0 ",
   );
@@ -81,7 +85,7 @@ export async function SQLRequestBuildingDescAllClaims() {
 }
 export async function SqlRequestClaimDescriptionByPlayerEntityId(
   entitys: Entity[],
-) {
+): Promise<any> {
   let sql = "";
   for (const entity of entitys) {
     if (sql.length === 0) {
@@ -93,7 +97,7 @@ export async function SqlRequestClaimDescriptionByPlayerEntityId(
   const result = await SQLRequest<any>(sql);
   return result[0].rows;
 }
-export function readClaimRows() {
+export function readClaimRows(): any[] {
   return JSON.parse(
     readFileSync(
       `${process.cwd()}/storage/State/ClaimDescriptionState.json`,

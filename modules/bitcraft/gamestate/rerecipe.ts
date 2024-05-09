@@ -38,7 +38,7 @@ type CraftingRecipeRow = {
   animation_end: string;
 };
 
-export function getCraftingRecipesFromRows(rows: any[][]) {
+export function getCraftingRecipesFromRows(rows: any[][]): CraftingRecipeRow[] {
   const craftingRecipes: CraftingRecipeRow[] = [];
   for (const row of rows) {
     craftingRecipes.push(getCraftingRecipeFromRow(row));
@@ -47,7 +47,7 @@ export function getCraftingRecipesFromRows(rows: any[][]) {
   return craftingRecipes;
 }
 
-function getCraftingRecipeFromRow(i: any[]) {
+function getCraftingRecipeFromRow(i: any[]): CraftingRecipeRow[] {
   return {
     id: i[0],
     name: i[1],
@@ -164,7 +164,7 @@ export function getAllConsumedItemsFromItem(
         return cis.item_id == item_id;
       }).length > 0,
   );
-  const list = [];
+  const list: ItemStackWithInner[][] = [];
   for (const posibilitie of posibilities) {
     list.push(
       getAllConsumedItemsFromStack(rows, posibilitie, [posibilitie.id]),
@@ -202,7 +202,7 @@ export function getAllConsumedItemsFromStack(
 
   return item.consumed_item_stacks;
 }
-export function readCraftingRecipeRows(): any[][] {
+export function readCraftingRecipeRows(): any[] {
   return JSON.parse(
     readFileSync(
       `${process.cwd()}/storage/Desc/CraftingRecipeDesc.json`,

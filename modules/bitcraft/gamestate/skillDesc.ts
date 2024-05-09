@@ -1,5 +1,3 @@
-import SQLRequest from "../runtime/SQLRequest";
-import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
 
 export interface SkillDescRow {
@@ -9,7 +7,7 @@ export interface SkillDescRow {
   icon_asset_name: string;
   title: string;
 }
-export function getSkillRowsFromRows(rows: any[][]) {
+export function getSkillRowsFromRows(rows: any[]): SkillDescRow[] {
   const playerRows: SkillDescRow[] = [];
   for (const row of rows) {
     playerRows.push(getSkillRowFromRow(row));
@@ -17,7 +15,7 @@ export function getSkillRowsFromRows(rows: any[][]) {
   return playerRows;
 }
 
-function getSkillRowFromRow(row: any[]) {
+function getSkillRowFromRow(row: any[]): SkillDescRow {
   const skill: SkillDescRow = {
     id: row[0],
     name: row[1],

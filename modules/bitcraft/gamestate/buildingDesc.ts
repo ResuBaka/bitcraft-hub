@@ -1,6 +1,6 @@
 import SQLRequest from "../runtime/SQLRequest";
 import { readFileSync } from "node:fs";
-interface BuildingDescRow {
+export interface BuildingDescRow {
   id: number;
   functions: any;
   name: string;
@@ -14,14 +14,14 @@ interface BuildingDescRow {
   footprint: any;
 }
 
-export function getBuildingDescRowsFromRows(rows: any) {
+export function getBuildingDescRowsFromRows(rows: any[]): BuildingDescRow[] {
   const BuildingStateRow: BuildingDescRow[] = [];
   for (const row of rows) {
     BuildingStateRow.push(getBuildingDescRowFromRow(row));
   }
   return BuildingStateRow;
 }
-function getBuildingDescRowFromRow(row: any[]) {
+function getBuildingDescRowFromRow(row: any[]): BuildingDescRow {
   const BuildingStateRow: BuildingDescRow = {
     id: row[0],
     functions: row[1],
@@ -37,7 +37,9 @@ function getBuildingDescRowFromRow(row: any[]) {
   };
   return BuildingStateRow;
 }
-export function getBuildingDescIdMapFromRows(rows: any) {
+export function getBuildingDescIdMapFromRows(
+  rows: any[],
+): Map<number, BuildingDescRow> {
   const BuildingStateRow: Map<number, BuildingDescRow> = new Map();
   for (const row of rows) {
     const data = getBuildingDescRowFromRow(row);
@@ -45,12 +47,12 @@ export function getBuildingDescIdMapFromRows(rows: any) {
   }
   return BuildingStateRow;
 }
-export async function SqlRequestBuildingDesc() {
+export async function SqlRequestBuildingDesc(): Promise<any> {
   const result = await SQLRequest<any>(`SELECT * BuildingDesc`);
   return result[0].rows;
 }
 
-export function readBuildingDescRows() {
+export function readBuildingDescRows(): any[] {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/Desc/BuildingDesc.json`, "utf8"),
   )[0].rows;

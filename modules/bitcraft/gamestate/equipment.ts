@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import SQLRequest from "../runtime/SQLRequest";
 import {
@@ -9,14 +9,13 @@ import {
   type ItemRefrence,
 } from "../gamestate/item";
 import { getSome, type Entity } from "./entity";
-let usernames = ["Sweets"];
 
 export async function loadFile(file: any) {
   const fileData = await readFile(file);
 
   return JSON.parse(await readFile(fileData, "utf-8"));
 }
-interface PlayerState extends Entity {
+export interface PlayerState extends Entity {
   serial_id: Number;
   username: string;
   eth_pub_key: string;
@@ -30,8 +29,8 @@ interface PlayerState extends Entity {
   favorite_crafting_recipes: any;
   teleport_location: any;
 }
-function transformPlayerState(input: any[][]) {
-  let PlayerStateArray: Array<PlayerState> = [];
+function transformPlayerState(input: any[][]): PlayerState[] {
+  let PlayerStateArray: PlayerState[] = [];
   for (const row of input[0]) {
     const PlayerState: PlayerState = {
       entity_id: row[0] as unknown as number,
@@ -53,7 +52,7 @@ function transformPlayerState(input: any[][]) {
   return PlayerStateArray;
 }
 
-type EquipmentSlots = {
+export type EquipmentSlots = {
   main_hand?: ItemRefrence;
   off_hand?: ItemRefrence;
   head_artifact?: ItemRefrence;
@@ -61,11 +60,11 @@ type EquipmentSlots = {
   hand_artifact?: ItemRefrence;
   feet_artifact?: ItemRefrence;
 };
-type EquipmentStateRow = {
+export type EquipmentStateRow = {
   entity_id: Number;
   equipment_slots: EquipmentSlots;
 };
-export function getEquipmentRowsFromRows(rows: any[][]) {
+export function getEquipmentRowsFromRows(rows: any[]): EquipmentStateRow[] {
   const EquipmentRows: EquipmentStateRow[] = [];
   for (const row of rows) {
     EquipmentRows.push(getEquipmentRowFromRow(row));
@@ -74,7 +73,7 @@ export function getEquipmentRowsFromRows(rows: any[][]) {
 }
 export function replaceEquipmentItemIdWithItem(
   Equipments: EquipmentStateRow[],
-) {
+): EquipmentStateRow[] {
   for (const Equipment of Equipments) {
     for (const enteries of Object.entries(Equipment.equipment_slots)) {
       const items = getItemRowsFromRows(readItemRows());
@@ -85,7 +84,7 @@ export function replaceEquipmentItemIdWithItem(
   }
   return Equipments;
 }
-function getEquipmentRowFromRow(row: any[]) {
+function getEquipmentRowFromRow(row: any[]): EquipmentStateRow {
   const EquipmentState: EquipmentStateRow = {
     entity_id: row[0] as unknown as number,
     equipment_slots: {},
@@ -128,7 +127,9 @@ function getEquipmentRowFromRow(row: any[]) {
   }
   return EquipmentState;
 }
-export async function SqlRequestEquipmentByEntityId(entitys: Entity[]) {
+export async function SqlRequestEquipmentByEntityId(
+  entitys: Entity[],
+): Promise<any> {
   let sql = "";
   for (const entity of entitys) {
     if (sql.length === 0) {
@@ -141,7 +142,7 @@ export async function SqlRequestEquipmentByEntityId(entitys: Entity[]) {
   return result[0].rows;
 }
 
-export function readEquipmentRows() {
+export function readEquipmentRows(): any[] {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/State/EquipmentState.json`, "utf8"),
   )[0].rows;

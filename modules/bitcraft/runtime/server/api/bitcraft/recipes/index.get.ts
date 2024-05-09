@@ -3,12 +3,19 @@ import {
   getCraftingRecipesFromRows,
   readCraftingRecipeRows,
 } from "~/modules/bitcraft/gamestate/rerecipe";
+import type { TradingOrderStateRow } from "~/modules/bitcraft/gamestate/tradeOrder";
 
 const rows = getCraftingRecipesFromRows(readCraftingRecipeRows());
 
+export type TradeOrderQuery = {
+  neededInCrafting?: number;
+  producedInCrafting?: number;
+  neededToCraft?: number;
+};
+
 export default defineEventHandler((event) => {
   const { neededInCrafting, producedInCrafting, neededToCraft } =
-    getQuery(event);
+    getQuery<TradeOrderQuery>(event);
 
   if (neededInCrafting) {
     return rows.filter(
