@@ -30,12 +30,13 @@ import {
   getCargoDescRowsFromRows,
   readCargoDescRows,
 } from "../gamestate/cargoDesc";
+import { getCraftingRecipesFromRows, readCraftingRecipeRows } from "../gamestate/rerecipe";
+import { getItemListRowsFromRows, readItemListRows } from "../gamestate/itemListDesc";
 let usernames = ["Ryuko"];
 
 export default async function RequestAllPlayerInfo() {
-  replaceTradeOrdersCargoIdWithCargo(
-    getCargoDescRowsFromRows(readCargoDescRows()),
-  );
+  const rows = getItemListRowsFromRows(readItemListRows())
+  console.log(JSON.stringify(rows.filter((row) => row.item_list_id !== 0)))
 }
 
 RequestAllPlayerInfo();

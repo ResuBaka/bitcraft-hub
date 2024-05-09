@@ -28,6 +28,8 @@ export type ExpendedRefrence = {
   quantity: Number;
   item_type: "Item" | "Cargo";
   durability?: Number;
+  discovery_score?: Number,
+  consumption_chance?: Number,
 };
 
 export function getItemsRefrenceFromRows(rows: any[][]) {

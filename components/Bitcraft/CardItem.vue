@@ -15,7 +15,7 @@ const { data: producedInCrafting } = useFetch("/api/bitcraft/recipes", {
   },
 });
 
-const { data: neededToCraft } = useFetch("/api/bitcraft/recipes", {
+const { data: neededToCraft, status } = useFetch("/api/bitcraft/recipes", {
   query: {
     neededToCraft: item.id,
   },
@@ -30,7 +30,7 @@ const producedInCraftingData = computed(() => {
 });
 
 const neededToCraftData = computed(() => {
-  return neededToCraft.value ?? [];
+  return JSON.parse(neededToCraft.value) ?? [];
 });
 
 const contetentToShow = ref("default");
@@ -142,6 +142,10 @@ const computedClass = computed(() => {
               <th>Tier:</th>
               <td>{{ item.tier }}</td>
             </tr>
+            <tr style='text-align: right'>
+              <th>item_list_id:</th>
+              <td>{{ item.item_list_id }}</td>
+            </tr>
           </tbody>
         </v-table>
       </template>
@@ -160,7 +164,7 @@ const computedClass = computed(() => {
       </template>
       <template v-if="contetentToShow == 'neededToCraft'">
         <v-list>
-          <bitcraft-item-stack :items="neededToCraft"></bitcraft-item-stack>
+          <bitcraft-item-stack :items="neededToCraftData"></bitcraft-item-stack>
         </v-list>
       </template>
       <template v-if="contetentToShow == 'producedInCrafting'">
