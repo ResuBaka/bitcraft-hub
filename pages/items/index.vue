@@ -2,7 +2,7 @@
 import { watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 16;
+const perPage = 24;
 
 const tag = ref(null);
 const tier = ref(null);
@@ -95,7 +95,11 @@ const tiers = computed(() => {
 });
 
 const length = computed(() => {
-  return Math.ceil(items.value?.total / perPage) ?? 0;
+  if (items.value?.total) {
+    return Math.ceil( items.value?.total / perPage)
+  }
+
+  return 0;
 });
 </script>
 
@@ -142,7 +146,7 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="3" v-for="item in currentItems" :key="item.id">
+    <v-col cols="12" md="6" lg="4" xl="3" v-for="item in currentItems" :key="item.id">
       <bitcraft-card-item :item="item"></bitcraft-card-item>
     </v-col>
   </v-row>

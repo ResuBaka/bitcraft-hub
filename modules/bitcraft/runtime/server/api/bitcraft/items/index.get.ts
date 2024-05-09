@@ -3,6 +3,9 @@ import {
   readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
+let perPageDefault = 24;
+let perPageMax = perPageDefault * 4;
+
 export default defineEventHandler((event) => {
   let { tag, tier, search, page, perPage } = getQuery(event);
 
@@ -17,10 +20,14 @@ export default defineEventHandler((event) => {
   } else {
     page = 1;
   }
+
   if (perPage) {
     perPage = parseInt(perPage);
+    if (perPage > perPageMax) {
+      perPage = perPageDefault;
+    }
   } else {
-    perPage = 16;
+    perPage = perPageDefault;
   }
 
   const rowsFilterted =

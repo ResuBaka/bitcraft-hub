@@ -2,7 +2,7 @@
 import { watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 16;
+const perPage = 24;
 
 const search = ref<string | null>("");
 
@@ -62,7 +62,20 @@ const currentplayers = computed(() => {
 });
 
 const length = computed(() => {
-  return Math.ceil(players.value?.total / perPage) ?? 0;
+  if (players.value?.total) {
+    return Math.ceil( players.value?.total / perPage)
+  }
+
+  return 0;
+});
+
+const theme = useTheme();
+
+const computedClass = computed(() => {
+  return {
+    "bg-surface-light": theme.global.current.value.dark,
+    "bg-grey-lighten-3": !theme.global.current.value.dark,
+  };
 });
 </script>
 
@@ -80,10 +93,6 @@ const length = computed(() => {
   </v-row>
   <v-row>
     <v-col>
-      <v-pagination
-          v-model="page"
-          :length="length"
-      ></v-pagination>
       <v-progress-linear
           color="yellow-darken-2"
           indeterminate
@@ -92,7 +101,7 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="3" v-for="player in currentplayers" :key="player.entity_id">
+    <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="player in currentplayers" :key="player.entity_id">
       <v-card>
       <template v-slot:title>
         <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'players-id', params: { id: player.entity_id } }"
@@ -125,6 +134,12 @@ const length = computed(() => {
       </v-table>
     </v-card-text>
   </v-card>
+    </v-col>
+    <v-col cols="12">
+      <v-pagination
+          v-model="page"
+          :length="length"
+      ></v-pagination>
     </v-col>
   </v-row>
 </template>

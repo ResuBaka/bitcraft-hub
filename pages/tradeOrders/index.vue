@@ -2,7 +2,7 @@
 import { watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 16;
+const perPage = 24;
 
 const search = ref<string | null>("");
 
@@ -15,7 +15,7 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-const { data: claims, pending } = useFetch(() => {
+const { data: tradeOrders, pending } = useFetch(() => {
   const url = new URLSearchParams();
 
   if (search.value) {
@@ -57,12 +57,16 @@ watchThrottled(
   { throttle: 50 },
 );
 
-const currentClaims = computed(() => {
-  return claims.value?.trade_orders ?? [];
+const currentTradeOrders = computed(() => {
+  return tradeOrders.value?.trade_orders ?? [];
 });
 
 const length = computed(() => {
-  return Math.ceil(claims.value?.total / perPage) ?? 0;
+  if (tradeOrders.value?.total) {
+    return Math.ceil( tradeOrders.value?.total / perPage)
+  }
+
+  return 0;
 });
 
 const theme = useTheme();
@@ -101,11 +105,11 @@ const computedClass = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="3" v-for="claim in currentClaims" :key="claim.entity_id">
-    <v-card  v-if="claim !== undefined">
+    <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="tradeOrder in currentTradeOrders" :key="tradeOrder.entity_id">
+    <v-card>
     <v-toolbar density="compact" color="transparent">
-      <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'buildings-id', params: { id: claim.building_entity_id } }"
-        >{{ claim.entity_id }} : {{ claim.building_entity_id }}</nuxt-link>
+      <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'buildings-id', params: { id: tradeOrder.building_entity_id } }"
+        >{{ tradeOrder.entity_id }} : {{ tradeOrder.building_entity_id }}</nuxt-link>
 
     </v-toolbar>
 
@@ -113,27 +117,27 @@ const computedClass = computed(() => {
         <v-list :class="computedClass">
           <v-list-item>
             <v-list-item-title>remaining_stock</v-list-item-title>
-            <v-list-item-subtitle>{{ claim.remaining_stock }}</v-list-item-subtitle>
+            <v-list-item-subtitle>{{ tradeOrder.remaining_stock }}</v-list-item-subtitle>
           </v-list-item>
           <v-list-item>
             <v-list-item-title>offer_items</v-list-item-title>
-            <v-list-item v-for="offer_item of claim.offer_items">
+            <v-list-item v-for="offer_item of tradeOrder.offer_items">
               <bitcraft-item :item="offer_item"></bitcraft-item>
             </v-list-item>
           </v-list-item>
           <v-list-item>
             <v-list-item-title>offer_cargo</v-list-item-title>
-            <v-list-item-subtitle>{{ claim.offer_cargo_id }} :: {{ claim.offer_cargo }}</v-list-item-subtitle>
+            <v-list-item-subtitle>{{ tradeOrder.offer_cargo_id }} :: {{ tradeOrder.offer_cargo }}</v-list-item-subtitle>
           </v-list-item>
           <v-list-item>
             <v-list-item-title>required_items</v-list-item-title>
-            <v-list-item v-for="required_item of claim.required_items">
+            <v-list-item v-for="required_item of tradeOrder.required_items">
               <bitcraft-item :item="required_item"></bitcraft-item>
             </v-list-item>
           </v-list-item>
           <v-list-item>
             <v-list-item-title>required_cargo</v-list-item-title>
-            <v-list-item-subtitle>{{ claim.required_cargo_id }} ::  {{ claim.required_cargo }}</v-list-item-subtitle>
+            <v-list-item-subtitle>{{ tradeOrder.required_cargo_id }} ::  {{ tradeOrder.required_cargo }}</v-list-item-subtitle>
             </v-list-item>
           </v-list>
     </v-card-text>

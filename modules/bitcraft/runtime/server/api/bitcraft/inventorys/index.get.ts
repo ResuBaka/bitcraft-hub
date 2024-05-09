@@ -9,10 +9,13 @@ import {
 
 const items = getItemRowsFromRows(readItemRows());
 const rows = replaceInventoryItemsIdWithItems(getInventorys(), items);
-export default defineEventHandler((event) => {
-  let { search, page, owner_entity_id } = getQuery(event);
 
-  const perPage = 30;
+let perPageDefault = 24;
+let perPageMax = perPageDefault * 4;
+
+export default defineEventHandler((event) => {
+  let { search, page, owner_entity_id, perPage } = getQuery(event);
+
   if (owner_entity_id) {
     owner_entity_id = parseInt(owner_entity_id);
   }
@@ -21,6 +24,15 @@ export default defineEventHandler((event) => {
     page = parseInt(page);
   } else {
     page = 1;
+  }
+
+  if (perPage) {
+    perPage = parseInt(perPage);
+    if (perPage > perPageMax) {
+      perPage = perPageDefault;
+    }
+  } else {
+    perPage = perPageDefault;
   }
 
   const rowsFilterted =

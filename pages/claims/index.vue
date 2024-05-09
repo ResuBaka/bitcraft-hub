@@ -2,12 +2,14 @@
 import { watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 16;
+const perPage = 24;
 
 const search = ref<string | null>("");
 
 const route = useRoute();
 const router = useRouter();
+
+const showEmptySupplies = ref(false);
 
 const tmpPage = (route.query.page as string) ?? null;
 
@@ -29,6 +31,8 @@ const { data: claims, pending } = useFetch(() => {
   if (perPage) {
     url.append("page", perPage.toString());
   }
+
+  url.append("showZeroSupplies", showEmptySupplies.value.toString());
 
   const querys = url.toString();
 
@@ -62,7 +66,11 @@ const currentClaims = computed(() => {
 });
 
 const length = computed(() => {
-  return Math.ceil(claims.value?.total / perPage) ?? 0;
+  if (claims.value?.total) {
+    return Math.ceil( claims.value?.total / perPage)
+  }
+
+  return 0;
 });
 </script>
 
@@ -76,6 +84,12 @@ const length = computed(() => {
           dense
           clearable
       ></v-text-field>
+    </v-col>
+    <v-col sm="3" md="2">
+      <v-checkbox
+          v-model="showEmptySupplies"
+          label="Show Empty Supplies"
+      ></v-checkbox>
     </v-col>
   </v-row>
   <v-row>
@@ -92,7 +106,7 @@ const length = computed(() => {
     </v-col>
   </v-row>
   <v-row>
-    <v-col cols="12" md="3" v-for="claim in currentClaims" :key="claim.entity_id">
+    <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="claim in currentClaims" :key="claim.entity_id">
       <bitcraft-card-claim :claim="claim"></bitcraft-card-claim>
     </v-col>
   </v-row>

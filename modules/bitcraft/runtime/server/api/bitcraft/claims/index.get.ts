@@ -24,8 +24,11 @@ interface ClaimDescriptionRow {
   treasury: number;
 }
 
+let perPageDefault = 24;
+let perPageMax = perPageDefault * 4;
+
 export default defineEventHandler((event) => {
-  let { search, page, perPage } = getQuery(event);
+  let { search, page, perPage, showEmptySupplies } = getQuery(event);
 
   const rows = getClaimDescriptionRowsFromRows(readClaimRows());
 
@@ -35,14 +38,27 @@ export default defineEventHandler((event) => {
     page = 1;
   }
 
+  if (showEmptySupplies) {
+    showEmptySupplies = showEmptySupplies === "true";
+  } else {
+    showEmptySupplies = false;
+  }
+
   if (perPage) {
     perPage = parseInt(perPage);
+    if (perPage > perPageMax) {
+      perPage = perPageDefault;
+    }
   } else {
-    perPage = 16;
+    perPage = perPageDefault;
   }
 
   const rowsFilterted =
     rows?.filter((item: any) => {
+      if (!showEmptySupplies && item.supplies === 0) {
+        return false;
+      }
+
       return !search || item.name.toLowerCase().includes(search.toLowerCase());
     }) ?? [];
 
