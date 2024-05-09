@@ -50,7 +50,7 @@ export function getItemRefrenceFromRow(item: any[]) {
 
   return itemRefrence;
 }
-export function getItemRowsFromRows(rows: any[][]) {
+export function getItemRowsFromRows(rows: any[]) {
   const itemRows: ItemRow[] = [];
   for (const row of rows) {
     itemRows.push(getItemRowFromRow(row));
@@ -61,7 +61,7 @@ export function getItemRowsFromRows(rows: any[][]) {
 export function getItemFromItemId(
   items: ItemRow[],
   item_refrence: ItemRefrence,
-) {
+): ExpendedRefrence {
   const item: ExpendedRefrence = {
     ...item_refrence,
     item: items.filter((item) => item.id === item_refrence.item_id)[0],
@@ -87,7 +87,7 @@ function getItemRowFromRow(i: any[]) {
   };
 }
 
-export function readItemRows() {
+export function readItemRows(): any[] {
   return JSON.parse(
     readFileSync(`${process.cwd()}/storage/Desc/ItemDesc.json`, "utf8"),
   )[0].rows;

@@ -15,7 +15,7 @@ type ItemSlot = {
   volume: number;
   contents?: ItemRefrence;
 };
-interface InventoryStateRow extends Entity {
+export interface InventoryStateRow extends Entity {
   pockets: ItemSlot[];
   inventory_index: number;
   cargo_index: number;
@@ -70,7 +70,7 @@ export function parseInventorys(rows: any[]) {
   return localInventoryStateRows;
 }
 
-export function getInventorys() {
+export function getInventorys(): InventoryStateRow[] {
   return InventoryStateRows;
 }
 
@@ -112,7 +112,7 @@ export function diffItemsInInventorys(
   }
   return diff;
 }
-export function replaceInventoryItemsIdWithItems(rows: any, items: ItemRow[]) {
+export function replaceInventoryItemsIdWithItems(rows: InventoryStateRow[], items: ItemRow[]) {
   for (const row of rows) {
     replaceInventoryItemIdWithItem(row, items);
   }
@@ -121,7 +121,7 @@ export function replaceInventoryItemsIdWithItems(rows: any, items: ItemRow[]) {
 export function replaceInventoryItemIdWithItem(
   inventory: InventoryStateRow,
   items: ItemRow[],
-) {
+): InventoryStateRow {
   for (const pocket of inventory.pockets) {
     if (pocket.contents !== undefined) {
       const item = getItemFromItemId(items, pocket.contents);

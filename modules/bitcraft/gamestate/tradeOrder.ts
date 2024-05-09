@@ -16,7 +16,7 @@ import {
   type CargoDescRow,
 } from "./cargoDesc";
 
-interface TradingOrderStateRow extends Entity {
+export interface TradingOrderStateRow extends Entity {
   building_entity_id: number;
   remaining_stock: any;
   offer_items: ItemRefrence[] | ExpendedRefrence[];

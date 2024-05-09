@@ -25,7 +25,7 @@ export default defineEventHandler((event) => {
   if (!claims) {
     throw createError({
       statusCode: 404,
-      statusMessage: "Claim was not found",
+      statusMessage: "Inventory was not found",
     });
   }
 

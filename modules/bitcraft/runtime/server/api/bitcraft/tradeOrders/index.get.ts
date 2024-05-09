@@ -11,7 +11,7 @@ import {
   readTradeOrderStateRows,
   replaceTradeOrderItemIdWithItem,
   replaceTradeOrdersCargoIdWithCargo,
-  replaceTradeOrdersItemIdWithItem,
+  replaceTradeOrdersItemIdWithItem, type TradingOrderStateRow,
 } from "~/modules/bitcraft/gamestate/tradeOrder";
 const items = getItemRowsFromRows(readItemRows());
 const cargo_rows = getCargoDescRowsFromRows(readCargoDescRows());
@@ -26,8 +26,21 @@ const rows = replaceTradeOrdersItemIdWithItem(
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
 
-export default defineEventHandler((event) => {
-  let { search, page, perPage } = getQuery(event);
+export type TradeOrderQuery = {
+  search?: string;
+  page?: number;
+  perPage?: number;
+}
+
+export type TradeOrderResponse = {
+  trade_orders: TradingOrderStateRow[]
+  total: number
+  page: number
+  perPage: number
+}
+
+export default defineEventHandler<TradeOrderResponse>((event) => {
+  let { search, page, perPage } = getQuery<TradeOrderQuery>(event);
 
   if (page) {
     page = parseInt(page);

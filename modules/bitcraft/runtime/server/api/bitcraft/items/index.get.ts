@@ -1,13 +1,31 @@
 import {
-  getItemRowsFromRows,
+  getItemRowsFromRows, type ItemRow,
   readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
 
-export default defineEventHandler((event) => {
-  let { tag, tier, search, page, perPage } = getQuery(event);
+export type ItemQuery = {
+  search?: string;
+  tag?: string;
+  tier?: number;
+  page?: number;
+  perPage?: number;
+}
+
+export type ItemResponse = {
+  items: ItemRow[]
+  tags: string[]
+  tiers: number[]
+  total: number
+  page: number
+  perPage: number
+}
+
+
+export default defineEventHandler<ItemResponse>((event) => {
+  let { tag, tier, search, page, perPage } = getQuery<ItemQuery>(event);
 
   const rows = getItemRowsFromRows(readItemRows());
 
@@ -31,7 +49,7 @@ export default defineEventHandler((event) => {
   }
 
   const rowsFilterted =
-    rows?.filter((item: any) => {
+    rows?.filter((item) => {
       return (
         (!tag || item.tag === tag) &&
         (!tier || item.tier === tier) &&
@@ -44,9 +62,9 @@ export default defineEventHandler((event) => {
 
   return {
     items: rowsFilterted.slice((page - 1) * perPage, page * perPage),
-    total: rowsFilterted.length,
     tags: Array.from(new Set(rows.map((item: any) => item.tag))),
     tiers: Array.from(new Set(rows.map((item: any) => parseInt(item.tier)))),
+    total: rowsFilterted.length,
     page,
     perPage,
   };
