@@ -23,7 +23,7 @@ const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
   return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
 });
 
-const { data: experienceFetch} = useFetch(() => {
+const { data: experienceFetch } = useFetch(() => {
   console.log(`/api/bitcraft/experience/${route.params.id}`);
   return `/api/bitcraft/experience/${route.params.id}`;
 });
@@ -31,7 +31,7 @@ const { data: experienceFetch} = useFetch(() => {
 const expeirence = computed(() => {
   return experienceFetch.value ?? undefined;
 });
-console.log(expeirence)
+console.log(expeirence);
 const inventorys = computed(() => {
   return inventoryFetch.value?.inventorys ?? [];
 });
@@ -39,7 +39,6 @@ const inventorys = computed(() => {
 const player = computed(() => {
   return playerFetch.value ?? undefined;
 });
-
 </script>
 
 <template>

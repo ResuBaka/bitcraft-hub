@@ -67,7 +67,7 @@ const currentClaims = computed(() => {
 
 const length = computed(() => {
   if (claims.value?.total) {
-    return Math.ceil( claims.value?.total / perPage)
+    return Math.ceil(claims.value?.total / perPage);
   }
 
   return 0;

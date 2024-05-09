@@ -1,5 +1,6 @@
 import {
-  getItemRowsFromRows, type ItemRow,
+  getItemRowsFromRows,
+  type ItemRow,
   readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
@@ -12,17 +13,16 @@ export type ItemQuery = {
   tier?: number;
   page?: number;
   perPage?: number;
-}
+};
 
 export type ItemResponse = {
-  items: ItemRow[]
-  tags: string[]
-  tiers: number[]
-  total: number
-  page: number
-  perPage: number
-}
-
+  items: ItemRow[];
+  tags: string[];
+  tiers: number[];
+  total: number;
+  page: number;
+  perPage: number;
+};
 
 export default defineEventHandler<ItemResponse>((event) => {
   let { tag, tier, search, page, perPage } = getQuery<ItemQuery>(event);

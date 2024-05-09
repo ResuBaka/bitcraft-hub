@@ -3,11 +3,11 @@ import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
 
 export interface SkillDescRow {
-  id: number,
-  name: string,
-  description: string
-  icon_asset_name: string
-  title: string
+  id: number;
+  name: string;
+  description: string;
+  icon_asset_name: string;
+  title: string;
 }
 export function getSkillRowsFromRows(rows: any[][]) {
   const playerRows: SkillDescRow[] = [];
@@ -27,7 +27,6 @@ function getSkillRowFromRow(row: any[]) {
   };
   return skill;
 }
-
 
 export function readSkillRows() {
   return JSON.parse(

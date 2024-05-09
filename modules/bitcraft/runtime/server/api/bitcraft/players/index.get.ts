@@ -29,10 +29,10 @@ export default defineEventHandler((event) => {
   const rowsFilterted =
     rows?.filter((player) => {
       return (
-        (!search ||
-          player.username.toLowerCase().includes(search.toLowerCase()) ||
-          !search ||
-          player.entity_id.toString().includes(search))
+        !search ||
+        player.username.toLowerCase().includes(search.toLowerCase()) ||
+        !search ||
+        player.entity_id.toString().includes(search)
       );
     }) ?? [];
 

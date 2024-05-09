@@ -1,4 +1,7 @@
-import { getExperienceRowsFromRows, readExperienceStateRows } from "~/modules/bitcraft/gamestate/experienceState";
+import {
+  getExperienceRowsFromRows,
+  readExperienceStateRows,
+} from "~/modules/bitcraft/gamestate/experienceState";
 const rows = getExperienceRowsFromRows(readExperienceStateRows());
 
 export default defineEventHandler((event) => {
@@ -13,9 +16,7 @@ export default defineEventHandler((event) => {
 
   const rowsFilterted =
     rows?.filter((player) => {
-      return (
-        (!search )
-      );
+      return !search;
     }) ?? [];
 
   return {

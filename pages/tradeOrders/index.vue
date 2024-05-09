@@ -63,7 +63,7 @@ const currentTradeOrders = computed(() => {
 
 const length = computed(() => {
   if (tradeOrders.value?.total) {
-    return Math.ceil( tradeOrders.value?.total / perPage)
+    return Math.ceil(tradeOrders.value?.total / perPage);
   }
 
   return 0;

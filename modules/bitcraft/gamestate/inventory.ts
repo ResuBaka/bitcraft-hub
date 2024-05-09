@@ -112,7 +112,10 @@ export function diffItemsInInventorys(
   }
   return diff;
 }
-export function replaceInventoryItemsIdWithItems(rows: InventoryStateRow[], items: ItemRow[]) {
+export function replaceInventoryItemsIdWithItems(
+  rows: InventoryStateRow[],
+  items: ItemRow[],
+) {
   for (const row of rows) {
     replaceInventoryItemIdWithItem(row, items);
   }

@@ -96,7 +96,7 @@ const tiers = computed(() => {
 
 const length = computed(() => {
   if (items.value?.total) {
-    return Math.ceil( items.value?.total / perPage)
+    return Math.ceil(items.value?.total / perPage);
   }
 
   return 0;

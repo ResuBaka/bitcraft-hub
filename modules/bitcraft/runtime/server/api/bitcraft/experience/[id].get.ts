@@ -2,13 +2,16 @@ import {
   getExperienceRowsFromRows,
   readExperienceStateRows,
   extendExperienceRowFromRow,
-  getLeaderboard
+  getLeaderboard,
 } from "~/modules/bitcraft/gamestate/experienceState";
-import { getSkillRowsFromRows, readSkillRows } from "~/modules/bitcraft/gamestate/skillDesc";
+import {
+  getSkillRowsFromRows,
+  readSkillRows,
+} from "~/modules/bitcraft/gamestate/skillDesc";
 
 const rows = getExperienceRowsFromRows(readExperienceStateRows());
 const skills = getSkillRowsFromRows(readSkillRows());
-const leaderboard = getLeaderboard(skills,rows)
+const leaderboard = getLeaderboard(skills, rows);
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });
 
@@ -28,5 +31,5 @@ export default defineEventHandler((event) => {
     });
   }
 
-  return extendExperienceRowFromRow(claims,leaderboard,skills);
+  return extendExperienceRowFromRow(claims, leaderboard, skills);
 });

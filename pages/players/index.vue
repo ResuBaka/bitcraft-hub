@@ -63,7 +63,7 @@ const currentplayers = computed(() => {
 
 const length = computed(() => {
   if (players.value?.total) {
-    return Math.ceil( players.value?.total / perPage)
+    return Math.ceil(players.value?.total / perPage);
   }
 
   return 0;

@@ -1,5 +1,6 @@
 import {
-  getInventorys, type InventoryStateRow,
+  getInventorys,
+  type InventoryStateRow,
   replaceInventoryItemsIdWithItems,
 } from "~/modules/bitcraft/gamestate/inventory";
 import {
@@ -14,21 +15,22 @@ let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
 
 export type InventoryQuery = {
-    search?: string;
-    page?: number;
-    owner_entity_id?: number;
-    perPage?: number;
-}
+  search?: string;
+  page?: number;
+  owner_entity_id?: number;
+  perPage?: number;
+};
 
 export type InventoryResponse = {
-  inventorys: InventoryStateRow[]
-  total: number
-  page: number
-  perPage: number
-}
+  inventorys: InventoryStateRow[];
+  total: number;
+  page: number;
+  perPage: number;
+};
 
 export default defineEventHandler<InventoryResponse>((event) => {
-  let { search, page, owner_entity_id, perPage } = getQuery<InventoryQuery>(event);
+  let { search, page, owner_entity_id, perPage } =
+    getQuery<InventoryQuery>(event);
 
   if (owner_entity_id) {
     owner_entity_id = parseInt(owner_entity_id);
@@ -50,13 +52,12 @@ export default defineEventHandler<InventoryResponse>((event) => {
   }
 
   const rowsFilterted =
-      rows?.filter((inventory) => {
-        return (
-            (!owner_entity_id || inventory.owner_entity_id === owner_entity_id) &&
-            (!search ||
-                inventory.entity_id.toString().includes(search))
-        );
-      }) ?? [];
+    rows?.filter((inventory) => {
+      return (
+        (!owner_entity_id || inventory.owner_entity_id === owner_entity_id) &&
+        (!search || inventory.entity_id.toString().includes(search))
+      );
+    }) ?? [];
 
   return {
     inventorys: rowsFilterted.slice((page - 1) * perPage, page * perPage),
