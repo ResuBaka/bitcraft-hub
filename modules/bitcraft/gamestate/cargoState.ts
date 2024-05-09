@@ -9,19 +9,21 @@ export interface TradingOrderStateRow extends Entity {
 
 export function getCargoStateRowsFromRows(rows: any[]): TradingOrderStateRow[] {
   const BuildingStateRow: TradingOrderStateRow[] = [];
+
   for (const row of rows) {
     BuildingStateRow.push(getCargoStateRowFromRow(row));
   }
+
   return BuildingStateRow;
 }
+
 function getCargoStateRowFromRow(row: any[]): TradingOrderStateRow {
-  const BuildingStateRow: TradingOrderStateRow = {
+  return {
     entity_id: row[0],
     spawn_timestamp: row[1],
     description_id: row[2],
     direction: row[3],
   };
-  return BuildingStateRow;
 }
 
 export function readCargoStateRows(): any[] {

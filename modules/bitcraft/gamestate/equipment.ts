@@ -15,6 +15,7 @@ export async function loadFile(file: any) {
 
   return JSON.parse(await readFile(fileData, "utf-8"));
 }
+
 export interface PlayerState extends Entity {
   serial_id: Number;
   username: string;
@@ -29,8 +30,10 @@ export interface PlayerState extends Entity {
   favorite_crafting_recipes: any;
   teleport_location: any;
 }
+
 function transformPlayerState(input: any[][]): PlayerState[] {
   let PlayerStateArray: PlayerState[] = [];
+
   for (const row of input[0]) {
     const PlayerState: PlayerState = {
       entity_id: row[0] as unknown as number,
@@ -49,6 +52,7 @@ function transformPlayerState(input: any[][]): PlayerState[] {
     };
     PlayerStateArray.push(PlayerState);
   }
+
   return PlayerStateArray;
 }
 
@@ -60,17 +64,22 @@ export type EquipmentSlots = {
   hand_artifact?: ItemRefrence;
   feet_artifact?: ItemRefrence;
 };
+
 export type EquipmentStateRow = {
   entity_id: Number;
   equipment_slots: EquipmentSlots;
 };
+
 export function getEquipmentRowsFromRows(rows: any[]): EquipmentStateRow[] {
   const EquipmentRows: EquipmentStateRow[] = [];
+
   for (const row of rows) {
     EquipmentRows.push(getEquipmentRowFromRow(row));
   }
+
   return EquipmentRows;
 }
+
 export function replaceEquipmentItemIdWithItem(
   Equipments: EquipmentStateRow[],
 ): EquipmentStateRow[] {
@@ -82,55 +91,66 @@ export function replaceEquipmentItemIdWithItem(
       Equipment.equipment_slots[enteries[0]] = item;
     }
   }
+
   return Equipments;
 }
+
 function getEquipmentRowFromRow(row: any[]): EquipmentStateRow {
   const EquipmentState: EquipmentStateRow = {
     entity_id: row[0] as unknown as number,
     equipment_slots: {},
   };
+
   //@ts-ignore
   if (Object.values(row[1][0][0])[0].length > 2) {
     EquipmentState.equipment_slots.main_hand = getItemRefrenceFromRow(
       getSome(row[1][0][0]),
     );
   }
+
   //@ts-ignore
   if (Object.values(row[1][1][0])[0].length > 2) {
     EquipmentState.equipment_slots.off_hand = getItemRefrenceFromRow(
       getSome(row[1][1][0]),
     );
   }
+
   //@ts-ignore
   if (Object.values(row[1][2][0])[0].length > 2) {
     EquipmentState.equipment_slots.head_artifact = getItemRefrenceFromRow(
       getSome(row[1][2][0]),
     );
   }
+
   //@ts-ignore
   if (Object.values(row[1][3][0])[0].length > 2) {
     EquipmentState.equipment_slots.torso_artifact = getItemRefrenceFromRow(
       getSome(row[1][3][0]),
     );
   }
+
   //@ts-ignore
   if (Object.values(row[1][4][0])[0].length > 2) {
     EquipmentState.equipment_slots.hand_artifact = getItemRefrenceFromRow(
       getSome(row[1][4][0]),
     );
   }
+
   //@ts-ignore
   if (Object.values(row[1][5][0])[0].length > 2) {
     EquipmentState.equipment_slots.feet_artifact = getItemRefrenceFromRow(
       getSome(row[1][5][0]),
     );
   }
+
   return EquipmentState;
 }
+
 export async function SqlRequestEquipmentByEntityId(
   entitys: Entity[],
 ): Promise<any> {
   let sql = "";
+
   for (const entity of entitys) {
     if (sql.length === 0) {
       sql = `SELECT * FROM EquipmentState WHERE entity_id = ${entity.entity_id}`;
@@ -138,7 +158,9 @@ export async function SqlRequestEquipmentByEntityId(
       sql + ` or owner_entity_id = '${entity.entity_id}'`;
     }
   }
+
   const result = await SQLRequest<any>(sql);
+
   return result[0].rows;
 }
 

@@ -16,6 +16,7 @@ export interface PlayerStateRow extends Entity {
   favorite_crafting_recipes: any;
   teleport_location: any;
 }
+
 export function getPlayerRowsFromRows(rows: any[]): PlayerStateRow[] {
   const playerRows: PlayerStateRow[] = [];
   for (const row of rows) {
@@ -28,15 +29,17 @@ export function getPlayerEntityIdMapFromRows(
   rows: any[],
 ): Map<number, PlayerStateRow> {
   const playerRows: Map<number, PlayerStateRow> = new Map();
+
   for (const row of rows) {
     const player = getPlayerRowFromRow(row);
     playerRows.set(player.entity_id, player);
   }
+
   return playerRows;
 }
 
 function getPlayerRowFromRow(row: any[]): PlayerStateRow {
-  const PlayerState: PlayerStateRow = {
+  return {
     entity_id: row[0] as unknown as number,
     serial_id: row[1] as unknown as number,
     username: row[2],
@@ -51,7 +54,6 @@ function getPlayerRowFromRow(row: any[]): PlayerStateRow {
     favorite_crafting_recipes: row[11],
     teleport_location: row[12],
   };
-  return PlayerState;
 }
 
 export async function SqlRequestPlayersByUsername(
@@ -65,9 +67,12 @@ export async function SqlRequestPlayersByUsername(
       sql + ` or username = '${username}'`;
     }
   }
+
   const result = await SQLRequest<any>(sql);
+
   return result[0].rows;
 }
+
 export async function SqlRequestAllPlayers(): Promise<any> {
   const result = await SQLRequest<any>("SELECT * FROM PlayerState");
   return result[0].rows;

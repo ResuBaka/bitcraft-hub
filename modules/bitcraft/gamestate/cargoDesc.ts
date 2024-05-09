@@ -1,4 +1,3 @@
-import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
 
 export interface CargoDescRow {
@@ -28,9 +27,11 @@ export interface CargoDescRow {
 
 export function getCargoDescRowsFromRows(rows: any): CargoDescRow[] {
   const BuildingStateRow: CargoDescRow[] = [];
+
   for (const row of rows) {
     BuildingStateRow.push(getCargoDescRowFromRow(row));
   }
+
   return BuildingStateRow;
 }
 
@@ -42,7 +43,7 @@ export function getCagoDescFromCargoId(
 }
 
 function getCargoDescRowFromRow(row: any[]): CargoDescRow {
-  const BuildingStateRow: CargoDescRow = {
+  return {
     id: row[0],
     name: row[1],
     description: row[2],
@@ -66,7 +67,6 @@ function getCargoDescRowFromRow(row: any[]): CargoDescRow {
     tag: row[20],
     rarity: row[21],
   };
-  return BuildingStateRow;
 }
 
 export function readCargoDescRows(): any[] {

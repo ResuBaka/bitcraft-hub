@@ -7,6 +7,7 @@ type ItemStack = {
   discovery_score: 1;
   consumption_chance: 1;
 };
+
 type ItemStackWithInner = {
   item_id: 2090002;
   quantity: 2;
@@ -15,6 +16,7 @@ type ItemStackWithInner = {
   consumption_chance: 1;
   inner?: ItemStackWithInner[][];
 };
+
 type CraftingRecipeRow = {
   id: number;
   name: string;
@@ -40,6 +42,7 @@ type CraftingRecipeRow = {
 
 export function getCraftingRecipesFromRows(rows: any[][]): CraftingRecipeRow[] {
   const craftingRecipes: CraftingRecipeRow[] = [];
+
   for (const row of rows) {
     craftingRecipes.push(getCraftingRecipeFromRow(row));
   }
@@ -74,6 +77,7 @@ function getCraftingRecipeFromRow(i: any[]): CraftingRecipeRow[] {
 
 function tobuildingRequirement(rows: Record<string, any>) {
   const temp = [];
+
   for (const key of Object.keys(rows)) {
     const value = rows[key];
 
@@ -92,6 +96,7 @@ function tobuildingRequirement(rows: Record<string, any>) {
 
 function toLevelRequirement(rows: number[][]) {
   const temp = [];
+
   for (const row of rows) {
     temp.push({
       skill_id: row[0],
@@ -101,8 +106,10 @@ function toLevelRequirement(rows: number[][]) {
 
   return temp;
 }
+
 function toToolRequirement(rows: number[][]) {
   const temp = [];
+
   for (const row of rows) {
     temp.push({
       tool_type: row[0],
@@ -116,6 +123,7 @@ function toToolRequirement(rows: number[][]) {
 
 function toConsumedItemStacksRequirement(rows: number[][]) {
   const temp = [];
+
   for (const row of rows) {
     temp.push({
       item_id: row[0],
@@ -131,6 +139,7 @@ function toConsumedItemStacksRequirement(rows: number[][]) {
 
 function toCompletionExperienceRequirement(rows: number[][]) {
   const temp = [];
+
   for (const row of rows) {
     temp.push({
       skill_id: row[0],
@@ -143,6 +152,7 @@ function toCompletionExperienceRequirement(rows: number[][]) {
 
 function toCraftedItemStacksRequirement(rows: number[][]) {
   const temp = [];
+
   for (const row of rows) {
     temp.push({
       item_id: row[0],
@@ -154,6 +164,7 @@ function toCraftedItemStacksRequirement(rows: number[][]) {
 
   return temp;
 }
+
 export function getAllConsumedItemsFromItem(
   rows: CraftingRecipeRow[],
   item_id: number,
@@ -164,12 +175,15 @@ export function getAllConsumedItemsFromItem(
         return cis.item_id == item_id;
       }).length > 0,
   );
+
   const list: ItemStackWithInner[][] = [];
+
   for (const posibilitie of posibilities) {
     list.push(
       getAllConsumedItemsFromStack(rows, posibilitie, [posibilitie.id]),
     );
   }
+
   return list;
 }
 
@@ -185,7 +199,9 @@ export function getAllConsumedItemsFromStack(
           return cis.item_id == itemstack.item_id;
         }).length > 0,
     );
+
     const list = [];
+
     for (const posibilitie of posibilities) {
       if (alreadyUsed.includes(posibilitie.id)) {
         continue;
@@ -197,11 +213,13 @@ export function getAllConsumedItemsFromStack(
         ]),
       );
     }
+
     itemstack.inner = list;
   }
 
   return item.consumed_item_stacks;
 }
+
 export function readCraftingRecipeRows(): any[] {
   return JSON.parse(
     readFileSync(

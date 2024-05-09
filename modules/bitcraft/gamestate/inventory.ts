@@ -1,18 +1,19 @@
 import SQLRequest from "../runtime/SQLRequest";
 import {
+  type ExpendedRefrence,
   getItemFromItemId,
   getItemRefrenceFromRow,
-  type ExpendedRefrence,
   type ItemRefrence,
   type ItemRow,
 } from "../gamestate/item";
-import { getSome, type Entity } from "./entity";
+import { type Entity, getSome } from "./entity";
 import { readFileSync } from "node:fs";
 
 export type ItemSlot = {
   volume: number;
   contents?: ItemRefrence;
 };
+
 export interface InventoryStateRow extends Entity {
   pockets: ItemSlot[];
   inventory_index: number;
@@ -43,14 +44,15 @@ function getItemSlots(rows: any): ItemSlot[] {
   }
   return itemRows;
 }
+
 function getItemSlot(row: any): ItemSlot {
   const contents = getSome(row[1]);
-  const InventoryState: ItemSlot = {
+
+  return {
     volume: row[0],
     contents:
       contents !== undefined ? getItemRefrenceFromRow(contents) : undefined,
   };
-  return InventoryState;
 }
 
 let InventoryStateRows: InventoryStateRow[] = [];
@@ -61,6 +63,7 @@ export function saveParsedInventorys(rows: InventoryStateRow[]): void {
 
 export function parseInventorys(rows: any[]): InventoryStateRow[] {
   const localInventoryStateRows: InventoryStateRow[] = [];
+
   for (const row of rows) {
     localInventoryStateRows.push(getInventoryRowFromRow(row));
   }
@@ -73,15 +76,15 @@ export function getInventorys(): InventoryStateRow[] {
 }
 
 export function getInventoryRowFromRow(row: any[]): InventoryStateRow {
-  const InventoryState: InventoryStateRow = {
+  return {
     entity_id: row[0],
     pockets: getItemSlots(row[1]),
     inventory_index: row[2],
     cargo_index: row[3],
     owner_entity_id: row[4],
   };
-  return InventoryState;
 }
+
 export function diffItemsInInventorys(
   oldInventory: InventoryStateRow,
   newInventory: InventoryStateRow,
@@ -92,8 +95,10 @@ export function diffItemsInInventorys(
       new: ExpendedRefrence | undefined;
     };
   } = {};
+
   const oldInv = replaceInventoryItemIdWithItem(oldInventory);
   const newInv = replaceInventoryItemIdWithItem(newInventory);
+
   for (const pocketIndex of oldInventory.pockets.keys()) {
     const oldItem = JSON.stringify(oldInv.pockets[pocketIndex].contents);
     const newItem = JSON.stringify(newInv.pockets[pocketIndex].contents);
@@ -108,6 +113,7 @@ export function diffItemsInInventorys(
       };
     }
   }
+
   return diff;
 }
 export function replaceInventoryItemsIdWithItems(
@@ -117,23 +123,26 @@ export function replaceInventoryItemsIdWithItems(
   for (const row of rows) {
     replaceInventoryItemIdWithItem(row, items);
   }
+
   return rows;
 }
+
 export function replaceInventoryItemIdWithItem(
   inventory: InventoryStateRow,
   items: ItemRow[],
 ): InventoryStateRow {
   for (const pocket of inventory.pockets) {
     if (pocket.contents !== undefined) {
-      const item = getItemFromItemId(items, pocket.contents);
-      //@ts-ignore
-      pocket.contents = item;
+      pocket.contents = getItemFromItemId(items, pocket.contents);
     }
   }
+
   return inventory;
 }
+
 export function SQLQueryInventoryByEntityId(entitys: Entity[]): string {
   let sql = "";
+
   for (const entity of entitys) {
     if (sql.length === 0) {
       sql = `SELECT * FROM InventoryState WHERE owner_entity_id = ${entity.entity_id}`;
@@ -159,6 +168,7 @@ export function readInventoryRows() {
 
 export function readInventroyChanges(id: number): false | InventoryChanged[] {
   let file;
+
   try {
     file = readFileSync(
       `${process.cwd()}/storage/Inventory/${id}.json`,
@@ -167,8 +177,10 @@ export function readInventroyChanges(id: number): false | InventoryChanged[] {
   } catch {
     return false;
   }
+
   const lines = file.split("\n");
   const list: InventoryChanged[] = [];
+
   lineLoop: for (const line of lines) {
     if (line.length === 0) {
       continue;
@@ -179,9 +191,6 @@ export function readInventroyChanges(id: number): false | InventoryChanged[] {
     for (const diffEntry in data.diff) {
       const diff = data.diff[diffEntry];
       if (diff.old !== undefined && diff.new !== undefined) {
-        if (diff.old.item_id === diff.new.item_id) {
-          console.log("diff", JSON.stringify(diff, null, 2));
-        }
         if (itemWasMoved(diff)) {
           continue lineLoop;
         }
@@ -191,7 +200,6 @@ export function readInventroyChanges(id: number): false | InventoryChanged[] {
     list.push(data);
   }
 
-  console.log("list.length", list.length);
   return list;
 }
 

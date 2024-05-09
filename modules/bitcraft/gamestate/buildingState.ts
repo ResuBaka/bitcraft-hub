@@ -12,13 +12,16 @@ export interface BuildingStateRow extends Entity {
 
 export function getBuildingStateRowsFromRows(rows: any): BuildingStateRow[] {
   const BuildingStateRow: BuildingStateRow[] = [];
+
   for (const row of rows) {
     BuildingStateRow.push(getBuildingStateRowFromRow(row));
   }
+
   return BuildingStateRow;
 }
+
 function getBuildingStateRowFromRow(row: any[]): BuildingStateRow {
-  const BuildingStateRow: BuildingStateRow = {
+  return {
     entity_id: row[0],
     claim_entity_id: row[1],
     direction_index: row[2],
@@ -26,13 +29,13 @@ function getBuildingStateRowFromRow(row: any[]): BuildingStateRow {
     constructed_by_player_entity_id: row[4],
     nickname: row[5],
   };
-  return BuildingStateRow;
 }
 
 export async function SqlRequestBuildingStateByConstuctorPlayerEntityId(
   entitys: Entity[],
 ): Promise<any> {
   let sql = "";
+
   for (const entity of entitys) {
     if (sql.length === 0) {
       sql = `SELECT * FROM BuildingState WHERE constructed_by_player_entity_id = ${entity.entity_id}`;
@@ -40,7 +43,9 @@ export async function SqlRequestBuildingStateByConstuctorPlayerEntityId(
       sql + ` or constructed_by_player_entity_id = '${entity.entity_id}'`;
     }
   }
+
   const result = await SQLRequest<any>(sql);
+
   return result[0].rows;
 }
 
@@ -48,6 +53,7 @@ export async function SqlRequesttBuildingStateByClaimEntityId(
   entitys: Entity[],
 ): Promise<any> {
   let sql = "";
+
   for (const entity of entitys) {
     if (sql.length === 0) {
       sql = `SELECT * FROM BuildingState WHERE claim_entity_id = ${entity.entity_id}`;
@@ -55,7 +61,9 @@ export async function SqlRequesttBuildingStateByClaimEntityId(
       sql = sql + ` or claim_entity_id = ${entity.entity_id}`;
     }
   }
+
   const result = await SQLRequest<any>(sql);
+
   return result[0].rows;
 }
 

@@ -6,6 +6,7 @@ import { type SkillDescRow } from "./skillDesc";
 export type Skills = {
   [skill_id: string]: number;
 };
+
 export interface ExpeirenceStateRow extends Entity {
   experience_stacks: Skills;
 }
@@ -17,421 +18,132 @@ export type ExtendedSkills = {
     level: number;
   };
 };
+
 export interface ExtendedExpeirenceStateRow extends Entity {
   experience_stacks: ExtendedSkills;
 }
-const levelingData = [
-  {
-    level: 1,
-    xp: 0,
-  },
-  {
-    level: 2,
-    xp: 640,
-  },
-  {
-    level: 3,
-    xp: 1330,
-  },
-  {
-    level: 4,
-    xp: 2090,
-  },
-  {
-    level: 5,
-    xp: 2920,
-  },
-  {
-    level: 6,
-    xp: 3830,
-  },
-  {
-    level: 7,
-    xp: 4820,
-  },
-  {
-    level: 8,
-    xp: 5890,
-  },
-  {
-    level: 9,
-    xp: 7070,
-  },
-  {
-    level: 10,
-    xp: 8350,
-  },
-  {
-    level: 11,
-    xp: 9740,
-  },
-  {
-    level: 12,
-    xp: 11260,
-  },
-  {
-    level: 13,
-    xp: 12920,
-  },
-  {
-    level: 14,
-    xp: 14730,
-  },
-  {
-    level: 15,
-    xp: 16710,
-  },
-  {
-    level: 16,
-    xp: 18860,
-  },
-  {
-    level: 17,
-    xp: 21210,
-  },
-  {
-    level: 18,
-    xp: 23770,
-  },
-  {
-    level: 19,
-    xp: 26560,
-  },
-  {
-    level: 20,
-    xp: 29600,
-  },
-  {
-    level: 21,
-    xp: 32920,
-  },
-  {
-    level: 22,
-    xp: 36550,
-  },
-  {
-    level: 23,
-    xp: 40490,
-  },
-  {
-    level: 24,
-    xp: 44800,
-  },
-  {
-    level: 25,
-    xp: 49490,
-  },
-  {
-    level: 26,
-    xp: 54610,
-  },
-  {
-    level: 27,
-    xp: 60200,
-  },
-  {
-    level: 28,
-    xp: 66290,
-  },
-  {
-    level: 29,
-    xp: 72930,
-  },
-  {
-    level: 30,
-    xp: 80170,
-  },
-  {
-    level: 31,
-    xp: 88060,
-  },
-  {
-    level: 32,
-    xp: 96670,
-  },
-  {
-    level: 33,
-    xp: 106060,
-  },
-  {
-    level: 34,
-    xp: 116300,
-  },
-  {
-    level: 35,
-    xp: 127470,
-  },
-  {
-    level: 36,
-    xp: 139650,
-  },
-  {
-    level: 37,
-    xp: 152930,
-  },
-  {
-    level: 38,
-    xp: 167410,
-  },
-  {
-    level: 39,
-    xp: 183200,
-  },
-  {
-    level: 40,
-    xp: 200420,
-  },
-  {
-    level: 41,
-    xp: 219200,
-  },
-  {
-    level: 42,
-    xp: 239680,
-  },
-  {
-    level: 43,
-    xp: 262020,
-  },
-  {
-    level: 44,
-    xp: 286370,
-  },
-  {
-    level: 45,
-    xp: 312930,
-  },
-  {
-    level: 46,
-    xp: 341890,
-  },
-  {
-    level: 47,
-    xp: 373480,
-  },
-  {
-    level: 48,
-    xp: 407920,
-  },
-  {
-    level: 49,
-    xp: 445480,
-  },
-  {
-    level: 50,
-    xp: 486440,
-  },
-  {
-    level: 51,
-    xp: 531110,
-  },
-  {
-    level: 52,
-    xp: 579820,
-  },
-  {
-    level: 53,
-    xp: 632940,
-  },
-  {
-    level: 54,
-    xp: 690860,
-  },
-  {
-    level: 55,
-    xp: 754030,
-  },
-  {
-    level: 56,
-    xp: 822920,
-  },
-  {
-    level: 57,
-    xp: 898040,
-  },
-  {
-    level: 58,
-    xp: 979960,
-  },
-  {
-    level: 59,
-    xp: 1069290,
-  },
-  {
-    level: 60,
-    xp: 1166710,
-  },
-  {
-    level: 61,
-    xp: 1272950,
-  },
-  {
-    level: 62,
-    xp: 1388800,
-  },
-  {
-    level: 63,
-    xp: 1515140,
-  },
-  {
-    level: 64,
-    xp: 1652910,
-  },
-  {
-    level: 65,
-    xp: 1803160,
-  },
-  {
-    level: 66,
-    xp: 1967000,
-  },
-  {
-    level: 67,
-    xp: 2145660,
-  },
-  {
-    level: 68,
-    xp: 2340500,
-  },
-  {
-    level: 69,
-    xp: 2552980,
-  },
-  {
-    level: 70,
-    xp: 2784680,
-  },
-  {
-    level: 71,
-    xp: 3037360,
-  },
-  {
-    level: 72,
-    xp: 3312900,
-  },
-  {
-    level: 73,
-    xp: 3613390,
-  },
-  {
-    level: 74,
-    xp: 3941070,
-  },
-  {
-    level: 75,
-    xp: 4298410,
-  },
-  {
-    level: 76,
-    xp: 4688090,
-  },
-  {
-    level: 77,
-    xp: 5113030,
-  },
-  {
-    level: 78,
-    xp: 5576440,
-  },
-  {
-    level: 79,
-    xp: 6081800,
-  },
-  {
-    level: 80,
-    xp: 6632890,
-  },
-  {
-    level: 81,
-    xp: 7233850,
-  },
-  {
-    level: 82,
-    xp: 7889210,
-  },
-  {
-    level: 83,
-    xp: 8603890,
-  },
-  {
-    level: 84,
-    xp: 9383250,
-  },
-  {
-    level: 85,
-    xp: 10233150,
-  },
-  {
-    level: 86,
-    xp: 11159970,
-  },
-  {
-    level: 87,
-    xp: 12170670,
-  },
-  {
-    level: 88,
-    xp: 13272850,
-  },
-  {
-    level: 89,
-    xp: 14474790,
-  },
-  {
-    level: 90,
-    xp: 15785510,
-  },
-  {
-    level: 91,
-    xp: 17214860,
-  },
-  {
-    level: 92,
-    xp: 18773580,
-  },
-  {
-    level: 93,
-    xp: 20473370,
-  },
-  {
-    level: 94,
-    xp: 22327010,
-  },
-  {
-    level: 95,
-    xp: 24348420,
-  },
-  {
-    level: 96,
-    xp: 26552780,
-  },
-  {
-    level: 97,
-    xp: 28956650,
-  },
-  {
-    level: 98,
-    xp: 31578090,
-  },
-  {
-    level: 99,
-    xp: 34436800,
-  },
-  {
-    level: 100,
-    xp: 37554230,
-  },
-];
+
+export type LevelList = {
+  [level: number]: number;
+};
+
+export const levelingData: LevelList = {
+  1: 0,
+  2: 640,
+  3: 1330,
+  4: 2090,
+  5: 2920,
+  6: 3830,
+  7: 4820,
+  8: 5890,
+  9: 7070,
+  10: 8350,
+  11: 9740,
+  12: 11260,
+  13: 12920,
+  14: 14730,
+  15: 16710,
+  16: 18860,
+  17: 21210,
+  18: 23770,
+  19: 26560,
+  20: 29600,
+  21: 32920,
+  22: 36550,
+  23: 40490,
+  24: 44800,
+  25: 49490,
+  26: 54610,
+  27: 60200,
+  28: 66290,
+  29: 72930,
+  30: 80170,
+  31: 88060,
+  32: 96670,
+  33: 106060,
+  34: 116300,
+  35: 127470,
+  36: 139650,
+  37: 152930,
+  38: 167410,
+  39: 183200,
+  40: 200420,
+  41: 219200,
+  42: 239680,
+  43: 262020,
+  44: 286370,
+  45: 312930,
+  46: 341890,
+  47: 373480,
+  48: 407920,
+  49: 445480,
+  50: 486440,
+  51: 531110,
+  52: 579820,
+  53: 632940,
+  54: 690860,
+  55: 754030,
+  56: 822920,
+  57: 898040,
+  58: 979960,
+  59: 1069290,
+  60: 1166710,
+  61: 1272950,
+  62: 1388800,
+  63: 1515140,
+  64: 1652910,
+  65: 1803160,
+  66: 1967000,
+  67: 2145660,
+  68: 2340500,
+  69: 2552980,
+  70: 2784680,
+  71: 3037360,
+  72: 3312900,
+  73: 3613390,
+  74: 3941070,
+  75: 4298410,
+  76: 4688090,
+  77: 5113030,
+  78: 5576440,
+  79: 6081800,
+  80: 6632890,
+  81: 7233850,
+  82: 7889210,
+  83: 8603890,
+  84: 9383250,
+  85: 10233150,
+  86: 11159970,
+  87: 12170670,
+  88: 13272850,
+  89: 14474790,
+  90: 15785510,
+  91: 17214860,
+  92: 18773580,
+  93: 20473370,
+  94: 22327010,
+  95: 24348420,
+  96: 26552780,
+  97: 28956650,
+  98: 31578090,
+  99: 34436800,
+  100: 7554230,
+};
+
 export function XPToLevel(xp: number): number {
-  for (const data of levelingData) {
-    if (xp < data.xp) {
-      return data.level - 1;
+  for (const level in Object.keys(levelingData)) {
+    const levelXp = levelingData[level];
+    if (xp < levelXp) {
+      return parseInt(level);
     }
   }
+
   return 100;
 }
+
 function getExperience(rows: any[]): Skills {
   const skills: Skills = {};
+
   for (const row of rows) {
     skills[row[0]] = row[1];
   }
@@ -443,6 +155,7 @@ export function getLeaderboard(
   expeirence: ExpeirenceStateRow[],
 ) {
   const leaderboard: { [key: string]: ExpeirenceStateRow[] } = {};
+
   for (const skill of skills) {
     const expeirenceCopy = [];
 
@@ -453,22 +166,25 @@ export function getLeaderboard(
       (a, b) => b.experience_stacks[skill.id] - a.experience_stacks[skill.id],
     );
   }
+
   return leaderboard;
 }
+
 export function getExperienceRowsFromRows(rows: any[][]): ExpeirenceStateRow[] {
   const playerRows: ExpeirenceStateRow[] = [];
+
   for (const row of rows) {
     playerRows.push(getExperienceRowFromRow(row));
   }
+
   return playerRows;
 }
 
 function getExperienceRowFromRow(row: any[]): ExpeirenceStateRow {
-  const PlayerState: ExpeirenceStateRow = {
+  return {
     entity_id: row[0] as unknown as number,
     experience_stacks: getExperience(row[1]),
   };
-  return PlayerState;
 }
 
 export function extendExperienceRowFromRow(
@@ -479,11 +195,12 @@ export function extendExperienceRowFromRow(
   skills: SkillDescRow[],
 ): ExtendedExpeirenceStateRow {
   const data: ExtendedSkills = {};
-  console.log(expeirence);
+
   for (const skill of skills) {
     if (skill.name === "ANY") {
       continue;
     }
+
     data[skill.name] = {
       experience: expeirence.experience_stacks[skill.id],
       level: XPToLevel(expeirence.experience_stacks[skill.id]),
@@ -493,11 +210,11 @@ export function extendExperienceRowFromRow(
         ) + 1,
     };
   }
-  const experienceData: ExtendedExpeirenceStateRow = {
+
+  return {
     entity_id: expeirence.entity_id,
     experience_stacks: data,
   };
-  return experienceData;
 }
 
 export async function SqlRequestAllPlayers(): Promise<any> {

@@ -1,5 +1,6 @@
 import SQLRequest from "../runtime/SQLRequest";
 import { readFileSync } from "node:fs";
+
 export interface BuildingDescRow {
   id: number;
   functions: any;
@@ -16,13 +17,16 @@ export interface BuildingDescRow {
 
 export function getBuildingDescRowsFromRows(rows: any[]): BuildingDescRow[] {
   const BuildingStateRow: BuildingDescRow[] = [];
+
   for (const row of rows) {
     BuildingStateRow.push(getBuildingDescRowFromRow(row));
   }
+
   return BuildingStateRow;
 }
+
 function getBuildingDescRowFromRow(row: any[]): BuildingDescRow {
-  const BuildingStateRow: BuildingDescRow = {
+  return {
     id: row[0],
     functions: row[1],
     name: row[2],
@@ -35,18 +39,21 @@ function getBuildingDescRowFromRow(row: any[]): BuildingDescRow {
     wilderness: row[9],
     footprint: row[10],
   };
-  return BuildingStateRow;
 }
+
 export function getBuildingDescIdMapFromRows(
   rows: any[],
 ): Map<number, BuildingDescRow> {
   const BuildingStateRow: Map<number, BuildingDescRow> = new Map();
+
   for (const row of rows) {
     const data = getBuildingDescRowFromRow(row);
     BuildingStateRow.set(data.id, data);
   }
+
   return BuildingStateRow;
 }
+
 export async function SqlRequestBuildingDesc(): Promise<any> {
   const result = await SQLRequest<any>(`SELECT * BuildingDesc`);
   return result[0].rows;

@@ -1,13 +1,13 @@
 import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
 import {
+  type ExpendedRefrence,
   getItemFromItemId,
   getItemsRefrenceFromRows,
-  type ExpendedRefrence,
   type ItemRefrence,
   type ItemRow,
 } from "./item";
-import { getCagoDescFromCargoId, type CargoDescRow } from "./cargoDesc";
+import { type CargoDescRow, getCagoDescFromCargoId } from "./cargoDesc";
 
 export interface TradingOrderStateRow extends Entity {
   building_entity_id: number;
@@ -24,13 +24,16 @@ export function getTradingOrderStateRowsFromRows(
   rows: any[],
 ): TradingOrderStateRow[] {
   const BuildingStateRow: TradingOrderStateRow[] = [];
+
   for (const row of rows) {
     BuildingStateRow.push(getTradingOrderStateRowFromRow(row));
   }
+
   return BuildingStateRow;
 }
+
 function getTradingOrderStateRowFromRow(row: any[]): TradingOrderStateRow {
-  const BuildingStateRow: TradingOrderStateRow = {
+  return {
     entity_id: row[0],
     building_entity_id: row[1],
     remaining_stock: row[2],
@@ -39,7 +42,6 @@ function getTradingOrderStateRowFromRow(row: any[]): TradingOrderStateRow {
     required_items: getItemsRefrenceFromRows(row[5]),
     required_cargo_id: row[6],
   };
-  return BuildingStateRow;
 }
 
 export function replaceTradeOrdersCargoIdWithCargo(
@@ -47,9 +49,11 @@ export function replaceTradeOrdersCargoIdWithCargo(
   cargo_rows: CargoDescRow[],
 ): TradingOrderStateRow[] {
   const list: TradingOrderStateRow[] = [];
+
   for (const row of rows) {
     list.push(replaceTradeOrderCargoIdWithCargo(row, cargo_rows));
   }
+
   return list;
 }
 
@@ -58,9 +62,11 @@ export function replaceItems(
   itemRefrences: ItemRefrence[],
 ): ExpendedRefrence[] {
   const list: ExpendedRefrence[] = [];
+
   for (const itemRefrence of itemRefrences) {
     list.push(getItemFromItemId(itemRows, itemRefrence));
   }
+
   return list;
 }
 
@@ -68,8 +74,9 @@ export function replaceCargos(
   itemRows: CargoDescRow[],
   itemRefrences: number[],
 ): CargoDescRow[] {
+  if (!itemRefrences) return [];
+
   const list: CargoDescRow[] = [];
-  if (!itemRefrences) return list;
 
   for (const itemRefrence of itemRefrences) {
     list.push(getCagoDescFromCargoId(itemRows, itemRefrence));
@@ -81,12 +88,11 @@ export function replaceTradeOrderItemIdWithItem(
   tradeOrder: TradingOrderStateRow,
   items: ItemRow[],
 ): TradingOrderStateRow {
-  const expendedTradeOrder: TradingOrderStateRow = {
+  return {
     ...tradeOrder,
     offer_items: replaceItems(items, tradeOrder.offer_items),
     required_items: replaceItems(items, tradeOrder.required_items),
   };
-  return expendedTradeOrder;
 }
 
 export function replaceTradeOrdersItemIdWithItem(
@@ -94,21 +100,23 @@ export function replaceTradeOrdersItemIdWithItem(
   items: ItemRow[],
 ): TradingOrderStateRow[] {
   const list: TradingOrderStateRow[] = [];
+
   for (const row of rows) {
     list.push(replaceTradeOrderItemIdWithItem(row, items));
   }
+
   return list;
 }
+
 export function replaceTradeOrderCargoIdWithCargo(
   tradeOrder: TradingOrderStateRow,
   cargo_rows: CargoDescRow[],
-) {
-  const expendedTradeOrder: TradingOrderStateRow = {
+): TradingOrderStateRow {
+  return {
     ...tradeOrder,
     offer_cargo: replaceCargos(cargo_rows, tradeOrder.offer_cargo_id),
     required_cargo: replaceCargos(cargo_rows, tradeOrder.required_cargo_id),
   };
-  return expendedTradeOrder;
 }
 
 export function readTradeOrderStateRows() {

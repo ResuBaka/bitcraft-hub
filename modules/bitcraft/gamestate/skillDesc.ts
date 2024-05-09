@@ -7,23 +7,25 @@ export interface SkillDescRow {
   icon_asset_name: string;
   title: string;
 }
+
 export function getSkillRowsFromRows(rows: any[]): SkillDescRow[] {
   const playerRows: SkillDescRow[] = [];
+
   for (const row of rows) {
     playerRows.push(getSkillRowFromRow(row));
   }
+
   return playerRows;
 }
 
 function getSkillRowFromRow(row: any[]): SkillDescRow {
-  const skill: SkillDescRow = {
+  return {
     id: row[0],
     name: row[1],
     description: row[1],
     icon_asset_name: row[1],
     title: row[1],
   };
-  return skill;
 }
 
 export function readSkillRows() {

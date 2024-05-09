@@ -15,12 +15,14 @@ export type ItemRow = {
   compendium_entry: boolean;
   item_list_id: number;
 };
+
 export type ItemRefrence = {
   item_id: Number;
   quantity: Number;
   item_type: "Item" | "Cargo";
   durability?: Number;
 };
+
 export type ExpendedRefrence = {
   item_id: Number;
   item: ItemRow;
@@ -31,6 +33,7 @@ export type ExpendedRefrence = {
 
 export function getItemsRefrenceFromRows(rows: any[]): ItemRefrence[] {
   const itemRows: ItemRefrence[] = [];
+
   for (const row of rows) {
     const item = getItemRefrenceFromRow(row);
     if (item !== undefined) {
@@ -40,34 +43,35 @@ export function getItemsRefrenceFromRows(rows: any[]): ItemRefrence[] {
 
   return itemRows;
 }
+
 export function getItemRefrenceFromRow(item: any[]): ItemRefrence {
-  const itemRefrence: ItemRefrence = {
+  return {
     item_id: item[0],
     quantity: item[1],
     item_type: Object.keys(item[2])[0] === "0" ? "Item" : "Cargo",
   };
-
-  return itemRefrence;
 }
+
 export function getItemRowsFromRows(rows: any[]): ItemRow[] {
   const itemRows: ItemRow[] = [];
+
   for (const row of rows) {
     itemRows.push(getItemRowFromRow(row));
   }
 
   return itemRows;
 }
+
 export function getItemFromItemId(
   items: ItemRow[],
   item_refrence: ItemRefrence,
 ): ExpendedRefrence {
-  const item: ExpendedRefrence = {
+  return {
     ...item_refrence,
     item: items.filter((item) => item.id === item_refrence.item_id)[0],
   };
-
-  return item;
 }
+
 function getItemRowFromRow(i: any[]): ItemRow {
   return {
     id: i[0],
