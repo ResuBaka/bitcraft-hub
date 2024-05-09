@@ -43,7 +43,7 @@ const item_list = getItemListRowsFromRows(readItemListRows())
 
 export default async function RequestAllPlayerInfo() {
   console.time("add");
-  const abc = getAllConsumedItemsFromItem(rows, 1050001,items,item_list);
+  const abc = getAllConsumedItemsFromItem(rows, 2070007,items,item_list);
   console.timeEnd("add");
   const data = JSON.stringify(abc)
   fs.writeFile ("input.json", data, function(err) {

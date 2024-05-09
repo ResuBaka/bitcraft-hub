@@ -149,7 +149,6 @@ function toCraftedItemStacksRequirement(rows: number[][]) {
 
   return temp;
 }
-let counter = 0
 export function getAllConsumedItemsFromItem(
   rows: CraftingRecipeRow[],
   item_id: number,
@@ -175,25 +174,24 @@ export function getAllConsumedItemsFromItem(
   );
 
   const list = [];
+  const cache = {}
   for (const posibilitie of posibilities) {
     list.push(
-      getAllConsumedItemsFromStack(rows, posibilitie,items,items_list, [posibilitie.id]),
+      getAllConsumedItemsFromStack(rows, posibilitie,items,items_list, [posibilitie.id], cache),
     );
   }
-  console.log(counter)
   return list;
 }
+
 export function getAllConsumedItemsFromStack(
   rows: CraftingRecipeRow[],
   item: CraftingRecipeRow,
   items: ItemRow[],
   items_list: ItemListRow[],
   alreadyUsed: number[],
+  cache: {[key: string] : any}
 ): CraftingRecipeRow {
-  counter += 1
   for (const itemstack of item.consumed_item_stacks as ItemStackWithInner[]) {
-
-
     const posibilities_item_list = items_list.filter((item_list) => {
       return item_list.items.filter((item) => {
         return item.item_id == itemstack.item_id;
@@ -218,11 +216,15 @@ export function getAllConsumedItemsFromStack(
       if (alreadyUsed.includes(posibilitie.id)) {
         continue;
       }
+      if(cache[posibilitie.id] !== undefined){
+        list.push(cache[posibilitie.id])
+        continue
+      }
       list.push(
         getAllConsumedItemsFromStack(rows, posibilitie,items,items_list, [
           ...alreadyUsed,
           posibilitie.id,
-        ]),
+        ], cache),
       );
     }
     itemstack.inner = list
@@ -230,15 +232,30 @@ export function getAllConsumedItemsFromStack(
   const object  = {}
   const consumed_item_stacks = []
   for(const itemstack of item.consumed_item_stacks){
-    consumed_item_stacks.push(getItemFromItemId(items,itemstack))
+    const itemFromId = getItemFromItemId(items,itemstack)
+    let newItem = {
+      item_id: itemFromId.item_id,
+      name: itemFromId?.item?.name,
+      quantity: itemFromId.quantity,
+      inner: itemstack.inner
+    }
+    consumed_item_stacks.push(newItem)
   }
   object.consumed_item_stacks = consumed_item_stacks
   const crafted_item_stacks = []
   for(const itemstack of item.crafted_item_stacks){
-    crafted_item_stacks.push(getItemFromItemId(items,itemstack))
+    const itemFromId = getItemFromItemId(items,itemstack)
+    let newItem = {
+      item_id: itemFromId.item_id,
+      name: itemFromId?.item?.name,
+      quantity: itemFromId.quantity,
+      inner: itemstack.inner
+    }
+    crafted_item_stacks.push(newItem)
   }
   object.crafted_item_stacks = crafted_item_stacks
   object.name = item.name
+  cache[item.id] = object
   return object;
 }
 export function readCraftingRecipeRows(): any[][] {
