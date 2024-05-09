@@ -17,19 +17,19 @@ export type ItemRow = {
   item_list_id: number;
 };
 export type ItemRefrence = {
-  item_id: Number;
-  quantity: Number;
+  item_id: number;
+  quantity: number;
   item_type: "Item" | "Cargo";
-  durability?: Number;
+  durability?: number;
 };
 export type ExpendedRefrence = {
-  item_id: Number;
+  item_id: number;
   item: ItemRow;
-  quantity: Number;
+  quantity: number;
   item_type: "Item" | "Cargo";
-  durability?: Number;
-  discovery_score?: Number,
-  consumption_chance?: Number,
+  durability?: number;
+  discovery_score?: number,
+  consumption_chance?: number,
 };
 
 export function getItemsRefrenceFromRows(rows: any[][]) {

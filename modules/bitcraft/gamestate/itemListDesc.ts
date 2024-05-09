@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { getSome } from "./entity";
 import { getItemRefrenceFromRow, getItemsRefrenceFromRows, type ItemRefrence } from "./item";
 
-export type ItemRow = {
+export type ItemListRow = {
   unique_id: number;
   id: number;
   name: string;
@@ -11,7 +11,7 @@ export type ItemRow = {
   item_list_id: number;
 };
 export function getItemListRowsFromRows(rows: any[][]) {
-  const itemRows: ItemRow[] = [];
+  const itemRows: ItemListRow[] = [];
   for (const row of rows) {
     itemRows.push(getItemListRowFromRow(row));
   }

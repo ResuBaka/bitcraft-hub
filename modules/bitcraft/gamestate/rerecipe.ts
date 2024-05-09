@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { getItemFromItemId, type ExpendedRefrence, type ItemRefrence, type ItemRow } from "./item";
+import type { ItemListRow } from "./itemListDesc";
 
 interface ItemStack extends ItemRefrence {
   discovery_score: 1;
@@ -148,48 +149,77 @@ function toCraftedItemStacksRequirement(rows: number[][]) {
 
   return temp;
 }
+let counter = 0
 export function getAllConsumedItemsFromItem(
   rows: CraftingRecipeRow[],
   item_id: number,
-  items: ItemRow[]
+  items: ItemRow[],
+  items_list: ItemListRow[]
 ): CraftingRecipeRow[] {
+
+  const posibilities_item_list = items_list.filter((item_list) => 
+    item_list.items.filter((item) => {
+      return item.item_id == item_id;
+    }).length > 0,
+  );
+  const posibilities_item_list_array = posibilities_item_list.map((item_list) => item_list.id)
+  const posibilities_items = items.filter((item) => 
+    posibilities_item_list_array.includes(item.item_list_id)
+  );
+  const posibilities_items_array = posibilities_items.map((item_list) => item_list.id)
   const posibilities = rows.filter(
     (recipe) =>
       recipe.crafted_item_stacks.filter((cis) => {
-        return cis.item_id == item_id;
+        return cis.item_id == item_id || posibilities_items_array.includes(cis.item_id);
       }).length > 0,
   );
+
   const list = [];
   for (const posibilitie of posibilities) {
     list.push(
-      getAllConsumedItemsFromStack(rows, posibilitie,items, [posibilitie.id]),
+      getAllConsumedItemsFromStack(rows, posibilitie,items,items_list, [posibilitie.id]),
     );
   }
-  console.log(list)
-  console.log("ABC")
+  console.log(counter)
   return list;
 }
-
 export function getAllConsumedItemsFromStack(
   rows: CraftingRecipeRow[],
   item: CraftingRecipeRow,
   items: ItemRow[],
+  items_list: ItemListRow[],
   alreadyUsed: number[],
 ): CraftingRecipeRow {
+  counter += 1
   for (const itemstack of item.consumed_item_stacks as ItemStackWithInner[]) {
+
+
+    const posibilities_item_list = items_list.filter((item_list) => {
+      return item_list.items.filter((item) => {
+        return item.item_id == itemstack.item_id;
+      }).length > 0
+    });
+    const posibilities_item_list_array = posibilities_item_list.map((item_list) => item_list.id)
+    const posibilities_items = items.filter((item) => 
+      posibilities_item_list_array.includes(item.item_list_id)
+    );
+    const posibilities_items_array = posibilities_items.map((item_list) => item_list.id)
+
     const posibilities = rows.filter(
       (recipe) =>
         recipe.crafted_item_stacks.filter((cis) => {
-          return cis.item_id == itemstack.item_id;
+          return cis.item_id == itemstack.item_id  || posibilities_items_array.includes(cis.item_id);
         }).length > 0,
     );
+
+
     const list = [];
     for (const posibilitie of posibilities) {
       if (alreadyUsed.includes(posibilitie.id)) {
         continue;
       }
       list.push(
-        getAllConsumedItemsFromStack(rows, posibilitie,items, [
+        getAllConsumedItemsFromStack(rows, posibilitie,items,items_list, [
           ...alreadyUsed,
           posibilitie.id,
         ]),
@@ -197,17 +227,19 @@ export function getAllConsumedItemsFromStack(
     }
     itemstack.inner = list
   }
+  const object  = {}
   const consumed_item_stacks = []
   for(const itemstack of item.consumed_item_stacks){
     consumed_item_stacks.push(getItemFromItemId(items,itemstack))
   }
-  item.consumed_item_stacks = consumed_item_stacks
+  object.consumed_item_stacks = consumed_item_stacks
   const crafted_item_stacks = []
   for(const itemstack of item.crafted_item_stacks){
     crafted_item_stacks.push(getItemFromItemId(items,itemstack))
   }
-  item.crafted_item_stacks = crafted_item_stacks
-  return item;
+  object.crafted_item_stacks = crafted_item_stacks
+  object.name = item.name
+  return object;
 }
 export function readCraftingRecipeRows(): any[][] {
   return JSON.parse(

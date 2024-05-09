@@ -1,4 +1,5 @@
 import { getItemRowsFromRows, readItemRows } from "~/modules/bitcraft/gamestate/item";
+import { getItemListRowsFromRows, readItemListRows } from "~/modules/bitcraft/gamestate/itemListDesc";
 import {
   getAllConsumedItemsFromItem,
   getCraftingRecipesFromRows,
@@ -7,6 +8,8 @@ import {
 
 const rows = getCraftingRecipesFromRows(readCraftingRecipeRows());
 const items = getItemRowsFromRows(readItemRows());
+const item_list = getItemListRowsFromRows(readItemListRows())
+
 export default defineEventHandler((event) => {
   const { neededInCrafting, producedInCrafting, neededToCraft } =
     getQuery(event);
@@ -20,7 +23,7 @@ export default defineEventHandler((event) => {
     );
   }
   if (neededToCraft) {
-    const abc = getAllConsumedItemsFromItem(rows, neededToCraft,items);
+    const abc = getAllConsumedItemsFromItem(rows, neededToCraft,items,item_list);
     const stringifyed = JSON.stringify(abc)
     return stringifyed
   }
