@@ -28,11 +28,5 @@ const filteredItems = computed(() => {
 </script>
 
 <template>
-  <v-row>
-    <v-col col="12" md="4">
-      <v-card >
-        <v-card-title>Items</v-card-title>
-      </v-card>
-    </v-col>
-  </v-row>
+  <bitcraft-leaderboard></bitcraft-leaderboard>
 </template>
