@@ -69,15 +69,15 @@ table {
                 <h1>Leaderboards</h1>
               </v-sheet>
             </div>
-            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-3">
+            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-0 mb-md-3">
               <v-btn variant="flat" @click="selectedSkills = 'by_exp'" :active="selectedSkills === 'by_exp'" >Total experience</v-btn>
               <v-btn variant="flat" @click="selectedSkills = 'by_level'" :active="selectedSkills === 'by_level'" >Total level</v-btn>
               <v-btn v-for="i in skills.slice(0, 3)" variant="flat" @click="selectedSkills = i.name" :active="selectedSkills === i.name">{{ i.name }}</v-btn>
             </div>
-            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-3">
+            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-0 mb-md-3">
               <v-btn v-for="i in skills.slice(3, 8)" variant="flat" @click="selectedSkills = i.name" :active="selectedSkills === i.name">{{ i.name }}</v-btn>
             </div>
-            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-3">
+            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-0 mb-md-3">
               <v-btn v-for="i in skills.slice(8, 14)" variant="flat" @click="selectedSkills = i.name" :active="selectedSkills === i.name">{{ i.name }}</v-btn>
             </div>
           </v-col>
