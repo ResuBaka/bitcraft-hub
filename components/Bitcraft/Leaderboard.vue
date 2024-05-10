@@ -43,16 +43,6 @@ let selectedSkills = ref("Fishing");
     width: 14rem;
   }
 }
-
-table {
-  tbody {
-    tr {
-      &:hover {
-        background: linear-gradient(rgba(gray, 0.1), rgba(gray, 0.1));
-      }
-    }
-  }
-}
 </style>
 
 <template>
@@ -84,49 +74,17 @@ table {
         </v-row>
         <v-row v-if="selectedSkills !== 'by_exp' && selectedSkills !== 'by_level'">
           <v-col lass="v-col-12 pa-0">
-            <v-data-table density="compact"
-                                    :items="topPlayers[selectedSkills]"
-                                    :headers="[
-                                    { title: 'Rank', value: 'rank', align: 'start' },
-                                    { title: 'Player', value: 'player', align: 'center' },
-                                    { title: 'Level', value: 'level', align: 'center' },
-                                    { title: 'Experience', value: 'exp', align: 'end'}
-                                ]"
-                                    hover
-                                    items-per-page="100"
-                        >
-                        <template v-slot:item.rank="{ index }">
-                          # {{ index + 1 }}
-                        </template>
-                        <template v-slot:item.level="{ item }">
-                          {{ item.experience_stacks[selectedSkills].level }}
-                        </template>
-                        <template v-slot:item.player="{ item }">
-                          <NuxtLink :to="{ path: 'players/' + item.entity_id }">
-                            {{ entityIdToName(item.entity_id) }}
-                          </NuxtLink>
-                        </template>
-                        <template v-slot:item.exp="{ item }">
-                          {{ numberFormat.format(item.experience_stacks[selectedSkills].experience) }}
-                        </template>
-                        <template #bottom></template>
-                      </v-data-table>
-          </v-col>
-        </v-row>
-        <v-row v-if="selectedSkills === 'by_exp'">
-          <v-col lass="v-col-12 pa-0">
-            <v-data-table
+            <v-data-table 
               density="compact"
               :items="topPlayers[selectedSkills]"
               :headers="[
-                { title: 'Rank', value: 'rank', align: 'start' },
-                { title: 'Player', value: 'player', align: 'center' },
-                { title: 'Level', value: 'level', align: 'center' },
-                { title: 'Experience', value: 'exp', align: 'end' },
+              { title: 'Rank', value: 'rank', align: 'start' },
+              { title: 'Player', value: 'player', align: 'center' },
+              { title: 'Level', value: 'level', align: 'center' },
+              { title: 'Experience', value: 'exp', align: 'end'}
               ]"
               hover
-              items-per-page="100"
-            >
+              items-per-page="100">
               <template v-slot:item.rank="{ index }">
                 # {{ index + 1 }}
               </template>
@@ -139,8 +97,35 @@ table {
                 </NuxtLink>
               </template>
               <template v-slot:item.exp="{ item }">
-                {{ item.experience_stacks[selectedSkills].experience }}
+                {{ numberFormat.format(item.experience_stacks[selectedSkills].experience) }}
               </template>
+              <template #bottom></template>
+            </v-data-table>
+          </v-col>
+        </v-row>
+        <v-row v-if="selectedSkills === 'by_exp'">
+          <v-col lass="v-col-12 pa-0">
+            <v-data-table
+              density="compact"
+              :items=topPlayersByExp
+              :headers="[
+                { title: 'Rank', value: 'rank', align: 'start' },
+                { title: 'Player', value: 'player', align: 'center' },                
+                { title: 'Experience', value: 'exp', align: 'end' },
+              ]"
+              hover
+              items-per-page="100">
+                <template v-slot:item.rank="{ index }">
+                  # {{ index + 1 }}
+                </template>
+                <template v-slot:item.player="{ item }">
+                  <NuxtLink :to="{ path: 'players/' + item.entity_id }">
+                    {{ entityIdToName(item.entity_id) }}
+                  </NuxtLink>
+                </template>
+                <template v-slot:item.exp="{ item }">
+                  {{  numberFormat.format(item.exp) }}
+                </template>
               <template #bottom></template>
             </v-data-table>
           </v-col>
@@ -149,40 +134,25 @@ table {
           <v-col lass="v-col-12 pa-0">
             <v-data-table
               density="compact"
-              :items="topPlayersByLvl"
+              :items=topPlayersByLvl
               :headers="[
-                { title: 'Rank', value: 'rank' },
-                { title: 'Player', value: 'player' },
-                { title: 'Total Level', value: 'level' },
+                { title: 'Rank', value: 'rank', align: 'start' },
+                { title: 'Player', value: 'player', align: 'center' },                
+                { title: 'Level', value: 'level', align: 'end' },
               ]"
-              items-per-page="100"
-            >
-              <template v-slot:headers="{ columns }">
-                <tr>
-                  <template v-for="column in columns" :key="column.key">
-                    <th
-                      :class="{
-                        'text-left': column.key === 'rank',
-                        'text-center': column.key === 'player',
-                        'text-right': column.key === 'level',
-                      }"
-                    >
-                      <span>{{ column.title }}</span>
-                    </th>
-                  </template>
-                </tr>
-              </template>
-              <template v-slot:item="{ item, index }">
-                <tr>
-                  <td># {{ index + 1 }}</td>
-                  <td class="text-center">
-                    <NuxtLink :to="{ path: 'players/' + item.entity_id }">
-                      {{ entityIdToName(item.entity_id) }}
-                    </NuxtLink>
-                  </td>
-                  <td class="text-right">{{ item.lvl }}</td>
-                </tr>
-              </template>
+              hover
+              items-per-page="100">
+                <template v-slot:item.rank="{ index }">
+                  # {{ index + 1 }}
+                </template>
+                <template v-slot:item.player="{ item }">
+                  <NuxtLink :to="{ path: 'players/' + item.entity_id }">
+                    {{ entityIdToName(item.entity_id) }}
+                  </NuxtLink>
+                </template>
+                <template v-slot:item.level="{ item }">
+                  {{  numberFormat.format(item.lvl) }}
+                </template>
               <template #bottom></template>
             </v-data-table>
           </v-col>
