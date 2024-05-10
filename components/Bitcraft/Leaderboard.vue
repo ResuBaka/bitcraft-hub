@@ -2,7 +2,9 @@
 const numberFormat = new Intl.NumberFormat(undefined);
 
 const {
-  data: leaderboard, pending, error, refresh, } = await useFetch("/api/bitcraft/leaderboard");
+  data: leaderboard, pending, error, refresh, } = await useFetch("/api/bitcraft/leaderboard", {
+    lazy: true
+  });
 
 const topPlayers = computed(() => {
   return leaderboard?.value?.leaderboard ?? {};
