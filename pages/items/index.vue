@@ -4,8 +4,8 @@ import { watchThrottled } from "@vueuse/shared";
 const page = ref(1);
 const perPage = 24;
 
-const tag = ref(null);
-const tier = ref(null);
+const tag = ref<string | null>(null);
+const tier = ref<number | null>(null);
 const search = ref<string | null>("");
 
 const route = useRoute();
@@ -14,72 +14,69 @@ const router = useRouter();
 search.value = (route.query.search as string) ?? "";
 tag.value = (route.query.tag as string) ?? null;
 
-const tmpTier = (route.query.tier as string) ?? null;
-const tmpPage = (route.query.page as string) ?? null;
 
-if (tmpTier) {
-  tier.value = parseInt(tmpTier);
+if (route.query.tier) {
+  tier.value = parseInt(route.query.tier);
 }
-if (tmpPage) {
-  page.value = parseInt(tmpPage);
+if (route.query.page) {
+  page.value = parseInt(route.query.page);
 }
 
-const { data: items, pending } = useFetch(() => {
-  const url = new URLSearchParams();
-
-  if (search.value) {
-    url.append("search", search.value);
-  }
-
-  if (tag.value) {
-    url.append("tag", tag.value);
-  }
-
-  if (tier.value) {
-    url.append("tier", tier.value.toString());
-  }
-
-  if (page.value) {
-    url.append("page", page.value.toString());
-  }
-
-  if (perPage) {
-    url.append("perPage", perPage.toString());
-  }
-
-  const querys = url.toString();
-
-  if (querys) {
-    return `/api/bitcraft/items?${querys}`;
-  }
-
-  return `/api/bitcraft/items`;
-});
-
-watchThrottled(
-  () => [search.value, tag.value, tier.value, page.value],
-  () => {
-    const newQuery = {};
+const { data: items, pending, refresh } = await useLazyFetch(`/api/bitcraft/items`, {
+  onRequest: ({ options }) => {
+    options.query = options.query || {};
 
     if (search.value) {
-      newQuery.search = search.value;
-    }
-
-    if (tag.value) {
-      newQuery.tag = tag.value;
-    }
-
-    if (tier.value) {
-      newQuery.tier = tier.value;
+      options.query.search = search.value
     }
 
     if (page.value) {
-      newQuery.page = page.value;
+      options.query.page = page.value
     }
 
-    router.push({ query: newQuery });
-  },
-  { throttle: 50 },
+    if (tag.value) {
+      options.query.tag = tag.value
+    }
+
+    if (tier.value) {
+      options.query.tier = tier.value
+    }
+
+    if (perPage) {
+      options.query.perPage = perPage
+    }
+
+    if (Object.keys(options.query).length > 2) {
+      const query = { ...options.query };
+      delete query.perPage;
+      router.push({ query });
+    } else if (options.query.page <= 1) {
+      router.push({});
+    }
+  }
+});
+
+const changePage = (value: number) => {
+  page.value = value;
+  router.push({
+    query: {
+      ...route.query,
+      page: value,
+    },
+  });
+  refresh();
+};
+
+watchThrottled(
+    () => [search.value, tag.value, tier.value],
+    (value, oldValue) => {
+      if (value[0] !== oldValue[0] || value[1] !== oldValue[1] || value[2] !== oldValue[2]) {
+        page.value = 1;
+      }
+
+      refresh();
+    },
+    { throttle: 50 },
 );
 
 const currentItems = computed(() => {
@@ -153,6 +150,7 @@ const length = computed(() => {
   <v-row>
     <v-col cols="12">
       <v-pagination
+          @update:model-value="changePage"
           v-model="page"
           :length="length"
       ></v-pagination>

@@ -11,54 +11,65 @@ const router = useRouter();
 
 const showEmptySupplies = ref(false);
 
-const tmpPage = (route.query.page as string) ?? null;
-
-if (tmpPage) {
-  page.value = parseInt(tmpPage);
+if (route.query.search) {
+  search.value = route.query.search as string;
 }
 
-const { data: claims, pending } = useFetch(() => {
-  const url = new URLSearchParams();
+if (route.query.page) {
+  page.value = parseInt(route.query.page);
+}
 
-  if (search.value) {
-    url.append("search", search.value);
-  }
-
-  if (page.value) {
-    url.append("page", page.value.toString());
-  }
-
-  if (perPage) {
-    url.append("page", perPage.toString());
-  }
-
-  url.append("showZeroSupplies", showEmptySupplies.value.toString());
-
-  const querys = url.toString();
-
-  if (querys) {
-    return `/api/bitcraft/claims?${querys}`;
-  }
-
-  return `/api/bitcraft/claims`;
-});
-
-watchThrottled(
-  () => [search.value, page.value],
-  () => {
-    const newQuery = {};
+const { data: claims, pending, refresh } = await useLazyFetch(`/api/bitcraft/claims`, {
+  onRequest: ({ options }) => {
+    options.query = options.query || {};
 
     if (search.value) {
-      newQuery.search = search.value;
+      options.query.search = search.value
     }
 
     if (page.value) {
-      newQuery.page = page.value;
+      options.query.page = page.value
     }
 
-    router.push({ query: newQuery });
-  },
-  { throttle: 50 },
+    if (perPage) {
+      options.query.perPage = perPage
+    }
+
+    if (showEmptySupplies.value) {
+      options.query.ses = showEmptySupplies.value.toString();
+    }
+
+    if (Object.keys(options.query).length > 2) {
+      const query = { ...options.query };
+      delete query.perPage;
+      router.push({ query });
+    } else if (options.query.page <= 1) {
+      router.push({});
+    }
+  }
+});
+
+const changePage = (value: number) => {
+  page.value = value;
+  router.push({
+    query: {
+      ...route.query,
+      page: value,
+    },
+  });
+  refresh();
+};
+
+watchThrottled(
+    () => [search.value, showEmptySupplies.value],
+    (value, oldValue) => {
+      if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
+        page.value = 1;
+      }
+
+      refresh();
+    },
+    { throttle: 50 },
 );
 
 const currentClaims = computed(() => {
@@ -95,6 +106,7 @@ const length = computed(() => {
   <v-row>
     <v-col>
       <v-pagination
+          @update:model-value="changePage"
           v-model="page"
           :length="length"
       ></v-pagination>
