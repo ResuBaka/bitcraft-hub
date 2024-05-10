@@ -1,20 +1,10 @@
 <script setup lang="ts">
 const numberFormat = new Intl.NumberFormat(undefined);
 
-function entityIdToName(entityId: number): string {
-  if (!leaderboard.value?.players) {
-    return entityId.toString();
-  } else {
-    return (
-      leaderboard.value.players.find((p) => p.entityID === entityId)?.entityName ?? entityId.toString()
-    );
-  }
-}
-
 const {
   data: leaderboard, pending, error, refresh, } = await useFetch("/api/bitcraft/leaderboard", {
   onResponse({ request, response, options }) {
-    //console.log(response);
+    console.log(response);
   },
 });
 
@@ -93,7 +83,7 @@ let selectedSkills = ref("Fishing");
               </template>
               <template v-slot:item.player="{ item }">
                 <NuxtLink :to="{ path: 'players/' + item.entity_id }">
-                  {{ entityIdToName(item.entity_id) }}
+                  {{ item.entity_name }}
                 </NuxtLink>
               </template>
               <template v-slot:item.exp="{ item }">
@@ -120,7 +110,7 @@ let selectedSkills = ref("Fishing");
                 </template>
                 <template v-slot:item.player="{ item }">
                   <NuxtLink :to="{ path: 'players/' + item.entity_id }">
-                    {{ entityIdToName(item.entity_id) }}
+                    {{ item.entity_name }}
                   </NuxtLink>
                 </template>
                 <template v-slot:item.exp="{ item }">
@@ -147,7 +137,7 @@ let selectedSkills = ref("Fishing");
                 </template>
                 <template v-slot:item.player="{ item }">
                   <NuxtLink :to="{ path: 'players/' + item.entity_id }">
-                    {{ entityIdToName(item.entity_id) }}
+                    {{ item.entity_name }}
                   </NuxtLink>
                 </template>
                 <template v-slot:item.level="{ item }">
