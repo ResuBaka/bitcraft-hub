@@ -15,7 +15,9 @@ const skills = computed(() => {
     return [];
   }
 
-  return Object.keys(leaderboard.value);
+  return Object.keys(leaderboard.value).filter((name) => {
+    return name !== "Experience" && name !== "Level";
+  });
 });
 
 let selectedSkills = ref("Fishing");
