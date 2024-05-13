@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
+import Leaderboard from "~/components/Bitcraft/Leaderboard.vue";
+import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
 
 const page = ref(1);
 const perPage = 30;
@@ -107,6 +109,10 @@ console.log(claim);
           </v-list-item>
         </v-list>
         </v-list>
+
+      <v-row>
+        <leaderboard-claim :claim-id="parseInt($route.params.id)"></leaderboard-claim>
+      </v-row>
     </v-card-text>
   </v-card>
 </template>
