@@ -21,6 +21,7 @@ export type ItemResponse = {
   tiers: number[];
   total: number;
   page: number;
+  pages: number;
   perPage: number;
 };
 
@@ -66,6 +67,7 @@ export default defineEventHandler<ItemResponse>((event) => {
     tiers: Array.from(new Set(rows.map((item: any) => parseInt(item.tier)))),
     total: rowsFilterted.length,
     page,
+    pages: Math.ceil(rowsFilterted.length / perPage),
     perPage,
   };
 });

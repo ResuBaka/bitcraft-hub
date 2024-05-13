@@ -19,20 +19,24 @@ if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
 
-const { data: claims, pending, refresh } = await useLazyFetch(`/api/bitcraft/claims`, {
+const {
+  data: claims,
+  pending,
+  refresh,
+} = await useLazyFetch(`/api/bitcraft/claims`, {
   onRequest: ({ options }) => {
     options.query = options.query || {};
 
     if (search.value) {
-      options.query.search = search.value
+      options.query.search = search.value;
     }
 
     if (page.value) {
-      options.query.page = page.value
+      options.query.page = page.value;
     }
 
     if (perPage) {
-      options.query.perPage = perPage
+      options.query.perPage = perPage;
     }
 
     if (showEmptySupplies.value) {
@@ -46,7 +50,7 @@ const { data: claims, pending, refresh } = await useLazyFetch(`/api/bitcraft/cla
     } else if (options.query.page <= 1) {
       router.push({});
     }
-  }
+  },
 });
 
 const changePage = (value: number) => {
@@ -61,15 +65,15 @@ const changePage = (value: number) => {
 };
 
 watchThrottled(
-    () => [search.value, showEmptySupplies.value],
-    (value, oldValue) => {
-      if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
-        page.value = 1;
-      }
+  () => [search.value, showEmptySupplies.value],
+  (value, oldValue) => {
+    if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
+      page.value = 1;
+    }
 
-      refresh();
-    },
-    { throttle: 50 },
+    refresh();
+  },
+  { throttle: 50 },
 );
 
 const currentClaims = computed(() => {

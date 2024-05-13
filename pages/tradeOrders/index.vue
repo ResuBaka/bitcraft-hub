@@ -17,20 +17,24 @@ if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
 
-const { data: tradeOrders, pending, refresh } = await useLazyFetch(`/api/bitcraft/tradeOrders`, {
+const {
+  data: tradeOrders,
+  pending,
+  refresh,
+} = await useLazyFetch(`/api/bitcraft/tradeOrders`, {
   onRequest: ({ options }) => {
     options.query = options.query || {};
 
     if (search.value) {
-      options.query.search = search.value
+      options.query.search = search.value;
     }
 
     if (page.value) {
-      options.query.page = page.value
+      options.query.page = page.value;
     }
 
     if (perPage) {
-      options.query.perPage = perPage
+      options.query.perPage = perPage;
     }
 
     if (Object.keys(options.query).length > 2) {
@@ -40,7 +44,7 @@ const { data: tradeOrders, pending, refresh } = await useLazyFetch(`/api/bitcraf
     } else if (options.query.page <= 1) {
       router.push({});
     }
-  }
+  },
 });
 
 const changePage = (value: number) => {
@@ -55,15 +59,15 @@ const changePage = (value: number) => {
 };
 
 watchThrottled(
-    () => [search.value],
-    (value, oldValue) => {
-      if (value[0] !== oldValue[0]) {
-        page.value = 1;
-      }
+  () => [search.value],
+  (value, oldValue) => {
+    if (value[0] !== oldValue[0]) {
+      page.value = 1;
+    }
 
-      refresh();
-    },
-    { throttle: 50 },
+    refresh();
+  },
+  { throttle: 50 },
 );
 
 const currentTradeOrders = computed(() => {
