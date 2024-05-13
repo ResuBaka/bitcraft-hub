@@ -7,6 +7,7 @@ export default defineNuxtConfig({
       websocket: true,
       tasks: true,
     },
+    preset: "bun"
   },
   modules: [
     'vuetify-nuxt-module',
