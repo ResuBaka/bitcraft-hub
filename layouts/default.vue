@@ -11,12 +11,12 @@
         <v-list-item to="/claims">Claims</v-list-item>
         <v-list-item to="/players">Players</v-list-item>
         <v-list-item to="/tradeOrders">Trade orders</v-list-item>
-        <v-btn icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>
+        <v-list-item append-icon="mdi-cog-outline" @click="toggelConfigDrawer">Config</v-list-item>
       </v-list>
     </v-navigation-drawer>
 
     <v-app-bar>
-      <v-toolbar-title>BitCraft Chain Base (Work in Progress and Better Name wanted)</v-toolbar-title>
+      <v-app-bar-title>BitCraft Chain Base (Work in Progress and Better Name wanted)</v-app-bar-title>
       <v-toolbar-items v-if="!$vuetify.display.mobile">
         <v-btn to="/">Leaderboards</v-btn>
         <v-btn to="/items">Items</v-btn>
