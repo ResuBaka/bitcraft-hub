@@ -63,7 +63,7 @@ let skillMenu = computed(() => {
         </v-row>
         <v-row v-if="selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
           <v-col lass="v-col-12 pa-0">
-            <v-table>
+            <v-table hover>
               <thead>
               <tr>
                 <th>Rank</th>
@@ -89,7 +89,7 @@ let skillMenu = computed(() => {
         </v-row>
         <v-row v-if="selectedSkills === 'Experience'">
           <v-col lass="v-col-12 pa-0">
-            <v-table>
+            <v-table hover>
               <thead>
               <tr>
                 <th>Rank</th>
@@ -113,7 +113,7 @@ let skillMenu = computed(() => {
         </v-row>
         <v-row v-if="selectedSkills === 'Level'">
           <v-col lass="v-col-12 pa-0">
-            <v-table>
+            <v-table hover>
               <thead>
                 <tr>
                   <th>Rank</th>
