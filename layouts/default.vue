@@ -65,9 +65,7 @@
     </v-card>
     </v-dialog>
     <v-main>
-        <v-container fluid>
-          <NuxtPage />
-        </v-container>
+      <NuxtPage />
     </v-main>
   </v-app>
 </template>

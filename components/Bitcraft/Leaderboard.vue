@@ -37,9 +37,11 @@ let skillMenu = computed(() => {
 </script>
 
 <template>
-  <v-layout class="justify-center" v-if="pending">
-    <v-progress-circular indeterminate> </v-progress-circular>
-  </v-layout>
+  <v-container class="fill-height" v-if="pending">
+      <v-row align-content="center" justify="center" class="fill-height">
+        <v-progress-circular indeterminate> </v-progress-circular>
+      </v-row>
+  </v-container>
   <template v-else-if="!pending">
     <div>
       <v-container class="mb-6 pa-0">

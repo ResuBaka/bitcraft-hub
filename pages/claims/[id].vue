@@ -41,6 +41,7 @@ console.log(claim);
 </script>
 
 <template>
+  <v-container fluid>
     <v-card  v-if="claim !== undefined">
     <v-toolbar color="transparent">
       <v-toolbar-title>
@@ -115,6 +116,7 @@ console.log(claim);
       </v-row>
     </v-card-text>
   </v-card>
+  </v-container>
 </template>
 
 <style scoped>

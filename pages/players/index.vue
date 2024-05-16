@@ -93,6 +93,7 @@ const computedClass = computed(() => {
 </script>
 
 <template>
+  <v-container fluid>
   <v-row>
     <v-col>
       <v-text-field
@@ -156,6 +157,7 @@ const computedClass = computed(() => {
       ></v-pagination>
     </v-col>
   </v-row>
+  </v-container>
 </template>
 
 <style scoped>

@@ -33,6 +33,7 @@ const inventorys = computed(() => {
 </script>
 
 <template>
+  <v-container fluid>
     <v-card  v-if="building !== undefined">
     <v-toolbar color="transparent">
       <v-toolbar-title v-if="building.nickname !== ''">{{ building.nickname }}</v-toolbar-title>
@@ -53,6 +54,7 @@ const inventorys = computed(() => {
         </v-list>
     </v-card-text>
   </v-card>
+  </v-container>
 </template>
 
 <style scoped>

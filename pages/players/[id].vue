@@ -42,6 +42,7 @@ const player = computed(() => {
 </script>
 
 <template>
+  <v-container fluid>
   <v-layout class="justify-center" v-if="playerPnding">
     <v-progress-circular  indeterminate >
     </v-progress-circular>
@@ -113,6 +114,7 @@ const player = computed(() => {
   <template v-else>
     <v-alert type="error">Player not found</v-alert>
   </template>
+  </v-container>
 </template>
 
 <style scoped>
