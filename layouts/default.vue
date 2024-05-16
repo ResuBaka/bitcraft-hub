@@ -1,57 +1,69 @@
 <template>
   <v-app>
-    <v-navigation-drawer
-        v-model="configDrawer"
+    <v-navigation-drawer v-if="$vuetify.display.mobile"
+        v-model="mobileDrawer"
         location="right"
-        temporary
         mobile
     >
-      <v-toolbar flat title="(WIP) Settings">
-        <template #append>
-          <v-btn icon="mdi-close" variant="flat" @click="configDrawer = false">
-          </v-btn>
-        </template>
-      </v-toolbar>
-      <v-divider />
-      <v-container class="px-3 py-3">
-        <v-radio-group
-            v-model="configStore.theme"
-            class="mb-2"
-            color="primary"
-            true-icon="mdi-check-circle-outline"
-            hide-details
-        >
-          <v-radio
-              v-for="(item, i) in items"
-              :key="i"
-              :value="item.value"
-          >
-            <template #label>
-              <v-icon :icon="item.icon" start />
-
-              {{ item.text }}
-            </template>
-          </v-radio>
-        </v-radio-group>
-      </v-container>
+      <v-list>
+        <v-list-item to="/">Leaderboards</v-list-item>
+        <v-list-item to="/items">Items</v-list-item>
+        <v-list-item to="/claims">Claims</v-list-item>
+        <v-list-item to="/players">Players</v-list-item>
+        <v-list-item to="/tradeOrders">Trade orders</v-list-item>
+        <v-btn icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>
+      </v-list>
     </v-navigation-drawer>
+
     <v-app-bar>
       <v-toolbar-title>BitCraft Chain Base (Work in Progress and Better Name wanted)</v-toolbar-title>
-      <v-toolbar-items >
+      <v-toolbar-items v-if="!$vuetify.display.mobile">
         <v-btn to="/">Leaderboards</v-btn>
-<!--        <v-btn to="/crafting">Crafting</v-btn>-->
         <v-btn to="/items">Items</v-btn>
         <v-btn to="/claims">Claims</v-btn>
         <v-btn to="/players">Players</v-btn>
         <v-btn to="/tradeOrders">Trade orders</v-btn>
-<!--        <v-btn to="/buildings">Buildings</v-btn>-->
-<!--        <v-btn to="/npcs">NPCs</v-btn>-->
-<!--        <v-btn to="/professions">Professions</v-btn>-->
-<!--        <v-btn v-if="devmode" @click="reloadFromDisk">Reload Disk</v-btn>-->
         <v-btn icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>
       </v-toolbar-items>
+      <v-toolbar-items v-if="$vuetify.display.mobile">
+        <v-btn icon @click="mobileDrawer = !mobileDrawer">
+          <v-icon>mdi-menu</v-icon>
+        </v-btn>
+      </v-toolbar-items>
     </v-app-bar>
+    <v-dialog v-model="configDrawer"  width="auto">
+    <v-card min-width="90vw">
+      <v-card-title>Settings</v-card-title>
+      <v-card-text>
+          <v-radio-group
+              v-model="configStore.theme"
+              class="mb-2"
+              color="primary"
+              true-icon="mdi-check-circle-outline"
+              hide-details
+          >
+            <v-radio
+                v-for="(item, i) in items"
+                :key="i"
+                :value="item.value"
+            >
+              <template #label>
+                <v-icon :icon="item.icon" start />
 
+                {{ item.text }}
+              </template>
+            </v-radio>
+          </v-radio-group>
+      </v-card-text>
+      <v-card-actions>
+          <v-btn
+              icon="mdi-close"
+              variant="flat"
+              @click="configDrawer = false"
+          ></v-btn>
+      </v-card-actions>
+    </v-card>
+    </v-dialog>
     <v-main>
         <v-container fluid>
           <NuxtPage />
@@ -62,6 +74,7 @@
 <script setup lang="ts">
 const configStore = useConfigStore();
 const configDrawer = ref(false);
+const mobileDrawer = ref(false);
 
 const items = [
   {
@@ -83,6 +96,7 @@ const items = [
 
 const toggelConfigDrawer = () => {
   configDrawer.value = !configDrawer.value;
+  mobileDrawer.value = false
 };
 
 const devmode = import.meta.dev;
