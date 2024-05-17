@@ -44,37 +44,41 @@ const length = computed(() => {
       </v-toolbar>
       <v-card-text>
         <v-row>
-          <v-col cols="6" md="3">
-            <v-list-item>
-              <v-list-item-title>Owner</v-list-item-title>
-              <v-list-item-subtitle>{{ claim.owner_player_entity_id }}</v-list-item-subtitle>
-            </v-list-item>
+          <v-col lg="4">
+            <v-row>
+              <v-col cols="6" md="3" lg="6">
+                <v-list-item>
+                  <v-list-item-title>Owner</v-list-item-title>
+                  <v-list-item-subtitle>{{ claim.owner_player_entity_id }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
+              <v-col cols="6" md="3" lg="6">
+                <v-list-item>
+                  <v-list-item-title>Supplies</v-list-item-title>
+                  <v-list-item-subtitle>{{ claim.supplies }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
+              <v-col cols="6" md="3" lg="6">
+                <v-list-item>
+                  <v-list-item-title>Tiles</v-list-item-title>
+                  <v-list-item-subtitle>{{ claim.tiles }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
+              <v-col cols="6" md="3" lg="6">
+                <v-list-item>
+                  <v-list-item-title>Location</v-list-item-title>
+                  <v-list-item-subtitle>{{ claim.location[Object.keys(claim.location)[0]][0] }} x
+                    {{ claim.location[Object.keys(claim.location)[0]][1] }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
+            </v-row>
           </v-col>
-          <v-col cols="6" md="3">
-            <v-list-item>
-              <v-list-item-title>Supplies</v-list-item-title>
-              <v-list-item-subtitle>{{ claim.supplies }}</v-list-item-subtitle>
-            </v-list-item>
-          </v-col>
-          <v-col cols="6" md="3">
-            <v-list-item>
-              <v-list-item-title>Tiles</v-list-item-title>
-              <v-list-item-subtitle>{{ claim.tiles }}</v-list-item-subtitle>
-            </v-list-item>
-          </v-col>
-          <v-col cols="6" md="3">
-            <v-list-item>
-              <v-list-item-title>Location</v-list-item-title>
-              <v-list-item-subtitle>{{ claim.location[Object.keys(claim.location)[0]][0] }} x
-                {{ claim.location[Object.keys(claim.location)[0]][1] }}
-              </v-list-item-subtitle>
-            </v-list-item>
-          </v-col>
-          <v-col cols="12">
+          <v-col cols="12" lg="8">
             <v-list-item>
               <v-list-item-title>Members</v-list-item-title>
               <v-row>
-                <v-col cols="12" md="3" lg="2" v-for="member in claim.members" :key="member.user_name">
+                <v-col cols="6" md="3" xl="2" v-for="member in claim.members" :key="member.user_name">
                   <v-list-item-subtitle>
                     <nuxt-link
                         class="text-decoration-none text-high-emphasis font-weight-black"
