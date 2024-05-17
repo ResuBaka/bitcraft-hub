@@ -44,10 +44,10 @@ let skillMenu = computed(() => {
     </v-row>
   </v-container>
   <v-container fluid v-else-if="!pending">
-    <v-row align="start">
+    <v-row dense align="start">
       <v-col class="v-col-12">
-        <div class="mb-2">
-          <v-sheet class="text-center text-md-left text-xl-center">
+        <div>
+          <v-sheet class="text-center">
             <h1 class="pl-md-3 pl-xl-0">Leaderboards</h1>
           </v-sheet>
         </div>
@@ -64,7 +64,7 @@ let skillMenu = computed(() => {
     </v-row>
     <v-row v-if="selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
       <v-col lass="v-col-12 pa-0">
-        <v-table hover>
+        <v-table density="compact" hover>
           <thead>
           <tr>
             <th>Rank</th>
