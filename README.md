@@ -1,23 +1,19 @@
-# Nuxt 3 Minimal Starter
+# Bitcraft Hub
 
-Look at the [Nuxt 3 documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+> Not affiliated with Clockwork Labs
+ 
+> This project is a work in progress and is not yet ready for production use. On that note we currently do not have an easy setup for contributing to this project. As you need to have all the game database state.
 
 ## Setup
+
+We are using Bun for this project.
 
 Make sure to install the dependencies:
 
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
 bun install
+# or
+just install
 ```
 
 ## Development Server
@@ -25,17 +21,9 @@ bun install
 Start the development server on `http://localhost:3000`:
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm run dev
-
-# yarn
-yarn dev
-
-# bun
 bun run dev
+# or
+just dev
 ```
 
 ## Production
@@ -43,33 +31,15 @@ bun run dev
 Build the application for production:
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm run build
-
-# yarn
-yarn build
-
-# bun
 bun run build
+# or
+just build
 ```
 
-Locally preview production build:
+Start the production server:
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm run preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
+bun run .output/server/index.mjs
+# or
+just start
 ```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
