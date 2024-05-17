@@ -42,20 +42,12 @@ let skillMenu = computed(() => {
 });
 </script>
 
-<style scoped lang="scss">
-.skill-buttons {
-  button {
-    width: 14rem;
-  }
-}
-</style>
-
 <template>
   <v-layout class="justify-center" v-if="pending">
     <v-progress-circular indeterminate></v-progress-circular>
   </v-layout>
   <v-container fluid v-else-if="!pending" class="mt-5">
-    <v-row align="start">
+    <v-row dense align="start">
       <v-col class="v-col-12">
         <div class="mb-2">
           <v-sheet class="text-center text-md-left text-xl-center">
@@ -68,7 +60,7 @@ let skillMenu = computed(() => {
              cols="12"
              sm="4"
       >
-        <v-btn variant="flat" block @click="selectedSkills = skill.key" :active="selectedSkills === skill.key">
+        <v-btn color="surface-light" block @click="selectedSkills = skill.key" :active="selectedSkills === skill.key">
           {{ skill.text }}
         </v-btn>
       </v-col>
