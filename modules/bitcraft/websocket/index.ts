@@ -57,14 +57,12 @@ export async function startWebsocket(
     });
     websocket.on("message", async (data: any) => {
       const jsonData = JSON.parse(data.toString());
-      //console.log(JSON.stringify(jsonData, null, 2))
       if (jsonData?.TransactionUpdate !== undefined) {
         const callerIdentiy: string =
           jsonData.TransactionUpdate.event.caller_identity;
         const table_updates =
           jsonData?.TransactionUpdate?.subscription_update?.table_updates[0]
             ?.table_row_operations;
-        //console.log(table_updates[0].row)
         var orderedTables: { [key: string]: { delete: any; insert: any } } =
           table_updates.reduce((x: any, y: any) => {
             if (x[y.row[1]] === undefined) {
@@ -75,7 +73,6 @@ export async function startWebsocket(
             return x;
           }, {});
         for (const table of Object.values(orderedTables)) {
-          //console.log(table)
           let info: {
             inventory_id: number;
             identity: string;

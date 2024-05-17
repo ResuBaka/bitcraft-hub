@@ -3,7 +3,6 @@ const { inventory } = defineProps<{
   inventory: any;
 }>();
 
-console.log(inventory);
 const search = ref<string | undefined>("");
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -68,7 +67,6 @@ function timeAgo(date) {
 
 const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
   useFetch(() => {
-    console.log(`/api/bitcraft/inventorys/changes${inventory.entity_id}`);
     return `/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
   });
 
@@ -170,61 +168,80 @@ const backgroundColorRow = ({ index }) => {
 </script>
 
 <template>
-  <template  v-if="inventory !== undefined">
+  <template v-if="inventory !== undefined">
     <div v-bind="$attrs">
-    <v-card class="mb-5">
-    <v-toolbar color="transparent">
-      <v-toolbar-title >Inventory: {{ inventory.entity_id }}</v-toolbar-title>
+      <v-card class="mb-5">
+        <v-toolbar color="transparent">
+          <v-toolbar-title>Inventory: {{ inventory.entity_id }}</v-toolbar-title>
 
-    </v-toolbar>
+        </v-toolbar>
 
-    <v-card-text>
-      <v-card-title>Current Items</v-card-title>
-      <v-data-table density="compact" :headers="headersPockets" :items="inventory.pockets.filter((item) => !!item.contents)" :row-props="backgroundColorRow">
-      </v-data-table>
-    </v-card-text>
-    </v-card>
-    <v-spacer></v-spacer>
-    <v-card>
-      <v-card-title>Changes</v-card-title>
-      <v-card-text>
-        <v-row>
-    <v-col>
-      <v-text-field
-          v-model="search"
-          label="Search"
-          outlined
-          dense
-          clearable
-      ></v-text-field>
-    </v-col>
-  </v-row>
-        <v-data-table density="compact" :headers="headersChanges" :items="changes" :row-props="backgroundColorRow">
-          <template v-slot:item.timestamp="{ item }">
-            {{ nDate.format(item.timestamp) }}
-          </template>
-          <template v-slot:item.timestamp_utc="{ item }">
-            {{ nUTCData.format(item.timestamp) }}
-          </template>
-          <template v-slot:item.timestamp_diff="{ value }">
-            {{ timeAgo(value, 'minute') }}
-          </template>
-          <template v-slot:item.diff="{ value }">
-            <template v-if="value.type === 'delete'"><v-icon color="red">mdi-delete-empty</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
-            <template v-if="value.type === 'create'"><v-icon color="green">mdi-plus</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
-            <template v-if="value.type === 'increase'"><v-icon color="green">mdi-arrow-up-bold-outline</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
-            <template v-if="value.type === 'decrease'"><v-icon color="red">mdi-arrow-down-bold-outline</v-icon> <b>{{ value.amountDiff }}</b> {{ value.item.name }}</template>
-            <template v-if="value.type === 'swap'"><b class="text-red">{{ value.old.item.name }}</b> <v-icon color="pink">mdi-swap-horizontal</v-icon> <b class="text-green">{{ value.new.item.name }}</b></template>
-          </template>
-          <template v-slot:item.diff.old="{ value, item }">
-            <template v-if="value !== undefined">{{ value.quantity }}</template>
-          </template>
-          <template v-slot:item.diff.new="{ value, item }">
-            <template v-if="value !== undefined"><div :class="{ 'text-red': item.diff.amountDiff < 0, 'text-green': item.diff.amountDiff > 0 }">{{ value.quantity }}</div></template>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
+        <v-card-text>
+          <v-card-title>Current Items</v-card-title>
+          <v-data-table density="compact" :headers="headersPockets"
+                        :items="inventory.pockets.filter((item) => !!item.contents)" :row-props="backgroundColorRow">
+          </v-data-table>
+        </v-card-text>
+      </v-card>
+      <v-spacer></v-spacer>
+      <v-card>
+        <v-card-title>Changes</v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col>
+              <v-text-field
+                  v-model="search"
+                  label="Search"
+                  outlined
+                  dense
+                  clearable
+              ></v-text-field>
+            </v-col>
+          </v-row>
+          <v-data-table density="compact" :headers="headersChanges" :items="changes" :row-props="backgroundColorRow">
+            <template v-slot:item.timestamp="{ item }">
+              {{ nDate.format(item.timestamp) }}
+            </template>
+            <template v-slot:item.timestamp_utc="{ item }">
+              {{ nUTCData.format(item.timestamp) }}
+            </template>
+            <template v-slot:item.timestamp_diff="{ value }">
+              {{ timeAgo(value, 'minute') }}
+            </template>
+            <template v-slot:item.diff="{ value }">
+              <template v-if="value.type === 'delete'">
+                <v-icon color="red">mdi-delete-empty</v-icon>
+                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+              </template>
+              <template v-if="value.type === 'create'">
+                <v-icon color="green">mdi-plus</v-icon>
+                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+              </template>
+              <template v-if="value.type === 'increase'">
+                <v-icon color="green">mdi-arrow-up-bold-outline</v-icon>
+                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+              </template>
+              <template v-if="value.type === 'decrease'">
+                <v-icon color="red">mdi-arrow-down-bold-outline</v-icon>
+                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+              </template>
+              <template v-if="value.type === 'swap'"><b class="text-red">{{ value.old.item.name }}</b>
+                <v-icon color="pink">mdi-swap-horizontal</v-icon>
+                <b class="text-green">{{ value.new.item.name }}</b></template>
+            </template>
+            <template v-slot:item.diff.old="{ value, item }">
+              <template v-if="value !== undefined">{{ value.quantity }}</template>
+            </template>
+            <template v-slot:item.diff.new="{ value, item }">
+              <template v-if="value !== undefined">
+                <div :class="{ 'text-red': item.diff.amountDiff < 0, 'text-green': item.diff.amountDiff > 0 }">
+                  {{ value.quantity }}
+                </div>
+              </template>
+            </template>
+          </v-data-table>
+        </v-card-text>
+      </v-card>
     </div>
   </template>
 </template>

@@ -6,6 +6,6 @@ const props = defineProps<{
 
 <template>
 
-<v-card-title > Name </v-card-title>
-<v-card-text  >{{ cargo.name }}</v-card-text >
+  <v-card-title> Name</v-card-title>
+  <v-card-text>{{ cargo.name }}</v-card-text>
 </template>

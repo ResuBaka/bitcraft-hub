@@ -16,7 +16,6 @@ if (tmpPage) {
 }
 
 const { data: buildingsFetch, pending: buildingPending } = useFetch(() => {
-  console.log(`/api/bitcraft/buildings/${route.params.id}`);
   return `/api/bitcraft/buildings/${route.params.id}`;
 });
 
@@ -34,28 +33,23 @@ const inventorys = computed(() => {
 
 <template>
   <v-container fluid>
-    <v-card  v-if="building !== undefined">
-    <v-toolbar color="transparent">
-      <v-toolbar-title v-if="building.nickname !== ''">{{ building.nickname }}</v-toolbar-title>
-      <v-toolbar-title v-else>{{ building.entity_id }}</v-toolbar-title>
-
-    </v-toolbar>
-
-    <v-card-text>
+    <v-card v-if="building !== undefined">
+      <v-toolbar color="transparent">
+        <v-toolbar-title v-if="building.nickname !== ''">{{ building.nickname }}</v-toolbar-title>
+        <v-toolbar-title v-else>{{ building.entity_id }}</v-toolbar-title>
+      </v-toolbar>
+      <v-card-text>
         <v-list>
           <v-list>
-          <v-list-item>
-            <v-list-item-title>Inventorys</v-list-item-title>
-            <v-list-item v-for="inventory in inventorys">
-              <bitcraft-inventory :inventory="inventory"></bitcraft-inventory>
-          </v-list-item>
-          </v-list-item>
+            <v-list-item>
+              <v-list-item-title>Inventorys</v-list-item-title>
+              <v-list-item v-for="inventory in inventorys">
+                <bitcraft-inventory :inventory="inventory"></bitcraft-inventory>
+              </v-list-item>
+            </v-list-item>
+          </v-list>
         </v-list>
-        </v-list>
-    </v-card-text>
-  </v-card>
+      </v-card-text>
+    </v-card>
   </v-container>
 </template>
-
-<style scoped>
-</style>

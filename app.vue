@@ -8,8 +8,6 @@
 const mq = window.matchMedia('(prefers-color-scheme: dark)')
 const configStore = useConfigStore()
 const theme = useTheme()
-const systemTheme = mq.matches ? 'dark' : 'light'
-
 
 const themeSwitch = (e) => {
   if (configStore.theme !== 'system') return
@@ -28,7 +26,6 @@ onBeforeMount(() => {
 })
 
 watch(() => configStore.theme, (newValue) => {
-  console.log("newValue", newValue)
   if (newValue === 'dark') {
     theme.global.name.value = 'dark'
   } else if (newValue === 'light') {

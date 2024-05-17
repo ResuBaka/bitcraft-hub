@@ -64,37 +64,34 @@ const length = computed(() => {
 
 <template>
   <v-container fluid>
-  <v-row>
-    <v-col>
-      <v-text-field
-          v-model="search"
-          label="Search"
-          outlined
-          dense
-          clearable
-      ></v-text-field>
-    </v-col>
-  </v-row>
-  <v-row>
-    <v-col>
-      <v-pagination
-          v-model="page"
-          :length="length"
-      ></v-pagination>
-      <v-progress-linear
-          color="yellow-darken-2"
-          indeterminate
-          :active="pending"
-      ></v-progress-linear>
-    </v-col>
-  </v-row>
-  <v-row>
-    <v-col cols="12" md="4" v-for="claim in currentClaims" :key="claim.entity_id">
-      <bitcraft-card-claim :claim="claim"></bitcraft-card-claim>
-    </v-col>
-  </v-row>
+    <v-row>
+      <v-col>
+        <v-text-field
+            v-model="search"
+            label="Search"
+            outlined
+            dense
+            clearable
+        ></v-text-field>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        <v-pagination
+            v-model="page"
+            :length="length"
+        ></v-pagination>
+        <v-progress-linear
+            color="yellow-darken-2"
+            indeterminate
+            :active="pending"
+        ></v-progress-linear>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12" md="4" v-for="claim in currentClaims" :key="claim.entity_id">
+        <bitcraft-card-claim :claim="claim"></bitcraft-card-claim>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
-
-<style scoped>
-</style>

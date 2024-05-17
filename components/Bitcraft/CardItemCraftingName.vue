@@ -17,7 +17,7 @@ const replacedTempalte = computed(() =>
 </script>
 
 <template>
-{{ replacedTempalte }}
+  {{ replacedTempalte }}
 </template>
 
 <style scoped>

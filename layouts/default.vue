@@ -16,7 +16,7 @@
     </v-navigation-drawer>
 
     <v-app-bar>
-      <v-app-bar-title>BitCraft Chain Base (Work in Progress and Better Name wanted)</v-app-bar-title>
+      <v-app-bar-title>BitCraft Hub (Work in Progress)</v-app-bar-title>
       <v-toolbar-items v-if="!$vuetify.display.mobile">
         <v-btn to="/">Leaderboards</v-btn>
         <v-btn to="/items">Items</v-btn>
@@ -94,14 +94,6 @@ const items = [
 
 const toggelConfigDrawer = () => {
   configDrawer.value = !configDrawer.value;
-  mobileDrawer.value = false
-};
-
-const devmode = import.meta.dev;
-const reloadFromDisk = () => {
-  useFetch("/api/fileReload", {
-    method: "POST",
-  });
-  window.location.reload();
+  mobileDrawer.value = false;
 };
 </script>

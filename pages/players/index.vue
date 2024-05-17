@@ -94,71 +94,70 @@ const computedClass = computed(() => {
 
 <template>
   <v-container fluid>
-  <v-row>
-    <v-col>
-      <v-text-field
-          v-model="search"
-          label="Search"
-          outlined
-          dense
-          clearable
-      ></v-text-field>
-    </v-col>
-  </v-row>
-  <v-row>
-    <v-col>
-      <v-progress-linear
-          color="yellow-darken-2"
-          indeterminate
-          :active="pending"
-      ></v-progress-linear>
-    </v-col>
-  </v-row>
-  <v-row>
-    <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="player in currentplayers" :key="player.entity_id">
-      <v-card>
-      <template v-slot:title>
-        <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'players-id', params: { id: player.entity_id } }"
-        >{{ player.username }} : {{ player.entity_id }}</nuxt-link>
-      </template>
-    <v-card-text  :class="computedClass">
-      <v-table :class="computedClass" density="compact">
-        <tbody>
-        <tr style='text-align: right'>
-          <th>signed_in:</th>
-          <td>{{player.signed_in}}</td>
-        </tr>
-        <tr style='text-align: right'>
-          <th>sign_in_timestamp:</th>
-          <td>{{ player.sign_in_timestamp }}</td>
-        </tr>
-        <tr style='text-align: right'>
-          <th>session_start_timestamp:</th>
-          <td>{{ player.session_start_timestamp }}</td>
-        </tr>
-        <tr style='text-align: right'>
-          <th>time_played:</th>
-          <td>{{ player.time_played }}</td>
-        </tr>
-        <tr style='text-align: right'>
-          <th>time_signed_in:</th>
-          <td>{{ player.time_signed_in }}</td>
-        </tr>
-        </tbody>
-      </v-table>
-    </v-card-text>
-  </v-card>
-    </v-col>
-    <v-col cols="12">
-      <v-pagination
-          @update:model-value="changePage"
-          v-model="page"
-          :length="length"
-      ></v-pagination>
-    </v-col>
-  </v-row>
+    <v-row>
+      <v-col>
+        <v-text-field
+            v-model="search"
+            label="Search"
+            outlined
+            dense
+            clearable
+        ></v-text-field>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        <v-progress-linear
+            color="yellow-darken-2"
+            indeterminate
+            :active="pending"
+        ></v-progress-linear>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="player in currentplayers" :key="player.entity_id">
+        <v-card>
+          <template v-slot:title>
+            <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
+                       :to="{ name: 'players-id', params: { id: player.entity_id } }"
+            >{{ player.username }} : {{ player.entity_id }}
+            </nuxt-link>
+          </template>
+          <v-card-text :class="computedClass">
+            <v-table :class="computedClass" density="compact">
+              <tbody>
+              <tr style='text-align: right'>
+                <th>signed_in:</th>
+                <td>{{ player.signed_in }}</td>
+              </tr>
+              <tr style='text-align: right'>
+                <th>sign_in_timestamp:</th>
+                <td>{{ player.sign_in_timestamp }}</td>
+              </tr>
+              <tr style='text-align: right'>
+                <th>session_start_timestamp:</th>
+                <td>{{ player.session_start_timestamp }}</td>
+              </tr>
+              <tr style='text-align: right'>
+                <th>time_played:</th>
+                <td>{{ player.time_played }}</td>
+              </tr>
+              <tr style='text-align: right'>
+                <th>time_signed_in:</th>
+                <td>{{ player.time_signed_in }}</td>
+              </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12">
+        <v-pagination
+            @update:model-value="changePage"
+            v-model="page"
+            :length="length"
+        ></v-pagination>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
-
-<style scoped>
-</style>

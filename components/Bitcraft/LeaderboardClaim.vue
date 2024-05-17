@@ -24,6 +24,22 @@ const skills = computed(() => {
 });
 
 let selectedSkills = ref("Fishing");
+
+let skillMenu = computed(() => {
+  const skillMenu = [
+    { key: "Experience", text: "Total experience" },
+    { key: "Level", text: "Total level" },
+  ];
+
+  for (const skill of skills.value) {
+    skillMenu.push({
+      key: skill,
+      text: skill,
+    });
+  }
+
+  return skillMenu;
+});
 </script>
 
 <style scoped lang="scss">
@@ -36,117 +52,103 @@ let selectedSkills = ref("Fishing");
 
 <template>
   <v-layout class="justify-center" v-if="pending">
-    <v-progress-circular indeterminate> </v-progress-circular>
+    <v-progress-circular indeterminate></v-progress-circular>
   </v-layout>
-  <template v-else-if="!pending">
-    <div>
-      <v-container class="mb-6 pa-0">
-        <v-row align="start" no-gutters>
-          <v-col class="v-col-12 pa-0">
-            <div class="mb-2">
-              <v-sheet class="pa-2 ma-0 text-center text-md-left text-xl-center">
-                <h1>Leaderboards</h1>
-              </v-sheet>
-            </div>
-            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-0 mb-md-3">
-              <v-btn variant="flat" @click="selectedSkills = 'Experience'" :active="selectedSkills === 'Experience'" >Total experience</v-btn>
-              <v-btn variant="flat" @click="selectedSkills = 'Level'" :active="selectedSkills === 'Level'" >Total level</v-btn>
-              <v-btn v-for="name in skills.slice(0, 3)" variant="flat" @click="selectedSkills = name" :active="selectedSkills === name">{{ name }}</v-btn>
-            </div>
-            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-0 mb-md-3">
-              <v-btn v-for="name in skills.slice(3, 8)" variant="flat" @click="selectedSkills = name" :active="selectedSkills === name">{{ name }}</v-btn>
-            </div>
-            <div class="d-flex justify-center justify-md-space-between flex-wrap skill-buttons mb-0 mb-md-3">
-              <v-btn v-for="name in skills.slice(8, 14)" variant="flat" @click="selectedSkills = name" :active="selectedSkills === name">{{ name }}</v-btn>
-            </div>
-          </v-col>
-        </v-row>
-        <v-row v-if="selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
-          <v-col lass="v-col-12 pa-0">
-            <v-data-table 
-              density="compact"
-              :items="leaderboard[selectedSkills]"
-              :headers="[
-              { title: 'Rank', value: 'rank', align: 'start' },
-              { title: 'Player', value: 'player_name', align: 'center' },
-              { title: 'Level', value: 'level', align: 'center' },
-              { title: 'Experience', value: 'exp', align: 'end'}
-              ]"
-              hover
-              items-per-page="100">
-              <template v-slot:item.rank="{ index }">
-                # {{ index + 1 }}
-              </template>
-              <template v-slot:item.level="{ value }">
-                {{ value }}
-              </template>
-              <template v-slot:item.player_name="{ item }">
-                <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'players-id', parameter: { id: item.player_id } }">
-                  {{ item.player_name }}
-                </NuxtLink>
-              </template>
-              <template v-slot:item.exp="{ item }">
-                {{ numberFormat.format(item.experience) }}
-              </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-        <v-row v-if="selectedSkills === 'Experience'">
-          <v-col lass="v-col-12 pa-0">
-            <v-data-table
-              density="compact"
-              :items="leaderboard[selectedSkills]"
-              :headers="[
-                { title: 'Rank', value: 'rank', align: 'start' },
-                { title: 'Player', value: 'player', align: 'center' },                
-                { title: 'Experience', value: 'exp', align: 'end' },
-              ]"
-              hover
-              items-per-page="100">
-                <template v-slot:item.rank="{ index }">
-                  # {{ index + 1 }}
-                </template>
-                <template v-slot:item.player="{ item }">
-                  <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'players-id', parameter: { id: item.player_id } }">
-                    {{ item.player_name }}
-                  </NuxtLink>
-                </template>
-                <template v-slot:item.exp="{ item }">
-                  {{ numberFormat.format(item.experience) }}
-                </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-        <v-row v-if="selectedSkills === 'Level'">
-          <v-col lass="v-col-12 pa-0">
-            <v-data-table
-              density="compact"
-              :items="leaderboard[selectedSkills]"
-              :headers="[
-                { title: 'Rank', value: 'rank', align: 'start' },
-                { title: 'Player', value: 'player', align: 'center' },                
-                { title: 'Level', value: 'level', align: 'end' },
-              ]"
-              hover
-              items-per-page="100">
-                <template v-slot:item.rank="{ index }">
-                  # {{ index + 1 }}
-                </template>
-                <template v-slot:item.player="{ item }">
-                  <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black" :to="{ name: 'players-id', parameter: { id: item.player_id } }">
-                    {{ item.player_name }}
-                  </NuxtLink>
-                </template>
-                <template v-slot:item.level="{ item }">
-                  {{  numberFormat.format(item.level) }}
-                </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-      </v-container>
-    </div>
-  </template>
+  <v-container fluid v-else-if="!pending" class="mt-5">
+    <v-row align="start">
+      <v-col class="v-col-12">
+        <div class="mb-2">
+          <v-sheet class="text-center text-md-left text-xl-center">
+            <h1 class="pl-md-3 pl-xl-0">Leaderboards</h1>
+          </v-sheet>
+        </div>
+      </v-col>
+      <v-col v-for="skill in skillMenu" :key="skill.key"
+             :style="$vuetify.display.lgAndUp ? ' flex: 1 0 18%;' : ''"
+             cols="12"
+             sm="4"
+      >
+        <v-btn variant="flat" block @click="selectedSkills = skill.key" :active="selectedSkills === skill.key">
+          {{ skill.text }}
+        </v-btn>
+      </v-col>
+    </v-row>
+    <v-row v-if="selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
+      <v-col lass="v-col-12 pa-0">
+        <v-table hover>
+          <thead>
+          <tr>
+            <th>Rank</th>
+            <th class="text-center">Player</th>
+            <th class="text-center">level</th>
+            <th class="text-end">Experience</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(item, index) in leaderboard[selectedSkills]" :key="item.player_id">
+            <td>{{ index + 1 }}</td>
+            <td class="text-center">
+              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+                        :to="{ path: 'players/' + item.player_id }">
+                {{ item.player_name }}
+              </NuxtLink>
+            </td>
+            <td class="text-center">{{ item.level }}</td>
+            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
+          </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="selectedSkills === 'Experience'">
+      <v-col lass="v-col-12 pa-0">
+        <v-table hover>
+          <thead>
+          <tr>
+            <th>Rank</th>
+            <th class="text-center">Player</th>
+            <th class="text-end">Experience</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(item, index) in leaderboard[selectedSkills]" :key="item.player_id">
+            <td>{{ index + 1 }}</td>
+            <td class="text-center">
+              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+                        :to="{ path: 'players/' + item.player_id }">
+                {{ item.player_name }}
+              </NuxtLink>
+            </td>
+            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
+          </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="selectedSkills === 'Level'">
+      <v-col lass="v-col-12 pa-0">
+        <v-table hover>
+          <thead>
+          <tr>
+            <th>Rank</th>
+            <th class="text-center">Player</th>
+            <th class="text-end">Level</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(item, index) in leaderboard[selectedSkills]" :key="item.player_id">
+            <td>{{ index + 1 }}</td>
+            <td class="text-center">
+              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+                        :to="{ path: 'players/' + item.player_id }">
+                {{ item.player_name }}
+              </NuxtLink>
+            </td>
+            <td class="text-end">{{ numberFormat.format(item.level) }}</td>
+          </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>

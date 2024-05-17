@@ -148,7 +148,6 @@ export default defineEventHandler((event) => {
   }
 
   return {
-    players,
     ...skillLeaderBoard,
   };
 });

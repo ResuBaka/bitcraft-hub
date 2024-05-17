@@ -59,7 +59,7 @@ const computedClass = computed(() => {
                 v-bind="props"
                 @click="contetentToShow = 'default'"
             >
-              <v-icon >
+              <v-icon>
                 mdi-home
               </v-icon>
             </v-btn>
@@ -75,9 +75,9 @@ const computedClass = computed(() => {
                 v-bind="props"
                 @click="contetentToShow = 'neededToCraft'"
             >
-                <v-icon >
-                  mdi-chart-bar-stacked
-                </v-icon>
+              <v-icon>
+                mdi-chart-bar-stacked
+              </v-icon>
             </v-btn>
           </template>
           <span>neededToCraft</span>
@@ -92,7 +92,7 @@ const computedClass = computed(() => {
                 @click="contetentToShow = 'neededInCrafting'"
             >
               <v-badge color="primary" :content="neededInCraftingData.length">
-                <v-icon >
+                <v-icon>
                   mdi-call-split
                 </v-icon>
               </v-badge>
@@ -110,7 +110,7 @@ const computedClass = computed(() => {
                 @click="contetentToShow = 'producedInCrafting'"
             >
               <v-badge color="primary" :content="producedInCraftingData.length">
-                <v-icon >
+                <v-icon>
                   mdi-call-split
                 </v-icon>
               </v-badge>
@@ -120,28 +120,28 @@ const computedClass = computed(() => {
         </v-tooltip>
       </template>
     </v-toolbar>
-    
+
 
     <v-card-text :class="computedClass">
       <template v-if="contetentToShow == 'default'">
         <v-table :class="computedClass" density="compact">
           <tbody>
-            <tr style='text-align: right'>
-              <th>Description:</th>
-              <td>{{item.description}}</td>
-            </tr>
-            <tr style='text-align: right'>
-              <th>Volume:</th>
-              <td>{{ item.volume }}</td>
-            </tr>
-            <tr style='text-align: right'>
-              <th>Tag:</th>
-              <td>{{ item.tag }}</td>
-            </tr>
-            <tr style='text-align: right'>
-              <th>Tier:</th>
-              <td>{{ item.tier }}</td>
-            </tr>
+          <tr style='text-align: right'>
+            <th>Description:</th>
+            <td>{{ item.description }}</td>
+          </tr>
+          <tr style='text-align: right'>
+            <th>Volume:</th>
+            <td>{{ item.volume }}</td>
+          </tr>
+          <tr style='text-align: right'>
+            <th>Tag:</th>
+            <td>{{ item.tag }}</td>
+          </tr>
+          <tr style='text-align: right'>
+            <th>Tier:</th>
+            <td>{{ item.tier }}</td>
+          </tr>
           </tbody>
         </v-table>
       </template>
