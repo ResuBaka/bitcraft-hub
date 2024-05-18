@@ -49,8 +49,8 @@ const icons = {
   Scholar: { icon: "mdi-school", color: "" },
   Hunting: { icon: "mdi-bow-arrow", color: "" },
   Cooking: { icon: "mdi-stove", color: "" },
-  Leatherworking: { icon: "", color: "" },
-  Tailoring: { icon: "", color: "" },
+  // Leatherworking: { icon: "", color: "" },
+  // Tailoring: { icon: "", color: "" },
   // Experience: { icon: "", color: "" },
   // Level: { icon: "", color: "" },
 };
