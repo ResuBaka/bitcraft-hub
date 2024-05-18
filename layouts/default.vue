@@ -67,6 +67,11 @@
     <v-main>
       <NuxtPage />
     </v-main>
+    <v-footer app absolute class="d-flex flex-column">
+      <div class="px-4 py-2 text-center w-100">
+        Not affiliated with Clockwork Labs
+      </div>
+    </v-footer>
   </v-app>
 </template>
 <script setup lang="ts">
