@@ -105,13 +105,15 @@ const icons = {
              cols="12"
              sm="4"
       >
-        <template #prepend v-if="icons[skill.key]">
-          <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>
-        </template>
-        {{ skill.text }}
-        <template #append v-if="icons[skill.key]">
-          <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>
-        </template>
+        <v-btn variant="flat" block @click="selectedSkills = skill.key" :active="selectedSkills === skill.key">
+          <template #prepend v-if="icons[skill.key]">
+            <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>
+          </template>
+          {{ skill.text }}
+          <template #append v-if="icons[skill.key]">
+            <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>
+          </template>
+        </v-btn>
       </v-col>
     </v-row>
     <v-row v-if="selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
