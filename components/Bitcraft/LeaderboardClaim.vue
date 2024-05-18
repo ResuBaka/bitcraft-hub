@@ -132,7 +132,7 @@ const icons = {
             <td>{{ index + 1 }}</td>
             <td class="text-center">
               <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
-                        :to="{ path: 'players/' + item.player_id }">
+                        :to="{ name: 'players-id', params: { id: item.player_id } }">
                 {{ item.player_name }}
               </NuxtLink>
             </td>
@@ -158,7 +158,7 @@ const icons = {
             <td>{{ index + 1 }}</td>
             <td class="text-center">
               <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
-                        :to="{ path: 'players/' + item.player_id }">
+                        :to="{ name: 'players-id', params: { id: item.player_id } }">
                 {{ item.player_name }}
               </NuxtLink>
             </td>
@@ -183,7 +183,7 @@ const icons = {
             <td>{{ index + 1 }}</td>
             <td class="text-center">
               <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
-                        :to="{ path: 'players/' + item.player_id }">
+                        :to="{ name: 'players-id', params: { id: item.player_id } }">
                 {{ item.player_name }}
               </NuxtLink>
             </td>
