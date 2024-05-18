@@ -71,7 +71,33 @@ const icons = {
           </v-sheet>
         </div>
       </v-col>
-      <v-col v-for="skill in skillMenu" :key="skill.key"
+      <v-col v-if="$vuetify.display.xs">
+        <v-select v-model="selectedSkills" item-value="key" item-title="text" :items="skillMenu" label="Skills" outlined
+                  dense center-affix>
+          <template #item="{ props, item }">
+            <v-list-item v-bind="props" class="text-center">
+              <template #append v-if="icons[item.value]">
+                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>
+              </template>
+              <template #prepend v-if="icons[item.value]">
+                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>
+              </template>
+            </v-list-item>
+          </template>
+          <template #selection="{ item }">
+            <v-list-item class="w-100 text-center">
+              <template #append v-if="icons[item.value]">
+                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>
+              </template>
+              <template #prepend v-if="icons[item.value]">
+                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>
+              </template>
+              <v-list-item-title>{{ item.title }}</v-list-item-title>
+            </v-list-item>
+          </template>
+        </v-select>
+      </v-col>
+      <v-col v-else v-for="skill in skillMenu" :key="skill.key"
              :style="$vuetify.display.lgAndUp ? ' flex: 1 0 18%;' : ''"
              cols="12"
              sm="4"
@@ -166,3 +192,10 @@ const icons = {
     </v-row>
   </v-container>
 </template>
+
+<style scoped>
+:deep(.v-select__selection) {
+  width: 100%;
+  justify-content: center;
+}
+</style>
