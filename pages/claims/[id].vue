@@ -32,6 +32,58 @@ const buildings = computed(() => {
 const length = computed(() => {
   return Math.ceil((buidlingsFetch.value?.total || 0) / perPage) ?? 0;
 });
+
+const claimOwner = computed(() => {
+  if (claim.value === undefined) {
+    return "";
+  }
+
+  return (
+    claim.value.members.find(
+      (member) => member.entity_id === claim.value.owner_player_entity_id,
+    )?.user_name ?? ""
+  );
+});
+
+const sortedUsersByPermissionLevel = computed(() => {
+  if (claim.value === undefined) {
+    return [];
+  }
+
+  return claim.value.members.sort((a, b) => {
+    if (a.entity_id === claim.value.owner_player_entity_id) {
+      return -1;
+    }
+    if (b.entity_id === claim.value.owner_player_entity_id) {
+      return 1;
+    }
+    if (a.co_owner_permission && !b.co_owner_permission) {
+      return -1;
+    }
+    if (b.co_owner_permission && !a.co_owner_permission) {
+      return 1;
+    }
+    if (a.officer_permission && !b.officer_permission) {
+      return -1;
+    }
+    if (b.officer_permission && !a.officer_permission) {
+      return 1;
+    }
+    if (a.build_permission && !b.build_permission) {
+      return -1;
+    }
+    if (b.build_permission && !a.build_permission) {
+      return 1;
+    }
+    if (a.inventory_permission && !b.inventory_permission) {
+      return -1;
+    }
+    if (b.inventory_permission && !a.inventory_permission) {
+      return 1;
+    }
+    return 0;
+  });
+});
 </script>
 
 <template>
@@ -49,7 +101,7 @@ const length = computed(() => {
               <v-col cols="6" md="3" lg="6">
                 <v-list-item>
                   <v-list-item-title>Owner</v-list-item-title>
-                  <v-list-item-subtitle>{{ claim.owner_player_entity_id }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{ claimOwner }}</v-list-item-subtitle>
                 </v-list-item>
               </v-col>
               <v-col cols="6" md="3" lg="6">
@@ -76,15 +128,19 @@ const length = computed(() => {
           </v-col>
           <v-col cols="12" lg="8">
             <v-list-item>
-              <v-list-item-title>Members</v-list-item-title>
+              <v-list-item-title>Members ({{ claim.members.length }})</v-list-item-title>
               <v-row>
-                <v-col cols="6" md="3" xl="2" v-for="member in claim.members" :key="member.user_name">
+                <v-col cols="6" md="3" xl="2" v-for="member in sortedUsersByPermissionLevel" :key="member.user_name">
                   <v-list-item-subtitle>
                     <nuxt-link
                         class="text-decoration-none text-high-emphasis font-weight-black"
                         :to="{ name: 'players-id', params: { id: member.entity_id } }"
                     >
                       {{ member.user_name }}
+                      {{ member.co_owner_permission ? "👑" : "" }}
+                      {{ member.officer_permission ? "👮" : "" }}
+                      {{ member.build_permission ? "🏗️" : "" }}
+                      {{ member.inventory_permission ? "📦" : "" }}
                     </nuxt-link>
                   </v-list-item-subtitle>
                 </v-col>

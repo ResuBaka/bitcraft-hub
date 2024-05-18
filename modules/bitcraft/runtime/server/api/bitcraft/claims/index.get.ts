@@ -16,7 +16,7 @@ interface ClaimDescriptionRow {
   name: string;
   supplies: number;
   building_maintenance: number;
-  members: any;
+  members: any[];
   tiles: number;
   extensions: number;
   neutral: boolean;
