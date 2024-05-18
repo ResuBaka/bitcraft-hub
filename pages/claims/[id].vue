@@ -137,9 +137,9 @@ const sortedUsersByPermissionLevel = computed(() => {
                         :to="{ name: 'players-id', params: { id: member.entity_id } }"
                     >
                       {{ member.user_name }}
-                      {{ member.co_owner_permission ? "👑" : "" }}
-                      {{ member.officer_permission ? "👮" : "" }}
-                      {{ member.build_permission ? "🏗️" : "" }}
+                      {{ member.co_owner_permission ? "🏰" : "" }}
+                      {{ member.officer_permission ? "🗡️" : "" }}
+                      {{ member.build_permission ? "🔨" : "" }}
                       {{ member.inventory_permission ? "📦" : "" }}
                     </nuxt-link>
                   </v-list-item-subtitle>
