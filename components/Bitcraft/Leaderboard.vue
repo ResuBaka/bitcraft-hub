@@ -35,6 +35,25 @@ let skillMenu = computed(() => {
 
   return skillMenu;
 });
+
+const icons = {
+  Fishing: { icon: "mdi-fish", color: "blue" },
+  Mining: { icon: "mdi-pickaxe", color: "grey" },
+  Woodcutting: { icon: "mdi-forest", color: "green" },
+  Farming: { icon: "mdi-sprout", color: "green" },
+  Carpentry: { icon: "mdi-hand-saw", color: "brown" },
+  Foraging: { icon: "mdi-leaf", color: "green" },
+  Forestry: { icon: "mdi-axe", color: "brown" },
+  Masonry: { icon: "mdi-screwdriver", color: "grey" },
+  Smithing: { icon: "mdi-anvil", color: "grey" },
+  Scholar: { icon: "mdi-school", color: "" },
+  Hunting: { icon: "mdi-bow-arrow", color: "" },
+  Cooking: { icon: "mdi-stove", color: "" },
+  Leatherworking: { icon: "", color: "" },
+  Tailoring: { icon: "", color: "" },
+  // Experience: { icon: "", color: "" },
+  // Level: { icon: "", color: "" },
+};
 </script>
 
 <template>
@@ -58,7 +77,13 @@ let skillMenu = computed(() => {
              sm="4"
       >
         <v-btn variant="flat" block @click="selectedSkills = skill.key" :active="selectedSkills === skill.key">
+          <template #prepend v-if="icons[skill.key]">
+            <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>
+          </template>
           {{ skill.text }}
+          <template #append v-if="icons[skill.key]">
+            <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>
+          </template>
         </v-btn>
       </v-col>
     </v-row>

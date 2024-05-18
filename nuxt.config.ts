@@ -21,6 +21,17 @@ export default defineNuxtConfig({
         }
       }
     },
+    vuetifyOptions: {
+      icons: {
+        defaultSet: 'mdi',
+        sets: [
+          {
+            name: 'mdi',
+            cdn: 'https://cdn.jsdelivr.net/npm/@mdi/font@7.x/css/materialdesignicons.min.css'
+          }
+        ]
+      }
+    }
   },
   vite: {
     $server: {

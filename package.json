@@ -23,7 +23,7 @@
     "@biomejs/biome": "^1.6.4",
     "@types/ws": "^8.5.10",
     "sass": "^1.77.0",
-    "vuetify": "^3.6.3",
-    "vuetify-nuxt-module": "^0.13.5"
+    "vuetify": "^3.6.6",
+    "vuetify-nuxt-module": "^0.14.0"
   }
 }
