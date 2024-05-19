@@ -119,8 +119,8 @@ const sortedUsersByPermissionLevel = computed(() => {
               <v-col cols="6" md="3" lg="6">
                 <v-list-item>
                   <v-list-item-title>Location</v-list-item-title>
-                  <v-list-item-subtitle>{{ claim.location[Object.keys(claim.location)[0]][0] }} x
-                    {{ claim.location[Object.keys(claim.location)[0]][1] }}
+                  <v-list-item-subtitle>
+                    N: {{ Math.ceil(claim.location[Object.keys(claim.location)[0]][1] / 3)  }}, E: {{ Math.ceil(claim.location[Object.keys(claim.location)[0]][0] / 3) }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
