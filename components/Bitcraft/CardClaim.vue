@@ -69,7 +69,9 @@ const computedClass = computed(() => {
         </tr>
         <tr style='text-align: right'>
           <th>Location:</th>
-          <td>{{ claim.location[0][0] }} x {{ claim.location[0][1] }}</td>
+          <td>
+            N: {{ Math.ceil(claim.location[0][1] / 3)  }}, E: {{ Math.ceil(claim.location[0][0] / 3) }}
+          </td>
         </tr>
         <tr style='text-align: right'>
           <th>Members:</th>
