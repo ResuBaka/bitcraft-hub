@@ -1,0 +1,7 @@
+node_modules
+storage/*/*.json
+!storage/.gitkeep
+!storage/Desc
+!storage/Desc/*.json
+target
+mapgeneration/rust
