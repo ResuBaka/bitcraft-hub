@@ -1,7 +1,29 @@
 <script setup lang="ts">
-const { claim } = defineProps<{
+export interface CardClaimProps {
   claim: any;
-}>();
+  defaultMembers: number;
+}
+
+const showMoreMembers = ref(false);
+
+const { claim, defaultMembers } = withDefaults(defineProps<CardClaimProps>(), {
+  defaultMembers: 10,
+});
+
+const members = computed(() => {
+  return claim.members.slice(
+    0,
+    showMoreMembers.value ? claim.members.length : defaultMembers,
+  );
+});
+
+const toggleShowMoreMembers = () => {
+  showMoreMembers.value = !showMoreMembers.value;
+};
+
+const shouldShowMoreMembers = computed(() => {
+  return claim.members.length > defaultMembers;
+});
 
 const theme = useTheme();
 
@@ -15,12 +37,15 @@ const computedClass = computed(() => {
 
 <template>
   <v-card>
-    <template v-slot:title>
+    <v-card-title>
       <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
                  :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
       >{{ claim.name }} : {{ claim.entity_id }}
       </nuxt-link>
-    </template>
+      <v-btn icon density="compact" v-if="shouldShowMoreMembers" @click="toggleShowMoreMembers">
+        <v-icon>{{ showMoreMembers ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+      </v-btn>
+    </v-card-title>
     <v-card-text :class="computedClass">
       <v-table :class="computedClass" density="compact">
         <tbody>
@@ -43,12 +68,14 @@ const computedClass = computed(() => {
         <tr style='text-align: right'>
           <th>Members:</th>
           <td v-if="claim.members.length > 0">
-            <template v-for="member of claim.members">
+            <template v-for="(member, index) of members" :key="index">
               <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
                          :to="{ name: 'players-id', params: { id: member.entity_id } }"
               >{{ member.user_name }}
               </nuxt-link>
-              ,
+              {{
+                index + 1 < members.length ? ', ' : ''
+              }}{{ shouldShowMoreMembers && index + 1 === defaultMembers && !showMoreMembers ? '...' : '' }}
             </template>
           </td>
           <td v-else>None</td>
