@@ -37,15 +37,21 @@ const computedClass = computed(() => {
 
 <template>
   <v-card>
-    <v-card-title>
-      <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
-                 :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
-      >{{ claim.name }} : {{ claim.entity_id }}
-      </nuxt-link>
-      <v-btn icon density="compact" v-if="shouldShowMoreMembers" @click="toggleShowMoreMembers">
-        <v-icon>{{ showMoreMembers ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-      </v-btn>
-    </v-card-title>
+    <v-card-item>
+      <v-card-title>
+        <nuxt-link
+          class="text-decoration-none text-high-emphasis font-weight-black"
+          :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
+        >
+          {{ claim.name }}
+        </nuxt-link>
+      </v-card-title>
+      <template #append v-if="shouldShowMoreMembers">
+        <v-btn icon density="compact" @click="toggleShowMoreMembers">
+          <v-icon>{{ showMoreMembers ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+        </v-btn>
+      </template>
+    </v-card-item>
     <v-card-text :class="computedClass">
       <v-table :class="computedClass" density="compact">
         <tbody>
@@ -71,11 +77,11 @@ const computedClass = computed(() => {
             <template v-for="(member, index) of members" :key="index">
               <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
                          :to="{ name: 'players-id', params: { id: member.entity_id } }"
-              >{{ member.user_name }}
+              >{{ member.user_name }}{{
+                  index + 1 < members.length ? ', ' : ''
+                }}
               </nuxt-link>
-              {{
-                index + 1 < members.length ? ', ' : ''
-              }}{{ shouldShowMoreMembers && index + 1 === defaultMembers && !showMoreMembers ? '...' : '' }}
+              {{ shouldShowMoreMembers && index + 1 === defaultMembers && !showMoreMembers ? '...' : '' }}
             </template>
           </td>
           <td v-else>None</td>
