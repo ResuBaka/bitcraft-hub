@@ -9,7 +9,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "format": "biome format ./pages ./logic ./server ./components ./layouts ./modules --write",
-    "format:check": "biome format ./pages ./logic ./server ./components ./layouts"
+    "format:check": "biome format ./pages ./logic ./server ./components ./layouts ./modules"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.5.1",
