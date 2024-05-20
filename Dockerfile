@@ -1,5 +1,8 @@
 # use the official Bun image
 # see all versions at https://hub.docker.com/r/oven/bun/tags
+FROM oven/bun:1-alpine as base-alpine
+WORKDIR /usr/src/app
+
 FROM oven/bun:1 as base
 WORKDIR /usr/src/app
 
@@ -28,14 +31,8 @@ RUN bun run build
 RUN rm -rf node_modules
 
 # copy production dependencies and source code into final image
-FROM base AS release
-COPY --from=install /temp/prod/node_modules node_modules
-COPY --from=prerelease /usr/src/app/ .
-
-RUN chown -R bun:bun /usr/src/app
-RUN ls -la /usr/src/app/
-RUN ls -la /usr/src/app/storage
-RUN cat /etc/passwd
+FROM base-alpine AS release
+COPY --from=prerelease --chown=bun:bun /usr/src/app/ .
 
 # run the app
 USER bun
