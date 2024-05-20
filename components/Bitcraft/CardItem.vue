@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import type {ItemRow} from "~/modules/bitcraft/gamestate/item";
+
+const imagedErrored  = ref(false);
+
 const { item } = defineProps<{
-  item: any;
+  item: ItemRow;
 }>();
+const {
+  public: { iconDomain },
+} = useRuntimeConfig();
 
 const { data: neededInCrafting } = useFetch("/api/bitcraft/recipes", {
   query: {
@@ -47,8 +54,11 @@ const computedClass = computed(() => {
 
 <template>
   <v-card density="compact">
-    <v-toolbar color="transparent" density="compact">
-      <v-toolbar-title>{{ item.name }} : {{ item.id }}</v-toolbar-title>
+    <v-card-item>
+      <template #prepend v-if="iconDomain && imagedErrored !== true">
+        <v-img @error="imagedErrored = true" :src="`${iconDomain}/${item.icon_asset_name}.png`" height="50" width="50"></v-img>
+      </template>
+      <v-card-title>{{ item.name }}</v-card-title>
       <template v-slot:append>
         <v-tooltip
             location="bottom"
@@ -119,9 +129,7 @@ const computedClass = computed(() => {
           <span>producedInCrafting</span>
         </v-tooltip>
       </template>
-    </v-toolbar>
-
-
+    </v-card-item>
     <v-card-text :class="computedClass">
       <template v-if="contetentToShow == 'default'">
         <v-table :class="computedClass" density="compact">
