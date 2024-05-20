@@ -1,7 +1,7 @@
 <script setup lang="ts">
 export interface CardClaimProps {
   claim: any;
-  defaultMembers: number;
+  defaultMembers?: number;
 }
 
 const showMoreMembers = ref(false);

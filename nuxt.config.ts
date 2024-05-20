@@ -45,6 +45,9 @@ export default defineNuxtConfig({
       websocket: {
         enabled: false
       }
+    },
+    public: {
+      iconDomain: "",
     }
   }
 })

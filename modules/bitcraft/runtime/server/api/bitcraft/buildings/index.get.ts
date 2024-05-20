@@ -33,6 +33,12 @@ export default defineEventHandler((event) => {
       const buildingDesc = buildingDescMap.get(
         buildingState.building_description_id,
       );
+
+      buildingState.building_name = buildingDesc?.name;
+      buildingState.image_path =
+        buildingDesc?.icon_asset_name.replace("GeneratedIcons/Other/", "") +
+        ".png";
+
       if (buildingDesc === undefined) {
         return false;
       }
