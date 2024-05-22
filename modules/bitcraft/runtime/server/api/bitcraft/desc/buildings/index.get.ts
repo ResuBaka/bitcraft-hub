@@ -31,7 +31,9 @@ export default defineEventHandler((event) => {
         building.id.toString().includes(search),
     ) ?? [];
 
-  const buildingStateRows = getBuildingStateRowsFromRows(readBuildingStateRows());
+  const buildingStateRows = getBuildingStateRowsFromRows(
+    readBuildingStateRows(),
+  );
 
   for (const building of rowsFilterted) {
     addCountOfBuildingsInWorldForBuilding(building, buildingStateRows); // TODO:
