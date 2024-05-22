@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type {ItemRow} from "~/modules/bitcraft/gamestate/item";
+import type { ItemRow } from "~/modules/bitcraft/gamestate/item";
 
-const imagedErrored  = ref(false);
+const imagedErrored = ref(false);
 
 const { item } = defineProps<{
   item: ItemRow;

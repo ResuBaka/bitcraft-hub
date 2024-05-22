@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 export interface BuildingDescRow {
   id: number;
-  functions: any;
+  functions: BuildingDescFunction[];
   name: string;
   description: string;
   rested_buff_duration: number;
@@ -13,6 +13,19 @@ export interface BuildingDescRow {
   unenterable: boolean;
   wilderness: boolean;
   footprint: any;
+}
+
+export interface BuildingDescFunction {
+  function_type: number;
+  level: number;
+  crafting_slots: number;
+  storage_slots: number;
+  cargo_slots: number;
+  refining_slots: number;
+  refining_cargo_slots: number;
+  cargo_slot_size: number;
+  trade_orders: number;
+  buff_ids: number[];
 }
 
 export function getBuildingDescRowsFromRows(rows: any[]): BuildingDescRow[] {
@@ -28,7 +41,7 @@ export function getBuildingDescRowsFromRows(rows: any[]): BuildingDescRow[] {
 function getBuildingDescRowFromRow(row: any[]): BuildingDescRow {
   return {
     id: row[0],
-    functions: row[1],
+    functions: parseFunctions(row[1]),
     name: row[2],
     description: row[3],
     rested_buff_duration: row[4],
@@ -39,6 +52,27 @@ function getBuildingDescRowFromRow(row: any[]): BuildingDescRow {
     wilderness: row[9],
     footprint: row[10],
   };
+}
+
+function parseFunctions(functions: any[]): any {
+  const functionsArray: BuildingDescFunction[] = [];
+
+  for (const functionsArrayElement of functions) {
+    functionsArray.push({
+      function_type: functionsArrayElement[0],
+      level: functionsArrayElement[1],
+      crafting_slots: functionsArrayElement[2],
+      storage_slots: functionsArrayElement[3],
+      cargo_slots: functionsArrayElement[4],
+      refining_slots: functionsArrayElement[5],
+      refining_cargo_slots: functionsArrayElement[6],
+      cargo_slot_size: functionsArrayElement[7],
+      trade_orders: functionsArrayElement[8],
+      buff_ids: functionsArrayElement[9],
+    });
+  }
+
+  return functionsArray;
 }
 
 export function getBuildingDescIdMapFromRows(

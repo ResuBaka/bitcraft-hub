@@ -35,9 +35,7 @@ export default defineEventHandler((event) => {
       );
 
       buildingState.building_name = buildingDesc?.name;
-      buildingState.image_path =
-        buildingDesc?.icon_asset_name +
-        ".png";
+      buildingState.image_path = buildingDesc?.icon_asset_name + ".png";
 
       if (buildingDesc === undefined) {
         return false;

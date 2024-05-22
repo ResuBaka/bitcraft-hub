@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
+const {
+  public: { iconDomain },
+} = useRuntimeConfig();
 
 const page = ref(1);
 const perPage = 30;
@@ -14,51 +17,70 @@ const tmpPage = (route.query.page as string) ?? null;
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
+const tmpSearch = (route.query.search as string) ?? null;
 
-const { data: claims, pending } = useFetch(() => {
-  const url = new URLSearchParams();
+if (tmpSearch) {
+  search.value = tmpSearch;
+}
 
-  if (search.value) {
-    url.append("search", search.value);
-  }
+const { data, pending, refresh } = await useLazyFetch(
+  "/api/bitcraft/desc/buildings",
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
 
-  if (page.value) {
-    url.append("page", page.value.toString());
-  }
+      if (search.value) {
+        options.query.search = search.value;
+      }
 
-  const querys = url.toString();
+      if (page.value) {
+        options.query.page = page.value;
+      }
 
-  if (querys) {
-    return `/api/bitcraft/claims?${querys}`;
-  }
+      if (perPage) {
+        options.query.perPage = perPage;
+      }
 
-  return `/api/bitcraft/claims`;
-});
+      if (Object.keys(options.query).length > 2) {
+        const query = { ...options.query };
+        delete query.perPage;
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+  },
+);
+
+const changePage = (value: number) => {
+  page.value = value;
+  router.push({
+    query: {
+      ...route.query,
+      page: value,
+    },
+  });
+  refresh();
+};
 
 watchThrottled(
-  () => [search.value, page.value],
-  () => {
-    const newQuery = {};
-
-    if (search.value) {
-      newQuery.search = search.value;
+  () => [search.value],
+  (value, oldValue) => {
+    if (value[0] !== oldValue[0]) {
+      page.value = 1;
     }
 
-    if (page.value) {
-      newQuery.page = page.value;
-    }
-
-    router.push({ query: newQuery });
+    refresh();
   },
   { throttle: 50 },
 );
 
-const currentClaims = computed(() => {
-  return claims.value?.claims ?? [];
+const currentBuildings = computed(() => {
+  return data.value?.buildings ?? [];
 });
 
 const length = computed(() => {
-  return Math.ceil(claims.value?.total / perPage) ?? 0;
+  return data.value?.total ? Math.ceil(data.value?.total / perPage) : 0;
 });
 </script>
 
@@ -78,6 +100,7 @@ const length = computed(() => {
     <v-row>
       <v-col>
         <v-pagination
+            @update:model-value="changePage"
             v-model="page"
             :length="length"
         ></v-pagination>
@@ -89,8 +112,8 @@ const length = computed(() => {
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="12" md="4" v-for="claim in currentClaims" :key="claim.entity_id">
-        <bitcraft-card-claim :claim="claim"></bitcraft-card-claim>
+      <v-col cols="12" md="4" v-for="building in currentBuildings" :key="building.id">
+        <bitcraft-building-card :building="building"></bitcraft-building-card>
       </v-col>
     </v-row>
   </v-container>
