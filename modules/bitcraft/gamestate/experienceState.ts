@@ -132,9 +132,14 @@ export const levelingData: LevelList = {
 
 export function XPToLevel(xp: number): number {
   for (const level in Object.keys(levelingData)) {
-    const levelXp = levelingData[level];
+    const levelXp = levelingData[parseInt(level) + 1];
+
+    if (levelXp === undefined) {
+      return parseInt(level);
+    }
+
     if (xp < levelXp) {
-      return parseInt(level) - 1;
+      return parseInt(level);
     }
   }
 
