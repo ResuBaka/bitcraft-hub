@@ -18,7 +18,10 @@ const computedClass = computed(() => {
 
 const iconUrl = computed(() => {
   if (!building.icon_asset_name) {
-    return "";
+    return {
+      url: "",
+      show: false,
+    };
   }
 
   return iconAssetUrlNameRandom(building.icon_asset_name);
@@ -28,8 +31,8 @@ const iconUrl = computed(() => {
 <template>
   <v-card>
     <v-card-item>
-      <template #prepend v-if="iconUrl && imagedErrored !== true">
-        <v-img @error="imagedErrored = true" :src="iconUrl" height="50" width="50"></v-img>
+      <template #prepend v-if="iconUrl.show && imagedErrored !== true">
+        <v-img @error="imagedErrored = true" :src="iconUrl.url" height="50" width="50"></v-img>
       </template>
       <v-card-title>
         <nuxt-link
@@ -43,14 +46,14 @@ const iconUrl = computed(() => {
     <v-card-text :class="computedClass" class="pb-1">
       <v-table density="compact" :class="computedClass">
         <tbody>
-          <tr>
-            <th>Tier:</th>
-            <td>{{ building.functions[0]?.level }}</td>
-          </tr>
-          <tr>
-            <th>Description:</th>
-            <td>{{ building.description }}</td>
-          </tr>
+        <tr>
+          <th>Tier:</th>
+          <td>{{ building.functions[0]?.level }}</td>
+        </tr>
+        <tr>
+          <th>Description:</th>
+          <td>{{ building.description }}</td>
+        </tr>
         </tbody>
       </v-table>
     </v-card-text>

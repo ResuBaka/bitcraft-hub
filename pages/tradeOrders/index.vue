@@ -123,47 +123,70 @@ const computedClass = computed(() => {
       <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="tradeOrder in currentTradeOrders"
              :key="tradeOrder.entity_id">
         <v-card>
-          <v-toolbar density="compact" color="transparent">
+          <v-card-item>
             <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
                        :to="{ name: 'buildings-id', params: { id: tradeOrder.building_entity_id } }"
             >{{ tradeOrder.entity_id }} : {{ tradeOrder.building_entity_id }}
             </nuxt-link>
-
-          </v-toolbar>
-
+          </v-card-item>
           <v-card-text :class="computedClass">
-            <v-list :class="computedClass">
-              <v-list-item>
-                <v-list-item-title>remaining_stock</v-list-item-title>
-                <v-list-item-subtitle>{{ tradeOrder.remaining_stock }}</v-list-item-subtitle>
-              </v-list-item>
-              <v-list-item>
-                <v-list-item-title>offer_items</v-list-item-title>
-                <v-list-item v-for="offer_item of tradeOrder.offer_items">
-                  <bitcraft-item :item="offer_item"></bitcraft-item>
-                </v-list-item>
-              </v-list-item>
-              <v-list-item>
-                <v-list-item-title>offer_cargo</v-list-item-title>
-                <v-list-item-subtitle>{{ tradeOrder.offer_cargo_id }} :: {{
-                    tradeOrder.offer_cargo
-                  }}
-                </v-list-item-subtitle>
-              </v-list-item>
-              <v-list-item>
-                <v-list-item-title>required_items</v-list-item-title>
-                <v-list-item v-for="required_item of tradeOrder.required_items">
-                  <bitcraft-item :item="required_item"></bitcraft-item>
-                </v-list-item>
-              </v-list-item>
-              <v-list-item>
-                <v-list-item-title>required_cargo</v-list-item-title>
-                <v-list-item-subtitle>{{ tradeOrder.required_cargo_id }} :: {{
-                    tradeOrder.required_cargo
-                  }}
-                </v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
+            <v-table :class="computedClass" density="compact">
+              <tbody>
+              <tr style='text-align: right'>
+                <th>Remaining stock:</th>
+                <td>{{ tradeOrder.remaining_stock }}</td>
+              </tr>
+              </tbody>
+            </v-table>
+            <v-toolbar density="compact" class="mt-2" color="primary" title="Offer Item/Cargo"></v-toolbar>
+            <v-table density="compact">
+              <thead>
+              <tr>
+                <th>Icon</th>
+                <th>Name</th>
+                <th>Quantity</th>
+                <th>Type</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-for="offer_item of tradeOrder.offer_items">
+                <bitcraft-item :item="offer_item"></bitcraft-item>
+              </tr>
+              <tr v-for="offer_item of tradeOrder.offer_cargo">
+                <td>
+                  <v-img :src="iconAssetUrlName(offer_item.icon_asset_name).url" height="50" width="50"></v-img>
+                </td>
+                <td>{{ offer_item.name }}</td>
+                <td>1</td>
+                <td>Cargo</td>
+              </tr>
+              </tbody>
+            </v-table>
+
+            <v-toolbar density="compact" class="mt-2" color="primary" title="Require Item/Cargo"></v-toolbar>
+            <v-table density="compact">
+              <thead>
+              <tr>
+                <th>Icon</th>
+                <th>Name</th>
+                <th>Quantity</th>
+                <th>Type</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-for="requiredItem of tradeOrder.required_items">
+                <bitcraft-item :item="requiredItem"></bitcraft-item>
+              </tr>
+              <tr v-for="requiredCargo of tradeOrder.required_cargo">
+                <td>
+                  <v-img :src="iconAssetUrlName(requiredCargo.icon_asset_name).url" height="50" width="50"></v-img>
+                </td>
+                <td>{{ requiredCargo.name }}</td>
+                <td>1</td>
+                <td>Cargo</td>
+              </tr>
+              </tbody>
+            </v-table>
           </v-card-text>
         </v-card>
       </v-col>

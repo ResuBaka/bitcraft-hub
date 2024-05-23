@@ -53,7 +53,10 @@ const computedClass = computed(() => {
 
 const iconUrl = computed(() => {
   if (!item.icon_asset_name) {
-    return "";
+    return {
+      url: "",
+      show: false,
+    };
   }
 
   return iconAssetUrlNameRandom(item.icon_asset_name);
@@ -63,8 +66,8 @@ const iconUrl = computed(() => {
 <template>
   <v-card density="compact">
     <v-card-item>
-      <template #prepend v-if="iconUrl && imagedErrored !== true">
-        <v-img @error="imagedErrored = true" :src="iconUrl" height="50" width="50"></v-img>
+      <template #prepend v-if="iconUrl.show && imagedErrored !== true">
+        <v-img @error="imagedErrored = true" :src="iconUrl.url" height="50" width="50"></v-img>
       </template>
       <v-card-title>{{ item.name }}</v-card-title>
       <template v-slot:append>
