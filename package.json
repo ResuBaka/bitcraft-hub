@@ -8,8 +8,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "format": "biome format ./pages ./logic ./server ./components ./layouts ./modules --write",
-    "format:check": "biome format ./pages ./logic ./server ./components ./layouts ./modules"
+    "format": "biome format ./pages ./logic ./server ./components ./layouts ./modules ./composables --write",
+    "format:check": "biome format ./pages ./logic ./server ./components ./layouts ./modules ./composables"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.5.1",

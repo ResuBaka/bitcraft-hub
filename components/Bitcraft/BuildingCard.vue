@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { BuildingDescRow } from "~/modules/bitcraft/gamestate/buildingDesc";
+import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 
-const {
-  public: { iconDomain },
-} = useRuntimeConfig();
 const imagedErrored = ref(false);
 
 const { building } = defineProps<{
@@ -17,13 +15,21 @@ const computedClass = computed(() => {
     "bg-grey-lighten-3": !theme.global.current.value.dark,
   };
 });
+
+const iconUrl = computed(() => {
+  if (!building.icon_asset_name) {
+    return "";
+  }
+
+  return iconAssetUrlNameRandom(building.icon_asset_name);
+});
 </script>
 
 <template>
   <v-card>
     <v-card-item>
-      <template #prepend v-if="iconDomain && imagedErrored !== true && building.icon_asset_name">
-        <v-img @error="imagedErrored = true" :src="`${iconDomain}/${building.icon_asset_name}.png`" height="50" width="50"></v-img>
+      <template #prepend v-if="iconUrl && imagedErrored !== true">
+        <v-img @error="imagedErrored = true" :src="iconUrl" height="50" width="50"></v-img>
       </template>
       <v-card-title>
         <nuxt-link
