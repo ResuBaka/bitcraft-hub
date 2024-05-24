@@ -122,14 +122,14 @@ const computedClass = computed(() => {
     <v-row>
       <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="tradeOrder in currentTradeOrders"
              :key="tradeOrder.entity_id">
-        <v-card>
+        <v-card height="100%">
           <v-card-item>
             <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
                        :to="{ name: 'buildings-id', params: { id: tradeOrder.building_entity_id } }"
             >{{ tradeOrder.entity_id }} : {{ tradeOrder.building_entity_id }}
             </nuxt-link>
           </v-card-item>
-          <v-card-text :class="computedClass">
+          <v-card-text class="h-100" :class="computedClass">
             <v-table :class="computedClass" density="compact">
               <tbody>
               <tr style='text-align: right'>
@@ -138,7 +138,7 @@ const computedClass = computed(() => {
               </tr>
               </tbody>
             </v-table>
-            <v-toolbar density="compact" class="mt-2" color="primary" title="Offer Item/Cargo"></v-toolbar>
+            <v-toolbar density="compact" class="mt-2" color="secondary-darken-1" title="Offer Item/Cargo"></v-toolbar>
             <v-table density="compact">
               <thead>
               <tr>
@@ -163,7 +163,7 @@ const computedClass = computed(() => {
               </tbody>
             </v-table>
 
-            <v-toolbar density="compact" class="mt-2" color="primary" title="Require Item/Cargo"></v-toolbar>
+            <v-toolbar density="compact" class="mt-2" color="secondary-darken-1" title="Require Item/Cargo"></v-toolbar>
             <v-table density="compact">
               <thead>
               <tr>
