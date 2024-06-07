@@ -1,19 +1,7 @@
-import {
-  getExperienceRowsFromRows,
-  readExperienceStateRows,
-  extendExperienceRowFromRow,
-  getLeaderboard,
-} from "~/modules/bitcraft/gamestate/experienceState";
-import {
-  getSkillRowsFromRows,
-  readSkillRows,
-} from "~/modules/bitcraft/gamestate/skillDesc";
+import { getLeaderboard } from "~/modules/bitcraft/gamestate/experienceState";
 
-const rows = getExperienceRowsFromRows(readExperienceStateRows());
-const skills = getSkillRowsFromRows(readSkillRows());
-const leaderboard = getLeaderboard(skills, rows);
 export default defineEventHandler((event) => {
-  const id = getRouterParam(event, "id", { decode: true });
+  let id = getRouterParam(event, "id", { decode: true });
 
   if (!id) {
     throw createError({
@@ -22,14 +10,35 @@ export default defineEventHandler((event) => {
     });
   }
 
-  const claims = rows.find((claims) => claims.entity_id == parseInt(id));
+  id = parseInt(id);
 
-  if (!claims) {
+  if (isNaN(id)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Invalid ID",
+    });
+  }
+
+  const leaderboard = getLeaderboard();
+  const response = {};
+
+  for (const skill of Object.keys(leaderboard)) {
+    const leaders = leaderboard[skill];
+
+    const row = leaders.find((row) => row.player_id === id);
+    if (row) {
+      response[skill] = row;
+    }
+  }
+
+  if (!Object.keys(response).length) {
     throw createError({
       statusCode: 404,
       statusMessage: "Claim was not found",
     });
   }
 
-  return extendExperienceRowFromRow(claims, leaderboard, skills);
+  return {
+    ...response,
+  };
 });

@@ -1,7 +1,15 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
-import { type SkillDescRow } from "./skillDesc";
+import {
+  getSkillRowsFromRows,
+  readSkillRows,
+  type SkillDescRow,
+} from "./skillDesc";
+import {
+  getPlayerRowsFromRows,
+  readPlayerStateRows,
+} from "~/modules/bitcraft/gamestate/player";
 
 export type Skills = {
   [skill_id: string]: number;
@@ -26,6 +34,130 @@ export interface ExtendedExpeirenceStateRow extends Entity {
 export type LevelList = {
   [level: number]: number;
 };
+
+export type Leaderboard = {
+  Experience: LeaderboardExperience[];
+  Level: LeaderboardLevel[];
+  [key: string]: LeaderboardSkill[];
+};
+
+export type LeaderboardSkill = {
+  player_id: number;
+  player_name: string;
+  experience?: number;
+  level?: number;
+};
+
+export type LeaderboardLevel = {
+  player_id: number;
+  player_name: string;
+  level: number;
+};
+
+export type LeaderboardExperience = {
+  player_id: number;
+  player_name: string;
+  experience: number;
+};
+
+let LeaderBoardState: Leaderboard = {};
+
+export function getLeaderboard(): Leaderboard {
+  if (Object.keys(LeaderBoardState).length === 0) {
+    LeaderBoardState = buildLeaderboardState();
+  }
+
+  return LeaderBoardState;
+}
+
+function buildLeaderboardState(): Leaderboard {
+  const tempLeaderBoard: Leaderboard = {};
+
+  const playerRows = getPlayerRowsFromRows(readPlayerStateRows());
+  const rows = getExperienceRowsFromRows(readExperienceStateRows());
+  const skills = getSkillRowsFromRows(readSkillRows());
+
+  const playerTop100Experience: {
+    player_id: number;
+    player_name: string;
+    experience: number;
+  }[] = new Array(rows.length);
+
+  const playerTop100Level: {
+    player_id: number;
+    player_name: string;
+    level: number;
+  }[] = new Array(rows.length);
+
+  const skillMap: Record<any, any> = {};
+
+  for (const skill of skills) {
+    skillMap[skill.id] = skill.name;
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    let totalXP = 0;
+    let totalLevel = 0;
+    const playerId = row.entity_id;
+
+    for (const key in row.experience_stacks) {
+      const skillIndex = parseInt(key);
+      const skillName = skillMap[skillIndex];
+
+      if (skillName === "ANY") {
+        continue;
+      }
+
+      const level = XPToLevel(row.experience_stacks[key]);
+
+      if (skillName) {
+        if (!tempLeaderBoard[skillName]) {
+          tempLeaderBoard[skillName] = new Array(rows.length);
+        }
+
+        tempLeaderBoard[skillName][i] = {
+          player_id: playerId,
+          experience: row.experience_stacks[key],
+          level,
+        };
+
+        totalXP += row.experience_stacks[key];
+        totalLevel += level;
+      }
+    }
+
+    playerTop100Experience[i] = {
+      player_id: playerId,
+      experience: totalXP,
+    };
+
+    playerTop100Level[i] = {
+      player_id: playerId,
+      level: totalLevel,
+    };
+  }
+
+  for (const key of Object.keys(tempLeaderBoard)) {
+    const value = tempLeaderBoard[key];
+    tempLeaderBoard[key] = value.sort((a, b) => b.experience - a.experience);
+  }
+
+  playerTop100Experience.sort((a, b) => b.experience - a.experience);
+  playerTop100Level.sort((a, b) => b.level - a.level);
+  tempLeaderBoard["Experience"] = playerTop100Experience;
+  tempLeaderBoard["Level"] = playerTop100Level;
+
+  for (const key of Object.keys(tempLeaderBoard)) {
+    for (const entity of tempLeaderBoard[key]) {
+      entity.player_name = playerRows.find(
+        (p) => p.entity_id === entity.player_id,
+      )?.username;
+    }
+  }
+
+  return tempLeaderBoard;
+}
 
 export const levelingData: LevelList = {
   1: 0,
@@ -153,26 +285,6 @@ function getExperience(rows: any[]): Skills {
     skills[row[0]] = row[1];
   }
   return skills;
-}
-
-export function getLeaderboard(
-  skills: SkillDescRow[],
-  expeirence: ExpeirenceStateRow[],
-) {
-  const leaderboard: { [key: string]: ExpeirenceStateRow[] } = {};
-
-  for (const skill of skills) {
-    const expeirenceCopy = [];
-
-    for (const xp of expeirence) {
-      expeirenceCopy.push(xp);
-    }
-    leaderboard[skill.name] = expeirenceCopy.sort(
-      (a, b) => b.experience_stacks[skill.id] - a.experience_stacks[skill.id],
-    );
-  }
-
-  return leaderboard;
 }
 
 export function getExperienceRowsFromRows(rows: any[][]): ExpeirenceStateRow[] {
