@@ -21,39 +21,42 @@ if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
 
-const { data, pending, refresh } = await useLazyFetch(`/api/bitcraft/itemsAndCargo`, {
-  onRequest: ({ options }) => {
-    options.query = options.query || {};
+const { data, pending, refresh } = await useLazyFetch(
+  `/api/bitcraft/itemsAndCargo`,
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
 
-    if (search.value) {
-      options.query.search = search.value;
-    }
+      if (search.value) {
+        options.query.search = search.value;
+      }
 
-    if (page.value) {
-      options.query.page = page.value;
-    }
+      if (page.value) {
+        options.query.page = page.value;
+      }
 
-    if (tag.value) {
-      options.query.tag = tag.value;
-    }
+      if (tag.value) {
+        options.query.tag = tag.value;
+      }
 
-    if (tier.value) {
-      options.query.tier = tier.value;
-    }
+      if (tier.value) {
+        options.query.tier = tier.value;
+      }
 
-    if (perPage) {
-      options.query.perPage = perPage;
-    }
+      if (perPage) {
+        options.query.perPage = perPage;
+      }
 
-    if (Object.keys(options.query).length > 2) {
-      const query = { ...options.query };
-      delete query.perPage;
-      router.push({ query });
-    } else if (options.query.page <= 1) {
-      router.push({});
-    }
+      if (Object.keys(options.query).length > 2) {
+        const query = { ...options.query };
+        delete query.perPage;
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
   },
-});
+);
 
 const changePage = (value: number) => {
   page.value = value;
