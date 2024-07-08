@@ -1,12 +1,15 @@
 <script setup lang="ts">
 const numberFormat = new Intl.NumberFormat(undefined);
 
-const { data: leaderboard, pending } = await useFetch(
-  "/api/bitcraft/leaderboard",
-  {
-    lazy: true,
-  },
-);
+const {
+  data: leaderboard,
+  pending,
+  refresh,
+} = await useFetch("/api/bitcraft/leaderboard", {
+  lazy: true,
+});
+
+const route = useRoute();
 
 const skills = computed(() => {
   if (!leaderboard.value) {
@@ -35,6 +38,41 @@ let skillMenu = computed(() => {
 
   return skillMenu;
 });
+
+const enableRefresh = ref(false);
+
+const refreshTimer = ref<NodeJS.Timeout | null>(null);
+
+const times = 10000 / 100;
+const untilRefresh = ref(0);
+
+const toggleRefresh = () => {
+  enableRefresh.value = !enableRefresh.value;
+
+  if (enableRefresh.value) {
+    refreshTimer.value = setInterval(() => {
+      if (untilRefresh.value >= times) {
+        refresh();
+        untilRefresh.value = 0;
+      } else {
+        untilRefresh.value++;
+      }
+    }, 100);
+  } else {
+    untilRefresh.value = 0;
+    if (refreshTimer.value) {
+      clearInterval(refreshTimer.value);
+    }
+  }
+};
+
+const queryRefresh = route.query?.refresh ?? false;
+
+console.log("queryRefresh", queryRefresh);
+
+if (queryRefresh) {
+  toggleRefresh();
+}
 
 const icons = {
   Fishing: { icon: "mdi-fish", color: "blue" },
@@ -67,7 +105,18 @@ const icons = {
       <v-col class="v-col-12">
         <div>
           <v-sheet class="text-center">
-            <h1 class="pl-md-3 pl-xl-0">Leaderboards</h1>
+            <v-progress-linear
+                v-if="enableRefresh"
+                v-model="untilRefresh"
+                color="blue"
+                height="40"
+                :max="times"
+                @click="toggleRefresh"
+            >
+              <strong>Leaderboards(Auto-refresh)</strong>
+            </v-progress-linear>
+            <h1 v-else class="pl-md-3 pl-xl-0" @click="toggleRefresh">Leaderboards</h1>
+
           </v-sheet>
         </div>
       </v-col>
