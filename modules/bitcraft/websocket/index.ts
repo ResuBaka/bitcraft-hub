@@ -23,30 +23,29 @@ let counter = 0;
 export async function startWebsocket(
   url: string,
   auth: { username: string; password: string },
+  websocketConfig: { enabled: boolean; url: string },
 ) {
   const usersByIdenity = getUserMapFromRows(await SqlRequestAllUsers());
   const PlayerByEntityId = getPlayerEntityIdMapFromRows(
     await SqlRequestAllPlayers(),
   );
   try {
-    websocket = new WebSocket(
-      "wss://alpha-playtest-1.spacetimedb.com/database/subscribe/bitcraft-alpha",
-      "v1.text.spacetimedb",
-      {
-        headers: {
-          Authorization: `Basic ${btoa(`${auth.username}:${auth.password}`)}`,
-          "Sec-WebSocket-Protocol": "v1.text.spacetimedb",
-          "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
-        },
-        protocolVersion: 13,
-        maxPayload: 1024 * 1024 * 1024,
+    console.log("Connecting to bitcraft websocket");
+    websocket = new WebSocket(websocketConfig.url, "v1.text.spacetimedb", {
+      headers: {
+        Authorization: `Basic ${btoa(`${auth.username}:${auth.password}`)}`,
+        "Sec-WebSocket-Protocol": "v1.text.spacetimedb",
+        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
       },
-    );
+      protocolVersion: 13,
+      maxPayload: 1024 * 1024 * 1024,
+    });
 
     websocket.on("error", (error: any) => {
       console.error("Error with bitcraft websocket connection :: ", error);
     });
     websocket.on("open", async () => {
+      console.log("Connected to bitcraft websocket");
       websocket.send(
         JSON.stringify({
           subscribe: {

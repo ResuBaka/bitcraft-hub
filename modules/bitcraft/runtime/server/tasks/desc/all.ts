@@ -10,7 +10,7 @@ let allDescTables = [
   "BuildingDesc",
   "BuildingPortalDesc",
   "BuildingRepairsDesc",
- // "BuildingSpawnDesc",
+  // "BuildingSpawnDesc",
   "BuildingTypeDesc",
   "CargoDesc",
   "CharacterStatDesc",
@@ -70,12 +70,17 @@ export default defineTask({
   },
   async run({ payload, context }) {
     for (var descTable of allDescTables) {
-      const sql = `SELECT * FROM ${descTable}`;
-      const result = await SQLRequest<any>(sql);
-      await writeFile(
-        `${rootFolder}/${descTable}.json`,
-        JSON.stringify(result),
-      );
+      console.log(descTable);
+      try {
+        const sql = `SELECT * FROM ${descTable}`;
+        const result = await SQLRequest<any>(sql);
+        await writeFile(
+          `${rootFolder}/${descTable}.json`,
+          JSON.stringify(result),
+        );
+      } catch (error) {
+        console.error(error);
+      }
     }
 
     return { result: "Success" };

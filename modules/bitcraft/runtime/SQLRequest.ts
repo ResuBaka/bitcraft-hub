@@ -20,12 +20,15 @@ export default async function SQLRequest<T>(body: string): Promise<T> {
 
 export async function SQLRequestStream(body: string) {
   const response = await fetch(
-    "https://alpha-playtest-1.spacetimedb.com/database/sql/bitcraft-alpha",
+    "https://playtest.spacetimedb.org/database/sql/bitcraft-alpha-2",
     {
       method: "POST",
       headers: {
         Authorization:
-          "Basic " + btoa("token:eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJoZXhfaWRlbnRpdHkiOiJjZjAxMTQzZGIxMzllYzQ4NTA0YzVhMDlkN2M2ZDYyNmY0YzRiMGM0OGZjMzQ1NzY5ZDhkZWI5ZDliNGNjOTkwIiwiaWF0IjoxNzIwNDUxMjAyLCJleHAiOm51bGx9.D_kgqgSoJemRyA15Ag9RGRFkIv1ohfhXpostUvHEuRzlMu1UoUT2tBC0Imt4l6j7YtuAScr8cS2ljtdf9ljMxA"),
+          "Basic " +
+          btoa(
+            "token:eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJoZXhfaWRlbnRpdHkiOiJjZjAxMTQzZGIxMzllYzQ4NTA0YzVhMDlkN2M2ZDYyNmY0YzRiMGM0OGZjMzQ1NzY5ZDhkZWI5ZDliNGNjOTkwIiwiaWF0IjoxNzIwNDUxMjAyLCJleHAiOm51bGx9.D_kgqgSoJemRyA15Ag9RGRFkIv1ohfhXpostUvHEuRzlMu1UoUT2tBC0Imt4l6j7YtuAScr8cS2ljtdf9ljMxA",
+          ),
       },
       body: body,
     },

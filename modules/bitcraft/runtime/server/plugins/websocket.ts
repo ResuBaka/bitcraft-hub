@@ -6,7 +6,11 @@ export default defineNitroPlugin(async (nitroApp) => {
     return;
   }
 
-  await startWebsocket(config.bitcraft.url, config.bitcraft.auth);
+  await startWebsocket(
+    config.bitcraft.url,
+    config.bitcraft.auth,
+    config.bitcraft.websocket,
+  );
   const websocket = getWebsocket();
 
   Object.assign(nitroApp, { websocket });

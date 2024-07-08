@@ -70,6 +70,10 @@ export function getLeaderboard(): Leaderboard {
   return LeaderBoardState;
 }
 
+export function rebuildLeaderboardState(): Leaderboard {
+  LeaderBoardState = buildLeaderboardState();
+}
+
 function buildLeaderboardState(): Leaderboard {
   const tempLeaderBoard: Leaderboard = {};
 

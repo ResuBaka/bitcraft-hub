@@ -7,6 +7,10 @@ export default defineNuxtConfig({
       websocket: true,
       tasks: true,
     },
+    scheduledTasks: {
+      // Run `cms:update` task every minute
+      //'*/1 * * * *': ['state:refresh'],
+    },
     preset: "bun"
   },
   modules: [
@@ -43,8 +47,13 @@ export default defineNuxtConfig({
   runtimeConfig: {
     bitcraft: {
       websocket: {
-        enabled: false
-      }
+        enabled: false,
+        url: ""
+      },
+      url: "",
+      auth: {
+        password: "",
+      },
     },
     public: {
       iconDomain: "",
