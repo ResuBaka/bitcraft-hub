@@ -6,9 +6,8 @@ const props = defineProps<{
 }>();
 
 const { data: neededInCrafting } = useFetch(
-  `/api/bitcraft/items/` + props.craftId,
+  `/api/bitcraft/itemsAndCargo/` + props.craftId,
 );
-
 const replacedTempalte = computed(() =>
   props.template
     .replace("{0}", neededInCrafting.value?.name ?? "Unknown")
