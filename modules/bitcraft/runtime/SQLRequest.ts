@@ -1,11 +1,11 @@
 export default async function SQLRequest<T>(body: string): Promise<T> {
   const response = await fetch(
-    "https://alpha-playtest-1.spacetimedb.com/database/sql/bitcraft-alpha",
+    " https://playtest.spacetimedb.org/database/sql/bitcraft-alpha-2",
     {
       method: "POST",
       headers: {
         Authorization:
-          "Basic dG9rZW46ZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKRlV6STFOaUo5LmV5Sm9aWGhmYVdSbGJuUnBkSGtpT2lJeFpXUXlZelJsWVRsbVlUVmtaVFZqTURKaVltVTBNMkV6TldFd05XSTVabVZsTlRVek9ESmhPR0l5WldZd04yRTVaVEk0TnprMU1qUXlPR1ZqTVdFNUlpd2lhV0YwSWpveE56RXpOVFkwTkRZekxDSmxlSEFpT201MWJHeDkua2cyUHBfQ0t5OE1hcTJBT0xDeW0tckRneENkaS01MUZZV05JZ0VhQjJhMnB0YVNTRk11cGdUOXFOVWp3NVlfYkxHOERGcV8yRkxTLWhBRmVmbEU2SFE=",
+          "Basic dG9rZW46ZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKRlV6STFOaUo5LmV5Sm9aWGhmYVdSbGJuUnBkSGtpT2lJeFlUZ3pNbVl4WkRRM09XWTJaams0T0dKbE1UaGlZemd4TXpJd1pXVmpNMk15WkdNeVkyWXhObVJoWXpJME9HTXpPR1l5WXpnMFl6WTRNR1pqTldZNUlpd2lhV0YwSWpveE56SXdORFV5TlRrd0xDSmxlSEFpT201MWJHeDkuWjJuREFlQXJjQmpYMG9JZmw0QlNxeE5sMFY4SWdMWF80OTV4RVBOZmZNbjhMREJMNXg1TWFPd1pBSHBIRllJLTM0aUw2WFp5YUlsazdsVGctZ29IMHc=",
       },
       body: body,
     },
@@ -25,7 +25,7 @@ export async function SQLRequestStream(body: string) {
       method: "POST",
       headers: {
         Authorization:
-          "Basic dG9rZW46ZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKRlV6STFOaUo5LmV5Sm9aWGhmYVdSbGJuUnBkSGtpT2lJeFpXUXlZelJsWVRsbVlUVmtaVFZqTURKaVltVTBNMkV6TldFd05XSTVabVZsTlRVek9ESmhPR0l5WldZd04yRTVaVEk0TnprMU1qUXlPR1ZqTVdFNUlpd2lhV0YwSWpveE56RXpOVFkwTkRZekxDSmxlSEFpT201MWJHeDkua2cyUHBfQ0t5OE1hcTJBT0xDeW0tckRneENkaS01MUZZV05JZ0VhQjJhMnB0YVNTRk11cGdUOXFOVWp3NVlfYkxHOERGcV8yRkxTLWhBRmVmbEU2SFE=",
+          "Basic " + btoa("token:eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJoZXhfaWRlbnRpdHkiOiJjZjAxMTQzZGIxMzllYzQ4NTA0YzVhMDlkN2M2ZDYyNmY0YzRiMGM0OGZjMzQ1NzY5ZDhkZWI5ZDliNGNjOTkwIiwiaWF0IjoxNzIwNDUxMjAyLCJleHAiOm51bGx9.D_kgqgSoJemRyA15Ag9RGRFkIv1ohfhXpostUvHEuRzlMu1UoUT2tBC0Imt4l6j7YtuAScr8cS2ljtdf9ljMxA"),
       },
       body: body,
     },

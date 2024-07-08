@@ -1,7 +1,5 @@
-import { createWriteStream } from "node:fs";
-import { finished } from "node:stream/promises";
-import { Readable } from "node:stream";
-import { SQLRequestStream } from "./../../../SQLRequest";
+import { writeFile } from "node:fs/promises";
+import SQLRequest, { SQLRequestStream } from "./../../../SQLRequest";
 let rootFolder = `${process.cwd()}/storage/State`;
 let allDescTables = [
   "ActiveBuffState",
@@ -19,17 +17,17 @@ let allDescTables = [
   "CombatState",
   "DimensionDescriptionState",
   "DimensionNetworkDescriptionState",
-  "EnemyAiAgentState",
+  //"EnemyAiAgentState",
   "EnemyState",
   "EntityCombatSessionsState",
   "EquipmentState",
   "ExperienceState",
   "ExplorationChunksState",
   "FootprintTileState",
-  "GrowthState",
+  //"GrowthState",
   "HealthState",
   "HungerState",
-  "InteriorCollapseTriggerState",
+  //"InteriorCollapseTriggerState",
   "InventoryState",
   "ItemPileState",
   "KnowledgeAchievementState",
@@ -50,8 +48,8 @@ let allDescTables = [
   "KnowledgeSecondaryState",
   "KnowledgeVaultState",
   "KnowledgeVehicleState",
-  "LightStampState",
-  "LiveTargetableState",
+  //"LightStampState",
+  //"LiveTargetableState",
   //"LocationState",
   "LootChestState",
   "MobileEntityState",
@@ -64,15 +62,15 @@ let allDescTables = [
   "PlayerPrefsState",
   "PlayerState",
   "PlayerVoteState",
-  "PlayersInQuadState",
+  //"PlayersInQuadState",
   "PortalState",
   "ProgressiveActionState",
   "ProjectSiteState",
   "QuestState",
   "RentState",
   "ResourceState",
-  "SignedInPlayerState",
-  "SignedInUserState",
+  //"SignedInPlayerState",
+  //"SignedInUserState",
   "StaminaState",
   "TargetState",
   "TargetableState",
@@ -94,9 +92,11 @@ export default defineTask({
   async run({ payload, context }) {
     for (var descTable of allDescTables) {
       const sql = `SELECT * FROM ${descTable}`;
-      const result = await SQLRequestStream(sql);
-      const stream = createWriteStream(`${rootFolder}/${descTable}.json`);
-      await finished(Readable.fromWeb(result).pipe(stream));
+      const result = await SQLRequest<any>(sql);
+      await writeFile(
+        `${rootFolder}/${descTable}.json`,
+        JSON.stringify(result),
+      );
     }
 
     return { result: "Success" };

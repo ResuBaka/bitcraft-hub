@@ -3,18 +3,18 @@ import SQLRequest from "./../../../SQLRequest";
 let rootFolder = `${process.cwd()}/storage/Rest`;
 let allDescTables = [
   "AdminBroadcast",
-  "ChatCache",
+  //"ChatCache",
   "ClaimTileCost",
-  "Config",
+  //"Config",
   "Globals",
   "GlobalsAppeared",
-  "HerdCache",
-  "IdentityRole",
-  "LocationCache",
-  "ResourceCount",
-  "ResourcesLog",
-  "RestBuffIds",
-  "ServerIdentity",
+  //"HerdCache",
+  //"IdentityRole",
+  //"LocationCache",
+  //"ResourceCount",
+  //"ResourcesLog",
+  //"RestBuffIds",
+  //"ServerIdentity",
 ];
 
 export default defineTask({
