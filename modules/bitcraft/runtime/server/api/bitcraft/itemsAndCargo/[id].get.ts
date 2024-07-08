@@ -10,7 +10,7 @@ import {
 
 const rows1 = getItemRowsFromRows(readItemRows());
 const rows2 = getCargoDescRowsFromRows(readCargoDescRows());
-const rows = [...rows1,...rows2]
+const rows = [...rows1, ...rows2];
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });
 

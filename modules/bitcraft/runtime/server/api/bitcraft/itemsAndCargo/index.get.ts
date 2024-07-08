@@ -35,7 +35,7 @@ export default defineEventHandler<ItemResponse>((event) => {
 
   const rows1 = getItemRowsFromRows(readItemRows());
   const rows2 = getCargoDescRowsFromRows(readCargoDescRows());
-  const rows = [...rows1,...rows2]
+  const rows = [...rows1, ...rows2];
   if (tier) {
     tier = parseInt(tier);
   }
