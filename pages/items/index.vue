@@ -21,7 +21,7 @@ if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
 
-const { data, pending, refresh } = await useLazyFetch(`/api/bitcraft/items`, {
+const { data, pending, refresh } = await useLazyFetch(`/api/bitcraft/itemsAndCargo`, {
   onRequest: ({ options }) => {
     options.query = options.query || {};
 
