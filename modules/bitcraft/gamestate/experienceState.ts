@@ -46,18 +46,21 @@ export type LeaderboardSkill = {
   player_name: string;
   experience?: number;
   level?: number;
+  rank: number;
 };
 
 export type LeaderboardLevel = {
   player_id: number;
   player_name: string;
   level: number;
+  rank: number;
 };
 
 export type LeaderboardExperience = {
   player_id: number;
   player_name: string;
   experience: number;
+  rank: number;
 };
 
 let LeaderBoardState: Leaderboard = {};
@@ -145,12 +148,23 @@ function buildLeaderboardState(): Leaderboard {
   for (const key of Object.keys(tempLeaderBoard)) {
     const value = tempLeaderBoard[key];
     tempLeaderBoard[key] = value.sort((a, b) => b.experience - a.experience);
+    for (let i = 0; i < value.length; i++) {
+      tempLeaderBoard[key][i].rank = i + 1;
+    }
   }
 
   playerTop100Experience.sort((a, b) => b.experience - a.experience);
   playerTop100Level.sort((a, b) => b.level - a.level);
   tempLeaderBoard["Experience"] = playerTop100Experience;
   tempLeaderBoard["Level"] = playerTop100Level;
+
+  for (let i = 0; i < tempLeaderBoard["Experience"].length; i++) {
+    tempLeaderBoard["Experience"][i].rank = i + 1;
+  }
+
+  for (let i = 0; i < tempLeaderBoard["Level"].length; i++) {
+    tempLeaderBoard["Level"][i].rank = i + 1;
+  }
 
   for (const key of Object.keys(tempLeaderBoard)) {
     for (const entity of tempLeaderBoard[key]) {

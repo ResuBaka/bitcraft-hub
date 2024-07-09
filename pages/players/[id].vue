@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
+const theme = useTheme();
 
 const page = ref(1);
 const perPage = 30;
@@ -35,6 +36,13 @@ const inventorys = computed(() => {
 
 const player = computed(() => {
   return playerFetch.value ?? undefined;
+});
+
+const computedClass = computed(() => {
+  return {
+    "bg-surface-light": theme.global.current.value.dark,
+    "bg-grey-lighten-3": !theme.global.current.value.dark,
+  };
 });
 </script>
 
@@ -80,7 +88,7 @@ const player = computed(() => {
               <td>Level</td>
               <td>Rank</td>
             </tr>
-            <tr v-for="[skill,xp_info] of Object.entries(expeirence.experience_stacks)" style='text-align: right'>
+            <tr v-for="[skill,xp_info] of Object.entries(expeirence)" style='text-align: right'>
               <th>{{ skill }}</th>
               <td>{{ xp_info.experience }}</td>
               <td>{{ xp_info.level }}</td>
@@ -91,7 +99,7 @@ const player = computed(() => {
         </v-card-text>
       </v-card>
 
-      <v-card variant="text">
+      <v-card variant="text" v-if="inventorys.length">
         <v-card-title>Inventory's</v-card-title>
         <v-card-text>
           <v-row>
