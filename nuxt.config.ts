@@ -1,9 +1,4 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-const scheduledTasks  = process.env.SCHEDULE_TASKS_ENABLED === "true" ? {
-  '*/1 * * * *': ['state:refresh'],
-} : undefined;
-
-
 export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
@@ -12,7 +7,9 @@ export default defineNuxtConfig({
       websocket: true,
       tasks: true,
     },
-    scheduledTasks,
+    scheduledTasks: {
+      '*/1 * * * *': ['state:refresh'],
+    },
     preset: "bun"
   },
   modules: [
