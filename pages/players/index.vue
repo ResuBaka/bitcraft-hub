@@ -90,6 +90,46 @@ const computedClass = computed(() => {
     "bg-grey-lighten-3": !theme.global.current.value.dark,
   };
 });
+
+const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
+  const days = Math.floor(seconds / (60 * 60 * 24));
+  const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
+  const minutes = Math.floor((seconds % (60 * 60)) / 60);
+  const secondsLeft = seconds % 60;
+
+  let result = '';
+
+  if (days > 0) {
+    result += `${days}d `;
+  }
+
+  if (hours > 0) {
+    result += `${hours}h `;
+  }
+
+  if (minutes > 0) {
+    result += `${minutes}m `;
+  }
+
+  if (secondsLeft > 0) {
+    result += `${secondsLeft}s`;
+  }
+
+  return result;
+};
+
+const timeStampToDateSince = (timestamp: number) => {
+  const date = new Date(timestamp * 1000);
+  const options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+  };
+  return date.toLocaleDateString('en-US', options);
+};
 </script>
 
 <template>
@@ -132,7 +172,7 @@ const computedClass = computed(() => {
               </tr>
               <tr style='text-align: right'>
                 <th>sign_in_timestamp:</th>
-                <td>{{ player.sign_in_timestamp }}</td>
+                <td>{{ timeStampToDateSince(player.sign_in_timestamp) }}</td>
               </tr>
               <tr style='text-align: right'>
                 <th>session_start_timestamp:</th>
@@ -140,11 +180,11 @@ const computedClass = computed(() => {
               </tr>
               <tr style='text-align: right'>
                 <th>time_played:</th>
-                <td>{{ player.time_played }}</td>
+                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_played) }}</td>
               </tr>
               <tr style='text-align: right'>
                 <th>time_signed_in:</th>
-                <td>{{ player.time_signed_in }}</td>
+                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>
               </tr>
               </tbody>
             </v-table>
