@@ -1,5 +1,10 @@
 import { writeFile } from "node:fs/promises";
 import SQLRequest from "./../../../SQLRequest";
+import {
+  parseInventorys,
+  readInventoryRows,
+  saveParsedInventorys,
+} from "../../../../gamestate/inventory";
 let rootFolder = `${process.cwd()}/storage/Desc`;
 let allDescTables = [
   "AchievementDesc",
@@ -82,6 +87,10 @@ export default defineTask({
         console.error(error);
       }
     }
+
+    const inventoryRows = readInventoryRows();
+    const parsedInventoryRows = parseInventorys(inventoryRows);
+    saveParsedInventorys(parsedInventoryRows);
 
     return { result: "Success" };
   },

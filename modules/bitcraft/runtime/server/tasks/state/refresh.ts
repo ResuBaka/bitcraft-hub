@@ -4,8 +4,22 @@ import { Readable } from "node:stream";
 import SQLRequest, { SQLRequestStream } from "./../../../SQLRequest";
 import { rebuildLeaderboardState } from "../../../../gamestate/experienceState";
 import { writeFile } from "node:fs/promises";
+import {
+  parseInventorys,
+  readInventoryRows,
+  saveParsedInventorys,
+} from "../../../../gamestate/inventory";
 let rootFolder = `${process.cwd()}/storage/State`;
-let allDescTables = ["PlayerState", "ExperienceState", "SkillDesc"];
+let allDescTables = [
+  "PlayerState",
+  "ExperienceState",
+  "ClaimDescriptionState",
+  "ClaimRecruitmentState",
+  "ClaimTechState",
+  "ClaimTileState",
+  "TradeOrderState",
+  "InventoryState",
+];
 export default defineTask({
   meta: {
     name: "fetch:all:state",
@@ -38,6 +52,10 @@ export default defineTask({
     console.log("Rebuilding Leaderboard");
     rebuildLeaderboardState();
     console.log("Rebuilding Leaderboard Complete");
+
+    const inventoryRows = readInventoryRows();
+    const parsedInventoryRows = parseInventorys(inventoryRows);
+    saveParsedInventorys(parsedInventoryRows);
 
     return { result: "Success" };
   },

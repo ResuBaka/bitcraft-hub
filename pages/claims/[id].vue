@@ -33,6 +33,25 @@ const buildings = computed(() => {
   return buidlingsFetch.value?.buildings ?? [];
 });
 
+const inventorySearch = ref<string | null>("");
+
+const inventorys = computed(() => {
+  if (!claimFetch.value?.inventorys) {
+    [];
+  }
+
+  return Object.values(claimFetch.value?.inventorys ?? {}).filter(
+    (inventory) => {
+      if (inventorySearch.value === null) {
+        return true;
+      }
+      return inventory.item.name
+        .toLowerCase()
+        .includes(inventorySearch.value.toLowerCase());
+    },
+  );
+});
+
 const length = computed(() => {
   return Math.ceil((buidlingsFetch.value?.total || 0) / perPage) ?? 0;
 });
@@ -168,6 +187,42 @@ const sortedUsersByPermissionLevel = computed(() => {
       <v-col cols="12">
       <v-card class="mt-5">
         <v-card-item>
+          <v-card-title>Items ({{ inventorys.length }})</v-card-title>
+        </v-card-item>
+        <v-card-text>
+          <v-col>
+            <v-text-field
+                v-model="inventorySearch"
+                label="Search"
+                outlined
+                dense
+                clearable
+            ></v-text-field>
+          </v-col>
+          <v-row>
+            <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorys" :key="inventory.item_id">
+                <v-list-item>
+                  <template #prepend v-if="iconDomain">
+                    <v-avatar :image="`${iconDomain}/${inventory.item.icon_asset_name}`" size="50"></v-avatar>
+                  </template>
+                  {{ inventory.item.name }}:
+                  <strong>{{ inventory.quantity }}</strong>
+                </v-list-item>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12">
+        <v-card class="mt-5">
+          <leaderboard-claim :claim-id="parseInt($route.params.id)"></leaderboard-claim>
+        </v-card>
+      </v-col>
+      <v-col cols="12">
+      <v-card class="mt-5">
+        <v-card-item>
           <v-card-title>Buildings</v-card-title>
         </v-card-item>
         <v-card-text>
@@ -212,11 +267,6 @@ const sortedUsersByPermissionLevel = computed(() => {
           </v-row>
         </v-card-text>
       </v-card>
-      </v-col>
-      <v-col cols="12">
-        <v-card class="mt-5">
-          <leaderboard-claim :claim-id="parseInt($route.params.id)"></leaderboard-claim>
-        </v-card>
       </v-col>
     </v-row>
   </v-container>
