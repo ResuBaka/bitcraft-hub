@@ -4,7 +4,7 @@ import {
   getInventoryRowFromRow,
   replaceInventoryItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/inventory";
-import type { ExpendedRefrence } from "~/modules/bitcraft/gamestate/item";
+import { getItemRowsFromRows, readItemRows, type ExpendedRefrence } from "~/modules/bitcraft/gamestate/item";
 import {
   SqlRequestAllPlayers,
   getPlayerEntityIdMapFromRows,
@@ -16,7 +16,7 @@ import {
 import { readFile, writeFile, appendFile } from "node:fs/promises";
 
 const storagePath = `${process.cwd()}/storage`;
-
+const items = getItemRowsFromRows(readItemRows());
 let websocket: WebSocket | null = null;
 
 let counter = 0;
@@ -93,7 +93,7 @@ export async function startWebsocket(
               inventory_id: inventory.entity_id,
               timestamp: jsonData?.TransactionUpdate?.event?.timestamp,
               identity: callerIdentiy,
-              created: replaceInventoryItemIdWithItem(inventory),
+              created: replaceInventoryItemIdWithItem(inventory,items),
             };
           } else if (table?.insert?.row === undefined) {
             const inventory = getInventoryRowFromRow(table?.delete?.row);
@@ -101,7 +101,7 @@ export async function startWebsocket(
               inventory_id: inventory.entity_id,
               timestamp: jsonData?.TransactionUpdate?.event?.timestamp,
               identity: callerIdentiy,
-              deleted: replaceInventoryItemIdWithItem(inventory),
+              deleted: replaceInventoryItemIdWithItem(inventory,items),
             };
           } else {
             const oldInventory = getInventoryRowFromRow(table?.delete?.row);

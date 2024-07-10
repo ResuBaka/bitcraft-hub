@@ -3,8 +3,10 @@ import {
   type ExpendedRefrence,
   getItemFromItemId,
   getItemRefrenceFromRow,
+  getItemRowsFromRows,
   type ItemRefrence,
   type ItemRow,
+  readItemRows,
 } from "../gamestate/item";
 import { type Entity, getSome } from "./entity";
 import { readFileSync } from "node:fs";
@@ -13,7 +15,7 @@ export type ItemSlot = {
   volume: number;
   contents?: ItemRefrence;
 };
-
+const items = getItemRowsFromRows(readItemRows());
 export interface InventoryStateRow extends Entity {
   pockets: ItemSlot[];
   inventory_index: number;
@@ -96,8 +98,8 @@ export function diffItemsInInventorys(
     };
   } = {};
 
-  const oldInv = replaceInventoryItemIdWithItem(oldInventory);
-  const newInv = replaceInventoryItemIdWithItem(newInventory);
+  const oldInv = replaceInventoryItemIdWithItem(oldInventory, items);
+  const newInv = replaceInventoryItemIdWithItem(newInventory, items);
 
   for (const pocketIndex of oldInventory.pockets.keys()) {
     const oldItem = JSON.stringify(oldInv.pockets[pocketIndex].contents);
