@@ -9,7 +9,6 @@ import {
 } from "~/modules/bitcraft/gamestate/item";
 
 const items = getItemRowsFromRows(readItemRows());
-const rows = replaceInventoryItemsIdWithItems(getInventorys(), items);
 
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
@@ -29,6 +28,7 @@ export type InventoryResponse = {
 };
 
 export default defineEventHandler<InventoryResponse>((event) => {
+  const rows = getInventorys();
   let { search, page, owner_entity_id, perPage } =
     getQuery<InventoryQuery>(event);
 
@@ -60,7 +60,10 @@ export default defineEventHandler<InventoryResponse>((event) => {
     }) ?? [];
 
   return {
-    inventorys: rowsFilterted.slice((page - 1) * perPage, page * perPage),
+    inventorys: replaceInventoryItemsIdWithItems(
+      rowsFilterted.slice((page - 1) * perPage, page * perPage),
+      items,
+    ),
     total: rowsFilterted.length,
     page,
     perPage,

@@ -87,6 +87,19 @@ let allDescTables = [
   "UserState",
   "VaultState",
   "VehicleState",
+  "EmpireChunkState",
+  "EmpireExpansionState",
+  "EmpireFoundryState",
+  "EmpireLogState",
+  "EmpireNodeSiegeState",
+  "EmpireNodeState",
+  "EmpireNotificationState",
+  "EmpirePlayerDataState",
+  "EmpirePlayerLogState",
+  "EmpireRankState",
+  "EmpireSettlementState",
+  "EmpireSiegeEngineState",
+  "EmpireState",
 ];
 export default defineTask({
   meta: {

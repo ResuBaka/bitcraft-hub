@@ -7,6 +7,7 @@ import { writeFile } from "node:fs/promises";
 import {
   parseInventorys,
   readInventoryRows,
+  reloadInventoryState,
   saveParsedInventorys,
 } from "../../../../gamestate/inventory";
 let rootFolder = `${process.cwd()}/storage/State`;
@@ -53,9 +54,9 @@ export default defineTask({
     rebuildLeaderboardState();
     console.log("Rebuilding Leaderboard Complete");
 
-    const inventoryRows = readInventoryRows();
-    const parsedInventoryRows = parseInventorys(inventoryRows);
-    saveParsedInventorys(parsedInventoryRows);
+    console.log("Reloading Inventorys");
+    reloadInventoryState();
+    console.log("Reloading Inventorys Complete");
 
     return { result: "Success" };
   },

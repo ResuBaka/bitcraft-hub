@@ -1,6 +1,7 @@
 import {
   parseInventorys,
   readInventoryRows,
+  reloadInventoryState,
   saveParsedInventorys,
 } from "~/modules/bitcraft/gamestate/inventory";
 
@@ -10,7 +11,5 @@ export default defineNitroPlugin(async (nitroApp) => {
   //     runTask("state:all"),
   // ]);
 
-  const inventoryRows = readInventoryRows();
-  const parsedInventoryRows = parseInventorys(inventoryRows);
-  saveParsedInventorys(parsedInventoryRows);
+  reloadInventoryState();
 });

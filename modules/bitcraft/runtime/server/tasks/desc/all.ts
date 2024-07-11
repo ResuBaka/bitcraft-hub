@@ -67,6 +67,11 @@ let allDescTables = [
   "VehicleDesc",
   "WeaponDesc",
   "WeaponTypeDesc",
+  "EmpireColorDesc",
+  "EmpireNotificationDesc",
+  "EmpireRankDesc",
+  "EmpireSuppliesDesc",
+  "EmpireTerritoryDesc",
 ];
 export default defineTask({
   meta: {

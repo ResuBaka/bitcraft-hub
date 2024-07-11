@@ -97,7 +97,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
   const minutes = Math.floor((seconds % (60 * 60)) / 60);
   const secondsLeft = seconds % 60;
 
-  let result = '';
+  let result = "";
 
   if (days > 0) {
     result += `${days}d `;
@@ -121,14 +121,14 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 const timeStampToDateSince = (timestamp: number) => {
   const date = new Date(timestamp * 1000);
   const options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
   };
-  return date.toLocaleDateString('en-US', options);
+  return date.toLocaleDateString("en-US", options);
 };
 </script>
 

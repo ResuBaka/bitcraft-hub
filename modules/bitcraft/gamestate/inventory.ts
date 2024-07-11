@@ -63,6 +63,12 @@ export function saveParsedInventorys(rows: InventoryStateRow[]): void {
   InventoryStateRows = rows;
 }
 
+export function reloadInventoryState() {
+  const inventoryRows = readInventoryRows();
+  const parsedInventoryRows = parseInventorys(inventoryRows);
+  saveParsedInventorys(parsedInventoryRows);
+}
+
 export function parseInventorys(rows: any[]): InventoryStateRow[] {
   const localInventoryStateRows: InventoryStateRow[] = [];
 
