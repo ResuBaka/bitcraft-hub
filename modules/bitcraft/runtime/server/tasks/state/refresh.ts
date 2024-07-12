@@ -20,10 +20,13 @@ let allDescTables = [
   "ClaimTileState",
   "TradeOrderState",
   "InventoryState",
+  "EmpireState",
+  "EmpireSettlementState"
+
 ];
 export default defineTask({
   meta: {
-    name: "fetch:all:state",
+    name: "refetch:all:state",
     description: "Run database migrations",
   },
   async run({ payload, context }) {
