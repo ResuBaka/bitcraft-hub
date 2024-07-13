@@ -10,19 +10,22 @@ const {
   public: { iconDomain },
 } = useRuntimeConfig();
 
-const { data: neededInCrafting } = useFetch("/api/bitcraft/recipes", {
+const { data: neededInCrafting } = await useLazyFetch("/api/bitcraft/recipes", {
   query: {
     neededInCrafting: item.id,
   },
 });
 
-const { data: producedInCrafting } = useFetch("/api/bitcraft/recipes", {
-  query: {
-    producedInCrafting: item.id,
+const { data: producedInCrafting } = await useLazyFetch(
+  "/api/bitcraft/recipes",
+  {
+    query: {
+      producedInCrafting: item.id,
+    },
   },
-});
+);
 
-const { data: neededToCraft } = useFetch("/api/bitcraft/recipes", {
+const { data: neededToCraft } = await useLazyFetch("/api/bitcraft/recipes", {
   query: {
     neededToCraft: item.id,
   },
