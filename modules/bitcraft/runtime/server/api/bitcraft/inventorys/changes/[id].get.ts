@@ -18,5 +18,5 @@ export default defineEventHandler((event) => {
     });
   }
 
-  return data;
+  return data.reverse();
 });
