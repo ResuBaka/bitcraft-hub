@@ -1,10 +1,7 @@
-import {
-  getCargoDescRowsFromRows,
-  readCargoDescRows,
-} from "~/modules/bitcraft/gamestate/cargoDesc";
+import { getCargoDescRowsFromRows } from "~/modules/bitcraft/gamestate/cargoDesc";
 
-const rows = getCargoDescRowsFromRows(readCargoDescRows());
 export default defineEventHandler((event) => {
+  const rows = getCargoDescRowsFromRows();
   const id = getRouterParam(event, "id", { decode: true });
 
   if (!id) {

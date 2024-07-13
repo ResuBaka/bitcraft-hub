@@ -15,7 +15,7 @@ import {
   type TradingOrderStateRow,
 } from "~/modules/bitcraft/gamestate/tradeOrder";
 const items = getItemRowsFromRows();
-const cargo_rows = getCargoDescRowsFromRows(readCargoDescRows());
+const cargo_rows = getCargoDescRowsFromRows();
 const rows = replaceTradeOrdersItemIdWithItem(
   replaceTradeOrdersCargoIdWithCargo(
     getTradingOrderStateRowsFromRows(readTradeOrderStateRows()),

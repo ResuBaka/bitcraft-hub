@@ -28,14 +28,33 @@ export interface BuildingDescFunction {
   buff_ids: number[];
 }
 
-export function getBuildingDescRowsFromRows(rows: any[]): BuildingDescRow[] {
-  const BuildingStateRow: BuildingDescRow[] = [];
+let BuildingDescState: BuildingDescRow[] = [];
 
-  for (const row of rows) {
-    BuildingStateRow.push(getBuildingDescRowFromRow(row));
+export function getBuildingDescRowsFromRows(): BuildingDescRow[] {
+  if (BuildingDescState.length === 0) {
+    const BuildingStateRow: BuildingDescRow[] = [];
+    const rows = readBuildingDescRows();
+
+    for (const row of rows) {
+      BuildingStateRow.push(getBuildingDescRowFromRow(row));
+    }
+
+    BuildingDescState = BuildingStateRow;
   }
 
-  return BuildingStateRow;
+  return BuildingDescState;
+}
+
+export function reloadBuildingDesc() {
+  const rows = readBuildingDescRows();
+  const parsedBuildingDescRows = rows.map((row) =>
+    getBuildingDescRowFromRow(row),
+  );
+  saveParsedBuildingDesc(parsedBuildingDescRows);
+}
+
+function saveParsedBuildingDesc(rows: BuildingDescRow[]): void {
+  BuildingDescState = rows;
 }
 
 function getBuildingDescRowFromRow(row: any[]): BuildingDescRow {

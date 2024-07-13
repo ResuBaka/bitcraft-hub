@@ -1,7 +1,4 @@
-import {
-  getClaimDescriptionRowsFromRows,
-  readClaimRows,
-} from "~/modules/bitcraft/gamestate/claimDescription";
+import { getClaimDescriptionRowsFromRows } from "~/modules/bitcraft/gamestate/claimDescription";
 
 interface ClaimMember {
   user_name: string;
@@ -30,7 +27,7 @@ let perPageMax = perPageDefault * 4;
 export default defineEventHandler((event) => {
   let { search, page, perPage, showEmptySupplies } = getQuery(event);
 
-  const rows = getClaimDescriptionRowsFromRows(readClaimRows());
+  const rows = getClaimDescriptionRowsFromRows();
 
   if (page) {
     page = parseInt(page);

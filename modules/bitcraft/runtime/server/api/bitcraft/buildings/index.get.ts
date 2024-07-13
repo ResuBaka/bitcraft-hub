@@ -1,7 +1,4 @@
-import {
-  getBuildingDescIdMapFromRows,
-  readBuildingDescRows,
-} from "~/modules/bitcraft/gamestate/buildingDesc";
+import { getBuildingDescIdMapFromRows } from "~/modules/bitcraft/gamestate/buildingDesc";
 import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
 export default defineEventHandler((event) => {

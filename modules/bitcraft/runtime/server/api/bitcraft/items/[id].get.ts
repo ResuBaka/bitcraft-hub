@@ -1,9 +1,5 @@
-import {
-  getItemRowsFromRows,
-  readItemRows,
-} from "~/modules/bitcraft/gamestate/item";
+import { getItemRowsFromRows } from "~/modules/bitcraft/gamestate/item";
 
-const rows = getItemRowsFromRows();
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });
 
@@ -14,6 +10,7 @@ export default defineEventHandler((event) => {
     });
   }
 
+  const rows = getItemRowsFromRows();
   const item = rows.find((item) => item.id == parseInt(id));
 
   if (!item) {

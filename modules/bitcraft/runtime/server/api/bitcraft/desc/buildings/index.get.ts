@@ -1,7 +1,6 @@
 import {
   type BuildingDescRow,
   getBuildingDescRowsFromRows,
-  readBuildingDescRows,
 } from "~/modules/bitcraft/gamestate/buildingDesc";
 import type { BuildingStateRow } from "~/modules/bitcraft/gamestate/buildingState";
 import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
@@ -9,7 +8,7 @@ import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/build
 export default defineEventHandler((event) => {
   let { search, page } = getQuery(event);
 
-  let rows = getBuildingDescRowsFromRows(readBuildingDescRows());
+  let rows = getBuildingDescRowsFromRows();
 
   const perPage = 30;
 

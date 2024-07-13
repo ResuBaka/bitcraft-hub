@@ -1,7 +1,6 @@
 import {
-  ClaimDescriptionRow,
+  type ClaimDescriptionRow,
   getClaimDescriptionRowsFromRows,
-  readClaimRows,
 } from "~/modules/bitcraft/gamestate/claimDescription";
 import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 import { getBuildingDescIdMapFromRows } from "~/modules/bitcraft/gamestate/buildingDesc";
@@ -11,8 +10,8 @@ import {
 } from "~/modules/bitcraft/gamestate/inventory";
 import { getItemRowsFromRows } from "~/modules/bitcraft/gamestate/item";
 
-const rows = getClaimDescriptionRowsFromRows(readClaimRows());
 export default defineEventHandler((event) => {
+  const rows = getClaimDescriptionRowsFromRows();
   const id = getRouterParam(event, "id", { decode: true });
 
   if (!id) {

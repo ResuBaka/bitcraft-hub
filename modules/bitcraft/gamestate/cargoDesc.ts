@@ -25,14 +25,31 @@ export interface CargoDescRow {
   rarity: any;
 }
 
-export function getCargoDescRowsFromRows(rows: any): CargoDescRow[] {
-  const BuildingStateRow: CargoDescRow[] = [];
+let CargoDescState: CargoDescRow[] = [];
 
-  for (const row of rows) {
-    BuildingStateRow.push(getCargoDescRowFromRow(row));
+export function getCargoDescRowsFromRows(): CargoDescRow[] {
+  if (CargoDescState.length === 0) {
+    const BuildingStateRow: CargoDescRow[] = [];
+    const rows = readCargoDescRows();
+
+    for (const row of rows) {
+      BuildingStateRow.push(getCargoDescRowFromRow(row));
+    }
+
+    CargoDescState = BuildingStateRow;
   }
 
-  return BuildingStateRow;
+  return CargoDescState;
+}
+
+export function reloadCargoDesc() {
+  const cargoRows = readCargoDescRows();
+  const parsedCargoRows = cargoRows.map((row) => getCargoDescRowFromRow(row));
+  saveParsedCargoDesc(parsedCargoRows);
+}
+
+function saveParsedCargoDesc(rows: CargoDescRow[]): void {
+  CargoDescState = rows;
 }
 
 export function getCagoDescFromCargoId(

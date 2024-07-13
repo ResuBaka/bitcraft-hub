@@ -40,17 +40,36 @@ type CraftingRecipeRow = {
   animation_end: string;
 };
 
-export function getCraftingRecipesFromRows(rows: any[][]): CraftingRecipeRow[] {
-  const craftingRecipes: CraftingRecipeRow[] = [];
+let CraftingRecipeState: CraftingRecipeRow[] = [];
 
-  for (const row of rows) {
-    craftingRecipes.push(getCraftingRecipeFromRow(row));
+export function getCraftingRecipesFromRows(): CraftingRecipeRow[] {
+  if (CraftingRecipeState.length === 0) {
+    const craftingRecipes: CraftingRecipeRow[] = [];
+    const rows = readCraftingRecipeRows();
+
+    for (const row of rows) {
+      craftingRecipes.push(getCraftingRecipeFromRow(row));
+    }
+
+    return craftingRecipes;
   }
 
-  return craftingRecipes;
+  return CraftingRecipeState;
 }
 
-function getCraftingRecipeFromRow(i: any[]): CraftingRecipeRow[] {
+export function reloadCraftingRecipes() {
+  const rows = readCraftingRecipeRows();
+  const parsedCraftingRecipes = rows.map((row) =>
+    getCraftingRecipeFromRow(row),
+  );
+  saveParsedCraftingRecipes(parsedCraftingRecipes);
+}
+
+function saveParsedCraftingRecipes(rows: CraftingRecipeRow[]): void {
+  CraftingRecipeState = rows;
+}
+
+function getCraftingRecipeFromRow(i: any[]): CraftingRecipeRow {
   return {
     id: i[0],
     name: i[1],

@@ -1,7 +1,6 @@
 import {
   getItemRowsFromRows,
   type ItemRow,
-  readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
 let perPageDefault = 24;

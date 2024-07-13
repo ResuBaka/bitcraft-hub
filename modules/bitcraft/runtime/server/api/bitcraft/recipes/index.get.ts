@@ -1,11 +1,7 @@
 import {
   getAllConsumedItemsFromItem,
   getCraftingRecipesFromRows,
-  readCraftingRecipeRows,
 } from "~/modules/bitcraft/gamestate/rerecipe";
-import type { TradingOrderStateRow } from "~/modules/bitcraft/gamestate/tradeOrder";
-
-const rows = getCraftingRecipesFromRows(readCraftingRecipeRows());
 
 export type TradeOrderQuery = {
   neededInCrafting?: number;
@@ -14,6 +10,7 @@ export type TradeOrderQuery = {
 };
 
 export default defineEventHandler((event) => {
+  const rows = getCraftingRecipesFromRows();
   const { neededInCrafting, producedInCrafting, neededToCraft } =
     getQuery<TradeOrderQuery>(event);
 

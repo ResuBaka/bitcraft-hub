@@ -2,14 +2,10 @@ import {
   getInventorys,
   replaceInventoryItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/inventory";
-import {
-  getItemRowsFromRows,
-  readItemRows,
-} from "~/modules/bitcraft/gamestate/item";
-
-const items = getItemRowsFromRows();
+import { getItemRowsFromRows } from "~/modules/bitcraft/gamestate/item";
 
 export default defineEventHandler((event) => {
+  const items = getItemRowsFromRows();
   const rows = getInventorys();
 
   const id = getRouterParam(event, "id", { decode: true });

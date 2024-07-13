@@ -45,16 +45,31 @@ function getClaimMember(row: any): ClaimMember {
   };
 }
 
-export function getClaimDescriptionRowsFromRows(
-  rows: any[],
-): ClaimDescriptionRow[] {
-  const PlayerStateRow: ClaimDescriptionRow[] = [];
+let ClaimDescriptionState: ClaimDescriptionRow[] = [];
 
-  for (const row of rows) {
-    PlayerStateRow.push(getClaimDescriptionRowFromRow(row));
+export function getClaimDescriptionRowsFromRows(): ClaimDescriptionRow[] {
+  if (ClaimDescriptionState.length === 0) {
+    const PlayerStateRow: ClaimDescriptionRow[] = [];
+    const rows = readClaimRows();
+
+    for (const row of rows) {
+      PlayerStateRow.push(getClaimDescriptionRowFromRow(row));
+    }
+
+    ClaimDescriptionState = PlayerStateRow;
   }
 
-  return PlayerStateRow;
+  return ClaimDescriptionState;
+}
+
+export function reloadClaimDescription() {
+  const rows = readClaimRows();
+  const parsedClaimRows = rows.map((row) => getClaimDescriptionRowFromRow(row));
+  saveParsedClaimDescription(parsedClaimRows);
+}
+
+function saveParsedClaimDescription(rows: ClaimDescriptionRow[]): void {
+  ClaimDescriptionState = rows;
 }
 
 export function getClaimDescriptionMapFromRows(

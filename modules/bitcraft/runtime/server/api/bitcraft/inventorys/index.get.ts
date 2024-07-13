@@ -3,12 +3,7 @@ import {
   type InventoryStateRow,
   replaceInventoryItemsIdWithItems,
 } from "~/modules/bitcraft/gamestate/inventory";
-import {
-  getItemRowsFromRows,
-  readItemRows,
-} from "~/modules/bitcraft/gamestate/item";
-
-const items = getItemRowsFromRows();
+import { getItemRowsFromRows } from "~/modules/bitcraft/gamestate/item";
 
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
@@ -28,6 +23,7 @@ export type InventoryResponse = {
 };
 
 export default defineEventHandler<InventoryResponse>((event) => {
+  const items = getItemRowsFromRows();
   const rows = getInventorys();
   let { search, page, owner_entity_id, perPage } =
     getQuery<InventoryQuery>(event);

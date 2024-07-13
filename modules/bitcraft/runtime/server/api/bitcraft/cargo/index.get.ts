@@ -28,7 +28,7 @@ export type ItemResponse = {
 export default defineEventHandler<ItemResponse>((event) => {
   let { tag, tier, search, page, perPage } = getQuery<ItemQuery>(event);
 
-  const rows = getCargoDescRowsFromRows(readCargoDescRows());
+  const rows = getCargoDescRowsFromRows();
 
   if (tier) {
     tier = parseInt(tier);

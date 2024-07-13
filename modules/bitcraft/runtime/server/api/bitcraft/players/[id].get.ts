@@ -1,9 +1,5 @@
-import {
-  getPlayerRowsFromRows,
-  readPlayerStateRows,
-} from "~/modules/bitcraft/gamestate/player";
+import { getPlayerRowsFromRows } from "~/modules/bitcraft/gamestate/player";
 
-const rows = getPlayerRowsFromRows(readPlayerStateRows());
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });
 
@@ -14,6 +10,7 @@ export default defineEventHandler((event) => {
     });
   }
 
+  const rows = getPlayerRowsFromRows();
   const claims = rows.find((claims) => claims.entity_id == parseInt(id));
 
   if (!claims) {

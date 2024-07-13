@@ -1,9 +1,4 @@
-import {
-  getPlayerRowsFromRows,
-  readPlayerStateRows,
-} from "~/modules/bitcraft/gamestate/player";
-
-const rows = getPlayerRowsFromRows(readPlayerStateRows());
+import { getPlayerRowsFromRows } from "~/modules/bitcraft/gamestate/player";
 
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
@@ -26,6 +21,7 @@ export default defineEventHandler((event) => {
     perPage = perPageDefault;
   }
 
+  const rows = getPlayerRowsFromRows();
   const rowsFilterted =
     rows?.filter((player) => {
       return (

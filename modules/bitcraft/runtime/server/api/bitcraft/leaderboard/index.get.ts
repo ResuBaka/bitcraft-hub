@@ -1,5 +1,4 @@
 import {
-  XPToLevel,
   type ExtendedExpeirenceStateRow,
   getLeaderboard,
 } from "~/modules/bitcraft/gamestate/experienceState";

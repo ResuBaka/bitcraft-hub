@@ -1,12 +1,11 @@
 import {
   getItemRowsFromRows,
   type ItemRow,
-  readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
 import {
   getCargoDescRowsFromRows,
-  readCargoDescRows,
+  type CargoDescRow,
 } from "~/modules/bitcraft/gamestate/cargoDesc";
 
 let perPageDefault = 24;
@@ -33,9 +32,26 @@ export type ItemResponse = {
 export default defineEventHandler<ItemResponse>((event) => {
   let { tag, tier, search, page, perPage } = getQuery<ItemQuery>(event);
 
-  const rows1 = getItemRowsFromRows();
-  const rows2 = getCargoDescRowsFromRows(readCargoDescRows());
-  const rows = [...rows1, ...rows2];
+  const itemRows = getItemRowsFromRows();
+  const cargoDescRows = getCargoDescRowsFromRows();
+
+  const tagsFromItems = Array.from(
+    new Set(itemRows.map((item: any) => item.tag)),
+  );
+  const tiersFromItems = Array.from(
+    new Set(itemRows.map((item: any) => parseInt(item.tier))),
+  );
+
+  const tagsFromCargo = Array.from(
+    new Set(cargoDescRows.map((item: any) => item.tag)),
+  );
+  const tiersFromCargo = Array.from(
+    new Set(cargoDescRows.map((item: any) => parseInt(item.tier))),
+  );
+
+  const tags = Array.from(new Set([...tagsFromItems, ...tagsFromCargo]));
+  const tiers = Array.from(new Set([...tiersFromItems, ...tiersFromCargo]));
+
   if (tier) {
     tier = parseInt(tier);
   }
@@ -55,8 +71,8 @@ export default defineEventHandler<ItemResponse>((event) => {
     perPage = perPageDefault;
   }
 
-  const rowsFilterted =
-    rows?.filter((item) => {
+  const rowsFilterted: ItemRow[] | CargoDescRow[] =
+    itemRows?.filter((item) => {
       return (
         (!tag || item.tag === tag) &&
         (!tier || item.tier === tier) &&
@@ -67,10 +83,24 @@ export default defineEventHandler<ItemResponse>((event) => {
       );
     }) ?? [];
 
+  const cargoRowsFilterted: CargoDescRow[] =
+    cargoDescRows?.filter((item) => {
+      return (
+        (!tag || item.tag === tag) &&
+        (!tier || item.tier === tier) &&
+        (!search ||
+          item.name.toLowerCase().includes(search.toLowerCase()) ||
+          !search ||
+          item.id.toString().includes(search))
+      );
+    }) ?? [];
+
+  rowsFilterted.push(...cargoRowsFilterted);
+
   return {
     items: rowsFilterted.slice((page - 1) * perPage, page * perPage),
-    tags: Array.from(new Set(rows.map((item: any) => item.tag))),
-    tiers: Array.from(new Set(rows.map((item: any) => parseInt(item.tier)))),
+    tags: tags.sort((a, b) => a.localeCompare(b)),
+    tiers: tiers.sort((a, b) => a - b),
     total: rowsFilterted.length,
     page,
     pages: Math.ceil(rowsFilterted.length / perPage),

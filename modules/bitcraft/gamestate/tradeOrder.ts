@@ -20,16 +20,33 @@ export interface TradingOrderStateRow extends Entity {
   required_cargo?: CargoDescRow[];
 }
 
-export function getTradingOrderStateRowsFromRows(
-  rows: any[],
-): TradingOrderStateRow[] {
-  const BuildingStateRow: TradingOrderStateRow[] = [];
+let TradingOrderStateState: TradingOrderStateRow[] = [];
 
-  for (const row of rows) {
-    BuildingStateRow.push(getTradingOrderStateRowFromRow(row));
+export function getTradingOrderStateRowsFromRows(): TradingOrderStateRow[] {
+  if (TradingOrderStateState.length === 0) {
+    const BuildingStateRow: TradingOrderStateRow[] = [];
+    const rows = readTradeOrderStateRows();
+
+    for (const row of rows) {
+      BuildingStateRow.push(getTradingOrderStateRowFromRow(row));
+    }
+
+    return BuildingStateRow;
   }
 
-  return BuildingStateRow;
+  return TradingOrderStateState;
+}
+
+export function reloadTradingOrderState() {
+  const rows = readTradeOrderStateRows();
+  const parsedTradingOrderStateRows = rows.map((row) =>
+    getTradingOrderStateRowFromRow(row),
+  );
+  saveParsedTradingOrderState(parsedTradingOrderStateRows);
+}
+
+function saveParsedTradingOrderState(rows: TradingOrderStateRow[]): void {
+  TradingOrderStateState = rows;
 }
 
 function getTradingOrderStateRowFromRow(row: any[]): TradingOrderStateRow {

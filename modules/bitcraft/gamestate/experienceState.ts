@@ -80,7 +80,7 @@ export function rebuildLeaderboardState(): Leaderboard {
 function buildLeaderboardState(): Leaderboard {
   const tempLeaderBoard: Leaderboard = {};
 
-  const playerRows = getPlayerRowsFromRows(readPlayerStateRows());
+  const playerRows = getPlayerRowsFromRows();
   const rows = getExperienceRowsFromRows(readExperienceStateRows());
   const skills = getSkillRowsFromRows(readSkillRows());
 

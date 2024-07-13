@@ -1,16 +1,13 @@
 import {
   getItemRowsFromRows,
-  readItemRows,
+  type ItemRow,
 } from "~/modules/bitcraft/gamestate/item";
 
 import {
+  type CargoDescRow,
   getCargoDescRowsFromRows,
-  readCargoDescRows,
 } from "~/modules/bitcraft/gamestate/cargoDesc";
 
-const rows1 = getItemRowsFromRows();
-const rows2 = getCargoDescRowsFromRows(readCargoDescRows());
-const rows = [...rows1, ...rows2];
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });
 
@@ -21,7 +18,16 @@ export default defineEventHandler((event) => {
     });
   }
 
-  const item = rows.find((item) => item.id == parseInt(id));
+  const itemRows = getItemRowsFromRows();
+
+  let item: ItemRow | undefined | CargoDescRow = itemRows.find(
+    (item) => item.id == parseInt(id),
+  );
+
+  if (!item) {
+    const cargoDescRows = getCargoDescRowsFromRows();
+    item = cargoDescRows.find((item) => item.id == parseInt(id));
+  }
 
   if (!item) {
     throw createError({

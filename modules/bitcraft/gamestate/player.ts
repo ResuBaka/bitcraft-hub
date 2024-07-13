@@ -16,12 +16,31 @@ export interface PlayerStateRow extends Entity {
   teleport_location: any;
 }
 
-export function getPlayerRowsFromRows(rows: any[]): PlayerStateRow[] {
-  const playerRows: PlayerStateRow[] = [];
-  for (const row of rows) {
-    playerRows.push(getPlayerRowFromRow(row));
+let PlayerStateState: PlayerStateRow[] = [];
+
+export function getPlayerRowsFromRows(): PlayerStateRow[] {
+  if (PlayerStateState.length === 0) {
+    const playerRows: PlayerStateRow[] = [];
+    const rows = readPlayerStateRows();
+
+    for (const row of rows) {
+      playerRows.push(getPlayerRowFromRow(row));
+    }
+
+    PlayerStateState = playerRows;
   }
-  return playerRows;
+
+  return PlayerStateState;
+}
+
+export function reloadPlayerState() {
+  const rows = readPlayerStateRows();
+  const parsedPlayerRows = rows.map((row) => getPlayerRowFromRow(row));
+  saveParsedPlayerState(parsedPlayerRows);
+}
+
+function saveParsedPlayerState(rows: PlayerStateRow[]): void {
+  PlayerStateState = rows;
 }
 
 export function getPlayerEntityIdMapFromRows(

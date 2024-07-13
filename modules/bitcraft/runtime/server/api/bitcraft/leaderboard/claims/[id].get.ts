@@ -1,19 +1,7 @@
-import {
-  type ExtendedExpeirenceStateRow,
-  getLeaderboard,
-} from "~/modules/bitcraft/gamestate/experienceState";
-import {
-  getClaimDescriptionRowsFromRows,
-  readClaimRows,
-} from "~/modules/bitcraft/gamestate/claimDescription";
-
-export interface ExtendedExpeirenceStateRowWithName
-  extends ExtendedExpeirenceStateRow {
-  entity_name?: string;
-}
+import { getLeaderboard } from "~/modules/bitcraft/gamestate/experienceState";
+import { getClaimDescriptionRowsFromRows } from "~/modules/bitcraft/gamestate/claimDescription";
 
 export default defineEventHandler((event) => {
-  const claimsRows = getClaimDescriptionRowsFromRows(readClaimRows());
   const id = getRouterParam(event, "id", { decode: true });
 
   if (!id) {
@@ -23,6 +11,7 @@ export default defineEventHandler((event) => {
     });
   }
 
+  const claimsRows = getClaimDescriptionRowsFromRows();
   const claims = claimsRows.find((claims) => claims.entity_id == parseInt(id));
 
   if (!claims) {
