@@ -1,28 +1,11 @@
-import {
-  getCargoDescRowsFromRows,
-  readCargoDescRows,
-} from "~/modules/bitcraft/gamestate/cargoDesc";
-import {
-  getItemRowsFromRows,
-  readItemRows,
-} from "~/modules/bitcraft/gamestate/item";
+import { getCargoDescRowsFromRows } from "~/modules/bitcraft/gamestate/cargoDesc";
+import { getItemRowsFromRows } from "~/modules/bitcraft/gamestate/item";
 import {
   getTradingOrderStateRowsFromRows,
-  readTradeOrderStateRows,
-  replaceTradeOrderItemIdWithItem,
   replaceTradeOrdersCargoIdWithCargo,
   replaceTradeOrdersItemIdWithItem,
   type TradingOrderStateRow,
 } from "~/modules/bitcraft/gamestate/tradeOrder";
-const items = getItemRowsFromRows();
-const cargo_rows = getCargoDescRowsFromRows();
-const rows = replaceTradeOrdersItemIdWithItem(
-  replaceTradeOrdersCargoIdWithCargo(
-    getTradingOrderStateRowsFromRows(readTradeOrderStateRows()),
-    cargo_rows,
-  ),
-  items,
-);
 
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
@@ -57,6 +40,16 @@ export default defineEventHandler<TradeOrderResponse>((event) => {
   } else {
     perPage = perPageDefault;
   }
+
+  const items = getItemRowsFromRows();
+  const cargo_rows = getCargoDescRowsFromRows();
+  const rows = replaceTradeOrdersItemIdWithItem(
+    replaceTradeOrdersCargoIdWithCargo(
+      getTradingOrderStateRowsFromRows(),
+      cargo_rows,
+    ),
+    items,
+  );
 
   const searchLowerCase = search?.toLowerCase();
 

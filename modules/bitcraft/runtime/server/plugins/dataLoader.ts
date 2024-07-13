@@ -1,9 +1,4 @@
-import {
-  parseInventorys,
-  readInventoryRows,
-  reloadInventoryState,
-  saveParsedInventorys,
-} from "~/modules/bitcraft/gamestate/inventory";
+import { reloadInventoryState } from "~/modules/bitcraft/gamestate/inventory";
 
 export default defineNitroPlugin(async (nitroApp) => {
   // await Promise.allSettled([
@@ -11,5 +6,6 @@ export default defineNitroPlugin(async (nitroApp) => {
   //     runTask("state:all"),
   // ]);
 
+  console.log("Reloading Inventorys");
   reloadInventoryState();
 });

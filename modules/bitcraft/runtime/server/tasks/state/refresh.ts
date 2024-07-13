@@ -4,6 +4,8 @@ import { rebuildLeaderboardState } from "../../../../gamestate/experienceState";
 import { writeFile } from "node:fs/promises";
 import { reloadInventoryState } from "../../../../gamestate/inventory";
 import { reloadBuildingState } from "../../../../gamestate/buildingState";
+import { reloadClaimDescription } from "../../../../gamestate/claimDescription";
+import { reloadTradingOrderState } from "../../../../gamestate/tradeOrder";
 let rootFolder = `${process.cwd()}/storage/State`;
 let allDescTables = [
   "PlayerState",
@@ -46,15 +48,11 @@ export default defineTask({
       }
     }
 
-    console.log("Rebuilding Leaderboard");
     rebuildLeaderboardState();
-    console.log("Rebuilding Leaderboard Complete");
-
-    console.log("Reloading Inventorys");
     reloadInventoryState();
-    console.log("Reloading Inventorys Complete");
-
     reloadBuildingState();
+    reloadClaimDescription();
+    reloadTradingOrderState();
 
     return { result: "Success" };
   },
