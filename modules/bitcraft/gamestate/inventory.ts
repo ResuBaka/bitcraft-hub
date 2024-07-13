@@ -80,6 +80,10 @@ export function parseInventorys(rows: any[]): InventoryStateRow[] {
 }
 
 export function getInventorys(): InventoryStateRow[] {
+  if (InventoryStateRows.length === 0) {
+    reloadInventoryState();
+  }
+
   return InventoryStateRows;
 }
 
@@ -169,9 +173,17 @@ export async function SqlRequestInventoryByEntityId(
 }
 
 export function readInventoryRows() {
-  return JSON.parse(
-    readFileSync(`${process.cwd()}/storage/State/InventoryState.json`, "utf8"),
-  )[0].rows;
+  try {
+    return JSON.parse(
+      readFileSync(
+        `${process.cwd()}/storage/State/InventoryState.json`,
+        "utf8",
+      ),
+    )[0].rows;
+  } catch {
+    console.log("No inventory state");
+    return [];
+  }
 }
 
 export function readInventroyChanges(id: number): false | InventoryChanged[] {

@@ -5,7 +5,4 @@ export default defineNitroPlugin(async (nitroApp) => {
   //     runTask("desc:all"),
   //     runTask("state:all"),
   // ]);
-
-  console.log("Reloading Inventorys");
-  reloadInventoryState();
 });

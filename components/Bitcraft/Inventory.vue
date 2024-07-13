@@ -172,7 +172,7 @@ const backgroundColorRow = ({ index }) => {
     <div v-bind="$attrs">
       <v-card class="mb-5">
         <v-toolbar color="transparent">
-          <v-toolbar-title>Inventory: {{ inventory.entity_id }}</v-toolbar-title>
+          <v-toolbar-title>Inventory: <strong>{{ inventory.nickname ? inventory.nickname : inventory.entity_id }}</strong></v-toolbar-title>
 
         </v-toolbar>
 

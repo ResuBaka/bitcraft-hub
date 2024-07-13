@@ -6,6 +6,7 @@ import { reloadInventoryState } from "../../../../gamestate/inventory";
 import { reloadBuildingState } from "../../../../gamestate/buildingState";
 import { reloadClaimDescription } from "../../../../gamestate/claimDescription";
 import { reloadTradingOrderState } from "../../../../gamestate/tradeOrder";
+import { reloadVehicleState } from "../../../../gamestate/vehicleState";
 let rootFolder = `${process.cwd()}/storage/State`;
 let allDescTables = [
   "PlayerState",
@@ -17,6 +18,7 @@ let allDescTables = [
   "TradeOrderState",
   "InventoryState",
   "BuildingState",
+  "VehicleState",
 ];
 
 export default defineTask({
@@ -53,6 +55,7 @@ export default defineTask({
     reloadBuildingState();
     reloadClaimDescription();
     reloadTradingOrderState();
+    reloadVehicleState();
 
     return { result: "Success" };
   },
