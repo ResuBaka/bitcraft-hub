@@ -1,15 +1,9 @@
 import fs, { createWriteStream } from "node:fs";
-import { finished } from "node:stream/promises";
-import { Readable } from "node:stream";
 import SQLRequest, { SQLRequestStream } from "./../../../SQLRequest";
 import { rebuildLeaderboardState } from "../../../../gamestate/experienceState";
 import { writeFile } from "node:fs/promises";
-import {
-  parseInventorys,
-  readInventoryRows,
-  reloadInventoryState,
-  saveParsedInventorys,
-} from "../../../../gamestate/inventory";
+import { reloadInventoryState } from "../../../../gamestate/inventory";
+import { reloadBuildingState } from "../../../../gamestate/buildingState";
 let rootFolder = `${process.cwd()}/storage/State`;
 let allDescTables = [
   "PlayerState",
@@ -20,7 +14,9 @@ let allDescTables = [
   "ClaimTileState",
   "TradeOrderState",
   "InventoryState",
+  "BuildingState",
 ];
+
 export default defineTask({
   meta: {
     name: "fetch:all:state",
@@ -57,6 +53,8 @@ export default defineTask({
     console.log("Reloading Inventorys");
     reloadInventoryState();
     console.log("Reloading Inventorys Complete");
+
+    reloadBuildingState();
 
     return { result: "Success" };
   },

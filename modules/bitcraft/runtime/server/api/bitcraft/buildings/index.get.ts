@@ -2,15 +2,12 @@ import {
   getBuildingDescIdMapFromRows,
   readBuildingDescRows,
 } from "~/modules/bitcraft/gamestate/buildingDesc";
-import {
-  getBuildingStateRowsFromRows,
-  readBuildingStateRows,
-} from "~/modules/bitcraft/gamestate/buildingState";
+import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
 export default defineEventHandler((event) => {
   let { search, with_inventory, page, claim_entity_id } = getQuery(event);
 
-  let rows = getBuildingStateRowsFromRows(readBuildingStateRows());
+  let rows = getBuildingStateRowsFromRows();
 
   const perPage = 30;
   if (claim_entity_id) {
@@ -26,9 +23,7 @@ export default defineEventHandler((event) => {
     page = 1;
   }
   if (with_inventory == true) {
-    const buildingDescMap = getBuildingDescIdMapFromRows(
-      readBuildingDescRows(),
-    );
+    const buildingDescMap = getBuildingDescIdMapFromRows();
     rows = rows.filter((buildingState) => {
       const buildingDesc = buildingDescMap.get(
         buildingState.building_description_id,

@@ -8,7 +8,7 @@ import {
   readCargoDescRows,
 } from "~/modules/bitcraft/gamestate/cargoDesc";
 
-const rows1 = getItemRowsFromRows(readItemRows());
+const rows1 = getItemRowsFromRows();
 const rows2 = getCargoDescRowsFromRows(readCargoDescRows());
 const rows = [...rows1, ...rows2];
 export default defineEventHandler((event) => {

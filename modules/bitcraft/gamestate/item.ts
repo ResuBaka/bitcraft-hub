@@ -52,14 +52,21 @@ export function getItemRefrenceFromRow(item: any[]): ItemRefrence {
   };
 }
 
-export function getItemRowsFromRows(rows: any[]): ItemRow[] {
-  const itemRows: ItemRow[] = [];
+let ItemRows: ItemRow[] = [];
 
-  for (const row of rows) {
-    itemRows.push(getItemRowFromRow(row));
+export function getItemRowsFromRows(): ItemRow[] {
+  if (ItemRows.length === 0) {
+    const itemRows: ItemRow[] = [];
+    const rows = readItemRows();
+
+    for (const row of rows) {
+      itemRows.push(getItemRowFromRow(row));
+    }
+
+    ItemRows = itemRows;
   }
 
-  return itemRows;
+  return ItemRows;
 }
 
 export function getItemFromItemId(

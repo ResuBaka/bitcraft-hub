@@ -15,7 +15,7 @@ export type ItemSlot = {
   volume: number;
   contents?: ItemRefrence;
 };
-const items = getItemRowsFromRows(readItemRows());
+const items = getItemRowsFromRows();
 export interface InventoryStateRow extends Entity {
   pockets: ItemSlot[];
   inventory_index: number;

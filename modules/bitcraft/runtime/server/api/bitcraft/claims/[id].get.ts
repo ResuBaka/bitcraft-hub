@@ -3,23 +3,13 @@ import {
   getClaimDescriptionRowsFromRows,
   readClaimRows,
 } from "~/modules/bitcraft/gamestate/claimDescription";
-import type { BuildingStateRow } from "~/modules/bitcraft/gamestate/buildingState";
-import {
-  getBuildingStateRowsFromRows,
-  readBuildingStateRows,
-} from "~/modules/bitcraft/gamestate/buildingState";
-import {
-  getBuildingDescIdMapFromRows,
-  readBuildingDescRows,
-} from "~/modules/bitcraft/gamestate/buildingDesc";
+import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
+import { getBuildingDescIdMapFromRows } from "~/modules/bitcraft/gamestate/buildingDesc";
 import {
   getInventorys,
   replaceInventoryItemsIdWithItems,
 } from "~/modules/bitcraft/gamestate/inventory";
-import {
-  getItemRowsFromRows,
-  readItemRows,
-} from "~/modules/bitcraft/gamestate/item";
+import { getItemRowsFromRows } from "~/modules/bitcraft/gamestate/item";
 
 const rows = getClaimDescriptionRowsFromRows(readClaimRows());
 export default defineEventHandler((event) => {
@@ -48,9 +38,9 @@ export default defineEventHandler((event) => {
 });
 
 function getInventorysFromClaimMerged(claim: ClaimDescriptionRow) {
-  let rows = getBuildingStateRowsFromRows(readBuildingStateRows());
+  let rows = getBuildingStateRowsFromRows();
 
-  const buildingDescMap = getBuildingDescIdMapFromRows(readBuildingDescRows());
+  const buildingDescMap = getBuildingDescIdMapFromRows();
   rows = rows.filter((buildingState) => {
     const buildingDesc = buildingDescMap.get(
       buildingState.building_description_id,
@@ -76,26 +66,19 @@ function getInventorysFromClaimMerged(claim: ClaimDescriptionRow) {
       return building.claim_entity_id === claim.entity_id;
     }) ?? [];
 
-  console.log("found buidlings", rowsFilterted.length);
-
   const buildingIds = rowsFilterted.map((building) => building.entity_id);
-  const itemsTemp = getItemRowsFromRows(readItemRows());
+  const itemsTemp = getItemRowsFromRows();
 
   const rowsINventory = replaceInventoryItemsIdWithItems(
-    getInventorys(),
+    getInventorys().filter((inventory) =>
+      buildingIds.includes(inventory.owner_entity_id),
+    ) ?? [],
     itemsTemp,
   );
 
-  const rowsFiltertedINventory =
-    rowsINventory?.filter((inventory) => {
-      return buildingIds.includes(inventory.owner_entity_id);
-    }) ?? [];
-
   let items = {};
 
-  for (const inventory of rowsFiltertedINventory) {
-    console.log(inventory);
-
+  for (const inventory of rowsINventory) {
     for (const pocket of inventory.pockets) {
       if (pocket.contents !== undefined) {
         if (pocket.contents.item_type === "Cargo") {
@@ -103,7 +86,7 @@ function getInventorysFromClaimMerged(claim: ClaimDescriptionRow) {
         }
 
         if (items[pocket.contents.item_id] === undefined) {
-          items[pocket.contents.item_id] = pocket.contents;
+          items[pocket.contents.item_id] = { ...pocket.contents };
         } else {
           items[pocket.contents.item_id].quantity += pocket.contents.quantity;
         }
@@ -111,5 +94,7 @@ function getInventorysFromClaimMerged(claim: ClaimDescriptionRow) {
     }
   }
 
-  return items;
+  return Object.values(items).sort((a, b) =>
+    a.quantity > b.quantity ? -1 : 1,
+  );
 }

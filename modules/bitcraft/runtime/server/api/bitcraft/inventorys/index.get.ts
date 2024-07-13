@@ -8,7 +8,7 @@ import {
   readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
-const items = getItemRowsFromRows(readItemRows());
+const items = getItemRowsFromRows();
 
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;

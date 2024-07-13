@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import SQLRequest from "./../../../SQLRequest";
 let rootFolder = `${process.cwd()}/storage/Rest`;
 let allDescTables = [
+  "LocationState",
   "AdminBroadcast",
   //"ChatCache",
   "ClaimTileCost",

@@ -1,6 +1,11 @@
 import SQLRequest from "../runtime/SQLRequest";
 import type { Entity } from "./entity";
 import { readFileSync } from "node:fs";
+import {
+  parseInventorys,
+  readInventoryRows,
+  saveParsedInventorys,
+} from "~/modules/bitcraft/gamestate/inventory";
 
 export interface BuildingStateRow extends Entity {
   claim_entity_id: number;
@@ -10,14 +15,28 @@ export interface BuildingStateRow extends Entity {
   nickname: string;
 }
 
-export function getBuildingStateRowsFromRows(rows: any): BuildingStateRow[] {
-  const BuildingStateRow: BuildingStateRow[] = [];
+let BuildingStateState: BuildingStateRow[] = [];
 
-  for (const row of rows) {
-    BuildingStateRow.push(getBuildingStateRowFromRow(row));
+export function getBuildingStateRowsFromRows(): BuildingStateRow[] {
+  if (BuildingStateState.length === 0) {
+    BuildingStateState = readBuildingStateRows().map((row) =>
+      getBuildingStateRowFromRow(row),
+    );
   }
 
-  return BuildingStateRow;
+  return BuildingStateState;
+}
+
+export function reloadBuildingState() {
+  const buildingRows = readBuildingStateRows();
+  const parsedBuildingRows = buildingRows.map((row) =>
+    getBuildingStateRowFromRow(row),
+  );
+  saveParsedBuildingState(parsedBuildingRows);
+}
+
+function saveParsedBuildingState(rows: BuildingStateRow[]): void {
+  BuildingStateState = rows;
 }
 
 function getBuildingStateRowFromRow(row: any[]): BuildingStateRow {

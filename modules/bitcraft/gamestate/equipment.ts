@@ -83,7 +83,7 @@ export function replaceEquipmentItemIdWithItem(
 ): EquipmentStateRow[] {
   for (const Equipment of Equipments) {
     for (const enteries of Object.entries(Equipment.equipment_slots)) {
-      const items = getItemRowsFromRows(readItemRows());
+      const items = getItemRowsFromRows();
       const item = getItemFromItemId(items, enteries[1]);
       //@ts-ignore
       Equipment.equipment_slots[enteries[0]] = item;

@@ -13,7 +13,7 @@ import {
   replaceTradeOrderItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/tradeOrder";
 
-const items = getItemRowsFromRows(readItemRows());
+const items = getItemRowsFromRows();
 const cargo_rows = getCargoDescRowsFromRows(readCargoDescRows());
 const rows = getTradingOrderStateRowsFromRows(readTradeOrderStateRows());
 export default defineEventHandler((event) => {

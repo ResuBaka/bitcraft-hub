@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
 import CardItem from "~/components/Bitcraft/CardItem.vue";
+import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 const {
   public: { iconDomain },
 } = useRuntimeConfig();
@@ -12,6 +13,9 @@ const search = ref<string | null>("");
 
 const route = useRoute();
 const router = useRouter();
+
+const rarity = ref<string | null>(null);
+const tier = ref<number | null>(null);
 
 const tmpPage = (route.query.page as string) ?? null;
 
@@ -36,21 +40,34 @@ const buildings = computed(() => {
 const inventorySearch = ref<string | null>("");
 
 const inventorys = computed(() => {
-  if (!claimFetch.value?.inventorys) {
-    [];
+  if (!claimFetch.value?.inventorys.length) {
+    return [];
   }
 
-  return Object.values(claimFetch.value?.inventorys ?? {}).filter(
-    (inventory) => {
-      if (inventorySearch.value === null) {
-        return true;
-      }
-      return inventory.item.name
-        .toLowerCase()
-        .includes(inventorySearch.value.toLowerCase());
-    },
+  return claimFetch.value?.inventorys.filter(
+    (inventory) =>
+      (!rarity.value ||
+        parseInt(Object.keys(inventory.item.rarity)[0]) === rarity.value) &&
+      (!tier.value || inventory.item.tier === tier.value) &&
+      (!inventorySearch.value ||
+        inventory.item.name
+          .toLowerCase()
+          .includes(inventorySearch.value.toLowerCase())),
   );
 });
+
+const tierColor = function (tier: number) {
+  const colors = {
+    1: "grey",
+    2: "green",
+    3: "blue",
+    4: "purple",
+    5: "yellow",
+    6: "pink",
+  };
+
+  return colors[tier] ?? "";
+};
 
 const length = computed(() => {
   return Math.ceil((buidlingsFetch.value?.total || 0) / perPage) ?? 0;
@@ -187,26 +204,50 @@ const sortedUsersByPermissionLevel = computed(() => {
       <v-col cols="12">
       <v-card class="mt-5">
         <v-card-item>
-          <v-card-title>Items ({{ inventorys.length }})</v-card-title>
+          <v-card-title>Items ({{ inventorys.length || 0 }})</v-card-title>
         </v-card-item>
         <v-card-text>
-          <v-col>
-            <v-text-field
-                v-model="inventorySearch"
-                label="Search"
-                outlined
-                dense
-                clearable
-            ></v-text-field>
-          </v-col>
+          <v-row>
+            <v-col>
+              <v-text-field
+                  v-model="inventorySearch"
+                  label="Search"
+                  outlined
+                  dense
+                  clearable
+              ></v-text-field>
+            </v-col>
+            <v-col>
+              <v-autocomplete
+                  v-model="tier"
+                  :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => inventory.item.tier) || []))"
+                  label="Tier"
+                  outlined
+                  dense
+                  clearable
+              ></v-autocomplete>
+            </v-col>
+            <v-col>
+              <v-select
+                  v-model="rarity"
+                  :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || []))"
+                  label="Rarity"
+                  outlined
+                  dense
+                  clearable
+              ></v-select>
+            </v-col>
+          </v-row>
           <v-row>
             <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorys" :key="inventory.item_id">
                 <v-list-item>
                   <template #prepend v-if="iconDomain">
-                    <v-avatar :image="`${iconDomain}/${inventory.item.icon_asset_name}`" size="50"></v-avatar>
+                    <v-avatar :image="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url" size="50"></v-avatar>
                   </template>
-                  {{ inventory.item.name }}:
-                  <strong>{{ inventory.quantity }}</strong>
+                  <div :class="`text-${tierColor(inventory.item.tier)}`">
+                    {{ inventory.item.name }}:
+                    <strong>{{ inventory.quantity }}</strong>
+                  </div>
                 </v-list-item>
             </v-col>
           </v-row>

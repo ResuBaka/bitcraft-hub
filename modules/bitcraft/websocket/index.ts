@@ -20,7 +20,7 @@ import {
 import { readFile, writeFile, appendFile } from "node:fs/promises";
 
 const storagePath = `${process.cwd()}/storage`;
-const items = getItemRowsFromRows(readItemRows());
+const items = getItemRowsFromRows();
 let websocket: WebSocket | null = null;
 
 let counter = 0;

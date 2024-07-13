@@ -33,7 +33,7 @@ export type ItemResponse = {
 export default defineEventHandler<ItemResponse>((event) => {
   let { tag, tier, search, page, perPage } = getQuery<ItemQuery>(event);
 
-  const rows1 = getItemRowsFromRows(readItemRows());
+  const rows1 = getItemRowsFromRows();
   const rows2 = getCargoDescRowsFromRows(readCargoDescRows());
   const rows = [...rows1, ...rows2];
   if (tier) {

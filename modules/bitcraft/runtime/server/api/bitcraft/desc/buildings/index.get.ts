@@ -4,10 +4,7 @@ import {
   readBuildingDescRows,
 } from "~/modules/bitcraft/gamestate/buildingDesc";
 import type { BuildingStateRow } from "~/modules/bitcraft/gamestate/buildingState";
-import {
-  getBuildingStateRowsFromRows,
-  readBuildingStateRows,
-} from "~/modules/bitcraft/gamestate/buildingState";
+import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
 export default defineEventHandler((event) => {
   let { search, page } = getQuery(event);
@@ -31,9 +28,7 @@ export default defineEventHandler((event) => {
         building.id.toString().includes(search),
     ) ?? [];
 
-  const buildingStateRows = getBuildingStateRowsFromRows(
-    readBuildingStateRows(),
-  );
+  const buildingStateRows = getBuildingStateRowsFromRows();
 
   for (const building of rowsFilterted) {
     addCountOfBuildingsInWorldForBuilding(building, buildingStateRows); // TODO:

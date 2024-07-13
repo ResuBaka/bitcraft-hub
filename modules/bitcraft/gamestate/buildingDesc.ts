@@ -74,18 +74,18 @@ function parseFunctions(functions: any[]): any {
 
   return functionsArray;
 }
+const BuildingStateRows: Map<number, BuildingDescRow> = new Map();
 
-export function getBuildingDescIdMapFromRows(
-  rows: any[],
-): Map<number, BuildingDescRow> {
-  const BuildingStateRow: Map<number, BuildingDescRow> = new Map();
-
-  for (const row of rows) {
-    const data = getBuildingDescRowFromRow(row);
-    BuildingStateRow.set(data.id, data);
+export function getBuildingDescIdMapFromRows(): Map<number, BuildingDescRow> {
+  if (BuildingStateRows.size === 0) {
+    const rows = readBuildingDescRows();
+    for (const row of rows) {
+      const data = getBuildingDescRowFromRow(row);
+      BuildingStateRows.set(data.id, data);
+    }
   }
 
-  return BuildingStateRow;
+  return BuildingStateRows;
 }
 
 export async function SqlRequestBuildingDesc(): Promise<any> {

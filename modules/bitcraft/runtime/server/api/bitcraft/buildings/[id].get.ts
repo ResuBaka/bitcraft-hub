@@ -1,10 +1,7 @@
-import {
-  getBuildingStateRowsFromRows,
-  readBuildingStateRows,
-} from "~/modules/bitcraft/gamestate/buildingState";
+import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
-const rows = getBuildingStateRowsFromRows(readBuildingStateRows());
 export default defineEventHandler((event) => {
+  const rows = getBuildingStateRowsFromRows();
   const id = getRouterParam(event, "id", { decode: true });
 
   if (!id) {

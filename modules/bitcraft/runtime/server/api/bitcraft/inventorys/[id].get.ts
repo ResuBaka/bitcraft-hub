@@ -7,7 +7,7 @@ import {
   readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
-const items = getItemRowsFromRows(readItemRows());
+const items = getItemRowsFromRows();
 
 export default defineEventHandler((event) => {
   const rows = getInventorys();

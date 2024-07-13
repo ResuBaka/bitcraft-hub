@@ -3,7 +3,7 @@ import {
   readItemRows,
 } from "~/modules/bitcraft/gamestate/item";
 
-const rows = getItemRowsFromRows(readItemRows());
+const rows = getItemRowsFromRows();
 export default defineEventHandler((event) => {
   const id = getRouterParam(event, "id", { decode: true });
 
