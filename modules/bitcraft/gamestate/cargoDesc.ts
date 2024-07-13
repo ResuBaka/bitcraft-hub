@@ -55,8 +55,8 @@ function saveParsedCargoDesc(rows: CargoDescRow[]): void {
 export function getCagoDescFromCargoId(
   cargo_rows: CargoDescRow[],
   cargo_id: number,
-): CargoDescRow {
-  return cargo_rows.filter((cargo) => cargo.id === cargo_id)[0];
+): CargoDescRow | undefined {
+  return cargo_rows.find((cargo) => cargo.id === cargo_id);
 }
 
 function getCargoDescRowFromRow(row: any[]): CargoDescRow {

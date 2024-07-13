@@ -242,7 +242,9 @@ const sortedUsersByPermissionLevel = computed(() => {
             <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorys" :key="inventory.item_id">
                 <v-list-item>
                   <template #prepend v-if="iconDomain">
-                    <v-avatar :image="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url" size="50"></v-avatar>
+                    <v-avatar  :rounded="false" size="50" style="width: 90px;">
+                      <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
+                    </v-avatar>
                   </template>
                   <div :class="`text-${tierColor(inventory.item.tier)}`">
                     {{ inventory.item.name }}:
