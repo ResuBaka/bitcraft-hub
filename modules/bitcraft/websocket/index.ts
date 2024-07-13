@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import {
   diffItemsInInventorys,
   getInventoryRowFromRow,
+  getInventorys,
   replaceInventoryItemIdWithItem,
 } from "~/modules/bitcraft/gamestate/inventory";
 import {
@@ -93,6 +94,7 @@ export async function startWebsocket(
           };
           if (table?.delete?.row === undefined) {
             const inventory = getInventoryRowFromRow(table?.insert?.row);
+            getInventorys().push(inventory)
             info = {
               inventory_id: inventory.entity_id,
               timestamp: jsonData?.TransactionUpdate?.event?.timestamp,
@@ -101,6 +103,10 @@ export async function startWebsocket(
             };
           } else if (table?.insert?.row === undefined) {
             const inventory = getInventoryRowFromRow(table?.delete?.row);
+            const invIndex = getInventorys().findIndex((inv) => inv.entity_id === inventory.entity_id)
+            if(invIndex !== -1){
+              getInventorys().splice(invIndex,1)
+            }
             info = {
               inventory_id: inventory.entity_id,
               timestamp: jsonData?.TransactionUpdate?.event?.timestamp,
@@ -110,6 +116,10 @@ export async function startWebsocket(
           } else {
             const oldInventory = getInventoryRowFromRow(table?.delete?.row);
             const newInventory = getInventoryRowFromRow(table?.insert?.row);
+            const invIndex = getInventorys().findIndex((inv) => inv.entity_id === oldInventory.entity_id)
+            if(invIndex !== -1){
+              getInventorys().splice(invIndex,1,newInventory)
+            }
             info = {
               inventory_id: oldInventory.entity_id,
               timestamp: jsonData?.TransactionUpdate?.event?.timestamp,

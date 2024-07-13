@@ -16,7 +16,6 @@ let allDescTables = [
   "ClaimTechState",
   "ClaimTileState",
   "TradeOrderState",
-  "InventoryState",
   "BuildingState",
   "VehicleState",
 ];
@@ -51,7 +50,6 @@ export default defineTask({
     }
 
     rebuildLeaderboardState();
-    reloadInventoryState();
     reloadBuildingState();
     reloadClaimDescription();
     reloadTradingOrderState();

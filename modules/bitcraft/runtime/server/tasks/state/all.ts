@@ -6,6 +6,9 @@ import { rebuildLeaderboardState } from "../../../../gamestate/experienceState";
 import { writeFile } from "node:fs/promises";
 let rootFolder = `${process.cwd()}/storage/State`;
 let allDescTables = [
+  "InventoryState",
+]
+let allDescTables2 = [
   "ActiveBuffState",
   "AlertState",
   "AttackOutcomeState",
