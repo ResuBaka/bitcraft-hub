@@ -3,7 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "cargo_description")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -19,13 +19,17 @@ pub struct Model {
     pub pick_up_animation_end: String,
     pub drop_animation_start: String,
     pub drop_animation_end: String,
-    pub pick_up_time: i32,
-    pub place_time: i32,
+    #[sea_orm(column_type = "Float")]
+    pub pick_up_time: f32,
+    #[sea_orm(column_type = "Float")]
+    pub place_time: f32,
     pub animator_state: String,
-    pub movement_modifier: i32,
-    pub blocks_path: i8,
+    #[sea_orm(column_type = "Float")]
+    pub movement_modifier: f32,
+    pub blocks_path: bool,
     pub on_destroy_yield_cargos: Json,
-    pub despawn_time: i32,
+    #[sea_orm(column_type = "Float")]
+    pub despawn_time: f32,
     pub tier: i32,
     pub tag: String,
     pub rarity: Json,

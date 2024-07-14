@@ -1,7 +1,8 @@
 use ::entity::{
     player_state, player_state::Entity as PlayerState,
     item, item::Entity as Item,
-    location, location::Entity as Location
+    location, location::Entity as Location,
+    claim_description, claim_description::Entity as ClaimDescription,
 };
 use sea_orm::*;
 
@@ -87,6 +88,34 @@ impl Query {
         let items = Item::find().select_only().column(item::Column::Tier).group_by(item::Column::Tier).order_by_asc(item::Column::Tier).into_model::<ItemTier>().all(db).await?;
         Ok(items.into_iter().map(|item| item.tier).collect())
     }
+
+
+    /// If ok, returns (post models, num pages).
+    pub async fn find_claim_descriptions(
+        db: &DbConn,
+        page: u64,
+        per_page: u64,
+        search: Option<String>,
+    ) -> Result<(Vec<claim_description::Model>, ItemsAndPagesNumber), DbErr> {
+        // Setup paginator
+        let mut filterQuery = ClaimDescription::find()
+            .order_by_asc(claim_description::Column::EntityId);
+
+        if let Some(search) = search {
+            filterQuery = filterQuery.filter(claim_description::Column::Name.contains(&search));
+        }
+
+        let paginator = filterQuery.paginate(db, per_page);
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        // Fetch paginated posts
+        paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
+    }
+
+    pub async fn find_claim_description_by_id(db: &DbConn, id: u64) -> Result<Option<claim_description::Model>, DbErr> {
+        ClaimDescription::find_by_id(id).one(db).await
+    }
+
 }
 
 #[derive(FromQueryResult)]
