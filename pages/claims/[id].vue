@@ -26,6 +26,7 @@ if (tmpPage) {
 const { data: claimFetch, pending: claimPnding } = useFetch(() => {
   return `/api/bitcraft/claims/${route.params.id}`;
 });
+
 const { data: buidlingsFetch, pending: buildingsPending } = useFetch(() => {
   return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}`;
 });
@@ -123,6 +124,12 @@ const sortedUsersByPermissionLevel = computed(() => {
     }
     return 0;
   });
+});
+
+useSeoMeta({
+  title: () => `Claim ${claimFetch.value?.name ?? route.params.id}`,
+  description: () =>
+    `Claim ${claimFetch.value?.name ?? route.params.id} by ${claimOwner.value} with members (${claim.value?.members?.length || 0})  buildings (${buildings.value.length}) and items (${inventorys.value.length}) `,
 });
 </script>
 
