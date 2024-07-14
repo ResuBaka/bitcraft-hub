@@ -1,0 +1,25 @@
+[package]
+name = "service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+entity = { path = "../entity" }
+
+[dependencies.sea-orm]
+version = "1.0.0-rc.5" # sea-orm version
+features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    "sqlx-all",
+]
+
+[dev-dependencies]
+tokio = { version = "1.34.0", features = ["macros", "rt"] }
+
+#[features]
+#mock = ["sea-orm/mock"]
+#
+#[[test]]
+#name = "mock"
+#required-features = ["mock"]
