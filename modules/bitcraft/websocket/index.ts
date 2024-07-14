@@ -28,6 +28,7 @@ export async function startWebsocket(
   url: string,
   auth: { username: string; password: string },
   websocketConfig: { enabled: boolean; url: string },
+  restartCounter = 0,
 ) {
   const usersByIdenity = getUserMapFromRows(await SqlRequestAllUsers());
   const PlayerByEntityId = getPlayerEntityIdMapFromRows(
@@ -48,8 +49,10 @@ export async function startWebsocket(
     websocket.on("error", (error: any) => {
       console.error("Error with bitcraft websocket connection :: ", error);
     });
+
     websocket.on("open", async () => {
       console.log("Connected to bitcraft websocket");
+      restartCounter = 0;
       websocket.send(
         JSON.stringify({
           subscribe: {
@@ -148,6 +151,17 @@ export async function startWebsocket(
       console.log("Disconnected");
       console.error(close);
       console.log("Disconnected");
+
+      if (restartCounter > 30) {
+        console.error("Too many restarts, exiting");
+      }
+
+      setTimeout(
+        () => {
+          startWebsocket(url, auth, websocketConfig, restartCounter + 1);
+        },
+        1000 * 60 * (restartCounter === 0 ? 1 : restartCounter),
+      );
     });
   } catch (error) {
     console.error("Error with bitcraft websocket connection :: ", error);
