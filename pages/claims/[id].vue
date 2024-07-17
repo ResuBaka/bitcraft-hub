@@ -2,12 +2,16 @@
 import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
 import CardItem from "~/components/Bitcraft/CardItem.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+
 const {
   public: { iconDomain },
 } = useRuntimeConfig();
 
 const page = ref(1);
 const perPage = 30;
+
+const items_collapsible = ref(["items"]);
+const buildings_collapsible = ref(["buildings"]);
 
 const search = ref<string | null>("");
 
@@ -167,7 +171,8 @@ useSeoMeta({
                 <v-list-item>
                   <v-list-item-title>Location</v-list-item-title>
                   <v-list-item-subtitle>
-                    N: {{ Math.ceil(claim.location[Object.keys(claim.location)[0]][1] / 3)  }}, E: {{ Math.ceil(claim.location[Object.keys(claim.location)[0]][0] / 3) }}
+                    N: {{ Math.ceil(claim.location[Object.keys(claim.location)[0]][1] / 3) }}, E:
+                    {{ Math.ceil(claim.location[Object.keys(claim.location)[0]][0] / 3) }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
@@ -184,139 +189,149 @@ useSeoMeta({
         </v-card>
       </v-col>
       <v-col cols="12" lg="10">
-        <v-card height="100%" title="Members">
+        <v-card height="100%" :title="`Members (${claim?.members?.length || 0})`">
           <v-card-text>
-              <v-list-item>
-                <v-list-item-title>Members ({{ claim?.members?.length || 0 }})</v-list-item-title>
-                <v-row>
-                  <v-col cols="6" md="3" xl="2" v-for="member in sortedUsersByPermissionLevel" :key="member.user_name">
-                    <nuxt-link
-                        class="text-decoration-none text-high-emphasis font-weight-black"
-                        :to="{ name: 'players-id', params: { id: member.entity_id } }"
-                    >
-                      {{ member.user_name }}
-                      {{ member.co_owner_permission ? "🏰" : "" }}
-                      {{ member.officer_permission ? "🗡️" : "" }}
-                      {{ member.build_permission ? "🔨" : "" }}
-                      {{ member.inventory_permission ? "📦" : "" }}
-                    </nuxt-link>
-                  </v-col>
-                </v-row>
-              </v-list-item>
+            <v-list-item>
+              <v-row>
+                <v-col cols="6" md="3" xl="2" v-for="member in sortedUsersByPermissionLevel" :key="member.user_name">
+                  <nuxt-link
+                      class="text-decoration-none text-high-emphasis font-weight-black"
+                      :to="{ name: 'players-id', params: { id: member.entity_id } }"
+                  >
+                    {{ member.user_name }}
+                    {{ member.co_owner_permission ? "🏰" : "" }}
+                    {{ member.officer_permission ? "🗡️" : "" }}
+                    {{ member.build_permission ? "🔨" : "" }}
+                    {{ member.inventory_permission ? "📦" : "" }}
+                  </nuxt-link>
+                </v-col>
+              </v-row>
+            </v-list-item>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
     <v-row>
       <v-col cols="12">
-      <v-card class="mt-5">
-        <v-card-item>
-          <v-card-title>Items ({{ inventorys.length || 0 }})</v-card-title>
-        </v-card-item>
-        <v-card-text>
-          <v-row>
-            <v-col>
-              <v-text-field
-                  v-model="inventorySearch"
-                  label="Search"
-                  outlined
-                  dense
-                  clearable
-              ></v-text-field>
-            </v-col>
-            <v-col>
-              <v-autocomplete
-                  v-model="tier"
-                  :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => inventory.item.tier) || []))"
-                  label="Tier"
-                  outlined
-                  dense
-                  clearable
-              ></v-autocomplete>
-            </v-col>
-            <v-col>
-              <v-select
-                  v-model="rarity"
-                  :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || []))"
-                  label="Rarity"
-                  outlined
-                  dense
-                  clearable
-              ></v-select>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorys" :key="inventory.item_id">
-                <v-list-item>
-                  <template #prepend v-if="iconDomain">
-                    <v-avatar  :rounded="false" size="50" style="width: 90px;">
-                      <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
-                    </v-avatar>
-                  </template>
-                  <div :class="`text-${tierColor(inventory.item.tier)}`">
-                    {{ inventory.item.name }}:
-                    <strong>{{ inventory.quantity }}</strong>
-                  </div>
-                </v-list-item>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
+        <v-expansion-panels v-model="items_collapsible" eager>
+          <v-expansion-panel value="items">
+            <v-expansion-panel-title>
+              <v-row>
+                <v-col class="d-flex justify-center">
+                  <h2 class="pl-md-3 pl-xl-0">Items ({{ inventorys.length || 0 }})</h2>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-row>
+                <v-col>
+                  <v-text-field
+                      v-model="inventorySearch"
+                      label="Search"
+                      outlined
+                      dense
+                      clearable
+                  ></v-text-field>
+                </v-col>
+                <v-col>
+                  <v-autocomplete
+                      v-model="tier"
+                      :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => inventory.item.tier) || []))"
+                      label="Tier"
+                      outlined
+                      dense
+                      clearable
+                  ></v-autocomplete>
+                </v-col>
+                <v-col>
+                  <v-select
+                      v-model="rarity"
+                      :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || []))"
+                      label="Rarity"
+                      outlined
+                      dense
+                      clearable
+                  ></v-select>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorys" :key="inventory.item_id">
+                  <v-list-item>
+                    <template #prepend v-if="iconDomain">
+                      <v-avatar :rounded="false" size="50" style="width: 90px;">
+                        <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
+                      </v-avatar>
+                    </template>
+                    <div :class="`text-${tierColor(inventory.item.tier)}`">
+                      {{ inventory.item.name }}:
+                      <strong>{{ inventory.quantity }}</strong>
+                    </div>
+                  </v-list-item>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
       </v-col>
     </v-row>
     <v-row>
       <v-col cols="12">
-        <v-card class="mt-5">
-          <leaderboard-claim :claim-id="parseInt($route.params.id)"></leaderboard-claim>
-        </v-card>
+        <leaderboard-claim :claim-id="parseInt($route.params.id)"></leaderboard-claim>
       </v-col>
       <v-col cols="12">
-      <v-card class="mt-5">
-        <v-card-item>
-          <v-card-title>Buildings</v-card-title>
-        </v-card-item>
-        <v-card-text>
-          <v-col>
-            <v-text-field
-                v-model="search"
-                label="Search"
-                outlined
-                dense
-                clearable
-            ></v-text-field>
-          </v-col>
-          <v-row>
-            <v-col>
-              <v-progress-linear
-                  color="yellow-darken-2"
-                  indeterminate
-                  :active="buildingsPending"
-              ></v-progress-linear>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="12" md="4" lg="3" xl="2" v-for="building in buildings" :key="claim.entity_id">
-              <nuxt-link :to="{ name: 'buildings-id', params: { id: building.entity_id } }" class="text-high-emphasis font-weight-black">
-                <v-list-item>
-                  <template #prepend v-if="iconDomain">
-                    <v-avatar :image="`${iconDomain}/${building.image_path}`" size="50"></v-avatar>
-                  </template>
-                  <template v-if="building.nickname !== ''">{{ building.nickname }}</template>
-                  <template v-else>{{ building.building_name }}</template>
-                </v-list-item>
-              </nuxt-link>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col>
-              <v-pagination
-                  v-model="page"
-                  :length="length"
-              ></v-pagination>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
+        <v-expansion-panels v-model="buildings_collapsible" eager>
+          <v-expansion-panel value="buildings">
+            <v-expansion-panel-title>
+              <v-row>
+                <v-col class="d-flex justify-center">
+                  <h2 class="pl-md-3 pl-xl-0">Buildings ({{ buildings.length || 0 }})</h2>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-col>
+                <v-text-field
+                    v-model="search"
+                    label="Search"
+                    outlined
+                    dense
+                    clearable
+                ></v-text-field>
+              </v-col>
+              <v-row>
+                <v-col>
+                  <v-progress-linear
+                      color="yellow-darken-2"
+                      indeterminate
+                      :active="buildingsPending"
+                  ></v-progress-linear>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12" md="4" lg="3" xl="2" v-for="building in buildings" :key="building.entity_id">
+                  <nuxt-link :to="{ name: 'buildings-id', params: { id: building.entity_id } }"
+                             class="text-high-emphasis font-weight-black">
+                    <v-list-item>
+                      <template #prepend v-if="iconDomain">
+                        <v-avatar :image="`${iconDomain}/${building.image_path}`" size="50"></v-avatar>
+                      </template>
+                      <template v-if="building.nickname !== ''">{{ building.nickname }}</template>
+                      <template v-else>{{ building.building_name }}</template>
+                    </v-list-item>
+                  </nuxt-link>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col>
+                  <v-pagination
+                      v-model="page"
+                      :length="length"
+                  ></v-pagination>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
       </v-col>
     </v-row>
   </v-container>
