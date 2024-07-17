@@ -4,7 +4,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tower_cookies::Cookies;
-use entity::claim_description;
+use entity::{claim_description};
 use crate::{AppState, Params};
 use service::{
     Mutation as MutationCore,
@@ -68,14 +68,14 @@ pub(crate) async fn list_claims(
     let posts_per_page = params.per_page.unwrap_or(5);
     let search = params.search;
 
-    let (posts, num_pages) = QueryCore::find_claim_descriptions(&state.conn, page, posts_per_page, search)
+    let (claims, num_pages) = QueryCore::find_claim_descriptions(&state.conn, page, posts_per_page, search)
         .await
         .expect("Cannot find posts in page");
 
-    let posts = posts.into_iter().map(|claim_description| claim_description.into()).collect::<Vec<ClaimDescription>>();
+    let claims = claims.into_iter().map(|claim_description| claim_description.into()).collect::<Vec<ClaimDescription>>();
 
     Ok(Json(json!({
-        "posts": posts,
+        "claims": claims,
         "perPage": posts_per_page,
         "total": num_pages.number_of_items,
         "page": page,
@@ -104,8 +104,8 @@ pub(crate) async fn import_claim_description_state(
     conn: &DatabaseConnection,
 ) -> anyhow::Result<()> {
     let mut item_file = File::open("/home/resubaka/code/crafting-list/storage/State/ClaimDescriptionState.json").unwrap();
-    let claim_description: Value = serde_json::from_reader(&item_file).unwrap();
-    let claim_descriptions: Vec<claim_description::Model> = serde_json::from_value(claim_description.get(0).unwrap().get("rows").unwrap().clone()).unwrap();
+    let claim_descriptions: Value = serde_json::from_reader(&item_file).unwrap();
+    let claim_descriptions: Vec<claim_description::Model> = serde_json::from_value(claim_descriptions.get(0).unwrap().get("rows").unwrap().clone()).unwrap();
     let count = claim_descriptions.len();
     let db_count = claim_description::Entity::find().count(conn).await.unwrap();
 
@@ -114,8 +114,10 @@ pub(crate) async fn import_claim_description_state(
         return Ok(());
     }
 
-    for claim_description in claim_descriptions {
-        let _ = claim_description.into_active_model().insert(conn).await;
+    let claim_descriptions: Vec<claim_description::ActiveModel> = claim_descriptions.into_iter().map(|x| x.into_active_model()).collect();
+
+    for claim_description in claim_descriptions.chunks(5000) {
+        let _ = claim_description::Entity::insert_many(claim_description.to_vec()).exec(conn).await;
     }
 
     Ok(())

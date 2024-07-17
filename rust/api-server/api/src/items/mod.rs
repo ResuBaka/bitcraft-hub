@@ -5,8 +5,9 @@ use serde_json::{json, Value};
 use axum::http::StatusCode;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
 use std::fs::File;
-use entity::item;
+use entity::{item};
 use crate::{AppState, Params};
+use service::Query as QueryCore;
 
 pub async fn list_items(
     state: State<AppState>,
@@ -50,8 +51,10 @@ pub(crate) async fn import_items(
         return Ok(());
     }
 
-    for item in item {
-        let _ = item.into_active_model().insert(conn).await;
+    let item: Vec<item::ActiveModel> = item.into_iter().map(|x| x.into_active_model()).collect();
+
+    for item in item.chunks(5000) {
+        let _ = item::Entity::insert_many(item.to_vec()).exec(conn).await;
     }
 
     Ok(())

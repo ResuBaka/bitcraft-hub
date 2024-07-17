@@ -1,16 +1,28 @@
+use std::any::Any;
 use ::entity::{
     player_state, player_state::Entity as PlayerState,
     item, item::Entity as Item,
     location, location::Entity as Location,
     claim_description, claim_description::Entity as ClaimDescription,
+    skill_desc, skill_desc::Entity as SkillDesc,
+    experience_state, experience_state::Entity as ExperienceState,
 };
 use sea_orm::*;
+use sea_orm::prelude::Decimal;
+use sea_orm::sea_query::{Alias, Expr, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder};
 
 pub struct Query;
 
 impl Query {
-    pub async fn find_post_by_id(db: &DbConn, id: u64) -> Result<Option<player_state::Model>, DbErr> {
+    pub async fn find_player_by_id(db: &DbConn, id: u64) -> Result<Option<player_state::Model>, DbErr> {
         PlayerState::find_by_id(id).one(db).await
+    }
+
+    pub async fn find_plyer_by_ids(db: &DbConn, ids: Vec<u64>) -> Result<Vec<player_state::Model>, DbErr> {
+        PlayerState::find()
+            .filter(player_state::Column::EntityId.is_in(ids))
+            .all(db)
+            .await
     }
 
     /// If ok, returns (post models, num pages).
@@ -116,6 +128,81 @@ impl Query {
         ClaimDescription::find_by_id(id).one(db).await
     }
 
+    pub async fn skill_descriptions(db: &DbConn) -> Result<Vec<skill_desc::Model>, DbErr> {
+        skill_desc::Entity::find().all(db).await
+    }
+
+    pub async fn full_experience_states_by_skill_id(db: &DbConn, skill_id: u64) -> Result<Vec<experience_state::Model>, DbErr> {
+        experience_state::Entity::find()
+            .order_by_asc(experience_state::Column::Experience)
+            .filter(experience_state::Column::SkillId.eq(skill_id))
+            .all(db)
+            .await
+    }
+
+    pub async fn get_experience_state_top_100_by_skill_id(db: &DbConn, skill_id: u64) -> Result<Vec<experience_state::Model>, DbErr> {
+        experience_state::Entity::find()
+            .order_by_desc(experience_state::Column::Experience)
+            .filter(experience_state::Column::SkillId.eq(skill_id))
+            .limit(100)
+            .all(db)
+            .await
+    }
+
+    pub async fn get_experience_state_top_100_total_level(db: &DbConn,level_case_sql: String) -> Result<Vec<(u64, i32)>, DbErr> {
+        let query = sea_orm::sea_query::Query::select()
+            .column(experience_state::Column::EntityId)
+            .expr_as(Expr::cust(level_case_sql), Alias::new("level"))
+            .from(experience_state::Entity)
+            .group_by_col(experience_state::Column::EntityId)
+            .order_by_expr(Expr::cust("level"), Order::Desc)
+            .limit(100).to_owned();
+
+        let query = match db.get_database_backend() {
+            DbBackend::MySql => query.to_string(MysqlQueryBuilder),
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            DbBackend::Sqlite => query.to_string(SqliteQueryBuilder),
+            _ => panic!("Unsupported database backend"),
+        };
+
+        Ok(db.query_all(Statement::from_string(db.get_database_backend(), query)).await?.into_iter().map(|row| {
+            let level: Decimal = row.try_get("", "level").unwrap();
+            let entity_id: u64 = row.try_get("","entity_id").unwrap();
+            (entity_id, level.try_into().unwrap())
+        }).collect::<Vec<(u64, i32)>>())
+    }
+
+
+    pub async fn get_experience_state_top_100_total_experience(db: &DbConn) -> Result<Vec<experience_state::Model>, DbErr> {
+        let query = sea_orm::sea_query::Query::select()
+            .column(experience_state::Column::EntityId)
+            .expr_as(Expr::cust("sum(experience)"), Alias::new("total_experience"))
+            .from(experience_state::Entity)
+            .group_by_col(experience_state::Column::EntityId)
+            .order_by_expr(Expr::cust("total_experience"), Order::Desc)
+            .limit(100).to_owned();
+
+        let query = match db.get_database_backend() {
+            DbBackend::MySql => query.to_string(MysqlQueryBuilder),
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            DbBackend::Sqlite => query.to_string(SqliteQueryBuilder),
+            _ => panic!("Unsupported database backend"),
+        };
+
+        Ok(db.query_all(Statement::from_string(db.get_database_backend(), query)).await?.into_iter().map(|row| {
+            let entity_id: u64 = row.try_get("","entity_id").unwrap();
+            let total_experience: Decimal = row.try_get("", "total_experience").unwrap();
+
+            dbg!(&total_experience);
+
+            experience_state::Model {
+                entity_id,
+                experience: total_experience.try_into().unwrap(),
+                skill_id: 1,
+            }
+
+        }).collect())
+    }
 }
 
 #[derive(FromQueryResult)]

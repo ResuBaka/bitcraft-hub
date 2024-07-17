@@ -51,8 +51,10 @@ pub(crate) async fn import_player_state(
         return Ok(());
     }
 
-    for player_state in player_state {
-        let _ = player_state.into_active_model().insert(conn).await;
+    let player_state: Vec<player_state::ActiveModel> = player_state.into_iter().map(|x| x.into_active_model()).collect();
+
+    for player_state in player_state.chunks(5000) {
+        let _ = player_state::Entity::insert_many(player_state.to_vec()).exec(conn).await;
     }
 
     Ok(())

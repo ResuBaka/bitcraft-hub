@@ -190,10 +190,10 @@ impl MigrationTrait for Migration {
                     ColumnDef::new(ExperienceState::EntityId)
                         .big_unsigned()
                         .not_null()
-                        .primary_key(),
                 )
                 .col(ColumnDef::new(ExperienceState::SkillId).integer().not_null())
                 .col(ColumnDef::new(ExperienceState::Experience).integer().not_null())
+                .primary_key(Index::create().col(ExperienceState::EntityId).col(ExperienceState::SkillId))
                 .to_owned(),
         ).await.expect("Creating ExperienceState table");
 
