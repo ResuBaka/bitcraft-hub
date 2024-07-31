@@ -2,11 +2,11 @@ import { getBuildingDescIdMapFromRows } from "~/modules/bitcraft/gamestate/build
 import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
 export default defineEventHandler((event) => {
-  let { search, with_inventory, page, claim_entity_id } = getQuery(event);
+  let { search, with_inventory, page, claim_entity_id, perPage } =
+    getQuery(event);
 
   let rows = getBuildingStateRowsFromRows();
 
-  const perPage = 30;
   if (claim_entity_id) {
     claim_entity_id = parseInt(claim_entity_id);
   }
@@ -18,6 +18,12 @@ export default defineEventHandler((event) => {
     page = parseInt(page);
   } else {
     page = 1;
+  }
+
+  if (perPage) {
+    perPage = parseInt(perPage);
+  } else {
+    perPage = 30;
   }
   if (with_inventory == true) {
     const buildingDescMap = getBuildingDescIdMapFromRows();

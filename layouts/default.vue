@@ -56,6 +56,7 @@
               </template>
             </v-radio>
           </v-radio-group>
+          <v-checkbox v-model="configStore.new_api" label="Use new API"></v-checkbox>
       </v-card-text>
       <v-card-actions>
           <v-btn

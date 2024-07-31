@@ -18,34 +18,48 @@ if (route.query.page) {
 }
 
 const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
+
+const {
   data: tradeOrders,
   pending,
   refresh,
-} = await useLazyFetch(`/api/bitcraft/tradeOrders`, {
-  onRequest: ({ options }) => {
-    options.query = options.query || {};
-
-    if (search.value) {
-      options.query.search = search.value;
-    }
-
-    if (page.value) {
-      options.query.page = page.value;
-    }
-
-    if (perPage) {
-      options.query.perPage = perPage;
-    }
-
-    if (Object.keys(options.query).length > 2) {
-      const query = { ...options.query };
-      delete query.perPage;
-      router.push({ query });
-    } else if (options.query.page <= 1) {
-      router.push({});
-    }
+} = await useLazyFetch(
+  () => {
+    // if (new_api) {
+    //   return `${api.base}/api/bitcraft/tradeOrders`;
+    // } else {
+    return `/api/bitcraft/tradeOrders`;
+    // }
   },
-});
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+
+      if (search.value) {
+        options.query.search = search.value;
+      }
+
+      if (page.value) {
+        options.query.page = page.value;
+      }
+
+      if (perPage) {
+        options.query.perPage = perPage;
+      }
+
+      if (Object.keys(options.query).length > 2) {
+        const query = { ...options.query };
+        delete query.perPage;
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+  },
+);
 
 const changePage = (value: number) => {
   page.value = value;
@@ -125,8 +139,8 @@ const computedClass = computed(() => {
         <v-card height="100%">
           <v-card-item>
             <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
-                       :to="{ name: 'buildings-id', params: { id: tradeOrder.building_entity_id } }"
-            >{{ tradeOrder.entity_id }} : {{ tradeOrder.building_entity_id }}
+                       :to="{ name: 'buildings-id', params: { id: tradeOrder.shop_entity_id } }"
+            >{{ tradeOrder.shop_name }} ({{ tradeOrder.shop_entity_id }})
             </nuxt-link>
           </v-card-item>
           <v-card-text class="h-100" :class="computedClass">

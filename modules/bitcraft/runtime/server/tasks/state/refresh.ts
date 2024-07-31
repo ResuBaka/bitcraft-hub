@@ -8,6 +8,7 @@ import { reloadClaimDescription } from "../../../../gamestate/claimDescription";
 import { reloadTradingOrderState } from "../../../../gamestate/tradeOrder";
 import { reloadVehicleState } from "../../../../gamestate/vehicleState";
 import { reloadPlayerState } from "../../../../gamestate/player";
+import { reloadClaimTechState } from "../../../../gamestate/claimTechState";
 let rootFolder = `${process.cwd()}/storage/State`;
 let allDescTables = [
   "PlayerState",
@@ -20,6 +21,8 @@ let allDescTables = [
   "InventoryState",
   "BuildingState",
   "VehicleState",
+  "ClaimTechState",
+  "MobileEntityState",
 ];
 
 export default defineTask({
@@ -28,6 +31,11 @@ export default defineTask({
     description: "Run database migrations",
   },
   async run({ payload, context }) {
+    const config = useRuntimeConfig().bitcraft;
+    if (config.disable.refresh) {
+      return { result: "Refresh disabled" };
+    }
+
     for (var descTable of allDescTables) {
       try {
         console.log(descTable);
@@ -58,8 +66,8 @@ export default defineTask({
     reloadTradingOrderState();
     reloadVehicleState();
     reloadPlayerState();
+    reloadClaimTechState();
 
     return { result: "Success" };
   },
 });
-//640

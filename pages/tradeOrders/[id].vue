@@ -14,9 +14,17 @@ const tmpPage = (route.query.page as string) ?? null;
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const { data: claimFetch, pending: claimPnding } = useFetch(() => {
+  // if (new_api) {
+  //   return `${api.base}/api/bitcraft/claims/${route.params.id}`;
+  // } else {
   return `/api/bitcraft/claims/${route.params.id}`;
+  // }
 });
 
 const claim = computed(() => {

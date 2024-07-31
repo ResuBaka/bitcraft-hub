@@ -9,7 +9,9 @@ name = "entity"
 path = "src/lib.rs"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = "1.0.120"
+axum-codec = { version = "0.0.12", features = ["msgpack", "toml", "yaml"] }
 
 [dependencies.sea-orm]
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.7"

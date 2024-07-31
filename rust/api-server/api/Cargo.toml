@@ -4,29 +4,32 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sea-orm = { version = "1.0.0-rc.5", features = [ "sqlx-all", "runtime-tokio-rustls", "macros" ] }
-tokio = { version = "^1", features = [ "full" ] }
-serde_json = "1.0.81"
-serde = { version = "1.0.136", features = ["derive"] }
+sea-orm = { version = "1.0.0-rc.7", features = [ "sqlx-all", "runtime-tokio-rustls", "macros" ] }
+tokio = { version = "1.39.1", features = [ "full" ] }
+serde_json = "1.0.120"
+serde = { version = "1.0.204", features = ["derive"] }
 indicatif = "0.17.8"
-meilisearch-sdk = "0.26.1"
-lazy_static = "1.4.0"
+lazy_static = "1.5.0"
 futures = "0.3.30"
-sysinfo = "0.30.12"
-log = "0.4"
-axum = "0.7"
-tower = "0.4"
-hyper = { version = "1.0.1", features = ["full"] }
+sysinfo = "0.30.13"
+log = "0.4.22"
+axum = "0.7.5"
+tower = "0.4.13"
+hyper = { version = "1.4.1", features = ["full"] }
 utoipa = {  version = "4.2.3", features = ["axum_extras"] }
 utoipa-swagger-ui = {  version = "7.1.0", features = ["axum"] }
 utoipa-redoc = {  version = "4.0.0", features = ["axum"] }
 utoipa-rapidoc = {  version = "4.0.0", features = ["axum"] }
 utoipa-scalar = {  version = "0.1.0", features = ["axum"] }
-anyhow = "1.0.75"
+anyhow = "1.0.86"
 service = { path = "../service" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
 tracing-subscriber = "0.3.18"
-tower-http = { version = "0.5.0", features = ["fs", "cors"] }
+tower-http = { version = "0.5.2", features = ["fs", "cors"] }
 tower-cookies = "0.10.0"
 dotenvy = "0.15.7"
+metrics = { version = "0.23.0", default-features = false }
+metrics-exporter-prometheus = { version = "0.15.3", default-features = false }
+axum-codec = { version = "0.0.12", features = ["msgpack", "toml", "yaml"] }
+struson = { version = "0.5.0", features = ["serde"] }

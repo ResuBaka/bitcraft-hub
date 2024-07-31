@@ -4,9 +4,19 @@ const props = defineProps<{
   claimId: number;
 }>();
 const leaderboard_collapsible = ref(["leaderboard"]);
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const { data: leaderboard, pending } = await useFetch(
-  `/api/bitcraft/leaderboard/claims/${props["claimId"]}`,
+  () => {
+    if (new_api) {
+      return `${api.base}/api/bitcraft/leaderboard/claims/${props["claimId"]}`;
+    } else {
+      return `/api/bitcraft/leaderboard/claims/${props["claimId"]}`;
+    }
+  },
   {
     lazy: true,
   },

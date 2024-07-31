@@ -1,51 +1,66 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
+import { watchDebounced, watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
 const perPage = 24;
 
 const search = ref<string | null>("");
+const debouncedSearch = ref<string | null>("");
 
 const route = useRoute();
 const router = useRouter();
 
 if (route.query.search) {
-  search.value = route.query.search;
+  debouncedSearch.value = route.query.search;
+  search.value = debouncedSearch.value;
 }
 
 if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const {
   data: players,
   pending,
   refresh,
-} = await useLazyFetch(`/api/bitcraft/players`, {
-  onRequest: ({ options }) => {
-    options.query = options.query || {};
-
-    if (search.value) {
-      options.query.search = search.value;
-    }
-
-    if (page.value) {
-      options.query.page = page.value;
-    }
-
-    if (perPage) {
-      options.query.perPage = perPage;
-    }
-
-    if (Object.keys(options.query).length > 2) {
-      const query = { ...options.query };
-      delete query.perPage;
-      router.push({ query });
-    } else if (options.query.page <= 1) {
-      router.push({});
+} = await useLazyFetch(
+  () => {
+    if (new_api) {
+      return `${api.base}/api/bitcraft/players`;
+    } else {
+      return `/api/bitcraft/players`;
     }
   },
-});
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+
+      if (search.value) {
+        options.query.search = search.value;
+      }
+
+      if (page.value) {
+        options.query.page = page.value;
+      }
+
+      if (perPage) {
+        options.query.per_page = perPage;
+      }
+
+      if (Object.keys(options.query).length > 2) {
+        const query = { ...options.query };
+        delete query.perPage;
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+  },
+);
 
 const changePage = (value: number) => {
   page.value = value;
@@ -58,16 +73,17 @@ const changePage = (value: number) => {
   refresh();
 };
 
-watchThrottled(
-  () => [search.value],
-  (value, oldValue) => {
-    if (value[0] !== oldValue[0]) {
+watchDebounced(
+  debouncedSearch,
+  () => {
+    if (search.value !== debouncedSearch.value) {
       page.value = 1;
     }
 
+    search.value = debouncedSearch.value;
     refresh();
   },
-  { throttle: 50 },
+  { debounce: 100, maxWait: 200 },
 );
 
 const currentplayers = computed(() => {
@@ -137,7 +153,7 @@ const timeStampToDateSince = (timestamp: number) => {
     <v-row>
       <v-col>
         <v-text-field
-            v-model="search"
+            v-model="debouncedSearch"
             label="Search"
             outlined
             dense

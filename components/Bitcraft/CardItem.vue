@@ -7,28 +7,32 @@ const { item } = defineProps<{
   item: ItemRow;
 }>();
 const {
-  public: { iconDomain },
+  public: { iconDomain, api },
 } = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
-const { data: neededInCrafting } = await useLazyFetch("/api/bitcraft/recipes", {
-  query: {
-    neededInCrafting: item.id,
-  },
+const { data: neededInCrafting } = await useLazyFetch(() => {
+  if (new_api) {
+    return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
+  } else {
+    return `/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
+  }
 });
 
-const { data: producedInCrafting } = await useLazyFetch(
-  "/api/bitcraft/recipes",
-  {
-    query: {
-      producedInCrafting: item.id,
-    },
-  },
-);
+const { data: producedInCrafting } = await useLazyFetch(() => {
+  if (new_api) {
+    return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
+  } else {
+    return `/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
+  }
+});
 
-const { data: neededToCraft } = await useLazyFetch("/api/bitcraft/recipes", {
-  query: {
-    neededToCraft: item.id,
-  },
+const { data: neededToCraft } = await useLazyFetch(() => {
+  if (new_api) {
+    return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
+  } else {
+    return `/api/bitcraft/recipes/needed_to_craft/${item.id}`;
+  }
 });
 
 const neededInCraftingData = computed(() => {
@@ -163,6 +167,10 @@ const iconUrl = computed(() => {
           <tr style='text-align: right'>
             <th>Tier:</th>
             <td>{{ item.tier }}</td>
+          </tr>
+          <tr style='text-align: right'>
+            <th>Effort:</th>
+            <td>{{ producedInCraftingData.length ? producedInCraftingData[0].actions_required : 0 }}</td>
           </tr>
           </tbody>
         </v-table>

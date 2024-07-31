@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
+import { watchDebounced, watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
 const perPage = 24;
@@ -7,11 +7,13 @@ const perPage = 24;
 const tag = ref<string | null>(null);
 const tier = ref<number | null>(null);
 const search = ref<string | null>("");
+const debouncedSearch = ref<string | null>("");
 
 const route = useRoute();
 const router = useRouter();
 
-search.value = (route.query.search as string) ?? "";
+debouncedSearch.value = (route.query.search as string) ?? "";
+search.value = debouncedSearch.value;
 tag.value = (route.query.tag as string) ?? null;
 
 if (route.query.tier) {
@@ -21,8 +23,19 @@ if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
 
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
+
 const { data, pending, refresh } = await useLazyFetch(
-  `/api/bitcraft/itemsAndCargo`,
+  () => {
+    if (new_api) {
+      return `${api.base}/api/bitcraft/itemsAndCargo`;
+    } else {
+      return `/api/bitcraft/itemsAndCargo`;
+    }
+  },
   {
     onRequest: ({ options }) => {
       options.query = options.query || {};
@@ -44,7 +57,7 @@ const { data, pending, refresh } = await useLazyFetch(
       }
 
       if (perPage) {
-        options.query.perPage = perPage;
+        options.query.per_page = perPage;
       }
 
       if (Object.keys(options.query).length > 2) {
@@ -69,14 +82,20 @@ const changePage = (value: number) => {
   refresh();
 };
 
+watchDebounced(
+  debouncedSearch,
+  () => {
+    search.value = debouncedSearch.value;
+
+    refresh();
+  },
+  { debounce: 100, maxWait: 200 },
+);
+
 watchThrottled(
-  () => [search.value, tag.value, tier.value],
+  () => [tag.value, tier.value],
   (value, oldValue) => {
-    if (
-      value[0] !== oldValue[0] ||
-      value[1] !== oldValue[1] ||
-      value[2] !== oldValue[2]
-    ) {
+    if (value[1] !== oldValue[1] || value[2] !== oldValue[2]) {
       page.value = 1;
     }
 
@@ -91,7 +110,7 @@ watchThrottled(
     <v-row>
       <v-col>
         <v-text-field
-            v-model="search"
+            v-model="debouncedSearch"
             label="Search"
             outlined
             dense

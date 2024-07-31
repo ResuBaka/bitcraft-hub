@@ -1,4 +1,6 @@
 import { getClaimDescriptionRowsFromRows } from "~/modules/bitcraft/gamestate/claimDescription";
+import { getClaimTechStates } from "~/modules/bitcraft/gamestate/claimTechState";
+import { getClaimTechDescs } from "~/modules/bitcraft/gamestate/claimTechDesc";
 
 interface ClaimMember {
   user_name: string;
@@ -25,7 +27,7 @@ let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
 
 export default defineEventHandler((event) => {
-  let { search, page, perPage, showEmptySupplies } = getQuery(event);
+  let { search, page, perPage, ses } = getQuery(event);
 
   const rows = getClaimDescriptionRowsFromRows();
 
@@ -35,10 +37,10 @@ export default defineEventHandler((event) => {
     page = 1;
   }
 
-  if (showEmptySupplies) {
-    showEmptySupplies = showEmptySupplies === "true";
+  if (ses) {
+    ses = ses === "true";
   } else {
-    showEmptySupplies = false;
+    ses = false;
   }
 
   if (perPage) {
@@ -52,15 +54,52 @@ export default defineEventHandler((event) => {
 
   const rowsFilterted =
     rows?.filter((item: any) => {
-      if (!showEmptySupplies && item.supplies === 0) {
+      if (!ses && item.supplies === 0) {
         return false;
       }
 
       return !search || item.name.toLowerCase().includes(search.toLowerCase());
     }) ?? [];
 
+  const claims = [...rowsFilterted.slice((page - 1) * perPage, page * perPage)];
+  const claimTechStates = getClaimTechStates();
+  const claimTechDescs = getClaimTechDescs();
+
+  const tierUpgrades = claimTechDescs.filter((desc) =>
+    desc.description.startsWith("Tier "),
+  );
+  const tierUpgradesIds = tierUpgrades.map((desc) => desc.id);
+
+  for (const claim of claims) {
+    const claimTechState = claimTechStates.find(
+      (state) => state.entity_id === claim.entity_id,
+    );
+
+    let tier = 1;
+    if (claimTechState) {
+      const foundTiers = claimTechState.learned.filter((id) =>
+        tierUpgradesIds.includes(id),
+      );
+      if (foundTiers.length) {
+        tier =
+          tierUpgrades.find(
+            (desc) => desc.id === foundTiers[foundTiers.length - 1],
+          )?.tier ?? 1;
+      }
+    }
+
+    claim.running_upgrade = claimTechState
+      ? tierUpgrades.find((desc) => desc.id === claimTechState.researching)
+      : null;
+    claim.tier = tier;
+    claim.upgrades =
+      claimTechState?.learned.map((id) =>
+        claimTechDescs.find((desc) => desc.id === id),
+      ) ?? [];
+  }
+
   return {
-    claims: rowsFilterted.slice((page - 1) * perPage, page * perPage),
+    claims,
     total: rowsFilterted.length,
     page,
     perPage,

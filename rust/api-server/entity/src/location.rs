@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "location")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub entity_id: u64,
-    pub chunk_index: u64,
+    pub entity_id: i64,
+    pub chunk_index: i64,
     pub x: i32,
     pub z: i32,
     pub dimension: i32,

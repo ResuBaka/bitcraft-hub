@@ -14,13 +14,25 @@ const tmpPage = (route.query.page as string) ?? null;
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const { data: buildingsFetch, pending: buildingPending } = useFetch(() => {
-  return `/api/bitcraft/buildings/${route.params.id}`;
+  if (new_api) {
+    return `${api.base}/buildings/${route.params.id}`;
+  } else {
+    return `/api/bitcraft/buildings/${route.params.id}`;
+  }
 });
 
 const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
-  return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
+  if (new_api) {
+    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+  } else {
+    return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
+  }
 });
 
 const building = computed(() => {

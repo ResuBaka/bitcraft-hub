@@ -22,9 +22,19 @@ const tmpSearch = (route.query.search as string) ?? null;
 if (tmpSearch) {
   search.value = tmpSearch;
 }
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const { data, pending, refresh } = await useLazyFetch(
-  "/api/bitcraft/desc/buildings",
+  () => {
+    if (new_api) {
+      return `${api.base}/api/bitcraft/desc/buildings`;
+    } else {
+      return `/api/bitcraft/desc/buildings`;
+    }
+  },
   {
     onRequest: ({ options }) => {
       options.query = options.query || {};
@@ -38,7 +48,7 @@ const { data, pending, refresh } = await useLazyFetch(
       }
 
       if (perPage) {
-        options.query.perPage = perPage;
+        options.query.per_page = perPage;
       }
 
       if (Object.keys(options.query).length > 2) {
@@ -80,7 +90,9 @@ const currentBuildings = computed(() => {
 });
 
 const length = computed(() => {
-  return data.value?.total ? Math.ceil(data.value?.total / perPage) : 0;
+  return data.value?.total
+    ? Math.ceil(data.value?.total / data.value?.per_page)
+    : 0;
 });
 </script>
 

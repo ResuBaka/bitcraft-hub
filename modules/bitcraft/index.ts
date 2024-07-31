@@ -18,6 +18,9 @@ export default defineNuxtModule({
       username: "token",
       password: "",
     },
+    disable: {
+      refresh: false,
+    },
   },
   setup(options, nuxt) {
     nuxt.options.runtimeConfig.bitcraft = defu(
@@ -30,6 +33,9 @@ export default defineNuxtModule({
         auth: {
           username: "token",
           password: "",
+        },
+        disable: {
+          refresh: false,
         },
       },
     );

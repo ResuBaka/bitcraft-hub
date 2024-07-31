@@ -6,6 +6,7 @@ import {
   replaceTradeOrdersItemIdWithItem,
   type TradingOrderStateRow,
 } from "~/modules/bitcraft/gamestate/tradeOrder";
+import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
 let perPageDefault = 24;
 let perPageMax = perPageDefault * 4;
@@ -43,6 +44,7 @@ export default defineEventHandler<TradeOrderResponse>((event) => {
 
   const items = getItemRowsFromRows();
   const cargo_rows = getCargoDescRowsFromRows();
+  const building_rows = getBuildingStateRowsFromRows();
   const rows = replaceTradeOrdersItemIdWithItem(
     replaceTradeOrdersCargoIdWithCargo(
       getTradingOrderStateRowsFromRows(),
@@ -51,27 +53,55 @@ export default defineEventHandler<TradeOrderResponse>((event) => {
     items,
   );
 
+  const filter = (row: TradingOrderStateRow) => {
+    return (
+      !search ||
+      row.offer_items.filter(({ item }) => {
+        return item.name.toLowerCase().includes(searchLowerCase);
+      }).length > 0 ||
+      row.required_items.filter(({ item }) => {
+        return item.name.toLowerCase().includes(searchLowerCase);
+      }).length > 0 ||
+      row.offer_cargo.filter(({ name }) => {
+        return name.toLowerCase().includes(searchLowerCase);
+      }).length > 0 ||
+      row.required_cargo.filter(({ name }) => {
+        return name.toLowerCase().includes(searchLowerCase);
+      }).length > 0
+    );
+  };
+
   const searchLowerCase = search?.toLowerCase();
 
-  const rowsFilterted = rows.filter(
-    ({ offer_items, required_items, offer_cargo, required_cargo }) =>
-      !search ||
-      offer_items.filter(({ item }) => {
-        return item.name.toLowerCase().includes(searchLowerCase);
-      }).length > 0 ||
-      required_items.filter(({ item }) => {
-        return item.name.toLowerCase().includes(searchLowerCase);
-      }).length > 0 ||
-      offer_cargo.filter(({ name }) => {
-        return name.toLowerCase().includes(searchLowerCase);
-      }).length > 0 ||
-      required_cargo.filter(({ name }) => {
-        return name.toLowerCase().includes(searchLowerCase);
-      }).length > 0,
-  );
+  const filterdWithInfo = [];
+
+  for (const row of rows) {
+    const building = building_rows.find(
+      (building) => building.entity_id === row.shop_entity_id,
+    );
+    const shop_type =
+      building && building.constructed_by_player_entity_id
+        ? "Building"
+        : "Shop";
+
+    if (shop_type === "Shop") {
+      continue;
+    }
+
+    if (!filter(row)) {
+      continue;
+    }
+
+    row.shop_type = shop_type;
+    row.shop_name = building.nickname ?? building.nickname;
+    row.building = building;
+
+    filterdWithInfo.push(row);
+  }
+
   return {
-    trade_orders: rowsFilterted.slice((page - 1) * perPage, page * perPage),
-    total: rowsFilterted.length,
+    trade_orders: filterdWithInfo.slice((page - 1) * perPage, page * perPage),
+    total: filterdWithInfo.length,
     page,
     perPage,
   };

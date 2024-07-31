@@ -1,21 +1,23 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::ops::AddAssign;
-use axum::extract::State;
-use axum::http::StatusCode;
-use axum::Json;
-use sea_orm::{DatabaseConnection, EntityTrait};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use entity::skill_desc;
-use sea_orm::{ActiveModelTrait, DeriveColumn, EnumIter, IntoActiveModel, PaginatorTrait};
+use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::{IntoActiveModel, PaginatorTrait};
+use serde_json::Value;
+use std::fs::File;
+use std::path::PathBuf;
 
-pub(crate) async fn import_skill_descriptions(
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let mut item_file = File::open("/home/resubaka/code/crafting-list/storage/State/SkillDesc.json").unwrap();
+pub(crate) async fn import_skill_descriptions(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
+    let item_file =
+        File::open(storage_path.join("State/SkillDesc.json")).unwrap();
     let skill_descriptions: Value = serde_json::from_reader(&item_file).unwrap();
-    let skill_descriptions: Vec<skill_desc::Model> = serde_json::from_value(skill_descriptions.get(0).unwrap().get("rows").unwrap().clone()).unwrap();
+    let skill_descriptions: Vec<skill_desc::Model> = serde_json::from_value(
+        skill_descriptions
+            .get(0)
+            .unwrap()
+            .get("rows")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
     let count = skill_descriptions.len();
     let db_count = skill_desc::Entity::find().count(conn).await.unwrap();
 
@@ -24,12 +26,16 @@ pub(crate) async fn import_skill_descriptions(
         return Ok(());
     }
 
-    let skill_descriptions = skill_descriptions.into_iter().map(|x| {
-        x.into_active_model()
-    }).collect::<Vec<skill_desc::ActiveModel>>();
+    let skill_descriptions = skill_descriptions
+        .into_iter()
+        .map(|x| x.into_active_model())
+        .collect::<Vec<skill_desc::ActiveModel>>();
 
     for skill_description in skill_descriptions.chunks(5000) {
-        let _ = skill_desc::Entity::insert_many(skill_description.to_vec()).exec(conn).await;
+        let _ = skill_desc::Entity::insert_many(skill_description.to_vec())
+            .on_conflict_do_nothing()
+            .exec(conn)
+            .await?;
     }
 
     Ok(())

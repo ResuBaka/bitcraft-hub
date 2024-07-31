@@ -12,6 +12,7 @@
     "format:check": "biome format ./pages ./logic ./server ./components ./layouts ./modules ./composables"
   },
   "dependencies": {
+    "@artmizu/nuxt-prometheus": "^2.3.1",
     "@pinia/nuxt": "^0.5.1",
     "nuxt": "^3.11.2",
     "vue": "^3.4.23",

@@ -13,6 +13,7 @@ export default defineNuxtConfig({
     preset: "bun"
   },
   modules: [
+    // '@artmizu/nuxt-prometheus',
     'vuetify-nuxt-module',
     '@pinia/nuxt',
   ],
@@ -53,9 +54,15 @@ export default defineNuxtConfig({
       auth: {
         password: "",
       },
+      disable: {
+        refresh: false,
+      }
     },
     public: {
       iconDomain: "",
-    }
+      api: {
+        base: "",
+      },
+    },
   }
 })

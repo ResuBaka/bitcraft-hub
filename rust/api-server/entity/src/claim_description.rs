@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "claim_description")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub entity_id: u64,
-    pub owner_player_entity_id: u64,
-    pub owner_building_entity_id: u64,
+    pub entity_id: i64,
+    pub owner_player_entity_id: i64,
+    pub owner_building_entity_id: i64,
     pub name: String,
     #[sea_orm(column_type = "Float")]
     pub supplies: f32,

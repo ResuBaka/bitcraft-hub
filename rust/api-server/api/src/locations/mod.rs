@@ -1,15 +1,13 @@
+use crate::{AppState, Params};
 use axum::extract::{Query, State};
-use tower_cookies::Cookies;
+use axum::http::StatusCode;
 use axum::Json;
 use serde_json::{json, Value};
-use axum::http::StatusCode;
 use service::Query as QueryCore;
-use crate::{AppState, Params};
 
 pub(crate) async fn list_locations(
     state: State<AppState>,
     Query(params): Query<Params>,
-    cookies: Cookies,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(5);

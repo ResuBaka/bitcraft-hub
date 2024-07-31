@@ -8,9 +8,11 @@ const {
 } = useRuntimeConfig();
 
 const page = ref(1);
-const perPage = 30;
+const perPage = 500;
 
-const items_collapsible = ref(["items"]);
+const building_items_collapsible = ref(["items"]);
+const player_items_collapsible = ref([]);
+const player_offline_items_collapsible = ref([]);
 const buildings_collapsible = ref(["buildings"]);
 
 const search = ref<string | null>("");
@@ -18,46 +20,116 @@ const search = ref<string | null>("");
 const route = useRoute();
 const router = useRouter();
 
-const rarity = ref<string | null>(null);
-const tier = ref<number | null>(null);
+const rarityBuildings = ref<string | null>(null);
+const tierBuildings = ref<number | null>(null);
+
+const rarityPlayers = ref<string | null>(null);
+const tierPlayers = ref<number | null>(null);
+
+const rarityPlayersOffline = ref<string | null>(null);
+const tierPlayersOffline = ref<number | null>(null);
 
 const tmpPage = (route.query.page as string) ?? null;
 
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const { data: claimFetch, pending: claimPnding } = useFetch(() => {
-  return `/api/bitcraft/claims/${route.params.id}`;
+  if (new_api) {
+    return `${api.base}/api/bitcraft/claims/${route.params.id}`;
+  } else {
+    return `/api/bitcraft/claims/${route.params.id}`;
+  }
 });
 
 const { data: buidlingsFetch, pending: buildingsPending } = useFetch(() => {
-  return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}`;
+  if (new_api) {
+    return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
+  } else {
+    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
+  }
 });
 
 const claim = computed(() => {
   return claimFetch.value ?? undefined;
 });
 const buildings = computed(() => {
-  return buidlingsFetch.value?.buildings ?? [];
-});
-
-const inventorySearch = ref<string | null>("");
-
-const inventorys = computed(() => {
-  if (!claimFetch.value?.inventorys.length) {
+  if (!buidlingsFetch.value?.buildings.length) {
     return [];
   }
 
-  return claimFetch.value?.inventorys.filter(
+  return buidlingsFetch.value?.buildings.filter((building) => {
+    let name_to_check = building.nickname ?? building.building_name;
+    return (
+      !search.value ||
+      name_to_check.toLowerCase().includes(search.value.toLowerCase())
+    );
+  });
+});
+
+const inventoryBuildingsSearch = ref<string | null>("");
+
+const inventorysBuildings = computed(() => {
+  if (!claimFetch.value?.inventorys?.buildings?.length) {
+    return [];
+  }
+
+  return claimFetch.value?.inventorys?.buildings.filter(
     (inventory) =>
-      (!rarity.value ||
-        parseInt(Object.keys(inventory.item.rarity)[0]) === rarity.value) &&
-      (!tier.value || inventory.item.tier === tier.value) &&
-      (!inventorySearch.value ||
+      (!rarityBuildings.value ||
+        parseInt(Object.keys(inventory.item.rarity)[0]) ===
+          rarityBuildings.value) &&
+      (!tierBuildings.value || inventory.item.tier === tierBuildings.value) &&
+      (!inventoryBuildingsSearch.value ||
         inventory.item.name
           .toLowerCase()
-          .includes(inventorySearch.value.toLowerCase())),
+          .includes(inventoryBuildingsSearch.value.toLowerCase())),
+  );
+});
+
+const inventoryPlayersSearch = ref<string | null>("");
+
+const inventorysPlayers = computed(() => {
+  if (!claimFetch.value?.inventorys?.players?.length) {
+    return [];
+  }
+
+  return claimFetch.value?.inventorys?.players.filter(
+    (inventory) =>
+      (!rarityPlayers.value ||
+        parseInt(Object.keys(inventory.item.rarity)[0]) ===
+          rarityPlayers.value) &&
+      (!tierPlayers.value || inventory.item.tier === tierPlayers.value) &&
+      (!inventoryPlayersSearch.value ||
+        inventory.item.name
+          .toLowerCase()
+          .includes(inventoryPlayersSearch.value.toLowerCase())),
+  );
+});
+
+const inventoryPlayersOfflineSearch = ref<string | null>("");
+
+const inventorysPlayersOffline = computed(() => {
+  if (!claimFetch.value?.inventorys?.players_offline?.length) {
+    return [];
+  }
+
+  return claimFetch.value?.inventorys?.players_offline.filter(
+    (inventory) =>
+      (!rarityPlayersOffline.value ||
+        parseInt(Object.keys(inventory.item.rarity)[0]) ===
+          rarityPlayersOffline.value) &&
+      (!tierPlayersOffline.value ||
+        inventory.item.tier === tierPlayersOffline.value) &&
+      (!inventoryPlayersOfflineSearch.value ||
+        inventory.item.name
+          .toLowerCase()
+          .includes(inventoryPlayersOfflineSearch.value.toLowerCase())),
   );
 });
 
@@ -133,8 +205,35 @@ const sortedUsersByPermissionLevel = computed(() => {
 useSeoMeta({
   title: () => `Claim ${claimFetch.value?.name ?? route.params.id}`,
   description: () =>
-    `Claim ${claimFetch.value?.name ?? route.params.id} by ${claimOwner.value} with members (${claim.value?.members?.length || 0})  buildings (${buildings.value.length}) and items (${inventorys.value.length}) `,
+    `Claim ${claimFetch.value?.name ?? route.params.id} by ${claimOwner.value} with members (${claim.value?.members?.length || 0})  buildings (${buildings.value.length}) and items (${inventorysBuildings.value.length}) `,
 });
+
+const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
+  const days = Math.floor(seconds / (60 * 60 * 24));
+  const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
+  const minutes = Math.floor((seconds % (60 * 60)) / 60);
+  const secondsLeft = seconds % 60;
+
+  let result = "";
+
+  if (days > 0) {
+    result += `${days}d `;
+  }
+
+  if (hours > 0) {
+    result += `${hours}h `;
+  }
+
+  if (minutes > 0) {
+    result += `${minutes}m `;
+  }
+
+  if (secondsLeft > 0) {
+    result += `${secondsLeft}s`;
+  }
+
+  return result;
+};
 </script>
 
 <template>
@@ -184,6 +283,30 @@ useSeoMeta({
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
+              <v-col cols="6" md="2" lg="12">
+                <v-list-item>
+                  <v-list-item-title>Tier</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ claimFetch?.tier || 1 }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
+              <v-col v-if="claimFetch?.running_upgrade" cols="6" md="2" lg="12">
+                <v-list-item>
+                  <v-list-item-title>Running Upgrade</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ claimFetch?.running_upgrade.description }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
+              <v-col cols="6" md="2" lg="12">
+                <v-list-item>
+                  <v-list-item-title>Time played</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ secondsToDaysMinutesSecondsFormat(claimFetch?.time_played) }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
             </v-row>
           </v-card-text>
         </v-card>
@@ -213,12 +336,12 @@ useSeoMeta({
     </v-row>
     <v-row>
       <v-col cols="12">
-        <v-expansion-panels v-model="items_collapsible" eager>
+        <v-expansion-panels v-model="building_items_collapsible" eager>
           <v-expansion-panel value="items">
             <v-expansion-panel-title>
               <v-row>
                 <v-col class="d-flex justify-center">
-                  <h2 class="pl-md-3 pl-xl-0">Items ({{ inventorys.length || 0 }})</h2>
+                  <h2 class="pl-md-3 pl-xl-0">Building items ({{ inventorysBuildings.length || 0 }})</h2>
                 </v-col>
               </v-row>
             </v-expansion-panel-title>
@@ -226,7 +349,7 @@ useSeoMeta({
               <v-row>
                 <v-col>
                   <v-text-field
-                      v-model="inventorySearch"
+                      v-model="inventoryBuildingsSearch"
                       label="Search"
                       outlined
                       dense
@@ -235,8 +358,8 @@ useSeoMeta({
                 </v-col>
                 <v-col>
                   <v-autocomplete
-                      v-model="tier"
-                      :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => inventory.item.tier) || []))"
+                      v-model="tierBuildings"
+                      :items="Array.from(new Set(claimFetch?.inventorys?.buildings?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"
                       label="Tier"
                       outlined
                       dense
@@ -245,8 +368,8 @@ useSeoMeta({
                 </v-col>
                 <v-col>
                   <v-select
-                      v-model="rarity"
-                      :items="Array.from(new Set(claimFetch?.inventorys.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || []))"
+                      v-model="rarityPlayers"
+                      :items="Array.from(new Set(claimFetch?.inventorys?.buildings?.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || [])).sort((a, b) => a - b)"
                       label="Rarity"
                       outlined
                       dense
@@ -255,7 +378,133 @@ useSeoMeta({
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorys" :key="inventory.item_id">
+                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorysBuildings" :key="`buildings-${inventory.item_id}-${inventory.quantity}`">
+                  <v-list-item>
+                    <template #prepend v-if="iconDomain">
+                      <v-avatar :rounded="false" size="50" style="width: 90px;">
+                        <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
+                      </v-avatar>
+                    </template>
+                    <div :class="`text-${tierColor(inventory.item.tier)}`">
+                      {{ inventory.item.name }}:
+                      <strong>{{ inventory.quantity }}</strong>
+                    </div>
+                  </v-list-item>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12">
+        <v-expansion-panels v-model="player_items_collapsible" eager>
+          <v-expansion-panel value="items">
+            <v-expansion-panel-title>
+              <v-row>
+                <v-col class="d-flex justify-center">
+                  <h2 class="pl-md-3 pl-xl-0">Player items ({{ inventorysPlayers.length || 0 }})</h2>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-row>
+                <v-col>
+                  <v-text-field
+                      v-model="inventoryPlayersSearch"
+                      label="Search"
+                      outlined
+                      dense
+                      clearable
+                  ></v-text-field>
+                </v-col>
+                <v-col>
+                  <v-autocomplete
+                      v-model="tierPlayers"
+                      :items="Array.from(new Set(claimFetch?.inventorys?.players?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"
+                      label="Tier"
+                      outlined
+                      dense
+                      clearable
+                  ></v-autocomplete>
+                </v-col>
+                <v-col>
+                  <v-select
+                      v-model="rarityPlayers"
+                      :items="Array.from(new Set(claimFetch?.inventorys?.players?.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || [])).sort((a, b) => a - b)"
+                      label="Rarity"
+                      outlined
+                      dense
+                      clearable
+                  ></v-select>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorysPlayers" :key="`players-${inventory.item_id}-${inventory.quantity}`">
+                  <v-list-item>
+                    <template #prepend v-if="iconDomain">
+                      <v-avatar :rounded="false" size="50" style="width: 90px;">
+                        <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
+                      </v-avatar>
+                    </template>
+                    <div :class="`text-${tierColor(inventory.item.tier)}`">
+                      {{ inventory.item.name }}:
+                      <strong>{{ inventory.quantity }}</strong>
+                    </div>
+                  </v-list-item>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12">
+        <v-expansion-panels v-model="player_offline_items_collapsible" eager>
+          <v-expansion-panel value="items">
+            <v-expansion-panel-title>
+              <v-row>
+                <v-col class="d-flex justify-center">
+                  <h2 class="pl-md-3 pl-xl-0">Player Offline items ({{ inventorysPlayersOffline.length || 0 }})</h2>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-row>
+                <v-col>
+                  <v-text-field
+                      v-model="inventoryPlayersOfflineSearch"
+                      label="Search"
+                      outlined
+                      dense
+                      clearable
+                  ></v-text-field>
+                </v-col>
+                <v-col>
+                  <v-autocomplete
+                      v-model="tierPlayersOffline"
+                      :items="Array.from(new Set(claimFetch?.inventorys?.players_offline?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"
+                      label="Tier"
+                      outlined
+                      dense
+                      clearable
+                  ></v-autocomplete>
+                </v-col>
+                <v-col>
+                  <v-select
+                      v-model="rarityPlayersOffline"
+                      :items="Array.from(new Set(claimFetch?.inventorys?.players_offline?.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || [])).sort((a, b) => a - b)"
+                      label="Rarity"
+                      outlined
+                      dense
+                      clearable
+                  ></v-select>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorysPlayersOffline" :key="`players-${inventory.item_id}-${inventory.quantity}`">
                   <v-list-item>
                     <template #prepend v-if="iconDomain">
                       <v-avatar :rounded="false" size="50" style="width: 90px;">

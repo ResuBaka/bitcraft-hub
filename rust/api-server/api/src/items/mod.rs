@@ -1,18 +1,17 @@
-use axum::extract::{Query, State};
-use tower_cookies::Cookies;
-use axum::Json;
-use serde_json::{json, Value};
-use axum::http::StatusCode;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
-use std::fs::File;
-use entity::{item};
 use crate::{AppState, Params};
+use axum::extract::{Query, State};
+use axum::http::StatusCode;
+use axum::Json;
+use entity::item;
+use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
+use serde_json::{json, Value};
 use service::Query as QueryCore;
+use std::fs::File;
+use std::path::PathBuf;
 
 pub async fn list_items(
     state: State<AppState>,
     Query(params): Query<Params>,
-    cookies: Cookies,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(5);
@@ -20,8 +19,8 @@ pub async fn list_items(
 
     let (items, tags, tiers) = tokio::join!(
         QueryCore::find_items(&state.conn, page, posts_per_page, search),
-         QueryCore::find_unique_item_tags(&state.conn),
-         QueryCore::find_unique_item_tiers(&state.conn),
+        QueryCore::find_unique_item_tags(&state.conn),
+        QueryCore::find_unique_item_tiers(&state.conn),
     );
 
     let (items, num_pages) = items.expect("Cannot find items");
@@ -38,12 +37,13 @@ pub async fn list_items(
     })))
 }
 
-pub(crate) async fn import_items(
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let mut item_file = File::open("/home/resubaka/code/crafting-list/storage/Desc/ItemDesc.json").unwrap();
+pub(crate) async fn import_items(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
+    println!("Importing items");
+    let item_file =
+        File::open(storage_path.join("Desc/ItemDesc.json")).unwrap();
     let item: Value = serde_json::from_reader(&item_file).unwrap();
-    let item: Vec<item::Model> = serde_json::from_value(item.get(0).unwrap().get("rows").unwrap().clone()).unwrap();
+    let item: Vec<item::Model> =
+        serde_json::from_value(item.get(0).unwrap().get("rows").unwrap().clone()).unwrap();
     let count = item.len();
     let db_count = item::Entity::find().count(conn).await.unwrap();
 
@@ -53,8 +53,11 @@ pub(crate) async fn import_items(
 
     let item: Vec<item::ActiveModel> = item.into_iter().map(|x| x.into_active_model()).collect();
 
-    for item in item.chunks(5000) {
-        let _ = item::Entity::insert_many(item.to_vec()).exec(conn).await;
+    for item in item.chunks(2000) {
+        let _ = item::Entity::insert_many(item.to_vec())
+            .on_conflict_do_nothing()
+            .exec(conn)
+            .await?;
     }
 
     Ok(())

@@ -16,15 +16,32 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
+
 const { data: playerFetch, pending: playerPnding } = useFetch(() => {
-  return `/api/bitcraft/players/${route.params.id}`;
+  if (new_api) {
+    return `${api.base}/api/bitcraft/players/${route.params.id}`;
+  } else {
+    return `/api/bitcraft/players/${route.params.id}`;
+  }
 });
 const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
-  return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
+  if (new_api) {
+    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+  } else {
+    return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+  }
 });
 
 const { data: experienceFetch } = useFetch(() => {
-  return `/api/bitcraft/experience/${route.params.id}`;
+  if (new_api) {
+    return `${api.base}/api/bitcraft/experience/${route.params.id}`;
+  } else {
+    return `/api/bitcraft/experience/${route.params.id}`;
+  }
 });
 
 const expeirence = computed(() => {
@@ -44,6 +61,33 @@ const computedClass = computed(() => {
     "bg-grey-lighten-3": !theme.global.current.value.dark,
   };
 });
+
+const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
+  const days = Math.floor(seconds / (60 * 60 * 24));
+  const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
+  const minutes = Math.floor((seconds % (60 * 60)) / 60);
+  const secondsLeft = seconds % 60;
+
+  let result = "";
+
+  if (days > 0) {
+    result += `${days}d `;
+  }
+
+  if (hours > 0) {
+    result += `${hours}h `;
+  }
+
+  if (minutes > 0) {
+    result += `${minutes}m `;
+  }
+
+  if (secondsLeft > 0) {
+    result += `${secondsLeft}s`;
+  }
+
+  return result;
+};
 </script>
 
 <template>
@@ -72,11 +116,11 @@ const computedClass = computed(() => {
             </tr>
             <tr style='text-align: right'>
               <th>time_played:</th>
-              <td>{{ player.time_played }}</td>
+              <td>{{ secondsToDaysMinutesSecondsFormat(player.time_played) }}</td>
             </tr>
             <tr style='text-align: right'>
               <th>time_signed_in:</th>
-              <td>{{ player.time_signed_in }}</td>
+              <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>
             </tr>
             </tbody>
           </v-table>

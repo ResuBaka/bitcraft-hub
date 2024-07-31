@@ -18,40 +18,53 @@ if (route.query.search) {
 if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const {
   data: claims,
   pending,
   refresh,
-} = await useLazyFetch(`/api/bitcraft/claims`, {
-  onRequest: ({ options }) => {
-    options.query = options.query || {};
-
-    if (search.value) {
-      options.query.search = search.value;
-    }
-
-    if (page.value) {
-      options.query.page = page.value;
-    }
-
-    if (perPage) {
-      options.query.perPage = perPage;
-    }
-
-    if (showEmptySupplies.value) {
-      options.query.ses = showEmptySupplies.value.toString();
-    }
-
-    if (Object.keys(options.query).length > 2) {
-      const query = { ...options.query };
-      delete query.perPage;
-      router.push({ query });
-    } else if (options.query.page <= 1) {
-      router.push({});
+} = await useLazyFetch(
+  () => {
+    if (new_api) {
+      return `${api.base}/api/bitcraft/claims`;
+    } else {
+      return `/api/bitcraft/claims`;
     }
   },
-});
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+
+      if (search.value) {
+        options.query.search = search.value;
+      }
+
+      if (page.value) {
+        options.query.page = page.value;
+      }
+
+      if (perPage) {
+        options.query.per_page = perPage;
+      }
+
+      if (showEmptySupplies.value) {
+        options.query.ses = showEmptySupplies.value.toString();
+      }
+
+      if (Object.keys(options.query).length > 2) {
+        const query = { ...options.query };
+        delete query.perPage;
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+  },
+);
 
 const changePage = (value: number) => {
   page.value = value;

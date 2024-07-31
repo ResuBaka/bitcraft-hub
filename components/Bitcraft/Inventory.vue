@@ -64,10 +64,18 @@ function timeAgo(date) {
   }
   return "just now";
 }
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
   useFetch(() => {
-    return `/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
+    if (new_api) {
+      return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
+    } else {
+      return `/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
+    }
   });
 
 const inventoryChanges = computed(() => {
@@ -92,7 +100,7 @@ const headersChanges = [
   },
 ];
 
-const changes = computed(() => {
+const basicChanges = computed(() => {
   const changes = [];
   for (const change of inventoryChanges.value) {
     const data = new Date(change.timestamp / 1000);
@@ -144,8 +152,13 @@ const changes = computed(() => {
       }
     }
   }
+
+  return changes;
+});
+
+const changes = computed(() => {
   return (
-    changes.filter((change) => {
+    basicChanges.value.filter((change) => {
       return (
         !search.value ||
         change?.diff?.new?.item?.name
@@ -165,6 +178,13 @@ const backgroundColorRow = ({ index }) => {
     class: index % 2 === 0 ? "" : "bg-surface-light",
   };
 };
+
+const isPlayer = computed(() => {
+  return (
+    inventory.value?.nickname === "Tool belt" ||
+    inventory.value?.nickname === "Inventory"
+  );
+});
 </script>
 
 <template>
@@ -206,7 +226,11 @@ const backgroundColorRow = ({ index }) => {
               {{ nUTCData.format(item.timestamp) }}
             </template>
             <template v-slot:item.timestamp_diff="{ value }">
-              {{ timeAgo(value, 'minute') }}
+              <v-tooltip :text="`${value}`" location="top">
+                <template v-slot:activator="{ props }">
+                  <div v-bind="props" >{{ timeAgo(value) }} </div>
+                </template>
+              </v-tooltip>
             </template>
             <template v-slot:item.diff="{ value }">
               <template v-if="value.type === 'delete'">

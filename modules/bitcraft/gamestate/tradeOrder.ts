@@ -10,7 +10,7 @@ import {
 import { type CargoDescRow, getCagoDescFromCargoId } from "./cargoDesc";
 
 export interface TradingOrderStateRow extends Entity {
-  building_entity_id: number;
+  shop_entity_id: number;
   remaining_stock: any;
   offer_items: ItemRefrence[] | ExpendedRefrence[];
   offer_cargo_id: number[];
@@ -18,6 +18,11 @@ export interface TradingOrderStateRow extends Entity {
   required_items: ItemRefrence[];
   required_cargo_id: number[];
   required_cargo?: CargoDescRow[];
+}
+
+export interface TradingOrderStateWithInfo extends TradingOrderStateRow {
+  shop_name: string;
+  shop_type: string;
 }
 
 let TradingOrderStateState: TradingOrderStateRow[] = [];
@@ -52,7 +57,7 @@ function saveParsedTradingOrderState(rows: TradingOrderStateRow[]): void {
 function getTradingOrderStateRowFromRow(row: any[]): TradingOrderStateRow {
   return {
     entity_id: row[0],
-    building_entity_id: row[1],
+    shop_entity_id: row[1],
     remaining_stock: row[2],
     offer_items: getItemsRefrenceFromRows(row[3]),
     offer_cargo_id: row[4],

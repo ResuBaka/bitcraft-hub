@@ -1,13 +1,26 @@
 <script setup lang="ts">
 const numberFormat = new Intl.NumberFormat(undefined);
+const {
+  public: { api },
+} = useRuntimeConfig();
+const { new_api } = useConfigStore();
 
 const {
   data: leaderboard,
   pending,
   refresh,
-} = await useFetch("/api/bitcraft/leaderboard", {
-  lazy: true,
-});
+} = await useFetch(
+  () => {
+    // if (new_api) {
+    //   return `${api.base}/api/bitcraft/leaderboard`;
+    // } else {
+    return `/api/bitcraft/leaderboard`;
+    // }
+  },
+  {
+    lazy: true,
+  },
+);
 
 const route = useRoute();
 
@@ -67,8 +80,6 @@ const toggleRefresh = () => {
 };
 
 const queryRefresh = route.query?.refresh ?? false;
-
-console.log("queryRefresh", queryRefresh);
 
 if (queryRefresh) {
   toggleRefresh();

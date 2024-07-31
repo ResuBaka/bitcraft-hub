@@ -32,8 +32,10 @@ export type ItemResponse = {
 export default defineEventHandler<ItemResponse>((event) => {
   let { tag, tier, search, page, perPage } = getQuery<ItemQuery>(event);
 
-  const itemRows = getItemRowsFromRows();
+  let itemRows = getItemRowsFromRows();
   const cargoDescRows = getCargoDescRowsFromRows();
+
+  itemRows = itemRows.filter((item) => !item.name.includes("Output"));
 
   const tagsFromItems = Array.from(
     new Set(itemRows.map((item: any) => item.tag)),
