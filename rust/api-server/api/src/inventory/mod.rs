@@ -1,16 +1,15 @@
-use crate::{AppState, Params};
-use axum::extract::{Path, Query, State};
+use crate::AppState;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Json;
+use axum::Router;
 use axum_codec::Codec;
 use entity::inventory::{
     Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
-use entity::{building_desc, cargo_description, inventory, item};
-use futures::StreamExt;
-use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
-use serde::Deserialize;
-use serde_json::{json, Value};
+use entity::{cargo_description, inventory, item};
+use log::{error, info};
+use sea_orm::{sea_query, DatabaseConnection, EntityTrait, IntoActiveModel};
+use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
@@ -18,6 +17,27 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
+use tokio::time::Instant;
+
+pub(crate) fn get_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/inventorys/changes/:id",
+            axum_codec::routing::get(read_inventory_changes).into(),
+        )
+        .route(
+            "/api/bitcraft/inventorys/changes/:id",
+            axum_codec::routing::get(read_inventory_changes).into(),
+        )
+        .route(
+            "/api/bitcraft/inventorys/owner_entity_id/:id",
+            axum_codec::routing::get(find_inventory_by_owner_entity_id).into(),
+        )
+        .route(
+            "/inventory/:id",
+            axum_codec::routing::get(find_inventory_by_id).into(),
+        )
+}
 
 #[axum_codec::apply(encode, decode)]
 pub(crate) struct InventoryChanged {
@@ -37,10 +57,8 @@ pub(crate) async fn read_inventory_changes(
 ) -> Result<Codec<Vec<InventoryChanged>>, (StatusCode, &'static str)> {
     let mut inventory_changes = vec![];
 
-    let inventory_chages_file = File::open(state.storage_path.join(format!(
-        "Inventory/{}.json",
-        id
-    )));
+    let inventory_chages_file =
+        File::open(state.storage_path.join(format!("Inventory/{}.json", id)));
 
     match inventory_chages_file {
         Ok(file) => {
@@ -51,16 +69,14 @@ pub(crate) async fn read_inventory_changes(
                         inventory_changes.push(data);
                     }
                     Err(e) => {
-                        println!("");
-                        println!("Error: {e}, line: {line}");
-                        println!("");
+                        error!("Error: {e}, line: {line}");
                     }
                 };
             }
 
             Ok(Codec(inventory_changes))
         }
-        Err(e) => Err((StatusCode::NOT_FOUND, "InventoryChanged not found")),
+        Err(_e) => Err((StatusCode::NOT_FOUND, "InventoryChanged not found")),
     }
 }
 
@@ -71,7 +87,7 @@ pub(crate) async fn find_inventory_by_id(
     let inventory = QueryCore::find_inventory_by_id(&state.conn, id)
         .await
         .map_err(|e| {
-            println!("Error: {:?}", e);
+            error!("Error: {:?}", e);
 
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
@@ -87,7 +103,8 @@ pub(crate) struct InventorysResponse {
     inventorys: Vec<ResolvedInventory>,
     total: i64,
     page: i64,
-    perPage: i64,
+    #[serde(rename = "perPage")]
+    per_page: i64,
 }
 
 pub(crate) async fn find_inventory_by_owner_entity_id(
@@ -98,7 +115,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     let player = QueryCore::find_player_by_id(&state.conn, id)
         .await
         .map_err(|e| {
-            println!("Error: {:?}", e);
+            error!("Error: {:?}", e);
 
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
@@ -111,7 +128,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                 QueryCore::find_mobile_entity_by_owner_entity_id(&state.conn, player.entity_id)
                     .await
                     .map_err(|e| {
-                        println!("Error: {:?}", e);
+                        error!("Error: {:?}", e);
 
                         (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
                     })?;
@@ -130,7 +147,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         QueryCore::find_inventory_by_owner_entity_ids(&state.conn, inventory_ids)
             .await
             .map_err(|e| {
-                println!("Error: {:?}", e);
+                error!("Error: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             })?;
 
@@ -176,14 +193,14 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     let item_descs = QueryCore::find_item_by_ids(&state.conn, item_ids)
         .await
         .map_err(|e| {
-            println!("Error: {:?}", e);
+            error!("Error: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
 
     let cargo_descs = QueryCore::find_cargo_by_ids(&state.conn, cargo_ids)
         .await
         .map_err(|e| {
-            println!("Error: {:?}", e);
+            error!("Error: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
 
@@ -235,13 +252,17 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         inventorys: resolved_inventory,
         total: num_pages.number_of_items as i64,
         page: 1,
-        perPage: 24,
+        per_page: 24,
     }))
 }
 
-pub(crate) async fn import_inventory(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("State/InventoryState.json")).unwrap();
+pub(crate) async fn import_inventory(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let start = Instant::now();
+
+    let item_file = File::open(storage_path.join("State/InventoryState.json")).unwrap();
 
     let buff_reader = BufReader::new(item_file);
 
@@ -253,12 +274,21 @@ pub(crate) async fn import_inventory(conn: &DatabaseConnection, storage_path: &P
     json_stream_reader.seek_to(&json_path!["rows"]).unwrap();
     json_stream_reader.begin_array()?;
 
+    let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
+        .update_columns([
+            inventory::Column::Pockets,
+            inventory::Column::InventoryIndex,
+            inventory::Column::CargoIndex,
+            inventory::Column::OwnerEntityId,
+        ])
+        .to_owned();
+
     while let Ok(value) = json_stream_reader.deserialize_next::<inventory::Model>() {
         buffer_before_insert.push(value.into_active_model());
 
         if buffer_before_insert.len() == 5000 {
             let _ = inventory::Entity::insert_many(buffer_before_insert.to_vec())
-                .on_conflict_do_nothing()
+                .on_conflict(on_conflict.clone())
                 .exec(conn)
                 .await?;
             buffer_before_insert.clear();
@@ -267,13 +297,16 @@ pub(crate) async fn import_inventory(conn: &DatabaseConnection, storage_path: &P
 
     if buffer_before_insert.len() > 0 {
         inventory::Entity::insert_many(buffer_before_insert.to_vec())
-            .on_conflict_do_nothing()
+            .on_conflict(on_conflict)
             .exec(conn)
             .await?;
         buffer_before_insert.clear();
-        println!("Inventory last batch imported");
+        info!("Inventory last batch imported");
     }
-    println!("Importing inventory finished");
+    info!(
+        "Importing inventory finished in {}s",
+        start.elapsed().as_secs()
+    );
 
     Ok(())
 }
@@ -284,7 +317,7 @@ pub(crate) fn resolve_pocket(
     cargo_desc: &HashMap<i64, cargo_description::Model>,
 ) -> ItemSlotResolved {
     let mut contents = None;
-    for (pockcket_index, refrence) in pocket.clone().contents.iter() {
+    for (_, refrence) in pocket.clone().contents.iter() {
         contents = resolve_contents(refrence, item_desc, cargo_desc);
     }
     ItemSlotResolved {

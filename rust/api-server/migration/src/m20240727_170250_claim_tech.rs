@@ -106,7 +106,6 @@ enum ClaimTechState {
     Learned,
     Researching,
     StartTimestamp,
-    ResearchTime,
     CancelToken,
 }
 

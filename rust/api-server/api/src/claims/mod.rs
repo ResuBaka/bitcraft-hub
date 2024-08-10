@@ -1,20 +1,30 @@
-use crate::inventory::{resolve_contents, resolve_pocket};
+use crate::inventory::resolve_contents;
 use crate::{AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::Json;
-use entity::inventory::{ExpendedRefrence, ItemSlotResolved};
+use axum::routing::get;
+use axum::{Json, Router};
+use entity::inventory::ExpendedRefrence;
 use entity::{
     cargo_description, claim_description, claim_tech_desc, inventory, item, player_state,
 };
+use log::{error, info};
 use sea_orm::{EntityTrait, IntoActiveModel, PaginatorTrait};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use service::{sea_orm::DatabaseConnection, Query as QueryCore};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 use tokio::task::JoinHandle;
+
+pub(crate) fn get_routes() -> Router<AppState> {
+    Router::new()
+        .route("/claims", get(list_claims))
+        .route("/api/bitcraft/claims", get(list_claims))
+        .route("/api/bitcraft/claims/:id", get(get_claim))
+        .route("/claims/:id", get(find_claim_descriptions))
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClaimDescriptionState {
@@ -118,12 +128,12 @@ pub(crate) async fn get_claim(
     let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
         .await
         .expect("Cannot find claim tech descs");
-    let tierUpgrades = claim_tech_descs
+    let tier_upgrades = claim_tech_descs
         .iter()
         .filter(|desc| desc.description.starts_with("Tier "))
         .map(|desc| desc.clone())
         .collect::<Vec<claim_tech_desc::Model>>();
-    let tierUpgradesIds = tierUpgrades
+    let tier_upgrades_ids = tier_upgrades
         .iter()
         .map(|desc| desc.id)
         .collect::<Vec<i64>>();
@@ -145,23 +155,23 @@ pub(crate) async fn get_claim(
         .collect::<HashMap<i64, cargo_description::Model>>();
 
     let claim = {
-        let mut claimTechState = claim_tech_states
+        let claim_tech_state = claim_tech_states
             .iter()
             .find(|state| state.entity_id == claim.entity_id);
         let mut claim: ClaimDescriptionState = claim.into();
 
-        match claimTechState {
-            Some(claimTechState) => {
-                claim.running_upgrade = match tierUpgrades
+        match claim_tech_state {
+            Some(claim_tech_state) => {
+                claim.running_upgrade = match tier_upgrades
                     .iter()
-                    .find(|desc| desc.id == (claimTechState.researching as i64))
+                    .find(|desc| desc.id == (claim_tech_state.researching as i64))
                     .map(|desc| desc.tier)
                 {
-                    Some(tier) => Some(true),
+                    Some(_tier) => Some(true),
                     None => Some(false),
                 };
                 let learned: Vec<i32> =
-                    serde_json::from_value(claimTechState.learned.clone()).unwrap();
+                    serde_json::from_value(claim_tech_state.learned.clone()).unwrap();
                 claim.upgrades = learned
                     .iter()
                     .map(|id| {
@@ -172,16 +182,16 @@ pub(crate) async fn get_claim(
                             .clone()
                     })
                     .collect::<Vec<claim_tech_desc::Model>>();
-                let foundTiers = learned
+                let found_tiers = learned
                     .iter()
-                    .filter(|id| tierUpgradesIds.contains(&(**id as i64)))
+                    .filter(|id| tier_upgrades_ids.contains(&(**id as i64)))
                     .map(|id| id.clone())
                     .collect::<Vec<i32>>();
 
-                if foundTiers.len() > 0 {
-                    claim.tier = tierUpgrades
+                if found_tiers.len() > 0 {
+                    claim.tier = tier_upgrades
                         .iter()
-                        .find(|desc| desc.id == (foundTiers[foundTiers.len() - 1] as i64))
+                        .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1] as i64))
                         .map(|desc| desc.tier);
                 } else {
                     claim.tier = Some(1);
@@ -308,7 +318,7 @@ pub(crate) async fn get_claim(
 
     for finished_job in finished_jobs {
         if let Err(err) = finished_job {
-            println!("Error: {:?}", err);
+            error!("Error: {:?}", err);
             continue;
         }
 
@@ -344,12 +354,12 @@ pub(crate) async fn list_claims(
     let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
         .await
         .expect("Cannot find claim tech descs");
-    let tierUpgrades = claim_tech_descs
+    let tier_upgrades = claim_tech_descs
         .iter()
         .filter(|desc| desc.description.starts_with("Tier "))
         .map(|desc| desc.clone())
         .collect::<Vec<claim_tech_desc::Model>>();
-    let tierUpgradesIds = tierUpgrades
+    let tier_upgrades_ids = tier_upgrades
         .iter()
         .map(|desc| desc.id)
         .collect::<Vec<i64>>();
@@ -357,23 +367,23 @@ pub(crate) async fn list_claims(
     let claims = claims
         .into_iter()
         .map(|claim_description| {
-            let mut claimTechState = claim_tech_states
+            let claim_tech_state = claim_tech_states
                 .iter()
                 .find(|state| state.entity_id == claim_description.entity_id);
             let mut claim_description: ClaimDescriptionState = claim_description.into();
 
-            match claimTechState {
-                Some(claimTechState) => {
-                    claim_description.running_upgrade = match tierUpgrades
+            match claim_tech_state {
+                Some(claim_tech_state) => {
+                    claim_description.running_upgrade = match tier_upgrades
                         .iter()
-                        .find(|desc| desc.id == (claimTechState.researching as i64))
+                        .find(|desc| desc.id == (claim_tech_state.researching as i64))
                         .map(|desc| desc.tier)
                     {
-                        Some(tier) => Some(true),
+                        Some(_tier) => Some(true),
                         None => Some(false),
                     };
                     let learned: Vec<i32> =
-                        serde_json::from_value(claimTechState.learned.clone()).unwrap();
+                        serde_json::from_value(claim_tech_state.learned.clone()).unwrap();
                     claim_description.upgrades = learned
                         .iter()
                         .map(|id| {
@@ -384,16 +394,16 @@ pub(crate) async fn list_claims(
                                 .clone()
                         })
                         .collect::<Vec<claim_tech_desc::Model>>();
-                    let foundTiers = learned
+                    let found_tiers = learned
                         .iter()
-                        .filter(|id| tierUpgradesIds.contains(&(**id as i64)))
+                        .filter(|id| tier_upgrades_ids.contains(&(**id as i64)))
                         .map(|id| id.clone())
                         .collect::<Vec<i32>>();
 
-                    if foundTiers.len() > 0 {
-                        claim_description.tier = tierUpgrades
+                    if found_tiers.len() > 0 {
+                        claim_description.tier = tier_upgrades
                             .iter()
-                            .find(|desc| desc.id == (foundTiers[foundTiers.len() - 1] as i64))
+                            .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1] as i64))
                             .map(|desc| desc.tier);
                     } else {
                         claim_description.tier = Some(1);
@@ -437,11 +447,9 @@ pub(crate) async fn find_claim_descriptions(
 
 pub(crate) async fn import_claim_description_state(
     conn: &DatabaseConnection,
-    storage_path: &PathBuf
+    storage_path: &PathBuf,
 ) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("State/ClaimDescriptionState.json"))
-            .unwrap();
+    let item_file = File::open(storage_path.join("State/ClaimDescriptionState.json")).unwrap();
     let claim_descriptions: Value = serde_json::from_reader(&item_file).unwrap();
     let claim_descriptions: Vec<claim_description::Model> = serde_json::from_value(
         claim_descriptions
@@ -456,7 +464,7 @@ pub(crate) async fn import_claim_description_state(
     let db_count = claim_description::Entity::find().count(conn).await.unwrap();
 
     if (count as u64) == db_count {
-        println!("ClaimDescriptionState already imported");
+        info!("ClaimDescriptionState already imported");
         return Ok(());
     }
 
@@ -484,7 +492,7 @@ pub(crate) fn get_merged_inventories(
 
     for inventory in inventorys {
         for pocket in inventory.pockets {
-            for (key, content) in pocket.contents.iter() {
+            for (_, content) in pocket.contents.iter() {
                 let resolved = resolve_contents(content, items, cargos);
 
                 if resolved.is_none() {
@@ -505,5 +513,5 @@ pub(crate) fn get_merged_inventories(
         }
     }
 
-    hashmap.into_iter().map(|(key, value)| value).collect()
+    hashmap.into_iter().map(|(_, value)| value).collect()
 }

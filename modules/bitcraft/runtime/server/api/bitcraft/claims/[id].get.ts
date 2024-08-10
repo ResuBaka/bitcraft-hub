@@ -79,6 +79,7 @@ export default defineEventHandler((event) => {
     inventorys: {
       buildings: a.buildings,
       players: a.players,
+      players_offline: a.players_offline,
     },
     time_played: a.time_played,
   };
@@ -126,6 +127,7 @@ function getInventorysFromClaimMerged(claim: ClaimDescriptionRow) {
   );
 
   const playerRowsInventoryNoneMapped = [];
+  const playerOfflineRowsInventoryNoneMapped = [];
   const playerRows = getPlayerRowsFromRows();
 
   let time_played = 0;
@@ -140,22 +142,36 @@ function getInventorysFromClaimMerged(claim: ClaimDescriptionRow) {
     }
 
     if (player === undefined || !player.signed_in) {
-      // continue;
-    }
+      const playersInventory = inventorys.filter(
+        (inventory) => inventory.owner_entity_id === member.entity_id,
+      );
 
-    const playersInventory = inventorys.filter(
-      (inventory) => inventory.owner_entity_id === member.entity_id,
-    );
+      const playersInventorySorted = playersInventory.sort(
+        (a, b) => a.entity_id - b.entity_id,
+      );
 
-    const playersInventorySorted = playersInventory.sort(
-      (a, b) => a.entity_id - b.entity_id,
-    );
+      if (playersInventorySorted.length > 0) {
+        for (const inventory of playersInventorySorted.length > 1
+          ? playersInventorySorted.slice(1)
+          : playersInventorySorted) {
+          playerOfflineRowsInventoryNoneMapped.push(inventory);
+        }
+      }
+    } else {
+      const playersInventory = inventorys.filter(
+        (inventory) => inventory.owner_entity_id === member.entity_id,
+      );
 
-    if (playersInventorySorted.length > 0) {
-      for (const inventory of playersInventorySorted.length > 1
-        ? playersInventorySorted.slice(1)
-        : playersInventorySorted) {
-        playerRowsInventoryNoneMapped.push(inventory);
+      const playersInventorySorted = playersInventory.sort(
+        (a, b) => a.entity_id - b.entity_id,
+      );
+
+      if (playersInventorySorted.length > 0) {
+        for (const inventory of playersInventorySorted.length > 1
+          ? playersInventorySorted.slice(1)
+          : playersInventorySorted) {
+          playerRowsInventoryNoneMapped.push(inventory);
+        }
       }
     }
   }
@@ -234,11 +250,54 @@ function getInventorysFromClaimMerged(claim: ClaimDescriptionRow) {
     }
   }
 
+  const playerOfflineRowsInventory = replaceInventoryItemsIdWithItems(
+    playerOfflineRowsInventoryNoneMapped,
+    itemsTemp,
+  );
+
+  let itemsPlayerOffline = {};
+  for (const inventory of playerOfflineRowsInventory) {
+    for (const pocket of inventory.pockets) {
+      if (pocket.contents !== undefined) {
+        if (
+          pocket.contents.item_type === "Cargo" &&
+          itemsPlayerOffline[pocket.contents.item_id] === undefined
+        ) {
+          itemsPlayerOffline[pocket.contents.item_id] = {
+            ...pocket.contents,
+            item: getCagoDescFromCargoId(cargo_rows, pocket.contents.item_id),
+          };
+
+          continue;
+        } else if (pocket.contents.item_type === "Cargo") {
+          itemsPlayerOffline[pocket.contents.item_id].quantity +=
+            pocket.contents.quantity;
+          continue;
+        }
+
+        if (
+          pocket.contents.item_type === "Item" &&
+          itemsPlayerOffline[pocket.contents.item_id] === undefined
+        ) {
+          itemsPlayerOffline[pocket.contents.item_id] = { ...pocket.contents };
+          continue;
+        } else if (pocket.contents.item_type === "Item") {
+          itemsPlayerOffline[pocket.contents.item_id].quantity +=
+            pocket.contents.quantity;
+          continue;
+        }
+      }
+    }
+  }
+
   return {
     buildings: Object.values(items).sort((a, b) =>
       a.quantity > b.quantity ? -1 : 1,
     ),
     players: Object.values(itemsPlayer).sort((a, b) =>
+      a.quantity > b.quantity ? -1 : 1,
+    ),
+    players_offline: Object.values(itemsPlayerOffline).sort((a, b) =>
       a.quantity > b.quantity ? -1 : 1,
     ),
     time_played,

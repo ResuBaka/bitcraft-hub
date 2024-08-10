@@ -1,15 +1,22 @@
-use crate::{AppState, Params};
+use crate::AppState;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use axum::Json;
+use axum::Router;
 use axum_codec::Codec;
 use entity::cargo_description;
 use entity::item;
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use service::Query as QueryCore;
 use std::fs::File;
+
+pub(crate) fn get_routes() -> Router<AppState> {
+    Router::new().route(
+        "/api/bitcraft/itemsAndCargo",
+        axum_codec::routing::get(list_items_and_cargo).into(),
+    )
+}
 
 #[derive(Clone)]
 #[axum_codec::apply(encode, decode)]

@@ -24,7 +24,7 @@ interface ClaimDescriptionRow {
 }
 
 let perPageDefault = 24;
-let perPageMax = perPageDefault * 4;
+let perPageMax = perPageDefault * 6;
 
 export default defineEventHandler((event) => {
   let { search, page, perPage, ses } = getQuery(event);
@@ -58,10 +58,17 @@ export default defineEventHandler((event) => {
         return false;
       }
 
+      if (item.name === "Watchtower") {
+        return false;
+      }
+
+      if (ses && item.supplies > 0) {
+        return false;
+      }
+
       return !search || item.name.toLowerCase().includes(search.toLowerCase());
     }) ?? [];
 
-  const claims = [...rowsFilterted.slice((page - 1) * perPage, page * perPage)];
   const claimTechStates = getClaimTechStates();
   const claimTechDescs = getClaimTechDescs();
 
@@ -69,6 +76,8 @@ export default defineEventHandler((event) => {
     desc.description.startsWith("Tier "),
   );
   const tierUpgradesIds = tierUpgrades.map((desc) => desc.id);
+
+  let claims = [...rowsFilterted];
 
   for (const claim of claims) {
     const claimTechState = claimTechStates.find(
@@ -97,6 +106,10 @@ export default defineEventHandler((event) => {
         claimTechDescs.find((desc) => desc.id === id),
       ) ?? [];
   }
+
+  claims.sort((a, b) => b.tier - a.tier);
+
+  claims = [...claims.slice((page - 1) * perPage, page * perPage)];
 
   return {
     claims,

@@ -6,10 +6,9 @@ use std::path::PathBuf;
 
 pub(crate) async fn import_claim_description_state(
     conn: &DatabaseConnection,
-    storage_path: &PathBuf
+    storage_path: &PathBuf,
 ) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("State/ClaimTechState.json")).unwrap();
+    let item_file = File::open(storage_path.join("State/ClaimTechState.json")).unwrap();
     let claim_tech_state: Value = serde_json::from_reader(&item_file).unwrap();
     let claim_tech_states: Vec<claim_tech_state::Model> = serde_json::from_value(
         claim_tech_state
@@ -42,9 +41,11 @@ pub(crate) async fn import_claim_description_state(
     Ok(())
 }
 
-pub(crate) async fn import_claim_description_desc(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("Desc/ClaimTechDesc.json")).unwrap();
+pub(crate) async fn import_claim_description_desc(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let item_file = File::open(storage_path.join("Desc/ClaimTechDesc.json")).unwrap();
     let claim_tech_desc: Value = serde_json::from_reader(&item_file).unwrap();
     let claim_tech_descs: Vec<claim_tech_desc::Model> =
         serde_json::from_value(claim_tech_desc.get(0).unwrap().get("rows").unwrap().clone())

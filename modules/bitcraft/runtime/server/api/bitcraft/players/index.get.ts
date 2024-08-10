@@ -1,7 +1,7 @@
 import { getPlayerRowsFromRows } from "~/modules/bitcraft/gamestate/player";
 
 let perPageDefault = 24;
-let perPageMax = perPageDefault * 4;
+let perPageMax = perPageDefault * 6;
 
 export default defineEventHandler((event) => {
   let { search, page, perPage } = getQuery(event);

@@ -1,4 +1,5 @@
 use entity::vehicle_state;
+use log::info;
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 use std::fs::File;
 use std::io::BufReader;
@@ -6,9 +7,11 @@ use std::path::PathBuf;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 
-pub(crate) async fn import_vehicle_state(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("State/VehicleState.json")).unwrap();
+pub(crate) async fn import_vehicle_state(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let item_file = File::open(storage_path.join("State/VehicleState.json")).unwrap();
 
     let buff_reader = BufReader::new(item_file);
 
@@ -38,9 +41,9 @@ pub(crate) async fn import_vehicle_state(conn: &DatabaseConnection, storage_path
             .exec(conn)
             .await?;
         buffer_before_insert.clear();
-        println!("VehicleState last batch imported");
+        info!("VehicleState last batch imported");
     }
-    println!("Importing VehicleState finished");
+    info!("Importing VehicleState finished");
 
     Ok(())
 }

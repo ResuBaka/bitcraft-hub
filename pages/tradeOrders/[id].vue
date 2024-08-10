@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
-
 const page = ref(1);
 const perPage = 30;
 
 const search = ref<string | null>("");
-
 const route = useRoute();
-const router = useRouter();
-
 const tmpPage = (route.query.page as string) ?? null;
 
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
+
 const {
   public: { api },
 } = useRuntimeConfig();
@@ -21,9 +17,9 @@ const { new_api } = useConfigStore();
 
 const { data: claimFetch, pending: claimPnding } = useFetch(() => {
   // if (new_api) {
-  //   return `${api.base}/api/bitcraft/claims/${route.params.id}`;
+  //   return `${api.base}/api/bitcraft/claims/${route.params.id}?per_Page=${perPage.value}`;
   // } else {
-  return `/api/bitcraft/claims/${route.params.id}`;
+  return `/api/bitcraft/claims/${route.params.id}?perPage=${perPage.value}`;
   // }
 });
 

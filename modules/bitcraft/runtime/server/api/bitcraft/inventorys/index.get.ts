@@ -15,7 +15,7 @@ import {
 } from "~/modules/bitcraft/gamestate/cargoDesc";
 
 let perPageDefault = 24;
-let perPageMax = perPageDefault * 4;
+let perPageMax = perPageDefault * 6;
 
 export type InventoryQuery = {
   search?: string;

@@ -1,8 +1,8 @@
 use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Json;
-use axum_codec::{Codec, IntoCodecResponse};
+use axum::Router;
+use axum_codec::Codec;
 use entity::crafting_recipe;
 use entity::crafting_recipe::ConsumedItemStackWithInner;
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
@@ -10,6 +10,34 @@ use serde_json::Value;
 use service::Query as QueryCore;
 use std::fs::File;
 use std::path::PathBuf;
+
+pub(crate) fn get_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/bitcraft/recipes/needed_in_crafting/:id",
+            axum_codec::routing::get(get_needed_in_crafting).into(),
+        )
+        .route(
+            "/api/bitcraft/recipes/produced_in_crafting/:id",
+            axum_codec::routing::get(get_produced_in_crafting).into(),
+        )
+        .route(
+            "/api/bitcraft/recipes/needed_to_craft/:id",
+            axum_codec::routing::get(get_needed_to_craft).into(),
+        )
+        .route(
+            "/recipes/needed_in_crafting/:id",
+            axum_codec::routing::get(get_needed_in_crafting).into(),
+        )
+        .route(
+            "/recipes/produced_in_crafting/:id",
+            axum_codec::routing::get(get_produced_in_crafting).into(),
+        )
+        .route(
+            "/recipes/needed_to_craft/:id",
+            axum_codec::routing::get(get_needed_to_craft).into(),
+        )
+}
 
 pub(crate) async fn get_needed_in_crafting(
     state: State<AppState>,
@@ -148,10 +176,11 @@ fn get_all_consumed_items_from_stack(
 //   return list;
 // }
 
-pub(crate) async fn import_recipes(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("Desc/CraftingRecipeDesc.json"))
-            .unwrap();
+pub(crate) async fn import_recipes(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let item_file = File::open(storage_path.join("Desc/CraftingRecipeDesc.json")).unwrap();
     let crafting_recipes: Value = serde_json::from_reader(&item_file).unwrap();
     let crafting_recipes: Vec<crafting_recipe::Model> = serde_json::from_value(
         crafting_recipes

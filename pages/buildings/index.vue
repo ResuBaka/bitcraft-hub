@@ -48,12 +48,20 @@ const { data, pending, refresh } = await useLazyFetch(
       }
 
       if (perPage) {
-        options.query.per_page = perPage;
+        if (new_api) {
+          options.query.per_page = perPage;
+        } else {
+          options.query.perPage = perPage;
+        }
       }
 
       if (Object.keys(options.query).length > 2) {
         const query = { ...options.query };
-        delete query.perPage;
+        if (new_api) {
+          delete options.query.per_page;
+        } else {
+          delete options.query.perPage;
+        }
         router.push({ query });
       } else if (options.query.page <= 1) {
         router.push({});
@@ -91,7 +99,7 @@ const currentBuildings = computed(() => {
 
 const length = computed(() => {
   return data.value?.total
-    ? Math.ceil(data.value?.total / data.value?.per_page)
+    ? Math.ceil(data.value?.total / data.value?.perPage)
     : 0;
 });
 </script>

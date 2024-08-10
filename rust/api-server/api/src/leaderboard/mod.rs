@@ -1,9 +1,11 @@
 use crate::claims::ClaimDescriptionState;
-use crate::AppState;
+use crate::{leaderboard, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Json;
+use axum::routing::get;
+use axum::{Json, Router};
 use entity::experience_state;
+use log::{error, info};
 use sea_orm::{DatabaseConnection, EntityTrait};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde::{Deserialize, Serialize};
@@ -129,6 +131,20 @@ pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
     (100, 7554230),
 ];
 
+pub(crate) fn get_routes() -> Router<AppState> {
+    Router::new()
+        .route("/leaderboard", get(leaderboard::get_top_100))
+        .route("/experience/:player_id", get(player_leaderboard))
+        .route(
+            "/api/bitcraft/experience/:player_id",
+            get(player_leaderboard),
+        )
+        .route(
+            "/api/bitcraft/leaderboard/claims/:claim_id",
+            get(get_claim_leaderboard),
+        )
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub(crate) enum RankType {
@@ -177,7 +193,7 @@ pub(crate) async fn get_top_100(
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
@@ -201,7 +217,7 @@ pub(crate) async fn get_top_100(
             let entries = Query::get_experience_state_top_100_by_skill_id(&db, skill.id)
                 .await
                 .map_err(|error| {
-                    println!("Error: {error}");
+                    error!("Error: {error}");
 
                     (StatusCode::INTERNAL_SERVER_ERROR, "")
                 })?;
@@ -229,7 +245,7 @@ pub(crate) async fn get_top_100(
         let entries = Query::get_experience_state_top_100_total_experience(&db)
             .await
             .map_err(|error| {
-                println!("Error: {error}");
+                error!("Error: {error}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "")
             })?;
 
@@ -252,7 +268,7 @@ pub(crate) async fn get_top_100(
         let entries = Query::get_experience_state_top_100_total_level(&db, generated_level_sql)
             .await
             .map_err(|error| {
-                println!("Error: {error}");
+                error!("Error: {error}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "")
             })?;
 
@@ -273,7 +289,7 @@ pub(crate) async fn get_top_100(
     let mut player_ids: Vec<i64> = vec![];
 
     for results_inner in results {
-        for result in results_inner {
+        if let Ok(result) = results_inner {
             if let Ok((name, mut leaderboard)) = result {
                 player_ids.append(
                     &mut leaderboard
@@ -292,7 +308,7 @@ pub(crate) async fn get_top_100(
                     .or_insert(Vec::new())
                     .append(&mut leaderboard);
             } else {
-                println!("Error: {result:?}");
+                error!("Error: {result:?}");
             }
         }
     }
@@ -303,7 +319,7 @@ pub(crate) async fn get_top_100(
     let players_name_by_id = Query::find_player_by_ids(&state.conn, player_ids)
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?
@@ -359,9 +375,11 @@ fn experience_to_level(experience: i64) -> i32 {
     100 as i32
 }
 
-pub(crate) async fn import_experience_state(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("State/ExperienceState.json")).unwrap();
+pub(crate) async fn import_experience_state(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let item_file = File::open(storage_path.join("State/ExperienceState.json")).unwrap();
     let experience_state: Value = serde_json::from_reader(&item_file).unwrap();
     let experience_states: Vec<experience_state::ActiveModel> =
         serde_json::from_value::<Vec<serde_json::Value>>(
@@ -399,7 +417,7 @@ pub(crate) async fn import_experience_state(conn: &DatabaseConnection, storage_p
     let db_count = experience_state::Entity::find().count(conn).await.unwrap();
 
     if (count as u64) == db_count {
-        println!("ExperienceState already imported");
+        info!("ExperienceState already imported");
         return Ok(());
     }
 
@@ -420,7 +438,7 @@ pub(crate) async fn player_leaderboard(
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
@@ -438,12 +456,11 @@ pub(crate) async fn player_leaderboard(
 
         let db = state.conn.clone();
         tasks.push(tokio::spawn(async move {
-            let mut leaderboard: Vec<RankType> = Vec::new();
             let (entrie, rank) =
                 Query::get_experience_state_player_by_skill_id(&db, skill.id, player_id)
                     .await
                     .map_err(|error| {
-                        println!("Error: {error}");
+                        error!("Error: {error}");
 
                         (StatusCode::INTERNAL_SERVER_ERROR, "")
                     })?;
@@ -475,7 +492,7 @@ pub(crate) async fn player_leaderboard(
             Query::get_experience_state_player_rank_total_experience(&db, player_id)
                 .await
                 .map_err(|error| {
-                    println!("Error: {error}");
+                    error!("Error: {error}");
                     (StatusCode::INTERNAL_SERVER_ERROR, "")
                 })?;
 
@@ -498,7 +515,7 @@ pub(crate) async fn player_leaderboard(
             Query::get_experience_state_player_level(&db, generated_level_sql, player_id)
                 .await
                 .map_err(|error| {
-                    println!("Error: {error}");
+                    error!("Error: {error}");
                     (StatusCode::INTERNAL_SERVER_ERROR, "")
                 })?;
 
@@ -516,11 +533,11 @@ pub(crate) async fn player_leaderboard(
     let results = futures::future::join_all(tasks).await;
 
     for results_inner in results {
-        for result in results_inner {
-            if let Ok((name, mut leaderboard)) = result {
+        if let Ok(result) = results_inner {
+            if let Ok((name, leaderboard)) = result {
                 leaderboard_result.entry(name).or_insert(leaderboard);
             } else {
-                println!("Error: {result:?}");
+                error!("Error: {result:?}");
             }
         }
     }
@@ -528,7 +545,7 @@ pub(crate) async fn player_leaderboard(
     let players_name_by_id = Query::find_player_by_ids(&state.conn, vec![player_id])
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?
@@ -575,7 +592,7 @@ pub(crate) async fn get_claim_leaderboard(
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
@@ -583,7 +600,7 @@ pub(crate) async fn get_claim_leaderboard(
     let claim = Query::find_claim_description_by_id(&state.conn, claim_id)
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
@@ -621,7 +638,7 @@ pub(crate) async fn get_claim_leaderboard(
                 Query::get_experience_state_player_ids_by_skill_id(&db, skill.id, player_ids)
                     .await
                     .map_err(|error| {
-                        println!("Error: {error}");
+                        error!("Error: {error}");
 
                         (StatusCode::INTERNAL_SERVER_ERROR, "")
                     })?;
@@ -650,7 +667,7 @@ pub(crate) async fn get_claim_leaderboard(
         let entries = Query::get_experience_state_player_ids_total_experience(&db, tmp_player_ids)
             .await
             .map_err(|error| {
-                println!("Error: {error}");
+                error!("Error: {error}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "")
             })?;
 
@@ -678,7 +695,7 @@ pub(crate) async fn get_claim_leaderboard(
         )
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
 
@@ -699,7 +716,7 @@ pub(crate) async fn get_claim_leaderboard(
     let mut player_ids: Vec<i64> = vec![];
 
     for results_inner in results {
-        for result in results_inner {
+        if let Ok(result) = results_inner {
             if let Ok((name, mut leaderboard)) = result {
                 player_ids.append(
                     &mut leaderboard
@@ -718,7 +735,7 @@ pub(crate) async fn get_claim_leaderboard(
                     .or_insert(Vec::new())
                     .append(&mut leaderboard);
             } else {
-                println!("Error: {result:?}");
+                error!("Error: {result:?}");
             }
         }
     }
@@ -729,7 +746,7 @@ pub(crate) async fn get_claim_leaderboard(
     let players_name_by_id = Query::find_player_by_ids(&state.conn, player_ids)
         .await
         .map_err(|error| {
-            println!("Error: {error}");
+            error!("Error: {error}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?

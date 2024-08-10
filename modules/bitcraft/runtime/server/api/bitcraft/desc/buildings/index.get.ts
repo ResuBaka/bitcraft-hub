@@ -6,7 +6,7 @@ import type { BuildingStateRow } from "~/modules/bitcraft/gamestate/buildingStat
 import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
 export default defineEventHandler((event) => {
-  let { search, page, per_page } = getQuery(event);
+  let { search, page, perPage } = getQuery(event);
 
   let rows = getBuildingDescRowsFromRows();
 
@@ -16,10 +16,10 @@ export default defineEventHandler((event) => {
     page = 1;
   }
 
-  if (per_page) {
-    per_page = parseInt(per_page);
+  if (perPage) {
+    perPage = parseInt(perPage);
   } else {
-    per_page = 1;
+    perPage = 1;
   }
 
   const rowsFilterted =
@@ -38,10 +38,10 @@ export default defineEventHandler((event) => {
   }
 
   return {
-    buildings: rowsFilterted.slice((page - 1) * per_page, page * per_page),
+    buildings: rowsFilterted.slice((page - 1) * perPage, page * perPage),
     total: rowsFilterted.length,
     page,
-    per_page,
+    perPage,
   };
 });
 

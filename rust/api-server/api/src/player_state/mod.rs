@@ -1,7 +1,8 @@
 use crate::{AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::Json;
+use axum::routing::get;
+use axum::{Json, Router};
 use entity::player_state;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
@@ -9,6 +10,14 @@ use serde_json::{json, Value};
 use service::Query as QueryCore;
 use std::fs::File;
 use std::path::PathBuf;
+
+pub(crate) fn get_routes() -> Router<AppState> {
+    Router::new()
+        .route("/players", get(list_players))
+        .route("/players/:id", get(find_player_by_id))
+        .route("/api/bitcraft/players", get(list_players))
+        .route("/api/bitcraft/players/:id", get(find_player_by_id))
+}
 
 pub async fn list_players(
     state: State<AppState>,
@@ -42,9 +51,11 @@ pub async fn find_player_by_id(
     Ok(Json(json!(player)))
 }
 
-pub(crate) async fn import_player_state(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let player_state_file =
-        File::open(storage_path.join("State/PlayerState.json")).unwrap();
+pub(crate) async fn import_player_state(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let player_state_file = File::open(storage_path.join("State/PlayerState.json")).unwrap();
 
     let player_state: Value = serde_json::from_reader(&player_state_file).unwrap();
 

@@ -14,4 +14,4 @@ serde_json = "1.0.120"
 axum-codec = { version = "0.0.12", features = ["msgpack", "toml", "yaml"] }
 
 [dependencies.sea-orm]
-version = "1.0.0-rc.7"
+version = "1.0.0"

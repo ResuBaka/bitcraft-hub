@@ -1,13 +1,16 @@
 use entity::skill_desc;
+use log::info;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde_json::Value;
 use std::fs::File;
 use std::path::PathBuf;
 
-pub(crate) async fn import_skill_descriptions(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("State/SkillDesc.json")).unwrap();
+pub(crate) async fn import_skill_descriptions(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let item_file = File::open(storage_path.join("State/SkillDesc.json")).unwrap();
     let skill_descriptions: Value = serde_json::from_reader(&item_file).unwrap();
     let skill_descriptions: Vec<skill_desc::Model> = serde_json::from_value(
         skill_descriptions
@@ -22,7 +25,7 @@ pub(crate) async fn import_skill_descriptions(conn: &DatabaseConnection, storage
     let db_count = skill_desc::Entity::find().count(conn).await.unwrap();
 
     if (count as u64) == db_count {
-        println!("SkillDescriptions already imported");
+        info!("SkillDescriptions already imported");
         return Ok(());
     }
 

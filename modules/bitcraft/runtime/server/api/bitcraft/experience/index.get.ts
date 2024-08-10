@@ -5,8 +5,13 @@ import {
 const rows = getExperienceRowsFromRows(readExperienceStateRows());
 
 export default defineEventHandler((event) => {
-  let { search, page } = getQuery(event);
-  const perPage = 16;
+  let { search, page, perPage } = getQuery(event);
+
+  if (perPage) {
+    perPage = parseInt(perPage);
+  } else {
+    perPage = 24;
+  }
 
   if (page) {
     page = parseInt(page);

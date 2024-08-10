@@ -1,15 +1,40 @@
 use crate::{AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::Json;
+use axum::Router;
 use axum_codec::Codec;
 use entity::{building_desc, building_state};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
+use reqwest::Client;
+use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use service::Query as QueryCore;
 use std::fs::File;
 use std::path::PathBuf;
+
+pub(crate) fn get_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/buildings",
+            axum_codec::routing::get(find_building_states).into(),
+        )
+        .route(
+            "/api/bitcraft/buildings",
+            axum_codec::routing::get(find_building_states).into(),
+        )
+        .route(
+            "/buildings/:id",
+            axum_codec::routing::get(find_building_state).into(),
+        )
+        .route(
+            "/api/bitcraft/buildings/:id",
+            axum_codec::routing::get(find_building_state).into(),
+        )
+        .route(
+            "/api/bitcraft/desc/buildings",
+            axum_codec::routing::get(find_building_descriptions).into(),
+        )
+}
 
 #[axum_codec::apply(encode, decode)]
 pub(crate) struct BuildingDescriptionsResponse {
@@ -160,9 +185,11 @@ pub(crate) async fn find_building_state(
     return Ok(Codec(posts.unwrap()));
 }
 
-pub(crate) async fn import_building_state(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("State/BuildingState.json")).unwrap();
+pub(crate) async fn import_building_state(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let item_file = File::open(storage_path.join("State/BuildingState.json")).unwrap();
     let building_state: Value = serde_json::from_reader(&item_file).unwrap();
     let building_states: Vec<building_state::Model> =
         serde_json::from_value(building_state.get(0).unwrap().get("rows").unwrap().clone())
@@ -189,15 +216,44 @@ pub(crate) async fn import_building_state(conn: &DatabaseConnection, storage_pat
     Ok(())
 }
 
-pub(crate) async fn import_building_desc(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
+pub(crate) async fn load_building_desc_from_spacetimedb(
+    client: &Client,
+    database: &str,
+) -> anyhow::Result<Vec<building_desc::Model>> {
     let building_descs: Vec<building_desc::Model> = {
-        let item_file =
-            File::open(storage_path.join("Desc/BuildingDesc.json")).unwrap();
-        let building_desc: Value = serde_json::from_reader(&item_file).unwrap();
+        let response = client
+            .post(format!("/database/sql/{database}"))
+            .json(&serde_json::json!({}))
+            .send()
+            .await?
+            .json::<Value>()
+            .await?;
 
-        serde_json::from_value(building_desc.get(0).unwrap().get("rows").unwrap().clone()).unwrap()
+        serde_json::from_value(response.get(0).unwrap().get("rows").unwrap().clone())?
     };
 
+    Ok(building_descs)
+}
+
+pub(crate) async fn load_building_desc_from_file(
+    storage_path: &PathBuf,
+) -> anyhow::Result<Vec<building_desc::Model>> {
+    let building_descs: Vec<building_desc::Model> = {
+        let item_file = File::open(storage_path.join("Desc/BuildingDesc.json"))?;
+        let building_desc: Value = serde_json::from_reader(&item_file)?;
+
+        serde_json::from_value(building_desc.get(0).unwrap().get("rows").unwrap().clone())?
+    };
+
+    Ok(building_descs)
+}
+
+pub(crate) async fn import_building_desc(
+    conn: &DatabaseConnection,
+    building_descs: &Vec<building_desc::Model>,
+    chunk_size: Option<usize>,
+) -> anyhow::Result<()> {
+    let chunk_size = chunk_size.unwrap_or(2500);
     let count = building_descs.len();
     let db_count = building_desc::Entity::find().count(conn).await.unwrap();
 
@@ -207,10 +263,10 @@ pub(crate) async fn import_building_desc(conn: &DatabaseConnection, storage_path
 
     let building_descs: Vec<building_desc::ActiveModel> = building_descs
         .into_iter()
-        .map(|x| x.into_active_model())
+        .map(|x| x.clone().into_active_model())
         .collect();
 
-    for building_desc in building_descs.chunks(5000) {
+    for building_desc in building_descs.chunks(chunk_size) {
         let _ = building_desc::Entity::insert_many(building_desc.to_vec())
             .on_conflict_do_nothing()
             .exec(conn)

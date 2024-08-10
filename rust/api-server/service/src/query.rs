@@ -44,7 +44,7 @@ impl Query {
         search: Option<String>,
     ) -> Result<(Vec<player_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let mut paginator = PlayerState::find()
+        let paginator = PlayerState::find()
             .order_by_asc(player_state::Column::EntityId)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::MySql => query.filter(Expr::cust(format!("username LIKE '%{value}%'"))),
@@ -85,7 +85,7 @@ impl Query {
         search: Option<String>,
     ) -> Result<(Vec<item::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let mut paginator = Item::find()
+        let paginator = Item::find()
             .order_by_asc(item::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::MySql => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
@@ -181,7 +181,7 @@ impl Query {
         search: Option<String>,
     ) -> Result<(Vec<claim_description::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let mut paginator = ClaimDescription::find()
+        let paginator = ClaimDescription::find()
             .order_by_asc(claim_description::Column::EntityId)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::MySql => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
@@ -576,7 +576,7 @@ impl Query {
         search: Option<String>,
     ) -> Result<(Vec<building_desc::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let mut paginator = building_desc::Entity::find()
+        let paginator = building_desc::Entity::find()
             .order_by_asc(building_desc::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::MySql => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
@@ -641,7 +641,7 @@ impl Query {
         buildings_with_inventory_ids: Option<Vec<i64>>,
     ) -> Result<(Vec<building_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let mut paginator = building_state::Entity::find()
+        let paginator = building_state::Entity::find()
             .order_by_asc(building_state::Column::EntityId)
             .apply_if(id, |query, value| {
                 query.filter(building_state::Column::ClaimEntityId.eq(value))
@@ -688,7 +688,7 @@ impl Query {
         db: &DbConn,
         ids: Vec<i64>,
     ) -> Result<(Vec<inventory::Model>, ItemsAndPagesNumber), DbErr> {
-        let mut paginator = inventory::Entity::find()
+        let paginator = inventory::Entity::find()
             .filter(inventory::Column::OwnerEntityId.is_in(ids))
             .order_by_asc(inventory::Column::EntityId)
             .paginate(db, 24);

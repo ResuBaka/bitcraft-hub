@@ -2,7 +2,6 @@
 
 use sea_orm::entity::prelude::*;
 use sea_orm::FromJsonQueryResult;
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "building_desc")]

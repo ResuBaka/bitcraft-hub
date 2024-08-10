@@ -4,9 +4,11 @@ use serde_json::Value;
 use std::fs::File;
 use std::path::PathBuf;
 
-pub(crate) async fn import_cargo_description(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    let item_file =
-        File::open(storage_path.join("Desc/CargoDesc.json")).unwrap();
+pub(crate) async fn import_cargo_description(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    let item_file = File::open(storage_path.join("Desc/CargoDesc.json")).unwrap();
     let cargo_description: Value = serde_json::from_reader(&item_file).unwrap();
     let cargo_descriptions: Vec<cargo_description::Model> = serde_json::from_value(
         cargo_description

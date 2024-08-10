@@ -3,7 +3,6 @@
 use crate::{cargo_description, item};
 use sea_orm::entity::prelude::*;
 use sea_orm::{FromJsonQueryResult, JsonValue};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]

@@ -1,14 +1,7 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
 const theme = useTheme();
-
 const page = ref(1);
-const perPage = 30;
-
-const search = ref<string | null>("");
-
 const route = useRoute();
-const router = useRouter();
 
 const tmpPage = (route.query.page as string) ?? null;
 
@@ -32,7 +25,7 @@ const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
   if (new_api) {
     return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
   } else {
-    return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+    return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
   }
 });
 

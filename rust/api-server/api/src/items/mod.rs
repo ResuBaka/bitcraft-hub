@@ -3,6 +3,7 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Json;
 use entity::item;
+use log::info;
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
 use serde_json::{json, Value};
 use service::Query as QueryCore;
@@ -37,10 +38,12 @@ pub async fn list_items(
     })))
 }
 
-pub(crate) async fn import_items(conn: &DatabaseConnection, storage_path: &PathBuf) -> anyhow::Result<()> {
-    println!("Importing items");
-    let item_file =
-        File::open(storage_path.join("Desc/ItemDesc.json")).unwrap();
+pub(crate) async fn import_items(
+    conn: &DatabaseConnection,
+    storage_path: &PathBuf,
+) -> anyhow::Result<()> {
+    info!("Importing items");
+    let item_file = File::open(storage_path.join("Desc/ItemDesc.json")).unwrap();
     let item: Value = serde_json::from_reader(&item_file).unwrap();
     let item: Vec<item::Model> =
         serde_json::from_value(item.get(0).unwrap().get("rows").unwrap().clone()).unwrap();

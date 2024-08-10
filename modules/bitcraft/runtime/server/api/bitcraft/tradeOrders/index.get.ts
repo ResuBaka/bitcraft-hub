@@ -9,7 +9,7 @@ import {
 import { getBuildingStateRowsFromRows } from "~/modules/bitcraft/gamestate/buildingState";
 
 let perPageDefault = 24;
-let perPageMax = perPageDefault * 4;
+let perPageMax = perPageDefault * 6;
 
 export type TradeOrderQuery = {
   search?: string;

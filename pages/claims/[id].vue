@@ -51,7 +51,7 @@ const { data: buidlingsFetch, pending: buildingsPending } = useFetch(() => {
   if (new_api) {
     return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
   } else {
-    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
+    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&perPage=${perPage}`;
   }
 });
 

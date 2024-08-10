@@ -1,13 +1,6 @@
 <script setup lang="ts">
-import { watchThrottled } from "@vueuse/shared";
-
 const page = ref(1);
-const perPage = 30;
-
-const search = ref<string | null>("");
-
 const route = useRoute();
-const router = useRouter();
 
 const tmpPage = (route.query.page as string) ?? null;
 
@@ -19,7 +12,7 @@ const {
 } = useRuntimeConfig();
 const { new_api } = useConfigStore();
 
-const { data: buildingsFetch, pending: buildingPending } = useFetch(() => {
+const { data: buildingsFetch } = useFetch(() => {
   if (new_api) {
     return `${api.base}/buildings/${route.params.id}`;
   } else {

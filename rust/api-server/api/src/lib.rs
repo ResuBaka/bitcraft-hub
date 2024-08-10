@@ -2,9 +2,10 @@ mod buildings;
 mod cargo_desc;
 mod claim_tech_state;
 mod claims;
+mod config;
 mod inventory;
 mod items;
-mod itemsAndCargo;
+mod items_and_cargo;
 mod leaderboard;
 mod locations;
 mod player_state;
@@ -12,24 +13,30 @@ mod recipes;
 mod skill_descriptions;
 mod vehicle_state;
 
-use tower_http::cors::{Any, CorsLayer};
-
 use axum::{
     http::StatusCode,
     middleware,
     routing::{get, get_service},
     Router,
 };
+use reqwest_websocket::{Message, RequestBuilderExt};
 use service::sea_orm::{Database, DatabaseConnection};
+use tower_http::cors::{Any, CorsLayer};
 
 use axum::extract::{MatchedPath, Request};
 use axum::http::HeaderValue;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
+use base64::Engine;
+use futures::{SinkExt, TryStreamExt};
+use log::{error, info};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
+use reqwest::header::{HeaderMap, SEC_WEBSOCKET_PROTOCOL};
+use reqwest::Client;
 use sea_orm::ConnectOptions;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::env;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -44,14 +51,9 @@ async fn start() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
-    let host = env::var("HOST").expect("HOST is not set in .env file");
-    let port = env::var("PORT").expect("PORT is not set in .env file");
-    let path_to_storage = env::var("STORAGE_PATH").expect("PATH_TO_STORAGE is not set in .env file");
-    let allowed_origin = env::var("ALLOWED_ORIGIN").unwrap_or("http://localhost:3000".to_string());
-    let server_url = format!("{host}:{port}");
+    let config = config::Config::new();
 
-    let mut connection_options = ConnectOptions::new(db_url);
+    let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
         .max_connections(100)
         .min_connections(5)
@@ -66,219 +68,13 @@ async fn start() -> anyhow::Result<()> {
 
     let connection_options = connection_options.clone();
 
-    let path_to_storage_tmp = path_to_storage.clone();
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let mut path_to_storage_path_buf = PathBuf::from(path_to_storage_tmp);
-                println!("Starting importing data");
-                let conn = Database::connect(connection_options)
-                    .await
-                    .expect("Database connection failed");
+    let path_to_storage_tmp = config.storage_path.clone();
+    import_data(connection_options, path_to_storage_tmp);
 
-                let conn_import = conn.clone();
-                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
-                    let conn_import_import_player_state = conn_import.clone();
-                    let conn_import_import_items = conn_import.clone();
-
-                    let (player_state, items) = tokio::join!(
-                        player_state::import_player_state(&conn_import_import_player_state, &path_to_storage_path_buf),
-                        items::import_items(&conn_import_import_items, &path_to_storage_path_buf),
-                    );
-
-                    if let Ok(_player_state) = player_state {
-                        println!("PlayerState imported");
-                    } else {
-                        println!("PlayerState import failed: {:?}", player_state);
-                    }
-
-                    if let Ok(_items) = items {
-                        println!("Items imported");
-                    } else {
-                        println!("Items import failed: {:?}", items);
-                    }
-                })
-                .await;
-
-                let conn_import = conn.clone();
-                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
-                    let conn_import_import_cargo_description = conn_import.clone();
-                    let conn_import_import_claim_description = conn_import.clone();
-
-                    let (cargo_description, claim_description) = tokio::join!(
-                        cargo_desc::import_cargo_description(&conn_import_import_cargo_description, &path_to_storage_path_buf),
-                        claims::import_claim_description_state(
-                            &conn_import_import_claim_description,
-                            &path_to_storage_path_buf
-                        ),
-                    );
-
-                    if let Ok(_cargo_description) = cargo_description {
-                        println!("CargoDescription imported");
-                    } else {
-                        println!("CargoDescription import failed: {:?}", cargo_description);
-                    }
-
-                    if let Ok(_claim_description) = claim_description {
-                        println!("ClaimDescription imported");
-                    } else {
-                        println!("ClaimDescription import failed: {:?}", claim_description);
-                    }
-                })
-                .await;
-
-                let conn_import = conn.clone();
-                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
-                    let conn_import_import_leaderboard = conn_import.clone();
-                    let conn_import_import_skill_descriptions = conn_import.clone();
-
-                    let (leaderboard, skill_descriptions) = tokio::join!(
-                        leaderboard::import_experience_state(&conn_import_import_leaderboard, &path_to_storage_path_buf),
-                        skill_descriptions::import_skill_descriptions(
-                            &conn_import_import_skill_descriptions,
-                            &path_to_storage_path_buf
-                        ),
-                    );
-
-                    if let Ok(_leaderboard) = leaderboard {
-                        println!("Leaderboard imported");
-                    } else {
-                        println!("Leaderboard import failed: {:?}", leaderboard);
-                    }
-                    if let Ok(_skill_descriptions) = skill_descriptions {
-                        println!("SkillDescriptions imported");
-                    } else {
-                        println!("SkillDescriptions import failed: {:?}", skill_descriptions);
-                    }
-                })
-                .await;
-
-                let conn_import = conn.clone();
-                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
-                    let conn_import_import_recipes = conn_import.clone();
-                    let conn_import_import_building_state = conn_import.clone();
-
-                    let (recipes, building_state) = tokio::join!(
-                        recipes::import_recipes(&conn_import_import_recipes, &path_to_storage_path_buf),
-                        buildings::import_building_state(&conn_import_import_building_state, &path_to_storage_path_buf),
-                    );
-
-                    if let Ok(_recipes) = recipes {
-                        println!("Recipes imported");
-                    } else {
-                        println!("Recipes import failed: {:?}", recipes);
-                    }
-
-                    if let Ok(_building_state) = building_state {
-                        println!("BuildingState imported");
-                    } else {
-                        println!("BuildingState import failed: {:?}", building_state);
-                    }
-                })
-                .await;
-
-                let conn_import = conn.clone();
-                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
-                    let conn_import_import_building_desc = conn_import.clone();
-
-                    let (building_desc,) = tokio::join!(buildings::import_building_desc(
-                        &conn_import_import_building_desc,
-                        &path_to_storage_path_buf
-                    ),);
-
-                    if let Ok(_building_desc) = building_desc {
-                        println!("BuildingDesc imported");
-                    } else {
-                        println!("BuildingDesc import failed: {:?}", building_desc);
-                    }
-                })
-                .await;
-
-                let conn_import = conn.clone();
-                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
-                    let conn_import_import_inventory = conn_import.clone();
-
-                    let (claim_description_state, claim_description_desc) = tokio::join!(
-                        claim_tech_state::import_claim_description_state(
-                            &conn_import_import_inventory,
-                            &path_to_storage_path_buf
-                        ),
-                        claim_tech_state::import_claim_description_desc(
-                            &conn_import_import_inventory,
-                            &path_to_storage_path_buf
-                        ),
-                    );
-
-                    if let Ok(_claim_description_state) = claim_description_state {
-                        println!("ClaimDescriptionState imported");
-                    } else {
-                        println!(
-                            "ClaimDescriptionState import failed: {:?}",
-                            claim_description_state
-                        );
-                    }
-
-                    if let Ok(_claim_description_desc) = claim_description_desc {
-                        println!("ClaimDescriptionDesc imported");
-                    } else {
-                        println!(
-                            "ClaimDescriptionDesc import failed: {:?}",
-                            claim_description_desc
-                        );
-                    }
-                })
-                .await;
-
-                let conn_import = conn.clone();
-                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
-                    let conn_import_import_inventory = conn_import.clone();
-
-                    let vehicle_state =
-                        vehicle_state::import_vehicle_state(&conn_import_import_inventory, &path_to_storage_path_buf).await;
-
-                    if let Ok(_vehicle_state) = vehicle_state {
-                        println!("VehicleState imported");
-                    } else {
-                        println!("VehicleState import failed: {:?}", vehicle_state);
-                    }
-                })
-                .await;
-
-                let path_to_storage_path_buf = path_to_storage_path_buf.clone();
-                tokio::spawn(async move {
-                    let path_to_storage_path_buf = path_to_storage_path_buf.clone();
-                    let inventory = inventory::import_inventory(&conn, &path_to_storage_path_buf).await;
-
-                    if let Ok(_inventory) = inventory {
-                        println!("Inventory imported");
-                    } else {
-                        println!("Inventory import failed: {:?}", inventory);
-                    }
-                })
-                .await;
-
-                println!("Importing data finished");
-            });
-    });
-
-    let state = AppState { conn, storage_path: PathBuf::from(path_to_storage) };
+    let state = AppState {
+        conn,
+        storage_path: PathBuf::from(config.storage_path.clone()),
+    };
 
     let desc_router = Router::new()
         .route(
@@ -291,97 +87,16 @@ async fn start() -> anyhow::Result<()> {
         );
 
     let app = Router::new()
-        .route(
-            "/api/bitcraft/desc/buildings",
-            axum_codec::routing::get(buildings::find_building_descriptions).into(),
-        )
-        .route("/players", get(player_state::list_players))
-        .route("/players/:id", get(player_state::find_player_by_id))
-        .route("/api/bitcraft/players", get(player_state::list_players))
-        .route(
-            "/api/bitcraft/players/:id",
-            get(player_state::find_player_by_id),
-        )
         .route("/locations", get(locations::list_locations))
         .route("/items", get(items::list_items))
-        .route("/claims", get(claims::list_claims))
-        .route("/api/bitcraft/claims", get(claims::list_claims))
-        .route("/api/bitcraft/claims/:id", get(claims::get_claim))
-        .route("/claims/:id", get(claims::find_claim_descriptions))
-        .route(
-            "/buildings",
-            axum_codec::routing::get(buildings::find_building_states).into(),
-        )
-        .route(
-            "/api/bitcraft/buildings",
-            axum_codec::routing::get(buildings::find_building_states).into(),
-        )
-        .route(
-            "/buildings/:id",
-            axum_codec::routing::get(buildings::find_building_state).into(),
-        )
-        .route(
-            "/api/bitcraft/buildings/:id",
-            axum_codec::routing::get(buildings::find_building_state).into(),
-        )
-        .route(
-            "/inventorys/changes/:id",
-            axum_codec::routing::get(inventory::read_inventory_changes).into(),
-        )
-        .route(
-            "/api/bitcraft/inventorys/changes/:id",
-            axum_codec::routing::get(inventory::read_inventory_changes).into(),
-        )
-        .route(
-            "/api/bitcraft/inventorys/owner_entity_id/:id",
-            axum_codec::routing::get(inventory::find_inventory_by_owner_entity_id).into(),
-        )
-        .route(
-            "/inventory/:id",
-            axum_codec::routing::get(inventory::find_inventory_by_id).into(),
-        )
-        .route(
-            "/recipes/needed_in_crafting/:id",
-            axum_codec::routing::get(recipes::get_needed_in_crafting).into(),
-        )
-        .route(
-            "/recipes/produced_in_crafting/:id",
-            axum_codec::routing::get(recipes::get_produced_in_crafting).into(),
-        )
-        .route(
-            "/recipes/needed_to_craft/:id",
-            axum_codec::routing::get(recipes::get_needed_to_craft).into(),
-        )
-        .route(
-            "/api/bitcraft/recipes/needed_in_crafting/:id",
-            axum_codec::routing::get(recipes::get_needed_in_crafting).into(),
-        )
-        .route(
-            "/api/bitcraft/recipes/produced_in_crafting/:id",
-            axum_codec::routing::get(recipes::get_produced_in_crafting).into(),
-        )
-        .route(
-            "/api/bitcraft/recipes/needed_to_craft/:id",
-            axum_codec::routing::get(recipes::get_needed_to_craft).into(),
-        )
-        .route(
-            "/api/bitcraft/itemsAndCargo",
-            axum_codec::routing::get(itemsAndCargo::list_items_and_cargo).into(),
-        )
+        .merge(player_state::get_routes())
+        .merge(claims::get_routes())
+        .merge(buildings::get_routes())
+        .merge(inventory::get_routes())
+        .merge(recipes::get_routes())
+        .merge(items_and_cargo::get_routes())
+        .merge(leaderboard::get_routes())
         .nest("/desc", desc_router)
-        .route("/leaderboard", get(leaderboard::get_top_100))
-        .route(
-            "/experience/:player_id",
-            get(leaderboard::player_leaderboard),
-        )
-        .route(
-            "/api/bitcraft/experience/:player_id",
-            get(leaderboard::player_leaderboard),
-        )
-        .route(
-            "/api/bitcraft/leaderboard/claims/:claim_id",
-            get(leaderboard::get_claim_leaderboard),
-        )
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
@@ -398,16 +113,411 @@ async fn start() -> anyhow::Result<()> {
         .layer(CookieManagerLayer::new())
         .layer(
             CorsLayer::new()
-                .allow_origin(allowed_origin.parse::<HeaderValue>().unwrap())
+                .allow_origin(
+                    config
+                        .origins
+                        .origin
+                        .iter()
+                        .map(|origin| origin.parse::<HeaderValue>().unwrap())
+                        .collect::<Vec<HeaderValue>>(),
+                )
                 .allow_methods(Any),
         )
         .route_layer(middleware::from_fn(track_metrics))
         .with_state(state);
 
+    let websocket_url = config.weboosocket_url();
+    let websocket_password = config.spacetimedb.password.clone();
+    let websocket_username = config.spacetimedb.username.clone();
+    let database_name = config.spacetimedb.database.clone();
+
+    if config.live_updates {
+        tokio::spawn(async move {
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                "Authorization",
+                format!(
+                    "Basic {}",
+                    base64::prelude::BASE64_STANDARD
+                        .encode(format!("{}:{}", websocket_username, websocket_password))
+                )
+                .parse()
+                .unwrap(),
+            );
+            headers.insert(
+                SEC_WEBSOCKET_PROTOCOL,
+                "v1.text.spacetimedb".parse().unwrap(),
+            );
+            headers.insert(
+                "Sec-WebSocket-Key",
+                "dGhlIHNhbXBsZSBub25jZQ==".parse().unwrap(),
+            );
+
+            let response = Client::default()
+                .get(format!(
+                    "{}/{}/{}",
+                    websocket_url, "database/subscribe", database_name
+                ))
+                .headers(headers)
+                .upgrade()
+                .protocols(vec!["v1.text.spacetimedb"])
+                .send()
+                .await
+                .unwrap();
+            let mut websocket = response.into_websocket().await.unwrap();
+
+            websocket
+                .send(Message::Text(
+                    serde_json::json!({
+                        "subscribe": {
+                            "query_strings": ["SELECT * FROM ExperienceState"],
+                        },
+                    })
+                    .to_string(),
+                ))
+                .await
+                .unwrap();
+
+            let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+            let _ = tokio::spawn(async move {
+                let mut evenets = Vec::with_capacity(1000);
+
+                loop {
+                    let count = rx.recv_many(&mut evenets, 1000).await;
+                    evenets.clear();
+                    info!("Received {count} events");
+                }
+            });
+
+            while let Some(message) = websocket.try_next().await.unwrap() {
+                if let Message::Text(text) = message {
+                    let message: Result<WebSocketMessage, serde_json::Error> =
+                        serde_json::from_str(&text);
+
+                    if message.is_err() {
+                        info!("Text: {:?}", text);
+                        info!("Error: {:?}", message.err());
+                        continue;
+                    }
+
+                    let message = message.unwrap();
+
+                    match &message {
+                        WebSocketMessage::TransactionUpdate(transaction_update) => {
+                            tx.send(message.clone()).unwrap();
+                            info!("Received transaction update: {transaction_update:?}");
+                        }
+                        WebSocketMessage::SubscriptionUpdate(subscription_update) => {
+                            tx.send(message.clone()).unwrap();
+                            info!("Received subscription update: {subscription_update:?}");
+                        }
+                        WebSocketMessage::IdentityToken(identity_token) => {
+                            info!("Received identity token: {identity_token:?}");
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    let server_url = config.server_url();
     let listener = tokio::net::TcpListener::bind(&server_url).await.unwrap();
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+fn import_data(connection_options: ConnectOptions, path_to_storage_tmp: String) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let mut importer = Vec::new();
+                let path_to_storage_path_buf = PathBuf::from(path_to_storage_tmp);
+                info!("Starting importing data");
+                let conn = Database::connect(connection_options)
+                    .await
+                    .expect("Database connection failed");
+
+                let conn_import = conn.clone();
+                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
+                let _ = tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
+                    let conn_import_import_player_state = conn_import.clone();
+                    let conn_import_import_items = conn_import.clone();
+
+                    let (player_state, items) = tokio::join!(
+                        player_state::import_player_state(
+                            &conn_import_import_player_state,
+                            &path_to_storage_path_buf
+                        ),
+                        items::import_items(&conn_import_import_items, &path_to_storage_path_buf),
+                    );
+
+                    if let Ok(_player_state) = player_state {
+                        info!("PlayerState imported");
+                    } else {
+                        error!("PlayerState import failed: {:?}", player_state);
+                    }
+
+                    if let Ok(_items) = items {
+                        info!("Items imported");
+                    } else {
+                        error!("Items import failed: {:?}", items);
+                    }
+                })
+                .await;
+
+                let conn_import = conn.clone();
+                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
+                importer.push(tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
+                    let conn_import_import_cargo_description = conn_import.clone();
+                    let conn_import_import_claim_description = conn_import.clone();
+
+                    let (cargo_description, claim_description) = tokio::join!(
+                        cargo_desc::import_cargo_description(
+                            &conn_import_import_cargo_description,
+                            &path_to_storage_path_buf
+                        ),
+                        claims::import_claim_description_state(
+                            &conn_import_import_claim_description,
+                            &path_to_storage_path_buf
+                        ),
+                    );
+
+                    if let Ok(_cargo_description) = cargo_description {
+                        info!("CargoDescription imported");
+                    } else {
+                        error!("CargoDescription import failed: {:?}", cargo_description);
+                    }
+
+                    if let Ok(_claim_description) = claim_description {
+                        info!("ClaimDescription imported");
+                    } else {
+                        error!("ClaimDescription import failed: {:?}", claim_description);
+                    }
+                }));
+
+                let conn_import = conn.clone();
+                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
+                importer.push(tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
+                    let conn_import_import_leaderboard = conn_import.clone();
+                    let conn_import_import_skill_descriptions = conn_import.clone();
+
+                    let (leaderboard, skill_descriptions) = tokio::join!(
+                        leaderboard::import_experience_state(
+                            &conn_import_import_leaderboard,
+                            &path_to_storage_path_buf
+                        ),
+                        skill_descriptions::import_skill_descriptions(
+                            &conn_import_import_skill_descriptions,
+                            &path_to_storage_path_buf
+                        ),
+                    );
+
+                    if let Ok(_leaderboard) = leaderboard {
+                        info!("Leaderboard imported");
+                    } else {
+                        error!("Leaderboard import failed: {:?}", leaderboard);
+                    }
+                    if let Ok(_skill_descriptions) = skill_descriptions {
+                        info!("SkillDescriptions imported");
+                    } else {
+                        error!("SkillDescriptions import failed: {:?}", skill_descriptions);
+                    }
+                }));
+
+                let conn_import = conn.clone();
+                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
+                importer.push(tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
+                    let conn_import_import_recipes = conn_import.clone();
+                    let conn_import_import_building_state = conn_import.clone();
+
+                    let (recipes, building_state) = tokio::join!(
+                        recipes::import_recipes(
+                            &conn_import_import_recipes,
+                            &path_to_storage_path_buf
+                        ),
+                        buildings::import_building_state(
+                            &conn_import_import_building_state,
+                            &path_to_storage_path_buf
+                        ),
+                    );
+
+                    if let Ok(_recipes) = recipes {
+                        info!("Recipes imported");
+                    } else {
+                        error!("Recipes import failed: {:?}", recipes);
+                    }
+
+                    if let Ok(_building_state) = building_state {
+                        info!("BuildingState imported");
+                    } else {
+                        error!("BuildingState import failed: {:?}", building_state);
+                    }
+                }));
+
+                let conn_import = conn.clone();
+                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
+                importer.push(tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
+                    let conn_import_import_building_desc = conn_import.clone();
+
+                    let building_descs =
+                        buildings::load_building_desc_from_file(&path_to_storage_path_buf)
+                            .await
+                            .unwrap();
+
+                    let (building_desc,) = tokio::join!(buildings::import_building_desc(
+                        &conn_import_import_building_desc,
+                        &building_descs,
+                        None
+                    ),);
+
+                    if let Ok(_building_desc) = building_desc {
+                        info!("BuildingDesc imported");
+                    } else {
+                        error!("BuildingDesc import failed: {:?}", building_desc);
+                    };
+                }));
+
+                let conn_import = conn.clone();
+                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
+                importer.push(tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
+                    let conn_import_import_inventory = conn_import.clone();
+
+                    let (claim_description_state, claim_description_desc) = tokio::join!(
+                        claim_tech_state::import_claim_description_state(
+                            &conn_import_import_inventory,
+                            &path_to_storage_path_buf
+                        ),
+                        claim_tech_state::import_claim_description_desc(
+                            &conn_import_import_inventory,
+                            &path_to_storage_path_buf
+                        ),
+                    );
+
+                    if let Ok(_claim_description_state) = claim_description_state {
+                        info!("ClaimDescriptionState imported");
+                    } else {
+                        error!(
+                            "ClaimDescriptionState import failed: {:?}",
+                            claim_description_state
+                        );
+                    }
+
+                    if let Ok(_claim_description_desc) = claim_description_desc {
+                        info!("ClaimDescriptionDesc imported");
+                    } else {
+                        error!(
+                            "ClaimDescriptionDesc import failed: {:?}",
+                            claim_description_desc
+                        );
+                    }
+                }));
+
+                let conn_import = conn.clone();
+                let path_to_storage_path_tmp = path_to_storage_path_buf.clone();
+                importer.push(tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_tmp.clone();
+                    let conn_import_import_inventory = conn_import.clone();
+
+                    let vehicle_state = vehicle_state::import_vehicle_state(
+                        &conn_import_import_inventory,
+                        &path_to_storage_path_buf,
+                    )
+                    .await;
+
+                    if let Ok(_vehicle_state) = vehicle_state {
+                        info!("VehicleState imported");
+                    } else {
+                        error!("VehicleState import failed: {:?}", vehicle_state);
+                    }
+                }));
+
+                let path_to_storage_path_buf = path_to_storage_path_buf.clone();
+                importer.push(tokio::spawn(async move {
+                    let path_to_storage_path_buf = path_to_storage_path_buf.clone();
+                    let inventory =
+                        inventory::import_inventory(&conn, &path_to_storage_path_buf).await;
+
+                    if let Ok(_inventory) = inventory {
+                        info!("Inventory imported");
+                    } else {
+                        error!("Inventory import failed: {:?}", inventory);
+                    }
+                }));
+
+                info!("Importing data finished");
+
+                futures::future::join_all(importer).await;
+
+                // let control_c = tokio::signal::ctrl_c();
+                // let _ = control_c.await;
+            });
+    });
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+enum WebSocketMessage {
+    IdentityToken(IdentityToken),
+    TransactionUpdate(TransactionUpdate),
+    SubscriptionUpdate(SubscriptionUpdate),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct IdentityToken {
+    identity: String,
+    token: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct TransactionUpdate {
+    event: Event,
+    subscription_update: SubscriptionUpdate,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Event {
+    timestamp: u64,
+    status: String,
+    caller_identity: String,
+    function_call: FunctionCall,
+    energy_quanta_used: u64,
+    message: String,
+    caller_address: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct FunctionCall {
+    reducer: String,
+    args: String,
+    request_id: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct SubscriptionUpdate {
+    table_updates: Vec<TableUpdate>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct TableUpdate {
+    table_id: i64,
+    table_name: String,
+    table_row_operations: Vec<TableRowOperation>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct TableRowOperation {
+    row: Value,
+    op: String,
 }
 
 #[derive(Clone)]
@@ -468,6 +578,6 @@ pub fn main() {
     let result = start();
 
     if let Some(err) = result.err() {
-        println!("Error: {err}");
+        error!("Error: {err}");
     }
 }
