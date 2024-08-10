@@ -2,6 +2,7 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
+
   nitro: {
     experimental: {
       websocket: true,
@@ -12,11 +13,13 @@ export default defineNuxtConfig({
     },
     preset: "bun"
   },
+
   modules: [
     // '@artmizu/nuxt-prometheus',
     'vuetify-nuxt-module',
     '@pinia/nuxt',
   ],
+
   vuetify: {
     moduleOptions: {
       ssrClientHints: {
@@ -37,6 +40,7 @@ export default defineNuxtConfig({
       }
     }
   },
+
   vite: {
     $server: {
       build: {
@@ -44,6 +48,7 @@ export default defineNuxtConfig({
       }
     }
   },
+
   runtimeConfig: {
     bitcraft: {
       websocket: {
@@ -64,5 +69,6 @@ export default defineNuxtConfig({
         base: "",
       },
     },
-  }
+  },
+  compatibilityDate: '2024-08-10'
 })
