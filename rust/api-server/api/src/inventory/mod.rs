@@ -7,8 +7,12 @@ use entity::inventory::{
     Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
 use entity::{cargo_description, inventory, item};
-use log::{error, info};
-use sea_orm::{sea_query, DatabaseConnection, EntityTrait, IntoActiveModel};
+use log::{debug, error, info};
+use sea_orm::sqlx::Encode;
+use sea_orm::{
+    sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    QuerySelect,
+};
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
@@ -256,22 +260,69 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     }))
 }
 
+#[allow(dead_code)]
+pub(crate) async fn load_inventory_state_from_file(
+    storage_path: &PathBuf,
+) -> anyhow::Result<Vec<inventory::Model>> {
+    let item_file = File::open(storage_path.join("State/InventoryState.json"))?;
+    let inventory: Value = serde_json::from_reader(&item_file)?;
+    let inventory: Vec<inventory::Model> =
+        serde_json::from_value(inventory.get(0).unwrap().get("rows").unwrap().clone())?;
+
+    Ok(inventory)
+}
+
+pub(crate) async fn load_inventory_state_from_spacetimedb(
+    client: &reqwest::Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+) -> anyhow::Result<String> {
+    let response = client
+        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .body("SELECT * FROM InventoryState")
+        .send()
+        .await;
+    let json = match response {
+        Ok(response) => response.text().await?,
+        Err(error) => {
+            error!("Error: {error}");
+            return Ok("".to_string());
+        }
+    };
+
+    Ok(json)
+}
+
+pub(crate) async fn load_state_from_spacetimedb(
+    client: &reqwest::Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+    conn: &DatabaseConnection,
+) -> anyhow::Result<()> {
+    let claim_descriptions =
+        load_inventory_state_from_spacetimedb(client, domain, protocol, database).await?;
+
+    import_inventory(&conn, claim_descriptions, Some(3000)).await?;
+
+    Ok(())
+}
+
 pub(crate) async fn import_inventory(
     conn: &DatabaseConnection,
-    storage_path: &PathBuf,
+    inventorys: String,
+    chunk_size: Option<usize>,
 ) -> anyhow::Result<()> {
     let start = Instant::now();
 
-    let item_file = File::open(storage_path.join("State/InventoryState.json")).unwrap();
+    let mut buffer_before_insert: Vec<inventory::Model> =
+        Vec::with_capacity(chunk_size.unwrap_or(5000));
 
-    let buff_reader = BufReader::new(item_file);
-
-    let mut buffer_before_insert: Vec<inventory::ActiveModel> = Vec::with_capacity(5000);
-
-    let mut json_stream_reader = JsonStreamReader::new(buff_reader);
+    let mut json_stream_reader = JsonStreamReader::new(inventorys.as_bytes());
 
     json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"]).unwrap();
+    json_stream_reader.seek_to(&json_path!["rows"])?;
     json_stream_reader.begin_array()?;
 
     let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
@@ -283,23 +334,135 @@ pub(crate) async fn import_inventory(
         ])
         .to_owned();
 
-    while let Ok(value) = json_stream_reader.deserialize_next::<inventory::Model>() {
-        buffer_before_insert.push(value.into_active_model());
+    let mut inventorys_to_delete = Vec::new();
 
-        if buffer_before_insert.len() == 5000 {
-            let _ = inventory::Entity::insert_many(buffer_before_insert.to_vec())
+    while let Ok(value) = json_stream_reader.deserialize_next::<inventory::Model>() {
+        buffer_before_insert.push(value);
+
+        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+            let inventorys_from_db = inventory::Entity::find()
+                .filter(
+                    inventory::Column::EntityId.is_in(
+                        buffer_before_insert
+                            .iter()
+                            .map(|inventory| inventory.entity_id)
+                            .collect::<Vec<i64>>(),
+                    ),
+                )
+                .all(conn)
+                .await?;
+
+            if inventorys_from_db.len() != buffer_before_insert.len() {
+                inventorys_to_delete.extend(
+                    buffer_before_insert
+                        .iter()
+                        .filter(|inventory| {
+                            !inventorys_from_db.iter().any(|inventory_from_db| {
+                                inventory_from_db.entity_id == inventory.entity_id
+                            })
+                        })
+                        .map(|inventory| inventory.entity_id),
+                );
+            }
+
+            let inventorys_from_db_map = inventorys_from_db
+                .into_iter()
+                .map(|inventory| (inventory.entity_id, inventory))
+                .collect::<HashMap<i64, inventory::Model>>();
+
+            let things_to_insert = buffer_before_insert
+                .iter()
+                .filter(|inventory| {
+                    match inventorys_from_db_map.get(&inventory.entity_id) {
+                        Some(inventory_from_db) => {
+                            if inventory_from_db != *inventory {
+                                return true;
+                            }
+                        }
+                        None => {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                })
+                .map(|inventory| inventory.clone().into_active_model())
+                .collect::<Vec<inventory::ActiveModel>>();
+
+            if things_to_insert.len() == 0 {
+                debug!("Nothing to insert");
+                buffer_before_insert.clear();
+                continue;
+            } else {
+                debug!("Inserting {} inventorys", things_to_insert.len());
+            }
+
+            for inventory in &things_to_insert {
+                let inventory_in = inventorys_to_delete
+                    .iter()
+                    .position(|id| id == inventory.entity_id.as_ref());
+                if inventory_in.is_some() {
+                    inventorys_to_delete.remove(inventory_in.unwrap());
+                }
+            }
+
+            let _ = inventory::Entity::insert_many(things_to_insert)
                 .on_conflict(on_conflict.clone())
                 .exec(conn)
                 .await?;
+
             buffer_before_insert.clear();
         }
     }
 
     if buffer_before_insert.len() > 0 {
-        inventory::Entity::insert_many(buffer_before_insert.to_vec())
-            .on_conflict(on_conflict)
-            .exec(conn)
+        let inventorys_from_db = inventory::Entity::find()
+            .filter(
+                inventory::Column::EntityId.is_in(
+                    buffer_before_insert
+                        .iter()
+                        .map(|inventory| inventory.entity_id)
+                        .collect::<Vec<i64>>(),
+                ),
+            )
+            .all(conn)
             .await?;
+
+        let inventorys_from_db_map = inventorys_from_db
+            .into_iter()
+            .map(|inventory| (inventory.entity_id, inventory))
+            .collect::<HashMap<i64, inventory::Model>>();
+
+        let things_to_insert = buffer_before_insert
+            .iter()
+            .filter(|inventory| {
+                match inventorys_from_db_map.get(&inventory.entity_id) {
+                    Some(inventory_from_db) => {
+                        if inventory_from_db != *inventory {
+                            return true;
+                        }
+                    }
+                    None => {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            .map(|inventory| inventory.clone().into_active_model())
+            .collect::<Vec<inventory::ActiveModel>>();
+
+        if things_to_insert.len() == 0 {
+            debug!("Nothing to insert");
+            buffer_before_insert.clear();
+        } else {
+            debug!("Inserting {} inventorys", things_to_insert.len());
+            inventory::Entity::insert_many(things_to_insert)
+                .on_conflict(on_conflict)
+                .exec(conn)
+                .await?;
+        }
+
         buffer_before_insert.clear();
         info!("Inventory last batch imported");
     }
@@ -307,6 +470,14 @@ pub(crate) async fn import_inventory(
         "Importing inventory finished in {}s",
         start.elapsed().as_secs()
     );
+
+    if inventorys_to_delete.len() > 0 {
+        info!("Inventory's to delete: {:?}", inventorys_to_delete);
+        inventory::Entity::delete_many()
+            .filter(inventory::Column::EntityId.is_in(inventorys_to_delete))
+            .exec(conn)
+            .await?;
+    }
 
     Ok(())
 }

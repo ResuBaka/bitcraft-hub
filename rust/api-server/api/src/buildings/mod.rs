@@ -4,13 +4,20 @@ use axum::http::StatusCode;
 use axum::Router;
 use axum_codec::Codec;
 use entity::{building_desc, building_state};
+use log::{debug, error, info};
 use reqwest::Client;
-use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
+use sea_orm::{
+    sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+};
 use serde::Deserialize;
 use serde_json::Value;
 use service::Query as QueryCore;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
+use struson::json_path;
+use struson::reader::{JsonReader, JsonStreamReader};
+use tokio::time::Instant;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -185,30 +192,224 @@ pub(crate) async fn find_building_state(
     return Ok(Codec(posts.unwrap()));
 }
 
+pub(crate) async fn load_building_state_from_file(
+    storage_path: &PathBuf,
+) -> anyhow::Result<Vec<building_state::Model>> {
+    let building_states: Vec<building_state::Model> = {
+        let item_file = File::open(storage_path.join("State/BuildingState.json"))?;
+        let building_state: Value = serde_json::from_reader(&item_file)?;
+
+        serde_json::from_value(building_state.get(0).unwrap().get("rows").unwrap().clone())?
+    };
+
+    Ok(building_states)
+}
+
+pub(crate) async fn load_building_state_from_spacetimedb(
+    client: &Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+) -> anyhow::Result<String> {
+    let response = client
+        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .body("SELECT * FROM BuildingState")
+        .send()
+        .await;
+
+    let json = match response {
+        Ok(response) => response.text().await?,
+        Err(error) => {
+            error!("Error: {error:?}");
+            return Ok("".into());
+        }
+    };
+
+    Ok(json)
+}
+
+pub(crate) async fn load_state_from_spacetimedb(
+    client: &Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+    conn: &DatabaseConnection,
+) -> anyhow::Result<()> {
+    let building_descs =
+        load_building_state_from_spacetimedb(client, domain, protocol, database).await?;
+
+    import_building_state(&conn, building_descs, None).await?;
+
+    Ok(())
+}
+
 pub(crate) async fn import_building_state(
     conn: &DatabaseConnection,
-    storage_path: &PathBuf,
+    building_states: String,
+    chunk_size: Option<usize>,
 ) -> anyhow::Result<()> {
-    let item_file = File::open(storage_path.join("State/BuildingState.json")).unwrap();
-    let building_state: Value = serde_json::from_reader(&item_file).unwrap();
-    let building_states: Vec<building_state::Model> =
-        serde_json::from_value(building_state.get(0).unwrap().get("rows").unwrap().clone())
-            .unwrap();
-    let count = building_states.len();
-    let db_count = building_state::Entity::find().count(conn).await.unwrap();
+    let start = Instant::now();
 
-    if (count as u64) == db_count {
-        return Ok(());
+    let mut buffer_before_insert: Vec<building_state::Model> =
+        Vec::with_capacity(chunk_size.unwrap_or(5000));
+
+    let mut json_stream_reader = JsonStreamReader::new(building_states.as_bytes());
+
+    json_stream_reader.begin_array()?;
+    json_stream_reader.seek_to(&json_path!["rows"])?;
+    json_stream_reader.begin_array()?;
+
+    let on_conflict = sea_query::OnConflict::column(building_state::Column::EntityId)
+        .update_columns([
+            building_state::Column::ClaimEntityId,
+            building_state::Column::DirectionIndex,
+            building_state::Column::BuildingDescriptionId,
+            building_state::Column::ConstructedByPlayerEntityId,
+            building_state::Column::Nickname,
+        ])
+        .to_owned();
+
+    let mut building_state_to_delete = Vec::new();
+
+    while let Ok(value) = json_stream_reader.deserialize_next::<building_state::Model>() {
+        buffer_before_insert.push(value);
+
+        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+            let building_state_from_db = building_state::Entity::find()
+                .filter(
+                    building_state::Column::EntityId.is_in(
+                        buffer_before_insert
+                            .iter()
+                            .map(|building_state| building_state.entity_id)
+                            .collect::<Vec<i64>>(),
+                    ),
+                )
+                .all(conn)
+                .await?;
+
+            if building_state_from_db.len() != buffer_before_insert.len() {
+                building_state_to_delete.extend(
+                    buffer_before_insert
+                        .iter()
+                        .filter(|building_state| {
+                            !building_state_from_db.iter().any(|building_state_from_db| {
+                                building_state_from_db.entity_id == building_state.entity_id
+                            })
+                        })
+                        .map(|building_state| building_state.entity_id),
+                );
+            }
+
+            let building_state_from_db_map = building_state_from_db
+                .into_iter()
+                .map(|building_state| (building_state.entity_id, building_state))
+                .collect::<HashMap<i64, building_state::Model>>();
+
+            let things_to_insert = buffer_before_insert
+                .iter()
+                .filter(|building_state| {
+                    match building_state_from_db_map.get(&building_state.entity_id) {
+                        Some(building_state_from_db) => {
+                            if building_state_from_db != *building_state {
+                                return true;
+                            }
+                        }
+                        None => {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                })
+                .map(|building_state| building_state.clone().into_active_model())
+                .collect::<Vec<building_state::ActiveModel>>();
+
+            if things_to_insert.len() == 0 {
+                debug!("Nothing to insert");
+                buffer_before_insert.clear();
+                continue;
+            } else {
+                debug!("Inserting {} building_state", things_to_insert.len());
+            }
+
+            for building_state in &things_to_insert {
+                let building_state_in = building_state_to_delete
+                    .iter()
+                    .position(|id| id == building_state.entity_id.as_ref());
+                if building_state_in.is_some() {
+                    building_state_to_delete.remove(building_state_in.unwrap());
+                }
+            }
+
+            let _ = building_state::Entity::insert_many(things_to_insert)
+                .on_conflict(on_conflict.clone())
+                .exec(conn)
+                .await?;
+
+            buffer_before_insert.clear();
+        }
     }
 
-    let building_states: Vec<building_state::ActiveModel> = building_states
-        .into_iter()
-        .map(|x| x.into_active_model())
-        .collect();
+    if buffer_before_insert.len() > 0 {
+        let building_state_from_db = building_state::Entity::find()
+            .filter(
+                building_state::Column::EntityId.is_in(
+                    buffer_before_insert
+                        .iter()
+                        .map(|building_state| building_state.entity_id)
+                        .collect::<Vec<i64>>(),
+                ),
+            )
+            .all(conn)
+            .await?;
 
-    for building_state in building_states.chunks(5000) {
-        let _ = building_state::Entity::insert_many(building_state.to_vec())
-            .on_conflict_do_nothing()
+        let building_state_from_db_map = building_state_from_db
+            .into_iter()
+            .map(|building_state| (building_state.entity_id, building_state))
+            .collect::<HashMap<i64, building_state::Model>>();
+
+        let things_to_insert = buffer_before_insert
+            .iter()
+            .filter(|building_state| {
+                match building_state_from_db_map.get(&building_state.entity_id) {
+                    Some(building_state_from_db) => {
+                        if building_state_from_db != *building_state {
+                            return true;
+                        }
+                    }
+                    None => {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            .map(|building_state| building_state.clone().into_active_model())
+            .collect::<Vec<building_state::ActiveModel>>();
+
+        if things_to_insert.len() == 0 {
+            debug!("Nothing to insert");
+            buffer_before_insert.clear();
+        } else {
+            debug!("Inserting {} building_state", things_to_insert.len());
+            building_state::Entity::insert_many(things_to_insert)
+                .on_conflict(on_conflict)
+                .exec(conn)
+                .await?;
+        }
+
+        buffer_before_insert.clear();
+        info!("building_state last batch imported");
+    }
+    info!(
+        "Importing building_state finished in {}s",
+        start.elapsed().as_secs()
+    );
+
+    if building_state_to_delete.len() > 0 {
+        info!("building_state's to delete: {:?}", building_state_to_delete);
+        building_state::Entity::delete_many()
+            .filter(building_state::Column::EntityId.is_in(building_state_to_delete))
             .exec(conn)
             .await?;
     }
@@ -218,21 +419,40 @@ pub(crate) async fn import_building_state(
 
 pub(crate) async fn load_building_desc_from_spacetimedb(
     client: &Client,
+    domain: &str,
+    protocol: &str,
     database: &str,
-) -> anyhow::Result<Vec<building_desc::Model>> {
-    let building_descs: Vec<building_desc::Model> = {
-        let response = client
-            .post(format!("/database/sql/{database}"))
-            .json(&serde_json::json!({}))
-            .send()
-            .await?
-            .json::<Value>()
-            .await?;
+) -> anyhow::Result<String> {
+    let response = client
+        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .body("SELECT * FROM BuildingDesc")
+        .send()
+        .await;
 
-        serde_json::from_value(response.get(0).unwrap().get("rows").unwrap().clone())?
+    let json = match response {
+        Ok(response) => response.text().await?,
+        Err(error) => {
+            error!("Error: {error}");
+            return Ok("".into());
+        }
     };
 
-    Ok(building_descs)
+    Ok(json)
+}
+
+pub(crate) async fn load_desc_from_spacetimedb(
+    client: &Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+    conn: &DatabaseConnection,
+) -> anyhow::Result<()> {
+    let building_descs =
+        load_building_desc_from_spacetimedb(client, domain, protocol, database).await?;
+
+    import_building_desc(&conn, building_descs, None).await?;
+
+    Ok(())
 }
 
 pub(crate) async fn load_building_desc_from_file(
@@ -250,25 +470,183 @@ pub(crate) async fn load_building_desc_from_file(
 
 pub(crate) async fn import_building_desc(
     conn: &DatabaseConnection,
-    building_descs: &Vec<building_desc::Model>,
+    building_descs: String,
     chunk_size: Option<usize>,
 ) -> anyhow::Result<()> {
-    let chunk_size = chunk_size.unwrap_or(2500);
-    let count = building_descs.len();
-    let db_count = building_desc::Entity::find().count(conn).await.unwrap();
+    let start = Instant::now();
 
-    if (count as u64) == db_count {
-        return Ok(());
+    let mut buffer_before_insert: Vec<building_desc::Model> =
+        Vec::with_capacity(chunk_size.unwrap_or(5000));
+
+    let mut json_stream_reader = JsonStreamReader::new(building_descs.as_bytes());
+
+    json_stream_reader.begin_array()?;
+    json_stream_reader.seek_to(&json_path!["rows"])?;
+    json_stream_reader.begin_array()?;
+
+    let on_conflict = sea_query::OnConflict::column(building_desc::Column::Id)
+        .update_columns([
+            building_desc::Column::Functions,
+            building_desc::Column::Name,
+            building_desc::Column::Description,
+            building_desc::Column::RestedBuffDuration,
+            building_desc::Column::LightRadius,
+            building_desc::Column::ModelAssetName,
+            building_desc::Column::IconAssetName,
+            building_desc::Column::Unenterable,
+            building_desc::Column::Wilderness,
+            building_desc::Column::Footprint,
+            building_desc::Column::MaxHealth,
+            building_desc::Column::Decay,
+            building_desc::Column::Maintenance,
+            building_desc::Column::InteractionLevel,
+            building_desc::Column::HasAction,
+            building_desc::Column::ShowInCompendium,
+            building_desc::Column::IsRuins,
+        ])
+        .to_owned();
+
+    let mut buildings_desc_to_delete = Vec::new();
+
+    while let Ok(value) = json_stream_reader.deserialize_next::<building_desc::Model>() {
+        buffer_before_insert.push(value);
+
+        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+            let buildings_desc_from_db = building_desc::Entity::find()
+                .filter(
+                    building_desc::Column::Id.is_in(
+                        buffer_before_insert
+                            .iter()
+                            .map(|buildings_desc| buildings_desc.id)
+                            .collect::<Vec<i64>>(),
+                    ),
+                )
+                .all(conn)
+                .await?;
+
+            if buildings_desc_from_db.len() != buffer_before_insert.len() {
+                buildings_desc_to_delete.extend(
+                    buffer_before_insert
+                        .iter()
+                        .filter(|buildings_desc| {
+                            !buildings_desc_from_db.iter().any(|buildings_desc_from_db| {
+                                buildings_desc_from_db.id == buildings_desc.id
+                            })
+                        })
+                        .map(|buildings_desc| buildings_desc.id),
+                );
+            }
+
+            let buildings_desc_from_db_map = buildings_desc_from_db
+                .into_iter()
+                .map(|buildings_desc| (buildings_desc.id, buildings_desc))
+                .collect::<HashMap<i64, building_desc::Model>>();
+
+            let things_to_insert = buffer_before_insert
+                .iter()
+                .filter(|buildings_desc| {
+                    match buildings_desc_from_db_map.get(&buildings_desc.id) {
+                        Some(buildings_desc_from_db) => {
+                            if buildings_desc_from_db != *buildings_desc {
+                                return true;
+                            }
+                        }
+                        None => {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                })
+                .map(|buildings_desc| buildings_desc.clone().into_active_model())
+                .collect::<Vec<building_desc::ActiveModel>>();
+
+            if things_to_insert.len() == 0 {
+                debug!("Nothing to insert");
+                buffer_before_insert.clear();
+                continue;
+            } else {
+                debug!("Inserting {} buildings_desc", things_to_insert.len());
+            }
+
+            for buildings_desc in &things_to_insert {
+                let buildings_desc_in = buildings_desc_to_delete
+                    .iter()
+                    .position(|id| id == buildings_desc.id.as_ref());
+                if buildings_desc_in.is_some() {
+                    buildings_desc_to_delete.remove(buildings_desc_in.unwrap());
+                }
+            }
+
+            let _ = building_desc::Entity::insert_many(things_to_insert)
+                .on_conflict(on_conflict.clone())
+                .exec(conn)
+                .await?;
+
+            buffer_before_insert.clear();
+        }
     }
 
-    let building_descs: Vec<building_desc::ActiveModel> = building_descs
-        .into_iter()
-        .map(|x| x.clone().into_active_model())
-        .collect();
+    if buffer_before_insert.len() > 0 {
+        let buildings_desc_from_db = building_desc::Entity::find()
+            .filter(
+                building_desc::Column::Id.is_in(
+                    buffer_before_insert
+                        .iter()
+                        .map(|buildings_desc| buildings_desc.id)
+                        .collect::<Vec<i64>>(),
+                ),
+            )
+            .all(conn)
+            .await?;
 
-    for building_desc in building_descs.chunks(chunk_size) {
-        let _ = building_desc::Entity::insert_many(building_desc.to_vec())
-            .on_conflict_do_nothing()
+        let buildings_desc_from_db_map = buildings_desc_from_db
+            .into_iter()
+            .map(|buildings_desc| (buildings_desc.id, buildings_desc))
+            .collect::<HashMap<i64, building_desc::Model>>();
+
+        let things_to_insert = buffer_before_insert
+            .iter()
+            .filter(|buildings_desc| {
+                match buildings_desc_from_db_map.get(&buildings_desc.id) {
+                    Some(buildings_desc_from_db) => {
+                        if buildings_desc_from_db != *buildings_desc {
+                            return true;
+                        }
+                    }
+                    None => {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            .map(|buildings_desc| buildings_desc.clone().into_active_model())
+            .collect::<Vec<building_desc::ActiveModel>>();
+
+        if things_to_insert.len() == 0 {
+            debug!("Nothing to insert");
+            buffer_before_insert.clear();
+        } else {
+            debug!("Inserting {} buildings_desc", things_to_insert.len());
+            building_desc::Entity::insert_many(things_to_insert)
+                .on_conflict(on_conflict)
+                .exec(conn)
+                .await?;
+        }
+
+        buffer_before_insert.clear();
+        info!("Buildings_desc last batch imported");
+    }
+    info!(
+        "Importing buildings_desc finished in {}s",
+        start.elapsed().as_secs()
+    );
+
+    if buildings_desc_to_delete.len() > 0 {
+        info!("Buildings_desc's to delete: {:?}", buildings_desc_to_delete);
+        building_desc::Entity::delete_many()
+            .filter(building_desc::Column::Id.is_in(buildings_desc_to_delete))
             .exec(conn)
             .await?;
     }

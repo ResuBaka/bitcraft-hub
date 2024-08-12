@@ -5,11 +5,19 @@ use axum::Router;
 use axum_codec::Codec;
 use entity::crafting_recipe;
 use entity::crafting_recipe::ConsumedItemStackWithInner;
-use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
+use log::{debug, error, info};
+use migration::sea_query;
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
+};
 use serde_json::Value;
 use service::Query as QueryCore;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
+use struson::json_path;
+use struson::reader::{JsonReader, JsonStreamReader};
+use tokio::time::Instant;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -176,36 +184,247 @@ fn get_all_consumed_items_from_stack(
 //   return list;
 // }
 
-pub(crate) async fn import_recipes(
-    conn: &DatabaseConnection,
+#[allow(dead_code)]
+pub(crate) async fn load_crafting_recipe_desc_from_file(
     storage_path: &PathBuf,
-) -> anyhow::Result<()> {
-    let item_file = File::open(storage_path.join("Desc/CraftingRecipeDesc.json")).unwrap();
-    let crafting_recipes: Value = serde_json::from_reader(&item_file).unwrap();
-    let crafting_recipes: Vec<crafting_recipe::Model> = serde_json::from_value(
-        crafting_recipes
+) -> anyhow::Result<Vec<crafting_recipe::Model>> {
+    let crafting_recipe_desc_file = File::open(storage_path.join("Desc/CraftingRecipeDesc.json"))?;
+    let crafting_recipe_desc: Value = serde_json::from_reader(&crafting_recipe_desc_file)?;
+    let crafting_recipe_desc: Vec<crafting_recipe::Model> = serde_json::from_value(
+        crafting_recipe_desc
             .get(0)
             .unwrap()
             .get("rows")
             .unwrap()
             .clone(),
-    )
-    .unwrap();
-    let count = crafting_recipes.len();
-    let db_count = crafting_recipe::Entity::find().count(conn).await.unwrap();
+    )?;
 
-    if (count as u64) == db_count {
-        return Ok(());
+    Ok(crafting_recipe_desc)
+}
+
+pub(crate) async fn load_crafting_recipe_desc_from_spacetimedb(
+    client: &reqwest::Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+) -> anyhow::Result<String> {
+    let response = client
+        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .body("SELECT * FROM CraftingRecipeDesc")
+        .send()
+        .await;
+    let json = match response {
+        Ok(response) => response.text().await?,
+        Err(error) => {
+            error!("Error: {error}");
+            return Ok("".to_string());
+        }
+    };
+
+    Ok(json)
+}
+
+pub(crate) async fn load_desc_from_spacetimedb(
+    client: &reqwest::Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+    conn: &DatabaseConnection,
+) -> anyhow::Result<()> {
+    let claim_descriptions =
+        load_crafting_recipe_desc_from_spacetimedb(client, domain, protocol, database).await?;
+
+    import_crafting_recipe_descs(&conn, claim_descriptions, Some(3000)).await?;
+
+    Ok(())
+}
+
+pub(crate) async fn import_crafting_recipe_descs(
+    conn: &DatabaseConnection,
+    crafting_recipe_descs: String,
+    chunk_size: Option<usize>,
+) -> anyhow::Result<()> {
+    let start = Instant::now();
+
+    let mut buffer_before_insert: Vec<crafting_recipe::Model> =
+        Vec::with_capacity(chunk_size.unwrap_or(5000));
+
+    let mut json_stream_reader = JsonStreamReader::new(crafting_recipe_descs.as_bytes());
+
+    json_stream_reader.begin_array()?;
+    json_stream_reader.seek_to(&json_path!["rows"])?;
+    json_stream_reader.begin_array()?;
+
+    let on_conflict = sea_query::OnConflict::column(crafting_recipe::Column::Id)
+        .update_columns([
+            crafting_recipe::Column::Name,
+            crafting_recipe::Column::TimeRequirement,
+            crafting_recipe::Column::StaminaRequirement,
+            crafting_recipe::Column::BuildingRequirement,
+            crafting_recipe::Column::LevelRequirements,
+            crafting_recipe::Column::ToolRequirements,
+            crafting_recipe::Column::ConsumedItemStacks,
+            crafting_recipe::Column::DiscoveryTriggers,
+            crafting_recipe::Column::RequiredKnowledges,
+            crafting_recipe::Column::RequiredClaimTechId,
+            crafting_recipe::Column::FullDiscoveryScore,
+            crafting_recipe::Column::CompletionExperience,
+            crafting_recipe::Column::AllowUseHands,
+            crafting_recipe::Column::CraftedItemStacks,
+            crafting_recipe::Column::IsPassive,
+            crafting_recipe::Column::ActionsRequired,
+            crafting_recipe::Column::ToolMeshIndex,
+            crafting_recipe::Column::AnimationStart,
+            crafting_recipe::Column::AnimationEnd,
+        ])
+        .to_owned();
+
+    let mut crafting_recipe_descs_to_delete = Vec::new();
+
+    while let Ok(value) = json_stream_reader.deserialize_next::<crafting_recipe::Model>() {
+        buffer_before_insert.push(value);
+
+        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+            let crafting_recipe_descs_from_db = crafting_recipe::Entity::find()
+                .filter(
+                    crafting_recipe::Column::Id.is_in(
+                        buffer_before_insert
+                            .iter()
+                            .map(|crafting_recipe_desc| crafting_recipe_desc.id)
+                            .collect::<Vec<i64>>(),
+                    ),
+                )
+                .all(conn)
+                .await?;
+
+            if crafting_recipe_descs_from_db.len() != buffer_before_insert.len() {
+                crafting_recipe_descs_to_delete.extend(
+                    buffer_before_insert
+                        .iter()
+                        .filter(|crafting_recipe_desc| {
+                            !crafting_recipe_descs_from_db.iter().any(
+                                |crafting_recipe_desc_from_db| {
+                                    crafting_recipe_desc_from_db.id == crafting_recipe_desc.id
+                                },
+                            )
+                        })
+                        .map(|crafting_recipe_desc| crafting_recipe_desc.id),
+                );
+            }
+
+            let crafting_recipe_descs_from_db_map = crafting_recipe_descs_from_db
+                .into_iter()
+                .map(|crafting_recipe_desc| (crafting_recipe_desc.id, crafting_recipe_desc))
+                .collect::<HashMap<i64, crafting_recipe::Model>>();
+
+            let things_to_insert = buffer_before_insert
+                .iter()
+                .filter(|crafting_recipe_desc| {
+                    match crafting_recipe_descs_from_db_map.get(&crafting_recipe_desc.id) {
+                        Some(crafting_recipe_desc_from_db) => {
+                            if crafting_recipe_desc_from_db != *crafting_recipe_desc {
+                                return true;
+                            }
+                        }
+                        None => {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                })
+                .map(|crafting_recipe_desc| crafting_recipe_desc.clone().into_active_model())
+                .collect::<Vec<crafting_recipe::ActiveModel>>();
+
+            if things_to_insert.len() == 0 {
+                debug!("Nothing to insert");
+                buffer_before_insert.clear();
+                continue;
+            } else {
+                debug!("Inserting {} crafting_recipe_descs", things_to_insert.len());
+            }
+
+            for crafting_recipe_desc in &things_to_insert {
+                let crafting_recipe_desc_in = crafting_recipe_descs_to_delete
+                    .iter()
+                    .position(|id| id == crafting_recipe_desc.id.as_ref());
+                if crafting_recipe_desc_in.is_some() {
+                    crafting_recipe_descs_to_delete.remove(crafting_recipe_desc_in.unwrap());
+                }
+            }
+
+            let _ = crafting_recipe::Entity::insert_many(things_to_insert)
+                .on_conflict(on_conflict.clone())
+                .exec(conn)
+                .await?;
+
+            buffer_before_insert.clear();
+        }
     }
 
-    let item: Vec<crafting_recipe::ActiveModel> = crafting_recipes
-        .into_iter()
-        .map(|x| x.into_active_model())
-        .collect();
+    if buffer_before_insert.len() > 0 {
+        let crafting_recipe_descs_from_db = crafting_recipe::Entity::find()
+            .filter(
+                crafting_recipe::Column::Id.is_in(
+                    buffer_before_insert
+                        .iter()
+                        .map(|crafting_recipe_desc| crafting_recipe_desc.id)
+                        .collect::<Vec<i64>>(),
+                ),
+            )
+            .all(conn)
+            .await?;
 
-    for item in item.chunks(5000) {
-        let _ = crafting_recipe::Entity::insert_many(item.to_vec())
-            .on_conflict_do_nothing()
+        let crafting_recipe_descs_from_db_map = crafting_recipe_descs_from_db
+            .into_iter()
+            .map(|crafting_recipe_desc| (crafting_recipe_desc.id, crafting_recipe_desc))
+            .collect::<HashMap<i64, crafting_recipe::Model>>();
+
+        let things_to_insert = buffer_before_insert
+            .iter()
+            .filter(|crafting_recipe_desc| {
+                match crafting_recipe_descs_from_db_map.get(&crafting_recipe_desc.id) {
+                    Some(crafting_recipe_desc_from_db) => {
+                        if crafting_recipe_desc_from_db != *crafting_recipe_desc {
+                            return true;
+                        }
+                    }
+                    None => {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            .map(|crafting_recipe_desc| crafting_recipe_desc.clone().into_active_model())
+            .collect::<Vec<crafting_recipe::ActiveModel>>();
+
+        if things_to_insert.len() == 0 {
+            debug!("Nothing to insert");
+            buffer_before_insert.clear();
+        } else {
+            debug!("Inserting {} crafting_recipe_descs", things_to_insert.len());
+            crafting_recipe::Entity::insert_many(things_to_insert)
+                .on_conflict(on_conflict)
+                .exec(conn)
+                .await?;
+        }
+
+        buffer_before_insert.clear();
+        info!("crafting_recipe_desc last batch imported");
+    }
+    info!(
+        "Importing crafting_recipe_desc finished in {}s",
+        start.elapsed().as_secs()
+    );
+
+    if crafting_recipe_descs_to_delete.len() > 0 {
+        info!(
+            "crafting_recipe_desc's to delete: {:?}",
+            crafting_recipe_descs_to_delete
+        );
+        crafting_recipe::Entity::delete_many()
+            .filter(crafting_recipe::Column::Id.is_in(crafting_recipe_descs_to_delete))
             .exec(conn)
             .await?;
     }

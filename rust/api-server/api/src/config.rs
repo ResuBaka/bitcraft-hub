@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Config {
     pub(crate) host: String,
     pub(crate) port: u16,
@@ -12,14 +12,16 @@ pub(crate) struct Config {
     pub(crate) origins: AllowedOriginConfig,
     #[serde(rename = "liveupdates", default)]
     pub(crate) live_updates: bool,
+    #[serde(rename = "liveupdatesws", default)]
+    pub(crate) live_updates_ws: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct DatabaseConfig {
     pub(crate) url: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct SpacetimeDbConfig {
     pub(crate) domain: String,
     pub(crate) protocol: String,
@@ -31,7 +33,7 @@ pub(crate) struct SpacetimeDbConfig {
     pub(crate) websocket_protocol: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AllowedOriginConfig {
     pub(crate) origin: Vec<String>,
 }
@@ -44,7 +46,7 @@ impl Default for AllowedOriginConfig {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct StorageConfig {
     pub(crate) path: String,
 }
@@ -56,7 +58,9 @@ impl Config {
             .add_source(
                 config::Environment::with_prefix("BITCRAFT_HUB_API")
                     .separator("_")
-                    .list_separator(" "),
+                    .list_separator(",")
+                    .with_list_parse_key("origins.origin")
+                    .try_parsing(true),
             )
             .build()
             .unwrap();

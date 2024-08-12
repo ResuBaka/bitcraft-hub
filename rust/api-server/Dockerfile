@@ -20,6 +20,6 @@ WORKDIR /usr/src/api-server
 
 COPY --from=builder /usr/src/api-server/target/release/bitcraft-hub-api .
 
-RUN apt update && apt install libssl-dev -y && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt update && apt install libssl-dev ca-certificates -y && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 CMD ["./bitcraft-hub-api"]
