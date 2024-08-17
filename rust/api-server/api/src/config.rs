@@ -14,6 +14,22 @@ pub(crate) struct Config {
     pub(crate) live_updates: bool,
     #[serde(rename = "liveupdatesws", default)]
     pub(crate) live_updates_ws: bool,
+    #[serde(rename = "import", default)]
+    pub(crate) import_type: ImportType,
+    #[serde(rename = "importenabled", default)]
+    pub(crate) import_enabled: bool,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+enum ImportType {
+    File,
+    Game,
+}
+
+impl Default for ImportType {
+    fn default() -> Self {
+        Self::File
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]

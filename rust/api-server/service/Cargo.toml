@@ -7,7 +7,7 @@ edition = "2021"
 entity = { path = "../entity" }
 
 [dependencies.sea-orm]
-version = "1.0.0" # sea-orm version
+workspace = true
 features = [
     "debug-print",
     "runtime-tokio-native-tls",

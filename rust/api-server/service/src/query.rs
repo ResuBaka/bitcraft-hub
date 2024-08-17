@@ -1,3 +1,4 @@
+use ::entity::trade_order;
 use ::entity::building_state;
 use ::entity::cargo_description;
 use ::entity::claim_tech_desc;
@@ -724,6 +725,18 @@ impl Query {
     ) -> Result<Vec<vehicle_state::Model>, DbErr> {
         vehicle_state::Entity::find()
             .filter(vehicle_state::Column::OwnerId.eq(id))
+            .all(db)
+            .await
+    }
+
+    pub async fn find_trade_order_by_items_or_cargo_ids(
+        db: &DbConn,
+        items: Vec<i32>,
+        cargo_ids: Vec<i32>,
+    ) -> Result<Vec<trade_order::Model>, DbErr> {
+        trade_order::Entity::find()
+            .filter(trade_order::Column::OfferItems.is_in(items))
+            .filter(trade_order::Column::OfferCargoId.is_in(cargo_ids))
             .all(db)
             .await
     }

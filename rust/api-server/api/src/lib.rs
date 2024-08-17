@@ -78,62 +78,17 @@ async fn start() -> anyhow::Result<()> {
     let connection_options = connection_options.clone();
 
     let path_to_storage_tmp = config.storage_path.clone();
-    import_data(config.clone());
+
+    if config.import_enabled {
+        import_data(config.clone());
+    }
 
     let state = AppState {
         conn,
         storage_path: PathBuf::from(config.storage_path.clone()),
     };
 
-    let desc_router = Router::new()
-        .route(
-            "/buildings/:id",
-            axum_codec::routing::get(buildings::find_claim_description).into(),
-        )
-        .route(
-            "/buildings",
-            axum_codec::routing::get(buildings::find_building_descriptions).into(),
-        );
-
-    let app = Router::new()
-        .route("/locations", get(locations::list_locations))
-        .route("/items", get(items::list_items))
-        .merge(player_state::get_routes())
-        .merge(claims::get_routes())
-        .merge(buildings::get_routes())
-        .merge(inventory::get_routes())
-        .merge(recipes::get_routes())
-        .merge(items_and_cargo::get_routes())
-        .merge(leaderboard::get_routes())
-        .nest("/desc", desc_router)
-        .nest_service(
-            "/static",
-            get_service(ServeDir::new(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/static"
-            )))
-            .handle_error(|error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {error}"),
-                )
-            }),
-        )
-        .layer(CookieManagerLayer::new())
-        .layer(
-            CorsLayer::new()
-                .allow_origin(
-                    config
-                        .origins
-                        .origin
-                        .iter()
-                        .map(|origin| origin.parse::<HeaderValue>().unwrap())
-                        .collect::<Vec<HeaderValue>>(),
-                )
-                .allow_methods(Any),
-        )
-        .route_layer(middleware::from_fn(track_metrics))
-        .with_state(state);
+    let app = create_app(&config, state);
 
     let websocket_url = config.weboosocket_url();
     let websocket_password = config.spacetimedb.password.clone();
@@ -235,6 +190,59 @@ async fn start() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+fn create_app(config: &Config, state: AppState) -> Router {
+    let desc_router = Router::new()
+        .route(
+            "/buildings/:id",
+            axum_codec::routing::get(buildings::find_claim_description).into(),
+        )
+        .route(
+            "/buildings",
+            axum_codec::routing::get(buildings::find_building_descriptions).into(),
+        );
+
+    let app = Router::new()
+        .route("/locations", get(locations::list_locations))
+        .route("/items", get(items::list_items))
+        .merge(player_state::get_routes())
+        .merge(claims::get_routes())
+        .merge(buildings::get_routes())
+        .merge(inventory::get_routes())
+        .merge(recipes::get_routes())
+        .merge(items_and_cargo::get_routes())
+        .merge(leaderboard::get_routes())
+        .nest("/desc", desc_router)
+        .nest_service(
+            "/static",
+            get_service(ServeDir::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/static"
+            )))
+                .handle_error(|error| async move {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Unhandled internal error: {error}"),
+                    )
+                }),
+        )
+        .layer(CookieManagerLayer::new())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(
+                    config
+                        .origins
+                        .origin
+                        .iter()
+                        .map(|origin| origin.parse::<HeaderValue>().unwrap())
+                        .collect::<Vec<HeaderValue>>(),
+                )
+                .allow_methods(Any),
+        )
+        .route_layer(middleware::from_fn(track_metrics))
+        .with_state(state);
+    app
 }
 
 fn create_default_client(config: Config) -> Client {
