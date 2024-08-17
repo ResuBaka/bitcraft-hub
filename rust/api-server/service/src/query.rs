@@ -184,6 +184,7 @@ impl Query {
         // Setup paginator
         let paginator = ClaimDescription::find()
             .order_by_asc(claim_description::Column::EntityId)
+            .filter(claim_description::Column::Name.ne("Watchtower"))
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::MySql => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
                 DbBackend::Postgres => query.filter(Expr::cust(format!("name ILIKE '%{value}%'"))),
