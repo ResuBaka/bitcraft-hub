@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use ::entity::trade_order;
 use ::entity::building_state;
 use ::entity::cargo_description;
@@ -12,10 +13,10 @@ use ::entity::{
     player_state, player_state::Entity as PlayerState, skill_desc,
 };
 use sea_orm::prelude::Decimal;
-use sea_orm::sea_query::{
-    Alias, Expr, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder,
-};
+use sea_orm::sea_query::{Alias, Expr, MysqlQueryBuilder, PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder};
 use sea_orm::*;
+use sea_orm::sea_query::extension::postgres::PgExpr;
+use sea_orm::sqlx::RawSql;
 
 pub struct Query;
 
@@ -48,11 +49,10 @@ impl Query {
         let paginator = PlayerState::find()
             .order_by_asc(player_state::Column::EntityId)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::MySql => query.filter(Expr::cust(format!("username LIKE '%{value}%'"))),
                 DbBackend::Postgres => {
-                    query.filter(Expr::cust(format!("username ILIKE '%{value}%'")))
+                    query.filter(Expr::col(player_state::Column::Username).ilike(format!("%{}%", value)))
                 }
-                DbBackend::Sqlite => query.filter(Expr::cust(format!("username LIKE '%{value}%'"))),
+                _ => unreachable!()
             })
             .paginate(db, per_page);
 
@@ -89,9 +89,8 @@ impl Query {
         let paginator = Item::find()
             .order_by_asc(item::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::MySql => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
-                DbBackend::Postgres => query.filter(Expr::cust(format!("name ILIKE '%{value}%'"))),
-                DbBackend::Sqlite => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
+                DbBackend::Postgres => query.filter(Expr::col(item::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
             })
             .paginate(db, per_page);
 
@@ -105,9 +104,40 @@ impl Query {
         Item::find().all(db).await
     }
 
+    pub async fn search_items_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<item::Model>, DbErr> {
+        Item::find()
+            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(item::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
+            })
+            .apply_if(tag.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(item::Column::Tag).eq(value)),
+                _ => unreachable!()
+            })
+            .apply_if(tier.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(item::Column::Tier).eq(value)),
+                _ => unreachable!()
+            })
+            .all(db).await
+    }
+
     pub async fn find_item_by_ids(db: &DbConn, ids: Vec<i64>) -> Result<Vec<item::Model>, DbErr> {
         Item::find()
             .filter(item::Column::Id.is_in(ids))
+            .all(db)
+            .await
+    }
+
+    pub async fn search_items_desc_ids(db: &DbConn, search: &Option<String>) -> Result<Vec<i64>, DbErr> {
+        Item::find()
+            .select_only()
+            .column(item::Column::Id)
+            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(item::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
+            })
+            .order_by_asc(item::Column::Id)
+            .into_tuple()
             .all(db)
             .await
     }
@@ -138,6 +168,37 @@ impl Query {
 
     pub async fn all_cargos_desc(db: &DbConn) -> Result<Vec<cargo_description::Model>, DbErr> {
         cargo_description::Entity::find().all(db).await
+    }
+
+    pub async fn search_cargos_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<cargo_description::Model>, DbErr> {
+        cargo_description::Entity::find()
+            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
+            })
+            .apply_if(tag.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Tag).eq(value)),
+                _ => unreachable!()
+            })
+            .apply_if(tier.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Tier).eq(value)),
+                _ => unreachable!()
+            })
+            .all(db).await
+    }
+
+    pub async fn search_cargo_desc_ids(db: &DbConn, search: &Option<String>) -> Result<Vec<i64>, DbErr> {
+        cargo_description::Entity::find()
+            .select_only()
+            .column(cargo_description::Column::Id)
+            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
+            })
+            .order_by_asc(cargo_description::Column::Id)
+            .into_tuple()
+            .all(db)
+            .await
     }
 
     pub async fn find_cargo_by_ids(
@@ -186,9 +247,8 @@ impl Query {
             .order_by_asc(claim_description::Column::EntityId)
             .filter(claim_description::Column::Name.ne("Watchtower"))
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::MySql => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
-                DbBackend::Postgres => query.filter(Expr::cust(format!("name ILIKE '%{value}%'"))),
-                DbBackend::Sqlite => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
+                DbBackend::Postgres => query.filter(Expr::col(claim_description::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
             })
             .paginate(db, per_page);
         let num_pages = paginator.num_items_and_pages().await?;
@@ -294,9 +354,8 @@ impl Query {
             .to_owned();
 
         let query = match db.get_database_backend() {
-            DbBackend::MySql => query.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         Ok(db
@@ -304,9 +363,9 @@ impl Query {
             .await?
             .into_iter()
             .map(|row| {
-                let level: Decimal = row.try_get("", "level").unwrap();
-                let entity_id: u64 = row.try_get("", "entity_id").unwrap();
-                (entity_id, level.try_into().unwrap())
+                let level: i64 = row.try_get("", "level").unwrap();
+                let entity_id: i64 = row.try_get("", "entity_id").unwrap();
+                (entity_id.try_into().unwrap(), level.try_into().unwrap())
             })
             .collect::<Vec<(u64, i32)>>())
     }
@@ -326,9 +385,8 @@ impl Query {
             .to_owned();
 
         let query = match db.get_database_backend() {
-            DbBackend::MySql => query.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         Ok(db
@@ -358,9 +416,8 @@ impl Query {
             .to_owned();
 
         let query_level = match db.get_database_backend() {
-            DbBackend::MySql => query_level.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query_level.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query_level.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         let level = db
@@ -392,9 +449,8 @@ impl Query {
             .to_owned();
 
         let query_rank = match db.get_database_backend() {
-            DbBackend::MySql => query_rank.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query_rank.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query_rank.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         let rank: Option<i64> = db
@@ -428,9 +484,8 @@ impl Query {
             .to_owned();
 
         let query_experience = match db.get_database_backend() {
-            DbBackend::MySql => query_experience.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query_experience.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query_experience.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         let experience: Option<i64> = db
@@ -462,9 +517,8 @@ impl Query {
             .to_owned();
 
         let query_rank = match db.get_database_backend() {
-            DbBackend::MySql => query_rank.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query_rank.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query_rank.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         let rank: Option<i64> = db
@@ -498,9 +552,8 @@ impl Query {
             .to_owned();
 
         let query = match db.get_database_backend() {
-            DbBackend::MySql => query.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         Ok(db
@@ -509,7 +562,7 @@ impl Query {
             .into_iter()
             .map(|row| {
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
-                let total_experience: Decimal = row.try_get("", "total_experience").unwrap();
+                let total_experience: i64 = row.try_get("", "total_experience").unwrap();
 
                 experience_state::Model {
                     entity_id,
@@ -537,9 +590,8 @@ impl Query {
             .to_owned();
 
         let query = match db.get_database_backend() {
-            DbBackend::MySql => query.to_string(MysqlQueryBuilder),
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            DbBackend::Sqlite => query.to_string(SqliteQueryBuilder),
+            _ => unreachable!()
         };
 
         Ok(db
@@ -581,9 +633,8 @@ impl Query {
         let paginator = building_desc::Entity::find()
             .order_by_asc(building_desc::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::MySql => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
-                DbBackend::Postgres => query.filter(Expr::cust(format!("name ILIKE '%{value}%'"))),
-                DbBackend::Sqlite => query.filter(Expr::cust(format!("name LIKE '%{value}%'"))),
+                DbBackend::Postgres => query.filter(Expr::col(building_desc::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
             })
             .paginate(db, per_page);
         let num_pages = paginator.num_items_and_pages().await?;
@@ -740,6 +791,50 @@ impl Query {
             .filter(trade_order::Column::OfferCargoId.is_in(cargo_ids))
             .all(db)
             .await
+    }
+
+    pub async fn load_trade_order(
+        db: &DbConn,
+    ) -> Result<Vec<trade_order::Model>, DbErr> {
+       trade_order::Entity::find()
+            .order_by_asc(trade_order::Column::EntityId)
+            .all(db)
+            .await
+    }
+
+    pub async fn load_trade_order_paginated(
+        db: &DbConn,
+        page: u64,
+        per_page: u64,
+    ) -> Result<(Vec<trade_order::Model>, ItemsAndPagesNumber), DbErr> {
+        let paginator = trade_order::Entity::find()
+            .order_by_asc(trade_order::Column::EntityId)
+            .paginate(db, per_page);
+
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
+    }
+}
+
+struct RawName (String);
+
+impl Iden for RawName {
+    fn prepare(&self, s: &mut dyn Write, q: Quote) {
+        write!(s, "{}", self.quoted(q)).unwrap();
+    }
+
+    fn quoted(&self, q: Quote) -> String {
+        format!("{}", self.0)
+    }
+
+    fn unquoted(&self, s: &mut dyn sea_query::prepare::Write) {
+        write!(
+            s,
+            "{}",
+            &self.0
+        )
+            .unwrap();
     }
 }
 

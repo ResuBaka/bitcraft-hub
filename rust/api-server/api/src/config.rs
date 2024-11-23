@@ -21,7 +21,7 @@ pub(crate) struct Config {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-enum ImportType {
+pub(crate) enum ImportType {
     File,
     Game,
 }

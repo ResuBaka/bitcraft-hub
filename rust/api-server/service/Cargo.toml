@@ -5,13 +5,14 @@ edition = "2021"
 
 [dependencies]
 entity = { path = "../entity" }
+futures-core = "0.3.30"
 
 [dependencies.sea-orm]
 workspace = true
 features = [
     "debug-print",
     "runtime-tokio-native-tls",
-    "sqlx-all",
+    "sqlx-postgres",
 ]
 
 [dev-dependencies]

@@ -4,6 +4,7 @@ mod m20220101_000001_create_table;
 mod m20240727_170250_claim_tech;
 mod m20240728_160123_vehicle_state;
 mod m20240801_163734_changes_experience_state;
+mod m20240822_150555_fix_remaining_stock_type;
 
 pub struct Migrator;
 
@@ -15,6 +16,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240727_170250_claim_tech::Migration),
             Box::new(m20240728_160123_vehicle_state::Migration),
             Box::new(m20240801_163734_changes_experience_state::Migration),
+            Box::new(m20240822_150555_fix_remaining_stock_type::Migration),
         ]
     }
 }

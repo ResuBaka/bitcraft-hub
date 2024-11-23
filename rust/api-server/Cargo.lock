@@ -166,6 +166,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "migration",
+ "rayon",
  "reqwest",
  "reqwest-websocket",
  "sea-orm",
@@ -3740,6 +3741,7 @@ name = "service"
 version = "0.1.0"
 dependencies = [
  "entity",
+ "futures-core",
  "sea-orm",
  "tokio",
 ]

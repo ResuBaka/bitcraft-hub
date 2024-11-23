@@ -13,6 +13,7 @@ mod player_state;
 mod recipes;
 mod skill_descriptions;
 mod vehicle_state;
+mod trading_orders;
 
 use axum::{
     http::StatusCode,
@@ -42,6 +43,8 @@ use sea_orm::ConnectOptions;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env;
+use std::fs::File;
+use std::io::Write;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -51,6 +54,7 @@ use tokio::task;
 use tokio_util::sync::CancellationToken;
 use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
+use entity::trade_order;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -78,6 +82,16 @@ async fn start() -> anyhow::Result<()> {
     let connection_options = connection_options.clone();
 
     let path_to_storage_tmp = config.storage_path.clone();
+
+    let client = create_default_client(config.clone());
+    
+    // donwload_all_Tables(
+    //     &client,
+    //     &config.spacetimedb.domain.clone(),
+    //     &config.spacetimedb.protocol.clone(),
+    //     &config.spacetimedb.database.clone(),
+    //     &config.storage_path.clone().into(),
+    // ).await;
 
     if config.import_enabled {
         import_data(config.clone());
@@ -213,6 +227,7 @@ fn create_app(config: &Config, state: AppState) -> Router {
         .merge(recipes::get_routes())
         .merge(items_and_cargo::get_routes())
         .merge(leaderboard::get_routes())
+        .merge(trading_orders::get_routes())
         .nest("/desc", desc_router)
         .nest_service(
             "/static",
@@ -630,6 +645,62 @@ fn import_data(config: Config) {
                     }
                 }));
 
+                let temp_config = config.clone();
+                tasks.push(tokio::spawn(async move {
+                    let config = temp_config.clone();
+                    if config.live_updates {
+                        loop {
+                            let conn = create_importer_default_db_connection(config.clone()).await;
+                            let client = create_default_client(config.clone());
+
+                            let now = Instant::now();
+                            let now_in = now.add(Duration::from_secs(60));
+
+                            import_trade_order_state(config.clone(), conn, client);
+
+                            let now = Instant::now();
+                            let wait_time = now_in.duration_since(now);
+
+                            if wait_time.as_secs() > 0 {
+                                tokio::time::sleep(wait_time).await;
+                            }
+                        }
+                    } else {
+                        let conn = create_importer_default_db_connection(config.clone()).await;
+                        let client = create_default_client(config.clone());
+
+                        import_trade_order_state(config.clone(), conn, client);
+                    }
+                }));
+
+                let temp_config = config.clone();
+                tasks.push(tokio::spawn(async move {
+                    let config = temp_config.clone();
+                    if config.live_updates {
+                        loop {
+                            let conn = create_importer_default_db_connection(config.clone()).await;
+                            let client = create_default_client(config.clone());
+
+                            let now = Instant::now();
+                            let now_in = now.add(Duration::from_secs(60));
+
+                            import_skill_descriptions(config.clone(), conn, client);
+
+                            let now = Instant::now();
+                            let wait_time = now_in.duration_since(now);
+
+                            if wait_time.as_secs() > 0 {
+                                tokio::time::sleep(wait_time).await;
+                            }
+                        }
+                    } else {
+                        let conn = create_importer_default_db_connection(config.clone()).await;
+                        let client = create_default_client(config.clone());
+
+                        import_skill_descriptions(config.clone(), conn, client);
+                    }
+                }));
+
                 futures::future::join_all(tasks).await;
             });
     });
@@ -963,6 +1034,58 @@ fn import_experience_state(config: Config, conn: DatabaseConnection, client: Cli
     });
 }
 
+fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let trade_order_state = trading_orders::load_trade_order(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                    &config,
+                )
+                .await;
+
+                if let Ok(_) = trade_order_state {
+                    info!("TradeOrderState imported");
+                } else {
+                    error!("TradeOrderState import failed: {:?}", trade_order_state);
+                }
+            });
+    });
+}
+
+fn import_skill_descriptions(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let skill_descriptions_desc = skill_descriptions::load_desc_from_spacetimedb(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                    // &config,
+                )
+                .await;
+
+                if let Ok(_) = skill_descriptions_desc {
+                    info!("SkillDescriptionsDesc imported");
+                } else {
+                    error!("SkillDescriptionsDesc import failed: {:?}", skill_descriptions_desc);
+                }
+            });
+    });
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 enum WebSocketMessage {
     IdentityToken(IdentityToken),
@@ -1075,6 +1198,321 @@ async fn track_metrics(req: Request, next: Next) -> impl IntoResponse {
     metrics::histogram!("http_requests_duration_seconds", &labels).record(latency);
 
     response
+}
+
+pub async fn donwload_all_Tables(
+    client: &reqwest::Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+    storage_path: &PathBuf,
+) {
+    let desc_tables = vec![
+        "AchievementDesc",
+        "AlertDesc",
+        "BiomeDesc",
+        "BuffDesc",
+        "BuffTypeDesc",
+        "BuildingClaimDesc",
+        "BuildingDesc",
+        "BuildingFunctionTypeMappingDesc",
+        "BuildingPortalDesc",
+        "BuildingRepairsDesc",
+        "BuildingSpawnDesc",
+        "BuildingTypeDesc",
+        "CargoDesc",
+        "CharacterStatDesc",
+        "ChestRarityDesc",
+        "ClaimDescriptionState",
+        "ClaimTechDesc",
+        "ClimbRequirementDesc",
+        "ClothingDesc",
+        "CollectibleDesc",
+        "CombatActionDesc",
+        "ConstructionRecipeDesc",
+        "CraftingRecipeDesc",
+        "DeconstructionRecipeDesc",
+        "DeployableDesc",
+        "DimensionDescriptionState",
+        "ElevatorDesc",
+        "EmoteDesc",
+        "EmpireColorDesc",
+        "EmpireNotificationDesc",
+        "EmpireRankDesc",
+        "EmpireSuppliesDesc",
+        "EmpireTerritoryDesc",
+        "EnemyAiParamsDesc",
+        "EnemyDesc",
+        "EnvironmentDebuffDesc",
+        "EquipmentDesc",
+        "ExtractionRecipeDesc",
+        "FoodDesc",
+        "GateDesc",
+        "InteriorInstanceDesc",
+        "InteriorNetworkDesc",
+        "InteriorPortalConnectionsDesc",
+        "InteriorShapeDesc",
+        "InteriorSpawnDesc",
+        "ItemConversionRecipeDesc",
+        "ItemDesc",
+        "ItemListDesc",
+        "KnowledgeScrollDesc",
+        "KnowledgeScrollTypeDesc",
+        "LootChestDesc",
+        "LootRarityDesc",
+        "LootTableDesc",
+        "NpcDesc",
+        "OnboardingRewardDesc",
+        "ParametersDesc",
+        "PathfindingDesc",
+        "PavingTileDesc",
+        "PlayerActionDesc",
+        "PrivateParametersDesc",
+        "ResourceClumpDesc",
+        "ResourceDesc",
+        "ResourceGrowthRecipeDesc",
+        "ResourcePlacementRecipeDesc",
+        "SecondaryKnowledgeDesc",
+        "SingleResourceToClumpDesc",
+        "SkillDesc",
+        "TargetingMatrixDesc",
+        "TeleportItemDesc",
+        "TerraformRecipeDesc",
+        "ToolDesc",
+        "ToolTypeDesc",
+        "TravelerTradeOrderDesc",
+        "WallDesc",
+        "WeaponDesc",
+        "WeaponTypeDesc"
+    ];
+    let state_tables = vec![
+        "AIDebugState",
+        "ActionState",
+        "ActiveBuffState",
+        "AdminRestorePlayerStateTimer",
+        "AlertState",
+        "AttachedHerdsState",
+        "AttackOutcomeState",
+        "AutoClaimState",
+        "BarterStallState",
+        "BuildingState",
+        "CargoState",
+        "CharacterStatsState",
+        "ChatMessageState",
+        "ClaimDescriptionState",
+        "ClaimRecruitmentState",
+        "ClaimTechState",
+        "ClaimTileState",
+        "CombatState",
+        "DeployableCollectibleState",
+        "DeployableState",
+        "DimensionDescriptionState",
+        "DimensionNetworkState",
+        "EmpireChunkState",
+        "EmpireExpansionState",
+        "EmpireFoundryState",
+        "EmpireLogState",
+        "EmpireNodeSiegeState",
+        "EmpireNodeState",
+        "EmpireNotificationState",
+        "EmpirePlayerDataState",
+        "EmpirePlayerLogState",
+        "EmpireRankState",
+        "EmpireSettlementState",
+        "EmpireSiegeEngineState",
+        "EmpireState",
+        "EnemyMobMonitorState",
+        "EnemyState",
+        "EquipmentState",
+        "ExperienceState",
+        "ExplorationChunksState",
+        "FootprintTileState",
+        "GlobalSearchState",
+        "GrowthState",
+        "HealthState",
+        "HerdState",
+        "InteriorCollapseTriggerState",
+        "InventoryState",
+        "ItemPileState",
+        "KnowledgeAchievementState",
+        "KnowledgeBattleActionState",
+        "KnowledgeBuildingState",
+        "KnowledgeCargoState",
+        "KnowledgeConstructionState",
+        "KnowledgeCraftState",
+        "KnowledgeDeployableState",
+        "KnowledgeEnemyState",
+        "KnowledgeExtractState",
+        "KnowledgeItemState",
+        "KnowledgeLoreState",
+        "KnowledgeNpcState",
+        "KnowledgePavingState",
+        "KnowledgeResourcePlacementState",
+        "KnowledgeResourceState",
+        "KnowledgeRuinsState",
+        "KnowledgeSecondaryState",
+        "KnowledgeVaultState",
+        "LightSourceState",
+        "LocationState",
+        "LootChestState",
+        "MobileEntityState",
+        "MountingState",
+        "MoveValidationStrikeCounterState",
+        "NpcState",
+        "OnboardingState",
+        "PassiveCraftState",
+        "PavedTileState",
+        "PlayerActionState",
+        "PlayerLowercaseUsernameState",
+        "PlayerNoteState",
+        "PlayerPrefsState",
+        "PlayerState",
+        "PlayerTimestampState",
+        "PlayerUsernameState",
+        "PlayerVoteState",
+        "PortalState",
+        "ProgressiveActionState",
+        "ProjectSiteState",
+        "RentState",
+        "ResourceState",
+        "SatiationState",
+        "SignedInPlayerState",
+        "SignedInUserState",
+        "StaminaState",
+        "StarvingPlayerState",
+        "TargetState",
+        "TargetableState",
+        "TerraformProgressState",
+        "TerrainChunkState",
+        "ThreatState",
+        "ToolbarState",
+        "TradeOrderState",
+        "TradeSessionState",
+        "UnclaimedCollectiblesState",
+        "UnclaimedShardsState",
+        "UserModerationState",
+        "UserSignInState",
+        "UserState",
+        "VaultState"
+    ];
+    let rest_tables = vec![
+        "AdminBroadcast",
+        "AttackImpactTimer",
+        "AttackTimer",
+        "AutoLogoutLoopTimer",
+        "BuildingDecayLoopTimer",
+        "BuildingDespawnTimer",
+        "CargoDespawnTimer",
+        "CargoSpawnTimer",
+        "ChatCache",
+        "ClaimTechUnlockTimer",
+        "ClaimTileCost",
+        "CollectStatsTimer",
+        "Config",
+        "DayNightLoopTimer",
+        "DeployableDismountTimer",
+        "DestroyDimensionNetworkTimer",
+        "EmpireCraftSuppliesTimer",
+        "EmpireDecayLoopTimer",
+        "EmpireSiegeLoopTimer",
+        "EndGracePeriodTimer",
+        "EnemyDespawnTimer",
+        "EnemyRegenLoopTimer",
+        "EnvironmentDebuffLoopTimer",
+        "ForceGenerateTypes",
+        "Globals",
+        "GlobalsAppeared",
+        "GrowthLoopTimer",
+        "HideDeployableTimer",
+        "IdentityRole",
+        "InteriorSetCollapsedTimer",
+        "ItemPileDespawnTimer",
+        "LocationCache",
+        "LootChestDespawnTimer",
+        "LootChestSpawnTimer",
+        "NpcAiLoopTimer",
+        "PassiveCraftTimer",
+        "PlayerDeathTimer",
+        "PlayerRegenLoopTimer",
+        "PlayerRespawnAfterDeathTimer",
+        "PlayerUseElevatorTimer",
+        "PlayerVoteConcludeTimer",
+        "RentCollectorLoopTimer",
+        "RentEvictTimer",
+        "ResetChunkIndexTimer",
+        "ResetMobileEntityTimer",
+        "ResourceCount",
+        "ResourceSpawnTimer",
+        "ResourcesLog",
+        "ResourcesRegenLoopTimer",
+        "RespawnResourceInChunkTimer",
+        "ServerIdentity",
+        "SingleResourceClumpInfo",
+        "StagedStaticData",
+        "StarvingLoopTimer",
+        "TeleportPlayerTimer",
+        "TradeSessionLoopTimer"
+    ];
+    
+    for table in desc_tables {
+        download_all_Table(client, domain, protocol, database, table, storage_path, "desc").await;
+    }
+    
+    for table in state_tables {
+        download_all_Table(client, domain, protocol, database, table, storage_path, "state").await;
+    }
+    
+    for table in rest_tables {
+        download_all_Table(client, domain, protocol, database, table, storage_path, "rest").await;
+    }
+
+}
+
+///
+/// Donwload the table and save it to the storage path with the type as the folder before the name
+pub async fn download_all_Table(
+    client: &reqwest::Client,
+    domain: &str,
+    protocol: &str,
+    database: &str,
+    table: &str,
+    storage_path: &PathBuf,
+    folder: &str,
+) -> anyhow::Result<()> {
+    let response = client
+        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .body(format!("SELECT * FROM {table}"))
+        .send()
+        .await;
+
+    let json = match response {
+        Ok(response) => {
+            if !response.status().is_success() {
+                let error = response.text().await?;
+                error!("Error: {error}");
+                return Err(anyhow::anyhow!("Error: {error}"));
+            }
+
+            response.text().await?
+        },
+        Err(error) => {
+            error!("Error: {error}");
+            return Err(anyhow::anyhow!("Error: {error}"));
+        }
+    };
+
+    let folder_to_create = storage_path.join(folder);
+    if !folder_to_create.exists() {
+        std::fs::create_dir_all(&folder_to_create)?;
+    }
+    let path = storage_path.join(format!("{folder}/{table}.json"));
+    let mut file = File::create(&path)?;
+    
+    println!("Saving to {path:?}");
+
+    file.write_all(json.as_bytes())?;
+
+    Ok(())
 }
 
 pub fn main() {

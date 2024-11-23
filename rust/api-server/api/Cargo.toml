@@ -12,6 +12,7 @@ reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 hyper = { workspace = true }
+rayon = { workspace = true }
 tokio-util = "0.7.11"
 indicatif = "0.17.8"
 lazy_static = "1.5.0"

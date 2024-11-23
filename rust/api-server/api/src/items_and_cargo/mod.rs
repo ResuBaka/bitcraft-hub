@@ -40,7 +40,6 @@ pub(crate) struct ItemsAndCargoResponse {
     items: Vec<ItemCargo>,
     tags: Vec<String>,
     tiers: Vec<i32>,
-    #[serde(rename = "perPage")]
     per_page: u64,
     total: u64,
     page: u64,
@@ -61,10 +60,10 @@ pub(crate) async fn list_items_and_cargo(
     let tag = params.tag;
 
     let (items, items_tags, items_tiers, cargos, cargos_tags, cargos_tiers) = tokio::join!(
-        QueryCore::all_items(&state.conn),
+        QueryCore::search_items_desc(&state.conn, &search, &tier, &tag),
         QueryCore::find_unique_item_tags(&state.conn),
         QueryCore::find_unique_item_tiers(&state.conn),
-        QueryCore::all_cargos_desc(&state.conn),
+        QueryCore::search_cargos_desc(&state.conn, &search, &tier, &tag),
         QueryCore::find_unique_cargo_tags(&state.conn),
         QueryCore::find_unique_cargo_tiers(&state.conn),
     );
@@ -81,62 +80,14 @@ pub(crate) async fn list_items_and_cargo(
     let mut merged_tiers = merge_tiers(items_tiers, cargos_tiers);
     let merged_items_and_cargo = merge_items_and_cargo(items, cargos);
 
-    let filtered_items_and_cargo = merged_items_and_cargo
-        .into_iter()
-        .filter(|item| match item {
-            ItemCargo::Item(item) => {
-                let mut found = true;
-
-                if let Some(tag) = &tag {
-                    found = item.tag.eq(tag);
-                }
-
-                if found {
-                    if let Some(tier) = &tier {
-                        found = item.tier.eq(tier);
-                    }
-                }
-
-                if found {
-                    if let Some(search) = &search {
-                        found = item.name.to_lowercase().contains(search);
-                    }
-                }
-
-                found
-            }
-            ItemCargo::Cargo(cargo) => {
-                let mut found = true;
-
-                if let Some(tag) = &tag {
-                    found = cargo.tag.eq(tag);
-                }
-
-                if found {
-                    if let Some(tier) = &tier {
-                        found = cargo.tier.eq(tier);
-                    }
-                }
-
-                if found {
-                    if let Some(search) = &search {
-                        found = cargo.name.to_lowercase().contains(search);
-                    }
-                }
-
-                found
-            }
-        })
-        .collect::<Vec<ItemCargo>>();
-
     let (start, end) = (
         ((page - 1) * posts_per_page) as usize,
         (page * posts_per_page) as usize,
     );
 
-    let items = match filtered_items_and_cargo.len() {
-        x if x > end => filtered_items_and_cargo[start..end].to_vec(),
-        x if x < end => filtered_items_and_cargo[start..].to_vec(),
+    let items = match merged_items_and_cargo.len() {
+        x if x > end => merged_items_and_cargo[start..end].to_vec(),
+        x if x < end => merged_items_and_cargo[start..].to_vec(),
         _ => vec![],
     };
 
@@ -147,9 +98,9 @@ pub(crate) async fn list_items_and_cargo(
         tiers: merged_tiers,
         tags: merged_tags,
         per_page: posts_per_page,
-        total: filtered_items_and_cargo.len() as u64,
+        total: merged_items_and_cargo.len() as u64,
         page,
-        pages: filtered_items_and_cargo.len() as u64 / posts_per_page,
+        pages: merged_items_and_cargo.len() as u64 / posts_per_page,
     }))
 }
 

@@ -15,9 +15,5 @@ async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
 version = "1.0.0"
 features = [
     "runtime-actix-native-tls",
-    "sqlx-sqlite",
-    "sqlx-mysql",
     "sqlx-postgres",
-  # "runtime-tokio-rustls",  # `ASYNC_RUNTIME` feature
-  # "sqlx-postgres",         # `DATABASE_DRIVER` feature
 ]

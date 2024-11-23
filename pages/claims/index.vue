@@ -62,9 +62,9 @@ const {
       if (Object.keys(options.query).length > 2) {
         const query = { ...options.query };
         if (new_api) {
-          delete options.query.per_page;
+          delete query.per_page;
         } else {
-          delete options.query.perPage;
+          delete query.perPage;
         }
         router.push({ query });
       } else if (options.query.page <= 1) {
