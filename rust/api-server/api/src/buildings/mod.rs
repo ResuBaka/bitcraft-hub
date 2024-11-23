@@ -1,4 +1,4 @@
-use crate::{AppState, Params};
+use crate::{buildings, AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Router;
@@ -14,10 +14,13 @@ use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
+use crate::config::Config;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -652,4 +655,108 @@ pub(crate) async fn import_building_desc(
     }
 
     Ok(())
+}
+
+pub async fn import_job_building_desc(temp_config: Config) -> () {
+    let config = temp_config.clone();
+    if config.live_updates {
+        loop {
+            let conn = super::create_importer_default_db_connection(config.clone()).await;
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60));
+
+            import_internal_building_state(config.clone(), conn, client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_internal_building_state(config.clone(), conn, client);
+    }
+}
+
+pub async fn import_job_building_state(temp_config: Config) -> () {
+    let config = temp_config.clone();
+    if config.live_updates {
+        loop {
+            let conn = super::create_importer_default_db_connection(config.clone()).await;
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60));
+
+            import_internal_building_desc(config.clone(), conn, client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_internal_building_desc(config.clone(), conn, client);
+    }
+}
+
+fn import_internal_building_state(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let building_state = load_state_from_spacetimedb(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                )
+                    .await;
+
+                if let Ok(_building_state) = building_state {
+                    info!("BuildingState imported");
+                } else {
+                    error!("BuildingState import failed: {:?}", building_state);
+                }
+            });
+    });
+}
+
+fn import_internal_building_desc(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let building_desc = load_desc_from_spacetimedb(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                )
+                    .await;
+
+                if let Ok(_building_desc) = building_desc {
+                    info!("BuildingDesc imported");
+                } else {
+                    error!("BuildingDesc import failed: {:?}", building_desc);
+                }
+            });
+    });
 }

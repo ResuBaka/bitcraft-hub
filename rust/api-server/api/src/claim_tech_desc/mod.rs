@@ -7,10 +7,14 @@ use sea_orm::{
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
+use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
+use crate::config::Config;
 
 pub(crate) async fn load_claim_tech_desc_from_file(
     storage_path: &PathBuf,
@@ -240,3 +244,56 @@ pub(crate) async fn import_claim_tech_desc(
 
     Ok(())
 }
+
+fn import_interal_claim_tech_desc(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let claim_tech_desc = load_claim_tech_desc(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                )
+                    .await;
+
+                if let Ok(_claim_tech_desc) = claim_tech_desc {
+                    info!("ClaimTechDesc imported");
+                } else {
+                    error!("ClaimTechDesc import failed: {:?}", claim_tech_desc);
+                }
+            });
+    });
+}
+
+pub async fn import_job_claim_tech_desc(temp_config: Config) -> () {
+    let config = temp_config.clone();
+    if config.live_updates {
+        loop {
+            let conn = super::create_importer_default_db_connection(config.clone()).await;
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60));
+
+            import_interal_claim_tech_desc(config.clone(), conn, client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_interal_claim_tech_desc(config.clone(), conn, client);
+    }
+}
+

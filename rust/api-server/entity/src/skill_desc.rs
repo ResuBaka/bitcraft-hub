@@ -8,13 +8,45 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i64,
+    pub skill: i32,
     pub name: String,
     pub description: String,
     pub icon_asset_name: String,
     pub title: String,
+    pub skill_category: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SkillDescRaw {
+    pub id: i64,
+    pub skill: serde_json::Value,
+    pub name: String,
+    pub description: String,
+    pub icon_asset_name: String,
+    pub title: String,
+    pub skill_category: serde_json::Value,
+}
+
+impl SkillDescRaw {
+    pub fn to_model(&self) -> anyhow::Result<Model> {
+        // @todo handle possible errors
+        let skill = self.skill.as_object().unwrap().keys().next().unwrap();
+        // @todo handle possible errors
+        let skill_category = self.skill_category.as_object().unwrap().keys().next().unwrap();
+
+        Ok(Model {
+            id: self.id,
+            skill: skill.parse::<i32>()?,
+            name: self.name.clone(),
+            description: self.description.clone(),
+            icon_asset_name: self.icon_asset_name.clone(),
+            title: self.title.clone(),
+            skill_category: skill_category.parse::<i32>()?,
+        })
+    }
+}

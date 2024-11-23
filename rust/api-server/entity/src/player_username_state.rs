@@ -4,20 +4,11 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "claim_tech_desc")]
+#[sea_orm(table_name = "player_username_state")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: i64,
-    pub description: String,
-    pub tier: i32,
-    pub supplies_cost: i32,
-    pub research_time: i32,
-    pub requirements: Json,
-    pub input: Json,
-    pub members: i32,
-    pub area: i32,
-    pub supply: i32,
-    pub xp_to_mint_hex_coin: i32,
+    pub entity_id: i64,
+    pub username: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -1,12 +1,12 @@
 use crate::inventory::resolve_contents;
-use crate::{AppState, Params};
+use crate::{claims, AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
 use entity::inventory::ExpendedRefrence;
 use entity::{
-    cargo_description, claim_description, claim_tech_desc, inventory, item, player_state,
+    cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc, player_state,
 };
 use log::{debug, error, info};
 use sea_orm::{sea_query, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter};
@@ -15,11 +15,15 @@ use serde_json::Value;
 use service::{sea_orm::DatabaseConnection, Query as QueryCore};
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
+use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
+use crate::config::Config;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -35,17 +39,18 @@ pub struct ClaimDescriptionState {
     pub owner_player_entity_id: i64,
     pub owner_building_entity_id: i64,
     pub name: String,
-    pub supplies: f32,
+    pub supplies: i64,
     pub building_maintenance: f32,
     pub members: Vec<ClaimDescriptionStateMember>,
-    pub tiles: i32,
+    pub num_tiles: i32,
     pub extensions: i32,
     pub neutral: bool,
     pub location: sea_orm::prelude::Json,
     pub treasury: i32,
-    pub running_upgrade: Option<bool>,
+    pub running_upgrade: Option<claim_tech_desc::Model>,
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
+    pub xp_gained_since_last_coin_minting: i32,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -54,15 +59,16 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub owner_player_entity_id: i64,
     pub owner_building_entity_id: i64,
     pub name: String,
-    pub supplies: f32,
+    pub supplies: i64,
     pub building_maintenance: f32,
     pub members: Vec<ClaimDescriptionStateMember>,
-    pub tiles: i32,
+    pub num_tiles: i32,
     pub extensions: i32,
     pub neutral: bool,
     pub location: sea_orm::prelude::Json,
     pub treasury: i32,
-    pub running_upgrade: Option<bool>,
+    pub xp_gained_since_last_coin_minting: i32,
+    pub running_upgrade: Option<claim_tech_desc::Model>,
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
@@ -78,8 +84,8 @@ pub(crate) struct ClaimResponse {
     pub page: u64,
 }
 
-impl From<claim_description::Model> for ClaimDescriptionState {
-    fn from(claim_description: claim_description::Model) -> Self {
+impl From<claim_description_state::Model> for ClaimDescriptionState {
+    fn from(claim_description: claim_description_state::Model) -> Self {
         ClaimDescriptionState {
             entity_id: claim_description.entity_id,
             owner_player_entity_id: claim_description.owner_player_entity_id,
@@ -88,11 +94,12 @@ impl From<claim_description::Model> for ClaimDescriptionState {
             supplies: claim_description.supplies,
             building_maintenance: claim_description.building_maintenance,
             members: serde_json::from_value(claim_description.members).unwrap(),
-            tiles: claim_description.tiles,
+            num_tiles: claim_description.num_tiles,
             extensions: claim_description.extensions,
             neutral: claim_description.neutral,
             location: claim_description.location,
             treasury: claim_description.treasury,
+            xp_gained_since_last_coin_minting: claim_description.xp_gained_since_last_coin_minting,
             running_upgrade: None,
             tier: None,
             upgrades: vec![],
@@ -143,20 +150,27 @@ pub(crate) async fn get_claim(
 
     let items = QueryCore::all_items(&state.conn)
         .await
-        .expect("Cannot find items");
+        .unwrap_or_else(|err| {
+            error!("Error loading items: {err}");
+            vec![]
+        });
+         
     let items = items
         .into_iter()
         .map(|item| (item.id, item))
-        .collect::<HashMap<i64, item::Model>>();
+        .collect::<HashMap<i64, item_desc::Model>>();
 
     let cargos = QueryCore::all_cargos_desc(&state.conn)
         .await
-        .expect("Cannot find cargos");
+        .unwrap_or_else(|err| {
+            error!("Error loading cargos: {err}");
+            vec![]
+        });
     let cargos = cargos
         .into_iter()
         .map(|cargo| (cargo.id, cargo))
-        .collect::<HashMap<i64, cargo_description::Model>>();
-
+        .collect::<HashMap<i64, cargo_desc::Model>>();
+    
     let claim = {
         let claim_tech_state = claim_tech_states
             .iter()
@@ -168,10 +182,9 @@ pub(crate) async fn get_claim(
                 claim.running_upgrade = match tier_upgrades
                     .iter()
                     .find(|desc| desc.id == (claim_tech_state.researching as i64))
-                    .map(|desc| desc.tier)
                 {
-                    Some(_tier) => Some(true),
-                    None => Some(false),
+                    Some(tier) => Some(tier.clone()),
+                    None => None,
                 };
                 let learned: Vec<i32> =
                     serde_json::from_value(claim_tech_state.learned.clone()).unwrap();
@@ -212,7 +225,10 @@ pub(crate) async fn get_claim(
 
     let building_states = QueryCore::find_building_state_by_claim_id(&state.conn, claim.entity_id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))?;
+        .unwrap_or_else(|err| {
+            error!("Error loading building states: {err}");
+            vec![]
+        });
 
     let building_inventories_ids = building_states
         .iter()
@@ -261,12 +277,13 @@ pub(crate) async fn get_claim(
         supplies: claim.supplies,
         building_maintenance: claim.building_maintenance,
         members: claim.members,
-        tiles: claim.tiles,
+        num_tiles: claim.num_tiles,
         extensions: claim.extensions,
         neutral: claim.neutral,
         location: claim.location,
         treasury: claim.treasury,
         running_upgrade: claim.running_upgrade,
+        xp_gained_since_last_coin_minting: claim.xp_gained_since_last_coin_minting,
         tier: claim.tier,
         upgrades: claim.upgrades,
         inventorys: HashMap::new(),
@@ -380,10 +397,9 @@ pub(crate) async fn list_claims(
                     claim_description.running_upgrade = match tier_upgrades
                         .iter()
                         .find(|desc| desc.id == (claim_tech_state.researching as i64))
-                        .map(|desc| desc.tier)
                     {
-                        Some(_tier) => Some(true),
-                        None => Some(false),
+                        Some(tier) => Some(tier.clone()),
+                        None => None,
                     };
                     let learned: Vec<i32> =
                         serde_json::from_value(claim_tech_state.learned.clone()).unwrap();
@@ -450,10 +466,10 @@ pub(crate) async fn find_claim_descriptions(
 
 pub(crate) async fn load_claim_description_state_from_file(
     storage_path: &PathBuf,
-) -> anyhow::Result<Vec<claim_description::Model>> {
+) -> anyhow::Result<Vec<claim_description_state::Model>> {
     let item_file = File::open(storage_path.join("State/ClaimDescriptionState.json"))?;
     let claim_descriptions: Value = serde_json::from_reader(&item_file)?;
-    let claim_descriptions: Vec<claim_description::Model> = serde_json::from_value(
+    let claim_descriptions: Vec<claim_description_state::Model> = serde_json::from_value(
         claim_descriptions
             .get(0)
             .unwrap()
@@ -509,7 +525,7 @@ pub(crate) async fn import_claim_description_state(
 ) -> anyhow::Result<()> {
     let start = Instant::now();
 
-    let mut buffer_before_insert: Vec<claim_description::Model> =
+    let mut buffer_before_insert: Vec<claim_description_state::Model> =
         Vec::with_capacity(chunk_size.unwrap_or(5000));
 
     let mut json_stream_reader = JsonStreamReader::new(claim_descriptions.as_bytes());
@@ -518,31 +534,36 @@ pub(crate) async fn import_claim_description_state(
     json_stream_reader.seek_to(&json_path!["rows"])?;
     json_stream_reader.begin_array()?;
 
-    let on_conflict = sea_query::OnConflict::column(claim_description::Column::EntityId)
+    let on_conflict = sea_query::OnConflict::column(claim_description_state::Column::EntityId)
         .update_columns([
-            claim_description::Column::OwnerPlayerEntityId,
-            claim_description::Column::OwnerBuildingEntityId,
-            claim_description::Column::Name,
-            claim_description::Column::Supplies,
-            claim_description::Column::BuildingMaintenance,
-            claim_description::Column::Members,
-            claim_description::Column::Tiles,
-            claim_description::Column::Extensions,
-            claim_description::Column::Neutral,
-            claim_description::Column::Location,
-            claim_description::Column::Treasury,
+            claim_description_state::Column::OwnerPlayerEntityId,
+            claim_description_state::Column::OwnerBuildingEntityId,
+            claim_description_state::Column::Name,
+            claim_description_state::Column::Supplies,
+            claim_description_state::Column::BuildingMaintenance,
+            claim_description_state::Column::Members,
+            claim_description_state::Column::NumTiles,
+            claim_description_state::Column::NumTileNeighbors,
+            claim_description_state::Column::Extensions,
+            claim_description_state::Column::Neutral,
+            claim_description_state::Column::Location,
+            claim_description_state::Column::Treasury,
+            claim_description_state::Column::XpGainedSinceLastCoinMinting,
+            claim_description_state::Column::SuppliesPurchaseThreshold,
+            claim_description_state::Column::SuppliesPurchasePrice,
+            claim_description_state::Column::BuildingDescriptionId,
         ])
         .to_owned();
 
     let mut claim_description_to_delete = Vec::new();
 
-    while let Ok(value) = json_stream_reader.deserialize_next::<claim_description::Model>() {
+    while let Ok(value) = json_stream_reader.deserialize_next::<claim_description_state::Model>() {
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            let claim_description_from_db = claim_description::Entity::find()
+            let claim_description_from_db = claim_description_state::Entity::find()
                 .filter(
-                    claim_description::Column::EntityId.is_in(
+                    claim_description_state::Column::EntityId.is_in(
                         buffer_before_insert
                             .iter()
                             .map(|claim_description| claim_description.entity_id)
@@ -571,7 +592,7 @@ pub(crate) async fn import_claim_description_state(
             let claim_description_from_db_map = claim_description_from_db
                 .into_iter()
                 .map(|claim_description| (claim_description.entity_id, claim_description))
-                .collect::<HashMap<i64, claim_description::Model>>();
+                .collect::<HashMap<i64, claim_description_state::Model>>();
 
             let things_to_insert = buffer_before_insert
                 .iter()
@@ -590,7 +611,7 @@ pub(crate) async fn import_claim_description_state(
                     return false;
                 })
                 .map(|claim_description| claim_description.clone().into_active_model())
-                .collect::<Vec<claim_description::ActiveModel>>();
+                .collect::<Vec<claim_description_state::ActiveModel>>();
 
             if things_to_insert.len() == 0 {
                 debug!("Nothing to insert");
@@ -609,7 +630,7 @@ pub(crate) async fn import_claim_description_state(
                 }
             }
 
-            let _ = claim_description::Entity::insert_many(things_to_insert)
+            let _ = claim_description_state::Entity::insert_many(things_to_insert)
                 .on_conflict(on_conflict.clone())
                 .exec(conn)
                 .await?;
@@ -619,9 +640,9 @@ pub(crate) async fn import_claim_description_state(
     }
 
     if buffer_before_insert.len() > 0 {
-        let claim_description_from_db = claim_description::Entity::find()
+        let claim_description_from_db = claim_description_state::Entity::find()
             .filter(
-                claim_description::Column::EntityId.is_in(
+                claim_description_state::Column::EntityId.is_in(
                     buffer_before_insert
                         .iter()
                         .map(|claim_description| claim_description.entity_id)
@@ -634,7 +655,7 @@ pub(crate) async fn import_claim_description_state(
         let claim_description_from_db_map = claim_description_from_db
             .into_iter()
             .map(|claim_description| (claim_description.entity_id, claim_description))
-            .collect::<HashMap<i64, claim_description::Model>>();
+            .collect::<HashMap<i64, claim_description_state::Model>>();
 
         let things_to_insert = buffer_before_insert
             .iter()
@@ -653,14 +674,14 @@ pub(crate) async fn import_claim_description_state(
                 return false;
             })
             .map(|claim_description| claim_description.clone().into_active_model())
-            .collect::<Vec<claim_description::ActiveModel>>();
+            .collect::<Vec<claim_description_state::ActiveModel>>();
 
         if things_to_insert.len() == 0 {
             debug!("Nothing to insert");
             buffer_before_insert.clear();
         } else {
             debug!("Inserting {} claim_tech_desc", things_to_insert.len());
-            claim_description::Entity::insert_many(things_to_insert)
+            claim_description_state::Entity::insert_many(things_to_insert)
                 .on_conflict(on_conflict)
                 .exec(conn)
                 .await?;
@@ -679,8 +700,8 @@ pub(crate) async fn import_claim_description_state(
             "claim_tech_desc's to delete: {:?}",
             claim_description_to_delete
         );
-        claim_description::Entity::delete_many()
-            .filter(claim_description::Column::EntityId.is_in(claim_description_to_delete))
+        claim_description_state::Entity::delete_many()
+            .filter(claim_description_state::Column::EntityId.is_in(claim_description_to_delete))
             .exec(conn)
             .await?;
     }
@@ -690,8 +711,8 @@ pub(crate) async fn import_claim_description_state(
 
 pub(crate) fn get_merged_inventories(
     inventorys: Vec<inventory::Model>,
-    items: &HashMap<i64, item::Model>,
-    cargos: &HashMap<i64, cargo_description::Model>,
+    items: &HashMap<i64, item_desc::Model>,
+    cargos: &HashMap<i64, cargo_desc::Model>,
 ) -> Vec<entity::inventory::ExpendedRefrence> {
     let mut hashmap: HashMap<i64, entity::inventory::ExpendedRefrence> = HashMap::new();
 
@@ -719,4 +740,59 @@ pub(crate) fn get_merged_inventories(
     }
 
     hashmap.into_iter().map(|(_, value)| value).collect()
+}
+
+pub async fn import_job_claim_description_state(temp_config: Config) -> () {
+    let config = temp_config.clone();
+    if config.live_updates {
+        loop {
+            let conn = super::create_importer_default_db_connection(config.clone()).await;
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60));
+
+            import_internal_claim_description_state(config.clone(), conn, client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_internal_claim_description_state(config.clone(), conn, client);
+    }
+}
+
+fn import_internal_claim_description_state(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let claim_description = claims::load_state_from_spacetimedb(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                )
+                    .await;
+
+                if let Ok(_cargo_description) = claim_description {
+                    info!("ClaimDescriptionState imported");
+                } else {
+                    error!(
+                        "ClaimDescriptionState import failed: {:?}",
+                        claim_description
+                    );
+                }
+            });
+    });
 }

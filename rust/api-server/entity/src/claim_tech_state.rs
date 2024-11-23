@@ -11,7 +11,7 @@ pub struct Model {
     pub learned: Json,
     pub researching: i32,
     pub start_timestamp: i64,
-    pub cancel_token: Json,
+    pub scheduled_id: Json,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

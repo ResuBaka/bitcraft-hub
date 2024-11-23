@@ -12,7 +12,7 @@ mod locations;
 mod player_state;
 mod recipes;
 mod skill_descriptions;
-mod vehicle_state;
+mod deployable_state;
 mod trading_orders;
 
 use axum::{
@@ -44,6 +44,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env;
 use std::fs::File;
+use std::future::Future;
 use std::io::Write;
 use std::ops::Add;
 use std::path::PathBuf;
@@ -311,447 +312,162 @@ fn import_data(config: Config) {
             .block_on(async {
                 let mut tasks = vec![];
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
+                //
+                // let temp_config = config.clone();
+                // tasks.push(tokio::spawn(async move {
+                //     let config = temp_config.clone();
+                //     if config.live_updates {
+                //         loop {
+                //             let conn = create_importer_default_db_connection(config.clone()).await;
+                //             let client = create_default_client(config.clone());
+                //
+                //             let now = Instant::now();
+                //             let now_in = now.add(Duration::from_secs(60));
+                //
+                //             import_recipes(config.clone(), conn, client);
+                //
+                //             let now = Instant::now();
+                //             let wait_time = now_in.duration_since(now);
+                //
+                //             if wait_time.as_secs() > 0 {
+                //                 tokio::time::sleep(wait_time).await;
+                //             }
+                //         }
+                //     } else {
+                //         let conn = create_importer_default_db_connection(config.clone()).await;
+                //         let client = create_default_client(config.clone());
+                //
+                //         import_recipes(config.clone(), conn, client);
+                //     }
+                // }));
+                // let temp_config = config.clone();
+                // tasks.push(tokio::spawn(async move {
+                //     let config = temp_config.clone();
+                //     if config.live_updates {
+                //         loop {
+                //             let conn = create_importer_default_db_connection(config.clone()).await;
+                //             let client = create_default_client(config.clone());
+                //
+                //             let now = Instant::now();
+                //             let now_in = now.add(Duration::from_secs(60));
+                //
+                //             import_claim_tech_desc(config.clone(), conn, client);
+                //
+                //             let now = Instant::now();
+                //             let wait_time = now_in.duration_since(now);
+                //
+                //             if wait_time.as_secs() > 0 {
+                //                 tokio::time::sleep(wait_time).await;
+                //             }
+                //         }
+                //     } else {
+                //         let conn = create_importer_default_db_connection(config.clone()).await;
+                //         let client = create_default_client(config.clone());
+                //
+                //         import_claim_tech_desc(config.clone(), conn, client);
+                //     }
+                // }));
+                //
+                // let temp_config = config.clone();
+                // tasks.push(tokio::spawn(async move {
+                //     let config = temp_config.clone();
+                //     if config.live_updates {
+                //         loop {
+                //             let conn = create_importer_default_db_connection(config.clone()).await;
+                //             let client = create_default_client(config.clone());
+                //
+                //             let now = Instant::now();
+                //             let now_in = now.add(Duration::from_secs(60));
+                //
+                //             import_skill_descs(config.clone(), conn, client);
+                //
+                //             let now = Instant::now();
+                //             let wait_time = now_in.duration_since(now);
+                //
+                //             if wait_time.as_secs() > 0 {
+                //                 tokio::time::sleep(wait_time).await;
+                //             }
+                //         }
+                //     } else {
+                //         let conn = create_importer_default_db_connection(config.clone()).await;
+                //         let client = create_default_client(config.clone());
+                //
+                //         import_skill_descs(config.clone(), conn, client);
+                //     }
+                // }));
+                //
+                //
 
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_inventory(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_inventory(config.clone(), conn, client);
-                    }
-                }));
-
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_player_state(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_player_state(config.clone(), conn, client);
-                    }
-                }));
-
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_items(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_items(config.clone(), conn, client);
-                    }
-                }));
-
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_recipes(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_recipes(config.clone(), conn, client);
-                    }
-                }));
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_claim_tech_desc(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_claim_tech_desc(config.clone(), conn, client);
-                    }
-                }));
+                //
+                // let temp_config = config.clone();
+                // tasks.push(tokio::spawn(async move {
+                //     let config = temp_config.clone();
+                //     if config.live_updates {
+                //         loop {
+                //             let conn = create_importer_default_db_connection(config.clone()).await;
+                //             let client = create_default_client(config.clone());
+                //
+                //             let now = Instant::now();
+                //             let now_in = now.add(Duration::from_secs(60));
+                //
+                //             import_trade_order_state(config.clone(), conn, client);
+                //
+                //             let now = Instant::now();
+                //             let wait_time = now_in.duration_since(now);
+                //
+                //             if wait_time.as_secs() > 0 {
+                //                 tokio::time::sleep(wait_time).await;
+                //             }
+                //         }
+                //     } else {
+                //         let conn = create_importer_default_db_connection(config.clone()).await;
+                //         let client = create_default_client(config.clone());
+                //
+                //         import_trade_order_state(config.clone(), conn, client);
+                //     }
+                // }));
+                //
 
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_skill_descs(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_skill_descs(config.clone(), conn, client);
-                    }
-                }));
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_claim_tech_state(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_claim_tech_state(config.clone(), conn, client);
-                    }
-                }));
+                tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(temp_config)));
 
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_vehicle_state(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_vehicle_state(config.clone(), conn, client);
-                    }
-                }));
+                tasks.push(tokio::spawn(player_state::import_job_player_state(temp_config)));
 
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_claim_description(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_claim_description(config.clone(), conn, client);
-                    }
-                }));
+                tasks.push(tokio::spawn(player_state::import_job_player_username_state(temp_config)));
 
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_building_state(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_building_state(config.clone(), conn, client);
-                    }
-                }));
-
+                tasks.push(tokio::spawn(leaderboard::import_job_experience_state(temp_config)));
+                
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_building_desc(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_building_desc(config.clone(), conn, client);
-                    }
-                }));
-
+                tasks.push(tokio::spawn(claim_tech_state::import_job_claim_tech_state(temp_config)));
+                
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_experience_state(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_experience_state(config.clone(), conn, client);
-                    }
-                }));
-
+                tasks.push(tokio::spawn(claim_tech_desc::import_job_claim_tech_desc(temp_config)));
+                
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_trade_order_state(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_trade_order_state(config.clone(), conn, client);
-                    }
-                }));
-
+                tasks.push(tokio::spawn(claims::import_job_claim_description_state(temp_config)));
+                
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(async move {
-                    let config = temp_config.clone();
-                    if config.live_updates {
-                        loop {
-                            let conn = create_importer_default_db_connection(config.clone()).await;
-                            let client = create_default_client(config.clone());
-
-                            let now = Instant::now();
-                            let now_in = now.add(Duration::from_secs(60));
-
-                            import_skill_descriptions(config.clone(), conn, client);
-
-                            let now = Instant::now();
-                            let wait_time = now_in.duration_since(now);
-
-                            if wait_time.as_secs() > 0 {
-                                tokio::time::sleep(wait_time).await;
-                            }
-                        }
-                    } else {
-                        let conn = create_importer_default_db_connection(config.clone()).await;
-                        let client = create_default_client(config.clone());
-
-                        import_skill_descriptions(config.clone(), conn, client);
-                    }
-                }));
+                tasks.push(tokio::spawn(items::import_job_item_desc(temp_config)));                
+                
+                let temp_config = config.clone();
+                tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));               
+                
+                let temp_config = config.clone();
+                tasks.push(tokio::spawn(inventory::import_job_item_desc(temp_config)));
+                
+                let temp_config = config.clone();
+                tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(temp_config)));
+                
+                let temp_config = config.clone();
+                tasks.push(tokio::spawn(buildings::import_job_building_desc(temp_config)));
+                
+                let temp_config = config.clone();
+                tasks.push(tokio::spawn(buildings::import_job_building_state(temp_config)));
 
                 futures::future::join_all(tasks).await;
-            });
-    });
-}
-
-fn import_inventory(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let vehicle_state = inventory::load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_vehicle_state) = vehicle_state {
-                    info!("Inventory imported");
-                } else {
-                    error!("Inventory import failed: {:?}", vehicle_state);
-                }
-            });
-    });
-}
-
-fn import_items(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let vehicle_state = items::load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_vehicle_state) = vehicle_state {
-                    info!("Items imported");
-                } else {
-                    error!("Items import failed: {:?}", vehicle_state);
-                }
             });
     });
 }
@@ -806,234 +522,6 @@ fn import_skill_descs(config: Config, conn: DatabaseConnection, client: Client) 
     });
 }
 
-fn import_player_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let vehicle_state = player_state::load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_vehicle_state) = vehicle_state {
-                    info!("PlayerState imported");
-                } else {
-                    error!("PlayerState import failed: {:?}", vehicle_state);
-                }
-            });
-    });
-}
-
-fn import_cargo_desc(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let cargo_desc = cargo_desc::load_desc_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_cargo_desc) = cargo_desc {
-                    info!("CargoDesc imported");
-                } else {
-                    error!("CargoDesc import failed: {:?}", cargo_desc);
-                }
-            });
-    });
-}
-
-fn import_claim_tech_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let claim_tech_state = claim_tech_state::load_claim_tech_state(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_claim_tech_state) = claim_tech_state {
-                    info!("CargoDesc imported");
-                } else {
-                    error!("CargoDesc import failed: {:?}", claim_tech_state);
-                }
-            });
-    });
-}
-
-fn import_claim_tech_desc(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let claim_tech_desc = claim_tech_desc::load_claim_tech_desc(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_claim_tech_desc) = claim_tech_desc {
-                    info!("ClaimTechDesc imported");
-                } else {
-                    error!("ClaimTechDesc import failed: {:?}", claim_tech_desc);
-                }
-            });
-    });
-}
-
-fn import_vehicle_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let vehicle_state = vehicle_state::load_vehicle_state(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_) = vehicle_state {
-                    info!("VehicleState imported");
-                } else {
-                    error!("VehicleState import failed: {:?}", vehicle_state);
-                }
-            });
-    });
-}
-
-fn import_claim_description(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let claim_description = claims::load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_cargo_description) = claim_description {
-                    info!("ClaimDescriptionState imported");
-                } else {
-                    error!(
-                        "ClaimDescriptionState import failed: {:?}",
-                        claim_description
-                    );
-                }
-            });
-    });
-}
-
-fn import_building_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let building_state = buildings::load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_building_state) = building_state {
-                    info!("BuildingState imported");
-                } else {
-                    error!("BuildingState import failed: {:?}", building_state);
-                }
-            });
-    });
-}
-
-fn import_building_desc(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let building_desc = buildings::load_desc_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_building_desc) = building_desc {
-                    info!("BuildingState imported");
-                } else {
-                    error!("BuildingState import failed: {:?}", building_desc);
-                }
-            });
-    });
-}
-
-fn import_experience_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let experience_state = leaderboard::load_experience_state(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_experience_state) = experience_state {
-                    info!("ExperienceState imported");
-                } else {
-                    error!("ExperienceState import failed: {:?}", experience_state);
-                }
-            });
-    });
-}
-
 fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Client) {
     std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
@@ -1055,32 +543,6 @@ fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Cl
                     info!("TradeOrderState imported");
                 } else {
                     error!("TradeOrderState import failed: {:?}", trade_order_state);
-                }
-            });
-    });
-}
-
-fn import_skill_descriptions(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let skill_descriptions_desc = skill_descriptions::load_desc_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                    // &config,
-                )
-                .await;
-
-                if let Ok(_) = skill_descriptions_desc {
-                    info!("SkillDescriptionsDesc imported");
-                } else {
-                    error!("SkillDescriptionsDesc import failed: {:?}", skill_descriptions_desc);
                 }
             });
     });

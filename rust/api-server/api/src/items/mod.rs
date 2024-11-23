@@ -1,8 +1,8 @@
-use crate::{AppState, Params};
+use crate::{items, AppState, Params};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Json;
-use entity::item;
+use entity::item_desc;
 use log::{debug, error, info};
 use sea_orm::{
     sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait,
@@ -12,10 +12,14 @@ use serde_json::{json, Value};
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
+use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
+use crate::config::Config;
 
 pub async fn list_items(
     state: State<AppState>,
@@ -48,10 +52,10 @@ pub async fn list_items(
 #[allow(dead_code)]
 pub(crate) async fn load_item_desc_from_file(
     storage_path: &PathBuf,
-) -> anyhow::Result<Vec<item::Model>> {
+) -> anyhow::Result<Vec<item_desc::Model>> {
     let item_file = File::open(storage_path.join("State/InventoryState.json"))?;
     let inventory: Value = serde_json::from_reader(&item_file)?;
-    let inventory: Vec<item::Model> =
+    let inventory: Vec<item_desc::Model> =
         serde_json::from_value(inventory.get(0).unwrap().get("rows").unwrap().clone())?;
 
     Ok(inventory)
@@ -101,7 +105,7 @@ pub(crate) async fn import_items(
 ) -> anyhow::Result<()> {
     let start = Instant::now();
 
-    let mut buffer_before_insert: Vec<item::Model> = Vec::with_capacity(chunk_size.unwrap_or(5000));
+    let mut buffer_before_insert: Vec<item_desc::Model> = Vec::with_capacity(chunk_size.unwrap_or(5000));
 
     let mut json_stream_reader = JsonStreamReader::new(items.as_bytes());
 
@@ -109,32 +113,32 @@ pub(crate) async fn import_items(
     json_stream_reader.seek_to(&json_path!["rows"])?;
     json_stream_reader.begin_array()?;
 
-    let on_conflict = sea_query::OnConflict::column(item::Column::Id)
+    let on_conflict = sea_query::OnConflict::column(item_desc::Column::Id)
         .update_columns([
-            item::Column::Name,
-            item::Column::Description,
-            item::Column::Volume,
-            item::Column::Durability,
-            item::Column::SecondaryKnowledgeId,
-            item::Column::ModelAssetName,
-            item::Column::IconAssetName,
-            item::Column::Tier,
-            item::Column::Tag,
-            item::Column::Rarity,
-            item::Column::CompendiumEntry,
-            item::Column::ItemListId,
+            item_desc::Column::Name,
+            item_desc::Column::Description,
+            item_desc::Column::Volume,
+            item_desc::Column::Durability,
+            item_desc::Column::SecondaryKnowledgeId,
+            item_desc::Column::ModelAssetName,
+            item_desc::Column::IconAssetName,
+            item_desc::Column::Tier,
+            item_desc::Column::Tag,
+            item_desc::Column::Rarity,
+            item_desc::Column::CompendiumEntry,
+            item_desc::Column::ItemListId,
         ])
         .to_owned();
 
     let mut items_to_delete = Vec::new();
 
-    while let Ok(value) = json_stream_reader.deserialize_next::<item::Model>() {
+    while let Ok(value) = json_stream_reader.deserialize_next::<item_desc::Model>() {
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            let items_from_db = item::Entity::find()
+            let items_from_db = item_desc::Entity::find()
                 .filter(
-                    item::Column::Id.is_in(
+                    item_desc::Column::Id.is_in(
                         buffer_before_insert
                             .iter()
                             .map(|item| item.id)
@@ -160,7 +164,7 @@ pub(crate) async fn import_items(
             let items_from_db_map = items_from_db
                 .into_iter()
                 .map(|item| (item.id, item))
-                .collect::<HashMap<i64, item::Model>>();
+                .collect::<HashMap<i64, item_desc::Model>>();
 
             let things_to_insert = buffer_before_insert
                 .iter()
@@ -179,7 +183,7 @@ pub(crate) async fn import_items(
                     return false;
                 })
                 .map(|item| item.clone().into_active_model())
-                .collect::<Vec<item::ActiveModel>>();
+                .collect::<Vec<item_desc::ActiveModel>>();
 
             if things_to_insert.len() == 0 {
                 debug!("Nothing to insert");
@@ -196,7 +200,7 @@ pub(crate) async fn import_items(
                 }
             }
 
-            let _ = item::Entity::insert_many(things_to_insert)
+            let _ = item_desc::Entity::insert_many(things_to_insert)
                 .on_conflict(on_conflict.clone())
                 .exec(conn)
                 .await?;
@@ -206,9 +210,9 @@ pub(crate) async fn import_items(
     }
 
     if buffer_before_insert.len() > 0 {
-        let items_from_db = item::Entity::find()
+        let items_from_db = item_desc::Entity::find()
             .filter(
-                item::Column::Id.is_in(
+                item_desc::Column::Id.is_in(
                     buffer_before_insert
                         .iter()
                         .map(|item| item.id)
@@ -221,7 +225,7 @@ pub(crate) async fn import_items(
         let items_from_db_map = items_from_db
             .into_iter()
             .map(|item| (item.id, item))
-            .collect::<HashMap<i64, item::Model>>();
+            .collect::<HashMap<i64, item_desc::Model>>();
 
         let things_to_insert = buffer_before_insert
             .iter()
@@ -240,14 +244,14 @@ pub(crate) async fn import_items(
                 return false;
             })
             .map(|item| item.clone().into_active_model())
-            .collect::<Vec<item::ActiveModel>>();
+            .collect::<Vec<item_desc::ActiveModel>>();
 
         if things_to_insert.len() == 0 {
             debug!("Nothing to insert");
             buffer_before_insert.clear();
         } else {
             debug!("Inserting {} items", things_to_insert.len());
-            item::Entity::insert_many(things_to_insert)
+            item_desc::Entity::insert_many(things_to_insert)
                 .on_conflict(on_conflict)
                 .exec(conn)
                 .await?;
@@ -260,11 +264,64 @@ pub(crate) async fn import_items(
 
     if items_to_delete.len() > 0 {
         info!("item's to delete: {:?}", items_to_delete);
-        item::Entity::delete_many()
-            .filter(item::Column::Id.is_in(items_to_delete))
+        item_desc::Entity::delete_many()
+            .filter(item_desc::Column::Id.is_in(items_to_delete))
             .exec(conn)
             .await?;
     }
 
     Ok(())
+}
+
+pub async fn import_job_item_desc(temp_config: Config) -> () {
+    let temp_config = temp_config.clone();
+    let config = temp_config.clone();
+    if config.live_updates {
+        loop {
+            let conn = super::create_importer_default_db_connection(config.clone()).await;
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60));
+
+            import_internal_items(config.clone(), conn, client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_internal_items(config.clone(), conn, client);
+    }
+}
+
+fn import_internal_items(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let vehicle_state = load_state_from_spacetimedb(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                )
+                    .await;
+
+                if let Ok(_vehicle_state) = vehicle_state {
+                    info!("Items imported");
+                } else {
+                    error!("Items import failed: {:?}", vehicle_state);
+                }
+            });
+    });
 }

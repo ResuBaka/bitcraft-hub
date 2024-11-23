@@ -51,6 +51,8 @@ pub(crate) async fn get_needed_in_crafting(
     state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
+    return Ok(Codec(vec![]));
+    
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
     let recipes = recipes
@@ -72,6 +74,7 @@ pub(crate) async fn get_produced_in_crafting(
     state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
+    return Ok(Codec(vec![]));
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
     let recipes = recipes
@@ -93,6 +96,7 @@ pub(crate) async fn get_needed_to_craft(
     state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
+    return Ok(Codec(vec![]));
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
     let recipes = recipes.into_iter().map(|x| x.into()).collect();

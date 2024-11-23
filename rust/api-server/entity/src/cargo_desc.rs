@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "cargo_description")]
+#[sea_orm(table_name = "cargo_desc")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i64,
@@ -33,6 +33,7 @@ pub struct Model {
     pub tier: i32,
     pub tag: String,
     pub rarity: Json,
+    pub not_pickupable: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

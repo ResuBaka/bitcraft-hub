@@ -3,8 +3,8 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Router;
 use axum_codec::Codec;
-use entity::cargo_description;
-use entity::item;
+use entity::cargo_desc;
+use entity::item_desc;
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
 use serde::Deserialize;
 use serde_json::Value;
@@ -22,8 +22,8 @@ pub(crate) fn get_routes() -> Router<AppState> {
 #[axum_codec::apply(encode, decode)]
 #[serde(untagged)]
 enum ItemCargo {
-    Item(item::Model),
-    Cargo(cargo_description::Model),
+    Item(item_desc::Model),
+    Cargo(cargo_desc::Model),
 }
 
 #[derive(Deserialize)]
@@ -108,19 +108,19 @@ pub(crate) async fn import_items(conn: &DatabaseConnection) -> anyhow::Result<()
     let item_file =
         File::open("/home/resubaka/code/crafting-list/storage/Desc/ItemDesc.json").unwrap();
     let item: Value = serde_json::from_reader(&item_file).unwrap();
-    let item: Vec<item::Model> =
+    let item: Vec<item_desc::Model> =
         serde_json::from_value(item.get(0).unwrap().get("rows").unwrap().clone()).unwrap();
     let count = item.len();
-    let db_count = item::Entity::find().count(conn).await.unwrap();
+    let db_count = item_desc::Entity::find().count(conn).await.unwrap();
 
     if (count as u64) == db_count {
         return Ok(());
     }
 
-    let item: Vec<item::ActiveModel> = item.into_iter().map(|x| x.into_active_model()).collect();
+    let item: Vec<item_desc::ActiveModel> = item.into_iter().map(|x| x.into_active_model()).collect();
 
     for item in item.chunks(5000) {
-        let _ = item::Entity::insert_many(item.to_vec())
+        let _ = item_desc::Entity::insert_many(item.to_vec())
             .on_conflict_do_nothing()
             .exec(conn)
             .await;
@@ -150,8 +150,8 @@ fn merge_tiers(items_tiers: Vec<i32>, cargo_tiers: Vec<i32>) -> Vec<i32> {
 }
 
 fn merge_items_and_cargo(
-    items: Vec<item::Model>,
-    cargo: Vec<cargo_description::Model>,
+    items: Vec<item_desc::Model>,
+    cargo: Vec<cargo_desc::Model>,
 ) -> Vec<ItemCargo> {
     let mut merged_items = Vec::new();
     for item in items {

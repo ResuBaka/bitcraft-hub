@@ -11,11 +11,11 @@ const {
   refresh,
 } = await useFetch(
   () => {
-    // if (new_api) {
-    //   return `${api.base}/api/bitcraft/leaderboard`;
-    // } else {
+    if (new_api) {
+      return `${api.base}/leaderboard`;
+    } else {
     return `/api/bitcraft/leaderboard`;
-    // }
+    }
   },
   {
     lazy: true,

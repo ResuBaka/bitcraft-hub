@@ -21,12 +21,15 @@ pub struct Model {
     pub wilderness: bool,
     pub footprint: Json,
     pub max_health: i32,
+    pub defense_level: i32,
     pub decay: f32,
     pub maintenance: f32,
+    pub build_permission: Json,
     pub interaction_level: Json,
     pub has_action: bool,
     pub show_in_compendium: bool,
     pub is_ruins: bool,
+    pub not_deconstructible: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -44,10 +47,13 @@ pub struct Function {
     pub cargo_slots: i32,
     pub refining_slots: i32,
     pub refining_cargo_slots: i32,
+    pub item_slot_size: i32,
     pub cargo_slot_size: i32,
     pub trade_orders: i32,
     pub allowed_item_id_per_slot: Vec<i32>,
     pub buff_ids: Vec<i32>,
+    pub concurrent_crafts_per_player: i32,
+    pub terraform: bool,
 }
 
 #[axum_codec::apply(encode, decode)]

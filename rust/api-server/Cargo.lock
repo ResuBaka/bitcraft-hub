@@ -1195,6 +1195,7 @@ dependencies = [
 name = "entity"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum-codec",
  "sea-orm",
  "serde",

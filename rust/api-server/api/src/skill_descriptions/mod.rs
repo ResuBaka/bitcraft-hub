@@ -6,10 +6,15 @@ use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
+use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
+use crate::config::Config;
+use crate::skill_descriptions;
 
 #[allow(dead_code)]
 pub(crate) async fn load_skill_desc_from_file(
@@ -82,12 +87,16 @@ pub(crate) async fn import_skill_descs(
             skill_desc::Column::Description,
             skill_desc::Column::IconAssetName,
             skill_desc::Column::Title,
+            skill_desc::Column::SkillCategory,
+            skill_desc::Column::Skill,
         ])
         .to_owned();
 
     let mut skill_descs_to_delete = Vec::new();
 
-    while let Ok(value) = json_stream_reader.deserialize_next::<skill_desc::Model>() {
+    while let Ok(value) = json_stream_reader.deserialize_next::<skill_desc::SkillDescRaw>() {
+        let value = value.to_model()?;
+        
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -231,4 +240,57 @@ pub(crate) async fn import_skill_descs(
     }
 
     Ok(())
+}
+
+fn import_skill_descriptions(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let skill_descriptions_desc = skill_descriptions::load_desc_from_spacetimedb(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                    // &config,
+                )
+                    .await;
+
+                if let Ok(_) = skill_descriptions_desc {
+                    info!("SkillDescriptionsDesc imported");
+                } else {
+                    error!("SkillDescriptionsDesc import failed: {:?}", skill_descriptions_desc);
+                }
+            });
+    });
+}
+
+pub async fn import_job_skill_desc(temp_config: Config) -> () {
+    let config = temp_config.clone();
+    if config.live_updates {
+        loop {
+            let conn = super::create_importer_default_db_connection(config.clone()).await;
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60));
+
+            import_skill_descriptions(config.clone(), conn, client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_skill_descriptions(config.clone(), conn, client);
+    }
 }

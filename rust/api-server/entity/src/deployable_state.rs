@@ -3,15 +3,17 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-#[sea_orm(table_name = "vehicle_state")]
+#[sea_orm(table_name = "deployable_state")]
 #[axum_codec::apply(encode, decode)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     pub owner_id: i64,
+    pub claim_entity_id: i64,
     pub direction: i32,
-    pub vehicle_description_id: i32,
+    pub deployable_description_id: i32,
     pub nickname: String,
+    pub hidden: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

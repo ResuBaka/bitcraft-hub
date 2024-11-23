@@ -14,10 +14,14 @@ use serde_json::Value;
 use service::Query;
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
+use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
+use crate::config::Config;
 
 #[macro_export]
 macro_rules! generate_mysql_sum_level_sql_statement {
@@ -215,6 +219,22 @@ pub(crate) async fn get_top_100(
             continue;
         }
 
+        if skill.name == "Lore Keeper" {
+            continue;
+        }
+
+        if skill.name == "Trading" {
+            continue;
+        }
+
+        if skill.name == "Taming" {
+            continue;
+        }
+
+        if skill.name == "Exploration" {
+            continue;
+        }
+
         let db = state.conn.clone();
         tasks.push(tokio::spawn(async move {
             let mut leaderboard: Vec<RankType> = Vec::new();
@@ -320,7 +340,7 @@ pub(crate) async fn get_top_100(
     player_ids.sort();
     player_ids.dedup();
 
-    let players_name_by_id = Query::find_player_by_ids(&state.conn, player_ids)
+    let players_name_by_id = Query::find_player_username_by_ids(&state.conn, player_ids)
         .await
         .map_err(|error| {
             error!("Error: {error}");
@@ -714,6 +734,22 @@ pub(crate) async fn player_leaderboard(
             continue;
         }
 
+        if skill.name == "Lore Keeper" {
+            continue;
+        }
+
+        if skill.name == "Trading" {
+            continue;
+        }
+
+        if skill.name == "Taming" {
+            continue;
+        }
+
+        if skill.name == "Exploration" {
+            continue;
+        }
+
         let db = state.conn.clone();
         tasks.push(tokio::spawn(async move {
             let (entrie, rank) =
@@ -802,7 +838,7 @@ pub(crate) async fn player_leaderboard(
         }
     }
 
-    let players_name_by_id = Query::find_player_by_ids(&state.conn, vec![player_id])
+    let players_name_by_id = Query::find_player_username_by_ids(&state.conn, vec![player_id])
         .await
         .map_err(|error| {
             error!("Error: {error}");
@@ -887,6 +923,22 @@ pub(crate) async fn get_claim_leaderboard(
 
     for skill in skills {
         if skill.name == "ANY" {
+            continue;
+        }
+
+        if skill.name == "Lore Keeper" {
+            continue;
+        }
+
+        if skill.name == "Trading" {
+            continue;
+        }
+
+        if skill.name == "Taming" {
+            continue;
+        }
+
+        if skill.name == "Exploration" {
             continue;
         }
 
@@ -1003,7 +1055,7 @@ pub(crate) async fn get_claim_leaderboard(
     player_ids.sort();
     player_ids.dedup();
 
-    let players_name_by_id = Query::find_player_by_ids(&state.conn, player_ids)
+    let players_name_by_id = Query::find_player_username_by_ids(&state.conn, player_ids)
         .await
         .map_err(|error| {
             error!("Error: {error}");
@@ -1046,4 +1098,56 @@ pub(crate) async fn get_claim_leaderboard(
     }
 
     Ok(Json(leaderboard_result))
+}
+
+pub async fn import_job_experience_state(temp_config: Config) -> () {
+    let config = temp_config.clone();
+    if config.live_updates {
+        loop {
+            let conn = super::create_importer_default_db_connection(config.clone()).await;
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60));
+
+            import_internal_experience_state(config.clone(), conn, client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_internal_experience_state(config.clone(), conn, client);
+    }
+}
+    
+fn import_internal_experience_state(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let experience_state = leaderboard::load_experience_state(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                )
+                    .await;
+
+                if let Ok(_experience_state) = experience_state {
+                    info!("ExperienceState imported");
+                } else {
+                    error!("ExperienceState import failed: {:?}", experience_state);
+                }
+            });
+    });
 }

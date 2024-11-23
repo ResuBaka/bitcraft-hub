@@ -99,7 +99,7 @@ const currentBuildings = computed(() => {
 
 const length = computed(() => {
   return data.value?.total
-    ? Math.ceil(data.value?.total / data.value?.perPage)
+    ? Math.ceil(data.value?.total / data.value?.per_page)
     : 0;
 });
 </script>

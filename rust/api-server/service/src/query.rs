@@ -1,16 +1,17 @@
 use std::fmt::Write;
 use ::entity::trade_order;
 use ::entity::building_state;
-use ::entity::cargo_description;
+use ::entity::cargo_desc;
 use ::entity::claim_tech_desc;
 use ::entity::claim_tech_state;
 use ::entity::crafting_recipe;
 use ::entity::inventory;
-use ::entity::vehicle_state;
+use ::entity::deployable_state;
 use ::entity::{
-    building_desc, claim_description, claim_description::Entity as ClaimDescription,
-    experience_state, item, item::Entity as Item, location, location::Entity as Location,
+    building_desc, claim_description_state, claim_description_state::Entity as ClaimDescription,
+    experience_state, item_desc, item_desc::Entity as Item, location, location::Entity as Location,
     player_state, player_state::Entity as PlayerState, skill_desc,
+    player_username_state, player_username_state::Entity as PlayerUsernameState,
 };
 use sea_orm::prelude::Decimal;
 use sea_orm::sea_query::{Alias, Expr, MysqlQueryBuilder, PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder};
@@ -38,19 +39,29 @@ impl Query {
             .await
     }
 
+    pub async fn find_player_username_by_ids(
+        db: &DbConn,
+        ids: Vec<i64>,
+    ) -> Result<Vec<player_username_state::Model>, DbErr> {
+        PlayerUsernameState::find()
+            .filter(player_username_state::Column::EntityId.is_in(ids))
+            .all(db)
+            .await
+    }
+
     /// If ok, returns (post models, num pages).
     pub async fn find_players(
         db: &DbConn,
         page: u64,
         per_page: u64,
         search: Option<String>,
-    ) -> Result<(Vec<player_state::Model>, ItemsAndPagesNumber), DbErr> {
+    ) -> Result<(Vec<player_state::Model>, Vec<player_username_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let paginator = PlayerState::find()
-            .order_by_asc(player_state::Column::EntityId)
+        let paginator = PlayerUsernameState::find()
+            .order_by_asc(player_username_state::Column::EntityId)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => {
-                    query.filter(Expr::col(player_state::Column::Username).ilike(format!("%{}%", value)))
+                    query.filter(Expr::col(player_username_state::Column::Username).ilike(format!("%{}%", value)))
                 }
                 _ => unreachable!()
             })
@@ -59,7 +70,18 @@ impl Query {
         let num_pages = paginator.num_items_and_pages().await?;
 
         // Fetch paginated posts
-        paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
+        let (player_usernames, num_pages) = paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))?;
+
+        let player_states = PlayerState::find()
+            .filter(player_state::Column::EntityId.is_in(player_usernames.iter().map(|p| p.entity_id).collect::<Vec<i64>>()))
+            .all(db)
+            .await?;
+
+        Ok((
+            player_states,
+            player_usernames,
+            num_pages
+        ))
     }
 
     /// If ok, returns (post models, num pages).
@@ -84,12 +106,12 @@ impl Query {
         page: u64,
         per_page: u64,
         search: Option<String>,
-    ) -> Result<(Vec<item::Model>, ItemsAndPagesNumber), DbErr> {
+    ) -> Result<(Vec<item_desc::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
         let paginator = Item::find()
-            .order_by_asc(item::Column::Id)
+            .order_by_asc(item_desc::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item::Column::Name).ilike(format!("%{}%", value))),
+                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
                 _ => unreachable!()
             })
             .paginate(db, per_page);
@@ -100,30 +122,30 @@ impl Query {
         paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
     }
 
-    pub async fn all_items(db: &DbConn) -> Result<Vec<item::Model>, DbErr> {
+    pub async fn all_items(db: &DbConn) -> Result<Vec<item_desc::Model>, DbErr> {
         Item::find().all(db).await
     }
 
-    pub async fn search_items_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<item::Model>, DbErr> {
+    pub async fn search_items_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<item_desc::Model>, DbErr> {
         Item::find()
             .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item::Column::Name).ilike(format!("%{}%", value))),
+                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
                 _ => unreachable!()
             })
             .apply_if(tag.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item::Column::Tag).eq(value)),
+                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Tag).eq(value)),
                 _ => unreachable!()
             })
             .apply_if(tier.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item::Column::Tier).eq(value)),
+                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Tier).eq(value)),
                 _ => unreachable!()
             })
             .all(db).await
     }
 
-    pub async fn find_item_by_ids(db: &DbConn, ids: Vec<i64>) -> Result<Vec<item::Model>, DbErr> {
+    pub async fn find_item_by_ids(db: &DbConn, ids: Vec<i64>) -> Result<Vec<item_desc::Model>, DbErr> {
         Item::find()
-            .filter(item::Column::Id.is_in(ids))
+            .filter(item_desc::Column::Id.is_in(ids))
             .all(db)
             .await
     }
@@ -131,12 +153,12 @@ impl Query {
     pub async fn search_items_desc_ids(db: &DbConn, search: &Option<String>) -> Result<Vec<i64>, DbErr> {
         Item::find()
             .select_only()
-            .column(item::Column::Id)
+            .column(item_desc::Column::Id)
             .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item::Column::Name).ilike(format!("%{}%", value))),
+                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
                 _ => unreachable!()
             })
-            .order_by_asc(item::Column::Id)
+            .order_by_asc(item_desc::Column::Id)
             .into_tuple()
             .all(db)
             .await
@@ -145,9 +167,9 @@ impl Query {
     pub async fn find_unique_item_tags(db: &DbConn) -> Result<Vec<String>, DbErr> {
         let items = Item::find()
             .select_only()
-            .column(item::Column::Tag)
-            .group_by(item::Column::Tag)
-            .order_by_asc(item::Column::Tag)
+            .column(item_desc::Column::Tag)
+            .group_by(item_desc::Column::Tag)
+            .order_by_asc(item_desc::Column::Tag)
             .into_model::<ItemTag>()
             .all(db)
             .await?;
@@ -157,45 +179,45 @@ impl Query {
     pub async fn find_unique_item_tiers(db: &DbConn) -> Result<Vec<i32>, DbErr> {
         let items = Item::find()
             .select_only()
-            .column(item::Column::Tier)
-            .group_by(item::Column::Tier)
-            .order_by_asc(item::Column::Tier)
+            .column(item_desc::Column::Tier)
+            .group_by(item_desc::Column::Tier)
+            .order_by_asc(item_desc::Column::Tier)
             .into_model::<ItemTier>()
             .all(db)
             .await?;
         Ok(items.into_iter().map(|item| item.tier).collect())
     }
 
-    pub async fn all_cargos_desc(db: &DbConn) -> Result<Vec<cargo_description::Model>, DbErr> {
-        cargo_description::Entity::find().all(db).await
+    pub async fn all_cargos_desc(db: &DbConn) -> Result<Vec<cargo_desc::Model>, DbErr> {
+        cargo_desc::Entity::find().all(db).await
     }
 
-    pub async fn search_cargos_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<cargo_description::Model>, DbErr> {
-        cargo_description::Entity::find()
+    pub async fn search_cargos_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<cargo_desc::Model>, DbErr> {
+        cargo_desc::Entity::find()
             .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Name).ilike(format!("%{}%", value))),
+                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
                 _ => unreachable!()
             })
             .apply_if(tag.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Tag).eq(value)),
+                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Tag).eq(value)),
                 _ => unreachable!()
             })
             .apply_if(tier.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Tier).eq(value)),
+                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Tier).eq(value)),
                 _ => unreachable!()
             })
             .all(db).await
     }
 
     pub async fn search_cargo_desc_ids(db: &DbConn, search: &Option<String>) -> Result<Vec<i64>, DbErr> {
-        cargo_description::Entity::find()
+        cargo_desc::Entity::find()
             .select_only()
-            .column(cargo_description::Column::Id)
+            .column(cargo_desc::Column::Id)
             .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_description::Column::Name).ilike(format!("%{}%", value))),
+                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
                 _ => unreachable!()
             })
-            .order_by_asc(cargo_description::Column::Id)
+            .order_by_asc(cargo_desc::Column::Id)
             .into_tuple()
             .all(db)
             .await
@@ -204,19 +226,19 @@ impl Query {
     pub async fn find_cargo_by_ids(
         db: &DbConn,
         ids: Vec<i64>,
-    ) -> Result<Vec<cargo_description::Model>, DbErr> {
-        cargo_description::Entity::find()
-            .filter(cargo_description::Column::Id.is_in(ids))
+    ) -> Result<Vec<cargo_desc::Model>, DbErr> {
+        cargo_desc::Entity::find()
+            .filter(cargo_desc::Column::Id.is_in(ids))
             .all(db)
             .await
     }
 
     pub async fn find_unique_cargo_tags(db: &DbConn) -> Result<Vec<String>, DbErr> {
-        let items = cargo_description::Entity::find()
+        let items = cargo_desc::Entity::find()
             .select_only()
-            .column(cargo_description::Column::Tag)
-            .group_by(cargo_description::Column::Tag)
-            .order_by_asc(cargo_description::Column::Tag)
+            .column(cargo_desc::Column::Tag)
+            .group_by(cargo_desc::Column::Tag)
+            .order_by_asc(cargo_desc::Column::Tag)
             .into_model::<CargoTag>()
             .all(db)
             .await?;
@@ -224,11 +246,11 @@ impl Query {
     }
 
     pub async fn find_unique_cargo_tiers(db: &DbConn) -> Result<Vec<i32>, DbErr> {
-        let items = cargo_description::Entity::find()
+        let items = cargo_desc::Entity::find()
             .select_only()
-            .column(cargo_description::Column::Tier)
-            .group_by(cargo_description::Column::Tier)
-            .order_by_asc(cargo_description::Column::Tier)
+            .column(cargo_desc::Column::Tier)
+            .group_by(cargo_desc::Column::Tier)
+            .order_by_asc(cargo_desc::Column::Tier)
             .into_model::<CargoTier>()
             .all(db)
             .await?;
@@ -241,13 +263,13 @@ impl Query {
         page: u64,
         per_page: u64,
         search: Option<String>,
-    ) -> Result<(Vec<claim_description::Model>, ItemsAndPagesNumber), DbErr> {
+    ) -> Result<(Vec<claim_description_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
         let paginator = ClaimDescription::find()
-            .order_by_asc(claim_description::Column::EntityId)
-            .filter(claim_description::Column::Name.ne("Watchtower"))
+            .order_by_asc(claim_description_state::Column::EntityId)
+            .filter(claim_description_state::Column::Name.ne("Watchtower"))
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(claim_description::Column::Name).ilike(format!("%{}%", value))),
+                DbBackend::Postgres => query.filter(Expr::col(claim_description_state::Column::Name).ilike(format!("%{}%", value))),
                 _ => unreachable!()
             })
             .paginate(db, per_page);
@@ -260,14 +282,14 @@ impl Query {
     pub async fn find_claim_description(
         db: &DbConn,
         id: i64,
-    ) -> Result<Option<claim_description::Model>, DbErr> {
-        claim_description::Entity::find_by_id(id).one(db).await
+    ) -> Result<Option<claim_description_state::Model>, DbErr> {
+        claim_description_state::Entity::find_by_id(id).one(db).await
     }
 
     pub async fn find_claim_description_by_id(
         db: &DbConn,
         id: i64,
-    ) -> Result<Option<claim_description::Model>, DbErr> {
+    ) -> Result<Option<claim_description_state::Model>, DbErr> {
         ClaimDescription::find_by_id(id).one(db).await
     }
 
@@ -751,12 +773,36 @@ impl Query {
         paginator.fetch_page(0).await.map(|p| (p, num_pages))
     }
 
+    pub async fn find_inventory_by_player_owner_entity_id(
+        db: &DbConn,
+        id: i64,
+    ) -> Result<(Vec<inventory::Model>, ItemsAndPagesNumber), DbErr> {
+        let paginator = inventory::Entity::find()
+            .filter(inventory::Column::PlayerOwnerEntityId.eq(id))
+            .order_by_asc(inventory::Column::EntityId)
+            .paginate(db, 24);
+
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        paginator.fetch_page(0).await.map(|p| (p, num_pages))
+    }
+
     pub async fn get_inventorys_by_owner_entity_id(
         db: &DbConn,
         id: i64,
     ) -> Result<Vec<inventory::Model>, DbErr> {
         inventory::Entity::find()
             .filter(inventory::Column::OwnerEntityId.eq(id))
+            .all(db)
+            .await
+    }
+
+    pub async fn get_inventorys_by_player_owner_entity_id(
+        db: &DbConn,
+        id: i64,
+    ) -> Result<Vec<inventory::Model>, DbErr> {
+        inventory::Entity::find()
+            .filter(inventory::Column::PlayerOwnerEntityId.eq(id))
             .all(db)
             .await
     }
@@ -771,12 +817,12 @@ impl Query {
             .await
     }
 
-    pub async fn find_mobile_entity_by_owner_entity_id(
+    pub async fn find_deployable_entity_by_owner_entity_id(
         db: &DbConn,
         id: i64,
-    ) -> Result<Vec<vehicle_state::Model>, DbErr> {
-        vehicle_state::Entity::find()
-            .filter(vehicle_state::Column::OwnerId.eq(id))
+    ) -> Result<Vec<deployable_state::Model>, DbErr> {
+        deployable_state::Entity::find()
+            .filter(deployable_state::Column::OwnerId.eq(id))
             .all(db)
             .await
     }
