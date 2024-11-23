@@ -13,28 +13,28 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 hyper = { workspace = true }
 rayon = { workspace = true }
-tokio-util = "0.7.11"
+tokio-util = "0.7.12"
 indicatif = "0.17.8"
 lazy_static = "1.5.0"
-futures = "0.3.30"
+futures = "0.3.31"
 sysinfo = "0.30.13"
-tower = "0.4.13"
+tower = "0.5.1"
 utoipa = {  version = "4.2.3", features = ["axum_extras"] }
 utoipa-swagger-ui = {  version = "7.1.0", features = ["axum"] }
 utoipa-redoc = {  version = "4.0.0", features = ["axum"] }
 utoipa-rapidoc = {  version = "4.0.0", features = ["axum"] }
 utoipa-scalar = {  version = "0.1.0", features = ["axum"] }
-anyhow = "1.0.86"
+anyhow = "1.0.93"
 service = { path = "../service" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
 tracing-subscriber = "0.3.18"
-tower-http = { version = "0.5.2", features = ["fs", "cors"] }
+tower-http = { version = "0.6.2", features = ["fs", "cors"] }
 tower-cookies = "0.10.0"
 dotenvy = "0.15.7"
-metrics = { version = "0.23.0", default-features = false }
-metrics-exporter-prometheus = { version = "0.15.3", default-features = false }
-axum-codec = { version = "0.0.12", features = ["msgpack", "toml", "yaml"] }
+metrics = { version = "0.24.0", default-features = false }
+metrics-exporter-prometheus = { version = "0.16.0", default-features = false }
+axum-codec = { version = "0.0.14", features = ["msgpack", "toml", "yaml"] }
 struson = { version = "0.5.0", features = ["serde"] }
 reqwest-websocket = { git = "https://github.com/jgraef/reqwest-websocket.git", rev = "9fa78402d04686953122e4052d4ea06948ce6b50" }
 base64 = "0.22.1"

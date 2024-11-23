@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 entity = { path = "../entity" }
-futures-core = "0.3.30"
+futures-core = "0.3.31"
 
 [dependencies.sea-orm]
 workspace = true

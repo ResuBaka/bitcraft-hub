@@ -12,4 +12,4 @@ path = "src/lib.rs"
 sea-orm = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-axum-codec = { version = "0.0.12", features = ["msgpack", "toml", "yaml"] }
+axum-codec = { version = "0.0.14", features = ["msgpack", "toml", "yaml"] }

@@ -7,14 +7,14 @@ edition = "2021"
 members = [".", "api", "service", "entity", "migration"]
 
 [workspace.dependencies]
-sea-orm = { version = "1.0.0", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros" ] }
-serde_json = "1.0.120"
-serde = { version = "1.0.204", features = ["derive"] }
-tokio = { version = "^1.39.1", features = [ "full" ] }
+sea-orm = { version = "1.1.1", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros" ] }
+serde_json = "1.0.133"
+serde = { version = "1.0.215", features = ["derive"] }
+tokio = { version = "^1.41.1", features = [ "full" ] }
 log = "0.4.22"
-axum = "0.7.5"
-reqwest = { version = "0.12.5", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
-hyper = { version = "1.4.1", features = ["full"] }
+axum = "0.7.9"
+reqwest = { version = "0.12.9", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
+hyper = { version = "1.5.1", features = ["full"] }
 rayon = "1.10.0"
 
 [dependencies]
