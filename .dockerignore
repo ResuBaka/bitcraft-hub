@@ -1,5 +1,6 @@
 node_modules
 storage/*/*.json
+storage/*/*/*.json
 storage/database
 !storage/.gitkeep
 !storage/Desc
