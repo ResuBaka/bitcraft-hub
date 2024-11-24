@@ -27,7 +27,7 @@ const skills = computed(() => {
   });
 });
 
-let selectedSkills = ref("Fishing");
+let selectedSkills = ref("Experience");
 
 let skillMenu = computed(() => {
   const skillMenu = [
