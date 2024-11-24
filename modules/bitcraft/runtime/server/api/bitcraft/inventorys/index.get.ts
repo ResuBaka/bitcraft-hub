@@ -77,7 +77,7 @@ export default defineEventHandler<InventoryResponse>((event) => {
   const needsToFilter = !!owner_entity_id || !!search;
 
   const rowsFilterted = needsToFilter
-    ? rows?.filter((inventory) => {
+    ? (rows?.filter((inventory) => {
         let found = false;
 
         if (owner_entity_id && inventory.owner_entity_id === owner_entity_id) {
@@ -96,7 +96,7 @@ export default defineEventHandler<InventoryResponse>((event) => {
         }
 
         return found;
-      }) ?? []
+      }) ?? [])
     : rows;
 
   const inventorys = Array.of(
