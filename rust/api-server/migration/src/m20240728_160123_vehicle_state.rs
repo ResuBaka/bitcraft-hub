@@ -63,7 +63,7 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ClaimTechState::Learned).json().not_null())
+                    .col(ColumnDef::new(ClaimTechState::Learned).array(ColumnType::BigInteger).not_null())
                     .col(
                         ColumnDef::new(ClaimTechState::Researching)
                             .integer()
@@ -220,7 +220,11 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(ClaimTechDesc::Table).to_owned())
             .await
             .expect("Dropping ClaimTechDesc table");
-        // Replace the sample below with your own migration scripts
+
+        manager
+            .drop_table(Table::drop().table(ClaimDescriptionState::Table).to_owned())
+            .await
+            .expect("Dropping ClaimDescriptionState table");
 
         manager
             .drop_table(Table::drop().table(ClaimTechState::Table).to_owned())

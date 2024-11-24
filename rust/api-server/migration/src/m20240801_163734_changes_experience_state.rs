@@ -388,6 +388,13 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager.drop_table(Table::drop().table(ItemDesc::Table).to_owned()).await.expect("Dropping ItemDesc table");
+        manager.drop_table(Table::drop().table(CargoDesc::Table).to_owned()).await.expect("Dropping CargoDesc table");
+        manager.drop_table(Table::drop().table(Inventory::Table).to_owned()).await.expect("Dropping Inventory table");
+        manager.drop_table(Table::drop().table(DeployableState::Table).to_owned()).await.expect("Dropping DeployableState table");
+        manager.drop_table(Table::drop().table(BuildingState::Table).to_owned()).await.expect("Dropping BuildingState table");
+        manager.drop_table(Table::drop().table(BuildingDesc::Table).to_owned()).await.expect("Dropping BuildingDesc table");
+        
         manager
             .drop_table(
                 Table::drop()

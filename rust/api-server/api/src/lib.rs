@@ -430,13 +430,13 @@ fn import_data(config: Config) {
 
                 let temp_config = config.clone();
                 tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(temp_config)));
-
+                
                 let temp_config = config.clone();
                 tasks.push(tokio::spawn(player_state::import_job_player_state(temp_config)));
-
+                
                 let temp_config = config.clone();
                 tasks.push(tokio::spawn(player_state::import_job_player_username_state(temp_config)));
-
+                
                 let temp_config = config.clone();
                 tasks.push(tokio::spawn(leaderboard::import_job_experience_state(temp_config)));
                 

@@ -186,8 +186,7 @@ pub(crate) async fn get_claim(
                     Some(tier) => Some(tier.clone()),
                     None => None,
                 };
-                let learned: Vec<i32> =
-                    serde_json::from_value(claim_tech_state.learned.clone()).unwrap();
+                let learned: Vec<i64> = claim_tech_state.learned.clone();
                 claim.upgrades = learned
                     .iter()
                     .map(|id| {
@@ -202,7 +201,7 @@ pub(crate) async fn get_claim(
                     .iter()
                     .filter(|id| tier_upgrades_ids.contains(&(**id as i64)))
                     .map(|id| id.clone())
-                    .collect::<Vec<i32>>();
+                    .collect::<Vec<i64>>();
 
                 if found_tiers.len() > 0 {
                     claim.tier = tier_upgrades
@@ -352,16 +351,25 @@ pub(crate) async fn get_claim(
     Ok(Json(claim))
 }
 
+#[derive(Deserialize)]
+struct ListClaimsParams {
+    page: Option<u64>,
+    per_page: Option<u64>,
+    search: Option<String>,
+    research: Option<i32>,
+    running_upgrade: Option<bool>,
+}
+
 pub(crate) async fn list_claims(
     state: State<AppState>,
-    Query(params): Query<Params>,
+    Query(params): Query<ListClaimsParams>,
 ) -> Result<Json<ClaimResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
-    let posts_per_page = params.per_page.unwrap_or(5);
+    let posts_per_page = params.per_page.unwrap_or(25);
     let search = params.search;
 
     let (claims, num_pages) =
-        QueryCore::find_claim_descriptions(&state.conn, page, posts_per_page, search)
+        QueryCore::find_claim_descriptions(&state.conn, page, posts_per_page, search, params.research, params.running_upgrade)
             .await
             .expect("Cannot find posts in page");
 
@@ -401,8 +409,7 @@ pub(crate) async fn list_claims(
                         Some(tier) => Some(tier.clone()),
                         None => None,
                     };
-                    let learned: Vec<i32> =
-                        serde_json::from_value(claim_tech_state.learned.clone()).unwrap();
+                    let learned: Vec<i64> = claim_tech_state.learned.clone();
                     claim_description.upgrades = learned
                         .iter()
                         .map(|id| {
@@ -417,7 +424,7 @@ pub(crate) async fn list_claims(
                         .iter()
                         .filter(|id| tier_upgrades_ids.contains(&(**id as i64)))
                         .map(|id| id.clone())
-                        .collect::<Vec<i32>>();
+                        .collect::<Vec<i64>>();
 
                     if found_tiers.len() > 0 {
                         claim_description.tier = tier_upgrades

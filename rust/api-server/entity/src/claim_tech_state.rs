@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
-    pub learned: Json,
+    pub learned: Vec<i64>,
     pub researching: i32,
     pub start_timestamp: i64,
     pub scheduled_id: Json,

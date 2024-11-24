@@ -14,7 +14,7 @@ use ::entity::{
     player_username_state, player_username_state::Entity as PlayerUsernameState,
 };
 use sea_orm::prelude::Decimal;
-use sea_orm::sea_query::{Alias, Expr, MysqlQueryBuilder, PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder};
+use sea_orm::sea_query::{Alias, Expr, ExprTrait, MysqlQueryBuilder, PgFunc, PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder};
 use sea_orm::*;
 use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::sqlx::RawSql;
@@ -263,13 +263,60 @@ impl Query {
         page: u64,
         per_page: u64,
         search: Option<String>,
+        has_research: Option<i32>,
+        is_running_upgrade: Option<bool>,
     ) -> Result<(Vec<claim_description_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
         let paginator = ClaimDescription::find()
             .order_by_asc(claim_description_state::Column::EntityId)
             .filter(claim_description_state::Column::Name.ne("Watchtower"))
+            .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => query.filter(Expr::col(claim_description_state::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!()
+            })
+            // Look at how to write this query so it works and seo-orm does not to make things I would not like it do to here.
+            // The query needs to look like this at the end: SELECT "entity_id" FROM "claim_tech_state" WHERE learned::jsonb @> '[500]';
+            .apply_if(has_research, |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => {
+                    query.filter(
+                        Condition::any().add(claim_description_state::Column::EntityId.in_subquery(
+                            sea_query::Query::select()
+                                .column(claim_tech_state::Column::EntityId)
+                                // .and_where(SimpleExpr::from(PgFunc::any(Expr::col(claim_tech_state::Column::Learned)).eq(
+                                //     value
+                                // )))
+                                .and_where(
+                                    Expr::eq(
+                                        Expr::val(value),
+                                        Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
+                                    )
+                                )
+                                .from(claim_tech_state::Entity)
+                                .to_owned()
+                            )
+                        )
+                    )
+                },
+                _ => unreachable!()
+            })
+            .apply_if(is_running_upgrade, |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => {
+                    let where_query = if value {
+                        claim_tech_state::Column::Researching.ne(0)
+                    } else {
+                        claim_tech_state::Column::Researching.eq(0)
+                    };
+
+                    query.filter(
+                        Condition::any().add(claim_description_state::Column::EntityId.in_subquery(
+                        sea_query::Query::select()
+                            .column(claim_tech_state::Column::EntityId)
+                            .and_where(where_query)
+                            .from(claim_tech_state::Entity)
+                            .to_owned()
+                    )))
+                },
                 _ => unreachable!()
             })
             .paginate(db, per_page);
