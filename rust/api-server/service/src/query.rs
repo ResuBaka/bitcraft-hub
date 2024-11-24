@@ -15,8 +15,8 @@ use ::entity::{
 use sea_orm::prelude::Decimal;
 use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::sea_query::{
-    Alias, Expr, ExprTrait, MysqlQueryBuilder, PgFunc, PostgresQueryBuilder, Quote, SimpleExpr,
-    SqliteQueryBuilder,
+    Alias, Expr, ExprTrait, IntoColumnRef, IntoIden, MysqlQueryBuilder, PgFunc,
+    PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder,
 };
 use sea_orm::sqlx::RawSql;
 use sea_orm::*;
@@ -336,7 +336,77 @@ impl Query {
     ) -> Result<(Vec<claim_description_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
         let paginator = ClaimDescription::find()
+            .order_by_desc(Expr::cust("boost"))
             .order_by_asc(claim_description_state::Column::EntityId)
+            .expr_as(
+                Expr::case(
+                    Expr::eq(
+                        Expr::val(200),
+                        Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
+                    ),
+                    10,
+                )
+                .finally(0)
+                .add(
+                    Expr::case(
+                        Expr::eq(
+                            Expr::val(300),
+                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
+                        ),
+                        10,
+                    )
+                    .finally(0),
+                )
+                .add(
+                    Expr::case(
+                        Expr::eq(
+                            Expr::val(400),
+                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
+                        ),
+                        10,
+                    )
+                    .finally(0),
+                )
+                .add(
+                    Expr::case(
+                        Expr::eq(
+                            Expr::val(500),
+                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
+                        ),
+                        10,
+                    )
+                    .finally(0),
+                )
+                .add(
+                    Expr::case(
+                        Expr::eq(
+                            Expr::val(600),
+                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
+                        ),
+                        10,
+                    )
+                    .finally(0),
+                )
+                .add(
+                    Expr::case(
+                        Expr::eq(
+                            Expr::val(700),
+                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
+                        ),
+                        10,
+                    )
+                    .finally(0),
+                )
+                .into_simple_expr(),
+                "boost",
+            )
+            .join_rev(
+                JoinType::LeftJoin,
+                claim_tech_state::Entity::belongs_to(claim_description_state::Entity)
+                    .from(claim_tech_state::Column::EntityId)
+                    .to(claim_description_state::Column::EntityId)
+                    .into(),
+            )
             .filter(claim_description_state::Column::Name.ne("Watchtower"))
             .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
