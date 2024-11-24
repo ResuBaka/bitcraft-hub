@@ -358,10 +358,12 @@ impl Query {
     pub async fn get_experience_state_top_100_by_skill_id(
         db: &DbConn,
         skill_id: i64,
+        exclude: Option<[i64; 1]>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
+            .filter(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .limit(100)
             .all(db)
             .await
@@ -412,10 +414,12 @@ impl Query {
     pub async fn get_experience_state_top_100_total_level(
         db: &DbConn,
         level_case_sql: String,
+        exclude: Option<[i64; 1]>,
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
             .expr_as(Expr::cust(level_case_sql), Alias::new("level"))
+            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
@@ -607,6 +611,7 @@ impl Query {
 
     pub async fn get_experience_state_top_100_total_experience(
         db: &DbConn,
+        exclude: Option<[i64; 1]>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -614,6 +619,7 @@ impl Query {
                 Expr::cust("sum(experience)"),
                 Alias::new("total_experience"),
             )
+            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)

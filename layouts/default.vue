@@ -10,7 +10,7 @@
         <v-list-item to="/items">Items</v-list-item>
         <v-list-item to="/claims">Claims</v-list-item>
         <v-list-item to="/players">Players</v-list-item>
-        <v-list-item to="/tradeOrders">Trade orders</v-list-item>
+<!--        <v-list-item to="/tradeOrders">Trade orders</v-list-item>-->
         <v-list-item to="/buildings">Buildings</v-list-item>
         <v-list-item append-icon="mdi-cog-outline" @click="toggelConfigDrawer">Config</v-list-item>
       </v-list>
@@ -23,7 +23,7 @@
         <v-btn to="/items">Items</v-btn>
         <v-btn to="/claims">Claims</v-btn>
         <v-btn to="/players">Players</v-btn>
-        <v-btn to="/tradeOrders">Trade orders</v-btn>
+<!--        <v-btn to="/tradeOrders">Trade orders</v-btn>-->
         <v-btn to="/buildings">Buildings</v-btn>
         <v-btn icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>
       </v-toolbar-items>
