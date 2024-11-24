@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use crate::config::Config;
 use crate::inventory::resolve_contents;
 use crate::{claims, AppState, Params};
@@ -5,7 +6,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
-use entity::inventory::ExpendedRefrence;
+use entity::inventory::{ExpendedRefrence, ItemExpended};
 use entity::{
     cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc, player_state,
 };
@@ -299,7 +300,7 @@ pub(crate) async fn get_claim(
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_offline_ids).await?;
         let mut merged_offline_players_inventories =
             get_merged_inventories(offline_players_inventories, &job_items, &job_cargos);
-        merged_offline_players_inventories.sort_by(|a, b| b.quantity.cmp(&a.quantity));
+        merged_offline_players_inventories.sort_by(inventory_sort_by);
 
         Ok((
             "players_offline".to_string(),
@@ -315,7 +316,7 @@ pub(crate) async fn get_claim(
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, building_inventories_ids).await?;
         let mut merged_claim_inventories =
             get_merged_inventories(claim_inventories, &job_items, &job_cargos);
-        merged_claim_inventories.sort_by(|a, b| b.quantity.cmp(&a.quantity));
+        merged_claim_inventories.sort_by(inventory_sort_by);
 
         Ok(("buildings".to_string(), merged_claim_inventories))
     }));
@@ -328,7 +329,7 @@ pub(crate) async fn get_claim(
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_online_ids).await?;
         let mut merged_online_players_inventories =
             get_merged_inventories(online_players_inventories, &job_items, &job_cargos);
-        merged_online_players_inventories.sort_by(|a, b| b.quantity.cmp(&a.quantity));
+        merged_online_players_inventories.sort_by(inventory_sort_by);
 
         Ok(("players".to_string(), merged_online_players_inventories))
     }));
@@ -349,6 +350,22 @@ pub(crate) async fn get_claim(
     }
 
     Ok(Json(claim))
+}
+
+fn inventory_sort_by(a: &ExpendedRefrence, b: &ExpendedRefrence) -> Ordering {
+    let (b_tier, a_tier) = match (b.item.clone(), a.item.clone()) {
+        (ItemExpended::Cargo(cargo_b), ItemExpended::Item(cargo_a)) => (cargo_b.tier, cargo_a.tier),
+        (ItemExpended::Item(item_b), ItemExpended::Cargo(item_a)) => (item_b.tier, item_a.tier),
+        (ItemExpended::Item(item_b), ItemExpended::Item(item_a)) => (item_b.tier, item_a.tier),
+        (ItemExpended::Cargo(cargo_b), ItemExpended::Cargo(cargo_a)) => (cargo_b.tier, cargo_a.tier),
+    };
+
+
+    if b_tier == a_tier {
+        b.quantity.cmp(&a.quantity)
+    } else {
+        b_tier.cmp(&a_tier)
+    }
 }
 
 #[derive(Deserialize)]
