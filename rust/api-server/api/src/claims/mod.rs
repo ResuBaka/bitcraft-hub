@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::inventory::resolve_contents;
 use crate::{claims, AppState, Params};
 use axum::extract::{Path, Query, State};
@@ -9,6 +10,7 @@ use entity::{
     cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc, player_state,
 };
 use log::{debug, error, info};
+use reqwest::Client;
 use sea_orm::{sea_query, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -18,12 +20,10 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
-use crate::config::Config;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -154,7 +154,7 @@ pub(crate) async fn get_claim(
             error!("Error loading items: {err}");
             vec![]
         });
-         
+
     let items = items
         .into_iter()
         .map(|item| (item.id, item))
@@ -170,7 +170,7 @@ pub(crate) async fn get_claim(
         .into_iter()
         .map(|cargo| (cargo.id, cargo))
         .collect::<HashMap<i64, cargo_desc::Model>>();
-    
+
     let claim = {
         let claim_tech_state = claim_tech_states
             .iter()
@@ -368,10 +368,16 @@ pub(crate) async fn list_claims(
     let posts_per_page = params.per_page.unwrap_or(25);
     let search = params.search;
 
-    let (claims, num_pages) =
-        QueryCore::find_claim_descriptions(&state.conn, page, posts_per_page, search, params.research, params.running_upgrade)
-            .await
-            .expect("Cannot find posts in page");
+    let (claims, num_pages) = QueryCore::find_claim_descriptions(
+        &state.conn,
+        page,
+        posts_per_page,
+        search,
+        params.research,
+        params.running_upgrade,
+    )
+    .await
+    .expect("Cannot find posts in page");
 
     let claim_tech_states = QueryCore::find_claim_tech_state_by_ids(
         &state.conn,
@@ -776,7 +782,11 @@ pub async fn import_job_claim_description_state(temp_config: Config) -> () {
     }
 }
 
-fn import_internal_claim_description_state(config: Config, conn: DatabaseConnection, client: Client) {
+fn import_internal_claim_description_state(
+    config: Config,
+    conn: DatabaseConnection,
+    client: Client,
+) {
     std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -790,7 +800,7 @@ fn import_internal_claim_description_state(config: Config, conn: DatabaseConnect
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_cargo_description) = claim_description {
                     info!("ClaimDescriptionState imported");

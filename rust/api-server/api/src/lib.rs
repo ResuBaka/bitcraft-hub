@@ -4,6 +4,7 @@ mod claim_tech_desc;
 mod claim_tech_state;
 mod claims;
 mod config;
+mod deployable_state;
 mod inventory;
 mod items;
 mod items_and_cargo;
@@ -12,7 +13,6 @@ mod locations;
 mod player_state;
 mod recipes;
 mod skill_descriptions;
-mod deployable_state;
 mod trading_orders;
 
 use axum::{
@@ -33,6 +33,7 @@ use axum::http::HeaderValue;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use base64::Engine;
+use entity::trade_order;
 use futures::{SinkExt, TryStreamExt};
 use log::{error, info};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
@@ -55,7 +56,6 @@ use tokio::task;
 use tokio_util::sync::CancellationToken;
 use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
-use entity::trade_order;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -85,7 +85,7 @@ async fn start() -> anyhow::Result<()> {
     let path_to_storage_tmp = config.storage_path.clone();
 
     let client = create_default_client(config.clone());
-    
+
     // donwload_all_Tables(
     //     &client,
     //     &config.spacetimedb.domain.clone(),
@@ -233,15 +233,15 @@ fn create_app(config: &Config, state: AppState) -> Router {
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/static"
+                env!("CARGO_MANIFEST_DIR"),
+                "/static"
             )))
-                .handle_error(|error| async move {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled internal error: {error}"),
-                    )
-                }),
+            .handle_error(|error| async move {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {error}"),
+                )
+            }),
         )
         .layer(CookieManagerLayer::new())
         .layer(
@@ -429,43 +429,63 @@ fn import_data(config: Config) {
                 //
 
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(temp_config)));
-                
+                tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(player_state::import_job_player_state(temp_config)));
-                
+                tasks.push(tokio::spawn(player_state::import_job_player_state(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(player_state::import_job_player_username_state(temp_config)));
-                
+                tasks.push(tokio::spawn(
+                    player_state::import_job_player_username_state(temp_config),
+                ));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(leaderboard::import_job_experience_state(temp_config)));
-                
+                tasks.push(tokio::spawn(leaderboard::import_job_experience_state(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(claim_tech_state::import_job_claim_tech_state(temp_config)));
-                
+                tasks.push(tokio::spawn(claim_tech_state::import_job_claim_tech_state(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(claim_tech_desc::import_job_claim_tech_desc(temp_config)));
-                
+                tasks.push(tokio::spawn(claim_tech_desc::import_job_claim_tech_desc(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(claims::import_job_claim_description_state(temp_config)));
-                
+                tasks.push(tokio::spawn(claims::import_job_claim_description_state(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(items::import_job_item_desc(temp_config)));                
-                
+                tasks.push(tokio::spawn(items::import_job_item_desc(temp_config)));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));               
-                
+                tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));
+
                 let temp_config = config.clone();
                 tasks.push(tokio::spawn(inventory::import_job_item_desc(temp_config)));
-                
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(temp_config)));
-                
+                tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(buildings::import_job_building_desc(temp_config)));
-                
+                tasks.push(tokio::spawn(buildings::import_job_building_desc(
+                    temp_config,
+                )));
+
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(buildings::import_job_building_state(temp_config)));
+                tasks.push(tokio::spawn(buildings::import_job_building_state(
+                    temp_config,
+                )));
 
                 futures::future::join_all(tasks).await;
             });
@@ -745,7 +765,7 @@ pub async fn donwload_all_Tables(
         "TravelerTradeOrderDesc",
         "WallDesc",
         "WeaponDesc",
-        "WeaponTypeDesc"
+        "WeaponTypeDesc",
     ];
     let state_tables = vec![
         "AIDebugState",
@@ -855,7 +875,7 @@ pub async fn donwload_all_Tables(
         "UserModerationState",
         "UserSignInState",
         "UserState",
-        "VaultState"
+        "VaultState",
     ];
     let rest_tables = vec![
         "AdminBroadcast",
@@ -913,21 +933,47 @@ pub async fn donwload_all_Tables(
         "StagedStaticData",
         "StarvingLoopTimer",
         "TeleportPlayerTimer",
-        "TradeSessionLoopTimer"
+        "TradeSessionLoopTimer",
     ];
-    
+
     for table in desc_tables {
-        download_all_Table(client, domain, protocol, database, table, storage_path, "desc").await;
-    }
-    
-    for table in state_tables {
-        download_all_Table(client, domain, protocol, database, table, storage_path, "state").await;
-    }
-    
-    for table in rest_tables {
-        download_all_Table(client, domain, protocol, database, table, storage_path, "rest").await;
+        download_all_Table(
+            client,
+            domain,
+            protocol,
+            database,
+            table,
+            storage_path,
+            "desc",
+        )
+        .await;
     }
 
+    for table in state_tables {
+        download_all_Table(
+            client,
+            domain,
+            protocol,
+            database,
+            table,
+            storage_path,
+            "state",
+        )
+        .await;
+    }
+
+    for table in rest_tables {
+        download_all_Table(
+            client,
+            domain,
+            protocol,
+            database,
+            table,
+            storage_path,
+            "rest",
+        )
+        .await;
+    }
 }
 
 ///
@@ -956,7 +1002,7 @@ pub async fn download_all_Table(
             }
 
             response.text().await?
-        },
+        }
         Err(error) => {
             error!("Error: {error}");
             return Err(anyhow::anyhow!("Error: {error}"));
@@ -969,7 +1015,7 @@ pub async fn download_all_Table(
     }
     let path = storage_path.join(format!("{folder}/{table}.json"));
     let mut file = File::create(&path)?;
-    
+
     println!("Saving to {path:?}");
 
     file.write_all(json.as_bytes())?;

@@ -1,30 +1,32 @@
-use entity::{trade_order};
-use log::{debug, error, info};
-use migration::sea_query;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, QueryOrder};
-use serde_json::Value;
-use std::collections::HashMap;
-use std::fs::File;
-use std::path::PathBuf;
+use crate::AppState;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Router;
 use axum_codec::Codec;
+use entity::trade_order;
 use futures::StreamExt;
+use log::{debug, error, info};
+use migration::sea_query;
+use rayon::prelude::*;
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
+    QueryOrder,
+};
 use serde::Deserialize;
+use serde_json::Value;
+use service::Query as QueryCore;
+use std::collections::HashMap;
+use std::fs::File;
+use std::path::PathBuf;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::AppState;
-use service::Query as QueryCore;
-use rayon::prelude::*;
 
 pub(crate) fn get_routes() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/api/bitcraft/trade_orders/get_trade_orders",
-            axum_codec::routing::get(get_trade_orders).into(),
-        )
+    Router::new().route(
+        "/api/bitcraft/trade_orders/get_trade_orders",
+        axum_codec::routing::get(get_trade_orders).into(),
+    )
 }
 
 #[derive(Deserialize, Debug)]
@@ -43,24 +45,26 @@ pub(crate) async fn get_trade_orders(
     let search = query.search;
 
     let items_ids = if search.is_some() {
-        QueryCore::search_items_desc_ids(&state.conn, &search).await.map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
-        })?
+        QueryCore::search_items_desc_ids(&state.conn, &search)
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+            })?
     } else {
         vec![]
     };
 
     let cargo_ids = if search.is_some() {
-        QueryCore::search_cargo_desc_ids(&state.conn, &search).await.map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
-        })?
+        QueryCore::search_cargo_desc_ids(&state.conn, &search)
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+            })?
     } else {
         vec![]
     };
-
-
 
     let items_ids = if items_ids.len() > 0 {
         Some(items_ids)
@@ -89,44 +93,59 @@ pub(crate) async fn get_trade_orders(
         let trade_orders = trade_order::Entity::find()
             .order_by_asc(trade_order::Column::EntityId)
             .stream(&state.conn)
-            .await.map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
-        })?;
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+            })?;
 
         let mut filtered_trade_orders = Vec::new();
         let mut chunks = trade_orders.chunks(5000);
 
         while let Some(chunk) = chunks.next().await {
-            let resolved_chunk = chunk.into_iter().map(|trade_order| trade_order.unwrap()).collect::<Vec<trade_order::Model>>();
+            let resolved_chunk = chunk
+                .into_iter()
+                .map(|trade_order| trade_order.unwrap())
+                .collect::<Vec<trade_order::Model>>();
 
-            let local_filtered_trade_orders = resolved_chunk.into_par_iter().filter(|trade_order| {
-                if let Some(items_ids) = &items_ids {
-                    let trade_order_items = trade_order.offer_items.par_iter().map(|item| item.item_id).collect::<Vec<i64>>();
+            let local_filtered_trade_orders = resolved_chunk
+                .into_par_iter()
+                .filter(|trade_order| {
+                    if let Some(items_ids) = &items_ids {
+                        let trade_order_items = trade_order
+                            .offer_items
+                            .par_iter()
+                            .map(|item| item.item_id)
+                            .collect::<Vec<i64>>();
 
-                    if items_ids.par_iter().any(|item_id| trade_order_items.contains(item_id)) {
-                        return true;
+                        if items_ids
+                            .par_iter()
+                            .any(|item_id| trade_order_items.contains(item_id))
+                        {
+                            return true;
+                        }
                     }
-                }
 
-                if let Some(cargo_ids) = &cargo_ids {
-                    let trade_order_cargo_ids: Vec<i64> = serde_json::from_value(trade_order.offer_cargo_id.clone()).unwrap();
+                    if let Some(cargo_ids) = &cargo_ids {
+                        let trade_order_cargo_ids: Vec<i64> =
+                            serde_json::from_value(trade_order.offer_cargo_id.clone()).unwrap();
 
-                    if cargo_ids.par_iter().any(|cargo_id| trade_order_cargo_ids.contains(cargo_id)) {
-                        return true;
+                        if cargo_ids
+                            .par_iter()
+                            .any(|cargo_id| trade_order_cargo_ids.contains(cargo_id))
+                        {
+                            return true;
+                        }
                     }
-                }
 
-                false
-            }).collect::<Vec<trade_order::Model>>();
+                    false
+                })
+                .collect::<Vec<trade_order::Model>>();
 
             filtered_trade_orders.extend(local_filtered_trade_orders);
         }
 
-        let (start, end) = (
-            ((page - 1) * per_page) as usize,
-            (page * per_page) as usize,
-        );
+        let (start, end) = (((page - 1) * per_page) as usize, (page * per_page) as usize);
 
         total = filtered_trade_orders.len() as u64;
 
@@ -136,16 +155,17 @@ pub(crate) async fn get_trade_orders(
             _ => vec![],
         }
     } else {
-        let (trade_orders, num_pages) = QueryCore::load_trade_order_paginated(&state.conn, page, per_page).await.map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
-        })?;
+        let (trade_orders, num_pages) =
+            QueryCore::load_trade_order_paginated(&state.conn, page, per_page)
+                .await
+                .map_err(|error| {
+                    error!("Error: {error}");
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+                })?;
 
         total = num_pages.number_of_items;
         trade_orders
     };
-
-
 
     Ok(Codec(TradeOrdersResponse {
         trade_orders: filtered_trade_orders,
@@ -164,10 +184,10 @@ pub(crate) struct TradeOrdersResponse {
     per_page: u64,
 }
 
-pub(crate) async fn load_trade_order_from_file(
-    storage_path: &PathBuf,
-) -> anyhow::Result<String> {
-    Ok(std::fs::read_to_string(storage_path.join("State/TradeOrderState.json"))?)
+pub(crate) async fn load_trade_order_from_file(storage_path: &PathBuf) -> anyhow::Result<String> {
+    Ok(std::fs::read_to_string(
+        storage_path.join("State/TradeOrderState.json"),
+    )?)
 }
 
 pub(crate) async fn load_trade_order_from_spacetimedb(
@@ -386,4 +406,3 @@ pub(crate) async fn import_trade_order(
 
     Ok(())
 }
-

@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::{create_default_client, create_importer_default_db_connection, AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -5,6 +6,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use entity::{player_state, player_username_state};
 use log::{debug, error, info};
+use reqwest::Client;
 use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde_json::{json, Value};
@@ -14,11 +16,9 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -36,9 +36,10 @@ pub async fn list_players(
     let posts_per_page = params.per_page.unwrap_or(5);
     let search = params.search;
 
-    let (player, player_usernames, num_pages) = QueryCore::find_players(&state.conn, page, posts_per_page, search)
-        .await
-        .expect("Cannot find player_state in page");
+    let (player, player_usernames, num_pages) =
+        QueryCore::find_players(&state.conn, page, posts_per_page, search)
+            .await
+            .expect("Cannot find player_state in page");
 
     let merged_player = player
         .into_iter()
@@ -78,24 +79,24 @@ pub async fn find_player_by_id(
         .one(&state.conn)
         .await
         .expect("Cannot find player");
-    
+
     if player.is_none() {
         return Err((StatusCode::NOT_FOUND, "Player not found"));
     }
-    
+
     let player = player.unwrap();
-    
+
     let player_username = player_username_state::Entity::find()
         .filter(player_username_state::Column::EntityId.eq(id))
         .one(&state.conn)
         .await
         .expect("Cannot find player_username");
 
-    let player_username = match player_username { 
+    let player_username = match player_username {
         Some(player_username) => player_username.username,
         None => "".to_string(),
     };
-    
+
     Ok(Json(json!(player_state::PlayerStateMerged {
         entity_id: player.entity_id,
         time_played: player.time_played,
@@ -348,7 +349,7 @@ fn import_player_state(config: Config, conn: DatabaseConnection, client: Client)
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_vehicle_state) = vehicle_state {
                     info!("PlayerState imported");
@@ -423,7 +424,6 @@ pub(crate) async fn load_player_username_state(
     Ok(())
 }
 
-
 pub(crate) async fn import_player_username_states(
     conn: &DatabaseConnection,
     player_states: String,
@@ -441,9 +441,7 @@ pub(crate) async fn import_player_username_states(
     json_stream_reader.begin_array()?;
 
     let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
-        .update_columns([
-            player_username_state::Column::Username,
-        ])
+        .update_columns([player_username_state::Column::Username])
         .to_owned();
 
     let mut player_username_states_to_delete = Vec::new();
@@ -469,9 +467,12 @@ pub(crate) async fn import_player_username_states(
                     buffer_before_insert
                         .iter()
                         .filter(|player_username_state| {
-                            !player_username_states_from_db.iter().any(|player_username_state_from_db| {
-                                player_username_state_from_db.entity_id == player_username_state.entity_id
-                            })
+                            !player_username_states_from_db.iter().any(
+                                |player_username_state_from_db| {
+                                    player_username_state_from_db.entity_id
+                                        == player_username_state.entity_id
+                                },
+                            )
                         })
                         .map(|player_username_state| player_username_state.entity_id),
                 );
@@ -479,7 +480,9 @@ pub(crate) async fn import_player_username_states(
 
             let player_username_states_from_db_map = player_username_states_from_db
                 .into_iter()
-                .map(|player_username_state| (player_username_state.entity_id, player_username_state))
+                .map(|player_username_state| {
+                    (player_username_state.entity_id, player_username_state)
+                })
                 .collect::<HashMap<i64, player_username_state::Model>>();
 
             let things_to_insert = buffer_before_insert
@@ -506,7 +509,10 @@ pub(crate) async fn import_player_username_states(
                 buffer_before_insert.clear();
                 continue;
             } else {
-                debug!("Inserting {} player_username_states", things_to_insert.len());
+                debug!(
+                    "Inserting {} player_username_states",
+                    things_to_insert.len()
+                );
             }
 
             for player_username_state in &things_to_insert {
@@ -584,7 +590,10 @@ pub(crate) async fn import_player_username_states(
     );
 
     if player_username_states_to_delete.len() > 0 {
-        info!("player_username_state's to delete: {:?}", player_username_states_to_delete);
+        info!(
+            "player_username_state's to delete: {:?}",
+            player_username_states_to_delete
+        );
         player_state::Entity::delete_many()
             .filter(player_state::Column::EntityId.is_in(player_username_states_to_delete))
             .exec(conn)
@@ -609,12 +618,15 @@ pub fn import_player_username_state(config: Config, conn: DatabaseConnection, cl
                     &conn,
                     // &config,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_) = player_username_state {
                     info!("PlayerUsernameState imported");
                 } else {
-                    error!("PlayerUsernameState import failed: {:?}", player_username_state);
+                    error!(
+                        "PlayerUsernameState import failed: {:?}",
+                        player_username_state
+                    );
                 }
             });
     });

@@ -37,7 +37,13 @@ impl SkillDescRaw {
         // @todo handle possible errors
         let skill = self.skill.as_object().unwrap().keys().next().unwrap();
         // @todo handle possible errors
-        let skill_category = self.skill_category.as_object().unwrap().keys().next().unwrap();
+        let skill_category = self
+            .skill_category
+            .as_object()
+            .unwrap()
+            .keys()
+            .next()
+            .unwrap();
 
         Ok(Model {
             id: self.id,

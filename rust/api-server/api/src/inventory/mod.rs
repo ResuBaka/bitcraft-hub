@@ -1,15 +1,21 @@
+use crate::config::Config;
 use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Router;
 use axum_codec::Codec;
+use entity::deployable_state::Column::Nickname;
 use entity::inventory::{
     Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
 use entity::{cargo_desc, inventory, item_desc};
 use log::{debug, error, info};
+use reqwest::Client;
 use sea_orm::sqlx::Encode;
-use sea_orm::{sea_query, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityName, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect};
+use sea_orm::{
+    sea_query, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityName, EntityTrait,
+    IntoActiveModel, QueryFilter, QuerySelect,
+};
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
@@ -18,12 +24,9 @@ use std::io::{BufRead, BufReader};
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use entity::deployable_state::Column::Nickname;
-use crate::config::Config;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -231,11 +234,17 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
             None => match player.is_some() {
                 true => {
                     let player = player.as_ref().unwrap();
-                    if inventory.owner_entity_id == player.entity_id &&  inventory.inventory_index == 0 {
+                    if inventory.owner_entity_id == player.entity_id
+                        && inventory.inventory_index == 0
+                    {
                         Some(String::from("Inventory"))
-                    } else if inventory.owner_entity_id == player.entity_id &&  inventory.inventory_index == 2 {
+                    } else if inventory.owner_entity_id == player.entity_id
+                        && inventory.inventory_index == 2
+                    {
                         Some(String::from("Wallet"))
-                    } else if inventory.owner_entity_id == player.entity_id &&  inventory.inventory_index == 1 {
+                    } else if inventory.owner_entity_id == player.entity_id
+                        && inventory.inventory_index == 1
+                    {
                         Some(String::from("Tool belt"))
                     } else {
                         None
@@ -566,7 +575,6 @@ pub(crate) fn resolve_contents(
     }
 }
 
-
 pub async fn import_job_item_desc(temp_config: Config) -> () {
     let config = temp_config.clone();
     if config.live_updates {
@@ -607,7 +615,7 @@ fn import_internal_inventory(config: Config, conn: DatabaseConnection, client: C
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_vehicle_state) = vehicle_state {
                     info!("Inventory imported");

@@ -34,7 +34,11 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(ItemDesc::Tier).integer().not_null())
                     .col(ColumnDef::new(ItemDesc::Tag).string().not_null())
                     .col(ColumnDef::new(ItemDesc::Rarity).json().not_null())
-                    .col(ColumnDef::new(ItemDesc::CompendiumEntry).boolean().not_null())
+                    .col(
+                        ColumnDef::new(ItemDesc::CompendiumEntry)
+                            .boolean()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ItemDesc::ItemListId).integer().not_null())
                     .to_owned(),
             )
@@ -53,16 +57,8 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(CargoDesc::Name).string().not_null())
-                    .col(
-                        ColumnDef::new(CargoDesc::Description)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(CargoDesc::Volume)
-                            .integer()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(CargoDesc::Description).string().not_null())
+                    .col(ColumnDef::new(CargoDesc::Volume).integer().not_null())
                     .col(
                         ColumnDef::new(CargoDesc::SecondaryKnowledgeId)
                             .integer()
@@ -73,11 +69,7 @@ impl MigrationTrait for Migration {
                             .string()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(CargoDesc::IconAssetName)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(CargoDesc::IconAssetName).string().not_null())
                     .col(
                         ColumnDef::new(CargoDesc::CarriedModelAssetName)
                             .string()
@@ -103,45 +95,29 @@ impl MigrationTrait for Migration {
                             .string()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(CargoDesc::PickUpTime)
-                            .float()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(CargoDesc::PlaceTime)
-                            .float()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(CargoDesc::AnimatorState)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(CargoDesc::PickUpTime).float().not_null())
+                    .col(ColumnDef::new(CargoDesc::PlaceTime).float().not_null())
+                    .col(ColumnDef::new(CargoDesc::AnimatorState).string().not_null())
                     .col(
                         ColumnDef::new(CargoDesc::MovementModifier)
                             .float()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(CargoDesc::BlocksPath)
-                            .boolean()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(CargoDesc::BlocksPath).boolean().not_null())
                     .col(
                         ColumnDef::new(CargoDesc::OnDestroyYieldCargos)
                             .json()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(CargoDesc::DespawnTime)
-                            .float()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(CargoDesc::DespawnTime).float().not_null())
                     .col(ColumnDef::new(CargoDesc::Tier).integer().not_null())
                     .col(ColumnDef::new(CargoDesc::Tag).string().not_null())
                     .col(ColumnDef::new(CargoDesc::Rarity).json().not_null())
-                    .col(ColumnDef::new(CargoDesc::NotPickupable).boolean().not_null())
+                    .col(
+                        ColumnDef::new(CargoDesc::NotPickupable)
+                            .boolean()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await
@@ -213,7 +189,11 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(DeployableState::OwnerId).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(DeployableState::OwnerId)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(DeployableState::ClaimEntityId)
                             .big_integer()
@@ -229,7 +209,11 @@ impl MigrationTrait for Migration {
                             .integer()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(DeployableState::Nickname).string().not_null())
+                    .col(
+                        ColumnDef::new(DeployableState::Nickname)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(DeployableState::Hidden).boolean().not_null())
                     .to_owned(),
             )
@@ -257,7 +241,6 @@ impl MigrationTrait for Migration {
             )
             .await
             .expect("Creating deployable_state_claim_entity_id index");
-
 
         manager
             .create_table(
@@ -295,7 +278,7 @@ impl MigrationTrait for Migration {
             )
             .await
             .expect("Creating BuildingState table");
-        
+
         manager
             .create_index(
                 Index::create()
@@ -306,7 +289,6 @@ impl MigrationTrait for Migration {
             )
             .await
             .expect("Creating building_state_claim_entity_id index");
-
 
         manager
             .create_table(
@@ -358,7 +340,11 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(BuildingDesc::Footprint).json().not_null())
                     .col(ColumnDef::new(BuildingDesc::MaxHealth).integer().not_null())
-                    .col(ColumnDef::new(BuildingDesc::DefenseLevel).integer().not_null())
+                    .col(
+                        ColumnDef::new(BuildingDesc::DefenseLevel)
+                            .integer()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(BuildingDesc::Decay).float().not_null())
                     .col(ColumnDef::new(BuildingDesc::Maintenance).float().not_null())
                     .col(
@@ -378,29 +364,47 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(BuildingDesc::IsRuins).boolean().not_null())
-                    .col(ColumnDef::new(BuildingDesc::NotDeconstructible).boolean().not_null())
+                    .col(
+                        ColumnDef::new(BuildingDesc::NotDeconstructible)
+                            .boolean()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await
             .expect("Creating BuildingDesc table");
-        
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager.drop_table(Table::drop().table(ItemDesc::Table).to_owned()).await.expect("Dropping ItemDesc table");
-        manager.drop_table(Table::drop().table(CargoDesc::Table).to_owned()).await.expect("Dropping CargoDesc table");
-        manager.drop_table(Table::drop().table(Inventory::Table).to_owned()).await.expect("Dropping Inventory table");
-        manager.drop_table(Table::drop().table(DeployableState::Table).to_owned()).await.expect("Dropping DeployableState table");
-        manager.drop_table(Table::drop().table(BuildingState::Table).to_owned()).await.expect("Dropping BuildingState table");
-        manager.drop_table(Table::drop().table(BuildingDesc::Table).to_owned()).await.expect("Dropping BuildingDesc table");
-        
         manager
-            .drop_table(
-                Table::drop()
-                    .table(ItemDesc::Table)
-                    .to_owned(),
-            )
+            .drop_table(Table::drop().table(ItemDesc::Table).to_owned())
+            .await
+            .expect("Dropping ItemDesc table");
+        manager
+            .drop_table(Table::drop().table(CargoDesc::Table).to_owned())
+            .await
+            .expect("Dropping CargoDesc table");
+        manager
+            .drop_table(Table::drop().table(Inventory::Table).to_owned())
+            .await
+            .expect("Dropping Inventory table");
+        manager
+            .drop_table(Table::drop().table(DeployableState::Table).to_owned())
+            .await
+            .expect("Dropping DeployableState table");
+        manager
+            .drop_table(Table::drop().table(BuildingState::Table).to_owned())
+            .await
+            .expect("Dropping BuildingState table");
+        manager
+            .drop_table(Table::drop().table(BuildingDesc::Table).to_owned())
+            .await
+            .expect("Dropping BuildingDesc table");
+
+        manager
+            .drop_table(Table::drop().table(ItemDesc::Table).to_owned())
             .await
     }
 }
@@ -448,7 +452,7 @@ enum CargoDesc {
     Tier,
     Tag,
     Rarity,
-    NotPickupable
+    NotPickupable,
 }
 
 #[derive(DeriveIden)]

@@ -50,7 +50,6 @@ impl MigrationTrait for Migration {
             .await
             .expect("Creating experience_state_entity_id_skill_id index");
 
-
         manager
             .create_table(
                 Table::create()
@@ -63,7 +62,11 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ClaimTechState::Learned).array(ColumnType::BigInteger).not_null())
+                    .col(
+                        ColumnDef::new(ClaimTechState::Learned)
+                            .array(ColumnType::BigInteger)
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimTechState::Researching)
                             .integer()
@@ -123,7 +126,11 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(ClaimTechDesc::Members).integer().not_null())
                     .col(ColumnDef::new(ClaimTechDesc::Area).integer().not_null())
                     .col(ColumnDef::new(ClaimTechDesc::Supply).integer().not_null())
-                    .col(ColumnDef::new(ClaimTechDesc::XpToMintHexCoin).integer().not_null())
+                    .col(
+                        ColumnDef::new(ClaimTechDesc::XpToMintHexCoin)
+                            .integer()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await
@@ -150,7 +157,11 @@ impl MigrationTrait for Migration {
                             .big_integer()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ClaimDescriptionState::Name).string().not_null())
+                    .col(
+                        ColumnDef::new(ClaimDescriptionState::Name)
+                            .string()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimDescriptionState::Supplies)
                             .big_integer()
@@ -161,9 +172,21 @@ impl MigrationTrait for Migration {
                             .float()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ClaimDescriptionState::Members).json().not_null())
-                    .col(ColumnDef::new(ClaimDescriptionState::NumTiles).integer().not_null())
-                    .col(ColumnDef::new(ClaimDescriptionState::NumTileNeighbors).unsigned().not_null())
+                    .col(
+                        ColumnDef::new(ClaimDescriptionState::Members)
+                            .json()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimDescriptionState::NumTiles)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimDescriptionState::NumTileNeighbors)
+                            .unsigned()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimDescriptionState::Extensions)
                             .integer()
@@ -174,7 +197,11 @@ impl MigrationTrait for Migration {
                             .boolean()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ClaimDescriptionState::Location).json().not_null())
+                    .col(
+                        ColumnDef::new(ClaimDescriptionState::Location)
+                            .json()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimDescriptionState::Treasury)
                             .integer()

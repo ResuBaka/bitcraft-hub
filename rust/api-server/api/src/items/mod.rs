@@ -1,9 +1,11 @@
+use crate::config::Config;
 use crate::{items, AppState, Params};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Json;
 use entity::item_desc;
 use log::{debug, error, info};
+use reqwest::Client;
 use sea_orm::{
     sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait,
     QueryFilter,
@@ -15,11 +17,9 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
 
 pub async fn list_items(
     state: State<AppState>,
@@ -105,7 +105,8 @@ pub(crate) async fn import_items(
 ) -> anyhow::Result<()> {
     let start = Instant::now();
 
-    let mut buffer_before_insert: Vec<item_desc::Model> = Vec::with_capacity(chunk_size.unwrap_or(5000));
+    let mut buffer_before_insert: Vec<item_desc::Model> =
+        Vec::with_capacity(chunk_size.unwrap_or(5000));
 
     let mut json_stream_reader = JsonStreamReader::new(items.as_bytes());
 
@@ -315,7 +316,7 @@ fn import_internal_items(config: Config, conn: DatabaseConnection, client: Clien
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_vehicle_state) = vehicle_state {
                     info!("Items imported");

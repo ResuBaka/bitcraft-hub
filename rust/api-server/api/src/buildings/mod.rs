@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::{buildings, AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -20,7 +21,6 @@ use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -725,7 +725,7 @@ fn import_internal_building_state(config: Config, conn: DatabaseConnection, clie
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_building_state) = building_state {
                     info!("BuildingState imported");
@@ -750,7 +750,7 @@ fn import_internal_building_desc(config: Config, conn: DatabaseConnection, clien
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_building_desc) = building_desc {
                     info!("BuildingDesc imported");

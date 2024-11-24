@@ -1,3 +1,4 @@
+use crate::config::Config;
 use entity::cargo_desc;
 use log::{debug, error, info};
 use migration::sea_query;
@@ -14,7 +15,6 @@ use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
 
 pub(crate) async fn import_cargo_description(
     conn: &DatabaseConnection,
@@ -306,7 +306,7 @@ fn import_interal_cargo_desc(config: Config, conn: DatabaseConnection, client: C
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_cargo_desc) = cargo_desc {
                     info!("CargoDesc imported");

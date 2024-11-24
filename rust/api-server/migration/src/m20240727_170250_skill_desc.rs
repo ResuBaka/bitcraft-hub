@@ -23,7 +23,11 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(SkillDesc::Description).string().not_null())
                     .col(ColumnDef::new(SkillDesc::IconAssetName).string().not_null())
                     .col(ColumnDef::new(SkillDesc::Title).string().not_null())
-                    .col(ColumnDef::new(SkillDesc::SkillCategory).integer().not_null())
+                    .col(
+                        ColumnDef::new(SkillDesc::SkillCategory)
+                            .integer()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await

@@ -1,6 +1,8 @@
+use crate::config::Config;
 use entity::claim_tech_desc;
 use log::{debug, error, info};
 use migration::sea_query;
+use reqwest::Client;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
 };
@@ -10,11 +12,9 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
 
 pub(crate) async fn load_claim_tech_desc_from_file(
     storage_path: &PathBuf,
@@ -259,7 +259,7 @@ fn import_interal_claim_tech_desc(config: Config, conn: DatabaseConnection, clie
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_claim_tech_desc) = claim_tech_desc {
                     info!("ClaimTechDesc imported");
@@ -296,4 +296,3 @@ pub async fn import_job_claim_tech_desc(temp_config: Config) -> () {
         import_interal_claim_tech_desc(config.clone(), conn, client);
     }
 }
-

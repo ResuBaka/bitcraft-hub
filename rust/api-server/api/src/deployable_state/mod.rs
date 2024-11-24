@@ -1,6 +1,8 @@
+use crate::config::Config;
 use entity::deployable_state;
 use log::{debug, error, info};
 use migration::sea_query;
+use reqwest::Client;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
 };
@@ -10,19 +12,23 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
 
 pub(crate) async fn load_deployable_state_from_file(
     storage_path: &PathBuf,
 ) -> anyhow::Result<Vec<deployable_state::Model>> {
     let item_file = File::open(storage_path.join("State/DeployableState.json"))?;
     let deployable_state: Value = serde_json::from_reader(&item_file)?;
-    let deployable_states: Vec<deployable_state::Model> =
-        serde_json::from_value(deployable_state.get(0).unwrap().get("rows").unwrap().clone())?;
+    let deployable_states: Vec<deployable_state::Model> = serde_json::from_value(
+        deployable_state
+            .get(0)
+            .unwrap()
+            .get("rows")
+            .unwrap()
+            .clone(),
+    )?;
 
     Ok(deployable_states)
 }
@@ -112,9 +118,11 @@ pub(crate) async fn import_deployable_state(
                     buffer_before_insert
                         .iter()
                         .filter(|deployable_state| {
-                            !deployable_state_from_db.iter().any(|deployable_state_from_db| {
-                                deployable_state_from_db.entity_id == deployable_state.entity_id
-                            })
+                            !deployable_state_from_db
+                                .iter()
+                                .any(|deployable_state_from_db| {
+                                    deployable_state_from_db.entity_id == deployable_state.entity_id
+                                })
                         })
                         .map(|deployable_state| deployable_state.entity_id),
                 );
@@ -227,7 +235,10 @@ pub(crate) async fn import_deployable_state(
     );
 
     if deployable_state_to_delete.len() > 0 {
-        info!("deployable_state's to delete: {:?}", deployable_state_to_delete);
+        info!(
+            "deployable_state's to delete: {:?}",
+            deployable_state_to_delete
+        );
         deployable_state::Entity::delete_many()
             .filter(deployable_state::Column::EntityId.is_in(deployable_state_to_delete))
             .exec(conn)
@@ -278,7 +289,7 @@ fn import_internal_deployable_state(config: Config, conn: DatabaseConnection, cl
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_) = deployable_state {
                     info!("DeployableState imported");

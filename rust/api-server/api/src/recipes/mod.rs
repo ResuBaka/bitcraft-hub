@@ -52,7 +52,7 @@ pub(crate) async fn get_needed_in_crafting(
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
     return Ok(Codec(vec![]));
-    
+
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
     let recipes = recipes

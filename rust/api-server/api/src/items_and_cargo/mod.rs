@@ -117,7 +117,8 @@ pub(crate) async fn import_items(conn: &DatabaseConnection) -> anyhow::Result<()
         return Ok(());
     }
 
-    let item: Vec<item_desc::ActiveModel> = item.into_iter().map(|x| x.into_active_model()).collect();
+    let item: Vec<item_desc::ActiveModel> =
+        item.into_iter().map(|x| x.into_active_model()).collect();
 
     for item in item.chunks(5000) {
         let _ = item_desc::Entity::insert_many(item.to_vec())

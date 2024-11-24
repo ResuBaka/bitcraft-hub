@@ -1,23 +1,26 @@
-use std::fmt::Write;
-use ::entity::trade_order;
 use ::entity::building_state;
 use ::entity::cargo_desc;
 use ::entity::claim_tech_desc;
 use ::entity::claim_tech_state;
 use ::entity::crafting_recipe;
-use ::entity::inventory;
 use ::entity::deployable_state;
+use ::entity::inventory;
+use ::entity::trade_order;
 use ::entity::{
     building_desc, claim_description_state, claim_description_state::Entity as ClaimDescription,
     experience_state, item_desc, item_desc::Entity as Item, location, location::Entity as Location,
-    player_state, player_state::Entity as PlayerState, skill_desc,
-    player_username_state, player_username_state::Entity as PlayerUsernameState,
+    player_state, player_state::Entity as PlayerState, player_username_state,
+    player_username_state::Entity as PlayerUsernameState, skill_desc,
 };
 use sea_orm::prelude::Decimal;
-use sea_orm::sea_query::{Alias, Expr, ExprTrait, MysqlQueryBuilder, PgFunc, PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder};
-use sea_orm::*;
 use sea_orm::sea_query::extension::postgres::PgExpr;
+use sea_orm::sea_query::{
+    Alias, Expr, ExprTrait, MysqlQueryBuilder, PgFunc, PostgresQueryBuilder, Quote, SimpleExpr,
+    SqliteQueryBuilder,
+};
 use sea_orm::sqlx::RawSql;
+use sea_orm::*;
+use std::fmt::Write;
 
 pub struct Query;
 
@@ -55,33 +58,47 @@ impl Query {
         page: u64,
         per_page: u64,
         search: Option<String>,
-    ) -> Result<(Vec<player_state::Model>, Vec<player_username_state::Model>, ItemsAndPagesNumber), DbErr> {
+    ) -> Result<
+        (
+            Vec<player_state::Model>,
+            Vec<player_username_state::Model>,
+            ItemsAndPagesNumber,
+        ),
+        DbErr,
+    > {
         // Setup paginator
         let paginator = PlayerUsernameState::find()
             .order_by_asc(player_username_state::Column::EntityId)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => {
-                    query.filter(Expr::col(player_username_state::Column::Username).ilike(format!("%{}%", value)))
-                }
-                _ => unreachable!()
+                DbBackend::Postgres => query.filter(
+                    Expr::col(player_username_state::Column::Username)
+                        .ilike(format!("%{}%", value)),
+                ),
+                _ => unreachable!(),
             })
             .paginate(db, per_page);
 
         let num_pages = paginator.num_items_and_pages().await?;
 
         // Fetch paginated posts
-        let (player_usernames, num_pages) = paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))?;
+        let (player_usernames, num_pages) = paginator
+            .fetch_page(page - 1)
+            .await
+            .map(|p| (p, num_pages))?;
 
         let player_states = PlayerState::find()
-            .filter(player_state::Column::EntityId.is_in(player_usernames.iter().map(|p| p.entity_id).collect::<Vec<i64>>()))
+            .filter(
+                player_state::Column::EntityId.is_in(
+                    player_usernames
+                        .iter()
+                        .map(|p| p.entity_id)
+                        .collect::<Vec<i64>>(),
+                ),
+            )
             .all(db)
             .await?;
 
-        Ok((
-            player_states,
-            player_usernames,
-            num_pages
-        ))
+        Ok((player_states, player_usernames, num_pages))
     }
 
     /// If ok, returns (post models, num pages).
@@ -111,8 +128,10 @@ impl Query {
         let paginator = Item::find()
             .order_by_asc(item_desc::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
-                _ => unreachable!()
+                DbBackend::Postgres => {
+                    query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value)))
+                }
+                _ => unreachable!(),
             })
             .paginate(db, per_page);
 
@@ -126,37 +145,63 @@ impl Query {
         Item::find().all(db).await
     }
 
-    pub async fn search_items_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<item_desc::Model>, DbErr> {
+    pub async fn search_items_desc(
+        db: &DbConn,
+        search: &Option<String>,
+        tier: &Option<i32>,
+        tag: &Option<String>,
+    ) -> Result<Vec<item_desc::Model>, DbErr> {
         Item::find()
-            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
-                _ => unreachable!()
+            .apply_if(search.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => query
+                        .filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
+                    _ => unreachable!(),
+                }
             })
-            .apply_if(tag.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Tag).eq(value)),
-                _ => unreachable!()
+            .apply_if(tag.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => {
+                        query.filter(Expr::col(item_desc::Column::Tag).eq(value))
+                    }
+                    _ => unreachable!(),
+                }
             })
-            .apply_if(tier.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Tier).eq(value)),
-                _ => unreachable!()
+            .apply_if(tier.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => {
+                        query.filter(Expr::col(item_desc::Column::Tier).eq(value))
+                    }
+                    _ => unreachable!(),
+                }
             })
-            .all(db).await
+            .all(db)
+            .await
     }
 
-    pub async fn find_item_by_ids(db: &DbConn, ids: Vec<i64>) -> Result<Vec<item_desc::Model>, DbErr> {
+    pub async fn find_item_by_ids(
+        db: &DbConn,
+        ids: Vec<i64>,
+    ) -> Result<Vec<item_desc::Model>, DbErr> {
         Item::find()
             .filter(item_desc::Column::Id.is_in(ids))
             .all(db)
             .await
     }
 
-    pub async fn search_items_desc_ids(db: &DbConn, search: &Option<String>) -> Result<Vec<i64>, DbErr> {
+    pub async fn search_items_desc_ids(
+        db: &DbConn,
+        search: &Option<String>,
+    ) -> Result<Vec<i64>, DbErr> {
         Item::find()
             .select_only()
             .column(item_desc::Column::Id)
-            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
-                _ => unreachable!()
+            .apply_if(search.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => query
+                        .filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
+                    _ => unreachable!(),
+                }
             })
             .order_by_asc(item_desc::Column::Id)
             .into_tuple()
@@ -192,30 +237,53 @@ impl Query {
         cargo_desc::Entity::find().all(db).await
     }
 
-    pub async fn search_cargos_desc(db: &DbConn, search: &Option<String>, tier: &Option<i32>, tag: &Option<String>) -> Result<Vec<cargo_desc::Model>, DbErr> {
+    pub async fn search_cargos_desc(
+        db: &DbConn,
+        search: &Option<String>,
+        tier: &Option<i32>,
+        tag: &Option<String>,
+    ) -> Result<Vec<cargo_desc::Model>, DbErr> {
         cargo_desc::Entity::find()
-            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
-                _ => unreachable!()
+            .apply_if(search.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => query
+                        .filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
+                    _ => unreachable!(),
+                }
             })
-            .apply_if(tag.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Tag).eq(value)),
-                _ => unreachable!()
+            .apply_if(tag.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => {
+                        query.filter(Expr::col(cargo_desc::Column::Tag).eq(value))
+                    }
+                    _ => unreachable!(),
+                }
             })
-            .apply_if(tier.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Tier).eq(value)),
-                _ => unreachable!()
+            .apply_if(tier.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => {
+                        query.filter(Expr::col(cargo_desc::Column::Tier).eq(value))
+                    }
+                    _ => unreachable!(),
+                }
             })
-            .all(db).await
+            .all(db)
+            .await
     }
 
-    pub async fn search_cargo_desc_ids(db: &DbConn, search: &Option<String>) -> Result<Vec<i64>, DbErr> {
+    pub async fn search_cargo_desc_ids(
+        db: &DbConn,
+        search: &Option<String>,
+    ) -> Result<Vec<i64>, DbErr> {
         cargo_desc::Entity::find()
             .select_only()
             .column(cargo_desc::Column::Id)
-            .apply_if(search.clone(), |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
-                _ => unreachable!()
+            .apply_if(search.clone(), |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => query
+                        .filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
+                    _ => unreachable!(),
+                }
             })
             .order_by_asc(cargo_desc::Column::Id)
             .into_tuple()
@@ -272,52 +340,62 @@ impl Query {
             .filter(claim_description_state::Column::Name.ne("Watchtower"))
             .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(claim_description_state::Column::Name).ilike(format!("%{}%", value))),
-                _ => unreachable!()
+                DbBackend::Postgres => query.filter(
+                    Expr::col(claim_description_state::Column::Name).ilike(format!("%{}%", value)),
+                ),
+                _ => unreachable!(),
             })
             // Look at how to write this query so it works and seo-orm does not to make things I would not like it do to here.
             // The query needs to look like this at the end: SELECT "entity_id" FROM "claim_tech_state" WHERE learned::jsonb @> '[500]';
-            .apply_if(has_research, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => {
-                    query.filter(
-                        Condition::any().add(claim_description_state::Column::EntityId.in_subquery(
-                            sea_query::Query::select()
-                                .column(claim_tech_state::Column::EntityId)
-                                // .and_where(SimpleExpr::from(PgFunc::any(Expr::col(claim_tech_state::Column::Learned)).eq(
-                                //     value
-                                // )))
-                                .and_where(
-                                    Expr::eq(
-                                        Expr::val(value),
-                                        Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                                    )
-                                )
-                                .from(claim_tech_state::Entity)
-                                .to_owned()
-                            )
+            .apply_if(has_research, |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => {
+                        query.filter(
+                            Condition::any().add(
+                                claim_description_state::Column::EntityId.in_subquery(
+                                    sea_query::Query::select()
+                                        .column(claim_tech_state::Column::EntityId)
+                                        // .and_where(SimpleExpr::from(PgFunc::any(Expr::col(claim_tech_state::Column::Learned)).eq(
+                                        //     value
+                                        // )))
+                                        .and_where(Expr::eq(
+                                            Expr::val(value),
+                                            Expr::expr(PgFunc::any(Expr::col(
+                                                claim_tech_state::Column::Learned,
+                                            ))),
+                                        ))
+                                        .from(claim_tech_state::Entity)
+                                        .to_owned(),
+                                ),
+                            ),
                         )
-                    )
-                },
-                _ => unreachable!()
+                    }
+                    _ => unreachable!(),
+                }
             })
-            .apply_if(is_running_upgrade, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => {
-                    let where_query = if value {
-                        claim_tech_state::Column::Researching.ne(0)
-                    } else {
-                        claim_tech_state::Column::Researching.eq(0)
-                    };
+            .apply_if(is_running_upgrade, |query, value| {
+                match db.get_database_backend() {
+                    DbBackend::Postgres => {
+                        let where_query = if value {
+                            claim_tech_state::Column::Researching.ne(0)
+                        } else {
+                            claim_tech_state::Column::Researching.eq(0)
+                        };
 
-                    query.filter(
-                        Condition::any().add(claim_description_state::Column::EntityId.in_subquery(
-                        sea_query::Query::select()
-                            .column(claim_tech_state::Column::EntityId)
-                            .and_where(where_query)
-                            .from(claim_tech_state::Entity)
-                            .to_owned()
-                    )))
-                },
-                _ => unreachable!()
+                        query.filter(
+                            Condition::any().add(
+                                claim_description_state::Column::EntityId.in_subquery(
+                                    sea_query::Query::select()
+                                        .column(claim_tech_state::Column::EntityId)
+                                        .and_where(where_query)
+                                        .from(claim_tech_state::Entity)
+                                        .to_owned(),
+                                ),
+                            ),
+                        )
+                    }
+                    _ => unreachable!(),
+                }
             })
             .paginate(db, per_page);
         let num_pages = paginator.num_items_and_pages().await?;
@@ -330,7 +408,9 @@ impl Query {
         db: &DbConn,
         id: i64,
     ) -> Result<Option<claim_description_state::Model>, DbErr> {
-        claim_description_state::Entity::find_by_id(id).one(db).await
+        claim_description_state::Entity::find_by_id(id)
+            .one(db)
+            .await
     }
 
     pub async fn find_claim_description_by_id(
@@ -428,7 +508,7 @@ impl Query {
 
         let query = match db.get_database_backend() {
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         Ok(db
@@ -459,7 +539,7 @@ impl Query {
 
         let query = match db.get_database_backend() {
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         Ok(db
@@ -490,7 +570,7 @@ impl Query {
 
         let query_level = match db.get_database_backend() {
             DbBackend::Postgres => query_level.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         let level = db
@@ -523,7 +603,7 @@ impl Query {
 
         let query_rank = match db.get_database_backend() {
             DbBackend::Postgres => query_rank.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         let rank: Option<i64> = db
@@ -558,7 +638,7 @@ impl Query {
 
         let query_experience = match db.get_database_backend() {
             DbBackend::Postgres => query_experience.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         let experience: Option<i64> = db
@@ -591,7 +671,7 @@ impl Query {
 
         let query_rank = match db.get_database_backend() {
             DbBackend::Postgres => query_rank.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         let rank: Option<i64> = db
@@ -628,7 +708,7 @@ impl Query {
 
         let query = match db.get_database_backend() {
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         Ok(db
@@ -666,7 +746,7 @@ impl Query {
 
         let query = match db.get_database_backend() {
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         Ok(db
@@ -708,8 +788,9 @@ impl Query {
         let paginator = building_desc::Entity::find()
             .order_by_asc(building_desc::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(Expr::col(building_desc::Column::Name).ilike(format!("%{}%", value))),
-                _ => unreachable!()
+                DbBackend::Postgres => query
+                    .filter(Expr::col(building_desc::Column::Name).ilike(format!("%{}%", value))),
+                _ => unreachable!(),
             })
             .paginate(db, per_page);
         let num_pages = paginator.num_items_and_pages().await?;
@@ -892,10 +973,8 @@ impl Query {
             .await
     }
 
-    pub async fn load_trade_order(
-        db: &DbConn,
-    ) -> Result<Vec<trade_order::Model>, DbErr> {
-       trade_order::Entity::find()
+    pub async fn load_trade_order(db: &DbConn) -> Result<Vec<trade_order::Model>, DbErr> {
+        trade_order::Entity::find()
             .order_by_asc(trade_order::Column::EntityId)
             .all(db)
             .await
@@ -916,7 +995,7 @@ impl Query {
     }
 }
 
-struct RawName (String);
+struct RawName(String);
 
 impl Iden for RawName {
     fn prepare(&self, s: &mut dyn Write, q: Quote) {
@@ -928,12 +1007,7 @@ impl Iden for RawName {
     }
 
     fn unquoted(&self, s: &mut dyn sea_query::prepare::Write) {
-        write!(
-            s,
-            "{}",
-            &self.0
-        )
-            .unwrap();
+        write!(s, "{}", &self.0).unwrap();
     }
 }
 

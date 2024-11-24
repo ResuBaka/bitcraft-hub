@@ -1,4 +1,5 @@
 use crate::claims::ClaimDescriptionState;
+use crate::config::Config;
 use crate::{leaderboard, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -7,6 +8,7 @@ use axum::{Json, Router};
 use entity::experience_state;
 use entity::experience_state::ActiveModel;
 use log::{debug, error, info};
+use reqwest::Client;
 use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde::{Deserialize, Serialize};
@@ -17,11 +19,9 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
 
 #[macro_export]
 macro_rules! generate_mysql_sum_level_sql_statement {
@@ -240,13 +240,17 @@ pub(crate) async fn get_top_100(
         let db = state.conn.clone();
         tasks.push(tokio::spawn(async move {
             let mut leaderboard: Vec<RankType> = Vec::new();
-            let entries = Query::get_experience_state_top_100_by_skill_id(&db, skill.id, Some(EXCLUDED_USERS_FROM_LEADERBOARD))
-                .await
-                .map_err(|error| {
-                    error!("Error: {error}");
+            let entries = Query::get_experience_state_top_100_by_skill_id(
+                &db,
+                skill.id,
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            )
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
 
-                    (StatusCode::INTERNAL_SERVER_ERROR, "")
-                })?;
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?;
 
             for (i, entry) in entries.into_iter().enumerate() {
                 let rank = i + 1;
@@ -268,12 +272,15 @@ pub(crate) async fn get_top_100(
     let db = state.conn.clone();
     tasks.push(tokio::spawn(async move {
         let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_top_100_total_experience(&db, Some(EXCLUDED_USERS_FROM_LEADERBOARD))
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
+        let entries = Query::get_experience_state_top_100_total_experience(
+            &db,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
 
         for (i, entry) in entries.into_iter().enumerate() {
             let rank = i + 1;
@@ -291,12 +298,16 @@ pub(crate) async fn get_top_100(
     let db = state.conn.clone();
     tasks.push(tokio::spawn(async move {
         let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_top_100_total_level(&db, generated_level_sql, Some(EXCLUDED_USERS_FROM_LEADERBOARD))
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
+        let entries = Query::get_experience_state_top_100_total_level(
+            &db,
+            generated_level_sql,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
 
         for (i, entry) in entries.into_iter().enumerate() {
             let rank = i + 1;
@@ -1128,7 +1139,7 @@ pub async fn import_job_experience_state(temp_config: Config) -> () {
         import_internal_experience_state(config.clone(), conn, client);
     }
 }
-    
+
 fn import_internal_experience_state(config: Config, conn: DatabaseConnection, client: Client) {
     std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
@@ -1143,7 +1154,7 @@ fn import_internal_experience_state(config: Config, conn: DatabaseConnection, cl
                     &config.spacetimedb.database,
                     &conn,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_experience_state) = experience_state {
                     info!("ExperienceState imported");

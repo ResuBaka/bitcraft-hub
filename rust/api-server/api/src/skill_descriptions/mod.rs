@@ -1,6 +1,9 @@
+use crate::config::Config;
+use crate::skill_descriptions;
 use entity::skill_desc;
 use log::{debug, error, info};
 use migration::sea_query;
+use reqwest::Client;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde_json::Value;
@@ -9,12 +12,9 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
-use reqwest::Client;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use crate::config::Config;
-use crate::skill_descriptions;
 
 #[allow(dead_code)]
 pub(crate) async fn load_skill_desc_from_file(
@@ -96,7 +96,7 @@ pub(crate) async fn import_skill_descs(
 
     while let Ok(value) = json_stream_reader.deserialize_next::<skill_desc::SkillDescRaw>() {
         let value = value.to_model()?;
-        
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -257,12 +257,15 @@ fn import_skill_descriptions(config: Config, conn: DatabaseConnection, client: C
                     &conn,
                     // &config,
                 )
-                    .await;
+                .await;
 
                 if let Ok(_) = skill_descriptions_desc {
                     info!("SkillDescriptionsDesc imported");
                 } else {
-                    error!("SkillDescriptionsDesc import failed: {:?}", skill_descriptions_desc);
+                    error!(
+                        "SkillDescriptionsDesc import failed: {:?}",
+                        skill_descriptions_desc
+                    );
                 }
             });
     });

@@ -48,7 +48,7 @@ impl MigrationTrait for Migration {
             )
             .await
             .expect("Creating PlayerState table");
-        
+
         manager
             .create_table(
                 Table::create()
@@ -60,7 +60,11 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(PlayerUsernameState::Username).string().not_null())
+                    .col(
+                        ColumnDef::new(PlayerUsernameState::Username)
+                            .string()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await
@@ -80,7 +84,6 @@ impl MigrationTrait for Migration {
         Ok(())
     }
 }
-
 
 #[derive(DeriveIden)]
 enum PlayerState {
