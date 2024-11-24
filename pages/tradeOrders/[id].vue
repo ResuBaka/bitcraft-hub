@@ -13,14 +13,9 @@ if (tmpPage) {
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const { data: claimFetch, pending: claimPnding } = useFetch(() => {
-  // if (new_api) {
-  //   return `${api.base}/api/bitcraft/claims/${route.params.id}?per_Page=${perPage.value}`;
-  // } else {
-  return `/api/bitcraft/claims/${route.params.id}?perPage=${perPage.value}`;
-  // }
+  return `${api.base}/api/bitcraft/claims/${route.params.id}?per_Page=${perPage.value}`;
 });
 
 const claim = computed(() => {

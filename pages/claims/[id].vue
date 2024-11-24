@@ -37,22 +37,13 @@ if (tmpPage) {
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const { data: claimFetch, pending: claimPnding } = useFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/claims/${route.params.id}`;
-  } else {
-    return `/api/bitcraft/claims/${route.params.id}`;
-  }
+  return `${api.base}/api/bitcraft/claims/${route.params.id}`;
 });
 
 const { data: buidlingsFetch, pending: buildingsPending } = useFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
-  } else {
-    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&perPage=${perPage}`;
-  }
+  return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
 });
 
 const claim = computed(() => {

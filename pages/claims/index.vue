@@ -21,7 +21,6 @@ if (route.query.page) {
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const {
   data: claims,
@@ -29,11 +28,7 @@ const {
   refresh,
 } = await useLazyFetch(
   () => {
-    if (new_api) {
-      return `${api.base}/api/bitcraft/claims`;
-    } else {
-      return `/api/bitcraft/claims`;
-    }
+    return `${api.base}/api/bitcraft/claims`;
   },
   {
     onRequest: ({ options }) => {
@@ -48,11 +43,7 @@ const {
       }
 
       if (perPage) {
-        if (new_api) {
-          options.query.per_page = perPage;
-        } else {
-          options.query.perPage = perPage;
-        }
+        options.query.per_page = perPage;
       }
 
       if (showEmptySupplies.value) {
@@ -61,11 +52,7 @@ const {
 
       if (Object.keys(options.query).length > 2) {
         const query = { ...options.query };
-        if (new_api) {
-          delete query.per_page;
-        } else {
-          delete query.perPage;
-        }
+        delete query.per_page;
         router.push({ query });
       } else if (options.query.page <= 1) {
         router.push({});

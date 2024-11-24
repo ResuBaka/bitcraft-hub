@@ -20,7 +20,6 @@ if (route.query.page) {
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const {
   data: tradeOrders,
@@ -28,11 +27,7 @@ const {
   refresh,
 } = await useLazyFetch(
   () => {
-    // if (new_api) {
-    //   return `${api.base}/api/bitcraft/tradeOrders`;
-    // } else {
-    return `/api/bitcraft/tradeOrders`;
-    // }
+    return `${api.base}/api/bitcraft/tradeOrders`;
   },
   {
     onRequest: ({ options }) => {

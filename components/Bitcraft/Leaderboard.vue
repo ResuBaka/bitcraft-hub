@@ -3,7 +3,6 @@ const numberFormat = new Intl.NumberFormat(undefined);
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const {
   data: leaderboard,
@@ -11,11 +10,7 @@ const {
   refresh,
 } = await useFetch(
   () => {
-    if (new_api) {
-      return `${api.base}/leaderboard`;
-    } else {
-    return `/api/bitcraft/leaderboard`;
-    }
+    return `${api.base}/leaderboard`;
   },
   {
     lazy: true,

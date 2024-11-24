@@ -9,30 +9,17 @@ const { item } = defineProps<{
 const {
   public: { iconDomain, api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const { data: neededInCrafting } = await useLazyFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
-  } else {
-    return `/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
-  }
+  return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
 });
 
 const { data: producedInCrafting } = await useLazyFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
-  } else {
-    return `/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
-  }
+  return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
 });
 
 const { data: neededToCraft } = await useLazyFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
-  } else {
-    return `/api/bitcraft/recipes/needed_to_craft/${item.id}`;
-  }
+  return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
 });
 
 const neededInCraftingData = computed(() => {

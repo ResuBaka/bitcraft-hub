@@ -2,6 +2,7 @@
 const theme = useTheme();
 const page = ref(1);
 const route = useRoute();
+const numberFormat = new Intl.NumberFormat(undefined);
 
 const tmpPage = (route.query.page as string) ?? null;
 
@@ -12,29 +13,16 @@ if (tmpPage) {
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const { data: playerFetch, pending: playerPnding } = useFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/players/${route.params.id}`;
-  } else {
-    return `/api/bitcraft/players/${route.params.id}`;
-  }
+  return `${api.base}/api/bitcraft/players/${route.params.id}`;
 });
 const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
-  } else {
-    return `/api/bitcraft/inventorys?owner_entity_id=${route.params.id}`;
-  }
+  return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
 });
 
 const { data: experienceFetch } = useFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/experience/${route.params.id}`;
-  } else {
-    return `/api/bitcraft/experience/${route.params.id}`;
-  }
+  return `${api.base}/api/bitcraft/experience/${route.params.id}`;
 });
 
 const expeirence = computed(() => {
@@ -127,7 +115,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
             </tr>
             <tr v-for="[skill,xp_info] of Object.entries(expeirence)" style='text-align: right'>
               <th>{{ skill }}</th>
-              <td>{{ xp_info.experience }}</td>
+              <td>{{ xp_info.experience ? numberFormat.format(xp_info.experience) : "" }}</td>
               <td>{{ xp_info.level }}</td>
               <td>#{{ xp_info.rank }}</td>
             </tr>

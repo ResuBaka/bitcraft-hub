@@ -7,14 +7,9 @@ const props = defineProps<{
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const { data: neededInCrafting } = useFetch(() => {
-  if (new_api) {
-    return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${props.craftId}`;
-  } else {
-    return `/api/bitcraft/recipes/needed_in_crafting/${props.craftId}`;
-  }
+  return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${props.craftId}`;
 });
 const replacedTempalte = computed(() =>
   props.template

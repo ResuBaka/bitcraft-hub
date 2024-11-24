@@ -8,9 +8,6 @@ export default defineNuxtConfig({
       websocket: true,
       tasks: true,
     },
-    scheduledTasks: {
-      '*/1 * * * *': ['state:refresh'],
-    },
     preset: "bun"
   },
 

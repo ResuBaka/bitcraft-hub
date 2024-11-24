@@ -67,15 +67,10 @@ function timeAgo(date) {
 const {
   public: { api },
 } = useRuntimeConfig();
-const { new_api } = useConfigStore();
 
 const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
   useFetch(() => {
-    if (new_api) {
-      return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
-    } else {
-      return `/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
-    }
+    return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
   });
 
 const inventoryChanges = computed(() => {
