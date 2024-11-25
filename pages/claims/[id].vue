@@ -557,7 +557,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
     </v-row>
     <v-row>
       <v-col cols="12">
-        <v-expansion-panels v-model="building_items_collapsible" eager>
+        <v-expansion-panels v-model="building_items_collapsible">
           <v-expansion-panel value="items">
             <v-expansion-panel-title>
               <v-row>
@@ -620,7 +620,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
     </v-row>
     <v-row>
       <v-col cols="12">
-        <v-expansion-panels v-model="player_items_collapsible" eager>
+        <v-expansion-panels v-model="player_items_collapsible">
           <v-expansion-panel value="items">
             <v-expansion-panel-title>
               <v-row>
@@ -683,7 +683,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
     </v-row>
     <v-row>
       <v-col cols="12">
-        <v-expansion-panels v-model="player_offline_items_collapsible" eager>
+        <v-expansion-panels v-model="player_offline_items_collapsible">
           <v-expansion-panel value="items">
             <v-expansion-panel-title>
               <v-row>
@@ -749,7 +749,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
         <leaderboard-claim :claim-id="parseInt($route.params.id)"></leaderboard-claim>
       </v-col>
       <v-col cols="12">
-        <v-expansion-panels v-model="buildings_collapsible" eager>
+        <v-expansion-panels v-model="buildings_collapsible">
           <v-expansion-panel value="buildings">
             <v-expansion-panel-title>
               <v-row>
