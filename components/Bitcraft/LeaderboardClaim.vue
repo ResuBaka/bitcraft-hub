@@ -3,7 +3,7 @@ const numberFormat = new Intl.NumberFormat(undefined);
 const props = defineProps<{
   claimId: number;
 }>();
-const leaderboard_collapsible = ref(["leaderboard"]);
+const leaderboard_collapsible = ref([]);
 const {
   public: { api },
 } = useRuntimeConfig();

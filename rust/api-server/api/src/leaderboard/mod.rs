@@ -164,37 +164,37 @@ pub(crate) enum RankType {
     Time(LeaderboardTime),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub(crate) struct LeaderboardSkill {
-    player_id: i64,
-    player_name: Option<String>,
-    experience: i32,
-    level: i32,
-    rank: u64,
+    pub(crate) player_id: i64,
+    pub(crate) player_name: Option<String>,
+    pub(crate) experience: i32,
+    pub(crate) level: i32,
+    pub(crate) rank: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct LeaderboardLevel {
-    player_id: i64,
-    player_name: Option<String>,
-    level: u32,
-    rank: u64,
+    pub(crate) player_id: i64,
+    pub(crate) player_name: Option<String>,
+    pub(crate) level: u32,
+    pub(crate) rank: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct LeaderboardExperience {
-    player_id: i64,
-    player_name: Option<String>,
-    experience: i32,
-    rank: u64,
+    pub(crate) player_id: i64,
+    pub(crate) player_name: Option<String>,
+    pub(crate) experience: i32,
+    pub(crate) rank: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct LeaderboardTime {
-    player_id: i64,
-    player_name: Option<String>,
-    time_played: u64,
-    rank: u64,
+    pub(crate) player_id: i64,
+    pub(crate) player_name: Option<String>,
+    pub(crate) time_played: u64,
+    pub(crate) rank: u64,
 }
 
 pub(crate) async fn get_top_100(
@@ -398,7 +398,7 @@ pub(crate) async fn get_top_100(
     Ok(Json(leaderboard_result))
 }
 
-fn experience_to_level(experience: i64) -> i32 {
+pub(crate) fn experience_to_level(experience: i64) -> i32 {
     if experience == 0 {
         return 1;
     }

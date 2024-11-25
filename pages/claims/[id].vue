@@ -10,10 +10,10 @@ const {
 const page = ref(1);
 const perPage = 500;
 
-const building_items_collapsible = ref(["items"]);
+const building_items_collapsible = ref([]);
 const player_items_collapsible = ref([]);
 const player_offline_items_collapsible = ref([]);
-const buildings_collapsible = ref(["buildings"]);
+const buildings_collapsible = ref([]);
 
 const search = ref<string | null>("");
 
@@ -125,16 +125,56 @@ const inventorysPlayersOffline = computed(() => {
 });
 
 const tierColor = function (tier: number) {
+  let colorEffect = "";
+
+  if (theme.global.current.value.dark) {
+  } else {
+    colorEffect = "-darken-4";
+  }
+
   const colors = {
-    1: "grey",
-    2: "green",
-    3: "blue",
-    4: "purple",
-    5: "yellow",
-    6: "pink",
+    1: `grey${colorEffect}`,
+    2: `green${colorEffect}`,
+    3: `blue${colorEffect}`,
+    4: `purple${colorEffect}`,
+    5: `yellow${colorEffect}`,
+    6: `pink${colorEffect}`,
   };
 
   return colors[tier] ?? "";
+};
+
+const theme = useTheme();
+
+const levelToColor = (level: number) => {
+  let colorEffect = "";
+
+  if (theme.global.current.value.dark) {
+  } else {
+    colorEffect = "-darken-4";
+  }
+
+  if (1 <= level && level <= 19) {
+    return `grey${colorEffect}`;
+  }
+  if (20 <= level && level <= 29) {
+    return `green${colorEffect}`;
+  }
+  if (30 <= level && level <= 39) {
+    return `blue${colorEffect}`;
+  }
+  if (40 <= level && level <= 49) {
+    return `purple${colorEffect}`;
+  }
+  if (50 <= level && level <= 59) {
+    return `yellow${colorEffect}`;
+  }
+  if (60 <= level && level <= 69) {
+    return `orange${colorEffect}`;
+  }
+  if (70 <= level) {
+    return `red${colorEffect}`;
+  }
 };
 
 const length = computed(() => {
@@ -225,6 +265,44 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 
   return result;
 };
+
+let memberSearch = ref<string | null>(null);
+
+const membersForTable = computed(() => {
+  if (!claim.value?.members) {
+    return [];
+  }
+  return claim.value.members
+    .filter((member) => {
+      if (memberSearch.value) {
+        return member.user_name
+          .toLowerCase()
+          .includes(memberSearch.value.toLowerCase());
+      }
+
+      return true;
+    })
+    .map((member) => {
+      let permissions = 0;
+      if (member.co_owner_permission) {
+        permissions += 8;
+      }
+      if (member.officer_permission) {
+        permissions += 4;
+      }
+      if (member.build_permission) {
+        permissions += 2;
+      }
+      if (member.inventory_permission) {
+        permissions += 1;
+      }
+
+      return {
+        ...member,
+        permissions,
+      };
+    });
+});
 
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -319,24 +397,143 @@ const nDate = Intl.DateTimeFormat(undefined, {
         </v-card>
       </v-col>
       <v-col cols="12" lg="10">
-        <v-card height="100%" :title="`Members (${claim?.members?.length || 0})`">
+        <v-card height="100%">
+          <v-card-title class="d-flex align-center pe-2">
+            Members ({{claim?.members?.length || 0}})
+
+            <v-spacer></v-spacer>
+
+            <v-text-field
+                v-model="memberSearch"
+                density="compact"
+                label="Search"
+                prepend-inner-icon="mdi-magnify"
+                variant="solo-filled"
+                flat
+                hide-details
+                single-line
+            ></v-text-field>
+          </v-card-title>
           <v-card-text>
-            <v-list-item>
-              <v-row>
-                <v-col cols="6" md="3" xl="2" v-for="member in sortedUsersByPermissionLevel" :key="member.user_name">
-                  <nuxt-link
-                      class="text-decoration-none text-high-emphasis font-weight-black"
-                      :to="{ name: 'players-id', params: { id: member.entity_id } }"
-                  >
-                    {{ member.user_name }}
-                    {{ member.co_owner_permission ? "🏰" : "" }}
-                    {{ member.officer_permission ? "🗡️" : "" }}
-                    {{ member.build_permission ? "🔨" : "" }}
-                    {{ member.inventory_permission ? "📦" : "" }}
-                  </nuxt-link>
-                </v-col>
-              </v-row>
-            </v-list-item>
+            <v-data-table
+                density="compact"
+                :sort-by="[{ key: 'permissions', order: 'desc' }]"
+                :headers="[
+                {
+                  title: 'User',
+                  key: 'user_name',
+                  cellProps: {
+                    class: 'font-weight-black'
+                  }
+                },
+                 {
+                  title: 'Co-Owner',
+                  key: 'permissions',
+                },
+                  {
+                    title: 'Carpentry',
+                    key: 'skills_ranks.Carpentry'
+                  },
+                  {
+                    title: 'Cooking',
+                    key: 'skills_ranks.Cooking'
+                  },
+                  {
+                    title: 'Farming',
+                    key: 'skills_ranks.Farming'
+                  },
+                  {
+                    title: 'Fishing',
+                    key: 'skills_ranks.Fishing'
+                  },
+                  {
+                    title: 'Foraging',
+                    key: 'skills_ranks.Foraging'
+                  },
+                  {
+                    title: 'Forestry',
+                    key: 'skills_ranks.Forestry'
+                  },
+                  {
+                    title: 'Hunting',
+                    key: 'skills_ranks.Hunting'
+                  },
+                  {
+                    title: 'Leatherworking',
+                    key: 'skills_ranks.Leatherworking'
+                  },
+                  {
+                    title: 'Masonry',
+                    key: 'skills_ranks.Masonry'
+                  },
+                  {
+                    title: 'Mining',
+                    key: 'skills_ranks.Mining'
+                  },
+                  {
+                    title: 'Scholar',
+                    key: 'skills_ranks.Scholar'
+                  },
+                  {
+                    title: 'Smithing',
+                    key: 'skills_ranks.Smithing'
+                  },
+                  {
+                    title: 'Tailoring',
+                    key: 'skills_ranks.Tailoring'
+                  },
+                ]"
+                :items="membersForTable"
+                :items-per-page="15"
+                class="elevation-1"
+
+            >
+              <template #item.permissions="{ item }">
+                {{ item.co_owner_permission ? "🏰" : "" }}
+                {{ item.officer_permission ? "🗡️" : "" }}
+                {{ item.build_permission ? "🔨" : "" }}
+                {{ item.inventory_permission ? "📦" : "" }}
+              </template>
+              <template #item.skills_ranks.Carpentry="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Cooking="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Farming="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Fishing="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Foraging="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Forestry="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Hunting="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Leatherworking="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Masonry="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Mining="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Scholar="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Smithing="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+              <template #item.skills_ranks.Tailoring="{ value }">
+                <v-chip class="font-weight-black" :color="levelToColor(value.level)">{{ value.level }}</v-chip>
+              </template>
+            </v-data-table>
           </v-card-text>
         </v-card>
       </v-col>
