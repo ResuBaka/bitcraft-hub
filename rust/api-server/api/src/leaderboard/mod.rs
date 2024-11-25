@@ -14,7 +14,7 @@ use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
@@ -199,7 +199,7 @@ pub(crate) struct LeaderboardTime {
 
 pub(crate) async fn get_top_100(
     state: State<AppState>,
-) -> Result<Json<HashMap<String, Vec<RankType>>>, (StatusCode, &'static str)> {
+) -> Result<Json<BTreeMap<String, Vec<RankType>>>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -208,7 +208,7 @@ pub(crate) async fn get_top_100(
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
 
-    let mut leaderboard_result: HashMap<String, Vec<RankType>> = HashMap::new();
+    let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();
 
     let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
@@ -727,7 +727,7 @@ fn row_to_xp_values(row: Value) -> Vec<experience_state::Model> {
 pub(crate) async fn player_leaderboard(
     state: State<AppState>,
     Path(player_id): Path<i64>,
-) -> Result<Json<HashMap<String, RankType>>, (StatusCode, &'static str)> {
+) -> Result<Json<BTreeMap<String, RankType>>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -736,7 +736,7 @@ pub(crate) async fn player_leaderboard(
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
 
-    let mut leaderboard_result: HashMap<String, RankType> = HashMap::new();
+    let mut leaderboard_result: BTreeMap<String, RankType> = BTreeMap::new();
 
     let mut tasks: Vec<
         tokio::task::JoinHandle<Result<(String, RankType), (StatusCode, &'static str)>>,
@@ -897,7 +897,7 @@ pub(crate) async fn player_leaderboard(
 pub(crate) async fn get_claim_leaderboard(
     state: State<AppState>,
     Path(claim_id): Path<i64>,
-) -> Result<Json<HashMap<String, Vec<RankType>>>, (StatusCode, &'static str)> {
+) -> Result<Json<BTreeMap<String, Vec<RankType>>>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -926,7 +926,7 @@ pub(crate) async fn get_claim_leaderboard(
         .map(|member| member.entity_id)
         .collect::<Vec<i64>>();
 
-    let mut leaderboard_result: HashMap<String, Vec<RankType>> = HashMap::new();
+    let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();
 
     let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
