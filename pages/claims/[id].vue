@@ -144,6 +144,10 @@ const tierColor = function (tier: number) {
   return colors[tier] ?? "";
 };
 
+const sortMembersLevelRaw = (a: any, b: any) => {
+  return b.level - a.level;
+};
+
 const theme = useTheme();
 
 const levelToColor = (level: number) => {
@@ -432,55 +436,68 @@ const nDate = Intl.DateTimeFormat(undefined, {
                 },
                   {
                     title: 'Carpentry',
-                    key: 'skills_ranks.Carpentry'
+                    key: 'skills_ranks.Carpentry',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Cooking',
-                    key: 'skills_ranks.Cooking'
+                    key: 'skills_ranks.Cooking',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Farming',
-                    key: 'skills_ranks.Farming'
+                    key: 'skills_ranks.Farming',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Fishing',
-                    key: 'skills_ranks.Fishing'
+                    key: 'skills_ranks.Fishing',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Foraging',
-                    key: 'skills_ranks.Foraging'
+                    key: 'skills_ranks.Foraging',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Forestry',
-                    key: 'skills_ranks.Forestry'
+                    key: 'skills_ranks.Forestry',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Hunting',
-                    key: 'skills_ranks.Hunting'
+                    key: 'skills_ranks.Hunting',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Leatherworking',
-                    key: 'skills_ranks.Leatherworking'
+                    key: 'skills_ranks.Leatherworking',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Masonry',
-                    key: 'skills_ranks.Masonry'
+                    key: 'skills_ranks.Masonry',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Mining',
-                    key: 'skills_ranks.Mining'
+                    key: 'skills_ranks.Mining',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Scholar',
-                    key: 'skills_ranks.Scholar'
+                    key: 'skills_ranks.Scholar',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Smithing',
-                    key: 'skills_ranks.Smithing'
+                    key: 'skills_ranks.Smithing',
+                    sort: sortMembersLevelRaw
                   },
                   {
                     title: 'Tailoring',
-                    key: 'skills_ranks.Tailoring'
+                    key: 'skills_ranks.Tailoring',
+                    sort: sortMembersLevelRaw
                   },
                 ]"
                 :items="membersForTable"
