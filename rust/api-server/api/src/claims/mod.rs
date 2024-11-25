@@ -49,6 +49,7 @@ pub struct ClaimDescriptionState {
     pub location: sea_orm::prelude::Json,
     pub treasury: i32,
     pub running_upgrade: Option<claim_tech_desc::Model>,
+    pub running_upgrade_started: Option<i64>,
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub xp_gained_since_last_coin_minting: i32,
@@ -70,6 +71,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub treasury: i32,
     pub xp_gained_since_last_coin_minting: i32,
     pub running_upgrade: Option<claim_tech_desc::Model>,
+    pub running_upgrade_started: Option<i64>,
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
@@ -102,6 +104,7 @@ impl From<claim_description_state::Model> for ClaimDescriptionState {
             treasury: claim_description.treasury,
             xp_gained_since_last_coin_minting: claim_description.xp_gained_since_last_coin_minting,
             running_upgrade: None,
+            running_upgrade_started: None,
             tier: None,
             upgrades: vec![],
         }
@@ -187,6 +190,7 @@ pub(crate) async fn get_claim(
                     Some(tier) => Some(tier.clone()),
                     None => None,
                 };
+                claim.running_upgrade_started = Some(claim_tech_state.start_timestamp);
                 let learned: Vec<i64> = claim_tech_state.learned.clone();
                 claim.upgrades = learned
                     .iter()
@@ -283,6 +287,7 @@ pub(crate) async fn get_claim(
         location: claim.location,
         treasury: claim.treasury,
         running_upgrade: claim.running_upgrade,
+        running_upgrade_started: claim.running_upgrade_started,
         xp_gained_since_last_coin_minting: claim.xp_gained_since_last_coin_minting,
         tier: claim.tier,
         upgrades: claim.upgrades,

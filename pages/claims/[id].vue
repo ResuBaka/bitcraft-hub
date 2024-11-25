@@ -225,6 +225,16 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 
   return result;
 };
+
+const nDate = Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
 </script>
 
 <template>
@@ -292,7 +302,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
                 <v-list-item>
                   <v-list-item-title>Running Upgrade</v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ claimFetch?.running_upgrade.description }}
+                    <strong>{{ claimFetch?.running_upgrade.description }}</strong> is going to be finished at: <strong>{{ nDate.format(new Date((claimFetch?.running_upgrade.research_time * 1000) + (claimFetch?.running_upgrade_started / 1000))) }}</strong>
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
