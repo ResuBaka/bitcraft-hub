@@ -70,6 +70,14 @@ const inventorysBuildings = computed(() => {
     return [];
   }
 
+  if (
+    !inventoryBuildingsSearch.value &&
+    !rarityBuildings.value &&
+    !tierBuildings.value
+  ) {
+    return claimFetch.value?.inventorys?.buildings;
+  }
+
   return claimFetch.value?.inventorys?.buildings.filter(
     (inventory) =>
       (!rarityBuildings.value ||
@@ -90,6 +98,14 @@ const inventorysPlayers = computed(() => {
     return [];
   }
 
+  if (
+    !inventoryPlayersSearch.value &&
+    !rarityPlayers.value &&
+    !tierPlayers.value
+  ) {
+    return claimFetch.value?.inventorys?.players;
+  }
+
   return claimFetch.value?.inventorys?.players.filter(
     (inventory) =>
       (!rarityPlayers.value ||
@@ -108,6 +124,14 @@ const inventoryPlayersOfflineSearch = ref<string | null>("");
 const inventorysPlayersOffline = computed(() => {
   if (!claimFetch.value?.inventorys?.players_offline?.length) {
     return [];
+  }
+
+  if (
+    !inventoryPlayersOfflineSearch.value &&
+    !rarityPlayersOffline.value &&
+    !tierPlayersOffline.value
+  ) {
+    return claimFetch.value?.inventorys?.players_offline;
   }
 
   return claimFetch.value?.inventorys?.players_offline.filter(
