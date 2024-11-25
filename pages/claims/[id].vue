@@ -444,6 +444,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
           </v-card-title>
           <v-card-text>
             <v-data-table
+                hover
                 density="compact"
                 :sort-by="[{ key: 'permissions', order: 'desc' }]"
                 :headers="[
