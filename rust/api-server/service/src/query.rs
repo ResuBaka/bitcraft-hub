@@ -523,10 +523,12 @@ impl Query {
         db: &DbConn,
         skill_id: i64,
         player_ids: Vec<i64>,
+        exclude: Option<[i64; 1]>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
+            .filter(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .filter(experience_state::Column::EntityId.is_in(player_ids))
             .all(db)
             .await
@@ -536,10 +538,12 @@ impl Query {
         db: &DbConn,
         skill_id: i64,
         player_id: i64,
+        exclude: Option<[i64; 1]>,
     ) -> Result<(Option<experience_state::Model>, Option<u64>), DbErr> {
         let player_experience = experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
+            .filter(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .filter(experience_state::Column::EntityId.eq(player_id))
             .one(db)
             .await?;
@@ -553,6 +557,7 @@ impl Query {
         let rank = experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
+            .filter(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .filter(experience_state::Column::Experience.gte(player_experience.experience))
             .count(db)
             .await
@@ -597,6 +602,7 @@ impl Query {
         db: &DbConn,
         level_case_sql: String,
         player_ids: Vec<i64>,
+        exclude: Option<[i64; 1]>,
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -605,6 +611,7 @@ impl Query {
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
             .and_where(experience_state::Column::EntityId.is_in(player_ids))
+            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .to_owned();
 
         let query = match db.get_database_backend() {
@@ -628,12 +635,14 @@ impl Query {
         db: &DbConn,
         level_case_sql: String,
         player_id: i64,
+        exclude: Option<[i64; 1]>,
     ) -> Result<(Option<u64>, Option<u64>), DbErr> {
         let query_level = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
             .expr_as(Expr::cust(&level_case_sql), Alias::new("level"))
             .from(experience_state::Entity)
             .and_where(Expr::col(experience_state::Column::EntityId).eq(player_id))
+            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
             .to_owned();
@@ -661,6 +670,7 @@ impl Query {
             .column(experience_state::Column::EntityId)
             .expr_as(Expr::cust(level_case_sql), Alias::new("level"))
             .from(experience_state::Entity)
+            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
             .to_owned();
@@ -694,6 +704,7 @@ impl Query {
     pub async fn get_experience_state_player_rank_total_experience(
         db: &DbConn,
         player_id: i64,
+        exclude: Option<[i64; 1]>,
     ) -> Result<(Option<u64>, Option<u64>), DbErr> {
         let query_experience = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -704,6 +715,7 @@ impl Query {
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
             .and_where(Expr::col(experience_state::Column::EntityId).eq(player_id))
+            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .to_owned();
 
         let query_experience = match db.get_database_backend() {
@@ -730,6 +742,7 @@ impl Query {
             )
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
+            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)
             .to_owned();
 
@@ -801,6 +814,7 @@ impl Query {
     pub async fn get_experience_state_player_ids_total_experience(
         db: &DbConn,
         player_ids: Vec<i64>,
+        exclude: Option<[i64; 1]>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)

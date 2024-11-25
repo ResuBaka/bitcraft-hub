@@ -765,14 +765,18 @@ pub(crate) async fn player_leaderboard(
 
         let db = state.conn.clone();
         tasks.push(tokio::spawn(async move {
-            let (entrie, rank) =
-                Query::get_experience_state_player_by_skill_id(&db, skill.id, player_id)
-                    .await
-                    .map_err(|error| {
-                        error!("Error: {error}");
+            let (entrie, rank) = Query::get_experience_state_player_by_skill_id(
+                &db,
+                skill.id,
+                player_id,
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            )
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
 
-                        (StatusCode::INTERNAL_SERVER_ERROR, "")
-                    })?;
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?;
 
             if entrie.is_none() {
                 return Err((StatusCode::NOT_FOUND, ""));
@@ -797,13 +801,16 @@ pub(crate) async fn player_leaderboard(
 
     let db = state.conn.clone();
     tasks.push(tokio::spawn(async move {
-        let (total_experience, rank) =
-            Query::get_experience_state_player_rank_total_experience(&db, player_id)
-                .await
-                .map_err(|error| {
-                    error!("Error: {error}");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "")
-                })?;
+        let (total_experience, rank) = Query::get_experience_state_player_rank_total_experience(
+            &db,
+            player_id,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
 
         Ok((
             "Experience".to_string(),
@@ -820,13 +827,17 @@ pub(crate) async fn player_leaderboard(
     tasks.push(tokio::spawn(async move {
         let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
-        let (level, rank) =
-            Query::get_experience_state_player_level(&db, generated_level_sql, player_id)
-                .await
-                .map_err(|error| {
-                    error!("Error: {error}");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "")
-                })?;
+        let (level, rank) = Query::get_experience_state_player_level(
+            &db,
+            generated_level_sql,
+            player_id,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
 
         Ok((
             "Level".to_string(),
@@ -959,14 +970,18 @@ pub(crate) async fn get_claim_leaderboard(
         let player_ids = player_ids.clone();
         tasks.push(tokio::spawn(async move {
             let mut leaderboard: Vec<RankType> = Vec::new();
-            let entries =
-                Query::get_experience_state_player_ids_by_skill_id(&db, skill.id, player_ids)
-                    .await
-                    .map_err(|error| {
-                        error!("Error: {error}");
+            let entries = Query::get_experience_state_player_ids_by_skill_id(
+                &db,
+                skill.id,
+                player_ids,
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            )
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
 
-                        (StatusCode::INTERNAL_SERVER_ERROR, "")
-                    })?;
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?;
 
             for (i, entry) in entries.into_iter().enumerate() {
                 let rank = i + 1;
@@ -989,12 +1004,16 @@ pub(crate) async fn get_claim_leaderboard(
     let tmp_player_ids = player_ids.clone();
     tasks.push(tokio::spawn(async move {
         let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_player_ids_total_experience(&db, tmp_player_ids)
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
+        let entries = Query::get_experience_state_player_ids_total_experience(
+            &db,
+            tmp_player_ids,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
 
         for (i, entry) in entries.into_iter().enumerate() {
             let rank = i + 1;
@@ -1017,6 +1036,7 @@ pub(crate) async fn get_claim_leaderboard(
             &db,
             generated_level_sql,
             tmp_player_ids,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
         )
         .await
         .map_err(|error| {
