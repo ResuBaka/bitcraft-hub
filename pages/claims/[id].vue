@@ -529,6 +529,11 @@ const nDate = Intl.DateTimeFormat(undefined, {
                 class="elevation-1"
 
             >
+              <template #item.user_name="{ item }">
+                <nuxt-link class="text-decoration-none text-high-emphasis" :to="{ name: 'players-id', params: { id: item.entity_id } }">
+                  {{ item.user_name }}
+                </nuxt-link>
+              </template>
               <template #item.permissions="{ item }">
                 {{ item.co_owner_permission ? "🏰" : "" }}
                 {{ item.officer_permission ? "🗡️" : "" }}
