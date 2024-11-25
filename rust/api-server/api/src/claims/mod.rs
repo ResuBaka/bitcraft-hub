@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use crate::config::Config;
 use crate::inventory::resolve_contents;
 use crate::{claims, AppState, Params};
@@ -16,6 +15,7 @@ use sea_orm::{sea_query, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTra
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::{sea_orm::DatabaseConnection, Query as QueryCore};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
@@ -357,9 +357,10 @@ fn inventory_sort_by(a: &ExpendedRefrence, b: &ExpendedRefrence) -> Ordering {
         (ItemExpended::Cargo(cargo_b), ItemExpended::Item(cargo_a)) => (cargo_b.tier, cargo_a.tier),
         (ItemExpended::Item(item_b), ItemExpended::Cargo(item_a)) => (item_b.tier, item_a.tier),
         (ItemExpended::Item(item_b), ItemExpended::Item(item_a)) => (item_b.tier, item_a.tier),
-        (ItemExpended::Cargo(cargo_b), ItemExpended::Cargo(cargo_a)) => (cargo_b.tier, cargo_a.tier),
+        (ItemExpended::Cargo(cargo_b), ItemExpended::Cargo(cargo_a)) => {
+            (cargo_b.tier, cargo_a.tier)
+        }
     };
-
 
     if b_tier == a_tier {
         b.quantity.cmp(&a.quantity)
