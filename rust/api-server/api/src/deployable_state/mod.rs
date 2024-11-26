@@ -5,9 +5,10 @@ use migration::sea_query;
 use reqwest::Client;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
+    QuerySelect,
 };
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
@@ -95,9 +96,22 @@ pub(crate) async fn import_deployable_state(
         ])
         .to_owned();
 
-    let mut deployable_state_to_delete = Vec::new();
+    let known_deployable_state_ids: Vec<i64> = deployable_state::Entity::find()
+        .select_only()
+        .column(deployable_state::Column::EntityId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut known_deployable_state_ids = known_deployable_state_ids
+        .into_iter()
+        .collect::<HashSet<i64>>();
 
     while let Ok(value) = json_stream_reader.deserialize_next::<deployable_state::Model>() {
+        if known_deployable_state_ids.contains(&value.entity_id) {
+            known_deployable_state_ids.remove(&value.entity_id);
+        }
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -112,21 +126,6 @@ pub(crate) async fn import_deployable_state(
                 )
                 .all(conn)
                 .await?;
-
-            if deployable_state_from_db.len() != buffer_before_insert.len() {
-                deployable_state_to_delete.extend(
-                    buffer_before_insert
-                        .iter()
-                        .filter(|deployable_state| {
-                            !deployable_state_from_db
-                                .iter()
-                                .any(|deployable_state_from_db| {
-                                    deployable_state_from_db.entity_id == deployable_state.entity_id
-                                })
-                        })
-                        .map(|deployable_state| deployable_state.entity_id),
-                );
-            }
 
             let deployable_state_from_db_map = deployable_state_from_db
                 .into_iter()
@@ -158,15 +157,6 @@ pub(crate) async fn import_deployable_state(
                 continue;
             } else {
                 debug!("Inserting {} deployable_state", things_to_insert.len());
-            }
-
-            for deployable_state in &things_to_insert {
-                let deployable_state_in = deployable_state_to_delete
-                    .iter()
-                    .position(|id| id == deployable_state.entity_id.as_ref());
-                if deployable_state_in.is_some() {
-                    deployable_state_to_delete.remove(deployable_state_in.unwrap());
-                }
             }
 
             let _ = deployable_state::Entity::insert_many(things_to_insert)
@@ -234,13 +224,14 @@ pub(crate) async fn import_deployable_state(
         start.elapsed().as_secs()
     );
 
-    if deployable_state_to_delete.len() > 0 {
+    if known_deployable_state_ids.len() > 0 {
         info!(
-            "deployable_state's to delete: {:?}",
-            deployable_state_to_delete
+            "deployable_state's ({}) to delete: {:?}",
+            known_deployable_state_ids.len(),
+            known_deployable_state_ids
         );
         deployable_state::Entity::delete_many()
-            .filter(deployable_state::Column::EntityId.is_in(deployable_state_to_delete))
+            .filter(deployable_state::Column::EntityId.is_in(known_deployable_state_ids))
             .exec(conn)
             .await?;
     }

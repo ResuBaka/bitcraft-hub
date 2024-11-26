@@ -5,9 +5,10 @@ use migration::sea_query;
 use reqwest::Client;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
+    QuerySelect,
 };
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
@@ -93,9 +94,22 @@ pub(crate) async fn import_claim_tech_state(
         ])
         .to_owned();
 
-    let mut claim_tech_state_to_delete = Vec::new();
+    let known_claim_tech_state_ids: Vec<i64> = claim_tech_state::Entity::find()
+        .select_only()
+        .column(claim_tech_state::Column::EntityId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut known_claim_tech_state_ids = known_claim_tech_state_ids
+        .into_iter()
+        .collect::<HashSet<i64>>();
 
     while let Ok(value) = json_stream_reader.deserialize_next::<claim_tech_state::Model>() {
+        if known_claim_tech_state_ids.contains(&value.entity_id) {
+            known_claim_tech_state_ids.remove(&value.entity_id);
+        }
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -110,21 +124,6 @@ pub(crate) async fn import_claim_tech_state(
                 )
                 .all(conn)
                 .await?;
-
-            if claim_tech_state_from_db.len() != buffer_before_insert.len() {
-                claim_tech_state_to_delete.extend(
-                    buffer_before_insert
-                        .iter()
-                        .filter(|claim_tech_state| {
-                            !claim_tech_state_from_db
-                                .iter()
-                                .any(|claim_tech_state_from_db| {
-                                    claim_tech_state_from_db.entity_id == claim_tech_state.entity_id
-                                })
-                        })
-                        .map(|claim_tech_state| claim_tech_state.entity_id),
-                );
-            }
 
             let claim_tech_state_from_db_map = claim_tech_state_from_db
                 .into_iter()
@@ -156,15 +155,6 @@ pub(crate) async fn import_claim_tech_state(
                 continue;
             } else {
                 debug!("Inserting {} claim_tech_desc", things_to_insert.len());
-            }
-
-            for claim_tech_state in &things_to_insert {
-                let claim_tech_state_in = claim_tech_state_to_delete
-                    .iter()
-                    .position(|id| id == claim_tech_state.entity_id.as_ref());
-                if claim_tech_state_in.is_some() {
-                    claim_tech_state_to_delete.remove(claim_tech_state_in.unwrap());
-                }
             }
 
             let _ = claim_tech_state::Entity::insert_many(things_to_insert)
@@ -232,13 +222,14 @@ pub(crate) async fn import_claim_tech_state(
         start.elapsed().as_secs()
     );
 
-    if claim_tech_state_to_delete.len() > 0 {
+    if known_claim_tech_state_ids.len() > 0 {
         info!(
-            "claim_tech_desc's to delete: {:?}",
-            claim_tech_state_to_delete
+            "claim_tech_desc's ({}) to delete: {:?}",
+            known_claim_tech_state_ids.len(),
+            known_claim_tech_state_ids,
         );
         claim_tech_state::Entity::delete_many()
-            .filter(claim_tech_state::Column::EntityId.is_in(claim_tech_state_to_delete))
+            .filter(claim_tech_state::Column::EntityId.is_in(known_claim_tech_state_ids))
             .exec(conn)
             .await?;
     }

@@ -7,11 +7,11 @@ use axum::{Json, Router};
 use entity::{player_state, player_username_state};
 use log::{debug, error, info};
 use reqwest::Client;
-use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde_json::{json, Value};
 use service::Query as QueryCore;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
@@ -187,9 +187,20 @@ pub(crate) async fn import_player_states(
         ])
         .to_owned();
 
-    let mut player_states_to_delete = Vec::new();
+    let known_player_state_ids: Vec<i64> = player_state::Entity::find()
+        .select_only()
+        .column(player_state::Column::EntityId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut known_player_state_ids = known_player_state_ids.into_iter().collect::<HashSet<i64>>();
 
     while let Ok(value) = json_stream_reader.deserialize_next::<player_state::Model>() {
+        if known_player_state_ids.contains(&value.entity_id) {
+            known_player_state_ids.remove(&value.entity_id);
+        }
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -204,19 +215,6 @@ pub(crate) async fn import_player_states(
                 )
                 .all(conn)
                 .await?;
-
-            if player_states_from_db.len() != buffer_before_insert.len() {
-                player_states_to_delete.extend(
-                    buffer_before_insert
-                        .iter()
-                        .filter(|player_state| {
-                            !player_states_from_db.iter().any(|player_state_from_db| {
-                                player_state_from_db.entity_id == player_state.entity_id
-                            })
-                        })
-                        .map(|player_state| player_state.entity_id),
-                );
-            }
 
             let player_states_from_db_map = player_states_from_db
                 .into_iter()
@@ -248,15 +246,6 @@ pub(crate) async fn import_player_states(
                 continue;
             } else {
                 debug!("Inserting {} player_states", things_to_insert.len());
-            }
-
-            for player_state in &things_to_insert {
-                let player_state_in = player_states_to_delete
-                    .iter()
-                    .position(|id| id == player_state.entity_id.as_ref());
-                if player_state_in.is_some() {
-                    player_states_to_delete.remove(player_state_in.unwrap());
-                }
             }
 
             let _ = player_state::Entity::insert_many(things_to_insert)
@@ -324,10 +313,14 @@ pub(crate) async fn import_player_states(
         start.elapsed().as_secs()
     );
 
-    if player_states_to_delete.len() > 0 {
-        info!("player_state's to delete: {:?}", player_states_to_delete);
+    if known_player_state_ids.len() > 0 {
+        info!(
+            "player_state's ({}) to delete: {:?}",
+            known_player_state_ids.len(),
+            known_player_state_ids
+        );
         player_state::Entity::delete_many()
-            .filter(player_state::Column::EntityId.is_in(player_states_to_delete))
+            .filter(player_state::Column::EntityId.is_in(known_player_state_ids))
             .exec(conn)
             .await?;
     }
@@ -444,9 +437,22 @@ pub(crate) async fn import_player_username_states(
         .update_columns([player_username_state::Column::Username])
         .to_owned();
 
-    let mut player_username_states_to_delete = Vec::new();
+    let known_player_username_state_ids: Vec<i64> = player_username_state::Entity::find()
+        .select_only()
+        .column(player_username_state::Column::EntityId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut known_player_username_state_ids = known_player_username_state_ids
+        .into_iter()
+        .collect::<HashSet<i64>>();
 
     while let Ok(value) = json_stream_reader.deserialize_next::<player_username_state::Model>() {
+        if known_player_username_state_ids.contains(&value.entity_id) {
+            known_player_username_state_ids.remove(&value.entity_id);
+        }
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -461,22 +467,6 @@ pub(crate) async fn import_player_username_states(
                 )
                 .all(conn)
                 .await?;
-
-            if player_username_states_from_db.len() != buffer_before_insert.len() {
-                player_username_states_to_delete.extend(
-                    buffer_before_insert
-                        .iter()
-                        .filter(|player_username_state| {
-                            !player_username_states_from_db.iter().any(
-                                |player_username_state_from_db| {
-                                    player_username_state_from_db.entity_id
-                                        == player_username_state.entity_id
-                                },
-                            )
-                        })
-                        .map(|player_username_state| player_username_state.entity_id),
-                );
-            }
 
             let player_username_states_from_db_map = player_username_states_from_db
                 .into_iter()
@@ -513,15 +503,6 @@ pub(crate) async fn import_player_username_states(
                     "Inserting {} player_username_states",
                     things_to_insert.len()
                 );
-            }
-
-            for player_username_state in &things_to_insert {
-                let player_username_state_in = player_username_states_to_delete
-                    .iter()
-                    .position(|id| id == player_username_state.entity_id.as_ref());
-                if player_username_state_in.is_some() {
-                    player_username_states_to_delete.remove(player_username_state_in.unwrap());
-                }
             }
 
             let _ = player_username_state::Entity::insert_many(things_to_insert)
@@ -589,13 +570,14 @@ pub(crate) async fn import_player_username_states(
         start.elapsed().as_secs()
     );
 
-    if player_username_states_to_delete.len() > 0 {
+    if known_player_username_state_ids.len() > 0 {
         info!(
-            "player_username_state's to delete: {:?}",
-            player_username_states_to_delete
+            "player_username_state's ({}) to delete: {:?}",
+            known_player_username_state_ids.len(),
+            known_player_username_state_ids
         );
         player_state::Entity::delete_many()
-            .filter(player_state::Column::EntityId.is_in(player_username_states_to_delete))
+            .filter(player_state::Column::EntityId.is_in(known_player_username_state_ids))
             .exec(conn)
             .await?;
     }

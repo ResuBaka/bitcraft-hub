@@ -9,11 +9,12 @@ use log::{debug, error, info};
 use reqwest::Client;
 use sea_orm::{
     sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    QuerySelect,
 };
 use serde::Deserialize;
 use serde_json::Value;
 use service::Query as QueryCore;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
@@ -272,9 +273,22 @@ pub(crate) async fn import_building_state(
         ])
         .to_owned();
 
-    let mut building_state_to_delete = Vec::new();
+    let known_building_state_ids: Vec<i64> = building_state::Entity::find()
+        .select_only()
+        .column(building_state::Column::EntityId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut known_building_state_ids = known_building_state_ids
+        .into_iter()
+        .collect::<HashSet<i64>>();
 
     while let Ok(value) = json_stream_reader.deserialize_next::<building_state::Model>() {
+        if known_building_state_ids.contains(&value.entity_id) {
+            known_building_state_ids.remove(&value.entity_id);
+        }
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -289,19 +303,6 @@ pub(crate) async fn import_building_state(
                 )
                 .all(conn)
                 .await?;
-
-            if building_state_from_db.len() != buffer_before_insert.len() {
-                building_state_to_delete.extend(
-                    buffer_before_insert
-                        .iter()
-                        .filter(|building_state| {
-                            !building_state_from_db.iter().any(|building_state_from_db| {
-                                building_state_from_db.entity_id == building_state.entity_id
-                            })
-                        })
-                        .map(|building_state| building_state.entity_id),
-                );
-            }
 
             let building_state_from_db_map = building_state_from_db
                 .into_iter()
@@ -333,15 +334,6 @@ pub(crate) async fn import_building_state(
                 continue;
             } else {
                 debug!("Inserting {} building_state", things_to_insert.len());
-            }
-
-            for building_state in &things_to_insert {
-                let building_state_in = building_state_to_delete
-                    .iter()
-                    .position(|id| id == building_state.entity_id.as_ref());
-                if building_state_in.is_some() {
-                    building_state_to_delete.remove(building_state_in.unwrap());
-                }
             }
 
             let _ = building_state::Entity::insert_many(things_to_insert)
@@ -409,10 +401,14 @@ pub(crate) async fn import_building_state(
         start.elapsed().as_secs()
     );
 
-    if building_state_to_delete.len() > 0 {
-        info!("building_state's to delete: {:?}", building_state_to_delete);
+    if known_building_state_ids.len() > 0 {
+        info!(
+            "building_state's ({}) to delete: {:?}",
+            known_building_state_ids.len(),
+            known_building_state_ids
+        );
         building_state::Entity::delete_many()
-            .filter(building_state::Column::EntityId.is_in(building_state_to_delete))
+            .filter(building_state::Column::EntityId.is_in(known_building_state_ids))
             .exec(conn)
             .await?;
     }

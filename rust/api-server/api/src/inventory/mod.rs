@@ -475,7 +475,11 @@ pub(crate) async fn import_inventory(
     );
 
     if known_inventory_ids.len() > 0 {
-        info!("Inventory's to delete: {:?}", known_inventory_ids);
+        info!(
+            "Inventory's ({}) to delete: {:?}",
+            known_inventory_ids.len(),
+            known_inventory_ids
+        );
         inventory::Entity::delete_many()
             .filter(inventory::Column::EntityId.is_in(known_inventory_ids))
             .exec(conn)
