@@ -4,7 +4,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Router;
 use axum_codec::Codec;
-use entity::deployable_state::Column::Nickname;
 use entity::inventory::{
     Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
@@ -18,7 +17,7 @@ use sea_orm::{
 };
 use serde_json::Value;
 use service::Query as QueryCore;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::ops::Add;
@@ -349,9 +348,20 @@ pub(crate) async fn import_inventory(
         ])
         .to_owned();
 
-    let mut inventorys_to_delete = Vec::new();
+    let known_inventory_ids: Vec<i64> = inventory::Entity::find()
+        .select_only()
+        .column(inventory::Column::EntityId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut known_inventory_ids = known_inventory_ids.into_iter().collect::<HashSet<i64>>();
 
     while let Ok(value) = json_stream_reader.deserialize_next::<inventory::Model>() {
+        if known_inventory_ids.contains(&value.entity_id) {
+            known_inventory_ids.remove(&value.entity_id);
+        }
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -366,19 +376,6 @@ pub(crate) async fn import_inventory(
                 )
                 .all(conn)
                 .await?;
-
-            if inventorys_from_db.len() != buffer_before_insert.len() {
-                inventorys_to_delete.extend(
-                    buffer_before_insert
-                        .iter()
-                        .filter(|inventory| {
-                            !inventorys_from_db.iter().any(|inventory_from_db| {
-                                inventory_from_db.entity_id == inventory.entity_id
-                            })
-                        })
-                        .map(|inventory| inventory.entity_id),
-                );
-            }
 
             let inventorys_from_db_map = inventorys_from_db
                 .into_iter()
@@ -410,15 +407,6 @@ pub(crate) async fn import_inventory(
                 continue;
             } else {
                 debug!("Inserting {} inventorys", things_to_insert.len());
-            }
-
-            for inventory in &things_to_insert {
-                let inventory_in = inventorys_to_delete
-                    .iter()
-                    .position(|id| id == inventory.entity_id.as_ref());
-                if inventory_in.is_some() {
-                    inventorys_to_delete.remove(inventory_in.unwrap());
-                }
             }
 
             let _ = inventory::Entity::insert_many(things_to_insert)
@@ -486,10 +474,10 @@ pub(crate) async fn import_inventory(
         start.elapsed().as_secs()
     );
 
-    if inventorys_to_delete.len() > 0 {
-        info!("Inventory's to delete: {:?}", inventorys_to_delete);
+    if known_inventory_ids.len() > 0 {
+        info!("Inventory's to delete: {:?}", known_inventory_ids);
         inventory::Entity::delete_many()
-            .filter(inventory::Column::EntityId.is_in(inventorys_to_delete))
+            .filter(inventory::Column::EntityId.is_in(known_inventory_ids))
             .exec(conn)
             .await?;
     }
