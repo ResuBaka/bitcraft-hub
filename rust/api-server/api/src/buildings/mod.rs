@@ -660,14 +660,14 @@ pub(crate) async fn import_building_desc(
 pub async fn import_job_building_desc(temp_config: Config) -> () {
     let config = temp_config.clone();
     if config.live_updates {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
         loop {
-            let conn = super::create_importer_default_db_connection(config.clone()).await;
             let client = super::create_default_client(config.clone());
 
             let now = Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
+            let now_in = now.add(Duration::from_secs(60 * 60));
 
-            import_internal_building_state(config.clone(), conn, client);
+            import_internal_building_state(config.clone(), conn.clone(), client);
 
             let now = Instant::now();
             let wait_time = now_in.duration_since(now);

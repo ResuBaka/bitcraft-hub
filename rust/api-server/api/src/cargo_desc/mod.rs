@@ -268,14 +268,14 @@ pub(crate) async fn load_desc_from_spacetimedb(
 pub async fn import_job_cargo_desc(temp_config: Config) -> () {
     let config = temp_config.clone();
     if config.live_updates {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
         loop {
-            let conn = super::create_importer_default_db_connection(config.clone()).await;
             let client = super::create_default_client(config.clone());
 
             let now = Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
+            let now_in = now.add(Duration::from_secs(60 * 60));
 
-            import_interal_cargo_desc(config.clone(), conn, client);
+            import_interal_cargo_desc(config.clone(), conn.clone(), client);
 
             let now = Instant::now();
             let wait_time = now_in.duration_since(now);

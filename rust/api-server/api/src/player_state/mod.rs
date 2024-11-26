@@ -363,14 +363,14 @@ fn import_player_state(config: Config, conn: DatabaseConnection, client: Client)
 pub async fn import_job_player_state(temp_config: Config) -> () {
     let config = temp_config.clone();
     if config.live_updates {
+        let conn = create_importer_default_db_connection(config.clone()).await;
         loop {
-            let conn = create_importer_default_db_connection(config.clone()).await;
             let client = create_default_client(config.clone());
 
             let now = std::time::Instant::now();
             let now_in = now.add(Duration::from_secs(60));
 
-            import_player_state(config.clone(), conn, client);
+            import_player_state(config.clone(), conn.clone(), client);
 
             let now = std::time::Instant::now();
             let wait_time = now_in.duration_since(now);
@@ -635,14 +635,14 @@ pub fn import_player_username_state(config: Config, conn: DatabaseConnection, cl
 pub async fn import_job_player_username_state(temp_config: Config) -> () {
     let config = temp_config.clone();
     if config.live_updates {
+        let conn = create_importer_default_db_connection(config.clone()).await;
         loop {
-            let conn = create_importer_default_db_connection(config.clone()).await;
             let client = create_default_client(config.clone());
 
             let now = std::time::Instant::now();
             let now_in = now.add(Duration::from_secs(60));
 
-            import_player_username_state(config.clone(), conn, client);
+            import_player_username_state(config.clone(), conn.clone(), client);
 
             let now = std::time::Instant::now();
             let wait_time = now_in.duration_since(now);

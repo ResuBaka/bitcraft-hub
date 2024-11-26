@@ -293,7 +293,7 @@ async fn create_importer_default_db_connection(config: Config) -> DatabaseConnec
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
         .max_connections(10)
-        .min_connections(5)
+        .min_connections(1)
         .connect_timeout(Duration::from_secs(8))
         .idle_timeout(Duration::from_secs(8))
         .sqlx_logging(env::var("SQLX_LOG").is_ok());
@@ -470,7 +470,9 @@ fn import_data(config: Config) {
                 tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));
 
                 let temp_config = config.clone();
-                tasks.push(tokio::spawn(inventory::import_job_item_desc(temp_config)));
+                tasks.push(tokio::spawn(inventory::import_job_inventory_state(
+                    temp_config,
+                )));
 
                 let temp_config = config.clone();
                 tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(
