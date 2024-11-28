@@ -62,10 +62,11 @@ async fn start() -> anyhow::Result<()> {
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "info");
     }
-    tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
     let config = config::Config::new();
+
+    tracing_subscriber::fmt::init();
 
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options

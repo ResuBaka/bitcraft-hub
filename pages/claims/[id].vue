@@ -531,7 +531,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
 
             >
               <template #item.user_name="{ item }">
-                <nuxt-link class="text-decoration-none text-high-emphasis" :to="{ name: 'players-id', params: { id: item.entity_id } }">
+                <nuxt-link :class="`text-decoration-none ${item.online_state === 'Online' ? 'text-green' : 'text-high-emphasis'}`" :to="{ name: 'players-id', params: { id: item.entity_id } }">
                   {{ item.user_name }}
                 </nuxt-link>
               </template>

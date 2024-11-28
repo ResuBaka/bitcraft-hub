@@ -106,6 +106,7 @@ impl From<claim_description_state::Model> for ClaimDescriptionState {
                 build_permission: member.build_permission,
                 officer_permission: member.officer_permission,
                 co_owner_permission: member.co_owner_permission,
+                online_state: OnlineState::Offline,
                 skills_ranks: Some(BTreeMap::new()),
             });
         }
@@ -150,7 +151,14 @@ pub struct ClaimDescriptionStateMember {
     pub build_permission: bool,
     pub officer_permission: bool,
     pub co_owner_permission: bool,
+    pub online_state: OnlineState,
     pub skills_ranks: Option<BTreeMap<String, LeaderboardSkill>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+enum OnlineState {
+    Online,
+    Offline,
 }
 
 pub(crate) async fn get_claim(
@@ -402,6 +410,16 @@ pub(crate) async fn get_claim(
         .into_iter()
         .filter(|player| player.signed_in)
         .collect::<Vec<player_state::Model>>();
+
+    for player in &online_players {
+        if let Some(player_online) = claim
+            .members
+            .iter_mut()
+            .find(|player_online| player_online.entity_id == player.entity_id)
+        {
+            player_online.online_state = OnlineState::Online;
+        }
+    }
 
     let player_online_ids = online_players
         .iter()
