@@ -36,8 +36,9 @@ metrics = { version = "0.24.0", default-features = false }
 metrics-exporter-prometheus = { version = "0.16.0", default-features = false }
 axum-codec = { version = "0.0.14", features = ["msgpack", "toml", "yaml"] }
 struson = { version = "0.5.0", features = ["serde"] }
-reqwest-websocket = { git = "https://github.com/jgraef/reqwest-websocket.git", rev = "9fa78402d04686953122e4052d4ea06948ce6b50" }
+reqwest-websocket = { path = "../reqwest-websocket" }
 base64 = "0.22.1"
 tokio-cron-scheduler = "0.10.2"
 config = "0.14.0"
 tracing-logfmt = "0.3.5"
+tungstenite = "0.24.0"

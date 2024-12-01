@@ -194,7 +194,7 @@ const isPlayer = computed(() => {
         <v-card-text>
           <v-card-title>Current Items</v-card-title>
           <v-data-table density="compact" :headers="headersPockets"
-                        :items="inventory.pockets.filter((item) => !!item.contents)" :row-props="backgroundColorRow">
+                        :items="inventory.pockets" :row-props="backgroundColorRow">
           </v-data-table>
         </v-card-text>
       </v-card>

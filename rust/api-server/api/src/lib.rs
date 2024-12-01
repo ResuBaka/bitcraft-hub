@@ -35,7 +35,7 @@ use axum::response::IntoResponse;
 use base64::Engine;
 use entity::trade_order;
 use futures::{SinkExt, TryStreamExt};
-use log::{error, info};
+use log::{debug, error, info, warn};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
 use reqwest::header::{HeaderMap, SEC_WEBSOCKET_PROTOCOL};
@@ -112,7 +112,9 @@ async fn start() -> anyhow::Result<()> {
     let database_name = config.spacetimedb.database.clone();
 
     if config.live_updates_ws {
+        let tmp_config = config.clone();
         tokio::spawn(async move {
+            let config = tmp_config.clone();
             let mut headers = HeaderMap::new();
             headers.insert(
                 "Authorization",
@@ -140,17 +142,36 @@ async fn start() -> anyhow::Result<()> {
                 ))
                 .headers(headers)
                 .upgrade()
+                .web_socket_config(tungstenite::protocol::WebSocketConfig {
+                    max_frame_size: Some(1024 * 1024 * 150),
+                    max_message_size: Some(1024 * 1024 * 150),
+                    ..Default::default()
+                })
                 .protocols(vec!["v1.text.spacetimedb"])
                 .send()
                 .await
                 .unwrap();
             let mut websocket = response.into_websocket().await.unwrap();
 
+            let tables_to_subscribe = vec![
+                "PlayerState",
+                "PlayerUsernameState",
+                "BuildingState",
+                "ExperienceState",
+                "InventoryState",
+            ];
+
+            let select_querys = tables_to_subscribe
+                .iter()
+                .map(|table_name| format!("SELECT * FROM {};", table_name))
+                .collect::<Vec<String>>();
+
             websocket
                 .send(Message::Text(
                     serde_json::json!({
-                        "subscribe": {
-                            "query_strings": ["SELECT * FROM ExperienceState"],
+                        "Subscribe": {
+                            "query_strings": select_querys,
+                            "request_id": 1,
                         },
                     })
                     .to_string(),
@@ -160,13 +181,175 @@ async fn start() -> anyhow::Result<()> {
 
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
+            let tmp_config = config.clone();
             let _ = tokio::spawn(async move {
-                let mut evenets = Vec::with_capacity(1000);
-
+                let db = create_importer_default_db_connection(tmp_config.clone()).await;
+                let mut startet_time = std::time::Instant::now();
                 loop {
+                    let mut evenets = Vec::with_capacity(1000);
+                    let mut tables: HashMap<String, Vec<Table>> = HashMap::new();
+                    let db = db.clone();
+
                     let count = rx.recv_many(&mut evenets, 1000).await;
+
+                    for event in evenets.iter() {
+                        match event {
+                            WebSocketMessage::TransactionUpdate(transaction_update) => {
+                                if transaction_update.status.Committed.tables.len() == 0 {
+                                    continue;
+                                }
+
+                                for table in transaction_update.status.Committed.tables.iter() {
+                                    if let Some(table_vec) =
+                                        tables.get_mut(&table.table_name.as_ref().to_string())
+                                    {
+                                        table_vec.push(table.clone());
+                                    } else {
+                                        tables.insert(
+                                            table.table_name.clone().as_ref().to_string(),
+                                            vec![table.clone()],
+                                        );
+                                    }
+                                }
+                            }
+                            WebSocketMessage::InitialSubscription(subscription_update) => {
+                                if subscription_update.database_update.tables.len() == 0 {
+                                    continue;
+                                }
+
+                                for table in subscription_update.database_update.tables.iter() {
+                                    if table.table_name.as_ref() == "PlayerUsernameState" {
+                                        let result =
+                                            player_state::handle_initial_subscription_player_username_state(&db, table)
+                                                .await;
+
+                                        if result.is_err() {
+                                            error!("PlayerUsernameState initial subscription failed: {:?}", result.err());
+                                        }
+                                    }
+                                    if table.table_name.as_ref() == "PlayerState" {
+                                        let result =
+                                            player_state::handle_initial_subscription_player_state(
+                                                &db, table,
+                                            )
+                                            .await;
+
+                                        if result.is_err() {
+                                            error!(
+                                                "PlayerState initial subscription failed: {:?}",
+                                                result.err()
+                                            );
+                                        }
+                                    }
+                                    if table.table_name.as_ref() == "ExperienceState" {
+                                        info!("ExperienceState initial subscription");
+                                        let result =
+                                            leaderboard::handle_initial_subscription(&db, table)
+                                                .await;
+
+                                        if result.is_err() {
+                                            error!(
+                                                "ExperienceState initial subscription failed: {:?}",
+                                                result.err()
+                                            );
+                                        }
+                                    }
+                                    if table.table_name.as_ref() == "BuildingState" {
+                                        let result =
+                                            buildings::handle_initial_subscription(&db, table)
+                                                .await;
+
+                                        if result.is_err() {
+                                            error!(
+                                                "BuildingState initial subscription failed: {:?}",
+                                                result.err()
+                                            );
+                                        }
+                                    }
+                                    if table.table_name.as_ref() == "InventoryState" {
+                                        let result =
+                                            inventory::handle_initial_subscription(&db, table)
+                                                .await;
+
+                                        if result.is_err() {
+                                            error!(
+                                                "InventoryState initial subscription failed: {:?}",
+                                                result.err()
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            WebSocketMessage::IdentityToken(identity_token) => {
+                                println!("IdentityToken: {identity_token:?}");
+                            }
+                        }
+                    }
+
+                    for (table_name, table) in tables.iter() {
+                        debug!("Received table: {table_name} -> {:?}", table.len());
+
+                        if table_name == "PlayerUsernameState" {
+                            let result =
+                                player_state::handle_transaction_update_player_username_state(
+                                    &db, table,
+                                )
+                                .await;
+
+                            if result.is_err() {
+                                error!(
+                                    "PlayerUsernameState transaction update failed: {:?}",
+                                    result.err()
+                                );
+                            }
+                        }
+                        if table_name == "PlayerState" {
+                            let result =
+                                player_state::handle_transaction_update_player_state(&db, table)
+                                    .await;
+
+                            if result.is_err() {
+                                error!("PlayerState transaction update failed: {:?}", result.err());
+                            }
+                        }
+
+                        if table_name == "ExperienceState" {
+                            let result = leaderboard::handle_transaction_update(&db, table).await;
+
+                            if result.is_err() {
+                                error!(
+                                    "ExperienceState transaction update failed: {:?}",
+                                    result.err()
+                                );
+                            }
+                        }
+
+                        if table_name == "InventoryState" {
+                            let result = inventory::handle_transaction_update(&db, table).await;
+
+                            if result.is_err() {
+                                error!(
+                                    "InventoryState transaction update failed: {:?}",
+                                    result.err()
+                                );
+                            }
+                        }
+
+                        if table_name == "BuildingState" {
+                            let result = buildings::handle_transaction_update(&db, table).await;
+
+                            if result.is_err() {
+                                error!(
+                                    "BuildingState transaction update failed: {:?}",
+                                    result.err()
+                                );
+                            }
+                        }
+                    }
+
+                    debug!("Received {count} events");
                     evenets.clear();
-                    info!("Received {count} events");
+                    tokio::time::sleep(Duration::from_millis(100)).await;
                 }
             });
 
@@ -186,16 +369,18 @@ async fn start() -> anyhow::Result<()> {
                     match &message {
                         WebSocketMessage::TransactionUpdate(transaction_update) => {
                             tx.send(message.clone()).unwrap();
-                            info!("Received transaction update: {transaction_update:?}");
+                            debug!("Received transaction update: {transaction_update:?}");
                         }
-                        WebSocketMessage::SubscriptionUpdate(subscription_update) => {
+                        WebSocketMessage::InitialSubscription(subscription_update) => {
                             tx.send(message.clone()).unwrap();
-                            info!("Received subscription update: {subscription_update:?}");
+                            debug!("Received subscription update: {subscription_update:?}");
                         }
                         WebSocketMessage::IdentityToken(identity_token) => {
                             info!("Received identity token: {identity_token:?}");
                         }
                     }
+                } else {
+                    println!("No message {:?}", message);
                 }
             }
         });
@@ -285,6 +470,10 @@ fn create_default_client(config: Config) -> Client {
 
     Client::builder()
         .timeout(Duration::from_secs(60))
+        .gzip(true)
+        .deflate(true)
+        .brotli(true)
+        .pool_idle_timeout(Duration::from_secs(20))
         .default_headers(default_header)
         .build()
         .unwrap()
@@ -293,10 +482,12 @@ fn create_default_client(config: Config) -> Client {
 async fn create_importer_default_db_connection(config: Config) -> DatabaseConnection {
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
-        .max_connections(10)
-        .min_connections(1)
+        .max_connections(20)
+        .min_connections(5)
         .connect_timeout(Duration::from_secs(8))
         .idle_timeout(Duration::from_secs(8))
+        .connect_lazy(true)
+        .max_lifetime(Duration::from_secs(60))
         .sqlx_logging(env::var("SQLX_LOG").is_ok());
 
     Database::connect(connection_options)
@@ -429,66 +620,112 @@ fn import_data(config: Config) {
                 // }));
                 //
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(
-                    temp_config,
-                )));
+                if config.enabled_importer.contains(&"skill_desc".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(
+                        temp_config,
+                    )));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(player_state::import_job_player_state(
-                    temp_config,
-                )));
+                // if config.enabled_importer.contains(&"player_state".to_string()) || config.enabled_importer.len() == 0 {
+                //     let temp_config = config.clone();
+                //     tasks.push(tokio::spawn(player_state::import_job_player_state(
+                //         temp_config,
+                //     )));
+                // }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(
-                    player_state::import_job_player_username_state(temp_config),
-                ));
+                // if config.enabled_importer.contains(&"player_username_state".to_string()) || config.enabled_importer.len() == 0 {
+                //     let temp_config = config.clone();
+                //     tasks.push(tokio::spawn(
+                //         player_state::import_job_player_username_state(temp_config),
+                //     ));
+                // }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(leaderboard::import_job_experience_state(
-                    temp_config,
-                )));
+                // let temp_config = config.clone();
+                // tasks.push(tokio::spawn(leaderboard::import_job_experience_state(
+                //     temp_config,
+                // )));
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(claim_tech_state::import_job_claim_tech_state(
-                    temp_config,
-                )));
+                if config
+                    .enabled_importer
+                    .contains(&"claim_tech_state".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(claim_tech_state::import_job_claim_tech_state(
+                        temp_config,
+                    )));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(claim_tech_desc::import_job_claim_tech_desc(
-                    temp_config,
-                )));
+                if config
+                    .enabled_importer
+                    .contains(&"claim_tech_desc".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(claim_tech_desc::import_job_claim_tech_desc(
+                        temp_config,
+                    )));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(claims::import_job_claim_description_state(
-                    temp_config,
-                )));
+                if config.enabled_importer.contains(&"claims".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(claims::import_job_claim_description_state(
+                        temp_config,
+                    )));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(items::import_job_item_desc(temp_config)));
+                if config.enabled_importer.contains(&"items".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(items::import_job_item_desc(temp_config)));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));
+                if config.enabled_importer.contains(&"cargo_desc".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(inventory::import_job_inventory_state(
-                    temp_config,
-                )));
+                // if config.enabled_importer.contains(&"inventory".to_string()) || config.enabled_importer.len() == 0 {
+                //     let temp_config = config.clone();
+                //     tasks.push(tokio::spawn(inventory::import_job_inventory_state(
+                //         temp_config,
+                //     )));
+                // }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(
-                    temp_config,
-                )));
+                if config
+                    .enabled_importer
+                    .contains(&"deployable_state".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(
+                        temp_config,
+                    )));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(buildings::import_job_building_desc(
-                    temp_config,
-                )));
+                if config
+                    .enabled_importer
+                    .contains(&"building_desc".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(buildings::import_job_building_desc(
+                        temp_config,
+                    )));
+                }
 
-                let temp_config = config.clone();
-                tasks.push(tokio::spawn(buildings::import_job_building_state(
-                    temp_config,
-                )));
+                // let temp_config = config.clone();
+                // tasks.push(tokio::spawn(buildings::import_job_building_state(
+                //     temp_config,
+                // )));
 
                 futures::future::join_all(tasks).await;
             });
@@ -575,19 +812,88 @@ fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Cl
 enum WebSocketMessage {
     IdentityToken(IdentityToken),
     TransactionUpdate(TransactionUpdate),
-    SubscriptionUpdate(SubscriptionUpdate),
+    InitialSubscription(InitialSubscription),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct InitialSubscription {
+    database_update: DatabaseUpdate,
+    request_id: u64,
+    total_host_execution_duration_micros: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct DatabaseUpdate {
+    tables: Vec<Table>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct IdentityToken {
-    identity: String,
-    token: String,
+    identity: Identity,
+    token: Box<str>,
+    address: Address,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Identity {
+    __identity_bytes: Box<str>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Address {
+    __address_bytes: Box<str>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct TransactionUpdate {
-    event: Event,
-    subscription_update: SubscriptionUpdate,
+    status: Status,
+    timestamp: Timestamp,
+    caller_identity: Identity,
+    caller_address: Address,
+    reducer_call: ReducerCall,
+    energy_quanta_used: EnergyQuantaUsed,
+    host_execution_duration_micros: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct Status {
+    Committed: Committed,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct Committed {
+    tables: Vec<Table>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct Table {
+    table_id: u64,
+    table_name: Box<str>,
+    deletes: Vec<TableText>,
+    inserts: Vec<TableText>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct TableText {
+    Text: Box<str>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct Timestamp {
+    microseconds: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct ReducerCall {
+    reducer_name: Box<str>,
+    reducer_id: u64,
+    args: serde_json::Value,
+    request_id: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct EnergyQuantaUsed {
+    quanta: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -606,18 +912,6 @@ struct FunctionCall {
     reducer: String,
     args: String,
     request_id: i64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct SubscriptionUpdate {
-    table_updates: Vec<TableUpdate>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct TableUpdate {
-    table_id: i64,
-    table_name: String,
-    table_row_operations: Vec<TableRowOperation>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -560,8 +560,7 @@ impl Query {
             .filter(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .filter(experience_state::Column::Experience.gte(player_experience.experience))
             .count(db)
-            .await
-            .unwrap();
+            .await?;
 
         Ok((Some(player_experience), Some(rank)))
     }

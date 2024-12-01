@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = [".", "api", "service", "entity", "migration"]
+members = [".", "api", "service", "entity", "migration", "reqwest-websocket"]
 
 [workspace.dependencies]
 sea-orm = { version = "1.1.1", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros" ] }

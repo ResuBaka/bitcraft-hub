@@ -1,20 +1,22 @@
 use crate::claims::ClaimDescriptionState;
 use crate::config::Config;
-use crate::{leaderboard, AppState};
+use crate::{leaderboard, AppState, Table};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
 use entity::experience_state;
 use entity::experience_state::ActiveModel;
+use futures::future::ok;
 use log::{debug, error, info};
+use migration::OnConflict;
 use reqwest::Client;
-use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
 use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
 use std::path::PathBuf;
@@ -199,7 +201,7 @@ pub(crate) struct LeaderboardTime {
 
 pub(crate) async fn get_top_100(
     state: State<AppState>,
-) -> Result<Json<BTreeMap<String, Vec<RankType>>>, (StatusCode, &'static str)> {
+) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -353,7 +355,7 @@ pub(crate) async fn get_top_100(
     player_ids.sort();
     player_ids.dedup();
 
-    let players_name_by_id = Query::find_player_username_by_ids(&state.conn, player_ids)
+    let players_name_by_id = Query::find_player_username_by_ids(&state.conn, player_ids.clone())
         .await
         .map_err(|error| {
             error!("Error: {error}");
@@ -395,7 +397,21 @@ pub(crate) async fn get_top_100(
         }
     }
 
-    Ok(Json(leaderboard_result))
+    let players = Query::find_player_by_ids(&state.conn, player_ids.clone())
+        .await
+        .unwrap_or_else(|error| {
+            error!("Error loading players: {error}");
+
+            vec![]
+        })
+        .iter()
+        .map(|player| (player.entity_id, player.time_played))
+        .collect::<HashMap<i64, i32>>();
+
+    Ok(Json(serde_json::json!({
+        "player_map": players,
+        "leaderboard": leaderboard_result
+    })))
 }
 
 pub(crate) fn experience_to_level(experience: i64) -> i32 {
@@ -472,7 +488,7 @@ pub(crate) async fn load_experience_state(
 #[derive(Debug, Deserialize, Clone)]
 struct PackedExperienceState {
     entity_id: i64,
-    experience: Vec<(i32, i32)>,
+    experience_stacks: Vec<(i32, i32)>,
 }
 
 pub(crate) async fn import_experience_state(
@@ -498,181 +514,34 @@ pub(crate) async fn import_experience_state(
     .update_columns([experience_state::Column::Experience])
     .to_owned();
 
-    let mut experience_state_to_delete = Vec::new();
+    let mut experience_state_to_delete = get_known_experience_states(conn).await?;
 
     while let Ok(value) = json_stream_reader.deserialize_next::<PackedExperienceState>() {
+        let resolved_buffer_before_insert = value
+            .experience_stacks
+            .iter()
+            .map(|y| experience_state::Model {
+                entity_id: value.entity_id,
+                skill_id: y.0,
+                experience: y.1,
+            })
+            .collect::<Vec<experience_state::Model>>();
+
+        for exp_state in resolved_buffer_before_insert.iter() {
+            if experience_state_to_delete.contains(&(exp_state.entity_id, exp_state.skill_id)) {
+                experience_state_to_delete.remove(&(exp_state.entity_id, exp_state.skill_id));
+            }
+        }
+
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            let resolved_buffer_before_insert = buffer_before_insert
-                .iter()
-                .map(|x| {
-                    x.experience.iter().map(|y| experience_state::Model {
-                        entity_id: x.entity_id,
-                        skill_id: y.0,
-                        experience: y.1,
-                    })
-                })
-                .flatten()
-                .collect::<Vec<experience_state::Model>>();
-
-            let experience_state_from_db = experience_state::Entity::find()
-                .filter(
-                    experience_state::Column::EntityId.is_in(
-                        resolved_buffer_before_insert
-                            .iter()
-                            .map(|experience_state| experience_state.entity_id)
-                            .collect::<Vec<i64>>(),
-                    ),
-                )
-                .all(conn)
-                .await?;
-
-            if experience_state_from_db.len() != resolved_buffer_before_insert.len() {
-                experience_state_to_delete.extend(
-                    resolved_buffer_before_insert
-                        .iter()
-                        .filter(|experience_state| {
-                            !experience_state_from_db
-                                .iter()
-                                .any(|experience_state_from_db| {
-                                    experience_state_from_db.entity_id == experience_state.entity_id
-                                        && experience_state_from_db.skill_id
-                                            == experience_state.skill_id
-                                })
-                        })
-                        .map(|experience_state| {
-                            (experience_state.entity_id, experience_state.skill_id)
-                        }),
-                );
-            }
-
-            let experience_state_from_db_map = experience_state_from_db
-                .into_iter()
-                .map(|experience_state| {
-                    (
-                        (experience_state.entity_id, experience_state.skill_id),
-                        experience_state,
-                    )
-                })
-                .collect::<HashMap<(i64, i32), experience_state::Model>>();
-
-            let things_to_insert = resolved_buffer_before_insert
-                .iter()
-                .filter(|experience_state| {
-                    match experience_state_from_db_map
-                        .get(&(experience_state.entity_id, experience_state.skill_id))
-                    {
-                        Some(experience_state_from_db) => {
-                            if experience_state_from_db != *experience_state {
-                                return true;
-                            }
-                        }
-                        None => {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                })
-                .map(|experience_state| experience_state.clone().into_active_model())
-                .collect::<Vec<experience_state::ActiveModel>>();
-
-            if things_to_insert.len() == 0 {
-                debug!("Nothing to insert");
-                buffer_before_insert.clear();
-                continue;
-            } else {
-                debug!("Inserting {} experience_state", things_to_insert.len());
-            }
-
-            for experience_state in &things_to_insert {
-                let experience_state_in = experience_state_to_delete.iter().position(|id| {
-                    &id.0 == experience_state.entity_id.as_ref()
-                        && &id.1 == experience_state.skill_id.as_ref()
-                });
-                if experience_state_in.is_some() {
-                    experience_state_to_delete.remove(experience_state_in.unwrap());
-                }
-            }
-
-            let _ = experience_state::Entity::insert_many(things_to_insert)
-                .on_conflict(on_conflict.clone())
-                .exec(conn)
-                .await?;
-
-            buffer_before_insert.clear();
+            db_insert_experience_state(conn, &mut buffer_before_insert, &on_conflict).await?;
         }
     }
 
     if buffer_before_insert.len() > 0 {
-        let resolved_buffer_before_insert = buffer_before_insert
-            .iter()
-            .map(|x| {
-                x.experience.iter().map(|y| experience_state::Model {
-                    entity_id: x.entity_id,
-                    skill_id: y.0,
-                    experience: y.1,
-                })
-            })
-            .flatten()
-            .collect::<Vec<experience_state::Model>>();
-
-        let experience_state_from_db = experience_state::Entity::find()
-            .filter(
-                experience_state::Column::EntityId.is_in(
-                    resolved_buffer_before_insert
-                        .iter()
-                        .map(|experience_state| experience_state.entity_id)
-                        .collect::<Vec<i64>>(),
-                ),
-            )
-            .all(conn)
-            .await?;
-
-        let experience_state_from_db_map = experience_state_from_db
-            .into_iter()
-            .map(|experience_state| {
-                (
-                    (experience_state.entity_id, experience_state.skill_id),
-                    experience_state,
-                )
-            })
-            .collect::<HashMap<(i64, i32), experience_state::Model>>();
-
-        let things_to_insert = resolved_buffer_before_insert
-            .iter()
-            .filter(|experience_state| {
-                match experience_state_from_db_map
-                    .get(&(experience_state.entity_id, experience_state.skill_id))
-                {
-                    Some(experience_state_from_db) => {
-                        if experience_state_from_db != *experience_state {
-                            return true;
-                        }
-                    }
-                    None => {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
-            .map(|experience_state| experience_state.clone().into_active_model())
-            .collect::<Vec<experience_state::ActiveModel>>();
-
-        if things_to_insert.len() == 0 {
-            debug!("Nothing to insert");
-            buffer_before_insert.clear();
-        } else {
-            debug!("Inserting {} experience_state", things_to_insert.len());
-            experience_state::Entity::insert_many(things_to_insert)
-                .on_conflict(on_conflict)
-                .exec(conn)
-                .await?;
-        }
-
-        buffer_before_insert.clear();
+        db_insert_experience_state(conn, &mut buffer_before_insert, &on_conflict).await?;
         info!("experience_state last batch imported");
     }
     info!(
@@ -681,26 +550,133 @@ pub(crate) async fn import_experience_state(
     );
 
     if experience_state_to_delete.len() > 0 {
-        info!(
-            "experience_state's to delete: {:?}",
-            experience_state_to_delete
-        );
+        delete_experience_state(conn, &mut experience_state_to_delete).await?;
+    }
 
-        let filter = experience_state_to_delete
-            .iter()
-            .map(|x| {
-                experience_state::Column::EntityId
-                    .eq(x.0)
-                    .and(experience_state::Column::SkillId.eq(x.1))
+    Ok(())
+}
+
+async fn get_known_experience_states(
+    conn: &DatabaseConnection,
+) -> anyhow::Result<HashSet<(i64, i32)>> {
+    let mut experience_state_to_delete: Vec<(i64, i32)> = experience_state::Entity::find()
+        .select_only()
+        .column(experience_state::Column::EntityId)
+        .column(experience_state::Column::SkillId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut experience_state_to_delete = experience_state_to_delete
+        .into_iter()
+        .map(|x| (x.0, x.1))
+        .collect::<HashSet<_>>();
+    Ok(experience_state_to_delete)
+}
+
+async fn delete_experience_state(
+    conn: &DatabaseConnection,
+    experience_state_to_delete: &mut HashSet<(i64, i32)>,
+) -> anyhow::Result<()> {
+    info!(
+        "experience_state's ({}) to delete: {:?}",
+        experience_state_to_delete.len(),
+        experience_state_to_delete
+    );
+
+    let filter = experience_state_to_delete
+        .iter()
+        .map(|x| {
+            experience_state::Column::EntityId
+                .eq(x.0)
+                .and(experience_state::Column::SkillId.eq(x.1))
+        })
+        .reduce(|accum, x| accum.or(x))
+        .unwrap();
+
+    experience_state::Entity::delete_many()
+        .filter(filter)
+        .exec(conn)
+        .await?;
+    Ok(())
+}
+
+async fn db_insert_experience_state(
+    conn: &DatabaseConnection,
+    buffer_before_insert: &mut Vec<PackedExperienceState>,
+    on_conflict: &OnConflict,
+) -> anyhow::Result<()> {
+    let resolved_buffer_before_insert = buffer_before_insert
+        .iter()
+        .map(|x| {
+            x.experience_stacks.iter().map(|y| experience_state::Model {
+                entity_id: x.entity_id,
+                skill_id: y.0,
+                experience: y.1,
             })
-            .reduce(|accum, x| accum.or(x))
-            .unwrap();
+        })
+        .flatten()
+        .collect::<Vec<experience_state::Model>>();
 
-        experience_state::Entity::delete_many()
-            .filter(filter)
+    let experience_state_from_db = experience_state::Entity::find()
+        .filter(
+            experience_state::Column::EntityId.is_in(
+                resolved_buffer_before_insert
+                    .iter()
+                    .map(|experience_state| experience_state.entity_id)
+                    .collect::<Vec<i64>>(),
+            ),
+        )
+        .all(conn)
+        .await?;
+
+    let experience_state_from_db_map = experience_state_from_db
+        .into_iter()
+        .map(|experience_state| {
+            (
+                (experience_state.entity_id, experience_state.skill_id),
+                experience_state,
+            )
+        })
+        .collect::<HashMap<(i64, i32), experience_state::Model>>();
+
+    let things_to_insert = resolved_buffer_before_insert
+        .iter()
+        .filter(|experience_state| {
+            match experience_state_from_db_map
+                .get(&(experience_state.entity_id, experience_state.skill_id))
+            {
+                Some(experience_state_from_db) => {
+                    if experience_state_from_db != *experience_state {
+                        return true;
+                    }
+                }
+                None => {
+                    return true;
+                }
+            }
+
+            return false;
+        })
+        .map(|experience_state| experience_state.clone().into_active_model())
+        .collect::<Vec<experience_state::ActiveModel>>();
+
+    if things_to_insert.len() == 0 {
+        debug!("Nothing to insert");
+        buffer_before_insert.clear();
+        return Ok(());
+    } else {
+        debug!("Inserting {} experience_state", things_to_insert.len());
+    }
+
+    for things_to_insert_chunk in things_to_insert.chunks(5000) {
+        let _ = experience_state::Entity::insert_many(things_to_insert_chunk.to_vec())
+            .on_conflict(on_conflict.clone())
             .exec(conn)
             .await?;
     }
+
+    buffer_before_insert.clear();
 
     Ok(())
 }
@@ -908,7 +884,7 @@ pub(crate) async fn player_leaderboard(
 pub(crate) async fn get_claim_leaderboard(
     state: State<AppState>,
     Path(claim_id): Path<i64>,
-) -> Result<Json<BTreeMap<String, Vec<RankType>>>, (StatusCode, &'static str)> {
+) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -1088,7 +1064,7 @@ pub(crate) async fn get_claim_leaderboard(
     player_ids.sort();
     player_ids.dedup();
 
-    let players_name_by_id = Query::find_player_username_by_ids(&state.conn, player_ids)
+    let players_name_by_id = Query::find_player_username_by_ids(&state.conn, player_ids.clone())
         .await
         .map_err(|error| {
             error!("Error: {error}");
@@ -1130,7 +1106,21 @@ pub(crate) async fn get_claim_leaderboard(
         }
     }
 
-    Ok(Json(leaderboard_result))
+    let players = Query::find_player_by_ids(&state.conn, player_ids.clone())
+        .await
+        .unwrap_or_else(|error| {
+            error!("Error loading players: {error}");
+
+            vec![]
+        })
+        .iter()
+        .map(|player| (player.entity_id, player.time_played))
+        .collect::<HashMap<i64, i32>>();
+
+    Ok(Json(serde_json::json!({
+        "player_map": players,
+        "leaderboard": leaderboard_result
+    })))
 }
 
 pub async fn import_job_experience_state(temp_config: Config) -> () {
@@ -1183,4 +1173,185 @@ fn import_internal_experience_state(config: Config, conn: DatabaseConnection, cl
                 }
             });
     });
+}
+
+pub(crate) async fn handle_initial_subscription(
+    p0: &DatabaseConnection,
+    p1: &Table,
+) -> anyhow::Result<()> {
+    let on_conflict = sea_query::OnConflict::columns([
+        experience_state::Column::EntityId,
+        experience_state::Column::SkillId,
+    ])
+    .update_columns([experience_state::Column::Experience])
+    .to_owned();
+
+    let chunk_size = Some(500);
+    let mut buffer_before_insert: Vec<PackedExperienceState> =
+        Vec::with_capacity(chunk_size.unwrap_or(500));
+    let mut experience_state_to_delete = get_known_experience_states(p0).await?;
+    for row in p1.inserts.iter() {
+        match serde_json::from_str::<PackedExperienceState>(row.Text.as_ref()) {
+            Ok(experience_state) => {
+                let resolved_buffer_before_insert = experience_state
+                    .experience_stacks
+                    .iter()
+                    .map(|y| experience_state::Model {
+                        entity_id: experience_state.entity_id,
+                        skill_id: y.0,
+                        experience: y.1,
+                    })
+                    .collect::<Vec<experience_state::Model>>();
+
+                for exp_state in resolved_buffer_before_insert.iter() {
+                    if experience_state_to_delete
+                        .contains(&(exp_state.entity_id, exp_state.skill_id))
+                    {
+                        experience_state_to_delete
+                            .remove(&(exp_state.entity_id, exp_state.skill_id));
+                    }
+                }
+
+                buffer_before_insert.push(experience_state);
+                if buffer_before_insert.len() == chunk_size.unwrap_or(500) {
+                    db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict).await?;
+                }
+            }
+            Err(error) => {
+                error!("Error: {error} for row: {:?}", row.Text);
+            }
+        }
+    }
+
+    if buffer_before_insert.len() > 0 {
+        db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict).await?;
+        info!("experience_state last batch imported");
+    }
+
+    if experience_state_to_delete.len() > 0 {
+        delete_experience_state(p0, &mut experience_state_to_delete).await?;
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn handle_transaction_update(
+    p0: &DatabaseConnection,
+    tables: &Vec<Table>,
+) -> anyhow::Result<()> {
+    let on_conflict = sea_query::OnConflict::columns([
+        experience_state::Column::EntityId,
+        experience_state::Column::SkillId,
+    ])
+    .update_columns([experience_state::Column::Experience])
+    .to_owned();
+
+    let mut found_in_inserts = HashSet::new();
+    let mut skills_to_update = HashMap::new();
+
+    for p1 in tables.iter() {
+        for row in p1.inserts.iter() {
+            match serde_json::from_str::<PackedExperienceState>(row.Text.as_ref()) {
+                Ok(experience_state) => {
+                    let experience_state_map = experience_state::Entity::find()
+                        .filter(experience_state::Column::EntityId.eq(experience_state.entity_id))
+                        .all(p0)
+                        .await?
+                        .iter()
+                        .map(|x| (x.skill_id, x.clone()))
+                        .collect::<HashMap<i32, experience_state::Model>>();
+
+                    let resolved_buffer_before_insert = experience_state
+                        .experience_stacks
+                        .iter()
+                        .map(|y| experience_state::Model {
+                            entity_id: experience_state.entity_id,
+                            skill_id: y.0,
+                            experience: y.1,
+                        })
+                        .collect::<Vec<experience_state::Model>>();
+
+                    let skill_entries_to_insert = resolved_buffer_before_insert
+                        .iter()
+                        .filter(|x| match experience_state_map.get(&x.skill_id) {
+                            Some(experience_state_map) => {
+                                if experience_state_map != *x {
+                                    return true;
+                                } else {
+                                    return false;
+                                }
+                            }
+                            None => {
+                                return true;
+                            }
+                        })
+                        .map(|x| x.clone())
+                        .collect::<Vec<experience_state::Model>>();
+
+                    if skill_entries_to_insert.len() == 0 {
+                        debug!("Nothing to insert");
+                        continue;
+                    } else {
+                        found_in_inserts.insert(experience_state.entity_id);
+                        debug!(
+                            "Inserting {} experience_state",
+                            skill_entries_to_insert.len()
+                        );
+
+                        for skill_entry in skill_entries_to_insert.iter() {
+                            skills_to_update.insert(
+                                (skill_entry.entity_id, skill_entry.skill_id),
+                                skill_entry.clone().into_active_model(),
+                            );
+                        }
+                    }
+                }
+                Err(error) => {
+                    error!("Error: {error} for row: {:?}", row.Text);
+                }
+            }
+        }
+    }
+
+    let skills_to_update_vec = skills_to_update
+        .into_iter()
+        .map(|x| x.1)
+        .collect::<Vec<experience_state::ActiveModel>>();
+
+    for skill_entries_to_insert_chunk in skills_to_update_vec.chunks(5000) {
+        let result = experience_state::Entity::insert_many(skill_entries_to_insert_chunk.to_vec())
+            .on_conflict(on_conflict.clone())
+            .exec(p0)
+            .await;
+
+        if let Err(error) = result {
+            error!(
+                "Error: {error} for chunk: {:?}",
+                skill_entries_to_insert_chunk
+            );
+            return Err(error.into());
+        }
+    }
+
+    for p1 in tables.iter() {
+        for row in p1.deletes.iter() {
+            match serde_json::from_str::<PackedExperienceState>(row.Text.as_ref()) {
+                Ok(experience_state) => {
+                    if found_in_inserts.contains(&experience_state.entity_id) {
+                        continue;
+                    }
+
+                    experience_state::Entity::delete_many()
+                        .filter(experience_state::Column::EntityId.eq(experience_state.entity_id))
+                        .exec(p0)
+                        .await?;
+                }
+                Err(error) => {
+                    error!("Error: {error} for row: {:?}", row.Text);
+                }
+            }
+        }
+    }
+
+    Ok(())
 }

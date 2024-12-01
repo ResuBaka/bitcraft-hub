@@ -375,8 +375,14 @@ const nDate = Intl.DateTimeFormat(undefined, {
               </v-col>
               <v-col cols="6" md="2" lg="12">
                 <v-list-item>
+                  <v-list-item-title>Treasury</v-list-item-title>
+                  <v-list-item-subtitle>{{ claim.treasury }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-col>
+              <v-col cols="6" md="2" lg="12">
+                <v-list-item>
                   <v-list-item-title>Current xp for minting</v-list-item-title>
-                  <v-list-item-subtitle>{{ claim.xp_gained_since_last_coin_minting }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{ claim.xp_gained_since_last_coin_minting }} / 5000</v-list-item-subtitle>
                 </v-list-item>
               </v-col>
               <v-col cols="6" md="2" lg="12">
@@ -392,7 +398,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
                 <v-list-item>
                   <v-list-item-title>Buildings</v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ buidlingsFetch?.total || 0 }}
+                    {{ claimFetch?.building_states?.length || 0 }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
@@ -456,7 +462,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
                   }
                 },
                  {
-                  title: 'Co-Owner',
+                  title: 'Permissions',
                   key: 'permissions',
                 },
                   {

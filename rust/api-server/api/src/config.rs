@@ -18,6 +18,8 @@ pub(crate) struct Config {
     pub(crate) import_type: ImportType,
     #[serde(rename = "importenabled", default)]
     pub(crate) import_enabled: bool,
+    #[serde(rename = "enabledimporter", default)]
+    pub(crate) enabled_importer: Vec<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -76,6 +78,7 @@ impl Config {
                     .separator("_")
                     .list_separator(",")
                     .with_list_parse_key("origins.origin")
+                    .with_list_parse_key("enabledimporter")
                     .try_parsing(true),
             )
             .build()

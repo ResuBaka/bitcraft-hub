@@ -130,7 +130,10 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
           <v-row>
             <template v-if="!inventoryPending" v-for="(inventory, index) in inventorys">
               <v-col cols="12" md="6">
-                <bitcraft-inventory :inventory="inventory"></bitcraft-inventory>
+                <bitcraft-player-tool-belt v-if="inventory.nickname === 'Tool belt'" :inventory="inventory"></bitcraft-player-tool-belt>
+                <bitcraft-inventory v-else-if="inventory.nickname === 'Wallet'" :inventory="inventory"></bitcraft-inventory>
+                <bitcraft-inventory v-else-if="inventory.nickname === 'Inventory'" :inventory="inventory"></bitcraft-inventory>
+                <bitcraft-inventory v-else :inventory="inventory"></bitcraft-inventory>
               </v-col>
             </template>
             <v-layout class="justify-center" v-else>

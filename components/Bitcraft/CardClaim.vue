@@ -77,7 +77,7 @@ const claimOwner = computed(() => {
         </tr>
         <tr style='text-align: right'>
           <th>Tiles:</th>
-          <td>{{ claim.tiles }}</td>
+          <td>{{ claim.num_tiles }}</td>
         </tr>
         <tr style='text-align: right'>
           <th>Location:</th>

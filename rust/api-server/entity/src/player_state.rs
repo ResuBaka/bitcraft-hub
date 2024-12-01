@@ -13,7 +13,7 @@ pub struct Model {
     pub session_start_timestamp: i32,
     pub time_signed_in: i32,
     pub sign_in_timestamp: i32,
-    pub last_shared_claim: i32,
+    pub last_shard_claim: i32,
     pub signed_in: bool,
 }
 
@@ -43,7 +43,7 @@ pub struct PlayerStateMerged {
     pub session_start_timestamp: i32,
     pub time_signed_in: i32,
     pub sign_in_timestamp: i32,
-    pub last_shared_claim: i32,
+    pub last_shard_claim: i32,
     pub signed_in: bool,
     pub username: String,
 }

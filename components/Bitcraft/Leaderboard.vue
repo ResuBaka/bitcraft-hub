@@ -20,11 +20,11 @@ const {
 const route = useRoute();
 
 const skills = computed(() => {
-  if (!leaderboard.value) {
+  if (!leaderboard.value?.leaderboard) {
     return [];
   }
 
-  return Object.keys(leaderboard.value).filter((name) => {
+  return Object.keys(leaderboard.value?.leaderboard).filter((name) => {
     return name !== "Experience" && name !== "Level";
   });
 });
@@ -98,6 +98,21 @@ const icons = {
   // Experience: { icon: "", color: "" },
   // Level: { icon: "", color: "" },
 };
+
+const totelExperiencePerHourAverage = computed(() => {
+  if (!leaderboard.value?.leaderboard) {
+    return 0;
+  }
+
+  let totalExperience = 0;
+
+  totalExperience += leaderboard.value.leaderboard["Experience"].reduce((acc, curr) => {
+    return acc + Math.ceil(curr.experience / Math.ceil(leaderboard?.value?.player_map[curr.player_id] / 3600));
+  }, 0);
+
+  return Math.ceil(totalExperience / leaderboard.value.leaderboard["Experience"].length);
+});
+
 </script>
 
 <template>
@@ -180,7 +195,7 @@ const icons = {
           </tr>
           </thead>
           <tbody>
-          <tr v-for="(item, index) in leaderboard[selectedSkills]" :key="item.player_id">
+          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
               <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
@@ -202,11 +217,12 @@ const icons = {
           <tr>
             <th>Rank</th>
             <th class="text-center">Player</th>
+            <th class="text-end">Experience/h {{ numberFormat.format(totelExperiencePerHourAverage) }}</th>
             <th class="text-end">Experience</th>
           </tr>
           </thead>
           <tbody>
-          <tr v-for="(item, index) in leaderboard[selectedSkills]" :key="item.player_id">
+          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
               <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
@@ -214,6 +230,7 @@ const icons = {
                 {{ item.player_name }}
               </NuxtLink>
             </td>
+            <td class="text-end">{{ numberFormat.format(Math.ceil(item.experience / Math.ceil(leaderboard.player_map[item.player_id] / 3600))) }}</td>
             <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
           </tr>
           </tbody>
@@ -231,7 +248,7 @@ const icons = {
           </tr>
           </thead>
           <tbody>
-          <tr v-for="(item, index) in leaderboard[selectedSkills]" :key="item.player_id">
+          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
               <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"

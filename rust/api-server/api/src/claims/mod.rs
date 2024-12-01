@@ -10,7 +10,8 @@ use axum::routing::get;
 use axum::{Json, Router};
 use entity::inventory::{ExpendedRefrence, ItemExpended};
 use entity::{
-    cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc, player_state,
+    building_state, cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc,
+    player_state,
 };
 use log::{debug, error, info};
 use reqwest::Client;
@@ -81,6 +82,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
     pub time_played: u64,
+    pub building_states: Vec<building_state::Model>,
 }
 
 #[axum_codec::apply(encode, decode)]
@@ -450,6 +452,7 @@ pub(crate) async fn get_claim(
         upgrades: claim.upgrades,
         inventorys: HashMap::new(),
         time_played: total_played,
+        building_states: building_states,
     };
 
     let mut jobs: Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>)>>> = vec![];
