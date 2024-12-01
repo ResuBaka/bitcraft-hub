@@ -134,6 +134,12 @@ async fn start() -> anyhow::Result<()> {
                 "Sec-WebSocket-Key",
                 "dGhlIHNhbXBsZSBub25jZQ==".parse().unwrap(),
             );
+            headers.insert(
+                reqwest::header::USER_AGENT,
+                format!("Bitcraft-Hub-Api/{}", env!("CARGO_PKG_VERSION"))
+                    .parse()
+                    .unwrap(),
+            );
 
             let response = Client::default()
                 .get(format!(
