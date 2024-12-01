@@ -295,6 +295,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 };
 
 let memberSearch = ref<string | null>(null);
+let showOnlyOnlineMembers = ref(false);
 
 const membersForTable = computed(() => {
   if (!claim.value?.members) {
@@ -302,6 +303,10 @@ const membersForTable = computed(() => {
   }
   return claim.value.members
     .filter((member) => {
+      if (showOnlyOnlineMembers.value && member.online_state !== "Online") {
+        return false;
+      }
+
       if (memberSearch.value) {
         return member.user_name
           .toLowerCase()
@@ -436,6 +441,10 @@ const nDate = Intl.DateTimeFormat(undefined, {
             Members ({{claim?.members?.length || 0}})
 
             <v-spacer></v-spacer>
+            <v-checkbox
+                v-model="showOnlyOnlineMembers"
+                label="Show only online members"
+            ></v-checkbox>
 
             <v-text-field
                 v-model="memberSearch"
