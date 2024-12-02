@@ -405,7 +405,7 @@ pub(crate) async fn get_top_100(
             vec![]
         })
         .iter()
-        .map(|player| (player.entity_id, player.time_played))
+        .map(|player| (player.entity_id, player.time_signed_in))
         .collect::<HashMap<i64, i32>>();
 
     Ok(Json(serde_json::json!({
@@ -1114,7 +1114,7 @@ pub(crate) async fn get_claim_leaderboard(
             vec![]
         })
         .iter()
-        .map(|player| (player.entity_id, player.time_played))
+        .map(|player| (player.entity_id, player.time_signed_in))
         .collect::<HashMap<i64, i32>>();
 
     Ok(Json(serde_json::json!({
