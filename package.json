@@ -25,7 +25,8 @@
     "@nuxt/devtools": "^1.6.1",
     "@types/ws": "^8.5.12",
     "sass": "^1.77.8",
-    "@vueuse/shared": "^11.3.0",
+    "@vueuse/core": "^12.0.0",
+    "@vueuse/shared": "^12.0.0",
     "vuetify": "^3.7.4",
     "vuetify-nuxt-module": "^0.18.3"
   }

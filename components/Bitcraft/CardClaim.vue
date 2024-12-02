@@ -92,7 +92,7 @@ const claimOwner = computed(() => {
           </td>
         </tr>
         <tr v-if="claim.running_upgrade" style='text-align: right'>
-          <th>Tier:</th>
+          <th>Research:</th>
           <td>
             {{ claim.running_upgrade.description }}
           </td>

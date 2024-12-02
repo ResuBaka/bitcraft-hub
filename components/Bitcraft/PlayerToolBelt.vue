@@ -1,10 +1,9 @@
 <script setup lang="ts">
 const props = defineProps({
   inventory: Object,
-})
+});
 
 const theme = useTheme();
-
 
 const tierColor = computed(() => {
   let colorEffect = "";

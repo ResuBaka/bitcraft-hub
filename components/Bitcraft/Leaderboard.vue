@@ -106,13 +106,23 @@ const totelExperiencePerHourAverage = computed(() => {
 
   let totalExperience = 0;
 
-  totalExperience += leaderboard.value.leaderboard["Experience"].reduce((acc, curr) => {
-    return acc + Math.ceil(curr.experience / Math.ceil(leaderboard?.value?.player_map[curr.player_id] / 3600));
-  }, 0);
+  totalExperience += leaderboard.value.leaderboard["Experience"].reduce(
+    (acc, curr) => {
+      return (
+        acc +
+        Math.ceil(
+          curr.experience /
+            Math.ceil(leaderboard?.value?.player_map[curr.player_id] / 3600),
+        )
+      );
+    },
+    0,
+  );
 
-  return Math.ceil(totalExperience / leaderboard.value.leaderboard["Experience"].length);
+  return Math.ceil(
+    totalExperience / leaderboard.value.leaderboard["Experience"].length,
+  );
 });
-
 </script>
 
 <template>

@@ -2,6 +2,7 @@
 import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
 import CardItem from "~/components/Bitcraft/CardItem.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import { useNow } from "@vueuse/core";
 
 const {
   public: { iconDomain },
@@ -346,6 +347,31 @@ const nDate = Intl.DateTimeFormat(undefined, {
   second: "2-digit",
   hour12: false,
 });
+
+const upgradeWillFinishAt = computed(() => {
+  return new Date(
+    claimFetch.value?.running_upgrade?.research_time * 1000 +
+      claimFetch.value?.running_upgrade_started / 1000,
+  );
+});
+
+const now = useNow({ interval: 1000, controls: true });
+
+// Show Days Hours Minutes Seconds
+const countDownUntilResearchIsFinished = computed(() => {
+  const researchEnded = new Date(
+    claimFetch.value?.running_upgrade?.research_time * 1000 +
+      claimFetch.value?.running_upgrade_started / 1000,
+  );
+  const diff = researchEnded.getTime() - now.now.value.getTime();
+
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / 1000 / 60) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+  };
+});
 </script>
 
 <template>
@@ -417,9 +443,9 @@ const nDate = Intl.DateTimeFormat(undefined, {
               </v-col>
               <v-col v-if="claimFetch?.running_upgrade" cols="6" md="2" lg="12">
                 <v-list-item>
-                  <v-list-item-title>Running Upgrade</v-list-item-title>
+                  <v-list-item-title>Current Research</v-list-item-title>
                   <v-list-item-subtitle>
-                    <strong>{{ claimFetch?.running_upgrade.description }}</strong> is going to be finished at: <strong>{{ nDate.format(new Date((claimFetch?.running_upgrade.research_time * 1000) + (claimFetch?.running_upgrade_started / 1000))) }}</strong>
+                    <strong>{{ claimFetch?.running_upgrade.description }}</strong> is going to be finished at: <strong v-if="countDownUntilResearchIsFinished.days">{{ countDownUntilResearchIsFinished.days }}d </strong><strong v-if="countDownUntilResearchIsFinished.hours">{{ countDownUntilResearchIsFinished.hours }}h </strong><strong v-if="countDownUntilResearchIsFinished.minutes">{{ countDownUntilResearchIsFinished.minutes }}m </strong><strong v-if="countDownUntilResearchIsFinished.seconds">{{ countDownUntilResearchIsFinished.seconds }}s</strong>
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
