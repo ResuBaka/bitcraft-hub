@@ -3,17 +3,20 @@ use crate::inventory::resolve_contents;
 use crate::leaderboard::{
     experience_to_level, LeaderboardSkill, RankType, EXCLUDED_USERS_FROM_LEADERBOARD,
 };
-use crate::{claims, AppState, Params};
+use crate::player_state::get_known_player_username_state_ids;
+use crate::{claims, AppState, Params, Table};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
+use entity::claim_description_state::Model;
 use entity::inventory::{ExpendedRefrence, ItemExpended};
 use entity::{
     building_state, cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc,
     player_state,
 };
 use log::{debug, error, info};
+use migration::OnConflict;
 use reqwest::Client;
 use sea_orm::{
     sea_query, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, QuerySelect,
@@ -730,7 +733,130 @@ pub(crate) async fn import_claim_description_state(
     json_stream_reader.seek_to(&json_path!["rows"])?;
     json_stream_reader.begin_array()?;
 
-    let on_conflict = sea_query::OnConflict::column(claim_description_state::Column::EntityId)
+    let on_conflict = get_claim_description_state_on_conflict();
+
+    let mut known_claim_description_ids = known_claim_description_state_ids(conn).await?;
+
+    while let Ok(value) = json_stream_reader.deserialize_next::<claim_description_state::Model>() {
+        if known_claim_description_ids.contains(&value.entity_id) {
+            known_claim_description_ids.remove(&value.entity_id);
+        }
+
+        buffer_before_insert.push(value);
+
+        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+            db_insert_claim_description_state(conn, &mut buffer_before_insert, &on_conflict).await;
+        }
+    }
+
+    if buffer_before_insert.len() > 0 {
+        db_insert_claim_description_state(conn, &mut buffer_before_insert, &on_conflict).await;
+        info!("claim_tech_desc last batch imported");
+    }
+    info!(
+        "Importing claim_tech_desc finished in {}s",
+        start.elapsed().as_secs()
+    );
+
+    if known_claim_description_ids.len() > 0 {
+        delete_claim_description_state(conn, known_claim_description_ids).await?;
+    }
+
+    Ok(())
+}
+
+async fn delete_claim_description_state(
+    conn: &DatabaseConnection,
+    mut known_claim_description_ids: HashSet<i64>,
+) -> anyhow::Result<()> {
+    info!(
+        "claim_tech_desc's ({}) to delete: {:?}",
+        known_claim_description_ids.len(),
+        known_claim_description_ids,
+    );
+    claim_description_state::Entity::delete_many()
+        .filter(claim_description_state::Column::EntityId.is_in(known_claim_description_ids))
+        .exec(conn)
+        .await?;
+    Ok(())
+}
+
+async fn db_insert_claim_description_state(
+    conn: &DatabaseConnection,
+    mut buffer_before_insert: &mut Vec<Model>,
+    on_conflict: &OnConflict,
+) -> anyhow::Result<()> {
+    let claim_description_from_db = claim_description_state::Entity::find()
+        .filter(
+            claim_description_state::Column::EntityId.is_in(
+                buffer_before_insert
+                    .iter()
+                    .map(|claim_description| claim_description.entity_id)
+                    .collect::<Vec<i64>>(),
+            ),
+        )
+        .all(conn)
+        .await?;
+
+    let claim_description_from_db_map = claim_description_from_db
+        .into_iter()
+        .map(|claim_description| (claim_description.entity_id, claim_description))
+        .collect::<HashMap<i64, claim_description_state::Model>>();
+
+    let things_to_insert = buffer_before_insert
+        .iter()
+        .filter(|claim_description| {
+            match claim_description_from_db_map.get(&claim_description.entity_id) {
+                Some(claim_description_from_db) => {
+                    if claim_description_from_db != *claim_description {
+                        return true;
+                    }
+                }
+                None => {
+                    return true;
+                }
+            }
+
+            return false;
+        })
+        .map(|claim_description| claim_description.clone().into_active_model())
+        .collect::<Vec<claim_description_state::ActiveModel>>();
+
+    if things_to_insert.len() == 0 {
+        debug!("Nothing to insert");
+        buffer_before_insert.clear();
+        return Ok(());
+    } else {
+        debug!("Inserting {} claim_tech_desc", things_to_insert.len());
+    }
+
+    let _ = claim_description_state::Entity::insert_many(things_to_insert)
+        .on_conflict(on_conflict.clone())
+        .exec(conn)
+        .await?;
+
+    buffer_before_insert.clear();
+    Ok(())
+}
+
+async fn known_claim_description_state_ids(
+    conn: &DatabaseConnection,
+) -> anyhow::Result<HashSet<i64>> {
+    let known_claim_description_ids: Vec<i64> = claim_description_state::Entity::find()
+        .select_only()
+        .column(claim_description_state::Column::EntityId)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let mut known_claim_description_ids = known_claim_description_ids
+        .into_iter()
+        .collect::<HashSet<i64>>();
+    Ok(known_claim_description_ids)
+}
+
+fn get_claim_description_state_on_conflict() -> OnConflict {
+    sea_query::OnConflict::column(claim_description_state::Column::EntityId)
         .update_columns([
             claim_description_state::Column::OwnerPlayerEntityId,
             claim_description_state::Column::OwnerBuildingEntityId,
@@ -749,149 +875,7 @@ pub(crate) async fn import_claim_description_state(
             claim_description_state::Column::SuppliesPurchasePrice,
             claim_description_state::Column::BuildingDescriptionId,
         ])
-        .to_owned();
-
-    let known_claim_description_ids: Vec<i64> = claim_description_state::Entity::find()
-        .select_only()
-        .column(claim_description_state::Column::EntityId)
-        .into_tuple()
-        .all(conn)
-        .await?;
-
-    let mut known_claim_description_ids = known_claim_description_ids
-        .into_iter()
-        .collect::<HashSet<i64>>();
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<claim_description_state::Model>() {
-        if known_claim_description_ids.contains(&value.entity_id) {
-            known_claim_description_ids.remove(&value.entity_id);
-        }
-
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            let claim_description_from_db = claim_description_state::Entity::find()
-                .filter(
-                    claim_description_state::Column::EntityId.is_in(
-                        buffer_before_insert
-                            .iter()
-                            .map(|claim_description| claim_description.entity_id)
-                            .collect::<Vec<i64>>(),
-                    ),
-                )
-                .all(conn)
-                .await?;
-
-            let claim_description_from_db_map = claim_description_from_db
-                .into_iter()
-                .map(|claim_description| (claim_description.entity_id, claim_description))
-                .collect::<HashMap<i64, claim_description_state::Model>>();
-
-            let things_to_insert = buffer_before_insert
-                .iter()
-                .filter(|claim_description| {
-                    match claim_description_from_db_map.get(&claim_description.entity_id) {
-                        Some(claim_description_from_db) => {
-                            if claim_description_from_db != *claim_description {
-                                return true;
-                            }
-                        }
-                        None => {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                })
-                .map(|claim_description| claim_description.clone().into_active_model())
-                .collect::<Vec<claim_description_state::ActiveModel>>();
-
-            if things_to_insert.len() == 0 {
-                debug!("Nothing to insert");
-                buffer_before_insert.clear();
-                continue;
-            } else {
-                debug!("Inserting {} claim_tech_desc", things_to_insert.len());
-            }
-
-            let _ = claim_description_state::Entity::insert_many(things_to_insert)
-                .on_conflict(on_conflict.clone())
-                .exec(conn)
-                .await?;
-
-            buffer_before_insert.clear();
-        }
-    }
-
-    if buffer_before_insert.len() > 0 {
-        let claim_description_from_db = claim_description_state::Entity::find()
-            .filter(
-                claim_description_state::Column::EntityId.is_in(
-                    buffer_before_insert
-                        .iter()
-                        .map(|claim_description| claim_description.entity_id)
-                        .collect::<Vec<i64>>(),
-                ),
-            )
-            .all(conn)
-            .await?;
-
-        let claim_description_from_db_map = claim_description_from_db
-            .into_iter()
-            .map(|claim_description| (claim_description.entity_id, claim_description))
-            .collect::<HashMap<i64, claim_description_state::Model>>();
-
-        let things_to_insert = buffer_before_insert
-            .iter()
-            .filter(|claim_description| {
-                match claim_description_from_db_map.get(&claim_description.entity_id) {
-                    Some(claim_description_from_db) => {
-                        if claim_description_from_db != *claim_description {
-                            return true;
-                        }
-                    }
-                    None => {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
-            .map(|claim_description| claim_description.clone().into_active_model())
-            .collect::<Vec<claim_description_state::ActiveModel>>();
-
-        if things_to_insert.len() == 0 {
-            debug!("Nothing to insert");
-            buffer_before_insert.clear();
-        } else {
-            debug!("Inserting {} claim_tech_desc", things_to_insert.len());
-            claim_description_state::Entity::insert_many(things_to_insert)
-                .on_conflict(on_conflict)
-                .exec(conn)
-                .await?;
-        }
-
-        buffer_before_insert.clear();
-        info!("claim_tech_desc last batch imported");
-    }
-    info!(
-        "Importing claim_tech_desc finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if known_claim_description_ids.len() > 0 {
-        info!(
-            "claim_tech_desc's ({}) to delete: {:?}",
-            known_claim_description_ids.len(),
-            known_claim_description_ids,
-        );
-        claim_description_state::Entity::delete_many()
-            .filter(claim_description_state::Column::EntityId.is_in(known_claim_description_ids))
-            .exec(conn)
-            .await?;
-    }
-
-    Ok(())
+        .to_owned()
 }
 
 pub(crate) fn get_merged_inventories(
@@ -984,4 +968,120 @@ fn import_internal_claim_description_state(
                 }
             });
     });
+}
+
+pub(crate) async fn handle_initial_subscription(
+    p0: &DatabaseConnection,
+    p1: &Table,
+) -> anyhow::Result<()> {
+    let on_conflict = get_claim_description_state_on_conflict();
+
+    let chunk_size = Some(5000);
+    let mut buffer_before_insert: Vec<claim_description_state::Model> = vec![];
+
+    let mut known_inventory_ids = known_claim_description_state_ids(p0).await?;
+
+    for row in p1.inserts.iter() {
+        match serde_json::from_str::<claim_description_state::Model>(row.Text.as_ref()) {
+            Ok(building_state) => {
+                if known_inventory_ids.contains(&building_state.entity_id) {
+                    known_inventory_ids.remove(&building_state.entity_id);
+                }
+                buffer_before_insert.push(building_state);
+                if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    db_insert_claim_description_state(p0, &mut buffer_before_insert, &on_conflict)
+                        .await?;
+                }
+            }
+            Err(error) => {
+                error!("InitialSubscription Insert ClaimDescriptionState Error: {error}");
+            }
+        }
+    }
+
+    if buffer_before_insert.len() > 0 {
+        for buffer_chnk in buffer_before_insert.chunks(5000) {
+            db_insert_claim_description_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
+        }
+    }
+
+    if known_inventory_ids.len() > 0 {
+        delete_claim_description_state(p0, known_inventory_ids).await?;
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn handle_transaction_update(
+    p0: &DatabaseConnection,
+    tables: &Vec<Table>,
+) -> anyhow::Result<()> {
+    let on_conflict = get_claim_description_state_on_conflict();
+
+    let chunk_size = Some(5000);
+    let mut buffer_before_insert = HashMap::new();
+
+    let mut found_in_inserts = HashSet::new();
+
+    for p1 in tables.iter() {
+        for row in p1.inserts.iter() {
+            match serde_json::from_str::<claim_description_state::Model>(row.Text.as_ref()) {
+                Ok(inventory) => {
+                    found_in_inserts.insert(inventory.entity_id);
+                    buffer_before_insert.insert(inventory.entity_id, inventory);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
+                        let mut buffer_before_insert_vec = buffer_before_insert
+                            .clone()
+                            .into_iter()
+                            .map(|x| x.1)
+                            .collect::<Vec<claim_description_state::Model>>();
+
+                        db_insert_claim_description_state(
+                            p0,
+                            &mut buffer_before_insert_vec,
+                            &on_conflict,
+                        )
+                        .await?;
+                        buffer_before_insert.clear();
+                    }
+                }
+                Err(error) => {
+                    error!("TransactionUpdate Insert ClaimDescriptionState Error: {error}");
+                }
+            }
+        }
+    }
+
+    if buffer_before_insert.len() > 0 {
+        let mut buffer_before_insert_vec = buffer_before_insert
+            .clone()
+            .into_iter()
+            .map(|x| x.1)
+            .collect::<Vec<claim_description_state::Model>>();
+        db_insert_claim_description_state(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
+        buffer_before_insert.clear();
+    }
+
+    let mut players_to_delete = HashSet::new();
+
+    for p1 in tables.iter() {
+        for row in p1.deletes.iter() {
+            match serde_json::from_str::<claim_description_state::Model>(row.Text.as_ref()) {
+                Ok(inventory) => {
+                    if !found_in_inserts.contains(&inventory.entity_id) {
+                        players_to_delete.insert(inventory.entity_id);
+                    }
+                }
+                Err(error) => {
+                    error!("TransactionUpdate Delete ClaimDescriptionState Error: {error}");
+                }
+            }
+        }
+    }
+
+    if players_to_delete.len() > 0 {
+        delete_claim_description_state(p0, players_to_delete).await?;
+    }
+
+    Ok(())
 }

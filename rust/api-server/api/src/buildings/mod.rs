@@ -777,9 +777,6 @@ pub(crate) async fn handle_transaction_update(
                             .on_conflict(on_conflict.clone())
                             .exec(p0)
                             .await?;
-
-                            info!("New building_state: {:?}", building_state);
-                            info!("Current building_state: {:?}", current_building_state);
                         }
                     } else {
                         found_in_inserts.insert(building_state.entity_id);
