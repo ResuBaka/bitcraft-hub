@@ -190,6 +190,7 @@ fn start_websocket_bitcraft_logic(
             "InventoryState",
             "ClaimTechState",
             "ClaimDescriptionState",
+            "DeployableState",
         ];
 
         let select_querys = tables_to_subscribe
@@ -334,6 +335,18 @@ fn start_websocket_bitcraft_logic(
                                             );
                                     }
                                 }
+
+                                if table.table_name.as_ref() == "DeployableState" {
+                                    let result =
+                                        deployable_state::handle_initial_subscription(&db, table).await;
+
+                                    if result.is_err() {
+                                        error!(
+                                                "DeployableState initial subscription failed: {:?}",
+                                                result.err()
+                                            );
+                                    }
+                                }
                             }
                         }
                         WebSocketMessage::IdentityToken(identity_token) => {
@@ -417,6 +430,17 @@ fn start_websocket_bitcraft_logic(
                         if result.is_err() {
                             error!(
                                 "ClaimDescriptionState transaction update failed: {:?}",
+                                result.err()
+                            );
+                        }
+                    }
+
+                    if table_name == "DeployableState" {
+                        let result = deployable_state::handle_transaction_update(&db, table).await;
+
+                        if result.is_err() {
+                            error!(
+                                "DeployableState transaction update failed: {:?}",
                                 result.err()
                             );
                         }
@@ -769,16 +793,16 @@ fn import_data(config: Config) {
                 //     )));
                 // }
 
-                if config
-                    .enabled_importer
-                    .contains(&"deployable_state".to_string())
-                    || config.enabled_importer.len() == 0
-                {
-                    let temp_config = config.clone();
-                    tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(
-                        temp_config,
-                    )));
-                }
+                // if config
+                //     .enabled_importer
+                //     .contains(&"deployable_state".to_string())
+                //     || config.enabled_importer.len() == 0
+                // {
+                //     let temp_config = config.clone();
+                //     tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(
+                //         temp_config,
+                //     )));
+                // }
 
                 if config
                     .enabled_importer
