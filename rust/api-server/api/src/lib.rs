@@ -338,13 +338,14 @@ fn start_websocket_bitcraft_logic(
 
                                 if table.table_name.as_ref() == "DeployableState" {
                                     let result =
-                                        deployable_state::handle_initial_subscription(&db, table).await;
+                                        deployable_state::handle_initial_subscription(&db, table)
+                                            .await;
 
                                     if result.is_err() {
                                         error!(
-                                                "DeployableState initial subscription failed: {:?}",
-                                                result.err()
-                                            );
+                                            "DeployableState initial subscription failed: {:?}",
+                                            result.err()
+                                        );
                                     }
                                 }
                             }

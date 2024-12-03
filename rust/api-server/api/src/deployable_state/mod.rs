@@ -1,5 +1,7 @@
 use crate::config::Config;
+use crate::Table;
 use entity::deployable_state;
+use entity::deployable_state::Model;
 use log::{debug, error, info};
 use migration::{sea_query, OnConflict};
 use reqwest::Client;
@@ -16,8 +18,6 @@ use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
-use entity::deployable_state::Model;
-use crate::Table;
 
 pub(crate) async fn load_deployable_state_from_file(
     storage_path: &PathBuf,
@@ -119,12 +119,15 @@ pub(crate) async fn import_deployable_state(
     Ok(())
 }
 
-async fn delete_deployable_state(conn: &DatabaseConnection, mut known_deployable_state_ids: HashSet<i64>) -> anyhow::Result<()> {
+async fn delete_deployable_state(
+    conn: &DatabaseConnection,
+    mut known_deployable_state_ids: HashSet<i64>,
+) -> anyhow::Result<()> {
     info!(
-            "deployable_state's ({}) to delete: {:?}",
-            known_deployable_state_ids.len(),
-            known_deployable_state_ids
-        );
+        "deployable_state's ({}) to delete: {:?}",
+        known_deployable_state_ids.len(),
+        known_deployable_state_ids
+    );
     deployable_state::Entity::delete_many()
         .filter(deployable_state::Column::EntityId.is_in(known_deployable_state_ids))
         .exec(conn)
@@ -132,7 +135,11 @@ async fn delete_deployable_state(conn: &DatabaseConnection, mut known_deployable
     Ok(())
 }
 
-async fn db_insert_deployable_state(conn: &DatabaseConnection, mut buffer_before_insert: &mut Vec<Model>, on_conflict: &OnConflict) -> anyhow::Result<()> {
+async fn db_insert_deployable_state(
+    conn: &DatabaseConnection,
+    mut buffer_before_insert: &mut Vec<Model>,
+    on_conflict: &OnConflict,
+) -> anyhow::Result<()> {
     let deployable_state_from_db = deployable_state::Entity::find()
         .filter(
             deployable_state::Column::EntityId.is_in(
@@ -290,12 +297,8 @@ pub(crate) async fn handle_transaction_update(
                             .map(|x| x.1)
                             .collect::<Vec<deployable_state::Model>>();
 
-                        db_insert_deployable_state(
-                            p0,
-                            &mut buffer_before_insert_vec,
-                            &on_conflict,
-                        )
-                        .await?;
+                        db_insert_deployable_state(p0, &mut buffer_before_insert_vec, &on_conflict)
+                            .await?;
                         buffer_before_insert.clear();
                     }
                 }
@@ -312,7 +315,7 @@ pub(crate) async fn handle_transaction_update(
             .into_iter()
             .map(|x| x.1)
             .collect::<Vec<deployable_state::Model>>();
-            db_insert_deployable_state(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
+        db_insert_deployable_state(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
         buffer_before_insert.clear();
     }
 
@@ -359,7 +362,8 @@ pub(crate) async fn handle_initial_subscription(
                 }
                 buffer_before_insert.push(building_state);
                 if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                    db_insert_deployable_state(conn, &mut buffer_before_insert, &on_conflict).await?;
+                    db_insert_deployable_state(conn, &mut buffer_before_insert, &on_conflict)
+                        .await?;
                 }
             }
             Err(error) => {
