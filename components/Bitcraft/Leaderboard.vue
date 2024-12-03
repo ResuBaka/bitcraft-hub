@@ -25,7 +25,11 @@ const skills = computed(() => {
   }
 
   return Object.keys(leaderboard.value?.leaderboard).filter((name) => {
-    return name !== "Experience" && name !== "Level";
+    return (
+      name !== "Experience" &&
+      name !== "Level" &&
+      name !== "Experience Per Hour"
+    );
   });
 });
 
@@ -35,6 +39,7 @@ let skillMenu = computed(() => {
   const skillMenu = [
     { key: "Experience", text: "Total experience" },
     { key: "Level", text: "Total level" },
+    { key: "Experience Per Hour", text: "Experience Per Hour" },
   ];
 
   for (const skill of skills.value) {
@@ -110,10 +115,7 @@ const totelExperiencePerHourAverage = computed(() => {
     (acc, curr) => {
       return (
         acc +
-        Math.ceil(
-          curr.experience /
-            Math.ceil(leaderboard?.value?.player_map[curr.player_id] / 3600),
-        )
+        curr.experience / leaderboard?.value?.player_map[curr.player_id] / 3600
       );
     },
     0,
@@ -240,7 +242,7 @@ const totelExperiencePerHourAverage = computed(() => {
                 {{ item.player_name }}
               </NuxtLink>
             </td>
-            <td class="text-end">{{ numberFormat.format(Math.ceil(item.experience / Math.ceil(leaderboard.player_map[item.player_id] / 3600))) }}</td>
+            <td class="text-end">{{ numberFormat.format(Math.ceil(item.experience / (leaderboard.player_map[item.player_id] / 3600))) }}</td>
             <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
           </tr>
           </tbody>

@@ -300,6 +300,32 @@ pub(crate) async fn get_top_100(
     let db = state.conn.clone();
     tasks.push(tokio::spawn(async move {
         let mut leaderboard: Vec<RankType> = Vec::new();
+        let entries = Query::get_experience_state_top_100_experience_per_hour(
+            &db,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
+
+        for (i, entry) in entries.into_iter().enumerate() {
+            let rank = i + 1;
+            leaderboard.push(RankType::Experience(LeaderboardExperience {
+                player_id: entry.entity_id,
+                player_name: None,
+                experience: entry.experience,
+                rank: rank as u64,
+            }));
+        }
+
+        Ok(("Experience Per Hour".to_string(), leaderboard))
+    }));
+
+    let db = state.conn.clone();
+    tasks.push(tokio::spawn(async move {
+        let mut leaderboard: Vec<RankType> = Vec::new();
         let entries = Query::get_experience_state_top_100_total_level(
             &db,
             generated_level_sql,
