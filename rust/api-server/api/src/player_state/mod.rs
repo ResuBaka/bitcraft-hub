@@ -102,16 +102,24 @@ pub async fn find_player_by_id(
         None => "".to_string(),
     };
 
-    Ok(Json(json!(player_state::PlayerStateMerged {
-        entity_id: player.entity_id,
-        time_played: player.time_played,
-        session_start_timestamp: player.session_start_timestamp,
-        time_signed_in: player.time_signed_in,
-        sign_in_timestamp: player.sign_in_timestamp,
-        last_shard_claim: player.last_shard_claim,
-        signed_in: player.signed_in,
-        teleport_location: player.teleport_location,
-        username: player_username,
+    let deployables = QueryCore::find_vault_deployable_by_player_with_desc(&state.conn, id as i64)
+        .await
+        .unwrap_or_else(|error| {
+            error!("find_player_by_id -> Error: {:?}", error);
+            vec![]
+        });
+
+    Ok(Json(json!({
+        "entity_id": player.entity_id,
+        "time_played": player.time_played,
+        "session_start_timestamp": player.session_start_timestamp,
+        "time_signed_in": player.time_signed_in,
+        "sign_in_timestamp": player.sign_in_timestamp,
+        "last_shard_claim": player.last_shard_claim,
+        "signed_in": player.signed_in,
+        "teleport_location": player.teleport_location,
+        "username": player_username,
+        "deployables": deployables
     })))
 }
 
@@ -774,8 +782,7 @@ pub(crate) async fn handle_transaction_update_player_state(
         .to_owned();
 
     let chunk_size = Some(5000);
-    let mut buffer_before_insert: Vec<player_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(1000));
+    let mut buffer_before_insert = HashMap::new();
 
     let mut found_in_inserts = HashSet::new();
 
@@ -784,12 +791,18 @@ pub(crate) async fn handle_transaction_update_player_state(
             match serde_json::from_str::<player_state::Model>(row.Text.as_ref()) {
                 Ok(player_state) => {
                     found_in_inserts.insert(player_state.entity_id);
-                    buffer_before_insert.push(player_state);
+                    buffer_before_insert.insert(player_state.entity_id, player_state);
                     if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
-                        db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict)
+                        let mut buffer_before_insert_vec = buffer_before_insert
+                            .clone()
+                            .into_iter()
+                            .map(|x| x.1)
+                            .collect::<Vec<player_state::Model>>();
+
+                        db_insert_player_states(p0, &mut buffer_before_insert_vec, &on_conflict)
                             .await?;
+                        buffer_before_insert.clear();
                     }
-                    buffer_before_insert.clear();
                 }
                 Err(error) => {
                     error!("TransactionUpdate Insert PlayerState Error: {error}");
@@ -799,7 +812,14 @@ pub(crate) async fn handle_transaction_update_player_state(
     }
 
     if buffer_before_insert.len() > 0 {
-        db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict).await?;
+        let mut buffer_before_insert_vec = buffer_before_insert
+            .clone()
+            .into_iter()
+            .map(|x| x.1)
+            .collect::<Vec<player_state::Model>>();
+
+        db_insert_player_states(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
+        buffer_before_insert.clear();
     }
 
     let mut players_to_delete = HashSet::new();

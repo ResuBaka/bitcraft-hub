@@ -2,23 +2,25 @@ use ::entity::building_state;
 use ::entity::cargo_desc;
 use ::entity::claim_tech_desc;
 use ::entity::claim_tech_state;
+use ::entity::collectible_desc;
+use ::entity::collectible_desc::CollectibleType;
 use ::entity::crafting_recipe;
 use ::entity::deployable_state;
 use ::entity::inventory;
 use ::entity::trade_order;
+use ::entity::vault_state_collectibles;
+use ::entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
 use ::entity::{
     building_desc, claim_description_state, claim_description_state::Entity as ClaimDescription,
     experience_state, item_desc, item_desc::Entity as Item, location, location::Entity as Location,
     player_state, player_state::Entity as PlayerState, player_username_state,
     player_username_state::Entity as PlayerUsernameState, skill_desc,
 };
-use sea_orm::prelude::Decimal;
 use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::sea_query::{
     Alias, Expr, ExprTrait, IntoColumnRef, IntoIden, MysqlQueryBuilder, PgFunc,
     PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder,
 };
-use sea_orm::sqlx::RawSql;
 use sea_orm::*;
 use std::fmt::Write;
 
@@ -344,7 +346,7 @@ impl Query {
                         Expr::val(200),
                         Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                     ),
-                    100,
+                    1000,
                 )
                 .finally(0)
                 .add(
@@ -353,7 +355,7 @@ impl Query {
                             Expr::val(300),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -363,7 +365,7 @@ impl Query {
                             Expr::val(400),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -373,7 +375,7 @@ impl Query {
                             Expr::val(500),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -383,7 +385,7 @@ impl Query {
                             Expr::val(600),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -393,7 +395,7 @@ impl Query {
                             Expr::val(700),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -403,7 +405,7 @@ impl Query {
                             Expr::val(800),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -413,7 +415,7 @@ impl Query {
                             Expr::val(900),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -423,7 +425,7 @@ impl Query {
                             Expr::val(1000),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
-                        100,
+                        1000,
                     )
                     .finally(0),
                 )
@@ -713,7 +715,7 @@ impl Query {
                             Expr::val(200),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -723,7 +725,7 @@ impl Query {
                             Expr::val(300),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -733,7 +735,7 @@ impl Query {
                             Expr::val(400),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -743,7 +745,7 @@ impl Query {
                             Expr::val(500),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -753,7 +755,7 @@ impl Query {
                             Expr::val(600),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -763,7 +765,7 @@ impl Query {
                             Expr::val(700),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -773,7 +775,7 @@ impl Query {
                             Expr::val(800),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -783,7 +785,7 @@ impl Query {
                             Expr::val(900),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -793,7 +795,7 @@ impl Query {
                             Expr::val(1000),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
-                        15,
+                        100,
                     )
                     .finally(0),
                 )
@@ -1454,16 +1456,34 @@ impl Query {
     pub async fn get_experience_state_top_100_total_experience(
         db: &DbConn,
         exclude: Option<[i64; 1]>,
-    ) -> Result<Vec<experience_state::Model>, DbErr> {
+    ) -> Result<Vec<(i64, i64, i64)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
-            .column(experience_state::Column::EntityId)
+            .column((Alias::new("es"), experience_state::Column::EntityId))
             .expr_as(
                 Expr::cust("sum(experience)"),
                 Alias::new("total_experience"),
             )
-            .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
-            .from(experience_state::Entity)
-            .group_by_col(experience_state::Column::EntityId)
+            .expr_as(
+                Expr::cust(
+                    "case when any_value(ps.time_signed_in) <= 3600 then 0
+            when sum(experience) = 0 then 0
+            else sum(experience) / (any_value(ps.time_signed_in)/ 3600) END",
+                ),
+                Alias::new("experience_per_hour"),
+            )
+            .and_where(
+                Expr::col((Alias::new("es"), experience_state::Column::EntityId))
+                    .is_not_in(exclude.unwrap_or([0])),
+            )
+            .from_as(experience_state::Entity, Alias::new("es"))
+            .join_as(
+                JoinType::InnerJoin,
+                player_state::Entity,
+                Alias::new("ps"),
+                Expr::col((Alias::new("es"), experience_state::Column::EntityId))
+                    .equals((Alias::new("ps"), player_state::Column::EntityId)),
+            )
+            .group_by_col((Alias::new("es"), experience_state::Column::EntityId))
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)
             .limit(100)
             .to_owned();
@@ -1480,12 +1500,13 @@ impl Query {
             .map(|row| {
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
                 let total_experience: i64 = row.try_get("", "total_experience").unwrap();
+                let experience_per_hour: i64 = row.try_get("", "experience_per_hour").unwrap();
 
-                experience_state::Model {
+                (
                     entity_id,
-                    experience: total_experience.try_into().unwrap(),
-                    skill_id: 1,
-                }
+                    total_experience.try_into().unwrap(),
+                    experience_per_hour.try_into().unwrap(),
+                )
             })
             .collect())
     }
@@ -1775,6 +1796,52 @@ impl Query {
             .filter(deployable_state::Column::OwnerId.eq(id))
             .all(db)
             .await
+    }
+
+    pub async fn find_vault_deployable_by_player_with_desc(
+        db: &DbConn,
+        id: i64,
+    ) -> Result<Vec<VaultStateCollectibleWithDesc>, DbErr> {
+        let collectible_descs = collectible_desc::Entity::find()
+            .filter(collectible_desc::Column::CollectibleType.eq(CollectibleType::Deployable))
+            .filter(
+                collectible_desc::Column::Id.in_subquery(
+                    vault_state_collectibles::Entity::find()
+                        .select_only()
+                        .column(vault_state_collectibles::Column::Id)
+                        .filter(vault_state_collectibles::Column::EntityId.eq(id))
+                        .into_query(),
+                ),
+            )
+            .order_by_asc(collectible_desc::Column::Id)
+            .all(db)
+            .await?;
+
+        let vault_state = vault_state_collectibles::Entity::find()
+            .filter(vault_state_collectibles::Column::EntityId.eq(id))
+            .filter(
+                vault_state_collectibles::Column::Id.is_in(
+                    collectible_descs
+                        .iter()
+                        .map(|collectible| collectible.id)
+                        .collect::<Vec<i32>>(),
+                ),
+            )
+            .order_by_asc(vault_state_collectibles::Column::Id)
+            .all(db)
+            .await?;
+
+        Ok(collectible_descs
+            .into_iter()
+            .zip(vault_state)
+            .map(|(desc, state)| VaultStateCollectibleWithDesc {
+                entity_id: state.entity_id,
+                id: state.id,
+                activated: state.activated,
+                count: state.count,
+                collectible_desc: desc,
+            })
+            .collect())
     }
 
     pub async fn find_trade_order_by_items_or_cargo_ids(

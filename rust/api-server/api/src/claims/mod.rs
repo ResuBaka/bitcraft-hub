@@ -883,7 +883,10 @@ pub(crate) fn get_merged_inventories(
     items: &HashMap<i64, item_desc::Model>,
     cargos: &HashMap<i64, cargo_desc::Model>,
 ) -> Vec<entity::inventory::ExpendedRefrence> {
-    let mut hashmap: HashMap<i64, entity::inventory::ExpendedRefrence> = HashMap::new();
+    let mut hashmap: HashMap<
+        (i64, entity::inventory::ItemType),
+        entity::inventory::ExpendedRefrence,
+    > = HashMap::new();
 
     for inventory in inventorys {
         for pocket in inventory.pockets {
@@ -896,12 +899,12 @@ pub(crate) fn get_merged_inventories(
 
                 let resolved = resolved.unwrap();
 
-                match hashmap.get_mut(&resolved.item_id) {
+                match hashmap.get_mut(&(resolved.item_id, resolved.item_type.clone())) {
                     Some(value) => {
                         value.quantity += resolved.quantity;
                     }
                     None => {
-                        hashmap.insert(resolved.item_id, resolved);
+                        hashmap.insert((resolved.item_id, resolved.item_type.clone()), resolved);
                     }
                 }
             }

@@ -161,6 +161,7 @@ pub(crate) fn get_routes() -> Router<AppState> {
 #[serde(untagged)]
 pub(crate) enum RankType {
     Experience(LeaderboardExperience),
+    ExperiencePerHour(LeaderboardExperiencePerHour),
     Level(LeaderboardLevel),
     Skill(LeaderboardSkill),
     Time(LeaderboardTime),
@@ -184,10 +185,19 @@ pub(crate) struct LeaderboardLevel {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct LeaderboardExperiencePerHour {
+    pub(crate) player_id: i64,
+    pub(crate) player_name: Option<String>,
+    pub(crate) experience: i32,
+    pub(crate) rank: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct LeaderboardExperience {
     pub(crate) player_id: i64,
     pub(crate) player_name: Option<String>,
     pub(crate) experience: i32,
+    pub(crate) experience_per_hour: i32,
     pub(crate) rank: u64,
 }
 
@@ -287,9 +297,10 @@ pub(crate) async fn get_top_100(
         for (i, entry) in entries.into_iter().enumerate() {
             let rank = i + 1;
             leaderboard.push(RankType::Experience(LeaderboardExperience {
-                player_id: entry.entity_id,
+                player_id: entry.0,
                 player_name: None,
-                experience: entry.experience,
+                experience: entry.1 as i32,
+                experience_per_hour: entry.2 as i32,
                 rank: rank as u64,
             }));
         }
@@ -312,7 +323,7 @@ pub(crate) async fn get_top_100(
 
         for (i, entry) in entries.into_iter().enumerate() {
             let rank = i + 1;
-            leaderboard.push(RankType::Experience(LeaderboardExperience {
+            leaderboard.push(RankType::ExperiencePerHour(LeaderboardExperiencePerHour {
                 player_id: entry.entity_id,
                 player_name: None,
                 experience: entry.experience,
@@ -364,6 +375,7 @@ pub(crate) async fn get_top_100(
                             RankType::Level(x) => x.player_id,
                             RankType::Experience(x) => x.player_id,
                             RankType::Time(x) => x.player_id,
+                            RankType::ExperiencePerHour(x) => x.player_id,
                         })
                         .collect::<Vec<i64>>(),
                 );
@@ -414,6 +426,12 @@ pub(crate) async fn get_top_100(
                         .map(|x| x.to_string());
                 }
                 RankType::Time(x) => {
+                    x.player_name = players_name_by_id
+                        .get(&x.player_id)
+                        .or(None)
+                        .map(|x| x.to_string());
+                }
+                RankType::ExperiencePerHour(x) => {
                     x.player_name = players_name_by_id
                         .get(&x.player_id)
                         .or(None)
@@ -820,6 +838,7 @@ pub(crate) async fn player_leaderboard(
                 player_id: player_id,
                 player_name: None,
                 experience: total_experience.unwrap() as i32,
+                experience_per_hour: 0,
                 rank: rank.unwrap(),
             }),
         ))
@@ -896,6 +915,12 @@ pub(crate) async fn player_leaderboard(
                     .map(|x| x.to_string());
             }
             RankType::Time(x) => {
+                x.player_name = players_name_by_id
+                    .get(&x.player_id)
+                    .or(None)
+                    .map(|x| x.to_string());
+            }
+            RankType::ExperiencePerHour(x) => {
                 x.player_name = players_name_by_id
                     .get(&x.player_id)
                     .or(None)
@@ -1023,6 +1048,7 @@ pub(crate) async fn get_claim_leaderboard(
                 player_id: entry.entity_id,
                 player_name: None,
                 experience: entry.experience,
+                experience_per_hour: 0,
                 rank: rank as u64,
             }));
         }
@@ -1073,6 +1099,7 @@ pub(crate) async fn get_claim_leaderboard(
                             RankType::Level(x) => x.player_id,
                             RankType::Experience(x) => x.player_id,
                             RankType::Time(x) => x.player_id,
+                            RankType::ExperiencePerHour(x) => x.player_id,
                         })
                         .collect::<Vec<i64>>(),
                 );
@@ -1123,6 +1150,12 @@ pub(crate) async fn get_claim_leaderboard(
                         .map(|x| x.to_string());
                 }
                 RankType::Time(x) => {
+                    x.player_name = players_name_by_id
+                        .get(&x.player_id)
+                        .or(None)
+                        .map(|x| x.to_string());
+                }
+                RankType::ExperiencePerHour(x) => {
                     x.player_name = players_name_by_id
                         .get(&x.player_id)
                         .or(None)

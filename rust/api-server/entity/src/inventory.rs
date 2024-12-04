@@ -71,7 +71,7 @@ pub struct Content {
 }
 
 #[axum_codec::apply(encode, decode)]
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash)]
 pub enum ItemType {
     Item,
     Cargo,

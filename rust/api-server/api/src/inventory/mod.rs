@@ -8,7 +8,7 @@ use entity::inventory::{
     Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, Model, ResolvedInventory,
 };
 use entity::{cargo_desc, inventory, item_desc};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use migration::OnConflict;
 use reqwest::Client;
 use sea_orm::sqlx::Encode;

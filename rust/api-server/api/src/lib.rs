@@ -3,6 +3,7 @@ mod cargo_desc;
 mod claim_tech_desc;
 mod claim_tech_state;
 mod claims;
+mod collectible_desc;
 mod config;
 mod deployable_state;
 mod inventory;
@@ -14,6 +15,7 @@ mod player_state;
 mod recipes;
 mod skill_descriptions;
 mod trading_orders;
+mod vault_state;
 
 use axum::{
     http::StatusCode,
@@ -186,11 +188,13 @@ fn start_websocket_bitcraft_logic(
             "PlayerState",
             "PlayerUsernameState",
             "BuildingState",
+            "VaultState",
             "ExperienceState",
             "InventoryState",
             "ClaimTechState",
             "ClaimDescriptionState",
             "DeployableState",
+            "CollectibleDesc",
         ];
 
         let select_querys = tables_to_subscribe
@@ -348,6 +352,31 @@ fn start_websocket_bitcraft_logic(
                                         );
                                     }
                                 }
+
+                                if table.table_name.as_ref() == "VaultState" {
+                                    let result =
+                                        vault_state::handle_initial_subscription(&db, table).await;
+
+                                    if result.is_err() {
+                                        error!(
+                                            "DeployableState initial subscription failed: {:?}",
+                                            result.err()
+                                        );
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "CollectibleDesc" {
+                                    let result =
+                                        collectible_desc::handle_initial_subscription(&db, table)
+                                            .await;
+
+                                    if result.is_err() {
+                                        error!(
+                                            "CollectibleDesc initial subscription failed: {:?}",
+                                            result.err()
+                                        );
+                                    }
+                                }
                             }
                         }
                         WebSocketMessage::IdentityToken(identity_token) => {
@@ -446,6 +475,17 @@ fn start_websocket_bitcraft_logic(
                             );
                         }
                     }
+
+                    // if table_name == "VaultState" {
+                    //     let result = vault_state::handle_transaction_update(&db, table).await;
+                    //
+                    //     if result.is_err() {
+                    //         error!(
+                    //             "VaultState transaction update failed: {:?}",
+                    //             result.err()
+                    //         );
+                    //     }
+                    // }
                 }
 
                 debug!("Received {count} events");

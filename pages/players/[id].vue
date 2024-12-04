@@ -36,6 +36,10 @@ const player = computed(() => {
   return playerFetch.value ?? undefined;
 });
 
+const deployables = computed(() => {
+  return playerFetch.value?.deployables ?? undefined;
+});
+
 const computedClass = computed(() => {
   return {
     "bg-surface-light": theme.global.current.value.dark,
@@ -105,22 +109,47 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
             </tr>
             </tbody>
           </v-table>
-          <v-table :class="computedClass" density="compact">
-            <tbody v-if="expeirence !== undefined">
-            <tr style='text-align: right'>
-              <th>Skills</th>
-              <td>Experience</td>
-              <td>Level</td>
-              <td>Rank</td>
-            </tr>
-            <tr v-for="[skill,xp_info] of Object.entries(expeirence)" style='text-align: right'>
-              <th>{{ skill }}</th>
-              <td>{{ xp_info.experience ? numberFormat.format(xp_info.experience) : "" }}</td>
-              <td>{{ xp_info.level }}</td>
-              <td>#{{ xp_info.rank }}</td>
-            </tr>
-            </tbody>
-          </v-table>
+          <v-row>
+            <v-col cols="12">
+              <v-card variant="text" v-if="deployables !== undefined && deployables.length">
+                <v-card-title>Deployables</v-card-title>
+                <v-card-text>
+                  <v-row>
+                    <v-col cols="12" md="4" lg="2" v-for="deployable in deployables" :key="deployable.id">
+                      <v-list>
+                        <v-list-item>
+                            <v-list-item-title>{{ deployable.collectible_desc.name }}</v-list-item-title>
+                            <v-list-item-subtitle>Amount: {{ deployable.count }}</v-list-item-subtitle>
+                            <v-list-item-subtitle>{{ deployable.activated ? "Activated" : "Not Activated" }}</v-list-item-subtitle>
+                        </v-list-item>
+                      </v-list>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row v-if="expeirence !== undefined">
+            <v-col cols="12">
+              <v-card variant="text">
+                <v-card-title>Skills</v-card-title>
+                <v-card-text>
+                  <v-row>
+                    <v-col cols="12" md="4" lg="2" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
+                      <v-list>
+                        <v-list-item>
+                          <v-list-item-title>{{ skill }}</v-list-item-title>
+                          <v-list-item-subtitle>Experience: {{ xp_info.experience ? numberFormat.format(xp_info.experience) : "" }}</v-list-item-subtitle>
+                          <v-list-item-subtitle>Level: {{ xp_info.level }}</v-list-item-subtitle>
+                          <v-list-item-subtitle>Rank: #{{ xp_info.rank }}</v-list-item-subtitle>
+                        </v-list-item>
+                      </v-list>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
         </v-card-text>
       </v-card>
 

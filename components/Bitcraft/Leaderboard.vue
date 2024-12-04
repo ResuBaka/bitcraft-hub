@@ -113,16 +113,32 @@ const totelExperiencePerHourAverage = computed(() => {
 
   totalExperience += leaderboard.value.leaderboard["Experience"].reduce(
     (acc, curr) => {
-      return (
-        acc +
-        curr.experience / leaderboard?.value?.player_map[curr.player_id] / 3600
-      );
+      return acc + curr.experience_per_hour;
     },
     0,
   );
 
   return Math.ceil(
     totalExperience / leaderboard.value.leaderboard["Experience"].length,
+  );
+});
+
+const experiencePerHourAverage = computed(() => {
+  if (!leaderboard.value?.leaderboard) {
+    return 0;
+  }
+
+  let totalExperience = 0;
+
+  totalExperience += leaderboard.value.leaderboard[
+    "Experience Per Hour"
+  ].reduce((acc, curr) => {
+    return acc + curr.experience;
+  }, 0);
+
+  return Math.ceil(
+    totalExperience /
+      leaderboard.value.leaderboard["Experience Per Hour"].length,
   );
 });
 </script>
@@ -195,33 +211,6 @@ const totelExperiencePerHourAverage = computed(() => {
         </v-btn>
       </v-col>
     </v-row>
-    <v-row v-if="selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
-      <v-col lass="v-col-12 pa-0">
-        <v-table density="compact" hover>
-          <thead>
-          <tr>
-            <th>Rank</th>
-            <th class="text-center">Player</th>
-            <th class="text-center">level</th>
-            <th class="text-end">Experience</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
-            <td>{{ index + 1 }}</td>
-            <td class="text-center">
-              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
-                        :to="{ path: 'players/' + item.player_id }">
-                {{ item.player_name }}
-              </NuxtLink>
-            </td>
-            <td class="text-center">{{ item.level }}</td>
-            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
-          </tr>
-          </tbody>
-        </v-table>
-      </v-col>
-    </v-row>
     <v-row v-if="selectedSkills === 'Experience'">
       <v-col lass="v-col-12 pa-0">
         <v-table hover>
@@ -242,7 +231,32 @@ const totelExperiencePerHourAverage = computed(() => {
                 {{ item.player_name }}
               </NuxtLink>
             </td>
-            <td class="text-end">{{ numberFormat.format(Math.ceil(item.experience / (leaderboard.player_map[item.player_id] / 3600))) }}</td>
+            <td class="text-end">{{ numberFormat.format(item.experience_per_hour) }}</td>
+            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
+          </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="selectedSkills === 'Experience Per Hour'">
+      <v-col lass="v-col-12 pa-0">
+        <v-table hover>
+          <thead>
+          <tr>
+            <th>Rank</th>
+            <th class="text-center">Player</th>
+            <th class="text-end">Experience/h {{ numberFormat.format(experiencePerHourAverage) }}</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
+            <td>{{ index + 1 }}</td>
+            <td class="text-center">
+              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+                        :to="{ path: 'players/' + item.player_id }">
+                {{ item.player_name }}
+              </NuxtLink>
+            </td>
             <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
           </tr>
           </tbody>
@@ -269,6 +283,33 @@ const totelExperiencePerHourAverage = computed(() => {
               </NuxtLink>
             </td>
             <td class="text-end">{{ numberFormat.format(item.level) }}</td>
+          </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="selectedSkills !== 'Experience Per Hour' && selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
+      <v-col lass="v-col-12 pa-0">
+        <v-table density="compact" hover>
+          <thead>
+          <tr>
+            <th>Rank</th>
+            <th class="text-center">Player</th>
+            <th class="text-center">level</th>
+            <th class="text-end">Experience</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
+            <td>{{ index + 1 }}</td>
+            <td class="text-center">
+              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+                        :to="{ path: 'players/' + item.player_id }">
+                {{ item.player_name }}
+              </NuxtLink>
+            </td>
+            <td class="text-center">{{ item.level }}</td>
+            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
           </tr>
           </tbody>
         </v-table>
