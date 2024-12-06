@@ -139,8 +139,6 @@ async fn db_insert_player_states(
         debug!("Nothing to insert");
         buffer_before_insert.clear();
     } else {
-        info!("Inserting {} things_to_insert", things_to_insert.len());
-
         let _ = vault_state::Entity::insert_many(things_to_insert)
             .on_conflict(on_conflict.clone())
             .exec(conn)
@@ -153,11 +151,6 @@ async fn db_insert_player_states(
         debug!("Nothing to insert");
         things_to_insert_collectibles.clear();
     } else {
-        info!(
-            "Inserting {} things_to_insert_collectibles",
-            things_to_insert_collectibles.len()
-        );
-
         for things_to_insert_chunk in things_to_insert_collectibles.chunks(500) {
             let _ = vault_state_collectibles::Entity::insert_many(things_to_insert_chunk.to_vec())
                 .on_conflict(vault_state_collectible_on_conflict.clone())
@@ -185,10 +178,12 @@ async fn delete_player_state(
         .exec(conn)
         .await?;
 
-    vault_state_collectibles::Entity::delete_many()
-        .filter(vault_state_collectibles::Column::EntityId.is_in(known_player_state_ids))
-        .exec(conn)
-        .await?;
+    if cross_delete {
+        vault_state_collectibles::Entity::delete_many()
+            .filter(vault_state_collectibles::Column::EntityId.is_in(known_player_state_ids))
+            .exec(conn)
+            .await?;
+    }
     Ok(())
 }
 
@@ -329,7 +324,6 @@ pub(crate) async fn handle_transaction_update(
     ])
     .to_owned();
 
-    let chunk_size = Some(5000);
     let mut buffer_before_insert = HashMap::new();
 
     let mut found_in_inserts = HashSet::new();
@@ -340,22 +334,6 @@ pub(crate) async fn handle_transaction_update(
                 Ok(player_state) => {
                     found_in_inserts.insert(player_state.entity_id);
                     buffer_before_insert.insert(player_state.entity_id, player_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
-                        let mut buffer_before_insert_vec = buffer_before_insert
-                            .clone()
-                            .into_iter()
-                            .map(|x| x.1)
-                            .collect::<Vec<RawVaultState>>();
-
-                        db_insert_player_states(
-                            p0,
-                            &mut buffer_before_insert_vec,
-                            &on_conflict,
-                            &vault_state_collectible_on_conflict,
-                            &mut None,
-                        )
-                        .await?;
-                    }
                 }
                 Err(error) => {
                     error!("TransactionUpdate Insert PlayerState Error: {error}");
@@ -363,6 +341,17 @@ pub(crate) async fn handle_transaction_update(
             }
         }
     }
+
+    let mut known_vault_state_collectibles_ids = vault_state_collectibles::Entity::find()
+        .select_only()
+        .filter(vault_state_collectibles::Column::EntityId.is_in(found_in_inserts.clone()))
+        .column(vault_state_collectibles::Column::EntityId)
+        .column(vault_state_collectibles::Column::Id)
+        .into_tuple::<(i64, i32)>()
+        .all(p0)
+        .await?
+        .into_iter()
+        .collect::<HashSet<(i64, i32)>>();
 
     if buffer_before_insert.len() > 0 {
         let mut buffer_before_insert_vec = buffer_before_insert
@@ -376,7 +365,7 @@ pub(crate) async fn handle_transaction_update(
             &mut buffer_before_insert_vec,
             &on_conflict,
             &vault_state_collectible_on_conflict,
-            &mut None,
+            &mut Some(&mut known_vault_state_collectibles_ids),
         )
         .await?;
     }
@@ -402,9 +391,9 @@ pub(crate) async fn handle_transaction_update(
         delete_player_state(p0, players_to_delete, true).await?;
     }
 
-    // if known_vault_state_collectibles_ids.len() > 0 {
-    //     delete_vault_state_collectibles(p0, known_vault_state_collectibles_ids).await?;
-    // }
+    if known_vault_state_collectibles_ids.len() > 0 {
+        delete_vault_state_collectibles(p0, known_vault_state_collectibles_ids).await?;
+    }
 
     Ok(())
 }

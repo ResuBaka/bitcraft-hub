@@ -476,16 +476,13 @@ fn start_websocket_bitcraft_logic(
                         }
                     }
 
-                    // if table_name == "VaultState" {
-                    //     let result = vault_state::handle_transaction_update(&db, table).await;
-                    //
-                    //     if result.is_err() {
-                    //         error!(
-                    //             "VaultState transaction update failed: {:?}",
-                    //             result.err()
-                    //         );
-                    //     }
-                    // }
+                    if table_name == "VaultState" {
+                        let result = vault_state::handle_transaction_update(&db, table).await;
+
+                        if result.is_err() {
+                            error!("VaultState transaction update failed: {:?}", result.err());
+                        }
+                    }
                 }
 
                 debug!("Received {count} events");
