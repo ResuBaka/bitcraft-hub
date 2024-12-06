@@ -84,7 +84,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
-    pub time_played: u64,
+    pub time_signed_in: u64,
     pub building_states: Vec<building_state::Model>,
 }
 
@@ -401,9 +401,9 @@ pub(crate) async fn get_claim(
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))?;
 
-    let total_played = current_players
+    let total_time_signed_in = current_players
         .iter()
-        .map(|player| player.time_played as u64)
+        .map(|player| player.time_signed_in as u64)
         .sum();
 
     let offline_players = current_players
@@ -454,7 +454,7 @@ pub(crate) async fn get_claim(
         tier: claim.tier,
         upgrades: claim.upgrades,
         inventorys: HashMap::new(),
-        time_played: total_played,
+        time_signed_in: total_time_signed_in,
         building_states: building_states,
     };
 

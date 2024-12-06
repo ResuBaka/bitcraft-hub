@@ -269,12 +269,24 @@ useSeoMeta({
 });
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
-  const days = Math.floor(seconds / (60 * 60 * 24));
+  const years = Math.floor(seconds / (60 * 60 * 24 * 365));
+  const weeks = Math.floor(
+    (seconds % (60 * 60 * 24 * 365)) / (60 * 60 * 24 * 7),
+  );
+  const days = Math.floor((seconds % (60 * 60 * 24 * 7)) / (60 * 60 * 24));
   const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
   const minutes = Math.floor((seconds % (60 * 60)) / 60);
   const secondsLeft = seconds % 60;
 
   let result = "";
+
+  if (years > 0) {
+    result += `${years}y `;
+  }
+
+  if (weeks > 0) {
+    result += `${weeks}w `;
+  }
 
   if (days > 0) {
     result += `${days}d `;
@@ -451,9 +463,9 @@ const countDownUntilResearchIsFinished = computed(() => {
               </v-col>
               <v-col cols="6" md="2" lg="12">
                 <v-list-item>
-                  <v-list-item-title>Time played</v-list-item-title>
+                  <v-list-item-title>Total time signed in</v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ secondsToDaysMinutesSecondsFormat(claimFetch?.time_played) }}
+                    {{ secondsToDaysMinutesSecondsFormat(claimFetch?.time_signed_in) }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
