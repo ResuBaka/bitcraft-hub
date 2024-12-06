@@ -413,7 +413,7 @@ const countDownUntilResearchIsFinished = computed(() => {
               <v-col cols="6" md="2" lg="12">
                 <v-list-item>
                   <v-list-item-title>Current xp for minting</v-list-item-title>
-                  <v-list-item-subtitle>{{ claim.xp_gained_since_last_coin_minting }} / 5000</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{ claim.xp_gained_since_last_coin_minting }} / 1000</v-list-item-subtitle>
                 </v-list-item>
               </v-col>
               <v-col cols="6" md="2" lg="12">
