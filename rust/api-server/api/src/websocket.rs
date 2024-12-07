@@ -3,6 +3,7 @@ use crate::{
     buildings, claim_tech_state, claims, collectible_desc, deployable_state, inventory,
     leaderboard, player_state, vault_state,
 };
+use ::entity::user_state;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use axum::http::HeaderMap;
 use base64::Engine;
@@ -15,6 +16,10 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Duration;
 
+struct WebSocketAppState {
+    user_map: HashMap<String, i64>,
+}
+
 pub fn start_websocket_bitcraft_logic(
     websocket_url: String,
     websocket_password: String,
@@ -23,6 +28,10 @@ pub fn start_websocket_bitcraft_logic(
     tmp_config: Config,
 ) {
     tokio::spawn(async move {
+        let mut app_state = WebSocketAppState {
+            user_map: HashMap::new(),
+        };
+
         let config = tmp_config.clone();
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -69,6 +78,7 @@ pub fn start_websocket_bitcraft_logic(
         let mut websocket = response.into_websocket().await.unwrap();
 
         let tables_to_subscribe = vec![
+            "UserState",
             "PlayerState",
             "PlayerUsernameState",
             "BuildingState",
@@ -114,11 +124,26 @@ pub fn start_websocket_bitcraft_logic(
                 for event in evenets.iter() {
                     match event {
                         WebSocketMessage::TransactionUpdate(transaction_update) => {
+                            metrics::counter!(
+                                "websocket.message.count",
+                                &[("type", "TransactionUpdate"),]
+                            )
+                            .increment(1);
+
                             if transaction_update.status.committed.tables.len() == 0 {
                                 continue;
                             }
 
                             for table in transaction_update.status.committed.tables.iter() {
+                                metrics::counter!(
+                                    "websocket_message_table_count",
+                                    &[
+                                        ("type", "TransactionUpdate".to_string()),
+                                        ("table", format!("{}", table.table_name.as_ref())),
+                                    ]
+                                )
+                                .increment(1);
+
                                 if let Some(table_vec) =
                                     tables.get_mut(&table.table_name.as_ref().to_string())
                                 {
@@ -132,11 +157,45 @@ pub fn start_websocket_bitcraft_logic(
                             }
                         }
                         WebSocketMessage::InitialSubscription(subscription_update) => {
+                            metrics::counter!(
+                                "websocket.message.count",
+                                &[("type", "InitialSubscription"),]
+                            )
+                            .increment(1);
+
                             if subscription_update.database_update.tables.len() == 0 {
                                 continue;
                             }
 
                             for table in subscription_update.database_update.tables.iter() {
+                                metrics::counter!(
+                                    "websocket_message_table_count",
+                                    &[
+                                        ("type", "InitialSubscription".to_string()),
+                                        ("table", format!("{}", table.table_name.as_ref())),
+                                    ]
+                                )
+                                .increment(1);
+
+                                let start = std::time::Instant::now();
+
+                                if table.table_name.as_ref() == "UserState" {
+                                    for row in table.inserts.iter() {
+                                        let user_state: user_state::Model =
+                                            match serde_json::from_str(&row.text) {
+                                                Ok(user_state) => user_state,
+                                                Err(error) => {
+                                                    error!("InitialSubscription Insert UserState Error: {:?} -> {:?}", error, row.text);
+                                                    continue;
+                                                }
+                                            };
+
+                                        app_state.user_map.insert(
+                                            user_state.identity.__identity_bytes,
+                                            user_state.entity_id,
+                                        );
+                                    }
+                                }
                                 if table.table_name.as_ref() == "PlayerUsernameState" {
                                     let result =
                                         player_state::handle_initial_subscription_player_username_state(&db, table)
@@ -260,6 +319,11 @@ pub fn start_websocket_bitcraft_logic(
                                         );
                                     }
                                 }
+                                metrics::histogram!(
+                                    "bitraft_event_handler_initial_subscription_duration_seconds",
+                                    &[("table", table.table_name.as_ref().to_string())]
+                                )
+                                .record(start.elapsed().as_secs_f64());
                             }
                         }
                         WebSocketMessage::IdentityToken(identity_token) => {
@@ -270,6 +334,32 @@ pub fn start_websocket_bitcraft_logic(
 
                 for (table_name, table) in tables.iter() {
                     debug!("Received table: {table_name} -> {:?}", table.len());
+                    let start = std::time::Instant::now();
+
+                    if table_name == "UserState" {
+                        for row in table.iter() {
+                            if row.inserts.len() == 0 {
+                                continue;
+                            }
+
+                            match serde_json::from_str::<user_state::Model>(
+                                &row.inserts[0].text.as_ref(),
+                            ) {
+                                Ok(user_state) => {
+                                    app_state.user_map.insert(
+                                        user_state.identity.__identity_bytes,
+                                        user_state.entity_id,
+                                    );
+                                }
+                                Err(error) => {
+                                    error!(
+                                        "InitialSubscription Insert UserState Error: {:?}",
+                                        error
+                                    );
+                                }
+                            }
+                        }
+                    }
 
                     if table_name == "PlayerUsernameState" {
                         let result = player_state::handle_transaction_update_player_username_state(
@@ -366,6 +456,12 @@ pub fn start_websocket_bitcraft_logic(
                             error!("VaultState transaction update failed: {:?}", result.err());
                         }
                     }
+
+                    metrics::histogram!(
+                        "bitraft_event_handler_transaction_update_duration_seconds",
+                        &[("table", table_name.to_string())]
+                    )
+                    .record(start.elapsed().as_secs_f64());
                 }
 
                 debug!("Received {count} events");
@@ -405,6 +501,12 @@ pub fn start_websocket_bitcraft_logic(
             }
         }
     });
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct InternalTransactionUpdate {
+    pub(crate) user: Option<i64>,
+    pub(crate) tables: Vec<Table>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

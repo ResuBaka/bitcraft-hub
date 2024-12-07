@@ -59,7 +59,7 @@ async fn start() -> anyhow::Result<()> {
 
     tracing_subscriber::fmt::init();
 
-    let _prometheus = setup_metrics_recorder();
+    let prometheus = setup_metrics_recorder();
 
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
@@ -96,7 +96,7 @@ async fn start() -> anyhow::Result<()> {
         storage_path: PathBuf::from(config.storage_path.clone()),
     };
 
-    let app = create_app(&config, state);
+    let app = create_app(&config, state, prometheus);
 
     let websocket_url = config.weboosocket_url();
     let websocket_password = config.spacetimedb.password.clone();
@@ -121,7 +121,7 @@ async fn start() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn create_app(config: &Config, state: AppState) -> Router {
+fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) -> Router {
     let desc_router = Router::new()
         .route(
             "/buildings/:id",
@@ -157,6 +157,7 @@ fn create_app(config: &Config, state: AppState) -> Router {
                 )
             }),
         )
+        .route("/metrics", get(|| async move { prometheus.render() }))
         .layer(CookieManagerLayer::new())
         .layer(
             CorsLayer::new()
@@ -495,10 +496,30 @@ fn setup_metrics_recorder() -> PrometheusHandle {
         0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
     ];
 
+    const EXPONENTIAL_SECONDS_INITIAL_SUBSCRIPTION: &[f64] = &[
+        0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 100.0, 500.0, 1000.0,
+    ];
+
+    const EXPONENTIAL_SECONDS_TRANSACTION_UPDATE: &[f64] = &[
+        0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+    ];
+
     PrometheusBuilder::new()
         .set_buckets_for_metric(
             Matcher::Full("http_requests_duration_seconds".to_string()),
             EXPONENTIAL_SECONDS,
+        )
+        .unwrap()
+        .set_buckets_for_metric(
+            Matcher::Full(
+                "bitraft_event_handler_initial_subscription_duration_seconds".to_string(),
+            ),
+            EXPONENTIAL_SECONDS_INITIAL_SUBSCRIPTION,
+        )
+        .unwrap()
+        .set_buckets_for_metric(
+            Matcher::Full("bitraft_event_handler_transaction_update_duration_seconds".to_string()),
+            EXPONENTIAL_SECONDS_TRANSACTION_UPDATE,
         )
         .unwrap()
         .install_recorder()
