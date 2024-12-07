@@ -7,10 +7,12 @@ use ::entity::user_state;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use axum::http::HeaderMap;
 use base64::Engine;
+use entity::skill_desc;
 use futures::{SinkExt, TryStreamExt};
 use log::{debug, error, info};
 use reqwest::Client;
 use reqwest_websocket::{Message, RequestBuilderExt};
+use sea_orm::{EntityTrait, QuerySelect};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -114,6 +116,19 @@ pub fn start_websocket_bitcraft_logic(
         let tmp_config = config.clone();
         let _ = tokio::spawn(async move {
             let db = crate::create_importer_default_db_connection(tmp_config.clone()).await;
+
+            let skill_id_to_skill_name = skill_desc::Entity::find()
+                .select_only()
+                .column(skill_desc::Column::Id)
+                .column(skill_desc::Column::Name)
+                .into_tuple::<(i64, String)>()
+                .all(&db)
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|(id, name)| (id, name))
+                .collect::<HashMap<i64, String>>();
+
             loop {
                 let mut evenets = Vec::with_capacity(1000);
                 let mut tables: HashMap<String, Vec<Table>> = HashMap::new();
@@ -384,7 +399,12 @@ pub fn start_websocket_bitcraft_logic(
                     }
 
                     if table_name == "ExperienceState" {
-                        let result = leaderboard::handle_transaction_update(&db, table).await;
+                        let result = leaderboard::handle_transaction_update(
+                            &db,
+                            table,
+                            &skill_id_to_skill_name,
+                        )
+                        .await;
 
                         if result.is_err() {
                             error!(

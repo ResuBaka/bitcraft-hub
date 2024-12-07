@@ -1139,6 +1139,7 @@ pub(crate) async fn handle_initial_subscription(
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
     tables: &Vec<Table>,
+    skill_id_to_skill_name: &HashMap<i64, String>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::columns([
         experience_state::Column::EntityId,
@@ -1147,60 +1148,163 @@ pub(crate) async fn handle_transaction_update(
     .update_columns([experience_state::Column::Experience])
     .to_owned();
 
-    let mut found_in_inserts = HashSet::new();
+    // let mut found_in_inserts = HashSet::new();
     let mut skills_to_update = HashMap::new();
 
+    let mut potential_deletes = HashSet::new();
+
     for p1 in tables.iter() {
-        for row in p1.inserts.iter() {
-            match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
-                Ok(experience_state) => {
-                    let experience_state_map = experience_state::Entity::find()
-                        .filter(experience_state::Column::EntityId.eq(experience_state.entity_id))
-                        .all(p0)
-                        .await?
-                        .iter()
-                        .map(|x| (x.skill_id, x.clone()))
-                        .collect::<HashMap<i32, experience_state::Model>>();
+        let event_type = if p1.inserts.len() > 0 && p1.deletes.len() > 0 {
+            "update"
+        } else if p1.inserts.len() > 0 && p1.deletes.len() == 0 {
+            "insert"
+        } else if p1.deletes.len() > 0 && p1.inserts.len() == 0 {
+            "delete"
+        } else {
+            "unknown"
+        };
 
-                    let resolved_buffer_before_insert = experience_state
-                        .experience_stacks
-                        .iter()
-                        .map(|y| experience_state::Model {
-                            entity_id: experience_state.entity_id,
-                            skill_id: y.0,
-                            experience: y.1,
-                        })
-                        .collect::<Vec<experience_state::Model>>();
+        if event_type == "unknown" {
+            error!("Unknown event type {:?}", p1);
+            continue;
+        }
 
-                    let skill_entries_to_insert = resolved_buffer_before_insert
-                        .iter()
-                        .filter(|x| match experience_state_map.get(&x.skill_id) {
-                            Some(experience_state_map) => experience_state_map != *x,
-                            None => true,
-                        })
-                        .map(|x| x.clone())
-                        .collect::<Vec<experience_state::Model>>();
-
-                    if skill_entries_to_insert.len() == 0 {
-                        debug!("Nothing to insert");
-                        continue;
-                    } else {
-                        found_in_inserts.insert(experience_state.entity_id);
-                        debug!(
-                            "Inserting {} experience_state",
-                            skill_entries_to_insert.len()
-                        );
-
-                        for skill_entry in skill_entries_to_insert.iter() {
-                            skills_to_update.insert(
-                                (skill_entry.entity_id, skill_entry.skill_id),
-                                skill_entry.clone().into_active_model(),
-                            );
-                        }
+        if event_type == "delete" {
+            for row in p1.deletes.iter() {
+                match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
+                    Ok(experience_state) => {
+                        experience_state
+                            .experience_stacks
+                            .iter()
+                            .map(|y| experience_state::Model {
+                                entity_id: experience_state.entity_id,
+                                skill_id: y.0,
+                                experience: y.1,
+                            })
+                            .for_each(|x| {
+                                potential_deletes.insert((x.entity_id, x.skill_id));
+                            });
+                    }
+                    Err(error) => {
+                        error!("Error: {error} for row: {:?}", row.text);
                     }
                 }
-                Err(error) => {
-                    error!("Error: {error} for row: {:?}", row.text);
+            }
+        } else if event_type == "update" {
+            for row in p1.inserts.iter().enumerate() {
+                match (
+                    serde_json::from_str::<PackedExperienceState>(row.1.text.as_ref()),
+                    serde_json::from_str::<PackedExperienceState>(
+                        p1.deletes.get(row.0).unwrap().text.as_ref(),
+                    ),
+                ) {
+                    (Ok(new_experience_state), Ok(old_experience_state)) => {
+                        let new_experience_state_map = new_experience_state
+                            .experience_stacks
+                            .iter()
+                            .map(|y| {
+                                (
+                                    (new_experience_state.entity_id, y.0),
+                                    experience_state::Model {
+                                        entity_id: new_experience_state.entity_id,
+                                        skill_id: y.0,
+                                        experience: y.1,
+                                    },
+                                )
+                            })
+                            .collect::<HashMap<(i64, i32), experience_state::Model>>();
+
+                        let old_experience_state_map = old_experience_state
+                            .experience_stacks
+                            .iter()
+                            .map(|y| {
+                                (
+                                    (old_experience_state.entity_id, y.0),
+                                    experience_state::Model {
+                                        entity_id: old_experience_state.entity_id,
+                                        skill_id: y.0,
+                                        experience: y.1,
+                                    },
+                                )
+                            })
+                            .collect::<HashMap<(i64, i32), experience_state::Model>>();
+
+                        for (key, value) in new_experience_state_map.iter() {
+                            let skill_id = key.1 as i64;
+                            let skill_name =
+                                skill_id_to_skill_name.get(&skill_id).unwrap().to_owned();
+
+                            if old_experience_state_map.contains_key(key) {
+                                let old_value = old_experience_state_map.get(key).unwrap();
+
+                                if old_value != value {
+                                    skills_to_update
+                                        .insert(*key, value.clone().into_active_model());
+
+                                    metrics::counter!(
+                                        "player_skill_experience_count",
+                                        &[("skill_name", skill_name),]
+                                    )
+                                    .increment((value.experience - old_value.experience) as u64);
+                                }
+                            } else {
+                                skills_to_update.insert(*key, value.clone().into_active_model());
+
+                                metrics::counter!(
+                                    "player_skill_experience_count",
+                                    &[("skill_name", skill_name),]
+                                )
+                                .increment(value.experience as u64);
+                            }
+
+                            potential_deletes.remove(key);
+                        }
+                    }
+                    (Err(error), _) => {
+                        error!(
+                            "Could not parse new experience state: {error}, row: {}",
+                            row.1.text
+                        );
+                    }
+                    (_, Err(error)) => {
+                        error!(
+                            "Could not parse old experience state: {error}, row: {}",
+                            p1.deletes.get(row.0).unwrap().text
+                        );
+                    }
+                }
+            }
+        } else if event_type == "insert" {
+            for row in p1.inserts.iter() {
+                match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
+                    Ok(experience_state) => {
+                        experience_state
+                            .experience_stacks
+                            .iter()
+                            .map(|y| experience_state::Model {
+                                entity_id: experience_state.entity_id,
+                                skill_id: y.0,
+                                experience: y.1,
+                            })
+                            .for_each(|x| {
+                                let skill_id = x.skill_id as i64;
+                                let skill_name =
+                                    skill_id_to_skill_name.get(&skill_id).unwrap().to_owned();
+
+                                let key = (x.entity_id, x.skill_id);
+                                potential_deletes.remove(&key);
+                                skills_to_update.insert(key, x.clone().into_active_model());
+
+                                metrics::counter!(
+                                    "player_skill_experience_count",
+                                    &[("skill_name", skill_name),]
+                                )
+                                .increment(x.experience as u64);
+                            });
+                    }
+                    Err(error) => {
+                        error!("Error: {error} for row: {:?}", row.text);
+                    }
                 }
             }
         }
@@ -1226,24 +1330,8 @@ pub(crate) async fn handle_transaction_update(
         }
     }
 
-    for p1 in tables.iter() {
-        for row in p1.deletes.iter() {
-            match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
-                Ok(experience_state) => {
-                    if found_in_inserts.contains(&experience_state.entity_id) {
-                        continue;
-                    }
-
-                    experience_state::Entity::delete_many()
-                        .filter(experience_state::Column::EntityId.eq(experience_state.entity_id))
-                        .exec(p0)
-                        .await?;
-                }
-                Err(error) => {
-                    error!("Error: {error} for row: {:?}", row.text);
-                }
-            }
-        }
+    if potential_deletes.len() > 0 {
+        delete_experience_state(p0, &mut potential_deletes).await?;
     }
 
     Ok(())
