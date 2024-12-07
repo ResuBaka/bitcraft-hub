@@ -114,11 +114,11 @@ pub fn start_websocket_bitcraft_logic(
                 for event in evenets.iter() {
                     match event {
                         WebSocketMessage::TransactionUpdate(transaction_update) => {
-                            if transaction_update.status.Committed.tables.len() == 0 {
+                            if transaction_update.status.committed.tables.len() == 0 {
                                 continue;
                             }
 
-                            for table in transaction_update.status.Committed.tables.iter() {
+                            for table in transaction_update.status.committed.tables.iter() {
                                 if let Some(table_vec) =
                                     tables.get_mut(&table.table_name.as_ref().to_string())
                                 {
@@ -456,7 +456,8 @@ pub(crate) struct TransactionUpdate {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Status {
-    pub(crate) Committed: Committed,
+    #[serde(rename = "Committed")]
+    pub(crate) committed: Committed,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -474,7 +475,8 @@ pub(crate) struct Table {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct TableText {
-    pub(crate) Text: Box<str>,
+    #[serde(rename = "Text")]
+    pub(crate) text: Box<str>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

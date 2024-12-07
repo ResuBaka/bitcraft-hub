@@ -3,7 +3,6 @@
 use axum_codec::apply;
 use sea_orm::entity::prelude::*;
 use sea_orm::{FromJsonQueryResult, JsonValue};
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[apply(encode, decode)]

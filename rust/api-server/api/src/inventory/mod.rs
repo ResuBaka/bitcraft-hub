@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::websocket::Table;
 use crate::AppState;
 use axum::extract::{Path, State};
@@ -9,25 +8,18 @@ use entity::inventory::{
     Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, Model, ResolvedInventory,
 };
 use entity::{cargo_desc, inventory, item_desc};
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use migration::OnConflict;
-use reqwest::Client;
-use sea_orm::sqlx::Encode;
 use sea_orm::{
-    sea_query, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityName, EntityTrait,
-    IntoActiveModel, QueryFilter, QuerySelect,
+    sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    QuerySelect,
 };
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::ops::Add;
 use std::path::PathBuf;
-use std::time::Duration;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
-use tokio::time::Instant;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -223,7 +215,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         .map(|item| (item.id, item))
         .collect::<HashMap<i64, item_desc::Model>>();
 
-    for (index, inventory) in inventorys.into_iter().enumerate() {
+    for (_index, inventory) in inventorys.into_iter().enumerate() {
         let mut pockets = vec![];
 
         for pocket in &inventory.pockets {
@@ -288,99 +280,6 @@ pub(crate) async fn load_inventory_state_from_file(
     Ok(inventory)
 }
 
-pub(crate) async fn load_inventory_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-) -> anyhow::Result<String> {
-    let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM InventoryState")
-        .send()
-        .await;
-    let json = match response {
-        Ok(response) => response.text().await?.clone(),
-        Err(error) => {
-            error!("Error: {error}");
-            return Ok("".to_string());
-        }
-    };
-
-    // Ok(json)
-    Ok("".to_string())
-}
-
-pub(crate) async fn load_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let claim_descriptions =
-        load_inventory_state_from_spacetimedb(client, domain, protocol, database).await?;
-
-    // import_inventory(&conn, claim_descriptions, Some(3000)).await?;
-
-    Ok(())
-}
-
-pub(crate) async fn import_inventory(
-    conn: &DatabaseConnection,
-    inventorys: String,
-    chunk_size: Option<usize>,
-) -> anyhow::Result<()> {
-    let start = Instant::now();
-
-    let mut buffer_before_insert: Vec<inventory::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
-
-    let mut json_stream_reader = JsonStreamReader::new(inventorys.as_bytes());
-
-    json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"])?;
-    json_stream_reader.begin_array()?;
-
-    let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
-        .update_columns([
-            inventory::Column::Pockets,
-            inventory::Column::InventoryIndex,
-            inventory::Column::CargoIndex,
-            inventory::Column::OwnerEntityId,
-        ])
-        .to_owned();
-
-    let mut known_inventory_ids = get_known_inventory_ids(conn).await?;
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<inventory::Model>() {
-        if known_inventory_ids.contains(&value.entity_id) {
-            known_inventory_ids.remove(&value.entity_id);
-        }
-
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            db_insert_inventory_state(conn, &mut buffer_before_insert, &on_conflict).await;
-        }
-    }
-
-    if buffer_before_insert.len() > 0 {
-        db_insert_inventory_state(conn, &mut buffer_before_insert, &on_conflict).await;
-        info!("Inventory last batch imported");
-    }
-    info!(
-        "Importing inventory finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if known_inventory_ids.len() > 0 {
-        db_delete_inventorys(conn, known_inventory_ids).await?;
-    }
-
-    Ok(())
-}
-
 async fn get_known_inventory_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
     let known_inventory_ids: Vec<i64> = inventory::Entity::find()
         .select_only()
@@ -389,13 +288,13 @@ async fn get_known_inventory_ids(conn: &DatabaseConnection) -> anyhow::Result<Ha
         .all(conn)
         .await?;
 
-    let mut known_inventory_ids = known_inventory_ids.into_iter().collect::<HashSet<i64>>();
+    let known_inventory_ids = known_inventory_ids.into_iter().collect::<HashSet<i64>>();
     Ok(known_inventory_ids)
 }
 
 async fn db_delete_inventorys(
     conn: &DatabaseConnection,
-    mut known_inventory_ids: HashSet<i64>,
+    known_inventory_ids: HashSet<i64>,
 ) -> anyhow::Result<()> {
     info!(
         "Inventory's ({}) to delete: {:?}",
@@ -411,7 +310,7 @@ async fn db_delete_inventorys(
 
 async fn db_insert_inventory_state(
     conn: &DatabaseConnection,
-    mut buffer_before_insert: &mut Vec<Model>,
+    buffer_before_insert: &mut Vec<Model>,
     on_conflict: &OnConflict,
 ) -> anyhow::Result<()> {
     let inventorys_from_db = inventory::Entity::find()
@@ -546,56 +445,6 @@ pub(crate) fn resolve_contents(
     }
 }
 
-pub async fn import_job_inventory_state(temp_config: Config) -> () {
-    let config = temp_config.clone();
-    if config.live_updates {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        loop {
-            let now = Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
-
-            import_internal_inventory(config.clone(), conn.clone());
-
-            let now = Instant::now();
-            let wait_time = now_in.duration_since(now);
-
-            if wait_time.as_secs() > 0 {
-                tokio::time::sleep(wait_time).await;
-            }
-        }
-    } else {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        let client = super::create_default_client(config.clone());
-
-        import_internal_inventory(config.clone(), conn);
-    }
-}
-fn import_internal_inventory(config: Config, conn: DatabaseConnection) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let client = super::create_default_client(config.clone());
-                let vehicle_state = load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_vehicle_state) = vehicle_state {
-                    info!("Inventory imported");
-                } else {
-                    error!("Inventory import failed: {:?}", vehicle_state);
-                }
-            });
-    });
-}
-
 pub(crate) async fn handle_initial_subscription(
     p0: &DatabaseConnection,
     p1: &Table,
@@ -615,7 +464,7 @@ pub(crate) async fn handle_initial_subscription(
     let mut known_inventory_ids = get_known_inventory_ids(p0).await?;
 
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<inventory::Model>(row.Text.as_ref()) {
+        match serde_json::from_str::<inventory::Model>(row.text.as_ref()) {
             Ok(building_state) => {
                 if known_inventory_ids.contains(&building_state.entity_id) {
                     known_inventory_ids.remove(&building_state.entity_id);
@@ -664,7 +513,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<inventory::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<inventory::Model>(row.text.as_ref()) {
                 Ok(inventory) => {
                     found_in_inserts.insert(inventory.entity_id);
                     buffer_before_insert.insert(inventory.entity_id, inventory);
@@ -701,7 +550,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<inventory::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<inventory::Model>(row.text.as_ref()) {
                 Ok(inventory) => {
                     if !found_in_inserts.contains(&inventory.entity_id) {
                         players_to_delete.insert(inventory.entity_id);

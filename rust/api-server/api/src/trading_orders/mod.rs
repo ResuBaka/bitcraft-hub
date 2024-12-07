@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use crate::AppState;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
@@ -9,14 +11,11 @@ use log::{debug, error, info};
 use migration::sea_query;
 use rayon::prelude::*;
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
-    QueryOrder,
+    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
 };
 use serde::Deserialize;
-use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::PathBuf;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -36,7 +35,7 @@ struct TradeOrdersQuery {
     per_page: Option<u64>,
 }
 
-pub(crate) async fn get_trade_orders(
+async fn get_trade_orders(
     state: State<AppState>,
     Query(query): Query<TradeOrdersQuery>,
 ) -> Result<Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {

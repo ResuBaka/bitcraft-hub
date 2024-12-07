@@ -1,11 +1,7 @@
-use crate::config::Config;
 use crate::inventory::resolve_contents;
-use crate::leaderboard::{
-    experience_to_level, LeaderboardSkill, RankType, EXCLUDED_USERS_FROM_LEADERBOARD,
-};
-use crate::player_state::get_known_player_username_state_ids;
+use crate::leaderboard::{experience_to_level, LeaderboardSkill, EXCLUDED_USERS_FROM_LEADERBOARD};
 use crate::websocket::Table;
-use crate::{claims, AppState, Params};
+use crate::AppState;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -18,23 +14,15 @@ use entity::{
 };
 use log::{debug, error, info};
 use migration::OnConflict;
-use reqwest::Client;
-use sea_orm::{
-    sea_query, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, QuerySelect,
-};
+use sea_orm::{sea_query, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::{sea_orm::DatabaseConnection, Query as QueryCore};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
-use std::ops::Add;
 use std::path::PathBuf;
-use std::time::Duration;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -150,7 +138,7 @@ pub struct ClaimDescriptionStateMemberTmp {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ClaimDescriptionStateMember {
+pub(crate) struct ClaimDescriptionStateMember {
     pub entity_id: i64,
     pub user_name: String,
     pub inventory_permission: bool,
@@ -162,7 +150,7 @@ pub struct ClaimDescriptionStateMember {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-enum OnlineState {
+pub(crate) enum OnlineState {
     Online,
     Offline,
 }
@@ -243,21 +231,21 @@ pub(crate) async fn get_claim(
                     .map(|id| {
                         claim_tech_descs
                             .iter()
-                            .find(|desc| desc.id == (*id as i64))
+                            .find(|desc| desc.id == (*id))
                             .unwrap()
                             .clone()
                     })
                     .collect::<Vec<claim_tech_desc::Model>>();
                 let found_tiers = learned
                     .iter()
-                    .filter(|id| tier_upgrades_ids.contains(&(**id as i64)))
+                    .filter(|id| tier_upgrades_ids.contains(&(**id)))
                     .map(|id| id.clone())
                     .collect::<Vec<i64>>();
 
                 if found_tiers.len() > 0 {
                     claim.tier = tier_upgrades
                         .iter()
-                        .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1] as i64))
+                        .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1]))
                         .map(|desc| desc.tier);
                 } else {
                     claim.tier = Some(1);
@@ -362,7 +350,7 @@ pub(crate) async fn get_claim(
             continue;
         }
 
-        let (key, value) = result.unwrap();
+        let (key, value) = result?;
 
         for member in &mut claim.members {
             let leaderboard = value
@@ -374,7 +362,7 @@ pub(crate) async fn get_claim(
                     member.skills_ranks = Some(BTreeMap::new());
                 }
 
-                let mut skills_ranks = member.skills_ranks.as_mut().unwrap();
+                let skills_ranks = member.skills_ranks.as_mut().unwrap();
                 skills_ranks.insert(key.clone(), leaderboard.clone());
             }
         }
@@ -456,7 +444,7 @@ pub(crate) async fn get_claim(
         upgrades: claim.upgrades,
         inventorys: HashMap::new(),
         time_signed_in: total_time_signed_in,
-        building_states: building_states,
+        building_states,
     };
 
     let mut jobs: Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>)>>> = vec![];
@@ -539,7 +527,7 @@ fn inventory_sort_by(a: &ExpendedRefrence, b: &ExpendedRefrence) -> Ordering {
 }
 
 #[derive(Deserialize)]
-struct ListClaimsParams {
+pub(crate) struct ListClaimsParams {
     page: Option<u64>,
     per_page: Option<u64>,
     search: Option<String>,
@@ -608,21 +596,21 @@ pub(crate) async fn list_claims(
                         .map(|id| {
                             claim_tech_descs
                                 .iter()
-                                .find(|desc| desc.id == (*id as i64))
+                                .find(|desc| desc.id == (*id))
                                 .unwrap()
                                 .clone()
                         })
                         .collect::<Vec<claim_tech_desc::Model>>();
                     let found_tiers = learned
                         .iter()
-                        .filter(|id| tier_upgrades_ids.contains(&(**id as i64)))
+                        .filter(|id| tier_upgrades_ids.contains(&(**id)))
                         .map(|id| id.clone())
                         .collect::<Vec<i64>>();
 
                     if found_tiers.len() > 0 {
                         claim_description.tier = tier_upgrades
                             .iter()
-                            .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1] as i64))
+                            .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1]))
                             .map(|desc| desc.tier);
                     } else {
                         claim_description.tier = Some(1);
@@ -664,6 +652,7 @@ pub(crate) async fn find_claim_descriptions(
     Ok(Json(posts))
 }
 
+#[allow(dead_code)]
 pub(crate) async fn load_claim_description_state_from_file(
     storage_path: &PathBuf,
 ) -> anyhow::Result<Vec<claim_description_state::Model>> {
@@ -681,94 +670,9 @@ pub(crate) async fn load_claim_description_state_from_file(
     Ok(claim_descriptions)
 }
 
-pub(crate) async fn load_claim_description_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-) -> anyhow::Result<String> {
-    let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM ClaimDescriptionState")
-        .send()
-        .await;
-    let json = match response {
-        Ok(response) => response.text().await?,
-        Err(error) => {
-            error!("Error: {error}");
-            return Ok("".into());
-        }
-    };
-
-    Ok(json)
-}
-
-pub(crate) async fn load_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let claim_descriptions =
-        load_claim_description_state_from_spacetimedb(client, domain, protocol, database).await?;
-
-    import_claim_description_state(&conn, claim_descriptions, None).await?;
-
-    Ok(())
-}
-
-pub(crate) async fn import_claim_description_state(
-    conn: &DatabaseConnection,
-    claim_descriptions: String,
-    chunk_size: Option<usize>,
-) -> anyhow::Result<()> {
-    let start = Instant::now();
-
-    let mut buffer_before_insert: Vec<claim_description_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
-
-    let mut json_stream_reader = JsonStreamReader::new(claim_descriptions.as_bytes());
-
-    json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"])?;
-    json_stream_reader.begin_array()?;
-
-    let on_conflict = get_claim_description_state_on_conflict();
-
-    let mut known_claim_description_ids = known_claim_description_state_ids(conn).await?;
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<claim_description_state::Model>() {
-        if known_claim_description_ids.contains(&value.entity_id) {
-            known_claim_description_ids.remove(&value.entity_id);
-        }
-
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            db_insert_claim_description_state(conn, &mut buffer_before_insert, &on_conflict).await;
-        }
-    }
-
-    if buffer_before_insert.len() > 0 {
-        db_insert_claim_description_state(conn, &mut buffer_before_insert, &on_conflict).await;
-        info!("claim_tech_desc last batch imported");
-    }
-    info!(
-        "Importing claim_tech_desc finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if known_claim_description_ids.len() > 0 {
-        delete_claim_description_state(conn, known_claim_description_ids).await?;
-    }
-
-    Ok(())
-}
-
 async fn delete_claim_description_state(
     conn: &DatabaseConnection,
-    mut known_claim_description_ids: HashSet<i64>,
+    known_claim_description_ids: HashSet<i64>,
 ) -> anyhow::Result<()> {
     info!(
         "claim_tech_desc's ({}) to delete: {:?}",
@@ -784,7 +688,7 @@ async fn delete_claim_description_state(
 
 async fn db_insert_claim_description_state(
     conn: &DatabaseConnection,
-    mut buffer_before_insert: &mut Vec<Model>,
+    buffer_before_insert: &mut Vec<Model>,
     on_conflict: &OnConflict,
 ) -> anyhow::Result<()> {
     let claim_description_from_db = claim_description_state::Entity::find()
@@ -850,7 +754,7 @@ async fn known_claim_description_state_ids(
         .all(conn)
         .await?;
 
-    let mut known_claim_description_ids = known_claim_description_ids
+    let known_claim_description_ids = known_claim_description_ids
         .into_iter()
         .collect::<HashSet<i64>>();
     Ok(known_claim_description_ids)
@@ -915,65 +819,6 @@ pub(crate) fn get_merged_inventories(
     hashmap.into_iter().map(|(_, value)| value).collect()
 }
 
-pub async fn import_job_claim_description_state(temp_config: Config) -> () {
-    let config = temp_config.clone();
-    if config.live_updates {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        loop {
-            let client = super::create_default_client(config.clone());
-
-            let now = Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
-
-            import_internal_claim_description_state(config.clone(), conn.clone(), client);
-
-            let now = Instant::now();
-            let wait_time = now_in.duration_since(now);
-
-            if wait_time.as_secs() > 0 {
-                tokio::time::sleep(wait_time).await;
-            }
-        }
-    } else {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        let client = super::create_default_client(config.clone());
-
-        import_internal_claim_description_state(config.clone(), conn, client);
-    }
-}
-
-fn import_internal_claim_description_state(
-    config: Config,
-    conn: DatabaseConnection,
-    client: Client,
-) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let claim_description = claims::load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_cargo_description) = claim_description {
-                    info!("ClaimDescriptionState imported");
-                } else {
-                    error!(
-                        "ClaimDescriptionState import failed: {:?}",
-                        claim_description
-                    );
-                }
-            });
-    });
-}
-
 pub(crate) async fn handle_initial_subscription(
     p0: &DatabaseConnection,
     p1: &Table,
@@ -986,7 +831,7 @@ pub(crate) async fn handle_initial_subscription(
     let mut known_inventory_ids = known_claim_description_state_ids(p0).await?;
 
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<claim_description_state::Model>(row.Text.as_ref()) {
+        match serde_json::from_str::<claim_description_state::Model>(row.text.as_ref()) {
             Ok(building_state) => {
                 if known_inventory_ids.contains(&building_state.entity_id) {
                     known_inventory_ids.remove(&building_state.entity_id);
@@ -1029,7 +874,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<claim_description_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<claim_description_state::Model>(row.text.as_ref()) {
                 Ok(inventory) => {
                     found_in_inserts.insert(inventory.entity_id);
                     buffer_before_insert.insert(inventory.entity_id, inventory);
@@ -1070,7 +915,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<claim_description_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<claim_description_state::Model>(row.text.as_ref()) {
                 Ok(inventory) => {
                     if !found_in_inserts.contains(&inventory.entity_id) {
                         players_to_delete.insert(inventory.entity_id);

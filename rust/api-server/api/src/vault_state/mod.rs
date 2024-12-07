@@ -1,21 +1,11 @@
-use crate::config::Config;
-use crate::websocket::{InitialSubscription, Table};
-use crate::{create_default_client, create_importer_default_db_connection, AppState, Params};
+use crate::websocket::Table;
 use entity::vault_state::RawVaultState;
 use entity::{vault_state, vault_state_collectibles};
 use log::{debug, error, info};
 use migration::OnConflict;
-use reqwest::Client;
 use sea_orm::IntoActiveModel;
 use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
-use serde_json::Value;
-use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
-use std::ops::Add;
-use std::time::Duration;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
-use tokio::time::Instant;
 
 async fn get_known_player_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
     let known_player_state_ids: Vec<i64> = vault_state::Entity::find()
@@ -25,13 +15,13 @@ async fn get_known_player_state_ids(conn: &DatabaseConnection) -> anyhow::Result
         .all(conn)
         .await?;
 
-    let mut known_player_state_ids = known_player_state_ids.into_iter().collect::<HashSet<i64>>();
+    let known_player_state_ids = known_player_state_ids.into_iter().collect::<HashSet<i64>>();
     Ok(known_player_state_ids)
 }
 
 async fn db_insert_player_states(
     conn: &DatabaseConnection,
-    mut buffer_before_insert: &mut Vec<RawVaultState>,
+    buffer_before_insert: &mut Vec<RawVaultState>,
     on_conflict: &OnConflict,
     vault_state_collectible_on_conflict: &OnConflict,
     list_of_vault_state_collectibles_to_delete: &mut Option<&mut HashSet<(i64, i32)>>,
@@ -163,7 +153,7 @@ async fn db_insert_player_states(
 
 async fn delete_player_state(
     conn: &DatabaseConnection,
-    mut known_player_state_ids: HashSet<i64>,
+    known_player_state_ids: HashSet<i64>,
     cross_delete: bool,
 ) -> anyhow::Result<()> {
     info!(
@@ -219,7 +209,7 @@ pub(crate) async fn handle_initial_subscription(
         .collect::<HashSet<(i64, i32)>>();
 
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<RawVaultState>(row.Text.as_ref()) {
+        match serde_json::from_str::<RawVaultState>(row.text.as_ref()) {
             Ok(player_state) => {
                 if known_player_state_ids.contains(&player_state.entity_id) {
                     known_player_state_ids.remove(&player_state.entity_id);
@@ -328,7 +318,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<RawVaultState>(row.Text.as_ref()) {
+            match serde_json::from_str::<RawVaultState>(row.text.as_ref()) {
                 Ok(player_state) => {
                     found_in_inserts.insert(player_state.entity_id);
                     buffer_before_insert.insert(player_state.entity_id, player_state);
@@ -372,7 +362,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<RawVaultState>(row.Text.as_ref()) {
+            match serde_json::from_str::<RawVaultState>(row.text.as_ref()) {
                 Ok(player_state) => {
                     if !found_in_inserts.contains(&player_state.entity_id) {
                         players_to_delete.insert(player_state.entity_id);

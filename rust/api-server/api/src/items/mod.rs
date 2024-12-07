@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::{items, AppState, Params};
+use crate::{AppState, Params};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Json;
@@ -7,8 +7,7 @@ use entity::item_desc;
 use log::{debug, error, info};
 use reqwest::Client;
 use sea_orm::{
-    sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait,
-    QueryFilter,
+    sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
 };
 use serde_json::{json, Value};
 use service::Query as QueryCore;
@@ -62,7 +61,7 @@ pub(crate) async fn load_item_desc_from_file(
 }
 
 pub(crate) async fn load_item_desc_from_spacetimedb(
-    client: &reqwest::Client,
+    client: &Client,
     domain: &str,
     protocol: &str,
     database: &str,
@@ -84,7 +83,7 @@ pub(crate) async fn load_item_desc_from_spacetimedb(
 }
 
 pub(crate) async fn load_state_from_spacetimedb(
-    client: &reqwest::Client,
+    client: &Client,
     domain: &str,
     protocol: &str,
     database: &str,

@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -7,9 +9,7 @@ use entity::crafting_recipe;
 use entity::crafting_recipe::ConsumedItemStackWithInner;
 use log::{debug, error, info};
 use migration::sea_query;
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
-};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
@@ -124,7 +124,7 @@ fn get_all_consumed_items_from_item(
         ));
     }
 
-    return list;
+    list
 }
 
 fn get_all_consumed_items_from_stack(
@@ -163,7 +163,7 @@ fn get_all_consumed_items_from_stack(
         itemstack.inner = Some(list);
     }
 
-    return item.consumed_item_stacks.clone();
+    item.consumed_item_stacks.clone()
 }
 
 // export function getAllConsumedItemsFromItem(

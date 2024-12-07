@@ -1,5 +1,4 @@
 use crate::claims::ClaimDescriptionState;
-use crate::config::Config;
 use crate::websocket::Table;
 use crate::{leaderboard, AppState};
 use axum::extract::{Path, State};
@@ -7,24 +6,16 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
 use entity::experience_state;
-use entity::experience_state::ActiveModel;
-use futures::future::ok;
 use log::{debug, error, info};
 use migration::OnConflict;
-use reqwest::Client;
+use sea_orm::IntoActiveModel;
 use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
-use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
-use std::ops::Add;
 use std::path::PathBuf;
-use std::time::Duration;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
-use tokio::time::Instant;
 
 #[macro_export]
 macro_rules! generate_mysql_sum_level_sql_statement {
@@ -470,9 +461,10 @@ pub(crate) fn experience_to_level(experience: i64) -> i32 {
         }
     }
 
-    100 as i32
+    100i32
 }
 
+#[allow(dead_code)]
 pub(crate) async fn load_experience_state_from_file(
     storage_path: &PathBuf,
 ) -> anyhow::Result<Vec<experience_state::Model>> {
@@ -495,116 +487,16 @@ pub(crate) async fn load_experience_state_from_file(
     Ok(experience_states)
 }
 
-pub(crate) async fn load_experience_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-) -> anyhow::Result<String> {
-    let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM ExperienceState")
-        .send()
-        .await;
-    let json = match response {
-        Ok(response) => response.text().await?,
-        Err(error) => {
-            error!("Error: {error}");
-            return Ok("".into());
-        }
-    };
-
-    Ok(json)
-}
-
-pub(crate) async fn load_experience_state(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let experience_states =
-        load_experience_state_from_spacetimedb(client, domain, protocol, database).await?;
-    import_experience_state(&conn, experience_states, Some(1000)).await?;
-    Ok(())
-}
-
 #[derive(Debug, Deserialize, Clone)]
 struct PackedExperienceState {
     entity_id: i64,
     experience_stacks: Vec<(i32, i32)>,
 }
 
-pub(crate) async fn import_experience_state(
-    conn: &DatabaseConnection,
-    experience_states: String,
-    chunk_size: Option<usize>,
-) -> anyhow::Result<()> {
-    let start = Instant::now();
-
-    let mut buffer_before_insert: Vec<PackedExperienceState> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
-
-    let mut json_stream_reader = JsonStreamReader::new(experience_states.as_bytes());
-
-    json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"])?;
-    json_stream_reader.begin_array()?;
-
-    let on_conflict = sea_query::OnConflict::columns([
-        experience_state::Column::EntityId,
-        experience_state::Column::SkillId,
-    ])
-    .update_columns([experience_state::Column::Experience])
-    .to_owned();
-
-    let mut experience_state_to_delete = get_known_experience_states(conn).await?;
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<PackedExperienceState>() {
-        let resolved_buffer_before_insert = value
-            .experience_stacks
-            .iter()
-            .map(|y| experience_state::Model {
-                entity_id: value.entity_id,
-                skill_id: y.0,
-                experience: y.1,
-            })
-            .collect::<Vec<experience_state::Model>>();
-
-        for exp_state in resolved_buffer_before_insert.iter() {
-            if experience_state_to_delete.contains(&(exp_state.entity_id, exp_state.skill_id)) {
-                experience_state_to_delete.remove(&(exp_state.entity_id, exp_state.skill_id));
-            }
-        }
-
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            db_insert_experience_state(conn, &mut buffer_before_insert, &on_conflict).await?;
-        }
-    }
-
-    if buffer_before_insert.len() > 0 {
-        db_insert_experience_state(conn, &mut buffer_before_insert, &on_conflict).await?;
-        info!("experience_state last batch imported");
-    }
-    info!(
-        "Importing experience_state finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if experience_state_to_delete.len() > 0 {
-        delete_experience_state(conn, &mut experience_state_to_delete).await?;
-    }
-
-    Ok(())
-}
-
 async fn get_known_experience_states(
     conn: &DatabaseConnection,
 ) -> anyhow::Result<HashSet<(i64, i32)>> {
-    let mut experience_state_to_delete: Vec<(i64, i32)> = experience_state::Entity::find()
+    let experience_state_to_delete: Vec<(i64, i32)> = experience_state::Entity::find()
         .select_only()
         .column(experience_state::Column::EntityId)
         .column(experience_state::Column::SkillId)
@@ -612,7 +504,7 @@ async fn get_known_experience_states(
         .all(conn)
         .await?;
 
-    let mut experience_state_to_delete = experience_state_to_delete
+    let experience_state_to_delete = experience_state_to_delete
         .into_iter()
         .map(|x| (x.0, x.1))
         .collect::<HashSet<_>>();
@@ -726,6 +618,7 @@ async fn db_insert_experience_state(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn row_to_xp_values(row: Value) -> Vec<experience_state::Model> {
     let player_id = row.get(0).unwrap().as_i64().unwrap();
     row.get(1)
@@ -836,7 +729,7 @@ pub(crate) async fn player_leaderboard(
         Ok((
             "Experience".to_string(),
             RankType::Experience(LeaderboardExperience {
-                player_id: player_id,
+                player_id,
                 player_name: None,
                 experience: total_experience.unwrap() as i32,
                 experience_per_hour: 0,
@@ -864,7 +757,7 @@ pub(crate) async fn player_leaderboard(
         Ok((
             "Level".to_string(),
             RankType::Level(LeaderboardLevel {
-                player_id: player_id,
+                player_id,
                 player_name: None,
                 level: level.unwrap_or_default() as u32,
                 rank: rank.unwrap_or_default(),
@@ -1183,58 +1076,6 @@ pub(crate) async fn get_claim_leaderboard(
     })))
 }
 
-pub async fn import_job_experience_state(temp_config: Config) -> () {
-    let config = temp_config.clone();
-    if config.live_updates {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        loop {
-            let client = super::create_default_client(config.clone());
-
-            let now = Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
-
-            import_internal_experience_state(config.clone(), conn.clone(), client);
-
-            let now = Instant::now();
-            let wait_time = now_in.duration_since(now);
-
-            if wait_time.as_secs() > 0 {
-                tokio::time::sleep(wait_time).await;
-            }
-        }
-    } else {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        let client = super::create_default_client(config.clone());
-
-        import_internal_experience_state(config.clone(), conn, client);
-    }
-}
-
-fn import_internal_experience_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let experience_state = leaderboard::load_experience_state(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_experience_state) = experience_state {
-                    info!("ExperienceState imported");
-                } else {
-                    error!("ExperienceState import failed: {:?}", experience_state);
-                }
-            });
-    });
-}
-
 pub(crate) async fn handle_initial_subscription(
     p0: &DatabaseConnection,
     p1: &Table,
@@ -1251,7 +1092,7 @@ pub(crate) async fn handle_initial_subscription(
         Vec::with_capacity(chunk_size.unwrap_or(500));
     let mut experience_state_to_delete = get_known_experience_states(p0).await?;
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<PackedExperienceState>(row.Text.as_ref()) {
+        match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
             Ok(experience_state) => {
                 let resolved_buffer_before_insert = experience_state
                     .experience_stacks
@@ -1278,7 +1119,7 @@ pub(crate) async fn handle_initial_subscription(
                 }
             }
             Err(error) => {
-                error!("Error: {error} for row: {:?}", row.Text);
+                error!("Error: {error} for row: {:?}", row.text);
             }
         }
     }
@@ -1311,7 +1152,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<PackedExperienceState>(row.Text.as_ref()) {
+            match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
                 Ok(experience_state) => {
                     let experience_state_map = experience_state::Entity::find()
                         .filter(experience_state::Column::EntityId.eq(experience_state.entity_id))
@@ -1334,16 +1175,8 @@ pub(crate) async fn handle_transaction_update(
                     let skill_entries_to_insert = resolved_buffer_before_insert
                         .iter()
                         .filter(|x| match experience_state_map.get(&x.skill_id) {
-                            Some(experience_state_map) => {
-                                if experience_state_map != *x {
-                                    return true;
-                                } else {
-                                    return false;
-                                }
-                            }
-                            None => {
-                                return true;
-                            }
+                            Some(experience_state_map) => experience_state_map != *x,
+                            None => true,
                         })
                         .map(|x| x.clone())
                         .collect::<Vec<experience_state::Model>>();
@@ -1367,7 +1200,7 @@ pub(crate) async fn handle_transaction_update(
                     }
                 }
                 Err(error) => {
-                    error!("Error: {error} for row: {:?}", row.Text);
+                    error!("Error: {error} for row: {:?}", row.text);
                 }
             }
         }
@@ -1395,7 +1228,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<PackedExperienceState>(row.Text.as_ref()) {
+            match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
                 Ok(experience_state) => {
                     if found_in_inserts.contains(&experience_state.entity_id) {
                         continue;
@@ -1407,7 +1240,7 @@ pub(crate) async fn handle_transaction_update(
                         .await?;
                 }
                 Err(error) => {
-                    error!("Error: {error} for row: {:?}", row.Text);
+                    error!("Error: {error} for row: {:?}", row.text);
                 }
             }
         }

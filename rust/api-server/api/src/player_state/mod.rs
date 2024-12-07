@@ -1,6 +1,5 @@
-use crate::config::Config;
-use crate::websocket::{InitialSubscription, Table};
-use crate::{create_default_client, create_importer_default_db_connection, AppState, Params};
+use crate::websocket::Table;
+use crate::{AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -9,19 +8,13 @@ use entity::player_username_state::Model;
 use entity::{player_state, player_username_state};
 use log::{debug, error, info};
 use migration::OnConflict;
-use reqwest::Client;
+use sea_orm::IntoActiveModel;
 use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
-use sea_orm::{IntoActiveModel, PaginatorTrait};
 use serde_json::{json, Value};
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::ops::Add;
 use std::path::PathBuf;
-use std::time::Duration;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
-use tokio::time::Instant;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new()
@@ -133,101 +126,6 @@ pub(crate) async fn load_player_state_from_file(
     Ok(player_state)
 }
 
-pub(crate) async fn load_player_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-) -> anyhow::Result<String> {
-    let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM PlayerState")
-        .send()
-        .await;
-    let json = match response {
-        Ok(response) => response.text().await?,
-        Err(error) => {
-            error!("Error: {error}");
-            return Ok("".to_string());
-        }
-    };
-
-    Ok(json)
-}
-
-pub(crate) async fn load_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let claim_descriptions =
-        load_player_state_from_spacetimedb(client, domain, protocol, database).await?;
-
-    import_player_states(&conn, claim_descriptions, Some(3000)).await?;
-
-    Ok(())
-}
-
-pub(crate) async fn import_player_states(
-    conn: &DatabaseConnection,
-    player_states: String,
-    chunk_size: Option<usize>,
-) -> anyhow::Result<()> {
-    let start = Instant::now();
-
-    let mut buffer_before_insert: Vec<player_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
-
-    let mut json_stream_reader = JsonStreamReader::new(player_states.as_bytes());
-
-    json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"])?;
-    json_stream_reader.begin_array()?;
-
-    let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
-        .update_columns([
-            player_state::Column::TimePlayed,
-            player_state::Column::SessionStartTimestamp,
-            player_state::Column::TimeSignedIn,
-            player_state::Column::SignInTimestamp,
-            player_state::Column::SignedIn,
-            player_state::Column::TeleportLocation,
-            player_state::Column::LastShardClaim,
-        ])
-        .to_owned();
-
-    let mut known_player_state_ids = get_known_player_state_ids(conn).await?;
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<player_state::Model>() {
-        if known_player_state_ids.contains(&value.entity_id) {
-            known_player_state_ids.remove(&value.entity_id);
-        }
-
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            db_insert_player_states(conn, &mut buffer_before_insert, &on_conflict).await;
-        }
-    }
-
-    if buffer_before_insert.len() > 0 {
-        db_insert_player_states(conn, &mut buffer_before_insert, &on_conflict).await;
-        info!("player_state last batch imported");
-    }
-    info!(
-        "Importing player_state finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if known_player_state_ids.len() > 0 {
-        delete_player_state(conn, known_player_state_ids).await?;
-    }
-
-    Ok(())
-}
-
 async fn get_known_player_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
     let known_player_state_ids: Vec<i64> = player_state::Entity::find()
         .select_only()
@@ -236,13 +134,13 @@ async fn get_known_player_state_ids(conn: &DatabaseConnection) -> anyhow::Result
         .all(conn)
         .await?;
 
-    let mut known_player_state_ids = known_player_state_ids.into_iter().collect::<HashSet<i64>>();
+    let known_player_state_ids = known_player_state_ids.into_iter().collect::<HashSet<i64>>();
     Ok(known_player_state_ids)
 }
 
 async fn db_insert_player_states(
     conn: &DatabaseConnection,
-    mut buffer_before_insert: &mut Vec<player_state::Model>,
+    buffer_before_insert: &mut Vec<player_state::Model>,
     on_conflict: &OnConflict,
 ) -> anyhow::Result<()> {
     let player_states_from_db = player_state::Entity::find()
@@ -300,7 +198,7 @@ async fn db_insert_player_states(
 
 async fn delete_player_state(
     conn: &DatabaseConnection,
-    mut known_player_state_ids: HashSet<i64>,
+    known_player_state_ids: HashSet<i64>,
 ) -> anyhow::Result<()> {
     info!(
         "player_state's ({}) to delete: {:?}",
@@ -311,95 +209,6 @@ async fn delete_player_state(
         .filter(player_state::Column::EntityId.is_in(known_player_state_ids))
         .exec(conn)
         .await?;
-    Ok(())
-}
-
-fn import_player_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let vehicle_state = load_state_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_vehicle_state) = vehicle_state {
-                    info!("PlayerState imported");
-                } else {
-                    error!("PlayerState import failed: {:?}", vehicle_state);
-                }
-            });
-    });
-}
-
-pub async fn import_job_player_state(temp_config: Config) -> () {
-    let config = temp_config.clone();
-    if config.live_updates {
-        let conn = create_importer_default_db_connection(config.clone()).await;
-        loop {
-            let client = create_default_client(config.clone());
-
-            let now = std::time::Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
-
-            import_player_state(config.clone(), conn.clone(), client);
-
-            let now = std::time::Instant::now();
-            let wait_time = now_in.duration_since(now);
-
-            if wait_time.as_secs() > 0 {
-                tokio::time::sleep(wait_time).await;
-            }
-        }
-    } else {
-        let conn = create_importer_default_db_connection(config.clone()).await;
-        let client = create_default_client(config.clone());
-
-        import_player_state(config.clone(), conn, client);
-    }
-}
-
-pub(crate) async fn load_player_username_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-) -> anyhow::Result<String> {
-    let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM PlayerUsernameState")
-        .send()
-        .await;
-    let json = match response {
-        Ok(response) => response.text().await?,
-        Err(error) => {
-            error!("Error: {error}");
-            return Ok("".to_string());
-        }
-    };
-
-    Ok(json)
-}
-
-pub(crate) async fn load_player_username_state(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let claim_descriptions =
-        load_player_username_state_from_spacetimedb(client, domain, protocol, database).await?;
-
-    import_player_username_states(&conn, claim_descriptions, Some(3000)).await?;
-
     Ok(())
 }
 
@@ -420,59 +229,9 @@ pub(crate) async fn get_known_player_username_state_ids(
     Ok(known_player_username_state_ids)
 }
 
-pub(crate) async fn import_player_username_states(
-    conn: &DatabaseConnection,
-    player_states: String,
-    chunk_size: Option<usize>,
-) -> anyhow::Result<()> {
-    let start = Instant::now();
-
-    let mut buffer_before_insert: Vec<player_username_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
-
-    let mut json_stream_reader = JsonStreamReader::new(player_states.as_bytes());
-
-    json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"])?;
-    json_stream_reader.begin_array()?;
-
-    let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
-        .update_columns([player_username_state::Column::Username])
-        .to_owned();
-
-    let mut known_player_username_state_ids = get_known_player_username_state_ids(conn).await?;
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<player_username_state::Model>() {
-        if known_player_username_state_ids.contains(&value.entity_id) {
-            known_player_username_state_ids.remove(&value.entity_id);
-        }
-
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            db_insert_player_username_states(conn, &mut buffer_before_insert, &on_conflict).await;
-        }
-    }
-
-    if buffer_before_insert.len() > 0 {
-        db_insert_player_username_states(conn, &mut buffer_before_insert, &on_conflict).await;
-        info!("player_username_state last batch imported");
-    }
-    info!(
-        "Importing player_username_state finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if known_player_username_state_ids.len() > 0 {
-        delete_player_username_state(conn, known_player_username_state_ids).await?;
-    }
-
-    Ok(())
-}
-
 async fn delete_player_username_state(
     conn: &DatabaseConnection,
-    mut known_player_username_state_ids: HashSet<i64>,
+    known_player_username_state_ids: HashSet<i64>,
 ) -> anyhow::Result<()> {
     info!(
         "player_username_state's ({}) to delete: {:?}",
@@ -488,7 +247,7 @@ async fn delete_player_username_state(
 
 async fn db_insert_player_username_states(
     conn: &DatabaseConnection,
-    mut buffer_before_insert: &mut Vec<Model>,
+    buffer_before_insert: &mut Vec<Model>,
     on_conflict: &OnConflict,
 ) -> anyhow::Result<()> {
     let player_username_states_from_db = player_username_state::Entity::find()
@@ -548,62 +307,6 @@ async fn db_insert_player_username_states(
     Ok(())
 }
 
-pub fn import_player_username_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let player_username_state = load_player_username_state(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                    // &config,
-                )
-                .await;
-
-                if let Ok(_) = player_username_state {
-                    info!("PlayerUsernameState imported");
-                } else {
-                    error!(
-                        "PlayerUsernameState import failed: {:?}",
-                        player_username_state
-                    );
-                }
-            });
-    });
-}
-
-pub async fn import_job_player_username_state(temp_config: Config) -> () {
-    let config = temp_config.clone();
-    if config.live_updates {
-        let conn = create_importer_default_db_connection(config.clone()).await;
-        loop {
-            let client = create_default_client(config.clone());
-
-            let now = std::time::Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
-
-            import_player_username_state(config.clone(), conn.clone(), client);
-
-            let now = std::time::Instant::now();
-            let wait_time = now_in.duration_since(now);
-
-            if wait_time.as_secs() > 0 {
-                tokio::time::sleep(wait_time).await;
-            }
-        }
-    } else {
-        let conn = create_importer_default_db_connection(config.clone()).await;
-        let client = create_default_client(config.clone());
-
-        import_player_username_state(config.clone(), conn, client);
-    }
-}
-
 pub(crate) async fn handle_initial_subscription_player_username_state(
     p0: &DatabaseConnection,
     p1: &Table,
@@ -618,7 +321,7 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
 
     let mut known_player_username_state_ids = get_known_player_username_state_ids(p0).await?;
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<player_username_state::Model>(row.Text.as_ref()) {
+        match serde_json::from_str::<player_username_state::Model>(row.text.as_ref()) {
             Ok(player_username_state) => {
                 if known_player_username_state_ids.contains(&player_username_state.entity_id) {
                     known_player_username_state_ids.remove(&player_username_state.entity_id);
@@ -661,7 +364,7 @@ pub(crate) async fn handle_transaction_update_player_username_state(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<player_username_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<player_username_state::Model>(row.text.as_ref()) {
                 Ok(player_username_state) => {
                     found_in_inserts.insert(player_username_state.entity_id);
                     buffer_before_insert.push(player_username_state);
@@ -689,7 +392,7 @@ pub(crate) async fn handle_transaction_update_player_username_state(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<player_username_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<player_username_state::Model>(row.text.as_ref()) {
                 Ok(player_username_state) => {
                     if !found_in_inserts.contains(&player_username_state.entity_id) {
                         players_username_to_delete.insert(player_username_state.entity_id);
@@ -731,7 +434,7 @@ pub(crate) async fn handle_initial_subscription_player_state(
 
     let mut known_player_state_ids = get_known_player_state_ids(p0).await?;
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<player_state::Model>(row.Text.as_ref()) {
+        match serde_json::from_str::<player_state::Model>(row.text.as_ref()) {
             Ok(player_state) => {
                 if known_player_state_ids.contains(&player_state.entity_id) {
                     known_player_state_ids.remove(&player_state.entity_id);
@@ -786,7 +489,7 @@ pub(crate) async fn handle_transaction_update_player_state(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<player_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<player_state::Model>(row.text.as_ref()) {
                 Ok(player_state) => {
                     found_in_inserts.insert(player_state.entity_id);
                     buffer_before_insert.insert(player_state.entity_id, player_state);
@@ -824,7 +527,7 @@ pub(crate) async fn handle_transaction_update_player_state(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<player_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<player_state::Model>(row.text.as_ref()) {
                 Ok(player_state) => {
                     if !found_in_inserts.contains(&player_state.entity_id) {
                         players_to_delete.insert(player_state.entity_id);

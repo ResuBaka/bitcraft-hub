@@ -1,25 +1,18 @@
-use crate::config::Config;
 use crate::websocket::Table;
 use entity::claim_tech_state::Model;
 use entity::{claim_tech_desc, claim_tech_state};
 use log::{debug, error, info};
 use migration::{sea_query, OnConflict};
-use reqwest::Client;
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
-    QuerySelect,
+    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
 };
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::ops::Add;
 use std::path::PathBuf;
-use std::time::Duration;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
-use tokio::time::Instant;
 
+#[allow(dead_code)]
 pub(crate) async fn load_claim_tech_state_from_file(
     storage_path: &PathBuf,
 ) -> anyhow::Result<Vec<claim_tech_desc::Model>> {
@@ -37,92 +30,9 @@ pub(crate) async fn load_claim_tech_state_from_file(
     Ok(claim_tech_states)
 }
 
-pub(crate) async fn load_claim_tech_state_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-) -> anyhow::Result<String> {
-    let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM ClaimTechState")
-        .send()
-        .await;
-    let json = match response {
-        Ok(response) => response.text().await?,
-        Err(error) => {
-            error!("Error: {error}");
-            return Ok("".into());
-        }
-    };
-
-    Ok(json)
-}
-
-pub(crate) async fn load_claim_tech_state(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    conn: &DatabaseConnection,
-) -> anyhow::Result<()> {
-    let claim_tech_states =
-        load_claim_tech_state_from_spacetimedb(client, domain, protocol, database).await?;
-    import_claim_tech_state(&conn, claim_tech_states, None).await?;
-    Ok(())
-}
-
-pub(crate) async fn import_claim_tech_state(
-    conn: &DatabaseConnection,
-    claim_tech_descs: String,
-    chunk_size: Option<usize>,
-) -> anyhow::Result<()> {
-    let start = Instant::now();
-
-    let mut buffer_before_insert: Vec<claim_tech_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
-
-    let mut json_stream_reader = JsonStreamReader::new(claim_tech_descs.as_bytes());
-
-    json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"])?;
-    json_stream_reader.begin_array()?;
-
-    let on_conflict = get_claim_tech_state_on_conflict();
-
-    let mut known_claim_tech_state_ids = get_known_claim_tech_state_ids(conn).await?;
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<claim_tech_state::Model>() {
-        if known_claim_tech_state_ids.contains(&value.entity_id) {
-            known_claim_tech_state_ids.remove(&value.entity_id);
-        }
-
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            db_insert_claim_tech_state(conn, &mut buffer_before_insert, &on_conflict).await;
-        }
-    }
-
-    if buffer_before_insert.len() > 0 {
-        db_insert_claim_tech_state(conn, &mut buffer_before_insert, &on_conflict).await;
-        info!("claim_tech_desc last batch imported");
-    }
-    info!(
-        "Importing claim_tech_desc finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if known_claim_tech_state_ids.len() > 0 {
-        delete_claim_tech_state(conn, known_claim_tech_state_ids).await?;
-    }
-
-    Ok(())
-}
-
 async fn delete_claim_tech_state(
     conn: &DatabaseConnection,
-    mut known_claim_tech_state_ids: HashSet<i64>,
+    known_claim_tech_state_ids: HashSet<i64>,
 ) -> anyhow::Result<()> {
     info!(
         "claim_tech_desc's ({}) to delete: {:?}",
@@ -138,7 +48,7 @@ async fn delete_claim_tech_state(
 
 async fn db_insert_claim_tech_state(
     conn: &DatabaseConnection,
-    mut buffer_before_insert: &mut Vec<Model>,
+    buffer_before_insert: &mut Vec<Model>,
     on_conflict: &OnConflict,
 ) -> anyhow::Result<()> {
     let claim_tech_state_from_db = claim_tech_state::Entity::find()
@@ -215,62 +125,10 @@ async fn get_known_claim_tech_state_ids(conn: &DatabaseConnection) -> anyhow::Re
         .all(conn)
         .await?;
 
-    let mut known_claim_tech_state_ids = known_claim_tech_state_ids
+    let known_claim_tech_state_ids = known_claim_tech_state_ids
         .into_iter()
         .collect::<HashSet<i64>>();
     Ok(known_claim_tech_state_ids)
-}
-
-fn import_internal_claim_tech_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let claim_tech_state = load_claim_tech_state(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_claim_tech_state) = claim_tech_state {
-                    info!("ClaimTechState imported");
-                } else {
-                    error!("ClaimTechState import failed: {:?}", claim_tech_state);
-                }
-            });
-    });
-}
-
-pub async fn import_job_claim_tech_state(temp_config: Config) -> () {
-    let config = temp_config.clone();
-    if config.live_updates {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        loop {
-            let client = super::create_default_client(config.clone());
-
-            let now = Instant::now();
-            let now_in = now.add(Duration::from_secs(60));
-
-            import_internal_claim_tech_state(config.clone(), conn.clone(), client);
-
-            let now = Instant::now();
-            let wait_time = now_in.duration_since(now);
-
-            if wait_time.as_secs() > 0 {
-                tokio::time::sleep(wait_time).await;
-            }
-        }
-    } else {
-        let conn = super::create_importer_default_db_connection(config.clone()).await;
-        let client = super::create_default_client(config.clone());
-
-        import_internal_claim_tech_state(config.clone(), conn, client);
-    }
 }
 
 pub(crate) async fn handle_initial_subscription(
@@ -285,7 +143,7 @@ pub(crate) async fn handle_initial_subscription(
     let mut known_building_state_ids = get_known_claim_tech_state_ids(p0).await?;
 
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<claim_tech_state::Model>(row.Text.as_ref()) {
+        match serde_json::from_str::<claim_tech_state::Model>(row.text.as_ref()) {
             Ok(building_state) => {
                 if known_building_state_ids.contains(&building_state.entity_id) {
                     known_building_state_ids.remove(&building_state.entity_id);
@@ -325,7 +183,7 @@ pub(crate) async fn handle_transaction_update(
     // let mut known_player_username_state_ids = get_known_player_uusername_state_ids(p0).await?;
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<claim_tech_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<claim_tech_state::Model>(row.text.as_ref()) {
                 Ok(building_state) => {
                     let current_building_state = QueryCore::find_claim_tech_state_by_ids(
                         &p0,
@@ -364,7 +222,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<claim_tech_state::Model>(row.Text.as_ref()) {
+            match serde_json::from_str::<claim_tech_state::Model>(row.text.as_ref()) {
                 Ok(building_state) => {
                     if found_in_inserts.contains(&building_state.entity_id) {
                         continue;

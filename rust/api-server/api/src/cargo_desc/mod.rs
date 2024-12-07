@@ -3,9 +3,7 @@ use entity::cargo_desc;
 use log::{debug, error, info};
 use migration::sea_query;
 use reqwest::Client;
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
-};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -207,6 +205,7 @@ pub(crate) async fn import_cargo_description(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) async fn load_cargo_description_from_file(
     storage_path: &PathBuf,
 ) -> anyhow::Result<Vec<cargo_desc::Model>> {

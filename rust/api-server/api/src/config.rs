@@ -15,6 +15,7 @@ pub(crate) struct Config {
     #[serde(rename = "liveupdatesws", default)]
     pub(crate) live_updates_ws: bool,
     #[serde(rename = "import", default)]
+    #[allow(dead_code)]
     pub(crate) import_type: ImportType,
     #[serde(rename = "importenabled", default)]
     pub(crate) import_enabled: bool,
@@ -66,6 +67,7 @@ impl Default for AllowedOriginConfig {
 
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct StorageConfig {
+    #[allow(dead_code)]
     pub(crate) path: String,
 }
 
@@ -98,6 +100,7 @@ impl Config {
         )
     }
 
+    #[allow(dead_code)]
     pub fn spacetimedb_url(&self) -> String {
         format!("{}{}", self.spacetimedb.protocol, self.spacetimedb.domain)
     }

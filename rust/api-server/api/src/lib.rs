@@ -24,10 +24,7 @@ use axum::{
     routing::{get, get_service},
     Router,
 };
-use reqwest_websocket::{Message, RequestBuilderExt};
 use service::sea_orm::{Database, DatabaseConnection};
-use std::collections::hash_map::Iter;
-use std::collections::HashMap;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::config::Config;
@@ -36,27 +33,18 @@ use axum::http::HeaderValue;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use base64::Engine;
-use entity::trade_order;
-use futures::{SinkExt, TryStreamExt};
-use log::{debug, error, info, warn};
+use log::{error, info};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
-use reqwest::header::{HeaderMap, SEC_WEBSOCKET_PROTOCOL};
+use reqwest::header::HeaderMap;
 use reqwest::Client;
 use sea_orm::ConnectOptions;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde::Deserialize;
 use std::env;
 use std::fs::File;
-use std::future::Future;
 use std::io::Write;
-use std::ops::Add;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{mpsc, Mutex};
-use tokio::task;
-use tokio_util::sync::CancellationToken;
 use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 
@@ -67,9 +55,11 @@ async fn start() -> anyhow::Result<()> {
     }
 
     dotenvy::dotenv().ok();
-    let config = config::Config::new();
+    let config = Config::new();
 
     tracing_subscriber::fmt::init();
+
+    let _prometheus = setup_metrics_recorder();
 
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
@@ -82,21 +72,20 @@ async fn start() -> anyhow::Result<()> {
     let conn = Database::connect(connection_options.clone())
         .await
         .expect("Database connection failed");
-    Migrator::up(&conn, None).await.unwrap();
+    Migrator::up(&conn, None).await?;
 
-    let connection_options = connection_options.clone();
+    if env::var("DOWNLOAD_ALL_TABLES").is_ok() {
+        let client = create_default_client(config.clone());
 
-    let path_to_storage_tmp = config.storage_path.clone();
-
-    let client = create_default_client(config.clone());
-
-    // donwload_all_Tables(
-    //     &client,
-    //     &config.spacetimedb.domain.clone(),
-    //     &config.spacetimedb.protocol.clone(),
-    //     &config.spacetimedb.database.clone(),
-    //     &config.storage_path.clone().into(),
-    // ).await;
+        download_all_tables(
+            &client,
+            &config.spacetimedb.domain.clone(),
+            &config.spacetimedb.protocol.clone(),
+            &config.spacetimedb.database.clone(),
+            &config.storage_path.clone().into(),
+        )
+        .await;
+    }
 
     if config.import_enabled {
         import_data(config.clone());
@@ -126,7 +115,7 @@ async fn start() -> anyhow::Result<()> {
     }
 
     let server_url = config.server_url();
-    let listener = tokio::net::TcpListener::bind(&server_url).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&server_url).await?;
     axum::serve(listener, app).await?;
 
     Ok(())
@@ -368,36 +357,6 @@ fn import_data(config: Config) {
                     )));
                 }
 
-                // if config.enabled_importer.contains(&"player_state".to_string()) || config.enabled_importer.len() == 0 {
-                //     let temp_config = config.clone();
-                //     tasks.push(tokio::spawn(player_state::import_job_player_state(
-                //         temp_config,
-                //     )));
-                // }
-
-                // if config.enabled_importer.contains(&"player_username_state".to_string()) || config.enabled_importer.len() == 0 {
-                //     let temp_config = config.clone();
-                //     tasks.push(tokio::spawn(
-                //         player_state::import_job_player_username_state(temp_config),
-                //     ));
-                // }
-
-                // let temp_config = config.clone();
-                // tasks.push(tokio::spawn(leaderboard::import_job_experience_state(
-                //     temp_config,
-                // )));
-
-                // if config
-                //     .enabled_importer
-                //     .contains(&"claim_tech_state".to_string())
-                //     || config.enabled_importer.len() == 0
-                // {
-                //     let temp_config = config.clone();
-                //     tasks.push(tokio::spawn(claim_tech_state::import_job_claim_tech_state(
-                //         temp_config,
-                //     )));
-                // }
-
                 if config
                     .enabled_importer
                     .contains(&"claim_tech_desc".to_string())
@@ -408,15 +367,6 @@ fn import_data(config: Config) {
                         temp_config,
                     )));
                 }
-
-                // if config.enabled_importer.contains(&"claims".to_string())
-                //     || config.enabled_importer.len() == 0
-                // {
-                //     let temp_config = config.clone();
-                //     tasks.push(tokio::spawn(claims::import_job_claim_description_state(
-                //         temp_config,
-                //     )));
-                // }
 
                 if config.enabled_importer.contains(&"items".to_string())
                     || config.enabled_importer.len() == 0
@@ -432,24 +382,6 @@ fn import_data(config: Config) {
                     tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));
                 }
 
-                // if config.enabled_importer.contains(&"inventory".to_string()) || config.enabled_importer.len() == 0 {
-                //     let temp_config = config.clone();
-                //     tasks.push(tokio::spawn(inventory::import_job_inventory_state(
-                //         temp_config,
-                //     )));
-                // }
-
-                // if config
-                //     .enabled_importer
-                //     .contains(&"deployable_state".to_string())
-                //     || config.enabled_importer.len() == 0
-                // {
-                //     let temp_config = config.clone();
-                //     tasks.push(tokio::spawn(deployable_state::import_job_deployable_state(
-                //         temp_config,
-                //     )));
-                // }
-
                 if config
                     .enabled_importer
                     .contains(&"building_desc".to_string())
@@ -461,16 +393,12 @@ fn import_data(config: Config) {
                     )));
                 }
 
-                // let temp_config = config.clone();
-                // tasks.push(tokio::spawn(buildings::import_job_building_state(
-                //     temp_config,
-                // )));
-
                 futures::future::join_all(tasks).await;
             });
     });
 }
 
+#[allow(dead_code)]
 fn import_recipes(config: Config, conn: DatabaseConnection, client: Client) {
     std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
@@ -496,6 +424,7 @@ fn import_recipes(config: Config, conn: DatabaseConnection, client: Client) {
     });
 }
 
+#[allow(dead_code)]
 fn import_skill_descs(config: Config, conn: DatabaseConnection, client: Client) {
     std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
@@ -521,6 +450,7 @@ fn import_skill_descs(config: Config, conn: DatabaseConnection, client: Client) 
     });
 }
 
+#[allow(dead_code)]
 fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Client) {
     std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
@@ -601,8 +531,8 @@ async fn track_metrics(req: Request, next: Next) -> impl IntoResponse {
     response
 }
 
-pub async fn donwload_all_Tables(
-    client: &reqwest::Client,
+pub async fn download_all_tables(
+    client: &Client,
     domain: &str,
     protocol: &str,
     database: &str,
@@ -858,7 +788,7 @@ pub async fn donwload_all_Tables(
     ];
 
     for table in desc_tables {
-        download_all_Table(
+        let desc_result = download_all_table(
             client,
             domain,
             protocol,
@@ -868,10 +798,14 @@ pub async fn donwload_all_Tables(
             "desc",
         )
         .await;
+
+        if let Err(error) = desc_result {
+            error!("Error while downloading desc table: {error}");
+        }
     }
 
     for table in state_tables {
-        download_all_Table(
+        let state_result = download_all_table(
             client,
             domain,
             protocol,
@@ -881,10 +815,14 @@ pub async fn donwload_all_Tables(
             "state",
         )
         .await;
+
+        if let Err(error) = state_result {
+            error!("Error while downloading state table: {error}");
+        }
     }
 
     for table in rest_tables {
-        download_all_Table(
+        let rest_result = download_all_table(
             client,
             domain,
             protocol,
@@ -894,13 +832,17 @@ pub async fn donwload_all_Tables(
             "rest",
         )
         .await;
+
+        if let Err(error) = rest_result {
+            error!("Error while downloading rest table: {error}");
+        }
     }
 }
 
 ///
 /// Donwload the table and save it to the storage path with the type as the folder before the name
-pub async fn download_all_Table(
-    client: &reqwest::Client,
+pub async fn download_all_table(
+    client: &Client,
     domain: &str,
     protocol: &str,
     database: &str,

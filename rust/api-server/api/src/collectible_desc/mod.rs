@@ -1,20 +1,10 @@
-use crate::config::Config;
-use crate::websocket::{InitialSubscription, Table};
-use crate::{create_default_client, create_importer_default_db_connection, AppState, Params};
-use entity::{collectible_desc, vault_state_collectibles};
+use crate::websocket::Table;
+use entity::collectible_desc;
 use log::{debug, error, info};
 use migration::OnConflict;
-use reqwest::Client;
 use sea_orm::IntoActiveModel;
 use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
-use serde_json::Value;
-use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
-use std::ops::Add;
-use std::time::Duration;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
-use tokio::time::Instant;
 
 async fn get_known_collectible_desc_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i32>> {
     let known_collectible_desc_ids: Vec<i32> = collectible_desc::Entity::find()
@@ -32,7 +22,7 @@ async fn get_known_collectible_desc_ids(conn: &DatabaseConnection) -> anyhow::Re
 
 async fn db_insert_collectible_descs(
     conn: &DatabaseConnection,
-    mut buffer_before_insert: &mut Vec<collectible_desc::Model>,
+    buffer_before_insert: &mut Vec<collectible_desc::Model>,
     on_conflict: &OnConflict,
 ) -> anyhow::Result<()> {
     let collectible_descs_from_db = collectible_desc::Entity::find()
@@ -90,7 +80,7 @@ async fn db_insert_collectible_descs(
 
 async fn delete_collectible_desc(
     conn: &DatabaseConnection,
-    mut known_collectible_desc_ids: HashSet<i32>,
+    known_collectible_desc_ids: HashSet<i32>,
 ) -> anyhow::Result<()> {
     info!(
         "collectible_desc's ({}) to delete: {:?}",
@@ -138,7 +128,7 @@ pub(crate) async fn handle_initial_subscription(
     let mut known_collectible_desc_ids = get_known_collectible_desc_ids(p0).await?;
 
     for row in p1.inserts.iter() {
-        match serde_json::from_str::<collectible_desc::Model>(row.Text.as_ref()) {
+        match serde_json::from_str::<collectible_desc::Model>(row.text.as_ref()) {
             Ok(collectible_desc) => {
                 if known_collectible_desc_ids.contains(&collectible_desc.id) {
                     known_collectible_desc_ids.remove(&collectible_desc.id);

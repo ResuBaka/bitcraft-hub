@@ -3,9 +3,7 @@ use entity::claim_tech_desc;
 use log::{debug, error, info};
 use migration::sea_query;
 use reqwest::Client;
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter,
-};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -16,6 +14,7 @@ use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
 
+#[allow(dead_code)]
 pub(crate) async fn load_claim_tech_desc_from_file(
     storage_path: &PathBuf,
 ) -> anyhow::Result<Vec<claim_tech_desc::Model>> {

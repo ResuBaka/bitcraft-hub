@@ -17,12 +17,8 @@ use ::entity::{
     player_username_state::Entity as PlayerUsernameState, skill_desc,
 };
 use sea_orm::sea_query::extension::postgres::PgExpr;
-use sea_orm::sea_query::{
-    Alias, Expr, ExprTrait, IntoColumnRef, IntoIden, MysqlQueryBuilder, PgFunc,
-    PostgresQueryBuilder, Quote, SimpleExpr, SqliteQueryBuilder,
-};
+use sea_orm::sea_query::{Alias, Expr, ExprTrait, PgFunc, PostgresQueryBuilder};
 use sea_orm::*;
-use std::fmt::Write;
 
 pub struct Query;
 
@@ -1374,8 +1370,7 @@ impl Query {
             ))
             .await?
             .unwrap()
-            .try_get("", "count")
-            .unwrap();
+            .try_get("", "count")?;
 
         let rank = rank.unwrap() as u64;
 
@@ -1411,8 +1406,7 @@ impl Query {
             ))
             .await?
             .unwrap()
-            .try_get("", "total_experience")
-            .unwrap();
+            .try_get("", "total_experience")?;
         let experience = experience.unwrap();
 
         let query_rank = sea_orm::sea_query::Query::select()
@@ -1445,8 +1439,7 @@ impl Query {
             ))
             .await?
             .unwrap()
-            .try_get("", "count")
-            .unwrap();
+            .try_get("", "count")?;
 
         let rank = rank.unwrap() as u64;
 
@@ -1567,7 +1560,7 @@ impl Query {
     pub async fn get_experience_state_player_ids_total_experience(
         db: &DbConn,
         player_ids: Vec<i64>,
-        exclude: Option<[i64; 1]>,
+        _exclude: Option<[i64; 1]>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -1875,22 +1868,6 @@ impl Query {
         let num_pages = paginator.num_items_and_pages().await?;
 
         paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
-    }
-}
-
-struct RawName(String);
-
-impl Iden for RawName {
-    fn prepare(&self, s: &mut dyn Write, q: Quote) {
-        write!(s, "{}", self.quoted(q)).unwrap();
-    }
-
-    fn quoted(&self, q: Quote) -> String {
-        format!("{}", self.0)
-    }
-
-    fn unquoted(&self, s: &mut dyn sea_query::prepare::Write) {
-        write!(s, "{}", &self.0).unwrap();
     }
 }
 

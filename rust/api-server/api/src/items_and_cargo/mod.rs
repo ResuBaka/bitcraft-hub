@@ -5,11 +5,8 @@ use axum::Router;
 use axum_codec::Codec;
 use entity::cargo_desc;
 use entity::item_desc;
-use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel, PaginatorTrait};
 use serde::Deserialize;
-use serde_json::Value;
 use service::Query as QueryCore;
-use std::fs::File;
 
 pub(crate) fn get_routes() -> Router<AppState> {
     Router::new().route(
@@ -102,32 +99,6 @@ pub(crate) async fn list_items_and_cargo(
         page,
         pages: merged_items_and_cargo.len() as u64 / posts_per_page,
     }))
-}
-
-pub(crate) async fn import_items(conn: &DatabaseConnection) -> anyhow::Result<()> {
-    let item_file =
-        File::open("/home/resubaka/code/crafting-list/storage/Desc/ItemDesc.json").unwrap();
-    let item: Value = serde_json::from_reader(&item_file).unwrap();
-    let item: Vec<item_desc::Model> =
-        serde_json::from_value(item.get(0).unwrap().get("rows").unwrap().clone()).unwrap();
-    let count = item.len();
-    let db_count = item_desc::Entity::find().count(conn).await.unwrap();
-
-    if (count as u64) == db_count {
-        return Ok(());
-    }
-
-    let item: Vec<item_desc::ActiveModel> =
-        item.into_iter().map(|x| x.into_active_model()).collect();
-
-    for item in item.chunks(5000) {
-        let _ = item_desc::Entity::insert_many(item.to_vec())
-            .on_conflict_do_nothing()
-            .exec(conn)
-            .await;
-    }
-
-    Ok(())
 }
 
 fn merge_tags(items_tags: Vec<String>, cargo_tags: Vec<String>) -> Vec<String> {

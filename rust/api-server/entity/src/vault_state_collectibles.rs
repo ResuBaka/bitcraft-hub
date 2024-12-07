@@ -27,7 +27,7 @@ pub struct RawVaultStateCollectibles {
 impl RawVaultStateCollectibles {
     pub fn to_model(&self, entity_id: i64) -> Model {
         Model {
-            entity_id: entity_id,
+            entity_id,
             id: self.id,
             activated: self.activated,
             count: self.count,
