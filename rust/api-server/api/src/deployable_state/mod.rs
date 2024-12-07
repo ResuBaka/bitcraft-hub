@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::Table;
+use crate::websocket::Table;
 use entity::deployable_state;
 use entity::deployable_state::Model;
 use log::{debug, error, info};

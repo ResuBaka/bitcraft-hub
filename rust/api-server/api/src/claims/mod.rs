@@ -4,7 +4,8 @@ use crate::leaderboard::{
     experience_to_level, LeaderboardSkill, RankType, EXCLUDED_USERS_FROM_LEADERBOARD,
 };
 use crate::player_state::get_known_player_username_state_ids;
-use crate::{claims, AppState, Params, Table};
+use crate::websocket::Table;
+use crate::{claims, AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;

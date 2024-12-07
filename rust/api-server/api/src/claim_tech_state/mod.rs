@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::Table;
+use crate::websocket::Table;
 use entity::claim_tech_state::Model;
 use entity::{claim_tech_desc, claim_tech_state};
 use log::{debug, error, info};

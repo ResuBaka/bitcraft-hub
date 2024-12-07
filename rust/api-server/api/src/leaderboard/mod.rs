@@ -1,6 +1,7 @@
 use crate::claims::ClaimDescriptionState;
 use crate::config::Config;
-use crate::{leaderboard, AppState, Table};
+use crate::websocket::Table;
+use crate::{leaderboard, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::get;

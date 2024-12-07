@@ -1,8 +1,6 @@
 use crate::config::Config;
-use crate::{
-    create_default_client, create_importer_default_db_connection, AppState, InitialSubscription,
-    Params, Table,
-};
+use crate::websocket::{InitialSubscription, Table};
+use crate::{create_default_client, create_importer_default_db_connection, AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;

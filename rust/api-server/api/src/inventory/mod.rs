@@ -1,5 +1,6 @@
 use crate::config::Config;
-use crate::{AppState, Table};
+use crate::websocket::Table;
+use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Router;
