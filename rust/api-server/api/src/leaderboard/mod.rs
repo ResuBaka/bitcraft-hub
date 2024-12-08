@@ -1312,18 +1312,19 @@ pub(crate) async fn handle_transaction_update(
                             })
                             .for_each(|x| {
                                 let skill_id = x.skill_id as i64;
-                                let skill_name =
-                                    skill_id_to_skill_name.get(&skill_id).unwrap().to_owned();
+                                let skill_name = skill_id_to_skill_name.get(&skill_id);
 
                                 let key = (x.entity_id, x.skill_id);
                                 potential_deletes.remove(&key);
                                 skills_to_update.insert(key, x.clone().into_active_model());
 
-                                metrics::counter!(
-                                    "player_skill_experience_count",
-                                    &[("skill_name", skill_name),]
-                                )
-                                .increment(x.experience as u64);
+                                if let Some(skill_name) = skill_name {
+                                    metrics::counter!(
+                                        "player_skill_experience_count",
+                                        &[("skill_name", skill_name.to_owned()),]
+                                    )
+                                    .increment(x.experience as u64);
+                                }
                             });
                     }
                     Err(error) => {
