@@ -1,4 +1,4 @@
-use crate::websocket::Table;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -495,7 +495,7 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<Table>,
+    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
         .update_columns([

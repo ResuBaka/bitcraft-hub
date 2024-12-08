@@ -1,5 +1,5 @@
 use crate::claims::ClaimDescriptionState;
-use crate::websocket::Table;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{leaderboard, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -1138,7 +1138,7 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<Table>,
+    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
     skill_id_to_skill_name: &HashMap<i64, String>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::columns([
@@ -1191,14 +1191,42 @@ pub(crate) async fn handle_transaction_update(
                 }
             }
         } else if event_type == "update" {
+            let mut delete_parsed = HashMap::new();
+            for row in p1.deletes.iter() {
+                let parsed = serde_json::from_str::<PackedExperienceState>(row.text.as_ref());
+
+                if parsed.is_err() {
+                    error!(
+                        "Could not parse delete experience_state: {}, row: {:?}",
+                        parsed.unwrap_err(),
+                        row.text
+                    );
+                } else {
+                    let parsed = parsed.unwrap();
+                    delete_parsed.insert(parsed.entity_id, parsed.clone());
+                    parsed.experience_stacks.iter().for_each(|x| {
+                        potential_deletes.insert((parsed.entity_id, x.0));
+                    });
+                }
+            }
+
             for row in p1.inserts.iter().enumerate() {
-                match (
-                    serde_json::from_str::<PackedExperienceState>(row.1.text.as_ref()),
-                    serde_json::from_str::<PackedExperienceState>(
-                        p1.deletes.get(row.0).unwrap().text.as_ref(),
-                    ),
-                ) {
-                    (Ok(new_experience_state), Ok(old_experience_state)) => {
+                let parsed = serde_json::from_str::<PackedExperienceState>(row.1.text.as_ref());
+
+                if parsed.is_err() {
+                    error!(
+                        "Could not parse insert experience_state: {}, row: {:?}",
+                        parsed.unwrap_err(),
+                        row.1.text
+                    );
+                    continue;
+                }
+
+                let parsed = parsed.unwrap();
+                let id = parsed.entity_id;
+
+                match (parsed, delete_parsed.get(&id)) {
+                    (new_experience_state, Some(old_experience_state)) => {
                         let new_experience_state_map = new_experience_state
                             .experience_stacks
                             .iter()
@@ -1231,8 +1259,7 @@ pub(crate) async fn handle_transaction_update(
 
                         for (key, value) in new_experience_state_map.iter() {
                             let skill_id = key.1 as i64;
-                            let skill_name =
-                                skill_id_to_skill_name.get(&skill_id).unwrap().to_owned();
+                            let skill_name = skill_id_to_skill_name.get(&skill_id);
 
                             if old_experience_state_map.contains_key(key) {
                                 let old_value = old_experience_state_map.get(key).unwrap();
@@ -1241,36 +1268,33 @@ pub(crate) async fn handle_transaction_update(
                                     skills_to_update
                                         .insert(*key, value.clone().into_active_model());
 
-                                    metrics::counter!(
-                                        "player_skill_experience_count",
-                                        &[("skill_name", skill_name),]
-                                    )
-                                    .increment((value.experience - old_value.experience) as u64);
+                                    if let Some(skill_name) = skill_name {
+                                        metrics::counter!(
+                                            "player_skill_experience_count",
+                                            &[("skill_name", skill_name.to_owned()),]
+                                        )
+                                        .increment(
+                                            (value.experience - old_value.experience) as u64,
+                                        );
+                                    }
                                 }
                             } else {
                                 skills_to_update.insert(*key, value.clone().into_active_model());
 
-                                metrics::counter!(
-                                    "player_skill_experience_count",
-                                    &[("skill_name", skill_name),]
-                                )
-                                .increment(value.experience as u64);
+                                if let Some(skill_name) = skill_name {
+                                    metrics::counter!(
+                                        "player_skill_experience_count",
+                                        &[("skill_name", skill_name.to_owned()),]
+                                    )
+                                    .increment(value.experience as u64);
+                                }
                             }
 
                             potential_deletes.remove(key);
                         }
                     }
-                    (Err(error), _) => {
-                        error!(
-                            "Could not parse new experience state: {error}, row: {}",
-                            row.1.text
-                        );
-                    }
-                    (_, Err(error)) => {
-                        error!(
-                            "Could not parse old experience state: {error}, row: {}",
-                            p1.deletes.get(row.0).unwrap().text
-                        );
+                    (_new_experience_state, None) => {
+                        error!("Could not find delete state new experience state",);
                     }
                 }
             }

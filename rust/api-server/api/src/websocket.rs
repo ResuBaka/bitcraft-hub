@@ -131,7 +131,8 @@ pub fn start_websocket_bitcraft_logic(
 
             loop {
                 let mut evenets = Vec::with_capacity(1000);
-                let mut tables: HashMap<String, Vec<Table>> = HashMap::new();
+                let mut tables: HashMap<String, Vec<TableWithOriginalEventTransactionUpdate>> =
+                    HashMap::new();
                 let db = db.clone();
 
                 let count = rx.recv_many(&mut evenets, 1000).await;
@@ -162,11 +163,23 @@ pub fn start_websocket_bitcraft_logic(
                                 if let Some(table_vec) =
                                     tables.get_mut(&table.table_name.as_ref().to_string())
                                 {
-                                    table_vec.push(table.clone());
+                                    table_vec.push(TableWithOriginalEventTransactionUpdate {
+                                        table_id: table.table_id,
+                                        table_name: table.table_name.clone(),
+                                        deletes: table.deletes.clone(),
+                                        inserts: table.inserts.clone(),
+                                        original_event: transaction_update.clone(),
+                                    });
                                 } else {
                                     tables.insert(
                                         table.table_name.clone().as_ref().to_string(),
-                                        vec![table.clone()],
+                                        vec![TableWithOriginalEventTransactionUpdate {
+                                            table_id: table.table_id,
+                                            table_name: table.table_name.clone(),
+                                            deletes: table.deletes.clone(),
+                                            inserts: table.inserts.clone(),
+                                            original_event: transaction_update.clone(),
+                                        }],
                                     );
                                 }
                             }
@@ -555,17 +568,17 @@ pub(crate) struct IdentityToken {
     pub(crate) address: Address,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Identity {
     pub(crate) __identity_bytes: Box<str>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Address {
     pub(crate) __address_bytes: Box<str>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct TransactionUpdate {
     pub(crate) status: Status,
     pub(crate) timestamp: Timestamp,
@@ -593,6 +606,15 @@ pub(crate) struct Table {
     pub(crate) table_name: Box<str>,
     pub(crate) deletes: Vec<TableText>,
     pub(crate) inserts: Vec<TableText>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub(crate) struct TableWithOriginalEventTransactionUpdate {
+    pub(crate) table_id: u64,
+    pub(crate) table_name: Box<str>,
+    pub(crate) deletes: Vec<TableText>,
+    pub(crate) inserts: Vec<TableText>,
+    pub(crate) original_event: TransactionUpdate,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

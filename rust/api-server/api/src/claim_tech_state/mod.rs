@@ -1,4 +1,4 @@
-use crate::websocket::Table;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use entity::claim_tech_state::Model;
 use entity::{claim_tech_desc, claim_tech_state};
 use log::{debug, error, info};
@@ -174,7 +174,7 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<Table>,
+    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_tech_state_on_conflict();
 

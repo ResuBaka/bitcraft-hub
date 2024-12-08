@@ -3,6 +3,10 @@ name = "bitcraft-hub-api"
 version = "0.1.0"
 edition = "2021"
 
+[profile.release]
+opt-level = 3
+lto = true
+
 [workspace]
 members = [".", "api", "service", "entity", "migration", "reqwest-websocket"]
 

@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::websocket::Table;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -477,7 +477,7 @@ fn import_internal_building_state(config: Config, conn: DatabaseConnection, clie
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<Table>,
+    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(building_state::Column::EntityId)
         .update_columns([

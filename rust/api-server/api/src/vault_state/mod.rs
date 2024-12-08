@@ -1,4 +1,4 @@
-use crate::websocket::Table;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use entity::vault_state::RawVaultState;
 use entity::{vault_state, vault_state_collectibles};
 use log::{debug, error, info};
@@ -296,7 +296,7 @@ async fn delete_vault_state_collectibles(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<Table>,
+    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(vault_state::Column::EntityId)
         .update_columns([vault_state::Column::Shards])

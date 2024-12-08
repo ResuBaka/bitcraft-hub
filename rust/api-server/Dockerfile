@@ -11,15 +11,21 @@ COPY --from=planner /usr/src/api-server/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY . .
-RUN cargo build --release --bin bitcraft-hub-api
+RUN --mount=type=cache,target=/usr/src/api-server/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+    cargo build --release --bin bitcraft-hub-api && \
+    mv target/release/bitcraft-hub-api .
 
 
 FROM debian:bookworm-slim
 
 WORKDIR /usr/src/api-server
 
-COPY --from=builder /usr/src/api-server/target/release/bitcraft-hub-api .
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt update && apt install libssl-dev ca-certificates -y
 
-RUN apt update && apt install libssl-dev ca-certificates -y && apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+COPY --from=builder /usr/src/api-server/bitcraft-hub-api .
 
 CMD ["./bitcraft-hub-api"]

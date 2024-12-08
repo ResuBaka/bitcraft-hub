@@ -1,6 +1,6 @@
 use crate::inventory::resolve_contents;
 use crate::leaderboard::{experience_to_level, LeaderboardSkill, EXCLUDED_USERS_FROM_LEADERBOARD};
-use crate::websocket::Table;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::AppState;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -863,41 +863,163 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<Table>,
+    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_description_state_on_conflict();
 
-    let chunk_size = Some(5000);
     let mut buffer_before_insert = HashMap::new();
-
-    let mut found_in_inserts = HashSet::new();
+    let mut potential_deletes = HashSet::new();
 
     for p1 in tables.iter() {
-        for row in p1.inserts.iter() {
-            match serde_json::from_str::<claim_description_state::Model>(row.text.as_ref()) {
-                Ok(inventory) => {
-                    found_in_inserts.insert(inventory.entity_id);
-                    buffer_before_insert.insert(inventory.entity_id, inventory);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
-                        let mut buffer_before_insert_vec = buffer_before_insert
-                            .clone()
-                            .into_iter()
-                            .map(|x| x.1)
-                            .collect::<Vec<claim_description_state::Model>>();
+        let event_type = if p1.inserts.len() > 0 && p1.deletes.len() > 0 {
+            "update"
+        } else if p1.inserts.len() > 0 && p1.deletes.len() == 0 {
+            "insert"
+        } else if p1.deletes.len() > 0 && p1.inserts.len() == 0 {
+            "delete"
+        } else {
+            "unknown"
+        };
 
-                        db_insert_claim_description_state(
-                            p0,
-                            &mut buffer_before_insert_vec,
-                            &on_conflict,
-                        )
-                        .await?;
-                        buffer_before_insert.clear();
+        if event_type == "unknown" {
+            error!("Unknown event type {:?}", p1);
+            continue;
+        }
+
+        if event_type == "delete" {
+            for row in p1.deletes.iter() {
+                match serde_json::from_str::<claim_description_state::Model>(row.text.as_ref()) {
+                    Ok(claim_description_state) => {
+                        potential_deletes.insert(claim_description_state.entity_id);
+                    }
+                    Err(error) => {
+                        error!("Event: {event_type} Error: {error} for row: {:?}", row.text);
                     }
                 }
-                Err(error) => {
-                    error!("TransactionUpdate Insert ClaimDescriptionState Error: {error}");
+            }
+        } else if event_type == "update" {
+            let mut delete_parsed = HashMap::new();
+            for row in p1.deletes.iter() {
+                let parsed =
+                    serde_json::from_str::<claim_description_state::Model>(row.text.as_ref());
+
+                if parsed.is_err() {
+                    error!(
+                        "Could not parse delete claim_description_state: {}, row: {:?}",
+                        parsed.unwrap_err(),
+                        row.text
+                    );
+                } else {
+                    let parsed = parsed.unwrap();
+                    delete_parsed.insert(parsed.entity_id, parsed.clone());
+                    potential_deletes.remove(&parsed.entity_id);
                 }
             }
+
+            for row in p1.inserts.iter().enumerate() {
+                let parsed =
+                    serde_json::from_str::<claim_description_state::Model>(row.1.text.as_ref());
+
+                if parsed.is_err() {
+                    error!(
+                        "Could not parse insert claim_description_state: {}, row: {:?}",
+                        parsed.unwrap_err(),
+                        row.1.text
+                    );
+                    continue;
+                }
+
+                let parsed = parsed.unwrap();
+                let id = parsed.entity_id;
+
+                match (parsed, delete_parsed.get(&id)) {
+                    (new_claim_description_state, Some(old_claim_description_state)) => {
+                        buffer_before_insert.insert(
+                            new_claim_description_state.entity_id,
+                            new_claim_description_state.clone(),
+                        );
+                        potential_deletes.remove(&new_claim_description_state.entity_id);
+
+                        if new_claim_description_state.xp_gained_since_last_coin_minting
+                            != old_claim_description_state.xp_gained_since_last_coin_minting
+                        {
+                            let increase = if new_claim_description_state
+                                .xp_gained_since_last_coin_minting
+                                > old_claim_description_state.xp_gained_since_last_coin_minting
+                            {
+                                new_claim_description_state.xp_gained_since_last_coin_minting
+                                    - old_claim_description_state.xp_gained_since_last_coin_minting
+                            } else {
+                                new_claim_description_state.xp_gained_since_last_coin_minting
+                                    + (1000
+                                        - old_claim_description_state
+                                            .xp_gained_since_last_coin_minting)
+                            };
+
+                            if increase < 0 {
+                                error!(
+                                    "Increase is negative: {increase}, new: {:?}, old: {:?} claim_name: {:?} original_event: {:?}",
+                                    new_claim_description_state.xp_gained_since_last_coin_minting,
+                                    old_claim_description_state.xp_gained_since_last_coin_minting,
+                                    new_claim_description_state.name,
+                                    p1.original_event.reducer_call,
+                                );
+                            } else if increase > 200 {
+                                error!(
+                                    "Increase is greater than 200: {increase}, new: {:?}, old: {:?} claim_name: {:?} original_event: {:?}",
+                                    new_claim_description_state.xp_gained_since_last_coin_minting,
+                                    old_claim_description_state.xp_gained_since_last_coin_minting,
+                                    new_claim_description_state.name,
+                                    p1.original_event.reducer_call,
+                                );
+                            } else {
+                                metrics::counter!(
+                                    "claim_experience_count",
+                                    &[
+                                        ("claim_name", new_claim_description_state.name.clone()),
+                                        (
+                                            "claim_id",
+                                            new_claim_description_state.entity_id.to_string()
+                                        )
+                                    ]
+                                )
+                                .increment(increase as u64);
+                            }
+                        }
+                    }
+                    (_new_claim_description_state, None) => {
+                        error!("Could not find delete state new experience state",);
+                    }
+                }
+            }
+        } else if event_type == "insert" {
+            for row in p1.inserts.iter() {
+                match serde_json::from_str::<claim_description_state::Model>(row.text.as_ref()) {
+                    Ok(claim_description_state) => {
+                        buffer_before_insert.insert(
+                            claim_description_state.entity_id,
+                            claim_description_state.clone(),
+                        );
+
+                        metrics::counter!(
+                            "claim_experience_count",
+                            &[
+                                ("claim_name", claim_description_state.name.clone()),
+                                ("claim_id", claim_description_state.entity_id.to_string())
+                            ]
+                        )
+                        .increment(
+                            claim_description_state.xp_gained_since_last_coin_minting as u64,
+                        );
+                    }
+                    Err(error) => {
+                        error!("Error: {error} for row: {:?}", row.text);
+                    }
+                }
+            }
+        } else {
+            error!("Unknown event type {:?}", p1);
+            continue;
         }
     }
 
@@ -911,25 +1033,8 @@ pub(crate) async fn handle_transaction_update(
         buffer_before_insert.clear();
     }
 
-    let mut players_to_delete = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.deletes.iter() {
-            match serde_json::from_str::<claim_description_state::Model>(row.text.as_ref()) {
-                Ok(inventory) => {
-                    if !found_in_inserts.contains(&inventory.entity_id) {
-                        players_to_delete.insert(inventory.entity_id);
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Delete ClaimDescriptionState Error: {error}");
-                }
-            }
-        }
-    }
-
-    if players_to_delete.len() > 0 {
-        delete_claim_description_state(p0, players_to_delete).await?;
+    if potential_deletes.len() > 0 {
+        delete_claim_description_state(p0, potential_deletes).await?;
     }
 
     Ok(())

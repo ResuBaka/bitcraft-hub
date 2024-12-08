@@ -1,4 +1,4 @@
-use crate::websocket::Table;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use entity::deployable_state;
 use entity::deployable_state::Model;
 use log::{debug, error, info};
@@ -132,7 +132,7 @@ fn get_deployable_state_on_conflict() -> OnConflict {
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<Table>,
+    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
 ) -> anyhow::Result<()> {
     let on_conflict = get_deployable_state_on_conflict();
 
