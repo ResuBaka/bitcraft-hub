@@ -530,7 +530,10 @@ pub fn start_websocket_bitcraft_logic(
                     }
                 }
             } else {
-                println!("No message {:?}", message);
+                if let Message::Ping(_) = message {
+                } else {
+                    info!("Message: {:?}", message);
+                }
             }
         }
     });
