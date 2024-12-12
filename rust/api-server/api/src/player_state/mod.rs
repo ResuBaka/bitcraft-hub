@@ -331,9 +331,13 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
                     db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict)
                         .await?;
                 }
-                buffer_before_insert.clear();
             }
-            Err(_) => {}
+            Err(error) => {
+                error!(
+                    "TransactionUpdate Insert PlayerUsernameState Error: {error} -> {:?}",
+                    row
+                );
+            }
         }
     }
 

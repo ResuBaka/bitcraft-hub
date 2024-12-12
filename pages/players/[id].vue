@@ -26,7 +26,28 @@ const { data: experienceFetch } = useFetch(() => {
 });
 
 const expeirence = computed(() => {
-  return experienceFetch.value ?? undefined;
+  if (!experienceFetch.value) {
+    return undefined;
+  }
+
+  let newExperience: Record<string, any> = {};
+
+  for (const [skill, xp_info] of Object.entries(experienceFetch.value)) {
+    let shouldAddClass = xp_info.level && xp_info.experience;
+
+    newExperience[skill] = {
+      experience: xp_info.experience,
+      level: xp_info.level,
+      rank: xp_info.rank,
+      classes: {
+        list: shouldAddClass ? `background-tier-${levelToTier(xp_info.level)}` : "",
+        container: shouldAddClass ? "container" : "",
+        content: shouldAddClass ? "content" : "",
+      }
+    };
+  }
+
+  return newExperience;
 });
 const inventorys = computed(() => {
   return inventoryFetch.value?.inventorys ?? [];
@@ -39,6 +60,30 @@ const player = computed(() => {
 const deployables = computed(() => {
   return playerFetch.value?.deployables ?? undefined;
 });
+
+const levelToTier = (level: number) => {
+  if (1 <= level && level <= 19) {
+    return 1;
+  }
+  if (20 <= level && level <= 29) {
+    return 2;
+  }
+  if (30 <= level && level <= 39) {
+    return 3;
+  }
+  if (40 <= level && level <= 49) {
+    return 4;
+  }
+  if (50 <= level && level <= 59) {
+    return 5;
+  }
+  if (60 <= level && level <= 69) {
+    return 6;
+  }
+  if (70 <= level) {
+    return 7;
+  }
+};
 
 const computedClass = computed(() => {
   return {
@@ -136,8 +181,9 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
                 <v-card-text>
                   <v-row>
                     <v-col cols="12" md="4" lg="2" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
-                      <v-list>
-                        <v-list-item>
+                      <v-list :class="xp_info.classes.container">
+                        <div :class="xp_info.classes.list"></div>
+                        <v-list-item :class="xp_info.classes.content">
                           <v-list-item-title>{{ skill }}</v-list-item-title>
                           <v-list-item-subtitle>Experience: {{ xp_info.experience ? numberFormat.format(xp_info.experience) : "" }}</v-list-item-subtitle>
                           <v-list-item-subtitle>Level: {{ xp_info.level }}</v-list-item-subtitle>

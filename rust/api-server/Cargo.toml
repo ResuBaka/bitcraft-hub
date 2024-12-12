@@ -11,7 +11,7 @@ lto = true
 members = [".", "api", "service", "entity", "migration", "reqwest-websocket"]
 
 [workspace.dependencies]
-sea-orm = { version = "1.1.1", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros" ] }
+sea-orm = { version = "1.1.1", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
 serde_json = "1.0.133"
 serde = { version = "1.0.215", features = ["derive"] }
 tokio = { version = "^1.41.1", features = [ "full" ] }
@@ -20,6 +20,7 @@ axum = "0.7.9"
 reqwest = { version = "0.12.9", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
 hyper = { version = "1.5.1", features = ["full"] }
 rayon = "1.10.0"
+time = { version = "0.3.37", features = ["serde"] }
 
 [dependencies]
 api = { path = "api" }

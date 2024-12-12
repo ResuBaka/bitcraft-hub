@@ -3,20 +3,23 @@ use crate::{
     buildings, claim_tech_state, claims, collectible_desc, deployable_state, inventory,
     leaderboard, player_state, vault_state,
 };
+use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use axum::http::HeaderMap;
 use base64::Engine;
-use entity::skill_desc;
+use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
 use log::{debug, error, info};
 use reqwest::Client;
 use reqwest_websocket::{Message, RequestBuilderExt};
-use sea_orm::{EntityTrait, QuerySelect};
+use sea_orm::{EntityTrait, IntoActiveModel, QuerySelect};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Duration;
+use time::OffsetDateTime;
+use tokio::io::AsyncWriteExt;
 
 struct WebSocketAppState {
     user_map: HashMap<String, i64>,
@@ -136,6 +139,53 @@ pub fn start_websocket_bitcraft_logic(
                 let db = db.clone();
 
                 let count = rx.recv_many(&mut evenets, 1000).await;
+                let mut raw_events_data = vec![];
+
+                for event in evenets.iter() {
+                    match event {
+                        WebSocketMessage::TransactionUpdate(transaction_update) => {
+                            let mut compressor =
+                                async_compression::tokio::write::ZstdEncoder::new(vec![]);
+                            let _ = compressor
+                                .write_all(
+                                    serde_json::to_string(&transaction_update)
+                                        .unwrap()
+                                        .as_bytes(),
+                                )
+                                .await;
+                            compressor.flush().await.unwrap();
+                            compressor.shutdown().await.unwrap();
+
+                            let user_id =
+                                transaction_update.caller_identity.__identity_bytes.clone();
+
+                            let user_id = app_state.user_map.get(&user_id.as_ref().to_string());
+
+                            raw_events_data.push(
+                                RawEventData {
+                                    timestamp: transaction_update.timestamp.microseconds,
+                                    request_id: transaction_update.reducer_call.request_id as i64,
+                                    reducer_name: transaction_update
+                                        .reducer_call
+                                        .reducer_name
+                                        .clone()
+                                        .parse()
+                                        .unwrap(),
+                                    reducer_id: transaction_update.reducer_call.reducer_id as i64,
+                                    event_data: compressor.into_inner(),
+                                    user_id: user_id.cloned(),
+                                }
+                                .into_active_model(),
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+
+                raw_event_data::Entity::insert_many(raw_events_data)
+                    .exec(&db)
+                    .await
+                    .unwrap();
 
                 for event in evenets.iter() {
                     match event {
@@ -628,7 +678,8 @@ pub(crate) struct TableText {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Timestamp {
-    pub(crate) microseconds: u64,
+    #[serde(with = "time::serde::timestamp::microseconds")]
+    pub(crate) microseconds: OffsetDateTime,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

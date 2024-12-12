@@ -13,6 +13,7 @@ mod leaderboard;
 mod locations;
 mod player_state;
 mod recipes;
+mod reducer_event_handler;
 mod skill_descriptions;
 mod trading_orders;
 mod vault_state;
