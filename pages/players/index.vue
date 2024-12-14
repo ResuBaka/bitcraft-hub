@@ -2,10 +2,11 @@
 import { watchDebounced, watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 24;
+const perPage = 6 * 5;
 
 const search = ref<string | null>("");
 const debouncedSearch = ref<string | null>("");
+const showOnlyOnlinePlayers = ref<boolean>(false);
 
 const route = useRoute();
 const router = useRouter();
@@ -39,11 +40,15 @@ const {
       }
 
       if (page.value) {
-        options.query.per_page = perPage;
+        options.query.page = page.value;
       }
 
       if (perPage) {
         options.query.per_page = perPage;
+      }
+
+      if (showOnlyOnlinePlayers.value) {
+        options.query.online = true;
       }
 
       if (Object.keys(options.query).length > 2) {
@@ -67,6 +72,18 @@ const changePage = (value: number) => {
   });
   refresh();
 };
+
+watchThrottled(
+  () => [search.value, showOnlyOnlinePlayers.value],
+  (value, oldValue) => {
+    if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
+      page.value = 1;
+    }
+
+    refresh();
+  },
+  { throttle: 50 },
+);
 
 watchDebounced(
   debouncedSearch,
@@ -146,7 +163,7 @@ const timeStampToDateSince = (timestamp: number) => {
 <template>
   <v-container fluid>
     <v-row>
-      <v-col>
+      <v-col cols="10">
         <v-text-field
             v-model="debouncedSearch"
             label="Search"
@@ -154,6 +171,12 @@ const timeStampToDateSince = (timestamp: number) => {
             dense
             clearable
         ></v-text-field>
+      </v-col>
+      <v-col cols="2">
+        <v-checkbox
+            v-model="showOnlyOnlinePlayers"
+            label="Show only online Player"
+        ></v-checkbox>
       </v-col>
     </v-row>
     <v-row>
@@ -166,35 +189,23 @@ const timeStampToDateSince = (timestamp: number) => {
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="player in currentplayers" :key="player.entity_id">
+      <v-col cols="12" md="6" lg="3" xl="2" v-for="player in currentplayers" :key="player.entity_id">
         <v-card>
           <template v-slot:title>
-            <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
+            <nuxt-link :class="`text-decoration-none font-weight-black ${player.signed_in ? 'text-green' : 'text-high-emphasis'}`"
                        :to="{ name: 'players-id', params: { id: player.entity_id } }"
-            >{{ player.username }} : {{ player.entity_id }}
+            >{{ player.username }}
             </nuxt-link>
           </template>
           <v-card-text :class="computedClass">
             <v-table :class="computedClass" density="compact">
               <tbody>
               <tr style='text-align: right'>
-                <th>signed_in:</th>
-                <td>{{ player.signed_in }}</td>
-              </tr>
-              <tr style='text-align: right'>
-                <th>sign_in_timestamp:</th>
-                <td>{{ timeStampToDateSince(player.sign_in_timestamp) }}</td>
-              </tr>
-              <tr style='text-align: right'>
-                <th>session_start_timestamp:</th>
-                <td>{{ player.session_start_timestamp }}</td>
-              </tr>
-              <tr style='text-align: right'>
-                <th>time_played:</th>
+                <th>Played:</th>
                 <td>{{ secondsToDaysMinutesSecondsFormat(player.time_played) }}</td>
               </tr>
               <tr style='text-align: right'>
-                <th>time_signed_in:</th>
+                <th>Signed in:</th>
                 <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>
               </tr>
               </tbody>

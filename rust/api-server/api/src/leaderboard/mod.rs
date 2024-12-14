@@ -1,6 +1,6 @@
 use crate::claims::ClaimDescriptionState;
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
-use crate::{leaderboard, AppState};
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
+use crate::{leaderboard, AppRouter, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -16,6 +16,7 @@ use service::Query;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::path::PathBuf;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[macro_export]
 macro_rules! generate_mysql_sum_level_sql_statement {
@@ -135,7 +136,7 @@ pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
     (100, 37_554_230),
 ];
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route("/leaderboard", get(leaderboard::get_top_100))
         .route("/experience/:player_id", get(player_leaderboard))
@@ -202,7 +203,7 @@ pub(crate) struct LeaderboardTime {
 }
 
 pub(crate) async fn get_top_100(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
@@ -639,7 +640,7 @@ fn row_to_xp_values(row: Value) -> Vec<experience_state::Model> {
 }
 
 pub(crate) async fn player_leaderboard(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(player_id): Path<i64>,
 ) -> Result<Json<BTreeMap<String, RankType>>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
@@ -827,7 +828,7 @@ pub(crate) async fn player_leaderboard(
 }
 
 pub(crate) async fn get_claim_leaderboard(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(claim_id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
@@ -1140,6 +1141,7 @@ pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
     tables: &Vec<TableWithOriginalEventTransactionUpdate>,
     skill_id_to_skill_name: &HashMap<i64, String>,
+    tx: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::columns([
         experience_state::Column::EntityId,
@@ -1269,6 +1271,16 @@ pub(crate) async fn handle_transaction_update(
                                         .insert(*key, value.clone().into_active_model());
 
                                     if let Some(skill_name) = skill_name {
+                                        tx.send(WebSocketMessages::Experience {
+                                            experience: value.experience as u64,
+                                            level: experience_to_level(value.experience as i64)
+                                                as u64,
+                                            rank: 0,
+                                            skill_name: skill_name.clone().to_owned(),
+                                            user_id: new_experience_state.entity_id,
+                                        })
+                                        .expect("TODO: panic message");
+
                                         metrics::counter!(
                                             "player_skill_experience_count",
                                             &[("skill_name", skill_name.to_owned()),]

@@ -18,20 +18,24 @@
 
     <v-app-bar>
       <v-app-bar-title>BitCraft Hub (Under construction 🚧)</v-app-bar-title>
-      <v-toolbar-items v-if="!$vuetify.display.mobile">
-        <v-btn to="/">Leaderboards</v-btn>
-        <v-btn to="/items">Items</v-btn>
-        <v-btn to="/claims">Claims</v-btn>
-        <v-btn to="/players">Players</v-btn>
-<!--        <v-btn to="/tradeOrders">Trade orders</v-btn>-->
-        <v-btn to="/buildings">Buildings</v-btn>
-        <v-btn icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>
-      </v-toolbar-items>
-      <v-toolbar-items v-if="$vuetify.display.mobile">
-        <v-btn icon @click="mobileDrawer = !mobileDrawer">
-          <v-icon>mdi-menu</v-icon>
-        </v-btn>
-      </v-toolbar-items>
+      <template #append>
+        <template v-if="!$vuetify.display.mobile">
+          <v-btn variant="text" class="text-capitalize font-weight-black" stacked @click="reopenConnection"><v-badge dot floating :color="websocketStore.isConnected ? 'green' : 'red'">Live Data</v-badge></v-btn>
+          <v-btn variant="text" class="text-capitalize font-weight-black" to="/">Leaderboards</v-btn>
+          <v-btn variant="text" class="text-capitalize font-weight-black" to="/items">Items</v-btn>
+          <v-btn variant="text" class="text-capitalize font-weight-black" to="/claims">Claims</v-btn>
+          <v-btn variant="text" class="text-capitalize font-weight-black" to="/players">Players</v-btn>
+          <!--        <v-btn to="/tradeOrders">Trade orders</v-btn>-->
+          <v-btn variant="text" class="text-capitalize font-weight-black" to="/buildings">Buildings</v-btn>
+          <v-btn variant="text" class="text-capitalize font-weight-black" icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>
+        </template>
+        <template v-else>
+          <v-btn variant="text" class="text-capitalize font-weight-black" stacked @click="reopenConnection"><v-badge dot floating :color="websocketStore.isConnected ? 'green' : 'red'">Live Data</v-badge></v-btn>
+          <v-btn variant="text" class="text-capitalize font-weight-black" icon @click="mobileDrawer = !mobileDrawer">
+            <v-icon>mdi-menu</v-icon>
+          </v-btn>
+        </template>
+      </template>
     </v-app-bar>
     <v-dialog v-model="configDrawer"  width="auto">
     <v-card min-width="90vw">
@@ -78,6 +82,7 @@
   </v-app>
 </template>
 <script setup lang="ts">
+const websocketStore = useWebsocketStore();
 const configStore = useConfigStore();
 const configDrawer = ref(false);
 const mobileDrawer = ref(false);
@@ -99,6 +104,15 @@ const items = [
     value: "system",
   },
 ];
+
+const reopenConnection = () => {
+  if (websocketStore.isConnected) {
+    websocketStore.close();
+    return;
+  }
+
+  websocketStore.open();
+};
 
 const toggelConfigDrawer = () => {
   configDrawer.value = !configDrawer.value;

@@ -1,6 +1,6 @@
 #![allow(warnings)]
 
-use crate::AppState;
+use crate::{AppRouter, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Router;
@@ -19,7 +19,7 @@ use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route(
             "/api/bitcraft/recipes/needed_in_crafting/:id",
@@ -48,7 +48,7 @@ pub(crate) fn get_routes() -> Router<AppState> {
 }
 
 pub(crate) async fn get_needed_in_crafting(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
     return Ok(Codec(vec![]));
@@ -71,7 +71,7 @@ pub(crate) async fn get_needed_in_crafting(
 }
 
 pub(crate) async fn get_produced_in_crafting(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
     return Ok(Codec(vec![]));
@@ -93,7 +93,7 @@ pub(crate) async fn get_produced_in_crafting(
 }
 
 pub(crate) async fn get_needed_to_craft(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
     return Ok(Codec(vec![]));

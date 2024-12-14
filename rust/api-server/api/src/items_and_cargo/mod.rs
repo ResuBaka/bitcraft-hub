@@ -1,4 +1,4 @@
-use crate::AppState;
+use crate::{AppRouter, AppState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Router;
@@ -8,7 +8,7 @@ use entity::item_desc;
 use serde::Deserialize;
 use service::Query as QueryCore;
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new().route(
         "/api/bitcraft/itemsAndCargo",
         axum_codec::routing::get(list_items_and_cargo).into(),
@@ -44,7 +44,7 @@ pub(crate) struct ItemsAndCargoResponse {
 }
 
 pub(crate) async fn list_items_and_cargo(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Query(params): Query<ItemsAndCargoParams>,
 ) -> Result<Codec<ItemsAndCargoResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);

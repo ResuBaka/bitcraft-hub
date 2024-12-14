@@ -1,7 +1,7 @@
 use crate::inventory::resolve_contents;
 use crate::leaderboard::{experience_to_level, LeaderboardSkill, EXCLUDED_USERS_FROM_LEADERBOARD};
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
-use crate::AppState;
+use crate::{AppRouter, AppState};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -24,7 +24,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use tokio::task::JoinHandle;
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route("/claims", get(list_claims))
         .route("/api/bitcraft/claims", get(list_claims))
@@ -156,7 +156,7 @@ pub(crate) enum OnlineState {
 }
 
 pub(crate) async fn get_claim(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Json<ClaimDescriptionStateWithInventoryAndPlayTime>, (StatusCode, &'static str)> {
     let claim = QueryCore::find_claim_description(&state.conn, id as i64)
@@ -536,7 +536,7 @@ pub(crate) struct ListClaimsParams {
 }
 
 pub(crate) async fn list_claims(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Query(params): Query<ListClaimsParams>,
 ) -> Result<Json<ClaimResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
@@ -636,7 +636,7 @@ pub(crate) async fn list_claims(
 }
 
 pub(crate) async fn find_claim_descriptions(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Json<ClaimDescriptionState>, (StatusCode, &'static str)> {
     let claim = QueryCore::find_claim_description_by_id(&state.conn, id as i64)

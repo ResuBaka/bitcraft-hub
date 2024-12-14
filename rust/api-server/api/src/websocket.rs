@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::mpsc::UnboundedSender;
 
 struct WebSocketAppState {
     user_map: HashMap<String, i64>,
@@ -31,6 +32,7 @@ pub fn start_websocket_bitcraft_logic(
     websocket_username: String,
     database_name: String,
     tmp_config: Config,
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
 ) {
     tokio::spawn(async move {
         let mut app_state = WebSocketAppState {
@@ -466,6 +468,7 @@ pub fn start_websocket_bitcraft_logic(
                             &db,
                             table,
                             &skill_id_to_skill_name,
+                            broadcast_tx.clone(),
                         )
                         .await;
 
@@ -717,4 +720,29 @@ pub(crate) struct FunctionCall {
 pub(crate) struct TableRowOperation {
     pub(crate) row: Value,
     pub(crate) op: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "t", content = "c")]
+pub(crate) enum WebSocketMessages {
+    Subscribe {
+        topics: Vec<String>,
+    },
+    ListSubscribedTopics,
+    SubscribedTopics(Vec<String>),
+    Unsubscribe {
+        topic: String,
+    },
+    Experience {
+        experience: u64,
+        level: u64,
+        rank: u64,
+        skill_name: String,
+        user_id: i64,
+    },
+    Level {
+        level: u64,
+        user_id: i64,
+    },
+    Message(String),
 }

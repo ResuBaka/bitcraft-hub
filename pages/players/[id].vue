@@ -1,10 +1,45 @@
 <script setup lang="ts">
+
 const theme = useTheme();
 const page = ref(1);
 const route = useRoute();
 const numberFormat = new Intl.NumberFormat(undefined);
 
 const tmpPage = (route.query.page as string) ?? null;
+
+import { registerWebsocketMessageHandler } from "~/composables/websocket";
+const useWebsocket = useWebsocketStore();
+
+type Message = {
+  t: string;
+  c: undefined | Record<string, any>;
+};
+
+registerWebsocketMessageHandler(
+  "Experience",
+  `experience.${route.params.id}`,
+  (message) => {
+    if (experienceFetch.value && experienceFetch.value[message.c.skill_name]) {
+      let currentExperience =
+        experienceFetch.value[message.c.skill_name].experience;
+      experienceFetch.value[message.c.skill_name] = {
+        ...experienceFetch.value[message.c.skill_name],
+        experience: message.c.experience,
+        level: message.c.level,
+      };
+
+      if (experienceFetch.value["Experience"]) {
+        let newExperience = message.c.experience;
+        let increase = newExperience - currentExperience;
+
+        experienceFetch.value["Experience"] = {
+          ...experienceFetch.value["Experience"],
+          experience: experienceFetch.value["Experience"].experience + increase,
+        };
+      }
+    }
+  },
+);
 
 if (tmpPage) {
   page.value = parseInt(tmpPage);
@@ -40,10 +75,12 @@ const expeirence = computed(() => {
       level: xp_info.level,
       rank: xp_info.rank,
       classes: {
-        list: shouldAddClass ? `background-tier-${levelToTier(xp_info.level)}` : "",
+        list: shouldAddClass
+          ? `background-tier-${levelToTier(xp_info.level)}`
+          : "",
         container: shouldAddClass ? "container" : "",
         content: shouldAddClass ? "content" : "",
-      }
+      },
     };
   }
 
@@ -185,9 +222,10 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
                         <div :class="xp_info.classes.list"></div>
                         <v-list-item :class="xp_info.classes.content">
                           <v-list-item-title>{{ skill }}</v-list-item-title>
-                          <v-list-item-subtitle>Experience: {{ xp_info.experience ? numberFormat.format(xp_info.experience) : "" }}</v-list-item-subtitle>
-                          <v-list-item-subtitle>Level: {{ xp_info.level }}</v-list-item-subtitle>
-                          <v-list-item-subtitle>Rank: #{{ xp_info.rank }}</v-list-item-subtitle>
+<!--                          {{ xp_info.experience ? numberFormat.format(xp_info.experience) : "" }}-->
+                          <v-list-item-subtitle>Experience: <bitcraft-animated-number :value="xp_info.experience" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
+                          <v-list-item-subtitle>Level: <bitcraft-animated-number v-if="xp_info.level" :value="xp_info.level" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
+                          <v-list-item-subtitle>Rank: #<bitcraft-animated-number :value="xp_info.rank" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
                         </v-list-item>
                       </v-list>
                     </v-col>

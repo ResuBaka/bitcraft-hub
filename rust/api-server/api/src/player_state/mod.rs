@@ -1,5 +1,5 @@
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
-use crate::{AppState, Params};
+use crate::{AppRouter, AppState};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -10,13 +10,14 @@ use log::{debug, error, info};
 use migration::OnConflict;
 use sea_orm::IntoActiveModel;
 use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::PathBuf;
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route("/players", get(list_players))
         .route("/players/:id", get(find_player_by_id))
@@ -24,16 +25,25 @@ pub(crate) fn get_routes() -> Router<AppState> {
         .route("/api/bitcraft/players/:id", get(find_player_by_id))
 }
 
+#[derive(Deserialize)]
+pub struct ListPlayersParams {
+    page: Option<u64>,
+    per_page: Option<u64>,
+    search: Option<String>,
+    online: Option<bool>,
+}
+
 pub async fn list_players(
-    state: State<AppState>,
-    Query(params): Query<Params>,
+    state: State<std::sync::Arc<AppState>>,
+    Query(params): Query<ListPlayersParams>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(5);
     let search = params.search;
+    let online = params.online;
 
     let (player, player_usernames, num_pages) =
-        QueryCore::find_players(&state.conn, page, posts_per_page, search)
+        QueryCore::find_players(&state.conn, page, posts_per_page, search, online)
             .await
             .expect("Cannot find player_state in page");
 
@@ -68,7 +78,7 @@ pub async fn list_players(
 }
 
 pub async fn find_player_by_id(
-    State(state): State<AppState>,
+    State(state): State<std::sync::Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let player = player_state::Entity::find_by_id(id)

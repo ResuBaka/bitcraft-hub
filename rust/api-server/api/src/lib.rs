@@ -26,14 +26,20 @@ use axum::{
     Router,
 };
 use service::sea_orm::{Database, DatabaseConnection};
+use std::collections::HashMap;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::config::Config;
-use axum::extract::{MatchedPath, Request};
+use crate::websocket::WebSocketMessages;
+use axum::extract::{
+    ws::{Message, WebSocket, WebSocketUpgrade},
+    MatchedPath, Request, State,
+};
 use axum::http::HeaderValue;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use base64::Engine;
+use futures::{SinkExt, StreamExt};
 use log::{error, info};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
@@ -45,8 +51,12 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::RwLock;
 use tower_cookies::CookieManagerLayer;
+use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;
 
 #[tokio::main]
@@ -92,10 +102,15 @@ async fn start() -> anyhow::Result<()> {
         import_data(config.clone());
     }
 
-    let state = AppState {
+    let state = Arc::new(AppState {
         conn,
         storage_path: PathBuf::from(config.storage_path.clone()),
-    };
+        user_map: Arc::new(RwLock::new(HashMap::new())),
+    });
+
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+    tokio::spawn(boradcast_message(state.clone(), rx));
 
     let app = create_app(&config, state, prometheus);
 
@@ -112,6 +127,7 @@ async fn start() -> anyhow::Result<()> {
             websocket_username,
             database_name,
             tmp_config,
+            tx,
         );
     }
 
@@ -122,7 +138,212 @@ async fn start() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) -> Router {
+async fn websocket_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| websocket(socket, state))
+}
+
+#[allow(dead_code)]
+struct ServerInstance {
+    // cached_resources
+    connected_clients: HashMap<String, (UnboundedSender<WebSocketMessages>, Vec<String>)>,
+    topics_listen_to: HashMap<String, Vec<String>>,
+}
+
+// This function deals with a single websocket connection, i.e., a single
+// connected client / user, for which we will spawn two independent tasks (for
+// receiving / sending chat messages).
+async fn websocket(stream: WebSocket, state: Arc<AppState>) {
+    // By splitting, we can send and receive at the same time.
+    let (mut sender, mut receiver) = stream.split();
+
+    let id = nanoid::nanoid!();
+
+    let (tx, mut rx) = tokio::sync::broadcast::channel::<WebSocketMessages>(20);
+
+    state
+        .user_map
+        .write()
+        .await
+        .insert(id.clone(), (tx.clone(), vec![]));
+
+    // // Username gets set in the receive loop, if it's valid.
+    // let mut username = String::new();
+    // // Loop until a text message is found.
+    // while let Some(Ok(message)) = receiver.next().await {
+    //     if let Message::Text(name) = message {
+    //         // If username that is sent by client is not taken, fill username string.
+    //
+    //         // If not empty we want to quit the loop else we want to quit function.
+    //         if !username.is_empty() {
+    //             break;
+    //         } else {
+    //             // Only send our client that username is taken.
+    //             let _ = sender
+    //                 .send(Message::Text(String::from("Username already taken.")))
+    //                 .await;
+    //
+    //             return;
+    //         }
+    //     }
+    // }
+
+    // Now send the "joined" message to all subscribers.
+    let msg = format!("{id} joined.");
+    let _ = tx.send(WebSocketMessages::Message(msg));
+
+    // Spawn the first task that will receive broadcast messages and send text
+    // messages over the websocket to our client.
+    let mut send_task = tokio::spawn(async move {
+        while let Ok(msg) = rx.recv().await {
+            // In any websocket error, break loop.
+            if let Err(error) = sender
+                .send(Message::Text(serde_json::to_string(&msg).unwrap()))
+                .await
+            {
+                tracing::error!("Error sending message to client: {error}");
+                break;
+            }
+        }
+    });
+
+    let inner_id = id.clone();
+    let inner_state = state.clone();
+    let mut recv_task = tokio::spawn(async move {
+        while let Some(Ok(Message::Text(text))) = receiver.next().await {
+            match serde_json::from_str::<WebSocketMessages>(&text) {
+                Ok(message) => match message {
+                    WebSocketMessages::Subscribe { topics } => {
+                        let current_topics = inner_state
+                            .user_map
+                            .read()
+                            .await
+                            .get(&inner_id)
+                            .unwrap()
+                            .1
+                            .clone();
+                        let mut new_topics = topics.clone();
+                        for topic in topics {
+                            if current_topics.contains(&topic) {
+                                new_topics.retain(|x| x != &topic);
+                            }
+                        }
+
+                        inner_state
+                            .user_map
+                            .write()
+                            .await
+                            .get_mut(&inner_id)
+                            .unwrap()
+                            .1
+                            .extend(new_topics);
+                    }
+                    WebSocketMessages::Unsubscribe { topic } => {
+                        inner_state
+                            .user_map
+                            .write()
+                            .await
+                            .get_mut(&inner_id)
+                            .unwrap()
+                            .1
+                            .retain(|x| x != &topic);
+                    }
+                    WebSocketMessages::ListSubscribedTopics => {
+                        let topics = inner_state
+                            .user_map
+                            .read()
+                            .await
+                            .get(&inner_id)
+                            .unwrap()
+                            .1
+                            .clone();
+                        let _ = tx.send(WebSocketMessages::SubscribedTopics(topics));
+                    }
+                    _ => {}
+                },
+                Err(error) => {
+                    tracing::error!("Error handling websocket message from client: {error}");
+                }
+            }
+        }
+    });
+
+    // If any one of the tasks run to completion, we abort the other.
+    tokio::select! {
+        _ = &mut send_task => recv_task.abort(),
+        _ = &mut recv_task => send_task.abort(),
+    };
+
+    // Remove username from map so new clients can take it again.
+    state.user_map.write().await.remove(&id);
+}
+
+async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSocketMessages>) {
+    while let Some(message) = rx.recv().await {
+        let clients = state.user_map.read().await;
+        let connection_to_send_to = clients
+            .iter()
+            .filter(|(_, topics)| {
+                let topic_name = match message {
+                    WebSocketMessages::Experience { user_id, .. } => {
+                        format!("experience.{user_id}")
+                    }
+                    WebSocketMessages::Level { user_id, .. } => {
+                        format!("level.{user_id}")
+                    }
+                    WebSocketMessages::Subscribe { .. } => return false,
+                    WebSocketMessages::Message(_) => return false,
+                    WebSocketMessages::Unsubscribe { .. } => return false,
+                    WebSocketMessages::ListSubscribedTopics { .. } => return false,
+                    WebSocketMessages::SubscribedTopics { .. } => return false,
+                }
+                .to_string();
+
+                topics.1.contains(&topic_name)
+            })
+            .collect::<Vec<_>>();
+
+        for (_user_id, (tx, _)) in connection_to_send_to {
+            tx.send(message.clone()).unwrap();
+        }
+    }
+}
+
+// #[derive(Debug)]
+// enum DisconnectReason {
+//     Reconnect,
+//     Timeout,
+//     Unknown,
+//     Disconnect,
+// }
+//
+// async fn handle_disconnect_reconnect(state: Arc<AppState>, mut rx: UnboundedReceiver<DisconnectReason>) {
+//     while let Some(message) = rx.recv().await {
+//         let clients = state.user_map.read().await;
+//         let connection_to_send_to = clients.iter().filter(|(_, topics)| {
+//             let topic_name = match message {
+//                 WebSocketMessages::Experience { user_id,.. } => { format!("experience.{user_id}") },
+//                 WebSocketMessages::Subscribe { .. } => return false,
+//                 WebSocketMessages::Message(_) => return false,
+//                 WebSocketMessages::Unsubscribe{ .. } => return false,
+//                 WebSocketMessages::ListSubscribedTopics{ .. } => return false,
+//                 WebSocketMessages::SubscribedTopics{ .. } => return false,
+//             }.to_string();
+//
+//             topics.1.contains(&topic_name)
+//         }).collect::<Vec<_>>();
+//
+//         for (user_id, (tx, _)) in connection_to_send_to {
+//             tx.send(message.clone()).unwrap();
+//         }
+//     }
+// }
+
+pub(crate) type AppRouter = Router<Arc<AppState>>;
+
+fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandle) -> Router {
     let desc_router = Router::new()
         .route(
             "/buildings/:id",
@@ -134,6 +355,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         );
 
     let app = Router::new()
+        .route("/websocket", get(websocket_handler))
         .route("/locations", get(locations::list_locations))
         .route("/items", get(items::list_items))
         .merge(player_state::get_routes())
@@ -172,6 +394,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
                 )
                 .allow_methods(Any),
         )
+        .layer(CompressionLayer::new())
         .route_layer(middleware::from_fn(track_metrics))
         .with_state(state);
     app
@@ -483,6 +706,17 @@ fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Cl
 struct AppState {
     conn: DatabaseConnection,
     storage_path: PathBuf,
+    user_map: Arc<
+        RwLock<
+            HashMap<
+                String,
+                (
+                    tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
+                    Vec<String>,
+                ),
+            >,
+        >,
+    >,
 }
 
 #[derive(Deserialize)]

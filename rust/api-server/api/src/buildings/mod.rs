@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
-use crate::{AppState, Params};
+use crate::{AppRouter, AppState, Params};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Router;
@@ -26,7 +26,7 @@ use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route(
             "/buildings",
@@ -59,7 +59,7 @@ pub(crate) struct BuildingDescriptionsResponse {
 }
 
 pub(crate) async fn find_building_descriptions(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Query(params): Query<Params>,
 ) -> Result<Codec<BuildingDescriptionsResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
@@ -113,7 +113,7 @@ pub(crate) async fn find_building_descriptions(
 }
 
 pub(crate) async fn find_claim_description(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Codec<building_desc::Model>, (StatusCode, &'static str)> {
     let posts = QueryCore::find_building_desc_by_id(&state.conn, id as i64)
@@ -144,7 +144,7 @@ pub(crate) struct BuildingStatesParams {
 }
 
 pub(crate) async fn find_building_states(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Query(params): Query<BuildingStatesParams>,
 ) -> Result<Codec<BuildingStatesResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
@@ -185,7 +185,7 @@ pub(crate) async fn find_building_states(
 }
 
 pub(crate) async fn find_building_state(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Codec<building_state::Model>, (StatusCode, &'static str)> {
     let posts = QueryCore::find_building_state_by_id(&state.conn, id as i64)

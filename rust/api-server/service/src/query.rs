@@ -56,6 +56,7 @@ impl Query {
         page: u64,
         per_page: u64,
         search: Option<String>,
+        online: Option<bool>,
     ) -> Result<
         (
             Vec<player_state::Model>,
@@ -65,8 +66,15 @@ impl Query {
         DbErr,
     > {
         // Setup paginator
-        let paginator = PlayerUsernameState::find()
-            .order_by_asc(player_username_state::Column::EntityId)
+        let paginator = PlayerState::find()
+            .join_rev(
+                JoinType::LeftJoin,
+                player_username_state::Entity::belongs_to(player_state::Entity)
+                    .from(player_username_state::Column::EntityId)
+                    .to(player_state::Column::EntityId)
+                    .into(),
+            )
+            .order_by_asc(player_username_state::Column::Username)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => query.filter(
                     Expr::col(player_username_state::Column::Username)
@@ -74,20 +82,31 @@ impl Query {
                 ),
                 _ => unreachable!(),
             })
+            .apply_if(online, |query, value| {
+                query.filter(
+                    player_username_state::Column::EntityId.in_subquery(
+                        PlayerState::find()
+                            .select_only()
+                            .column(player_state::Column::EntityId)
+                            .filter(player_state::Column::SignedIn.eq(value))
+                            .into_query(),
+                    ),
+                )
+            })
             .paginate(db, per_page);
 
         let num_pages = paginator.num_items_and_pages().await?;
 
         // Fetch paginated posts
-        let (player_usernames, num_pages) = paginator
+        let (player_states, num_pages) = paginator
             .fetch_page(page - 1)
             .await
             .map(|p| (p, num_pages))?;
 
-        let player_states = PlayerState::find()
+        let player_usernames = PlayerUsernameState::find()
             .filter(
-                player_state::Column::EntityId.is_in(
-                    player_usernames
+                player_username_state::Column::EntityId.is_in(
+                    player_states
                         .iter()
                         .map(|p| p.entity_id)
                         .collect::<Vec<i64>>(),

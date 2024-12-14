@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use service::Query as QueryCore;
 
 pub(crate) async fn list_locations(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Query(params): Query<Params>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);

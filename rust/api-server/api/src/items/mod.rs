@@ -21,7 +21,7 @@ use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
 
 pub async fn list_items(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Query(params): Query<Params>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);

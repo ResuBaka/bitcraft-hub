@@ -3,6 +3,7 @@ import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
 import CardItem from "~/components/Bitcraft/CardItem.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { useNow } from "@vueuse/core";
+import { registerWebsocketMessageHandler } from "~/composables/websocket";
 
 const {
   public: { iconDomain },

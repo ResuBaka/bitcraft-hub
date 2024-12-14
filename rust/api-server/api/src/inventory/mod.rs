@@ -1,5 +1,5 @@
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
-use crate::AppState;
+use crate::{AppRouter, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Router;
@@ -21,7 +21,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route(
             "/inventorys/changes/:id",
@@ -54,7 +54,7 @@ pub(crate) struct InventoryChanged {
 }
 
 pub(crate) async fn read_inventory_changes(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Codec<Vec<InventoryChanged>>, (StatusCode, &'static str)> {
     let mut inventory_changes = vec![];
@@ -83,7 +83,7 @@ pub(crate) async fn read_inventory_changes(
 }
 
 pub(crate) async fn find_inventory_by_id(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<i64>,
 ) -> Result<Codec<inventory::Model>, (StatusCode, &'static str)> {
     let inventory = QueryCore::find_inventory_by_id(&state.conn, id)
@@ -110,7 +110,7 @@ pub(crate) struct InventorysResponse {
 }
 
 pub(crate) async fn find_inventory_by_owner_entity_id(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Path(id): Path<i64>,
 ) -> Result<Codec<InventorysResponse>, (StatusCode, &'static str)> {
     let mut inventory_ids = vec![id];

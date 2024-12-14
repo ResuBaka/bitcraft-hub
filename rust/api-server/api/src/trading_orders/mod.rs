@@ -1,6 +1,6 @@
 #![allow(warnings)]
 
-use crate::AppState;
+use crate::{AppRouter, AppState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Router;
@@ -21,7 +21,7 @@ use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
 
-pub(crate) fn get_routes() -> Router<AppState> {
+pub(crate) fn get_routes() -> AppRouter {
     Router::new().route(
         "/api/bitcraft/trade_orders/get_trade_orders",
         axum_codec::routing::get(get_trade_orders).into(),
@@ -36,7 +36,7 @@ struct TradeOrdersQuery {
 }
 
 async fn get_trade_orders(
-    state: State<AppState>,
+    state: State<std::sync::Arc<AppState>>,
     Query(query): Query<TradeOrdersQuery>,
 ) -> Result<Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
     let page = query.page.unwrap_or(1);
