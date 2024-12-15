@@ -455,8 +455,12 @@ pub fn start_websocket_bitcraft_logic(
                         }
                     }
                     if table_name == "PlayerState" {
-                        let result =
-                            player_state::handle_transaction_update_player_state(&db, table).await;
+                        let result = player_state::handle_transaction_update_player_state(
+                            &db,
+                            table,
+                            broadcast_tx.clone(),
+                        )
+                        .await;
 
                         if result.is_err() {
                             error!("PlayerState transaction update failed: {:?}", result.err());
@@ -743,6 +747,8 @@ pub(crate) enum WebSocketMessages {
     Level {
         level: u64,
         user_id: i64,
+        skill_name: String,
     },
+    PlayerState(entity::player_state::Model),
     Message(String),
 }

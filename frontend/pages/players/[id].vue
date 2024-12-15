@@ -16,31 +16,159 @@ type Message = {
   c: undefined | Record<string, any>;
 };
 
-registerWebsocketMessageHandler(
-  "Experience",
-  `experience.${route.params.id}`,
-  (message) => {
-    if (experienceFetch.value && experienceFetch.value[message.c.skill_name]) {
-      let currentExperience =
-        experienceFetch.value[message.c.skill_name].experience;
-      experienceFetch.value[message.c.skill_name] = {
-        ...experienceFetch.value[message.c.skill_name],
-        experience: message.c.experience,
-        level: message.c.level,
-      };
+const topics = reactive<string[]>([`experience.${route.params.id}`]);
 
-      if (experienceFetch.value["Experience"]) {
-        let newExperience = message.c.experience;
-        let increase = newExperience - currentExperience;
+let levelMap = {
+  1: 0,
+  2: 640,
+  3: 1_330,
+  4: 2_090,
+  5: 2_920,
+  6: 3_830,
+  7: 4_820,
+  8: 5_890,
+  9: 7_070,
+  10: 8_350,
+  11: 9_740,
+  12: 11_260,
+  13: 12_920,
+  14: 14_730,
+  15: 16_710,
+  16: 18_860,
+  17: 21_210,
+  18: 23_770,
+  19: 26_560,
+  20: 29_600,
+  21: 32_920,
+  22: 36_550,
+  23: 40_490,
+  24: 44_800,
+  25: 49_490,
+  26: 54_610,
+  27: 60_200,
+  28: 66_290,
+  29: 72_930,
+  30: 80_170,
+  31: 88_060,
+  32: 96_670,
+  33: 106_060,
+  34: 116_300,
+  35: 127_470,
+  36: 139_650,
+  37: 152_930,
+  38: 167_410,
+  39: 183_200,
+  40: 200_420,
+  41: 219_200,
+  42: 239_680,
+  43: 262_020,
+  44: 286_370,
+  45: 312_930,
+  46: 341_890,
+  47: 373_480,
+  48: 407_920,
+  49: 445_480,
+  50: 486_440,
+  51: 531_110,
+  52: 579_820,
+  53: 632_940,
+  54: 690_860,
+  55: 754_030,
+  56: 822_920,
+  57: 898_040,
+  58: 979_960,
+  59: 1_069_290,
+  60: 1_166_710,
+  61: 1_272_950,
+  62: 1_388_800,
+  63: 1_515_140,
+  64: 1_652_910,
+  65: 1_803_160,
+  66: 1_967_000,
+  67: 2_145_660,
+  68: 2_340_500,
+  69: 2_552_980,
+  70: 2_784_680,
+  71: 3_037_360,
+  72: 3_312_900,
+  73: 3_613_390,
+  74: 3_941_070,
+  75: 4_298_410,
+  76: 4_688_090,
+  77: 5_113_030,
+  78: 5_576_440,
+  79: 6_081_800,
+  80: 6_632_890,
+  81: 7_233_850,
+  82: 7_889_210,
+  83: 8_603_890,
+  84: 9_383_250,
+  85: 10_233_150,
+  86: 11_159_970,
+  87: 12_170_670,
+  88: 13_272_850,
+  89: 14_474_790,
+  90: 15_785_510,
+  91: 17_214_860,
+  92: 18_773_580,
+  93: 20_473_370,
+  94: 22_327_010,
+  95: 24_348_420,
+  96: 26_552_780,
+  97: 28_956_650,
+  98: 31_578_090,
+  99: 34_436_800,
+  100: 37_554_230,
+};
 
-        experienceFetch.value["Experience"] = {
-          ...experienceFetch.value["Experience"],
-          experience: experienceFetch.value["Experience"].experience + increase,
-        };
-      }
+let expUntilNextLevel = (skill) => {
+  let currentLevel = skill.level;
+  let currentExperience = skill.experience;
+  let nextLevel = currentLevel + 1;
+  let nextLevelExperience = levelMap[nextLevel];
+  let experienceUntilNextLevel = nextLevelExperience - currentExperience;
+  return experienceUntilNextLevel;
+};
+
+registerWebsocketMessageHandler("Experience", topics, (message) => {
+  if (experienceFetch.value && experienceFetch.value[message.c.skill_name]) {
+    let currentExperience =
+      experienceFetch.value[message.c.skill_name].experience;
+    let currentLevel = experienceFetch.value[message.c.skill_name].level;
+    experienceFetch.value[message.c.skill_name] = {
+      ...experienceFetch.value[message.c.skill_name],
+      experience: message.c.experience,
+      level: message.c.level,
+    };
+
+    if (currentLevel !== message.c.level && currentLevel <= message.c.level) {
+      experienceFetch.value["Level"].level += 1;
     }
-  },
-);
+
+    if (experienceFetch.value["Experience"]) {
+      let newExperience = message.c.experience;
+      let increase = newExperience - currentExperience;
+
+      experienceFetch.value["Experience"] = {
+        ...experienceFetch.value["Experience"],
+        experience: experienceFetch.value["Experience"].experience + increase,
+      };
+    }
+  }
+});
+
+const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
+
+registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
+  if (playerFetch.value && playerFetch.value) {
+    playerFetch.value = {
+      ...playerFetch.value,
+      signed_in: message.c.signed_in,
+      time_signed_in: message.c.time_signed_in,
+      time_played: message.c.time_played,
+    };
+  }
+});
 
 if (tmpPage) {
   page.value = parseInt(tmpPage);
@@ -238,6 +366,11 @@ const iconUrl = (item: any) => {
 
   return iconAssetUrlNameRandom(item.icon_asset_name);
 };
+
+useSeoMeta({
+  title: () => `Player ${playerFetch.value?.username ?? route.params.id}`,
+  description: () => `Claim ${playerFetch.value?.username ?? route.params.id}`,
+});
 </script>
 
 <template>
@@ -299,8 +432,12 @@ const iconUrl = (item: any) => {
                           <v-col>
                           <v-list-item >
                             <v-list-item-title>{{ skill }}</v-list-item-title>
-                            <v-list-item-subtitle>Experience: <bitcraft-animated-number :value="xp_info.experience" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
-                            <v-list-item-subtitle>Level: <bitcraft-animated-number v-if="xp_info.level" :value="xp_info.level" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
+                            <v-list-item-subtitle v-if="!['Level'].includes(skill)">Experience: <bitcraft-animated-number :value="xp_info.experience" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
+                            <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>
+                            <v-list-item-subtitle v-if="!['Level', 'Experience'].includes(skill)">Required Experience: <bitcraft-animated-number :value="expUntilNextLevel(xp_info)" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
+                            <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>
+                            <v-list-item-subtitle v-if="!['Experience'].includes(skill)">Level: <bitcraft-animated-number v-if="xp_info.level" :value="xp_info.level" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
+                            <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>
                             <v-list-item-subtitle>Rank: #<bitcraft-animated-number :value="xp_info.rank" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
                           </v-list-item>
                           </v-col>

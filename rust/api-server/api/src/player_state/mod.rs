@@ -1,4 +1,4 @@
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
 use crate::{AppRouter, AppState};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -16,6 +16,7 @@ use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::PathBuf;
+use tokio::sync::mpsc::UnboundedSender;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -483,6 +484,7 @@ pub(crate) async fn handle_initial_subscription_player_state(
 pub(crate) async fn handle_transaction_update_player_state(
     p0: &DatabaseConnection,
     tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    sender: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
         .update_columns([
@@ -506,7 +508,11 @@ pub(crate) async fn handle_transaction_update_player_state(
             match serde_json::from_str::<player_state::Model>(row.text.as_ref()) {
                 Ok(player_state) => {
                     found_in_inserts.insert(player_state.entity_id);
+                    sender
+                        .send(WebSocketMessages::PlayerState(player_state.clone()))
+                        .unwrap();
                     buffer_before_insert.insert(player_state.entity_id, player_state);
+
                     if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
                         let mut buffer_before_insert_vec = buffer_before_insert
                             .clone()

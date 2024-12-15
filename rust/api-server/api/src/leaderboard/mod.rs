@@ -1281,6 +1281,21 @@ pub(crate) async fn handle_transaction_update(
                                         })
                                         .expect("TODO: panic message");
 
+                                        let old_level =
+                                            experience_to_level(old_value.experience as i64);
+                                        let new_level =
+                                            experience_to_level(value.experience as i64);
+
+                                        if old_level != new_level {
+                                            tx.send(WebSocketMessages::Level {
+                                                level: experience_to_level(value.experience as i64)
+                                                    as u64,
+                                                skill_name: skill_name.clone().to_owned(),
+                                                user_id: new_experience_state.entity_id,
+                                            })
+                                            .expect("TODO: panic message");
+                                        }
+
                                         metrics::counter!(
                                             "player_skill_experience_count",
                                             &[("skill_name", skill_name.to_owned()),]
@@ -1331,6 +1346,15 @@ pub(crate) async fn handle_transaction_update(
                                 skills_to_update.insert(key, x.clone().into_active_model());
 
                                 if let Some(skill_name) = skill_name {
+                                    tx.send(WebSocketMessages::Experience {
+                                        experience: x.experience as u64,
+                                        level: experience_to_level(x.experience as i64) as u64,
+                                        rank: 0,
+                                        skill_name: skill_name.clone().to_owned(),
+                                        user_id: x.entity_id,
+                                    })
+                                    .expect("TODO: panic message");
+
                                     metrics::counter!(
                                         "player_skill_experience_count",
                                         &[("skill_name", skill_name.to_owned()),]

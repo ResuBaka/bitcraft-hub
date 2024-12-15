@@ -353,14 +353,13 @@ async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSo
         let connection_to_send_to = clients
             .iter()
             .filter(|(_, topics)| {
-                let topic_name = match message {
+                let topic_name = match &message {
                     WebSocketMessages::Experience { user_id, .. } => {
-                        // format!("experience.{user_id}")
                         ("experience".to_string(), user_id)
                     }
-                    WebSocketMessages::Level { user_id, .. } => {
-                        // format!("level.{user_id}")
-                        ("level".to_string(), user_id)
+                    WebSocketMessages::Level { user_id, .. } => ("level".to_string(), user_id),
+                    WebSocketMessages::PlayerState(player_state) => {
+                        ("player_state".to_string(), &player_state.entity_id)
                     }
                     WebSocketMessages::Subscribe { .. } => return false,
                     WebSocketMessages::Message(_) => return false,

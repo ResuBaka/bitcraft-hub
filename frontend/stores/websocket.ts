@@ -1,8 +1,8 @@
 import {useWebSocket} from "@vueuse/core";
 
 export const useWebsocketStore = defineStore('websocket', () => {
-    const websocket_message_event_handler: Record<string, Map> = {}
-    const topics_currently_subscribed: string[] = ref([])
+    const websocket_message_event_handler: Record<string, Map<string, (message: Record<string, any>) => void>> = {}
+    const topics_currently_subscribed: Ref<string[]> = ref([])
 
     const readOnlyTopicsCurrentlySubscribed = computed(() => topics_currently_subscribed.value)
 
@@ -19,7 +19,9 @@ export const useWebsocketStore = defineStore('websocket', () => {
         },
         immediate: false,
         onConnected: () => {
-            console.log('Connected to websocket', topics_currently_subscribed.value)
+            if (import.meta.env.DEV) {
+                console.log('Connected to websocket', topics_currently_subscribed.value)
+            }
             sendMessage("Subscribe", {topics: topics_currently_subscribed.value})
         }
     })
@@ -29,8 +31,13 @@ export const useWebsocketStore = defineStore('websocket', () => {
         const messageHandler = websocket_message_event_handler[message.t]
 
         if (messageHandler) {
+            console.log("Handling message", message, messageHandler)
             for (const handler of messageHandler.values()) {
                 handler(message)
+            }
+        } else {
+            if (import.meta.env.DEV) {
+                console.warn(`No handler found for message type ${message.t}`)
             }
         }
     }
@@ -47,16 +54,17 @@ export const useWebsocketStore = defineStore('websocket', () => {
         }
     }
 
-    function subscribe(eventType: string, topic: string | string[], handler: (message: any) => void, instanceId: string, lazy: boolean = false) {
+    function subscribe(eventType: string, topic: MaybeRefOrGetter<string | string[]>, handler: (message: any) => void, instanceId: string, lazy: boolean = false) {
         let newTopics = []
+        let unwrapped = unref(topic)
 
-        if (typeof topic === 'string') {
-            if (!topics_currently_subscribed.value.includes(topic)) {
-                newTopics.push(topic)
-                topics_currently_subscribed.value.push(topic)
+        if (typeof unwrapped === 'string') {
+            if (!topics_currently_subscribed.value.includes(unwrapped)) {
+                newTopics.push(unwrapped)
+                topics_currently_subscribed.value.push(unwrapped)
             }
         } else {
-            for (const t of topic) {
+            for (const t of unwrapped) {
                 if (!topics_currently_subscribed.value.includes(t)) {
                     newTopics.push(t)
                     topics_currently_subscribed.value.push(t)
@@ -69,26 +77,66 @@ export const useWebsocketStore = defineStore('websocket', () => {
             if (!lazy && newTopics.length > 0) {
                 sendMessage("Subscribe", {topics: newTopics })
             }
+            websocket_message_event_handler[eventType].set(instanceId, handler)
+        } else {
+            if (!lazy && newTopics.length > 0) {
+                sendMessage("Subscribe", {topics: newTopics })
+            }
+            websocket_message_event_handler[eventType].set(instanceId, handler)
         }
-
-        websocket_message_event_handler[eventType].set(instanceId, handler)
     }
 
-    function unsubscribe(eventType: string,topic: string, handler: (message: any) => void, instanceId: string) {
+    function subscribeTopicsOnly(topic: string | string[], lazy: boolean = false) {
+        let newTopics = []
+        let unwrapped = unref(topic)
+
+        if (typeof unwrapped === 'string') {
+            if (!topics_currently_subscribed.value.includes(unwrapped)) {
+                newTopics.push(unwrapped)
+                topics_currently_subscribed.value.push(unwrapped)
+            }
+        } else {
+            for (const t of unwrapped) {
+                if (!topics_currently_subscribed.value.includes(t)) {
+                    newTopics.push(t)
+                    topics_currently_subscribed.value.push(t)
+                }
+            }
+        }
+
+        if (!lazy && newTopics.length > 0) {
+            sendMessage("Subscribe", {topics: newTopics })
+        }
+    }
+
+    function unsubscribe(eventType: string,topic: MaybeRefOrGetter<string | string[]>, instanceId: string) {
+        let unwrapped = unref(topic)
+
+        let topicsToUnsubscribe: MaybeRefOrGetter<string | string[]> = []
+        if (typeof unwrapped === 'string') {
+            topicsToUnsubscribe.push(unwrapped)
+        } else {
+            topicsToUnsubscribe = unwrapped
+        }
+
         if (websocket_message_event_handler[eventType]) {
             websocket_message_event_handler[eventType].delete(instanceId)
             if (websocket_message_event_handler[eventType].size === 0) {
                 delete websocket_message_event_handler[eventType]
             }
-            sendMessage("Unsubscribe", {topic: topic})
-            if (topics_currently_subscribed.value.includes(topic)) {
-                topics_currently_subscribed.value.splice(topics_currently_subscribed.value.indexOf(topic), 1)
+
+            for (const topic of topicsToUnsubscribe) {
+                sendMessage("Unsubscribe", {topic: topic})
+                if (topics_currently_subscribed.value.includes(topic)) {
+                    topics_currently_subscribed.value.splice(topics_currently_subscribed.value.indexOf(topic), 1)
+                }
             }
         }
     }
 
     return {
         subscribedTopics: readOnlyTopicsCurrentlySubscribed,
+        subscribeTopicsOnly,
         subscribe,
         unsubscribe,
         sendMessage,

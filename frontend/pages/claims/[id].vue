@@ -48,6 +48,45 @@ const { data: buidlingsFetch, pending: buildingsPending } = useFetch(() => {
   return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
 });
 
+const topicsPlayer = computed<string[]>(() => {
+  return (
+    claimFetch.value?.members.map((member) => {
+      return `player_state.${member.entity_id}`;
+    }) ?? []
+  );
+});
+
+registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
+  let index = claimFetch.value?.members.findIndex(
+    (member) => member.entity_id === message.c.entity_id,
+  );
+  if (index && index !== -1) {
+    claimFetch.value.members[index].online_state = message.c.signed_in
+      ? "Online"
+      : "Offline";
+  }
+});
+
+const topicsLevel = computed<string[]>(() => {
+  return (
+    claimFetch.value?.members
+      .filter((member) => member.online_state === "Online")
+      .map((member) => {
+        return `level.${member.entity_id}`;
+      }) ?? []
+  );
+});
+
+registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
+  let index = claimFetch.value?.members.findIndex(
+    (member) => member.entity_id === message.c.user_id,
+  );
+  if (index && index !== -1) {
+    claimFetch.value.members[index].skills_ranks[message.c.skill_name].level =
+      message.c.level;
+  }
+});
+
 const claim = computed(() => {
   return claimFetch.value ?? undefined;
 });
@@ -92,27 +131,6 @@ const inventorysBuildings = computed(() => {
           .includes(inventoryBuildingsSearch.value.toLowerCase())),
   );
 });
-//
-// registerWebsocketMessageHandler('Level', `level.${route.params.id}`, (message) => {
-//   if (experienceFetch.value && experienceFetch.value[message.c.skill_name]) {
-//     let currentExperience = experienceFetch.value[message.c.skill_name].experience
-//     experienceFetch.value[message.c.skill_name] = {
-//       ...experienceFetch.value[message.c.skill_name],
-//       experience: message.c.experience,
-//       level: message.c.level,
-//     }
-//
-//     if (experienceFetch.value["Experience"]) {
-//       let newExperience = message.c.experience
-//       let increase = newExperience - currentExperience
-//
-//       experienceFetch.value["Experience"] = {
-//         ...experienceFetch.value["Experience"],
-//         experience: experienceFetch.value["Experience"].experience + increase,
-//       }
-//     }
-//   }
-// })
 
 const inventoryPlayersSearch = ref<string | null>("");
 
@@ -389,6 +407,14 @@ const upgradeWillFinishAt = computed(() => {
   );
 });
 
+const onlinePlayersCount = computed(() => {
+  return (
+    claimFetch.value?.members.filter(
+      (member) => member.online_state === "Online",
+    ).length ?? 0
+  );
+});
+
 const now = useNow({ interval: 1000, controls: true });
 
 // Show Days Hours Minutes Seconds
@@ -498,7 +524,7 @@ const countDownUntilResearchIsFinished = computed(() => {
       <v-col cols="12" lg="10">
         <v-card height="100%">
           <v-card-title class="d-flex align-center pe-2">
-            Members ({{claim?.members?.length || 0}})
+            Members (<div :class="`text-decoration-none ${onlinePlayersCount > 0 ? 'text-green' : 'text-high-emphasis'}`">{{ onlinePlayersCount }}</div>/{{ claim?.members?.length || 0 }})
 
             <v-spacer></v-spacer>
             <v-checkbox
