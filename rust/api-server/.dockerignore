@@ -1,3 +1,5 @@
 target
 *.db
 *.db_back
+.env
+migration/.env

@@ -26,7 +26,7 @@ use axum::{
     Router,
 };
 use service::sea_orm::{Database, DatabaseConnection};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::config::Config;
@@ -167,7 +167,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
         .user_map
         .write()
         .await
-        .insert(id.clone(), (tx.clone(), vec![]));
+        .insert(id.clone(), (tx.clone(), HashMap::new()));
 
     // // Username gets set in the receive loop, if it's valid.
     // let mut username = String::new();
@@ -216,7 +216,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
             match serde_json::from_str::<WebSocketMessages>(&text) {
                 Ok(message) => match message {
                     WebSocketMessages::Subscribe { topics } => {
-                        let current_topics = inner_state
+                        let mut current_topics = inner_state
                             .user_map
                             .read()
                             .await
@@ -224,31 +224,86 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
                             .unwrap()
                             .1
                             .clone();
-                        let mut new_topics = topics.clone();
+                        let mut new_topics: HashMap<String, HashSet<i64>> = HashMap::new();
                         for topic in topics {
-                            if current_topics.contains(&topic) {
-                                new_topics.retain(|x| x != &topic);
+                            let (topic, id) = topic.split_once(".").unwrap();
+                            let id = id.parse::<i64>().unwrap();
+
+                            if let Some(current_topic) = current_topics.get_mut(&topic.to_string())
+                            {
+                                if !current_topic.contains(&id) {
+                                    if let Some(new_topic) = new_topics.get_mut(&topic.to_string())
+                                    {
+                                        new_topic.insert(id);
+                                    } else {
+                                        new_topics.insert(topic.to_string(), HashSet::from([id]));
+                                    }
+                                }
+                            } else {
+                                if let Some(new_topic) = new_topics.get_mut(&topic.to_string()) {
+                                    new_topic.insert(id);
+                                } else {
+                                    new_topics.insert(topic.to_string(), HashSet::from([id]));
+                                }
                             }
                         }
 
-                        inner_state
-                            .user_map
-                            .write()
-                            .await
-                            .get_mut(&inner_id)
-                            .unwrap()
-                            .1
-                            .extend(new_topics);
+                        for (topic, users) in new_topics {
+                            if inner_state
+                                .user_map
+                                .read()
+                                .await
+                                .get(&inner_id)
+                                .unwrap()
+                                .1
+                                .contains_key(&topic)
+                            {
+                                inner_state
+                                    .user_map
+                                    .write()
+                                    .await
+                                    .get_mut(&inner_id)
+                                    .unwrap()
+                                    .1
+                                    .get_mut(&topic)
+                                    .unwrap()
+                                    .extend(users);
+                            } else {
+                                inner_state
+                                    .user_map
+                                    .write()
+                                    .await
+                                    .get_mut(&inner_id)
+                                    .unwrap()
+                                    .1
+                                    .insert(topic, users);
+                            }
+                        }
                     }
                     WebSocketMessages::Unsubscribe { topic } => {
-                        inner_state
+                        let (topic, id) = topic.split_once(".").unwrap();
+                        let id = id.parse::<i64>().unwrap();
+
+                        if let Some(current_topic) = inner_state
                             .user_map
                             .write()
                             .await
                             .get_mut(&inner_id)
                             .unwrap()
                             .1
-                            .retain(|x| x != &topic);
+                            .get_mut(&topic.to_string())
+                        {
+                            current_topic.remove(&id);
+                        }
+
+                        // inner_state
+                        //     .user_map
+                        //     .write()
+                        //     .await
+                        //     .get_mut(&inner_id)
+                        //     .unwrap()
+                        //     .1
+                        //     .retain(|x| x != &topic);
                     }
                     WebSocketMessages::ListSubscribedTopics => {
                         let topics = inner_state
@@ -259,6 +314,18 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
                             .unwrap()
                             .1
                             .clone();
+
+                        let topics = topics
+                            .into_iter()
+                            .map(|(topic, users)| {
+                                users
+                                    .into_iter()
+                                    .map(|user| format!("{}.{:?}", topic, user))
+                                    .collect::<Vec<String>>()
+                            })
+                            .flatten()
+                            .collect::<Vec<String>>();
+
                         let _ = tx.send(WebSocketMessages::SubscribedTopics(topics));
                     }
                     _ => {}
@@ -288,20 +355,25 @@ async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSo
             .filter(|(_, topics)| {
                 let topic_name = match message {
                     WebSocketMessages::Experience { user_id, .. } => {
-                        format!("experience.{user_id}")
+                        // format!("experience.{user_id}")
+                        ("experience".to_string(), user_id)
                     }
                     WebSocketMessages::Level { user_id, .. } => {
-                        format!("level.{user_id}")
+                        // format!("level.{user_id}")
+                        ("level".to_string(), user_id)
                     }
                     WebSocketMessages::Subscribe { .. } => return false,
                     WebSocketMessages::Message(_) => return false,
                     WebSocketMessages::Unsubscribe { .. } => return false,
                     WebSocketMessages::ListSubscribedTopics { .. } => return false,
                     WebSocketMessages::SubscribedTopics { .. } => return false,
-                }
-                .to_string();
+                };
 
-                topics.1.contains(&topic_name)
+                if let Some(topics) = topics.1.get(&topic_name.0) {
+                    return topics.contains(&topic_name.1);
+                }
+
+                false
             })
             .collect::<Vec<_>>();
 
@@ -712,7 +784,7 @@ struct AppState {
                 String,
                 (
                     tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
-                    Vec<String>,
+                    HashMap<String, HashSet<i64>>,
                 ),
             >,
         >,

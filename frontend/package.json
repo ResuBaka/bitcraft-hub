@@ -1,0 +1,33 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "format": "biome format ./pages ./logic  ./components ./layouts ./composables --write",
+    "format:check": "biome format ./pages ./logic  ./components ./layouts ./composables"
+  },
+  "dependencies": {
+    "@artmizu/nuxt-prometheus": "^2.4.0",
+    "@pinia/nuxt": "^0.9.0",
+    "nuxt": "^3.14.1592",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@nuxt/devtools": "^1.6.3",
+    "@types/ws": "^8.5.13",
+    "sass": "^1.82.0",
+    "@vueuse/core": "^12.0.0",
+    "@vueuse/shared": "^12.0.0",
+    "vuetify": "^3.7.5",
+    "vuetify-nuxt-module": "^0.18.3"
+  }
+}
