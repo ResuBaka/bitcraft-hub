@@ -4,13 +4,17 @@ const IN_BROWSER = typeof window !== 'undefined'
 export type ConfigState = {
     version: 1,
     theme: string,
-    new_api: boolean,
+    websocket: {
+        enabled_default: boolean,
+    },
 }
 
 export const DEFAULT_CONFIG: ConfigState = {
     version: 1,
     theme: 'system',
-    new_api: false
+    websocket: {
+        enabled_default: false,
+    }
 }
 
 export const useConfigStore = defineStore('config', () => {

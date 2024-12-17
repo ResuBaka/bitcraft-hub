@@ -60,7 +60,7 @@
               </template>
             </v-radio>
           </v-radio-group>
-          <v-checkbox v-model="configStore.new_api" label="Use new API"></v-checkbox>
+          <v-checkbox v-model="configStore.websocket.enabled_default" label="Connect to websocket by default"></v-checkbox>
           <v-btn variant="text" class="text-capitalize font-weight-black" @click="requestTopics">Request Listed Subscribed Topics</v-btn>
       </v-card-text>
       <v-card-actions>

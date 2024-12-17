@@ -518,7 +518,9 @@ pub fn start_websocket_bitcraft_logic(
                     }
 
                     if table_name == "ClaimDescriptionState" {
-                        let result = claims::handle_transaction_update(&db, table).await;
+                        let result =
+                            claims::handle_transaction_update(&db, table, broadcast_tx.clone())
+                                .await;
 
                         if result.is_err() {
                             error!(
@@ -750,5 +752,6 @@ pub(crate) enum WebSocketMessages {
         skill_name: String,
     },
     PlayerState(entity::player_state::Model),
+    ClaimDescriptionState(entity::claim_description_state::Model),
     Message(String),
 }

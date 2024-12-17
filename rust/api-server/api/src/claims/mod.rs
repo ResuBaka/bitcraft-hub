@@ -1,6 +1,6 @@
 use crate::inventory::resolve_contents;
 use crate::leaderboard::{experience_to_level, LeaderboardSkill, EXCLUDED_USERS_FROM_LEADERBOARD};
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
 use crate::{AppRouter, AppState};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -22,6 +22,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::path::PathBuf;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -864,6 +865,7 @@ pub(crate) async fn handle_initial_subscription(
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
     tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    sender: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_description_state_on_conflict();
 
@@ -985,6 +987,12 @@ pub(crate) async fn handle_transaction_update(
                                 )
                                 .increment(increase as u64);
                             }
+
+                            sender
+                                .send(WebSocketMessages::ClaimDescriptionState(
+                                    new_claim_description_state,
+                                ))
+                                .unwrap();
                         }
                     }
                     (_new_claim_description_state, None) => {
@@ -1001,6 +1009,11 @@ pub(crate) async fn handle_transaction_update(
                             claim_description_state.clone(),
                         );
 
+                        sender
+                            .send(WebSocketMessages::ClaimDescriptionState(
+                                claim_description_state.clone(),
+                            ))
+                            .unwrap();
                         metrics::counter!(
                             "claim_experience_count",
                             &[

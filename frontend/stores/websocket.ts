@@ -1,6 +1,7 @@
 import {useWebSocket} from "@vueuse/core";
 
 export const useWebsocketStore = defineStore('websocket', () => {
+    const configStore = useConfigStore()
     const websocket_message_event_handler: Record<string, Map<string, (message: Record<string, any>) => void>> = {}
     const topics_currently_subscribed: Ref<string[]> = ref([])
 
@@ -25,6 +26,10 @@ export const useWebsocketStore = defineStore('websocket', () => {
             sendMessage("Subscribe", {topics: topics_currently_subscribed.value})
         }
     })
+
+    if (configStore.websocket.enabled_default) {
+        open()
+    }
 
     function handleMessage(_ws: WebSocket, event: MessageEvent) {
         const message = JSON.parse(event.data)

@@ -56,6 +56,26 @@ const topicsPlayer = computed<string[]>(() => {
   );
 });
 
+registerWebsocketMessageHandler(
+  "ClaimDescriptionState",
+  [`claim.${route.params.id}`],
+  (message) => {
+    if (message.c.entity_id == route.params.id) {
+      console.log("ClaimDescriptionState", message);
+      if (claimFetch.value) {
+        claimFetch.value.name = message.c.name;
+        claimFetch.value.num_tiles = message.c.num_tiles;
+        claimFetch.value.owner_player_entity_id =
+          message.c.owner_player_entity_id;
+        claimFetch.value.supplies = message.c.supplies;
+        claimFetch.value.treasury = message.c.treasury;
+        claimFetch.value.xp_gained_since_last_coin_minting =
+          message.c.xp_gained_since_last_coin_minting;
+      }
+    }
+  },
+);
+
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
   let index = claimFetch.value?.members.findIndex(
     (member) => member.entity_id === message.c.entity_id,
@@ -473,7 +493,7 @@ const countDownUntilResearchIsFinished = computed(() => {
               <v-col cols="6" md="2" lg="12">
                 <v-list-item>
                   <v-list-item-title>Current xp for minting</v-list-item-title>
-                  <v-list-item-subtitle>{{ claim.xp_gained_since_last_coin_minting }} / 1000</v-list-item-subtitle>
+                  <v-list-item-subtitle><bitcraft-animated-number :value="claim.xp_gained_since_last_coin_minting" :speed="8"></bitcraft-animated-number> / 1000</v-list-item-subtitle>
                 </v-list-item>
               </v-col>
               <v-col cols="6" md="2" lg="12">

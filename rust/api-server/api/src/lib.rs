@@ -361,6 +361,9 @@ async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSo
                     WebSocketMessages::PlayerState(player_state) => {
                         ("player_state".to_string(), &player_state.entity_id)
                     }
+                    WebSocketMessages::ClaimDescriptionState(claim_description_state) => {
+                        ("claim".to_string(), &claim_description_state.entity_id)
+                    }
                     WebSocketMessages::Subscribe { .. } => return false,
                     WebSocketMessages::Message(_) => return false,
                     WebSocketMessages::Unsubscribe { .. } => return false,
