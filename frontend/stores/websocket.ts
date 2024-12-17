@@ -31,7 +31,6 @@ export const useWebsocketStore = defineStore('websocket', () => {
         const messageHandler = websocket_message_event_handler[message.t]
 
         if (messageHandler) {
-            console.log("Handling message", message, messageHandler)
             for (const handler of messageHandler.values()) {
                 handler(message)
             }
