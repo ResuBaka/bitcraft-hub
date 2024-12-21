@@ -6,9 +6,7 @@ export interface CardClaimProps {
 
 const showMoreMembers = ref(false);
 
-const { claim, defaultMembers } = withDefaults(defineProps<CardClaimProps>(), {
-  defaultMembers: 10,
-});
+const { claim, defaultMembers = 10 } = defineProps<CardClaimProps>();
 
 const members = computed(() => {
   return claim.members.slice(

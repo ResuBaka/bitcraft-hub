@@ -558,7 +558,7 @@ pub fn start_websocket_bitcraft_logic(
 
                 debug!("Received {count} events");
                 evenets.clear();
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
         });
 
@@ -746,6 +746,11 @@ pub(crate) enum WebSocketMessages {
         skill_name: String,
         user_id: i64,
     },
+    TotalExperience {
+        user_id: i64,
+        experience: u64,
+        experience_per_hour: u64,
+    },
     Level {
         level: u64,
         user_id: i64,
@@ -754,4 +759,41 @@ pub(crate) enum WebSocketMessages {
     PlayerState(entity::player_state::Model),
     ClaimDescriptionState(entity::claim_description_state::Model),
     Message(String),
+}
+
+impl WebSocketMessages {
+    pub fn topics(&self) -> Option<Vec<(String, i64)>> {
+        match self {
+            WebSocketMessages::Experience {
+                skill_name,
+                user_id,
+                ..
+            } => Some(vec![
+                (format!("experience:{}", skill_name), *user_id),
+                ("experience".to_string(), *user_id),
+            ]),
+            WebSocketMessages::Level {
+                user_id,
+                skill_name,
+                ..
+            } => Some(vec![
+                (format!("level:{}", skill_name), *user_id),
+                ("level".to_string(), *user_id),
+            ]),
+            WebSocketMessages::PlayerState(player) => {
+                Some(vec![("player_state".to_string(), player.entity_id)])
+            }
+            WebSocketMessages::ClaimDescriptionState(claim) => {
+                Some(vec![("claim".to_string(), claim.entity_id)])
+            }
+            WebSocketMessages::TotalExperience { user_id, .. } => {
+                Some(vec![("total_experience".to_string(), *user_id)])
+            }
+            WebSocketMessages::ListSubscribedTopics => None,
+            WebSocketMessages::Subscribe { .. } => None,
+            WebSocketMessages::SubscribedTopics(_) => None,
+            WebSocketMessages::Unsubscribe { .. } => None,
+            WebSocketMessages::Message(_) => None,
+        }
+    }
 }

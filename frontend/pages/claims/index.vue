@@ -95,6 +95,11 @@ const length = computed(() => {
 
   return 0;
 });
+
+useSeoMeta({
+  title: "Claims",
+  description: "List of all the Claims in the game",
+});
 </script>
 
 <template>

@@ -32,6 +32,7 @@ macro_rules! generate_mysql_sum_level_sql_statement {
 }
 
 pub(crate) const EXCLUDED_USERS_FROM_LEADERBOARD: [i64; 1] = [18695126];
+pub(crate) const EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 2];
 
 pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
     (1, 0),
@@ -222,23 +223,7 @@ pub(crate) async fn get_top_100(
     > = vec![];
 
     for skill in skills {
-        if skill.name == "ANY" {
-            continue;
-        }
-
-        if skill.name == "Lore Keeper" {
-            continue;
-        }
-
-        if skill.name == "Trading" {
-            continue;
-        }
-
-        if skill.name == "Taming" {
-            continue;
-        }
-
-        if skill.name == "Exploration" {
+        if skill.skill_category == 2 || skill.skill_category == 0 {
             continue;
         }
 
@@ -280,6 +265,7 @@ pub(crate) async fn get_top_100(
         let entries = Query::get_experience_state_top_100_total_experience(
             &db,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
         .map_err(|error| {
@@ -307,6 +293,7 @@ pub(crate) async fn get_top_100(
         let entries = Query::get_experience_state_top_100_experience_per_hour(
             &db,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
         .map_err(|error| {
@@ -334,6 +321,7 @@ pub(crate) async fn get_top_100(
             &db,
             generated_level_sql,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
         .map_err(|error| {
@@ -658,23 +646,7 @@ pub(crate) async fn player_leaderboard(
     > = vec![];
 
     for skill in skills {
-        if skill.name == "ANY" {
-            continue;
-        }
-
-        if skill.name == "Lore Keeper" {
-            continue;
-        }
-
-        if skill.name == "Trading" {
-            continue;
-        }
-
-        if skill.name == "Taming" {
-            continue;
-        }
-
-        if skill.name == "Exploration" {
+        if skill.skill_category == 2 || skill.skill_category == 0 {
             continue;
         }
 
@@ -720,6 +692,7 @@ pub(crate) async fn player_leaderboard(
             &db,
             player_id,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
         .map_err(|error| {
@@ -748,6 +721,7 @@ pub(crate) async fn player_leaderboard(
             generated_level_sql,
             player_id,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
         .map_err(|error| {
@@ -868,23 +842,7 @@ pub(crate) async fn get_claim_leaderboard(
     > = vec![];
 
     for skill in skills {
-        if skill.name == "ANY" {
-            continue;
-        }
-
-        if skill.name == "Lore Keeper" {
-            continue;
-        }
-
-        if skill.name == "Trading" {
-            continue;
-        }
-
-        if skill.name == "Taming" {
-            continue;
-        }
-
-        if skill.name == "Exploration" {
+        if skill.skill_category == 2 || skill.skill_category == 0 {
             continue;
         }
 
@@ -930,6 +888,7 @@ pub(crate) async fn get_claim_leaderboard(
             &db,
             tmp_player_ids,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
         .map_err(|error| {
@@ -960,6 +919,7 @@ pub(crate) async fn get_claim_leaderboard(
             generated_level_sql,
             tmp_player_ids,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
         .map_err(|error| {
@@ -1371,6 +1331,11 @@ pub(crate) async fn handle_transaction_update(
         }
     }
 
+    let user_ids = skills_to_update
+        .iter()
+        .map(|x| x.1.entity_id.clone().unwrap())
+        .collect::<HashSet<i64>>();
+
     let skills_to_update_vec = skills_to_update
         .into_iter()
         .map(|x| x.1)
@@ -1389,6 +1354,23 @@ pub(crate) async fn handle_transaction_update(
             );
             return Err(error.into());
         }
+    }
+
+    let total_experience =
+        Query::get_experience_state_player_ids_total_experience_with_experience_per_hour(
+            p0,
+            user_ids.clone().into_iter().collect(),
+            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
+        )
+        .await?;
+
+    for experience in total_experience {
+        tx.send(WebSocketMessages::TotalExperience {
+            experience: experience.1 as u64,
+            user_id: experience.0,
+            experience_per_hour: experience.2 as u64,
+        })
+        .expect("Could not send total experience to websocket");
     }
 
     if potential_deletes.len() > 0 {

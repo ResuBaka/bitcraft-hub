@@ -1266,11 +1266,23 @@ impl Query {
         db: &DbConn,
         level_case_sql: String,
         exclude: Option<[i64; 1]>,
+        excluded_skill_category: Option<[i64; 2]>,
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
             .expr_as(Expr::cust(level_case_sql), Alias::new("level"))
             .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    experience_state::Column::SkillId.not_in_subquery(
+                        skill_desc::Entity::find()
+                            .select_only()
+                            .filter(skill_desc::Column::SkillCategory.is_in(value))
+                            .column(skill_desc::Column::Id)
+                            .into_query(),
+                    ),
+                );
+            })
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
@@ -1299,6 +1311,7 @@ impl Query {
         level_case_sql: String,
         player_ids: Vec<i64>,
         exclude: Option<[i64; 1]>,
+        excluded_skill_category: Option<[i64; 2]>,
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -1308,6 +1321,17 @@ impl Query {
             .order_by_expr(Expr::cust("level"), Order::Desc)
             .and_where(experience_state::Column::EntityId.is_in(player_ids))
             .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    experience_state::Column::SkillId.not_in_subquery(
+                        skill_desc::Entity::find()
+                            .select_only()
+                            .filter(skill_desc::Column::SkillCategory.is_in(value))
+                            .column(skill_desc::Column::Id)
+                            .into_query(),
+                    ),
+                );
+            })
             .to_owned();
 
         let query = match db.get_database_backend() {
@@ -1332,6 +1356,7 @@ impl Query {
         level_case_sql: String,
         player_id: i64,
         exclude: Option<[i64; 1]>,
+        excluded_skill_category: Option<[i64; 2]>,
     ) -> Result<(Option<u64>, Option<u64>), DbErr> {
         let query_level = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -1339,6 +1364,17 @@ impl Query {
             .from(experience_state::Entity)
             .and_where(Expr::col(experience_state::Column::EntityId).eq(player_id))
             .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    experience_state::Column::SkillId.not_in_subquery(
+                        skill_desc::Entity::find()
+                            .select_only()
+                            .filter(skill_desc::Column::SkillCategory.is_in(value))
+                            .column(skill_desc::Column::Id)
+                            .into_query(),
+                    ),
+                );
+            })
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
             .to_owned();
@@ -1400,6 +1436,7 @@ impl Query {
         db: &DbConn,
         player_id: i64,
         exclude: Option<[i64; 1]>,
+        excluded_skill_category: Option<[i64; 2]>,
     ) -> Result<(Option<u64>, Option<u64>), DbErr> {
         let query_experience = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -1410,6 +1447,17 @@ impl Query {
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
             .and_where(Expr::col(experience_state::Column::EntityId).eq(player_id))
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    experience_state::Column::SkillId.not_in_subquery(
+                        skill_desc::Entity::find()
+                            .select_only()
+                            .filter(skill_desc::Column::SkillCategory.is_in(value))
+                            .column(skill_desc::Column::Id)
+                            .into_query(),
+                    ),
+                );
+            })
             .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .to_owned();
 
@@ -1468,6 +1516,7 @@ impl Query {
     pub async fn get_experience_state_top_100_total_experience(
         db: &DbConn,
         exclude: Option<[i64; 1]>,
+        excluded_skill_category: Option<[i64; 2]>,
     ) -> Result<Vec<(i64, i64, i64)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column((Alias::new("es"), experience_state::Column::EntityId))
@@ -1487,6 +1536,18 @@ impl Query {
                 Expr::col((Alias::new("es"), experience_state::Column::EntityId))
                     .is_not_in(exclude.unwrap_or([0])),
             )
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    Expr::col((Alias::new("es"), experience_state::Column::SkillId))
+                        .not_in_subquery(
+                            skill_desc::Entity::find()
+                                .select_only()
+                                .filter(skill_desc::Column::SkillCategory.is_in(value))
+                                .column(skill_desc::Column::Id)
+                                .into_query(),
+                        ),
+                );
+            })
             .from_as(experience_state::Entity, Alias::new("es"))
             .join_as(
                 JoinType::InnerJoin,
@@ -1526,6 +1587,7 @@ impl Query {
     pub async fn get_experience_state_top_100_experience_per_hour(
         db: &DbConn,
         exclude: Option<[i64; 1]>,
+        excluded_skill_category: Option<[i64; 2]>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column((Alias::new("es"), experience_state::Column::EntityId))
@@ -1541,6 +1603,19 @@ impl Query {
                 Expr::col((Alias::new("es"), experience_state::Column::EntityId))
                     .is_not_in(exclude.unwrap_or([0])),
             )
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    Expr::col((Alias::new("es"), experience_state::Column::SkillId))
+                        .not_in_subquery(
+                            skill_desc::Entity::find()
+                                .select_only()
+                                .filter(skill_desc::Column::SkillCategory.is_in(value))
+                                .column(skill_desc::Column::Id)
+                                .into_query()
+                                .into(),
+                        ),
+                );
+            })
             .from_as(experience_state::Entity, Alias::new("es"))
             .join_as(
                 JoinType::InnerJoin,
@@ -1580,6 +1655,7 @@ impl Query {
         db: &DbConn,
         player_ids: Vec<i64>,
         _exclude: Option<[i64; 1]>,
+        excluded_skill_category: Option<[i64; 2]>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -1589,6 +1665,17 @@ impl Query {
             )
             .from(experience_state::Entity)
             .and_where(experience_state::Column::EntityId.is_in(player_ids))
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    experience_state::Column::SkillId.not_in_subquery(
+                        skill_desc::Entity::find()
+                            .select_only()
+                            .filter(skill_desc::Column::SkillCategory.is_in(value))
+                            .column(skill_desc::Column::Id)
+                            .into_query(),
+                    ),
+                );
+            })
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)
             .to_owned();
@@ -1611,6 +1698,75 @@ impl Query {
                     experience: total_experience.try_into().unwrap(),
                     skill_id: 1,
                 }
+            })
+            .collect())
+    }
+
+    pub async fn get_experience_state_player_ids_total_experience_with_experience_per_hour(
+        db: &DbConn,
+        player_ids: Vec<i64>,
+        excluded_skill_category: Option<[i64; 2]>,
+    ) -> Result<Vec<(i64, i64, i64)>, DbErr> {
+        let query = sea_orm::sea_query::Query::select()
+            .column((Alias::new("es"), experience_state::Column::EntityId))
+            .expr_as(
+                Expr::cust("sum(experience)"),
+                Alias::new("total_experience"),
+            )
+            .expr_as(
+                Expr::cust(
+                    "case when any_value(ps.time_signed_in) <= 3600 then 0
+            when sum(experience) = 0 then 0
+            else sum(experience) / (any_value(ps.time_signed_in)/ 3600) END",
+                ),
+                Alias::new("experience_per_hour"),
+            )
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    Expr::col((Alias::new("es"), experience_state::Column::SkillId))
+                        .not_in_subquery(
+                            skill_desc::Entity::find()
+                                .select_only()
+                                .filter(skill_desc::Column::SkillCategory.is_in(value))
+                                .column(skill_desc::Column::Id)
+                                .into_query(),
+                        ),
+                );
+            })
+            .and_where(
+                Expr::col((Alias::new("es"), experience_state::Column::EntityId)).is_in(player_ids),
+            )
+            .from_as(experience_state::Entity, Alias::new("es"))
+            .join_as(
+                JoinType::InnerJoin,
+                player_state::Entity,
+                Alias::new("ps"),
+                Expr::col((Alias::new("es"), experience_state::Column::EntityId))
+                    .equals((Alias::new("ps"), player_state::Column::EntityId)),
+            )
+            .group_by_col((Alias::new("es"), experience_state::Column::EntityId))
+            .order_by_expr(Expr::cust("total_experience"), Order::Desc)
+            .to_owned();
+
+        let query = match db.get_database_backend() {
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            _ => unreachable!(),
+        };
+
+        Ok(db
+            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .await?
+            .into_iter()
+            .map(|row| {
+                let entity_id: i64 = row.try_get("", "entity_id").unwrap();
+                let total_experience: i64 = row.try_get("", "total_experience").unwrap();
+                let experience_per_hour: i64 = row.try_get("", "experience_per_hour").unwrap();
+
+                (
+                    entity_id,
+                    total_experience.try_into().unwrap(),
+                    experience_per_hour.try_into().unwrap(),
+                )
             })
             .collect())
     }

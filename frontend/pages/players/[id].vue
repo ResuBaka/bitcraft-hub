@@ -369,7 +369,7 @@ const iconUrl = (item: any) => {
 
 useSeoMeta({
   title: () => `Player ${playerFetch.value?.username ?? route.params.id}`,
-  description: () => `Claim ${playerFetch.value?.username ?? route.params.id}`,
+  description: () => `Player ${playerFetch.value?.username ?? route.params.id}`,
 });
 </script>
 

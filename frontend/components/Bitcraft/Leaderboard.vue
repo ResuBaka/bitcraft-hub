@@ -18,6 +18,7 @@ const {
 );
 
 const route = useRoute();
+const router = useRouter();
 
 const skills = computed(() => {
   if (!leaderboard.value?.leaderboard) {
@@ -34,6 +35,70 @@ const skills = computed(() => {
 });
 
 let selectedSkills = ref("Experience");
+if (route.query.skill) {
+  selectedSkills.value = route.query.skill as string;
+}
+
+watch(selectedSkills, (newValue) => {
+  let currentQuery = route.query;
+  router.push({ query: { ...currentQuery, skill: newValue } });
+});
+
+const topics = computed(() => {
+  let topicsSet = new Set<string>();
+
+  if (!leaderboard.value?.leaderboard) {
+    return [];
+  }
+
+  for (const player of leaderboard.value?.leaderboard[selectedSkills.value]) {
+    topicsSet.add(`experience:${selectedSkills.value}.${player.player_id}`);
+  }
+
+  return Array.from(topicsSet);
+});
+
+registerWebsocketMessageHandler("Experience", topics, (message) => {
+  const skill = leaderboard.value?.leaderboard[message.c.skill_name].find(
+    (item) => item.player_id === message.c.user_id,
+  );
+
+  if (skill) {
+    skill.experience = message.c.experience;
+  }
+});
+
+const totalExperienceTopics = computed(() => {
+  if (
+    !leaderboard.value?.leaderboard ||
+    selectedSkills.value !== "Experience"
+  ) {
+    return [];
+  }
+
+  let topicsSet = new Set<string>();
+
+  for (const player of leaderboard.value?.leaderboard["Experience"]) {
+    topicsSet.add(`total_experience.${player.player_id}`);
+  }
+
+  return Array.from(topicsSet);
+});
+
+registerWebsocketMessageHandler(
+  "TotalExperience",
+  totalExperienceTopics,
+  (message) => {
+    const skill = leaderboard.value?.leaderboard["Experience"].find(
+      (item) => item.player_id === message.c.user_id,
+    );
+
+    if (skill) {
+      skill.experience = message.c.experience;
+      skill.experience_per_hour = message.c.experience_per_hour;
+    }
+  },
+);
 
 let skillMenu = computed(() => {
   const skillMenu = [
@@ -232,7 +297,7 @@ const experiencePerHourAverage = computed(() => {
               </NuxtLink>
             </td>
             <td class="text-end">{{ numberFormat.format(item.experience_per_hour) }}</td>
-            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
+            <td class="text-end"><bitcraft-animated-number :value="item.experience" :speed="8" :formater="numberFormat.format" color></bitcraft-animated-number></td>
           </tr>
           </tbody>
         </v-table>
@@ -300,7 +365,7 @@ const experiencePerHourAverage = computed(() => {
           </tr>
           </thead>
           <tbody>
-          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
+          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="`${item.player_id}-${selectedSkills}`">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
               <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
@@ -309,7 +374,7 @@ const experiencePerHourAverage = computed(() => {
               </NuxtLink>
             </td>
             <td class="text-center">{{ item.level }}</td>
-            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>
+            <td class="text-end"><bitcraft-animated-number :value="item.experience" :speed="8" :formater="numberFormat.format" color></bitcraft-animated-number></td>
           </tr>
           </tbody>
         </v-table>

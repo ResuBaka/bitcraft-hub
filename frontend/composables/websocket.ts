@@ -9,10 +9,13 @@ export function registerWebsocketMessageHandler(
   watch(
     () => toValue(topics),
     (newTopics, oldTopics) => {
-      for (const index in oldTopics) {
-        if (newTopics.indexOf(oldTopics[index]) === -1) {
-          store.unsubscribe(eventType, oldTopics[index], instanceId);
-        }
+      const oldTopic = Array.isArray(oldTopics) ? oldTopics : [oldTopics];
+      const newTopic = Array.isArray(newTopics) ? newTopics : [newTopics];
+
+      let difference = oldTopic.filter((x) => !newTopic.includes(x));
+
+      for (let index = 0; index < difference.length; index++) {
+        store.unsubscribe(eventType, difference[index], instanceId);
       }
 
       store.subscribe(eventType, topics, handler, instanceId);

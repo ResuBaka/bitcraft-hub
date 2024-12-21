@@ -158,6 +158,11 @@ const timeStampToDateSince = (timestamp: number) => {
   };
   return date.toLocaleDateString("en-US", options);
 };
+
+useSeoMeta({
+  title: "Players",
+  description: "Players",
+});
 </script>
 
 <template>

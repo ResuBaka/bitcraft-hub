@@ -353,26 +353,20 @@ async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSo
         let connection_to_send_to = clients
             .iter()
             .filter(|(_, topics)| {
-                let topic_name = match &message {
-                    WebSocketMessages::Experience { user_id, .. } => {
-                        ("experience".to_string(), user_id)
-                    }
-                    WebSocketMessages::Level { user_id, .. } => ("level".to_string(), user_id),
-                    WebSocketMessages::PlayerState(player_state) => {
-                        ("player_state".to_string(), &player_state.entity_id)
-                    }
-                    WebSocketMessages::ClaimDescriptionState(claim_description_state) => {
-                        ("claim".to_string(), &claim_description_state.entity_id)
-                    }
-                    WebSocketMessages::Subscribe { .. } => return false,
-                    WebSocketMessages::Message(_) => return false,
-                    WebSocketMessages::Unsubscribe { .. } => return false,
-                    WebSocketMessages::ListSubscribedTopics { .. } => return false,
-                    WebSocketMessages::SubscribedTopics { .. } => return false,
-                };
+                let topic_name = message.topics();
 
-                if let Some(topics) = topics.1.get(&topic_name.0) {
-                    return topics.contains(&topic_name.1);
+                if topic_name.is_none() {
+                    return false;
+                }
+
+                let topic_name = topic_name.unwrap();
+
+                for topic in topic_name {
+                    if let Some(topics) = topics.1.get(&topic.0) {
+                        if topics.contains(&topic.1) {
+                            return true;
+                        }
+                    }
                 }
 
                 false

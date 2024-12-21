@@ -89,6 +89,11 @@ const length = computed(() => {
     ? Math.ceil(data.value?.total / data.value?.per_page)
     : 0;
 });
+
+useSeoMeta({
+  title: "Buildings",
+  description: "List of all buildings in Bitcraft",
+});
 </script>
 
 <template>

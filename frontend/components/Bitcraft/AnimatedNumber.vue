@@ -13,15 +13,22 @@ const props = defineProps({
     type: Function,
     default: (val) => val,
   },
+  color: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const displayNumber = ref(props.value);
 let interval = null;
+let timeout = null;
+let increase = ref(false);
 
 watch(
   () => props.value,
   (newVal) => {
     clearInterval(interval);
+    clearTimeout(timeout);
 
     if (newVal === displayNumber.value) {
       return;
@@ -32,13 +39,26 @@ watch(
         var change = (newVal - displayNumber.value) / props.speed;
         change = change >= 0 ? Math.ceil(change) : Math.floor(change);
         displayNumber.value = displayNumber.value + change;
+        increase.value = change > 0;
       } else {
         displayNumber.value = newVal;
+        timeout = setTimeout(() => {
+          increase.value = false;
+        }, 3000);
         clearInterval(interval);
       }
     }, 20);
   },
 );
+
+onBeforeUnmount(() => {
+  clearInterval(interval);
+  clearTimeout(timeout);
+});
 </script>
 
-<template>{{ formater ? formater(displayNumber) : displayNumber }}</template>
+<template>
+  <span :class="{'text-green': increase}">
+    {{ formater ? formater(displayNumber) : displayNumber }}
+  </span>
+</template>

@@ -128,12 +128,12 @@ export const useWebsocketStore = defineStore('websocket', () => {
             if (websocket_message_event_handler[eventType].size === 0) {
                 delete websocket_message_event_handler[eventType]
             }
+        }
 
-            for (const topic of topicsToUnsubscribe) {
-                sendMessage("Unsubscribe", {topic: topic})
-                if (topics_currently_subscribed.value.includes(topic)) {
-                    topics_currently_subscribed.value.splice(topics_currently_subscribed.value.indexOf(topic), 1)
-                }
+        for (const topic of topicsToUnsubscribe) {
+            sendMessage("Unsubscribe", {topic: topic})
+            if (topics_currently_subscribed.value.includes(topic)) {
+                topics_currently_subscribed.value.splice(topics_currently_subscribed.value.indexOf(topic), 1)
             }
         }
     }

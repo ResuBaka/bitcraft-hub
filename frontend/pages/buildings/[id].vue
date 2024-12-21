@@ -25,6 +25,10 @@ const building = computed(() => {
 const inventorys = computed(() => {
   return inventoryFetch.value?.inventorys ?? [];
 });
+
+useSeoMeta({
+  title: "Building Info",
+});
 </script>
 
 <template>

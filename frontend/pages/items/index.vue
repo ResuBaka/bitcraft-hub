@@ -98,6 +98,11 @@ watchThrottled(
   },
   { throttle: 50 },
 );
+
+useSeoMeta({
+  title: "Items",
+  description: "List of all the Items in the game",
+});
 </script>
 
 <template>
