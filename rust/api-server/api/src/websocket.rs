@@ -235,6 +235,12 @@ pub fn start_websocket_bitcraft_logic(
                                     );
                                 }
                             }
+
+                            metrics::gauge!(
+                                "websocket_message_inflight_gauge",
+                                &[("type", "TransactionUpdate"),]
+                            )
+                            .decrement(1);
                         }
                         WebSocketMessage::InitialSubscription(subscription_update) => {
                             metrics::counter!(
@@ -405,6 +411,12 @@ pub fn start_websocket_bitcraft_logic(
                                 )
                                 .record(start.elapsed().as_secs_f64());
                             }
+
+                            metrics::gauge!(
+                                "websocket_message_inflight_gauge",
+                                &[("type", "InitialSubscription"),]
+                            )
+                            .decrement(1);
                         }
                         WebSocketMessage::IdentityToken(identity_token) => {
                             println!("IdentityToken: {identity_token:?}");
@@ -577,10 +589,20 @@ pub fn start_websocket_bitcraft_logic(
 
                 match &message {
                     WebSocketMessage::TransactionUpdate(transaction_update) => {
+                        metrics::gauge!(
+                            "websocket_message_inflight_gauge",
+                            &[("type", "TransactionUpdate"),]
+                        )
+                        .increment(1);
                         tx.send(message.clone()).unwrap();
                         debug!("Received transaction update: {transaction_update:?}");
                     }
                     WebSocketMessage::InitialSubscription(subscription_update) => {
+                        metrics::gauge!(
+                            "websocket_message_inflight_gauge",
+                            &[("type", "InitialSubscription"),]
+                        )
+                        .increment(1);
                         tx.send(message.clone()).unwrap();
                         debug!("Received subscription update: {subscription_update:?}");
                     }
