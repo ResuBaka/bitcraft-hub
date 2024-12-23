@@ -12,7 +12,9 @@ export default defineNuxtConfig({
     },
     preset: "bun"
   },
-
+  build: {
+    transpile: ['vue-sonner']
+  },
   modules: [
     // '@artmizu/nuxt-prometheus',
     'vuetify-nuxt-module',

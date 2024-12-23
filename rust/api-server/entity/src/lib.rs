@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod action_state;
 pub mod building_desc;
 pub mod building_state;
 pub mod cargo_desc;
@@ -9,8 +10,10 @@ pub mod cargo_state;
 pub mod claim_description_state;
 pub mod claim_tech_desc;
 pub mod claim_tech_state;
+pub mod claim_tile_state;
 pub mod collectible_desc;
 pub mod crafting_recipe;
+pub mod crafting_recipe_desc;
 pub mod deployable_state;
 pub mod equipment;
 pub mod experience_state;
@@ -18,6 +21,8 @@ pub mod inventory;
 pub mod inventory_changelog;
 pub mod item_desc;
 pub mod location;
+pub mod mobile_entity_state;
+pub mod player_action_state;
 pub mod player_state;
 pub mod player_username_state;
 pub mod raw_event_data;

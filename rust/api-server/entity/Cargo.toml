@@ -13,5 +13,6 @@ sea-orm = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 time = { workspace = true }
-axum-codec = { version = "0.0.14", features = ["msgpack", "toml", "yaml"] }
+axum-codec = { version = "0.0.15", features = ["msgpack", "toml", "yaml"] }
 anyhow = "1.0.93"
+tracing = "0.1.40"

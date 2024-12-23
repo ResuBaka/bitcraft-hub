@@ -111,6 +111,58 @@ pub async fn find_player_by_id(
             vec![]
         });
 
+    let player_location = state.mobile_entity_state.get(&(id as u64));
+
+    let player_location = if player_location.is_none() {
+        None
+    } else {
+        Some(player_location.unwrap().clone())
+    };
+
+    let chunk_index = if let Some(player_location) = &player_location {
+        Some(player_location.chunk_index)
+    } else {
+        None
+    };
+
+    let claim_id = if chunk_index.is_some() {
+        if let Some(claim_id) = state.claim_tile_state.get(&(chunk_index.unwrap())) {
+            Some(claim_id.claim_id)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let player_action_state = state.player_action_state.get(&(id as u64));
+    let plyer_action_state2 = if player_action_state.is_none() {
+        None
+    } else {
+        Some(player_action_state.unwrap().value().clone())
+    };
+
+    let player_action_state = state.player_action_state.get(&(id as u64));
+    let player_action_state = if player_action_state.is_none() {
+        None
+    } else {
+        Some(player_action_state.unwrap().action_type.get_action_name())
+        // let player_action_state = player_action_state.unwrap().auto_id;
+
+        // if let Some(crafting_recipe) = state.crafting_recipe_desc.get(&player_action_state) {
+        //     Some(crafting_recipe.name.clone())
+        // } else {
+        //     None
+        // }
+    };
+
+    let current_action_state = state.action_state.get(&(id as u64));
+    let current_action_state = if current_action_state.is_none() {
+        None
+    } else {
+        Some(current_action_state.unwrap())
+    };
+
     Ok(Json(json!({
         "entity_id": player.entity_id,
         "time_played": player.time_played,
@@ -121,7 +173,12 @@ pub async fn find_player_by_id(
         "signed_in": player.signed_in,
         "teleport_location": player.teleport_location,
         "username": player_username,
-        "deployables": deployables
+        "deployables": deployables,
+        "player_location": player_location,
+        "claim_id": claim_id,
+        "player_action_state": player_action_state,
+        "player_action_state2": plyer_action_state2,
+        "current_action_state": current_action_state,
     })))
 }
 

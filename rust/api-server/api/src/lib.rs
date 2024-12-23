@@ -50,6 +50,7 @@ use serde::Deserialize;
 use std::env;
 use std::fs::File;
 use std::io::Write;
+use std::ops::{AddAssign, SubAssign};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -102,17 +103,13 @@ async fn start() -> anyhow::Result<()> {
         import_data(config.clone());
     }
 
-    let state = Arc::new(AppState {
-        conn,
-        storage_path: PathBuf::from(config.storage_path.clone()),
-        user_map: Arc::new(RwLock::new(HashMap::new())),
-    });
+    let state = Arc::new(AppState::new(conn.clone(), &config));
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
     tokio::spawn(boradcast_message(state.clone(), rx));
 
-    let app = create_app(&config, state, prometheus);
+    let app = create_app(&config, state.clone(), prometheus);
 
     let websocket_url = config.weboosocket_url();
     let websocket_password = config.spacetimedb.password.clone();
@@ -128,6 +125,7 @@ async fn start() -> anyhow::Result<()> {
             database_name,
             tmp_config,
             tx,
+            state.clone(),
         );
     }
 
@@ -163,11 +161,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     let (tx, mut rx) = tokio::sync::broadcast::channel::<WebSocketMessages>(20);
 
-    state
-        .user_map
-        .write()
-        .await
-        .insert(id.clone(), (tx.clone(), HashMap::new()));
+    state.clients_state.add_client(id.clone(), tx.clone()).await;
 
     // // Username gets set in the receive loop, if it's valid.
     // let mut username = String::new();
@@ -216,116 +210,36 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
             match serde_json::from_str::<WebSocketMessages>(&text) {
                 Ok(message) => match message {
                     WebSocketMessages::Subscribe { topics } => {
-                        let mut current_topics = inner_state
-                            .user_map
-                            .read()
-                            .await
-                            .get(&inner_id)
-                            .unwrap()
-                            .1
-                            .clone();
-                        let mut new_topics: HashMap<String, HashSet<i64>> = HashMap::new();
                         for topic in topics {
                             let (topic, id) = topic.split_once(".").unwrap();
                             let id = id.parse::<i64>().unwrap();
 
-                            if let Some(current_topic) = current_topics.get_mut(&topic.to_string())
-                            {
-                                if !current_topic.contains(&id) {
-                                    if let Some(new_topic) = new_topics.get_mut(&topic.to_string())
-                                    {
-                                        new_topic.insert(id);
-                                    } else {
-                                        new_topics.insert(topic.to_string(), HashSet::from([id]));
-                                    }
-                                }
-                            } else {
-                                if let Some(new_topic) = new_topics.get_mut(&topic.to_string()) {
-                                    new_topic.insert(id);
-                                } else {
-                                    new_topics.insert(topic.to_string(), HashSet::from([id]));
-                                }
-                            }
-                        }
-
-                        for (topic, users) in new_topics {
-                            if inner_state
-                                .user_map
-                                .read()
-                                .await
-                                .get(&inner_id)
-                                .unwrap()
-                                .1
-                                .contains_key(&topic)
-                            {
-                                inner_state
-                                    .user_map
-                                    .write()
-                                    .await
-                                    .get_mut(&inner_id)
-                                    .unwrap()
-                                    .1
-                                    .get_mut(&topic)
-                                    .unwrap()
-                                    .extend(users);
-                            } else {
-                                inner_state
-                                    .user_map
-                                    .write()
-                                    .await
-                                    .get_mut(&inner_id)
-                                    .unwrap()
-                                    .1
-                                    .insert(topic, users);
-                            }
+                            inner_state
+                                .clients_state
+                                .add_topic_to_client(&inner_id, &topic.to_string(), id)
+                                .await;
                         }
                     }
                     WebSocketMessages::Unsubscribe { topic } => {
                         let (topic, id) = topic.split_once(".").unwrap();
                         let id = id.parse::<i64>().unwrap();
 
-                        if let Some(current_topic) = inner_state
-                            .user_map
-                            .write()
-                            .await
-                            .get_mut(&inner_id)
-                            .unwrap()
-                            .1
-                            .get_mut(&topic.to_string())
-                        {
-                            current_topic.remove(&id);
-                        }
-
-                        // inner_state
-                        //     .user_map
-                        //     .write()
-                        //     .await
-                        //     .get_mut(&inner_id)
-                        //     .unwrap()
-                        //     .1
-                        //     .retain(|x| x != &topic);
+                        inner_state
+                            .clients_state
+                            .remove_topic_from_client(&inner_id, &topic.to_string(), id)
+                            .await;
                     }
                     WebSocketMessages::ListSubscribedTopics => {
                         let topics = inner_state
-                            .user_map
-                            .read()
-                            .await
-                            .get(&inner_id)
-                            .unwrap()
-                            .1
-                            .clone();
+                            .clients_state
+                            .get_topics_for_client(&inner_id)
+                            .await;
 
-                        let topics = topics
-                            .into_iter()
-                            .map(|(topic, users)| {
-                                users
-                                    .into_iter()
-                                    .map(|user| format!("{}.{:?}", topic, user))
-                                    .collect::<Vec<String>>()
-                            })
-                            .flatten()
-                            .collect::<Vec<String>>();
+                        if topics.is_none() {
+                            continue;
+                        }
 
+                        let topics = topics.unwrap();
                         let _ = tx.send(WebSocketMessages::SubscribedTopics(topics));
                     }
                     _ => {}
@@ -344,37 +258,29 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     };
 
     // Remove username from map so new clients can take it again.
-    state.user_map.write().await.remove(&id);
+    state.clients_state.remove_client(&id).await;
 }
 
 async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSocketMessages>) {
     while let Some(message) = rx.recv().await {
-        let clients = state.user_map.read().await;
-        let connection_to_send_to = clients
-            .iter()
-            .filter(|(_, topics)| {
-                let topic_name = message.topics();
+        if message.topics().is_none() {
+            continue;
+        }
 
-                if topic_name.is_none() {
-                    return false;
-                }
+        let topics = message.topics().unwrap();
+        let mut senders = vec![];
 
-                let topic_name = topic_name.unwrap();
+        for (topic_name, topic_id) in topics {
+            senders.extend(
+                state
+                    .clients_state
+                    .clients_listen_to_topic(&topic_name, topic_id)
+                    .await,
+            );
+        }
 
-                for topic in topic_name {
-                    if let Some(topics) = topics.1.get(&topic.0) {
-                        if topics.contains(&topic.1) {
-                            return true;
-                        }
-                    }
-                }
-
-                false
-            })
-            .collect::<Vec<_>>();
-
-        for (_user_id, (tx, _)) in connection_to_send_to {
-            tx.send(message.clone()).unwrap();
+        for sender in senders {
+            sender.send(message.clone()).unwrap();
         }
     }
 }
@@ -774,7 +680,31 @@ fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Cl
 struct AppState {
     conn: DatabaseConnection,
     storage_path: PathBuf,
-    user_map: Arc<
+    clients_state: Arc<ClientsState>,
+    mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
+    claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
+    player_action_state: Arc<dashmap::DashMap<u64, entity::player_action_state::Model>>,
+    crafting_recipe_desc: Arc<dashmap::DashMap<u64, entity::crafting_recipe_desc::Model>>,
+    action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
+}
+
+impl AppState {
+    fn new(conn: DatabaseConnection, config: &Config) -> Self {
+        Self {
+            conn,
+            storage_path: PathBuf::from(config.storage_path.clone()),
+            clients_state: Arc::new(ClientsState::new()),
+            mobile_entity_state: Arc::new(dashmap::DashMap::new()),
+            claim_tile_state: Arc::new(dashmap::DashMap::new()),
+            player_action_state: Arc::new(dashmap::DashMap::new()),
+            crafting_recipe_desc: Arc::new(dashmap::DashMap::new()),
+            action_state: Arc::new(dashmap::DashMap::new()),
+        }
+    }
+}
+
+struct ClientsState {
+    clients: Arc<
         RwLock<
             HashMap<
                 String,
@@ -785,6 +715,161 @@ struct AppState {
             >,
         >,
     >,
+    topics_listen_to: Arc<RwLock<HashMap<String, HashMap<i64, u64>>>>,
+}
+
+impl ClientsState {
+    fn new() -> Self {
+        Self {
+            clients: Arc::new(RwLock::new(HashMap::new())),
+            topics_listen_to: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub(crate) async fn add_client(
+        &self,
+        id: String,
+        tx: tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
+    ) {
+        self.clients.write().await.insert(id, (tx, HashMap::new()));
+        metrics::gauge!("websocket_clients_connected_total").increment(1);
+    }
+
+    pub(crate) async fn remove_client(&self, id: &String) {
+        let current_topics = self.clients.read().await.get(id).unwrap().1.clone();
+        for (topic, topic_ids) in current_topics {
+            for topic_id in topic_ids {
+                self.remove_topic_from_client(id, &topic, topic_id).await;
+            }
+        }
+
+        self.clients.write().await.remove(id);
+        metrics::gauge!("websocket_clients_connected_total").decrement(1);
+    }
+
+    pub(crate) async fn get_topics_for_client(&self, id: &String) -> Option<Vec<String>> {
+        let clients = self.clients.read().await;
+        if let Some(client) = clients.get(id) {
+            return Some(
+                client
+                    .1
+                    .iter()
+                    .map(|(topic, ids)| {
+                        ids.iter()
+                            .map(|id| format!("{}.{:?}", topic, id))
+                            .collect::<Vec<String>>()
+                    })
+                    .flatten()
+                    .collect::<Vec<String>>(),
+            );
+        }
+
+        None
+    }
+
+    pub(crate) async fn add_topic_to_client(&self, id: &String, topic: &String, topic_id: i64) {
+        if self
+            .client_listen_to_topics(id, vec![(topic.clone(), topic_id)])
+            .await
+        {
+            return;
+        }
+
+        let mut clients = self.clients.write().await;
+        if let Some(client) = clients.get_mut(id) {
+            if let Some(topics) = client.1.get_mut(topic) {
+                topics.insert(topic_id);
+            } else {
+                client.1.insert(topic.clone(), HashSet::from([topic_id]));
+            }
+        }
+
+        let mut topics_listen_to = self.topics_listen_to.write().await;
+        if let Some(found_topic) = topics_listen_to.get_mut(topic) {
+            if let Some(current_topic) = found_topic.get_mut(&topic_id) {
+                current_topic.add_assign(1);
+            } else {
+                found_topic.insert(topic_id, 1);
+            }
+        } else {
+            topics_listen_to.insert(topic.clone(), HashMap::from([(topic_id, 1)]));
+        }
+    }
+
+    pub(crate) async fn remove_topic_from_client(
+        &self,
+        id: &String,
+        topic: &String,
+        topic_id: i64,
+    ) {
+        let mut clients = self.clients.write().await;
+        if let Some(client) = clients.get_mut(id) {
+            if let Some(topics) = client.1.get_mut(topic) {
+                topics.remove(&topic_id);
+            }
+        }
+
+        let mut topics_listen_to = self.topics_listen_to.write().await;
+        if let Some(found_topic) = topics_listen_to.get_mut(topic) {
+            if let Some(current_topic) = found_topic.get_mut(&topic_id) {
+                if current_topic > &mut 0u64 {
+                    current_topic.sub_assign(1);
+                }
+            }
+        }
+    }
+
+    pub(crate) async fn clients_listen_to_topic(
+        &self,
+        topic: &String,
+        topic_id: i64,
+    ) -> Vec<tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>> {
+        let mut senders = vec![];
+        let clients = self.clients.read().await;
+
+        for (_, (tx, topics)) in clients.iter() {
+            if let Some(found_topic) = topics.get(topic) {
+                if found_topic.contains(&topic_id) {
+                    senders.push(tx.clone());
+                }
+            }
+        }
+
+        senders
+    }
+
+    pub(crate) async fn client_listen_to_topics(
+        &self,
+        id: &String,
+        topics: Vec<(String, i64)>,
+    ) -> bool {
+        if let Some(client) = self.clients.read().await.get(id) {
+            for (topic, id) in topics {
+                if let Some(found_topic) = client.1.get(&topic) {
+                    if found_topic.contains(&id) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    pub(crate) async fn listeners_for_topic(&self, topics: Vec<(String, i64)>) -> bool {
+        let topics_listen_to = self.topics_listen_to.read().await;
+        for (topic, id) in topics {
+            if let Some(found_topic) = topics_listen_to.get(&topic) {
+                if let Some(current_topic) = found_topic.get(&id) {
+                    if current_topic > &0u64 {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
 }
 
 #[derive(Deserialize)]
@@ -863,82 +948,82 @@ pub async fn download_all_tables(
     storage_path: &PathBuf,
 ) {
     let desc_tables = vec![
-        "AchievementDesc",
-        "AlertDesc",
-        "BiomeDesc",
-        "BuffDesc",
-        "BuffTypeDesc",
-        "BuildingClaimDesc",
-        "BuildingDesc",
-        "BuildingFunctionTypeMappingDesc",
-        "BuildingPortalDesc",
-        "BuildingRepairsDesc",
-        "BuildingSpawnDesc",
-        "BuildingTypeDesc",
-        "CargoDesc",
-        "CharacterStatDesc",
-        "ChestRarityDesc",
-        "ClaimDescriptionState",
-        "ClaimTechDesc",
-        "ClimbRequirementDesc",
-        "ClothingDesc",
-        "CollectibleDesc",
-        "CombatActionDesc",
-        "ConstructionRecipeDesc",
-        "CraftingRecipeDesc",
-        "DeconstructionRecipeDesc",
-        "DeployableDesc",
-        "DimensionDescriptionState",
-        "ElevatorDesc",
-        "EmoteDesc",
-        "EmpireColorDesc",
-        "EmpireNotificationDesc",
-        "EmpireRankDesc",
-        "EmpireSuppliesDesc",
-        "EmpireTerritoryDesc",
-        "EnemyAiParamsDesc",
-        "EnemyDesc",
-        "EnvironmentDebuffDesc",
-        "EquipmentDesc",
-        "ExtractionRecipeDesc",
-        "FoodDesc",
-        "GateDesc",
-        "InteriorInstanceDesc",
-        "InteriorNetworkDesc",
-        "InteriorPortalConnectionsDesc",
-        "InteriorShapeDesc",
-        "InteriorSpawnDesc",
-        "ItemConversionRecipeDesc",
-        "ItemDesc",
-        "ItemListDesc",
-        "KnowledgeScrollDesc",
-        "KnowledgeScrollTypeDesc",
-        "LootChestDesc",
-        "LootRarityDesc",
-        "LootTableDesc",
-        "NpcDesc",
-        "OnboardingRewardDesc",
-        "ParametersDesc",
-        "PathfindingDesc",
-        "PavingTileDesc",
-        "PlayerActionDesc",
-        "PrivateParametersDesc",
-        "ResourceClumpDesc",
-        "ResourceDesc",
-        "ResourceGrowthRecipeDesc",
-        "ResourcePlacementRecipeDesc",
-        "SecondaryKnowledgeDesc",
-        "SingleResourceToClumpDesc",
-        "SkillDesc",
-        "TargetingMatrixDesc",
-        "TeleportItemDesc",
-        "TerraformRecipeDesc",
-        "ToolDesc",
-        "ToolTypeDesc",
-        "TravelerTradeOrderDesc",
-        "WallDesc",
-        "WeaponDesc",
-        "WeaponTypeDesc",
+        // "AchievementDesc",
+        // "AlertDesc",
+        // "BiomeDesc",
+        // "BuffDesc",
+        // "BuffTypeDesc",
+        // "BuildingClaimDesc",
+        // "BuildingDesc",
+        // "BuildingFunctionTypeMappingDesc",
+        // "BuildingPortalDesc",
+        // "BuildingRepairsDesc",
+        // "BuildingSpawnDesc",
+        // "BuildingTypeDesc",
+        // "CargoDesc",
+        // "CharacterStatDesc",
+        // "ChestRarityDesc",
+        // "ClaimDescriptionState",
+        // "ClaimTechDesc",
+        // "ClimbRequirementDesc",
+        // "ClothingDesc",
+        // "CollectibleDesc",
+        // "CombatActionDesc",
+        // "ConstructionRecipeDesc",
+        // "CraftingRecipeDesc",
+        // "DeconstructionRecipeDesc",
+        // "DeployableDesc",
+        // "DimensionDescriptionState",
+        // "ElevatorDesc",
+        // "EmoteDesc",
+        // "EmpireColorDesc",
+        // "EmpireNotificationDesc",
+        // "EmpireRankDesc",
+        // "EmpireSuppliesDesc",
+        // "EmpireTerritoryDesc",
+        // "EnemyAiParamsDesc",
+        // "EnemyDesc",
+        // "EnvironmentDebuffDesc",
+        // "EquipmentDesc",
+        // "ExtractionRecipeDesc",
+        // "FoodDesc",
+        // "GateDesc",
+        // "InteriorInstanceDesc",
+        // "InteriorNetworkDesc",
+        // "InteriorPortalConnectionsDesc",
+        // "InteriorShapeDesc",
+        // "InteriorSpawnDesc",
+        // "ItemConversionRecipeDesc",
+        // "ItemDesc",
+        // "ItemListDesc",
+        // "KnowledgeScrollDesc",
+        // "KnowledgeScrollTypeDesc",
+        // "LootChestDesc",
+        // "LootRarityDesc",
+        // "LootTableDesc",
+        // "NpcDesc",
+        // "OnboardingRewardDesc",
+        // "ParametersDesc",
+        // "PathfindingDesc",
+        // "PavingTileDesc",
+        // "PlayerActionDesc",
+        // "PrivateParametersDesc",
+        // "ResourceClumpDesc",
+        // "ResourceDesc",
+        // "ResourceGrowthRecipeDesc",
+        // "ResourcePlacementRecipeDesc",
+        // "SecondaryKnowledgeDesc",
+        // "SingleResourceToClumpDesc",
+        // "SkillDesc",
+        // "TargetingMatrixDesc",
+        // "TeleportItemDesc",
+        // "TerraformRecipeDesc",
+        // "ToolDesc",
+        // "ToolTypeDesc",
+        // "TravelerTradeOrderDesc",
+        // "WallDesc",
+        // "WeaponDesc",
+        // "WeaponTypeDesc",
     ];
 
     let state_tables = vec![

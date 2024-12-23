@@ -1,5 +1,8 @@
 <template>
   <v-app>
+    <ClientOnly>
+      <VSonner :position="$vuetify.display.mobile ? 'bottom-center' : 'top-center'" />
+    </ClientOnly>
     <v-navigation-drawer v-if="$vuetify.display.mobile"
         v-model="mobileDrawer"
         location="right"
@@ -83,6 +86,7 @@
   </v-app>
 </template>
 <script setup lang="ts">
+import { VSonner } from "vuetify-sonner";
 const websocketStore = useWebsocketStore();
 const configStore = useConfigStore();
 const configDrawer = ref(false);

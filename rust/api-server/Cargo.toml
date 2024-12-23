@@ -3,9 +3,9 @@ name = "bitcraft-hub-api"
 version = "0.1.0"
 edition = "2021"
 
-[profile.release]
-opt-level = 3
-lto = true
+#[profile.release]
+#opt-level = 3
+#lto = true
 
 [workspace]
 members = [".", "api", "service", "entity", "migration"]
@@ -23,6 +23,7 @@ rayon = "1.10.0"
 time = { version = "0.3.37", features = ["serde"] }
 
 [dependencies]
+glam = "0.29.2"
 api = { path = "api" }
 indicatif = "0.17.8"
 lazy_static = "1.5.0"

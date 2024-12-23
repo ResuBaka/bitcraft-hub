@@ -1,13 +1,15 @@
 use crate::config::Config;
 use crate::{
     buildings, claim_tech_state, claims, collectible_desc, deployable_state, inventory,
-    leaderboard, player_state, vault_state,
+    leaderboard, player_state, vault_state, AppState,
 };
 use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use axum::http::HeaderMap;
 use base64::Engine;
+use dashmap::mapref::one::Ref;
+use entity::claim_tile_state::Model;
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
 use log::{debug, error, info};
@@ -17,6 +19,7 @@ use sea_orm::{EntityTrait, IntoActiveModel, QuerySelect};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
@@ -33,6 +36,7 @@ pub fn start_websocket_bitcraft_logic(
     database_name: String,
     tmp_config: Config,
     broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
 ) {
     tokio::spawn(async move {
         let mut app_state = WebSocketAppState {
@@ -74,8 +78,8 @@ pub fn start_websocket_bitcraft_logic(
             .headers(headers)
             .upgrade()
             .web_socket_config(tungstenite::protocol::WebSocketConfig {
-                max_frame_size: Some(1024 * 1024 * 150),
-                max_message_size: Some(1024 * 1024 * 150),
+                max_frame_size: Some(1024 * 1024 * 1500),
+                max_message_size: Some(1024 * 1024 * 1500),
                 ..Default::default()
             })
             .protocols(vec!["v1.text.spacetimedb"])
@@ -86,6 +90,12 @@ pub fn start_websocket_bitcraft_logic(
 
         let tables_to_subscribe = vec![
             "UserState",
+            "MobileEntityState",
+            "ClaimTileState",
+            "CombatActionDesc",
+            "PlayerActionState",
+            "CraftingRecipeDesc",
+            "ActionState",
             "PlayerState",
             "PlayerUsernameState",
             "BuildingState",
@@ -405,6 +415,118 @@ pub fn start_websocket_bitcraft_logic(
                                         );
                                     }
                                 }
+
+                                if table.table_name.as_ref() == "MobileEntityState" {
+                                    for row in table.inserts.iter() {
+                                        let mobile_entity_state: entity::mobile_entity_state::Model =
+                                            match serde_json::from_str(&row.text) {
+                                                Ok(mobile_entity_state) => mobile_entity_state,
+                                                Err(error) => {
+                                                    error!("InitialSubscription Insert MobileEntityState Error: {:?} -> {:?}", error, row.text);
+                                                    continue;
+                                                }
+                                            };
+
+                                        global_app_state.mobile_entity_state.insert(
+                                            mobile_entity_state.entity_id,
+                                            mobile_entity_state.clone(),
+                                        );
+
+                                        broadcast_tx
+                                            .send(WebSocketMessages::MobileEntityState(
+                                                mobile_entity_state,
+                                            ))
+                                            .unwrap();
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "ClaimTileState" {
+                                    for row in table.inserts.iter() {
+                                        let claim_tile_state: entity::claim_tile_state::Model =
+                                            match serde_json::from_str(&row.text) {
+                                                Ok(claim_tile_state) => claim_tile_state,
+                                                Err(error) => {
+                                                    error!("InitialSubscription Insert ClaimTileState Error: {:?} -> {:?}", error, row.text);
+                                                    continue;
+                                                }
+                                            };
+
+                                        global_app_state.claim_tile_state.insert(
+                                            claim_tile_state.entity_id,
+                                            claim_tile_state.clone(),
+                                        );
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "CraftingRecipeDesc" {
+                                    for row in table.inserts.iter() {
+                                        let crafting_recipe_desc: entity::crafting_recipe_desc::Model =
+                                            match serde_json::from_str(&row.text) {
+                                                Ok(crafting_recipe_desc) => crafting_recipe_desc,
+                                                Err(error) => {
+                                                    error!("InitialSubscription Insert CraftingRecipeDesc Error: {:?} -> {:?}", error, row.text);
+                                                    continue;
+                                                }
+                                            };
+
+                                        global_app_state.crafting_recipe_desc.insert(
+                                            crafting_recipe_desc.id,
+                                            crafting_recipe_desc.clone(),
+                                        );
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "PlayerActionState" {
+                                    for row in table.inserts.iter() {
+                                        let player_action_state: entity::player_action_state::Model =
+                                            match serde_json::from_str(&row.text) {
+                                                Ok(player_action_state) => player_action_state,
+                                                Err(error) => {
+                                                    error!("InitialSubscription Insert PlayerActionState Error: {:?} -> {:?}", error, row.text);
+                                                    continue;
+                                                }
+                                            };
+
+                                        global_app_state.player_action_state.insert(
+                                            player_action_state.entity_id,
+                                            player_action_state.clone(),
+                                        );
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "ActionState" {
+                                    for row in table.inserts.iter() {
+                                        let action_state: entity::action_state::Model =
+                                            match serde_json::from_str(&row.text) {
+                                                Ok(action_state) => action_state,
+                                                Err(error) => {
+                                                    error!("InitialSubscription Insert ActionState Error: {:?} -> {:?}", error, row.text);
+                                                    continue;
+                                                }
+                                            };
+
+                                        if let Some(action_states) = global_app_state
+                                            .action_state
+                                            .get_mut(&action_state.owner_entity_id)
+                                        {
+                                            action_states.insert(
+                                                action_state.entity_id,
+                                                action_state.clone(),
+                                            );
+                                        } else {
+                                            let mut action_states = dashmap::DashMap::new();
+                                            action_states.insert(
+                                                action_state.entity_id,
+                                                action_state.clone(),
+                                            );
+                                            global_app_state.action_state.insert(
+                                                action_state.owner_entity_id,
+                                                action_states,
+                                            );
+                                        }
+                                    }
+                                }
+
                                 metrics::histogram!(
                                     "bitraft_event_handler_initial_subscription_duration_seconds",
                                     &[("table", table.table_name.as_ref().to_string())]
@@ -558,6 +680,289 @@ pub fn start_websocket_bitcraft_logic(
 
                         if result.is_err() {
                             error!("VaultState transaction update failed: {:?}", result.err());
+                        }
+                    }
+
+                    if table_name == "MobileEntityState" {
+                        for current_table in table.iter() {
+                            let mut old_data = HashMap::new();
+
+                            for row in current_table.deletes.iter() {
+                                let mobile_entity_state: entity::mobile_entity_state::Model =
+                                    match serde_json::from_str(&row.text) {
+                                        Ok(mobile_entity_state) => mobile_entity_state,
+                                        Err(error) => {
+                                            error!("InitialSubscription Insert MobileEntityState Error: {:?} -> {:?}", error, row.text);
+                                            continue;
+                                        }
+                                    };
+
+                                old_data.insert(
+                                    mobile_entity_state.entity_id,
+                                    mobile_entity_state.clone(),
+                                );
+                            }
+
+                            for row in current_table.inserts.iter() {
+                                let mobile_entity_state: entity::mobile_entity_state::Model =
+                                    match serde_json::from_str(&row.text) {
+                                        Ok(mobile_entity_state) => mobile_entity_state,
+                                        Err(error) => {
+                                            error!("InitialSubscription Insert MobileEntityState Error: {:?} -> {:?}", error, row.text);
+                                            continue;
+                                        }
+                                    };
+
+                                global_app_state.mobile_entity_state.insert(
+                                    mobile_entity_state.entity_id,
+                                    mobile_entity_state.clone(),
+                                );
+
+                                if !app_state.user_map.iter().any(|(_, user_id)| {
+                                    *user_id == mobile_entity_state.entity_id as i64
+                                }) {
+                                    continue;
+                                }
+
+                                if let Some(old_data) = old_data.get(&mobile_entity_state.entity_id)
+                                {
+                                    let new_location_x = if mobile_entity_state.location_x == 0 {
+                                        mobile_entity_state.location_x
+                                    } else {
+                                        mobile_entity_state.location_x / 3 / 1000
+                                    };
+
+                                    let new_location_z = if mobile_entity_state.location_z == 0 {
+                                        mobile_entity_state.location_z
+                                    } else {
+                                        mobile_entity_state.location_z / 3 / 1000
+                                    };
+
+                                    let old_location_x = if old_data.location_x == 0 {
+                                        old_data.location_x
+                                    } else {
+                                        old_data.location_x / 3 / 1000
+                                    };
+
+                                    let old_location_z = if old_data.location_z == 0 {
+                                        old_data.location_z
+                                    } else {
+                                        old_data.location_z / 3 / 1000
+                                    };
+
+                                    let change_x = new_location_x - old_location_x;
+                                    let change_z = new_location_z - old_location_z;
+
+                                    if change_x == 0 && change_z == 0 {
+                                        continue;
+                                    }
+
+                                    match (
+                                        global_app_state
+                                            .claim_tile_state
+                                            .get(&mobile_entity_state.chunk_index),
+                                        global_app_state
+                                            .claim_tile_state
+                                            .get(&old_data.chunk_index),
+                                    ) {
+                                        (Some(new_chunk), Some(old_chunk)) => {
+                                            let new_chunk = new_chunk.value();
+                                            let old_chunk = old_chunk.value();
+
+                                            if new_chunk.claim_id != old_chunk.claim_id {
+                                                broadcast_tx
+                                                    .send(WebSocketMessages::MovedOutOfClaim {
+                                                        user_id: mobile_entity_state.entity_id
+                                                            as i64,
+                                                        chunk_index: old_data.chunk_index,
+                                                        claim_id: old_chunk.claim_id,
+                                                    })
+                                                    .unwrap();
+
+                                                broadcast_tx
+                                                    .send(
+                                                        WebSocketMessages::PlayerMovedOutOfClaim {
+                                                            user_id: mobile_entity_state.entity_id
+                                                                as i64,
+                                                            chunk_index: old_data.chunk_index,
+                                                            claim_id: old_chunk.claim_id,
+                                                        },
+                                                    )
+                                                    .unwrap();
+
+                                                broadcast_tx
+                                                    .send(WebSocketMessages::MovedIntoClaim {
+                                                        user_id: mobile_entity_state.entity_id
+                                                            as i64,
+                                                        chunk_index: mobile_entity_state
+                                                            .chunk_index,
+                                                        claim_id: new_chunk.claim_id,
+                                                    })
+                                                    .unwrap();
+
+                                                broadcast_tx
+                                                    .send(WebSocketMessages::PlayerMovedIntoClaim {
+                                                        user_id: mobile_entity_state.entity_id
+                                                            as i64,
+                                                        chunk_index: mobile_entity_state
+                                                            .chunk_index,
+                                                        claim_id: new_chunk.claim_id,
+                                                    })
+                                                    .unwrap();
+                                            }
+                                        }
+                                        (Some(new_chunk), None) => {
+                                            let new_chunk = new_chunk.value();
+                                            broadcast_tx
+                                                .send(WebSocketMessages::MovedIntoClaim {
+                                                    user_id: mobile_entity_state.entity_id as i64,
+                                                    chunk_index: mobile_entity_state.chunk_index,
+                                                    claim_id: new_chunk.claim_id,
+                                                })
+                                                .unwrap();
+                                            broadcast_tx
+                                                .send(WebSocketMessages::PlayerMovedIntoClaim {
+                                                    user_id: mobile_entity_state.entity_id as i64,
+                                                    chunk_index: mobile_entity_state.chunk_index,
+                                                    claim_id: new_chunk.claim_id,
+                                                })
+                                                .unwrap();
+                                        }
+                                        (_, Some(old_chunk)) => {
+                                            let old_chunk = old_chunk.value();
+                                            broadcast_tx
+                                                .send(WebSocketMessages::MovedOutOfClaim {
+                                                    user_id: mobile_entity_state.entity_id as i64,
+                                                    chunk_index: old_data.chunk_index,
+                                                    claim_id: old_chunk.claim_id,
+                                                })
+                                                .unwrap();
+                                            broadcast_tx
+                                                .send(WebSocketMessages::PlayerMovedOutOfClaim {
+                                                    user_id: mobile_entity_state.entity_id as i64,
+                                                    chunk_index: old_data.chunk_index,
+                                                    claim_id: old_chunk.claim_id,
+                                                })
+                                                .unwrap();
+                                        }
+                                        (_, _) => {}
+                                    }
+
+                                    broadcast_tx
+                                        .send(WebSocketMessages::MobileEntityState(
+                                            mobile_entity_state,
+                                        ))
+                                        .unwrap();
+                                } else {
+                                    broadcast_tx
+                                        .send(WebSocketMessages::MobileEntityState(
+                                            mobile_entity_state,
+                                        ))
+                                        .unwrap();
+                                }
+                            }
+                        }
+                    }
+
+                    if table_name == "ClaimTileState" {
+                        for current_table in table.iter() {
+                            for row in current_table.inserts.iter() {
+                                let claim_tile_state: entity::claim_tile_state::Model =
+                                    match serde_json::from_str(&row.text) {
+                                        Ok(claim_tile_state) => claim_tile_state,
+                                        Err(error) => {
+                                            error!("InitialSubscription Insert ClaimTileState Error: {:?} -> {:?}", error, row.text);
+                                            continue;
+                                        }
+                                    };
+
+                                global_app_state
+                                    .claim_tile_state
+                                    .insert(claim_tile_state.entity_id, claim_tile_state.clone());
+                            }
+                        }
+                    }
+
+                    if table_name == "ActionState" {
+                        for current_table in table.iter() {
+                            for row in current_table.inserts.iter() {
+                                let action_state: entity::action_state::Model =
+                                    match serde_json::from_str(&row.text) {
+                                        Ok(action_state) => action_state,
+                                        Err(error) => {
+                                            error!("InitialSubscription Insert ActionState Error: {:?} -> {:?}", error, row.text);
+                                            continue;
+                                        }
+                                    };
+
+                                broadcast_tx
+                                    .send(WebSocketMessages::ActionState(action_state.clone()))
+                                    .unwrap();
+                                if let Some(action_states) = global_app_state
+                                    .action_state
+                                    .get_mut(&action_state.owner_entity_id)
+                                {
+                                    action_states
+                                        .insert(action_state.entity_id, action_state.clone());
+                                } else {
+                                    let mut action_states = dashmap::DashMap::new();
+                                    action_states
+                                        .insert(action_state.entity_id, action_state.clone());
+                                    global_app_state
+                                        .action_state
+                                        .insert(action_state.owner_entity_id, action_states);
+                                }
+                            }
+                        }
+                    }
+
+                    if table_name == "PlayerActionState" {
+                        for current_table in table.iter() {
+                            for row in current_table.inserts.iter() {
+                                let player_action_state: entity::player_action_state::Model =
+                                    match serde_json::from_str(&row.text) {
+                                        Ok(player_action_state) => player_action_state,
+                                        Err(error) => {
+                                            error!("InitialSubscription Insert PlayerActionState Error: {:?} -> {:?}", error, row.text);
+                                            continue;
+                                        }
+                                    };
+
+                                let old_player_action_state = global_app_state
+                                    .player_action_state
+                                    .get(&player_action_state.entity_id);
+                                if old_player_action_state.is_none() {
+                                    broadcast_tx
+                                        .send(WebSocketMessages::PlayerActionStateChangeName(
+                                            player_action_state.action_type.get_action_name(),
+                                            player_action_state.entity_id,
+                                        ))
+                                        .unwrap();
+                                } else {
+                                    let old_player_action_state = old_player_action_state.unwrap();
+                                    if old_player_action_state.action_type
+                                        != player_action_state.action_type
+                                    {
+                                        broadcast_tx
+                                            .send(WebSocketMessages::PlayerActionStateChangeName(
+                                                player_action_state.action_type.get_action_name(),
+                                                player_action_state.entity_id,
+                                            ))
+                                            .unwrap();
+                                    }
+                                }
+
+                                broadcast_tx
+                                    .send(WebSocketMessages::PlayerActionState(
+                                        player_action_state.clone(),
+                                    ))
+                                    .unwrap();
+
+                                global_app_state.player_action_state.insert(
+                                    player_action_state.entity_id,
+                                    player_action_state.clone(),
+                                );
+                            }
                         }
                     }
 
@@ -761,6 +1166,7 @@ pub(crate) enum WebSocketMessages {
     Unsubscribe {
         topic: String,
     },
+    MobileEntityState(entity::mobile_entity_state::Model),
     Experience {
         experience: u64,
         level: u64,
@@ -773,6 +1179,28 @@ pub(crate) enum WebSocketMessages {
         experience: u64,
         experience_per_hour: u64,
     },
+    MovedOutOfClaim {
+        user_id: i64,
+        chunk_index: u64,
+        claim_id: u64,
+    },
+    MovedIntoClaim {
+        user_id: i64,
+        chunk_index: u64,
+        claim_id: u64,
+    },
+    PlayerMovedIntoClaim {
+        user_id: i64,
+        chunk_index: u64,
+        claim_id: u64,
+    },
+    PlayerMovedOutOfClaim {
+        user_id: i64,
+        chunk_index: u64,
+        claim_id: u64,
+    },
+    PlayerActionState(entity::player_action_state::Model),
+    PlayerActionStateChangeName(String, u64),
     Level {
         level: u64,
         user_id: i64,
@@ -781,6 +1209,7 @@ pub(crate) enum WebSocketMessages {
     PlayerState(entity::player_state::Model),
     ClaimDescriptionState(entity::claim_description_state::Model),
     Message(String),
+    ActionState(entity::action_state::Model),
 }
 
 impl WebSocketMessages {
@@ -802,15 +1231,43 @@ impl WebSocketMessages {
                 (format!("level:{}", skill_name), *user_id),
                 ("level".to_string(), *user_id),
             ]),
+            WebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => {
+                Some(vec![("player_moved_into_claim".to_string(), *user_id)])
+            }
+            WebSocketMessages::PlayerMovedOutOfClaim { user_id, .. } => {
+                Some(vec![("player_moved_out_of_claim".to_string(), *user_id)])
+            }
+            WebSocketMessages::MovedOutOfClaim { claim_id, .. } => {
+                Some(vec![("moved_out_of_claim".to_string(), *claim_id as i64)])
+            }
+            WebSocketMessages::MovedIntoClaim { claim_id, .. } => {
+                Some(vec![("moved_into_claim".to_string(), *claim_id as i64)])
+            }
             WebSocketMessages::PlayerState(player) => {
                 Some(vec![("player_state".to_string(), player.entity_id)])
             }
+            WebSocketMessages::MobileEntityState(mobile_entity_state) => Some(vec![(
+                "mobile_entity_state".to_string(),
+                mobile_entity_state.entity_id as i64,
+            )]),
             WebSocketMessages::ClaimDescriptionState(claim) => {
                 Some(vec![("claim".to_string(), claim.entity_id)])
             }
             WebSocketMessages::TotalExperience { user_id, .. } => {
                 Some(vec![("total_experience".to_string(), *user_id)])
             }
+            WebSocketMessages::PlayerActionState(player_action_state) => Some(vec![(
+                "player_action_state".to_string(),
+                player_action_state.entity_id as i64,
+            )]),
+            WebSocketMessages::PlayerActionStateChangeName(_, id) => Some(vec![(
+                "player_action_state_change_name".to_string(),
+                *id as i64,
+            )]),
+            WebSocketMessages::ActionState(action_state) => Some(vec![(
+                "action_state".to_string(),
+                action_state.owner_entity_id as i64,
+            )]),
             WebSocketMessages::ListSubscribedTopics => None,
             WebSocketMessages::Subscribe { .. } => None,
             WebSocketMessages::SubscribedTopics(_) => None,

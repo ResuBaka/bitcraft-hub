@@ -1,7 +1,7 @@
-export function registerWebsocketMessageHandler(
+export function registerWebsocketMessageHandler<T = Record<string, any>>(
   eventType: string,
   topics: MaybeRefOrGetter<string | string[]>,
-  handler: (message: Record<string, any>) => void,
+  handler: (message: T) => void,
 ) {
   const store = useWebsocketStore();
   const instanceId = getCurrentInstance()?.uid.toString() || "0";

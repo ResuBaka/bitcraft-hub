@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
-
+import { toast } from "vuetify-sonner";
 const theme = useTheme();
 const page = ref(1);
 const route = useRoute();
@@ -130,6 +130,34 @@ let expUntilNextLevel = (skill) => {
   return experienceUntilNextLevel;
 };
 
+let mobileEntityStateTopics = computed(() => {
+  return [`mobile_entity_state.${route.params.id}`];
+});
+
+registerWebsocketMessageHandler(
+  "MobileEntityState",
+  mobileEntityStateTopics,
+  (message) => {
+    if (playerFetch.value) {
+      playerFetch.value.player_location = message.c;
+    }
+  },
+);
+
+let playerActionStateTopics = computed(() => {
+  return [`player_action_state_change_name.${route.params.id}`];
+});
+
+registerWebsocketMessageHandler(
+  "PlayerActionStateChangeName",
+  playerActionStateTopics,
+  (message) => {
+    if (playerFetch.value) {
+      playerFetch.value.player_action_state = message.c[0];
+    }
+  },
+);
+
 registerWebsocketMessageHandler("Experience", topics, (message) => {
   if (experienceFetch.value && experienceFetch.value[message.c.skill_name]) {
     let currentExperience =
@@ -142,6 +170,11 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
     };
 
     if (currentLevel !== message.c.level && currentLevel <= message.c.level) {
+      toast(
+        `Level ${message.c.level} reached for Skill ${message.c.skill_name}`,
+        { progressBar: true, duration: 5000 },
+      );
+
       experienceFetch.value["Level"].level += 1;
     }
 
@@ -161,6 +194,20 @@ const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
   if (playerFetch.value && playerFetch.value) {
+    if (playerFetch.value.signed_in !== message.c.signed_in) {
+      if (message.c.signed_in) {
+        toast(`${player.value?.username} signed in`, {
+          progressBar: true,
+          duration: 5000,
+        });
+      } else {
+        toast(`${player.value?.username} signed out`, {
+          progressBar: true,
+          duration: 5000,
+        });
+      }
+    }
+
     playerFetch.value = {
       ...playerFetch.value,
       signed_in: message.c.signed_in,
@@ -393,9 +440,17 @@ useSeoMeta({
               <th>Signed in:</th>
               <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>
             </tr>
+            <tr v-if="player.player_location" style='text-align: right'>
+              <th>Location:</th>
+              <td>N: {{ Math.floor(player.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(player.player_location?.location_x / 3 / 1000) }}</td>
+            </tr>
+            <tr style='text-align: right'>
+              <th>Current Action:</th>
+              <td>{{ player.player_action_state ?? "" }}</td>
+            </tr>
             <tr style='text-align: right'>
               <th>Hex Coints:</th>
-              <td>{{ playerWallet?.pockets[0].contents.quantity ?? 0 }}</td>
+              <td>{{ playerWallet?.pockets[0].contents?.quantity ?? 0 }}</td>
             </tr>
             </tbody>
           </v-table>
@@ -425,7 +480,7 @@ useSeoMeta({
                 <v-card-title>Skills</v-card-title>
                 <v-card-text>
                   <v-row>
-                    <v-col cols="12" md="4" lg="2" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
+                    <v-col cols="12" md="4" xxl="2" lg="3" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
                       <v-list :class="xp_info.classes.container">
                         <div :class="xp_info.classes.list"></div>
                         <v-row dense no-gutters :class="xp_info.classes.content">
@@ -434,14 +489,14 @@ useSeoMeta({
                             <v-list-item-title>{{ skill }}</v-list-item-title>
                             <v-list-item-subtitle v-if="!['Level'].includes(skill)">Experience: <bitcraft-animated-number :value="xp_info.experience" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
                             <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>
-                            <v-list-item-subtitle v-if="!['Level', 'Experience'].includes(skill)">Required Experience: <bitcraft-animated-number :value="expUntilNextLevel(xp_info)" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
+                            <v-list-item-subtitle v-if="!['Level', 'Experience'].includes(skill)">To next: <bitcraft-animated-number :value="expUntilNextLevel(xp_info)" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
                             <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>
                             <v-list-item-subtitle v-if="!['Experience'].includes(skill)">Level: <bitcraft-animated-number v-if="xp_info.level" :value="xp_info.level" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
                             <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>
                             <v-list-item-subtitle>Rank: #<bitcraft-animated-number :value="xp_info.rank" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
                           </v-list-item>
                           </v-col>
-                          <v-col cols="4" md="4" xs="4" v-if="skillToToolIndex[skill] && playerTools?.pockets[skillToToolIndex[skill]].contents" :class="`text-${tierColor[playerTools?.pockets[skillToToolIndex[skill]].contents.item.tier]}`">
+                          <v-col cols="4" md="4" xs="4" v-if="skillToToolIndex[skill] >= 0 && playerTools?.pockets[skillToToolIndex[skill]].contents" :class="`text-${tierColor[playerTools?.pockets[skillToToolIndex[skill]].contents.item.tier]}`">
                             {{ playerTools.pockets[skillToToolIndex[skill]].contents.item.name ?? "No tool" }}
                             <v-img :src="iconUrl(playerTools.pockets[skillToToolIndex[skill]].contents.item).url" height="50" width="50"></v-img>
                           </v-col>

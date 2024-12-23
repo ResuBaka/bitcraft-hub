@@ -8,6 +8,7 @@
         "nuxt": "^3.14.1592",
         "vue": "^3.5.13",
         "vue-router": "^4.5.0",
+        "vuetify-sonner": "^0.3.20",
         "ws": "^8.18.0",
         "zod": "^3.23.8",
       },
@@ -1304,9 +1305,13 @@
 
     "vue-router": ["vue-router@4.5.0", "", { "dependencies": { "@vue/devtools-api": "^6.6.4" }, "peerDependencies": { "vue": "^3.2.0" } }, "sha512-HDuk+PuH5monfNuY+ct49mNmkCRK4xJAV9Ts4z9UFc4rzdDnxQLyCMGGc8pKhZhHTVzfanpNwB/lwqevcBwI4w=="],
 
+    "vue-sonner": ["vue-sonner@1.3.0", "", {}, "sha512-jAodBy4Mri8rQjVZGQAPs4ZYymc1ywPiwfa81qU0fFl+Suk7U8NaOxIDdI1oBGLeQJqRZi/oxNIuhCLqsBmOwg=="],
+
     "vuetify": ["vuetify@3.7.6", "", { "peerDependencies": { "typescript": ">=4.7", "vite-plugin-vuetify": ">=1.0.0", "vue": "^3.3.0", "webpack-plugin-vuetify": ">=2.0.0" }, "optionalPeers": ["typescript", "vite-plugin-vuetify", "webpack-plugin-vuetify"] }, "sha512-lol0Va5HtMIqZfjccSD5DLv5v31R/asJXzc6s7ULy51PHr1DjXxWylZejhq0kVpMGW64MiV1FmA/p8eYQfOWfQ=="],
 
     "vuetify-nuxt-module": ["vuetify-nuxt-module@0.18.3", "", { "dependencies": { "@nuxt/kit": "^3.12.4", "defu": "^6.1.4", "destr": "^2.0.3", "local-pkg": "^0.5.0", "pathe": "^1.1.2", "perfect-debounce": "^1.0.0", "ufo": "^1.5.4", "unconfig": "^0.5.5", "upath": "^2.0.1", "vite-plugin-vuetify": "^2.0.4", "vuetify": "^3.7.0" } }, "sha512-Mv5mcqfqk5dR9oVJiITXn5p4NmDzp57AR2Txf/0iIoAjFlMsDWzTpUvn9ELTzDI3Z0LjiYVqptwxrOlMcju2Wg=="],
+
+    "vuetify-sonner": ["vuetify-sonner@0.3.20", "", { "dependencies": { "vue-sonner": "^1.2.3" }, "peerDependencies": { "vue": "^3.3.0", "vuetify": "^3.3.0" } }, "sha512-ym1Wng0PCPaABYTmlnn7ibvhmQJIGyXnJVaW/OfG+cH9MGF9FiSDxO2jTr4M/Y823GZVIEQDLGirSm0Xo2SKjA=="],
 
     "webidl-conversions": ["webidl-conversions@3.0.1", "", {}, "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="],
 

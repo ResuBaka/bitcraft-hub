@@ -58,7 +58,7 @@ export const useWebsocketStore = defineStore('websocket', () => {
         }
     }
 
-    function subscribe(eventType: string, topic: MaybeRefOrGetter<string | string[]>, handler: (message: any) => void, instanceId: string, lazy: boolean = false) {
+    function subscribe<T extends Record<string, any>>(eventType: string, topic: MaybeRefOrGetter<string | string[]>, handler: (message: T) => void, instanceId: string, lazy: boolean = false) {
         let newTopics = []
         let unwrapped = unref(topic)
 

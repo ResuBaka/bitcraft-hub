@@ -31,6 +31,7 @@ pub(crate) fn get_routes() -> AppRouter {
         .route("/api/bitcraft/claims", get(list_claims))
         .route("/api/bitcraft/claims/:id", get(get_claim))
         .route("/claims/:id", get(find_claim_descriptions))
+        .route("/claims/tiles/:id", get(get_claim_tiles))
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -154,6 +155,21 @@ pub(crate) struct ClaimDescriptionStateMember {
 pub(crate) enum OnlineState {
     Online,
     Offline,
+}
+
+pub(crate) async fn get_claim_tiles(
+    state: State<std::sync::Arc<AppState>>,
+    Path(id): Path<u64>,
+) -> Result<Json<Vec<entity::claim_tile_state::Model>>, (StatusCode, &'static str)> {
+    let claim_tiles = state
+        .claim_tile_state
+        .iter()
+        .filter(|a| a.claim_id == id)
+        .collect::<Vec<_>>();
+
+    Ok(Json(
+        claim_tiles.iter().map(|a| a.value().clone()).collect(),
+    ))
 }
 
 pub(crate) async fn get_claim(

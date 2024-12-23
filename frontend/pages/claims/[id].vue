@@ -4,6 +4,7 @@ import CardItem from "~/components/Bitcraft/CardItem.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { useNow } from "@vueuse/core";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
+import { toast } from "vuetify-sonner";
 
 const {
   public: { iconDomain },
@@ -61,7 +62,6 @@ registerWebsocketMessageHandler(
   [`claim.${route.params.id}`],
   (message) => {
     if (message.c.entity_id == route.params.id) {
-      console.log("ClaimDescriptionState", message);
       if (claimFetch.value) {
         claimFetch.value.name = message.c.name;
         claimFetch.value.num_tiles = message.c.num_tiles;
@@ -81,9 +81,23 @@ registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
     (member) => member.entity_id === message.c.entity_id,
   );
   if (index && index !== -1) {
-    claimFetch.value.members[index].online_state = message.c.signed_in
-      ? "Online"
-      : "Offline";
+    let onlineState = message.c.signed_in ? "Online" : "Offline";
+
+    if (claimFetch.value.members[index].online_state !== onlineState) {
+      if (message.c.signed_in) {
+        toast(`${claimFetch.value.members[index].user_name} signed in`, {
+          progressBar: true,
+          duration: 5000,
+        });
+      } else {
+        toast(`${claimFetch.value.members[index].user_name} signed out`, {
+          progressBar: true,
+          duration: 5000,
+        });
+      }
+    }
+
+    claimFetch.value.members[index].online_state = onlineState;
   }
 });
 
@@ -102,6 +116,11 @@ registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
     (member) => member.entity_id === message.c.user_id,
   );
   if (index && index !== -1) {
+    toast(
+      `Player ${claimFetch.value.members[index].user_name} Level ${message.c.level} reached for Skill ${message.c.skill_name}`,
+      { progressBar: true, duration: 5000 },
+    );
+
     claimFetch.value.members[index].skills_ranks[message.c.skill_name].level =
       message.c.level;
   }
