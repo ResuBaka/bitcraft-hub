@@ -154,7 +154,7 @@ dependencies = [
  "async-compression",
  "async-trait",
  "axum",
- "axum-codec 0.0.14",
+ "axum-codec",
  "base64 0.22.1",
  "config",
  "dashmap",
@@ -459,14 +459,15 @@ dependencies = [
 
 [[package]]
 name = "axum-codec"
-version = "0.0.14"
+version = "0.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "346d96fc2fab0823bfce040520d8bc2470f0bb6636f823bf4de4b730c3f446e2"
+checksum = "5cd908e77e98aebca5393a42400b0b16191fb2931e4eebef4350bbc9172e5471"
 dependencies = [
  "axum",
- "axum-codec-macros 0.0.10",
+ "axum-codec-macros",
  "bincode",
  "bitcode",
+ "bytes",
  "mime",
  "rmp-serde",
  "schemars",
@@ -475,46 +476,14 @@ dependencies = [
  "serde_yaml",
  "thiserror 1.0.61",
  "toml",
- "validator 0.18.1",
-]
-
-[[package]]
-name = "axum-codec"
-version = "0.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4739017113608dff47cec29fbc91e470eee7ad4daa2f4f8cb05e5012df9edf64"
-dependencies = [
- "axum",
- "axum-codec-macros 0.0.11",
- "bincode",
- "bitcode",
- "mime",
- "rmp-serde",
- "schemars",
- "serde",
- "serde_json",
- "serde_yaml",
- "thiserror 1.0.61",
- "toml",
- "validator 0.19.0",
+ "validator",
 ]
 
 [[package]]
 name = "axum-codec-macros"
-version = "0.0.10"
+version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51db8a0e64cdfb289b7cd10c9dc9237e7c4298dc9cebfe8776a847657968fc2a"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.89",
-]
-
-[[package]]
-name = "axum-codec-macros"
-version = "0.0.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2a4a05c43840f639e7e651e2fc1ec3e680cb6c2e5399d0dd69b33cdc9307445"
+checksum = "1602ff52de586d49c722707ed248d6882288c540f167adc47fd407135d028a1a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -617,7 +586,7 @@ dependencies = [
  "arrayvec",
  "bitcode_derive",
  "bytemuck",
- "glam 0.28.0",
+ "glam",
  "serde",
 ]
 
@@ -640,7 +609,7 @@ dependencies = [
  "base64 0.22.1",
  "config",
  "futures",
- "glam 0.29.2",
+ "glam",
  "indicatif",
  "lazy_static",
  "prometheus",
@@ -1264,7 +1233,7 @@ name = "entity"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "axum-codec 0.0.15",
+ "axum-codec",
  "sea-orm",
  "serde",
  "serde_json",
@@ -1536,12 +1505,6 @@ name = "gimli"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40ecd4077b5ae9fd2e9e169b102c6c330d0605168eb0e8bf79952b256dbefffd"
-
-[[package]]
-name = "glam"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
 
 [[package]]
 name = "glam"
@@ -1959,16 +1922,6 @@ name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
-
-[[package]]
-name = "idna"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "634d9b1461af396cad843f47fdba5597a4f9e6ddd4bfb6ff5d85028c25cb12f6"
-dependencies = [
- "unicode-bidi",
- "unicode-normalization",
-]
 
 [[package]]
 name = "idna"
@@ -4848,7 +4801,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7c25da092f0a868cdf09e8674cd3b7ef3a7d92a24253e663a2fb85e2496de56"
 dependencies = [
  "form_urlencoded",
- "idna 1.0.0",
+ "idna",
  "percent-encoding",
 ]
 
@@ -4967,48 +4920,18 @@ dependencies = [
 
 [[package]]
 name = "validator"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db79c75af171630a3148bd3e6d7c4f42b6a9a014c2945bc5ed0020cbb8d9478e"
-dependencies = [
- "idna 0.5.0",
- "once_cell",
- "regex",
- "serde",
- "serde_derive",
- "serde_json",
- "url",
- "validator_derive 0.18.1",
-]
-
-[[package]]
-name = "validator"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0b4a29d8709210980a09379f27ee31549b73292c87ab9899beee1c0d3be6303"
 dependencies = [
- "idna 1.0.0",
+ "idna",
  "once_cell",
  "regex",
  "serde",
  "serde_derive",
  "serde_json",
  "url",
- "validator_derive 0.19.0",
-]
-
-[[package]]
-name = "validator_derive"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55591299b7007f551ed1eb79a684af7672c19c3193fb9e0a31936987bb2438ec"
-dependencies = [
- "darling",
- "once_cell",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 2.0.89",
+ "validator_derive",
 ]
 
 [[package]]

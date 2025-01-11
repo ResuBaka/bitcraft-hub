@@ -11,6 +11,7 @@ axum = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+axum-codec = { workspace = true }
 time = { workspace = true }
 hyper = { workspace = true }
 rayon = { workspace = true }
@@ -36,7 +37,6 @@ tower-cookies = "0.10.0"
 dotenvy = "0.15.7"
 metrics = { version = "0.24.0", default-features = false }
 metrics-exporter-prometheus = { version = "0.16.0", default-features = false }
-axum-codec = { version = "0.0.14", features = ["msgpack", "toml", "yaml"] }
 struson = { version = "0.5.0", features = ["serde"] }
 reqwest-websocket = { git = "https://github.com/jgraef/reqwest-websocket.git", rev = "cbbf05a391c31189133ed1178be3a4c488960928" }
 base64 = "0.22.1"

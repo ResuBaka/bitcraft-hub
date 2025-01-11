@@ -21,6 +21,7 @@ reqwest = { version = "0.12.9", features = ["json", "default" , "zstd", "brotli"
 hyper = { version = "1.5.1", features = ["full"] }
 rayon = "1.10.0"
 time = { version = "0.3.37", features = ["serde"] }
+axum-codec = { version = "0.0.17", features = ["msgpack", "toml", "yaml"] }
 
 [dependencies]
 glam = "0.29.2"
