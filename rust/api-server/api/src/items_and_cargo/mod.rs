@@ -1,22 +1,18 @@
 use crate::{AppRouter, AppState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use axum::Router;
-use axum_codec::Codec;
+use axum::routing::get;
+use axum::{Json, Router};
 use entity::cargo_desc;
 use entity::item_desc;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 
 pub(crate) fn get_routes() -> AppRouter {
-    Router::new().route(
-        "/api/bitcraft/itemsAndCargo",
-        axum_codec::routing::get(list_items_and_cargo).into(),
-    )
+    Router::new().route("/api/bitcraft/itemsAndCargo", get(list_items_and_cargo))
 }
 
-#[derive(Clone)]
-#[axum_codec::apply(encode, decode)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 enum ItemCargo {
     Item(item_desc::Model),
@@ -32,7 +28,7 @@ pub(crate) struct ItemsAndCargoParams {
     tag: Option<String>,
 }
 
-#[axum_codec::apply(encode, decode)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct ItemsAndCargoResponse {
     items: Vec<ItemCargo>,
     tags: Vec<String>,
@@ -46,7 +42,7 @@ pub(crate) struct ItemsAndCargoResponse {
 pub(crate) async fn list_items_and_cargo(
     state: State<std::sync::Arc<AppState>>,
     Query(params): Query<ItemsAndCargoParams>,
-) -> Result<Codec<ItemsAndCargoResponse>, (StatusCode, &'static str)> {
+) -> Result<Json<ItemsAndCargoResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(5);
     let search = match params.search {
@@ -90,7 +86,7 @@ pub(crate) async fn list_items_and_cargo(
 
     merged_tiers.sort();
     merged_tags.sort();
-    Ok(Codec(ItemsAndCargoResponse {
+    Ok(Json(ItemsAndCargoResponse {
         items,
         tiers: merged_tiers,
         tags: merged_tags,

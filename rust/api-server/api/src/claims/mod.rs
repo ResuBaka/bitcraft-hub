@@ -29,9 +29,9 @@ pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route("/claims", get(list_claims))
         .route("/api/bitcraft/claims", get(list_claims))
-        .route("/api/bitcraft/claims/:id", get(get_claim))
-        .route("/claims/:id", get(find_claim_descriptions))
-        .route("/claims/tiles/:id", get(get_claim_tiles))
+        .route("/api/bitcraft/claims/{id}", get(get_claim))
+        .route("/claims/{id}", get(find_claim_descriptions))
+        .route("/claims/tiles/{id}", get(get_claim_tiles))
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -79,7 +79,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub building_states: Vec<building_state::Model>,
 }
 
-#[axum_codec::apply(encode, decode)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct ClaimResponse {
     pub claims: Vec<ClaimDescriptionState>,
     #[serde(rename = "perPage")]

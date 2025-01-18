@@ -3,11 +3,11 @@
 use crate::{cargo_desc, item_desc};
 use sea_orm::entity::prelude::*;
 use sea_orm::{FromJsonQueryResult, JsonValue};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize, Serialize)]
 #[sea_orm(table_name = "inventory")]
-#[axum_codec::apply(encode, decode)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
@@ -24,8 +24,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq)]
-#[axum_codec::apply(encode, decode)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct ResolvedInventory {
     pub entity_id: i64,
     pub pockets: Vec<ItemSlotResolved>,
@@ -36,24 +35,21 @@ pub struct ResolvedInventory {
     pub nickname: Option<String>,
 }
 
-#[axum_codec::apply(encode, decode)]
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct ItemSlotResolved {
     pub volume: i64,
     pub contents: Option<ExpendedRefrence>,
     pub locked: bool,
 }
 
-#[axum_codec::apply(encode, decode)]
-#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct ItemSlot {
     pub volume: i64,
     pub contents: HashMap<i64, Option<JsonValue>>,
     pub locked: bool,
 }
 
-#[axum_codec::apply(encode, decode)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct ItemPocket {
     pub item_id: i64,
     pub quantity: i64,
@@ -61,8 +57,7 @@ pub struct ItemPocket {
     pub durability: Option<i64>,
 }
 
-#[axum_codec::apply(encode, decode)]
-#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct Content {
     pub item_id: i64,
     pub quantity: i64,
@@ -70,23 +65,20 @@ pub struct Content {
     pub durability: JsonValue,
 }
 
-#[axum_codec::apply(encode, decode)]
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize)]
 pub enum ItemType {
     Item,
     Cargo,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult)]
-#[axum_codec::apply(encode, decode)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ItemExpended {
     Item(item_desc::Model),
     Cargo(cargo_desc::Model),
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult)]
-#[axum_codec::apply(encode, decode)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct ExpendedRefrence {
     pub item_id: i64,
     pub item: ItemExpended,

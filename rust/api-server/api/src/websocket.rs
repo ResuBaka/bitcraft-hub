@@ -8,8 +8,6 @@ use ::entity::user_state;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use axum::http::HeaderMap;
 use base64::Engine;
-use dashmap::mapref::one::Ref;
-use entity::claim_tile_state::Model;
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
 use log::{debug, error, info};
@@ -514,7 +512,7 @@ pub fn start_websocket_bitcraft_logic(
                                                 action_state.clone(),
                                             );
                                         } else {
-                                            let mut action_states = dashmap::DashMap::new();
+                                            let action_states = dashmap::DashMap::new();
                                             action_states.insert(
                                                 action_state.entity_id,
                                                 action_state.clone(),
@@ -905,7 +903,7 @@ pub fn start_websocket_bitcraft_logic(
                                     action_states
                                         .insert(action_state.entity_id, action_state.clone());
                                 } else {
-                                    let mut action_states = dashmap::DashMap::new();
+                                    let action_states = dashmap::DashMap::new();
                                     action_states
                                         .insert(action_state.entity_id, action_state.clone());
                                     global_app_state

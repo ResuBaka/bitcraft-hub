@@ -16,12 +16,11 @@ serde_json = "1.0.133"
 serde = { version = "1.0.215", features = ["derive"] }
 tokio = { version = "^1.41.1", features = [ "full" ] }
 log = "0.4.22"
-axum = { version = "0.7.9", features = ["ws"]}
+axum = { version = "0.8.1", features = ["ws"]}
 reqwest = { version = "0.12.9", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
 hyper = { version = "1.5.1", features = ["full"] }
 rayon = "1.10.0"
 time = { version = "0.3.37", features = ["serde"] }
-axum-codec = { version = "0.0.17", features = ["msgpack", "toml", "yaml"] }
 
 [dependencies]
 glam = "0.29.2"

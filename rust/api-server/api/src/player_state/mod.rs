@@ -21,9 +21,9 @@ use tokio::sync::mpsc::UnboundedSender;
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route("/players", get(list_players))
-        .route("/players/:id", get(find_player_by_id))
+        .route("/players/{id}", get(find_player_by_id))
         .route("/api/bitcraft/players", get(list_players))
-        .route("/api/bitcraft/players/:id", get(find_player_by_id))
+        .route("/api/bitcraft/players/{id}", get(find_player_by_id))
 }
 
 #[derive(Deserialize)]

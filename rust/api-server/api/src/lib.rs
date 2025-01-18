@@ -35,9 +35,10 @@ use axum::extract::{
     ws::{Message, WebSocket, WebSocketUpgrade},
     MatchedPath, Request, State,
 };
-use axum::http::HeaderValue;
+use axum::http::{HeaderValue, Version};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
+use axum::routing::any;
 use base64::Engine;
 use futures::{SinkExt, StreamExt};
 use log::{error, info};
@@ -138,8 +139,10 @@ async fn start() -> anyhow::Result<()> {
 
 async fn websocket_handler(
     ws: WebSocketUpgrade,
+    version: Version,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
+    tracing::debug!("Websocket upgraded with version: {version:?}");
     ws.on_upgrade(|socket| websocket(socket, state))
 }
 
@@ -194,7 +197,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
         while let Ok(msg) = rx.recv().await {
             // In any websocket error, break loop.
             if let Err(error) = sender
-                .send(Message::Text(serde_json::to_string(&msg).unwrap()))
+                .send(Message::Text(serde_json::to_string(&msg).unwrap().into()))
                 .await
             {
                 tracing::error!("Error sending message to client: {error}");
@@ -319,17 +322,11 @@ pub(crate) type AppRouter = Router<Arc<AppState>>;
 
 fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandle) -> Router {
     let desc_router = Router::new()
-        .route(
-            "/buildings/:id",
-            axum_codec::routing::get(buildings::find_claim_description).into(),
-        )
-        .route(
-            "/buildings",
-            axum_codec::routing::get(buildings::find_building_descriptions).into(),
-        );
+        .route("/buildings/{id}", get(buildings::find_claim_description))
+        .route("/buildings", get(buildings::find_building_descriptions));
 
     let app = Router::new()
-        .route("/websocket", get(websocket_handler))
+        .route("/websocket", any(websocket_handler))
         .route("/locations", get(locations::list_locations))
         .route("/items", get(items::list_items))
         .merge(player_state::get_routes())

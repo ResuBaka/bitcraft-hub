@@ -2,10 +2,10 @@
 
 use sea_orm::entity::prelude::*;
 use sea_orm::FromJsonQueryResult;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "building_desc")]
-#[axum_codec::apply(encode, decode)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i64,
@@ -37,8 +37,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult)]
-#[axum_codec::apply(encode, decode)]
+#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize)]
 pub struct Function {
     pub function_type: i32,
     pub level: i32,
@@ -56,7 +55,7 @@ pub struct Function {
     pub terraform: bool,
 }
 
-#[axum_codec::apply(encode, decode)]
+#[derive(Serialize, Deserialize)]
 pub struct ApiResponse {
     pub id: i64,
     pub functions: Vec<Function>,

@@ -3,8 +3,8 @@
 use crate::{AppRouter, AppState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use axum::Router;
-use axum_codec::Codec;
+use axum::routing::get;
+use axum::{Json, Router};
 use entity::trade_order;
 use futures::StreamExt;
 use log::{debug, error, info};
@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -24,7 +24,7 @@ use tokio::time::Instant;
 pub(crate) fn get_routes() -> AppRouter {
     Router::new().route(
         "/api/bitcraft/trade_orders/get_trade_orders",
-        axum_codec::routing::get(get_trade_orders).into(),
+        get(get_trade_orders),
     )
 }
 
@@ -38,7 +38,7 @@ struct TradeOrdersQuery {
 async fn get_trade_orders(
     state: State<std::sync::Arc<AppState>>,
     Query(query): Query<TradeOrdersQuery>,
-) -> Result<Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
+) -> Result<Json<TradeOrdersResponse>, (StatusCode, &'static str)> {
     let page = query.page.unwrap_or(1);
     let per_page = query.per_page.unwrap_or(24);
     let search = query.search;
@@ -78,7 +78,7 @@ async fn get_trade_orders(
     };
 
     if items_ids.is_none() && cargo_ids.is_none() && search.is_some() {
-        return Ok(Codec(TradeOrdersResponse {
+        return Ok(Json(TradeOrdersResponse {
             trade_orders: vec![],
             total: 0,
             page: 1,
@@ -166,7 +166,7 @@ async fn get_trade_orders(
         trade_orders
     };
 
-    Ok(Codec(TradeOrdersResponse {
+    Ok(Json(TradeOrdersResponse {
         trade_orders: filtered_trade_orders,
         total,
         page,
@@ -174,7 +174,7 @@ async fn get_trade_orders(
     }))
 }
 
-#[axum_codec::apply(encode, decode)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct TradeOrdersResponse {
     trade_orders: Vec<trade_order::Model>,
     total: u64,

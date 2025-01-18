@@ -140,13 +140,13 @@ pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route("/leaderboard", get(leaderboard::get_top_100))
-        .route("/experience/:player_id", get(player_leaderboard))
+        .route("/experience/{player_id}", get(player_leaderboard))
         .route(
-            "/api/bitcraft/experience/:player_id",
+            "/api/bitcraft/experience/{player_id}",
             get(player_leaderboard),
         )
         .route(
-            "/api/bitcraft/leaderboard/claims/:claim_id",
+            "/api/bitcraft/leaderboard/claims/{claim_id}",
             get(get_claim_leaderboard),
         )
 }

@@ -2,8 +2,8 @@ use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{AppRouter, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Router;
-use axum_codec::Codec;
+use axum::routing::get;
+use axum::{Json, Router};
 use entity::inventory::{
     Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, Model, ResolvedInventory,
 };
@@ -14,6 +14,7 @@ use sea_orm::{
     sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
     QuerySelect,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
@@ -23,25 +24,19 @@ use std::path::PathBuf;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
+        .route("/inventorys/changes/{id}", get(read_inventory_changes))
         .route(
-            "/inventorys/changes/:id",
-            axum_codec::routing::get(read_inventory_changes).into(),
+            "/api/bitcraft/inventorys/changes/{id}",
+            get(read_inventory_changes),
         )
         .route(
-            "/api/bitcraft/inventorys/changes/:id",
-            axum_codec::routing::get(read_inventory_changes).into(),
+            "/api/bitcraft/inventorys/owner_entity_id/{id}",
+            get(find_inventory_by_owner_entity_id),
         )
-        .route(
-            "/api/bitcraft/inventorys/owner_entity_id/:id",
-            axum_codec::routing::get(find_inventory_by_owner_entity_id).into(),
-        )
-        .route(
-            "/inventory/:id",
-            axum_codec::routing::get(find_inventory_by_id).into(),
-        )
+        .route("/inventory/{id}", get(find_inventory_by_id))
 }
 
-#[axum_codec::apply(encode, decode)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct InventoryChanged {
     inventory_id: i64,
     identity: String,
@@ -56,7 +51,7 @@ pub(crate) struct InventoryChanged {
 pub(crate) async fn read_inventory_changes(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Codec<Vec<InventoryChanged>>, (StatusCode, &'static str)> {
+) -> Result<Json<Vec<InventoryChanged>>, (StatusCode, &'static str)> {
     let mut inventory_changes = vec![];
 
     let inventory_chages_file =
@@ -76,7 +71,7 @@ pub(crate) async fn read_inventory_changes(
                 };
             }
 
-            Ok(Codec(inventory_changes))
+            Ok(Json(inventory_changes))
         }
         Err(_e) => Err((StatusCode::NOT_FOUND, "InventoryChanged not found")),
     }
@@ -85,7 +80,7 @@ pub(crate) async fn read_inventory_changes(
 pub(crate) async fn find_inventory_by_id(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<i64>,
-) -> Result<Codec<inventory::Model>, (StatusCode, &'static str)> {
+) -> Result<Json<inventory::Model>, (StatusCode, &'static str)> {
     let inventory = QueryCore::find_inventory_by_id(&state.conn, id)
         .await
         .map_err(|e| {
@@ -95,12 +90,12 @@ pub(crate) async fn find_inventory_by_id(
         })?;
 
     match inventory {
-        Some(inventory) => Ok(Codec(inventory)),
+        Some(inventory) => Ok(Json(inventory)),
         None => Err((StatusCode::NOT_FOUND, "Inventory not found")),
     }
 }
 
-#[axum_codec::apply(encode, decode)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct InventorysResponse {
     inventorys: Vec<ResolvedInventory>,
     total: i64,
@@ -112,7 +107,7 @@ pub(crate) struct InventorysResponse {
 pub(crate) async fn find_inventory_by_owner_entity_id(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<i64>,
-) -> Result<Codec<InventorysResponse>, (StatusCode, &'static str)> {
+) -> Result<Json<InventorysResponse>, (StatusCode, &'static str)> {
     let mut inventory_ids = vec![id];
     let player = QueryCore::find_player_by_id(&state.conn, id)
         .await
@@ -260,7 +255,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
     resolved_inventory.sort_by(|a, b| a.entity_id.cmp(&b.entity_id));
 
-    Ok(Codec(InventorysResponse {
+    Ok(Json(InventorysResponse {
         inventorys: resolved_inventory,
         total: num_pages.number_of_items as i64,
         page: 1,

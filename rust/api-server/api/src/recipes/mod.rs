@@ -3,8 +3,8 @@
 use crate::{AppRouter, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Router;
-use axum_codec::Codec;
+use axum::routing::get;
+use axum::{Json, Router};
 use entity::crafting_recipe;
 use entity::crafting_recipe::ConsumedItemStackWithInner;
 use log::{debug, error, info};
@@ -22,36 +22,33 @@ use tokio::time::Instant;
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route(
-            "/api/bitcraft/recipes/needed_in_crafting/:id",
-            axum_codec::routing::get(get_needed_in_crafting).into(),
+            "/api/bitcraft/recipes/needed_in_crafting/{id}",
+            get(get_needed_in_crafting),
         )
         .route(
-            "/api/bitcraft/recipes/produced_in_crafting/:id",
-            axum_codec::routing::get(get_produced_in_crafting).into(),
+            "/api/bitcraft/recipes/produced_in_crafting/{id}",
+            get(get_produced_in_crafting),
         )
         .route(
-            "/api/bitcraft/recipes/needed_to_craft/:id",
-            axum_codec::routing::get(get_needed_to_craft).into(),
+            "/api/bitcraft/recipes/needed_to_craft/{id}",
+            get(get_needed_to_craft),
         )
         .route(
-            "/recipes/needed_in_crafting/:id",
-            axum_codec::routing::get(get_needed_in_crafting).into(),
+            "/recipes/needed_in_crafting/{id}",
+            get(get_needed_in_crafting),
         )
         .route(
-            "/recipes/produced_in_crafting/:id",
-            axum_codec::routing::get(get_produced_in_crafting).into(),
+            "/recipes/produced_in_crafting/{id}",
+            get(get_produced_in_crafting),
         )
-        .route(
-            "/recipes/needed_to_craft/:id",
-            axum_codec::routing::get(get_needed_to_craft).into(),
-        )
+        .route("/recipes/needed_to_craft/{id}", get(get_needed_to_craft))
 }
 
 pub(crate) async fn get_needed_in_crafting(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
-    return Ok(Codec(vec![]));
+) -> Result<Json<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
+    return Ok(Json(vec![]));
 
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
@@ -67,14 +64,14 @@ pub(crate) async fn get_needed_in_crafting(
         .map(|x| x.clone())
         .collect();
 
-    Ok(Codec(recipes))
+    Ok(Json(recipes))
 }
 
 pub(crate) async fn get_produced_in_crafting(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
-    return Ok(Codec(vec![]));
+) -> Result<Json<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
+    return Ok(Json(vec![]));
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
     let recipes = recipes
@@ -89,19 +86,19 @@ pub(crate) async fn get_produced_in_crafting(
         .map(|x| x.clone())
         .collect();
 
-    Ok(Codec(recipes))
+    Ok(Json(recipes))
 }
 
 pub(crate) async fn get_needed_to_craft(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Codec<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
-    return Ok(Codec(vec![]));
+) -> Result<Json<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
+    return Ok(Json(vec![]));
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
     let recipes = recipes.into_iter().map(|x| x.into()).collect();
 
-    Ok(Codec(get_all_consumed_items_from_item(&recipes, id as i64)))
+    Ok(Json(get_all_consumed_items_from_item(&recipes, id as i64)))
 }
 
 fn get_all_consumed_items_from_item(

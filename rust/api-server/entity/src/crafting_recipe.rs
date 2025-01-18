@@ -13,8 +13,7 @@ pub struct ConsumedItemStack {
     pub consumption_chance: i64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[axum_codec::apply(encode, decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConsumedItemStackWithInner {
     pub item_id: i64,
     pub quantity: i64,
@@ -125,9 +124,8 @@ impl From<Model> for CraftingRecipeWithInner {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "crafting_recipe")]
-#[axum_codec::apply(encode, decode)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i64,
