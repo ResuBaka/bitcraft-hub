@@ -11,30 +11,16 @@ edition = "2021"
 members = [".", "api", "service", "entity", "migration"]
 
 [workspace.dependencies]
-sea-orm = { version = "1.1.1", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
-serde_json = "1.0.133"
-serde = { version = "1.0.215", features = ["derive"] }
-tokio = { version = "^1.41.1", features = [ "full" ] }
-log = "0.4.22"
+sea-orm = { version = "1.1.4", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
+serde_json = "1.0.138"
+serde = { version = "1.0.217", features = ["derive"] }
+tokio = { version = "1.43.0", features = [ "full" ] }
+log = "0.4.25"
 axum = { version = "0.8.1", features = ["ws"]}
-reqwest = { version = "0.12.9", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
-hyper = { version = "1.5.1", features = ["full"] }
+reqwest = { version = "0.12.12", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
+hyper = { version = "1.6.0", features = ["full"] }
 rayon = "1.10.0"
 time = { version = "0.3.37", features = ["serde"] }
 
 [dependencies]
-glam = "0.29.2"
 api = { path = "api" }
-indicatif = "0.17.8"
-lazy_static = "1.5.0"
-futures = "0.3.30"
-sysinfo = "0.31.0"
-tower = "0.4.13"
-utoipa = {  version = "4.2.3", features = ["axum_extras"] }
-utoipa-swagger-ui = {  version = "7.1.0", features = ["axum"] }
-utoipa-redoc = {  version = "4.0.0", features = ["axum"] }
-utoipa-rapidoc = {  version = "4.0.0", features = ["axum"] }
-utoipa-scalar = {  version = "0.1.0", features = ["axum"] }
-prometheus = "0.13.4"
-base64 = "0.22.1"
-config = "0.14.0"

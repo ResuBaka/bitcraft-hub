@@ -12,6 +12,4 @@ path = "src/lib.rs"
 sea-orm = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-time = { workspace = true }
 anyhow = "1.0.93"
-tracing = "0.1.40"
