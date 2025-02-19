@@ -515,7 +515,7 @@ const countDownUntilResearchIsFinished = computed(() => {
                   <v-list-item-subtitle><bitcraft-animated-number :value="claim.xp_gained_since_last_coin_minting" :speed="8"></bitcraft-animated-number> / 1000</v-list-item-subtitle>
                 </v-list-item>
               </v-col>
-              <v-col cols="6" md="2" lg="12">
+              <v-col cols="6" md="2" lg="12" v-if="claim.location[Object.keys(claim.location)[0]][1] && claim.location[Object.keys(claim.location)[0]][0]">
                 <v-list-item>
                   <v-list-item-title>Location</v-list-item-title>
                   <v-list-item-subtitle>
