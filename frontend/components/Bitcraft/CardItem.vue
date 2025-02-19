@@ -3,6 +3,8 @@ import type { ItemRow } from "~/modules/bitcraft/gamestate/item";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 const imagedErrored = ref(false);
 
+const dev = import.meta.dev;
+
 const { item } = defineProps<{
   item: ItemRow;
 }>();
@@ -63,7 +65,7 @@ const iconUrl = computed(() => {
       <template #prepend v-if="iconUrl.show && imagedErrored !== true">
         <v-img @error="imagedErrored = true" :src="iconUrl.url" height="50" width="50"></v-img>
       </template>
-      <v-card-title>{{ item.name }}</v-card-title>
+      <v-card-title>{{ item.name }}{{ dev ? ' - ' + item.id : '' }}</v-card-title>
       <template v-slot:append>
         <v-tooltip
             location="bottom"
