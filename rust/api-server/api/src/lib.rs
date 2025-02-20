@@ -564,6 +564,13 @@ fn import_data(config: Config) {
                     )));
                 }
 
+                if config.enabled_importer.contains(&"recipes".to_string())
+                    || config.enabled_importer.len() == 0
+                {
+                    let temp_config = config.clone();
+                    tasks.push(tokio::spawn(recipes::import_job_recipes_desc(temp_config)));
+                }
+
                 if config.enabled_importer.contains(&"items".to_string())
                     || config.enabled_importer.len() == 0
                 {

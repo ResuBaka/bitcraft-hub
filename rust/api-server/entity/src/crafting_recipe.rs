@@ -10,6 +10,7 @@ pub struct ConsumedItemStack {
     pub quantity: i64,
     pub item_type: serde_json::Value,
     pub discovery_score: i64,
+    //@TODO change to f32 
     pub consumption_chance: i64,
 }
 
@@ -69,24 +70,25 @@ impl From<CraftedItemStack> for CraftedItemStackWithInner {
 pub struct CraftingRecipeWithInner {
     pub id: i64,
     pub name: String,
+    //@TODO change to f32 
     pub time_requirement: i32,
+    //@TODO change to f32 
     pub stamina_requirement: i32,
     pub building_requirement: Json,
     pub level_requirements: Json,
     pub tool_requirements: Json,
     pub consumed_item_stacks: Vec<ConsumedItemStackWithInner>,
-    pub discovery_triggers: Json,
-    pub required_knowledges: Json,
-    pub required_claim_tech_id: Json,
+    pub discovery_triggers: Vec<i32>,
+    pub required_knowledges: Vec<i32>,
+    pub required_claim_tech_id: i32,
     pub full_discovery_score: i32,
-    pub completion_experience: Json,
+    pub experience_per_progress: Json,
     pub allow_use_hands: bool,
     pub crafted_item_stacks: Vec<CraftedItemStackWithInner>,
     pub is_passive: bool,
     pub actions_required: i32,
     pub tool_mesh_index: i32,
-    pub animation_start: String,
-    pub animation_end: String,
+    pub recipe_performance_id: i32
 }
 
 impl From<Model> for CraftingRecipeWithInner {
@@ -108,7 +110,7 @@ impl From<Model> for CraftingRecipeWithInner {
             required_knowledges: value.required_knowledges,
             required_claim_tech_id: value.required_claim_tech_id,
             full_discovery_score: value.full_discovery_score,
-            completion_experience: value.completion_experience,
+            experience_per_progress: value.experience_per_progress,
             allow_use_hands: value.allow_use_hands,
             crafted_item_stacks: value
                 .crafted_item_stacks
@@ -118,8 +120,7 @@ impl From<Model> for CraftingRecipeWithInner {
             is_passive: value.is_passive,
             actions_required: value.actions_required,
             tool_mesh_index: value.tool_mesh_index,
-            animation_start: value.animation_start,
-            animation_end: value.animation_end,
+            recipe_performance_id: value.recipe_performance_id
         }
     }
 }
@@ -132,24 +133,26 @@ pub struct Model {
     pub name: String,
     pub time_requirement: i32,
     pub stamina_requirement: i32,
+    pub tool_durability_lost: i32,
     pub building_requirement: Json,
     pub level_requirements: Json,
     pub tool_requirements: Json,
     #[sea_orm(column_type = "Json")]
     pub consumed_item_stacks: Vec<ConsumedItemStack>,
-    pub discovery_triggers: Json,
-    pub required_knowledges: Json,
-    pub required_claim_tech_id: Json,
+    #[sea_orm(column_type = "Json")]
+    pub discovery_triggers: Vec<i32>,
+    #[sea_orm(column_type = "Json")]
+    pub required_knowledges:  Vec<i32>,
+    pub required_claim_tech_id: i32,
     pub full_discovery_score: i32,
-    pub completion_experience: Json,
+    pub experience_per_progress: Json,
     pub allow_use_hands: bool,
     #[sea_orm(column_type = "Json")]
     pub crafted_item_stacks: Vec<CraftedItemStack>,
     pub is_passive: bool,
     pub actions_required: i32,
     pub tool_mesh_index: i32,
-    pub animation_start: String,
-    pub animation_end: String,
+    pub recipe_performance_id: i32
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

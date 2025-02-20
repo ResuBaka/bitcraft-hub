@@ -197,7 +197,7 @@ pub(crate) async fn load_trade_order_from_spacetimedb(
 ) -> anyhow::Result<String> {
     let response = client
         .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM TradeOrderState")
+        .body("SELECT * FROM trade_order_state")
         .send()
         .await;
     let json = match response {

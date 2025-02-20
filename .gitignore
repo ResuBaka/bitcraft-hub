@@ -27,4 +27,4 @@ storage/**/*.*
 storage.zip
 
 # Rust
-/target/
+target/

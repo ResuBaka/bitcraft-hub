@@ -99,7 +99,7 @@ export default defineNuxtConfig({
     public: {
       iconDomain: "",
       api: {
-        base: "",
+        base: "http://localhost:1337",
         websocket: "",
       },
     },

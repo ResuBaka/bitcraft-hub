@@ -12,6 +12,7 @@ pub struct Model {
     pub description: String,
     pub volume: i32,
     pub durability: i32,
+    pub convert_to_on_durability_zero: i32,
     pub secondary_knowledge_id: i32,
     pub model_asset_name: String,
     pub icon_asset_name: String,

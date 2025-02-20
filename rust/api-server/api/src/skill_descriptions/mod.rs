@@ -36,7 +36,7 @@ pub(crate) async fn load_skill_desc_from_spacetimedb(
 ) -> anyhow::Result<String> {
     let response = client
         .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM SkillDesc")
+        .body("SELECT * FROM skill_desc")
         .send()
         .await;
     let json = match response {
@@ -93,7 +93,6 @@ pub(crate) async fn import_skill_descs(
         .to_owned();
 
     let mut skill_descs_to_delete = Vec::new();
-
     while let Ok(value) = json_stream_reader.deserialize_next::<skill_desc::SkillDescRaw>() {
         let value = value.to_model()?;
 

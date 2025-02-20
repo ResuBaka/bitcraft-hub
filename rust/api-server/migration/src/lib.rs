@@ -10,6 +10,11 @@ mod m20241204_132147_collectible_desc;
 mod m20241208_112015_inventory_changelog;
 mod m20241208_205237_raw_event_data;
 mod m20241210_182840_raw_event_data_user_id;
+mod m20250219_215440_add_to_item_desc_convert_to_on_durability_zero;
+mod m20250219_221732_add_to_building_desc_interact_permission;
+mod m20250220_115114_add_crafting_recipe;
+
+
 
 pub struct Migrator;
 
@@ -27,6 +32,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20241208_112015_inventory_changelog::Migration),
             Box::new(m20241208_205237_raw_event_data::Migration),
             Box::new(m20241210_182840_raw_event_data_user_id::Migration),
+            Box::new(m20250219_215440_add_to_item_desc_convert_to_on_durability_zero::Migration),
+            Box::new(m20250219_221732_add_to_building_desc_interact_permission::Migration),
+            Box::new(m20250220_115114_add_crafting_recipe::Migration),
         ]
     }
 }
