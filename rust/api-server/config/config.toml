@@ -1,0 +1,13 @@
+host = "localhost"
+port = "1337"
+importenabled = true
+import = "Game"
+enabledimporter = []
+storagepath = "C:\\Users\\MERLI\\VSCODE\\bitcraft-crafting-wiki\\storage"
+[database]
+url = "postgres://postgres:Welcome01@localhost:5431/postgres"
+[spacetimedb]
+domain = "testnet.spacetimedb.com"
+protocol = "https://"
+database = "trailer"
+password =  "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJoZXhfaWRlbnRpdHkiOiJjMjAwNmViMDEzYmUyZDcwOGY1YTNjYjQxN2QwMGQzZmMyYmVmMjQ0MTgzNTM1OTg1YmMwNjI5NzkxYmM1NjJmIiwic3ViIjoiZThkMTM3MGItMjYzNS00NzU1LWIxYmMtMmZjMzgyOTNkYTQ1IiwiaXNzIjoibG9jYWxob3N0IiwiYXVkIjpbInNwYWNldGltZWRiIl0sImlhdCI6MTczOTc1NTI0MywiZXhwIjpudWxsfQ.egm8kXGQKJCcPSFH0P8NDUr0PtAPzIrdR3OxnOqYjYG2wbgZC3-QSuAsmeGnjDr2r-mY77oJVMf236VcQcfe_Q"

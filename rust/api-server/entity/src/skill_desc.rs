@@ -24,7 +24,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SkillDescRaw {
     pub id: i64,
-    pub skill: serde_json::Value,
+    pub skill: i32,
     pub name: String,
     pub description: String,
     pub icon_asset_name: String,
@@ -34,25 +34,16 @@ pub struct SkillDescRaw {
 
 impl SkillDescRaw {
     pub fn to_model(&self) -> anyhow::Result<Model> {
-        // @todo handle possible errors
-        let skill = self.skill.as_object().unwrap().keys().next().unwrap();
-        // @todo handle possible errors
-        let skill_category = self
-            .skill_category
-            .as_object()
-            .unwrap()
-            .keys()
-            .next()
-            .unwrap();
+        let skill_category = self.skill_category.as_array().unwrap()[0].as_i64().unwrap() as i32;
 
         Ok(Model {
             id: self.id,
-            skill: skill.parse::<i32>()?,
+            skill: self.skill,
             name: self.name.clone(),
             description: self.description.clone(),
             icon_asset_name: self.icon_asset_name.clone(),
             title: self.title.clone(),
-            skill_category: skill_category.parse::<i32>()?,
+            skill_category: skill_category,
         })
     }
 }

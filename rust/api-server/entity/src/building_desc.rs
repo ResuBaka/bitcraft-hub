@@ -26,6 +26,7 @@ pub struct Model {
     pub maintenance: f32,
     pub build_permission: Json,
     pub interaction_level: Json,
+    pub interact_permission: Json,
     pub has_action: bool,
     pub show_in_compendium: bool,
     pub is_ruins: bool,

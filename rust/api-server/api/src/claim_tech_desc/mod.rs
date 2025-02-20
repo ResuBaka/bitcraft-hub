@@ -34,7 +34,7 @@ pub(crate) async fn load_claim_tech_desc_from_spacetimedb(
 ) -> anyhow::Result<String> {
     let response = client
         .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM ClaimTechDesc")
+        .body("SELECT * FROM claim_tech_desc")
         .send()
         .await;
     let json = match response {

@@ -1,5 +1,6 @@
 #![allow(warnings)]
 
+use crate::config::Config;
 use crate::{AppRouter, AppState};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -7,6 +8,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use entity::crafting_recipe;
 use entity::crafting_recipe::ConsumedItemStackWithInner;
+use reqwest::Client;
 use log::{debug, error, info};
 use migration::sea_query;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
@@ -14,7 +16,9 @@ use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Add;
 use std::path::PathBuf;
+use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
@@ -93,12 +97,11 @@ pub(crate) async fn get_needed_to_craft(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<Json<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
-    return Ok(Json(vec![]));
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
-
+    println!("{:?}", recipes);
     let recipes = recipes.into_iter().map(|x| x.into()).collect();
 
-    Ok(Json(get_all_consumed_items_from_item(&recipes, id as i64)))
+    return Ok(Json(get_all_consumed_items_from_item(&recipes, id as i64)))
 }
 
 fn get_all_consumed_items_from_item(
@@ -211,7 +214,7 @@ pub(crate) async fn load_crafting_recipe_desc_from_spacetimedb(
 ) -> anyhow::Result<String> {
     let response = client
         .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM CraftingRecipeDesc")
+        .body("SELECT * FROM crafting_recipe_desc")
         .send()
         .await;
     let json = match response {
@@ -240,6 +243,58 @@ pub(crate) async fn load_desc_from_spacetimedb(
     Ok(())
 }
 
+pub async fn import_job_recipes_desc(temp_config: Config) -> () {
+    let temp_config = temp_config.clone();
+    let config = temp_config.clone();
+    if config.live_updates {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        loop {
+            let client = super::create_default_client(config.clone());
+
+            let now = Instant::now();
+            let now_in = now.add(Duration::from_secs(60 * 60));
+
+            import_internal_recipes_desc(config.clone(), conn.clone(), client);
+
+            let now = Instant::now();
+            let wait_time = now_in.duration_since(now);
+
+            if wait_time.as_secs() > 0 {
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+    } else {
+        let conn = super::create_importer_default_db_connection(config.clone()).await;
+        let client = super::create_default_client(config.clone());
+
+        import_internal_recipes_desc(config.clone(), conn, client);
+    }
+}
+fn import_internal_recipes_desc(config: Config, conn: DatabaseConnection, client: Client) {
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let vehicle_state = load_desc_from_spacetimedb(
+                    &client,
+                    &config.spacetimedb.domain,
+                    &config.spacetimedb.protocol,
+                    &config.spacetimedb.database,
+                    &conn,
+                )
+                .await;
+
+                if let Ok(_vehicle_state) = vehicle_state {
+                    info!("recipes imported");
+                } else {
+                    error!("recipes import failed: {:?}", vehicle_state);
+                }
+            });
+    });
+}
+
 pub(crate) async fn import_crafting_recipe_descs(
     conn: &DatabaseConnection,
     crafting_recipe_descs: String,
@@ -261,6 +316,7 @@ pub(crate) async fn import_crafting_recipe_descs(
             crafting_recipe::Column::Name,
             crafting_recipe::Column::TimeRequirement,
             crafting_recipe::Column::StaminaRequirement,
+            crafting_recipe::Column::ToolDurabilityLost,
             crafting_recipe::Column::BuildingRequirement,
             crafting_recipe::Column::LevelRequirements,
             crafting_recipe::Column::ToolRequirements,
@@ -269,20 +325,21 @@ pub(crate) async fn import_crafting_recipe_descs(
             crafting_recipe::Column::RequiredKnowledges,
             crafting_recipe::Column::RequiredClaimTechId,
             crafting_recipe::Column::FullDiscoveryScore,
-            crafting_recipe::Column::CompletionExperience,
+            crafting_recipe::Column::ExperiencePerProgress,
             crafting_recipe::Column::AllowUseHands,
             crafting_recipe::Column::CraftedItemStacks,
             crafting_recipe::Column::IsPassive,
             crafting_recipe::Column::ActionsRequired,
             crafting_recipe::Column::ToolMeshIndex,
-            crafting_recipe::Column::AnimationStart,
-            crafting_recipe::Column::AnimationEnd,
+            crafting_recipe::Column::RecipePerformanceId,
         ])
         .to_owned();
 
     let mut crafting_recipe_descs_to_delete = Vec::new();
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<crafting_recipe::Model>() {
+    while let Err(value) = json_stream_reader.deserialize_next::<crafting_recipe::Model>() {
+        println!("{}", value);
+    };
+    let err = while let Ok(value) = json_stream_reader.deserialize_next::<crafting_recipe::Model>() {
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -361,7 +418,7 @@ pub(crate) async fn import_crafting_recipe_descs(
 
             buffer_before_insert.clear();
         }
-    }
+    };
 
     if buffer_before_insert.len() > 0 {
         let crafting_recipe_descs_from_db = crafting_recipe::Entity::find()

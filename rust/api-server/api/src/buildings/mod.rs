@@ -209,7 +209,7 @@ pub(crate) async fn load_building_state_from_spacetimedb(
 ) -> anyhow::Result<String> {
     let response = client
         .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM BuildingState")
+        .body("SELECT * FROM building_state")
         .send()
         .await;
 

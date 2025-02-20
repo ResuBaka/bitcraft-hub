@@ -68,7 +68,7 @@ pub(crate) async fn load_item_desc_from_spacetimedb(
 ) -> anyhow::Result<String> {
     let response = client
         .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM ItemDesc")
+        .body("SELECT * FROM item_desc")
         .send()
         .await;
     let json = match response {
@@ -106,7 +106,6 @@ pub(crate) async fn import_items(
 
     let mut buffer_before_insert: Vec<item_desc::Model> =
         Vec::with_capacity(chunk_size.unwrap_or(5000));
-
     let mut json_stream_reader = JsonStreamReader::new(items.as_bytes());
 
     json_stream_reader.begin_array()?;
@@ -119,6 +118,7 @@ pub(crate) async fn import_items(
             item_desc::Column::Description,
             item_desc::Column::Volume,
             item_desc::Column::Durability,
+            item_desc::Column::ConvertToOnDurabilityZero,
             item_desc::Column::SecondaryKnowledgeId,
             item_desc::Column::ModelAssetName,
             item_desc::Column::IconAssetName,

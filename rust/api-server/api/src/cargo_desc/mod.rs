@@ -234,7 +234,7 @@ pub(crate) async fn load_cargo_description_from_spacetimedb(
 ) -> anyhow::Result<String> {
     let response = client
         .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body("SELECT * FROM CargoDesc")
+        .body("SELECT * FROM cargo_desc")
         .send()
         .await;
 
