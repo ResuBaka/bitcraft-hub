@@ -688,7 +688,7 @@ struct AppState {
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
     player_action_state: Arc<dashmap::DashMap<u64, entity::player_action_state::Model>>,
-    crafting_recipe_desc: Arc<dashmap::DashMap<u64, entity::crafting_recipe_desc::Model>>,
+    crafting_recipe_desc: Arc<dashmap::DashMap<i64, entity::crafting_recipe::Model>>,
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
 }
 

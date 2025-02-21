@@ -167,7 +167,7 @@ pub fn start_websocket_bitcraft_logic(
                             compressor.shutdown().await.unwrap();
 
                             let user_id =
-                                transaction_update.caller_identity.__identity_bytes.clone();
+                                transaction_update.caller_identity.__identity__.clone();
 
                             let user_id = app_state.user_map.get(&user_id.as_ref().to_string());
 
@@ -288,7 +288,7 @@ pub fn start_websocket_bitcraft_logic(
                                                 };
 
                                             app_state.user_map.insert(
-                                                user_state.identity.__identity_bytes,
+                                                user_state.identity.__identity__,
                                                 user_state.entity_id,
                                             );
                                         }
@@ -467,7 +467,7 @@ pub fn start_websocket_bitcraft_logic(
                                 if table.table_name.as_ref() == "crafting_recipe_desc" {
                                     for update in table.updates.iter() {
                                         for row in update.inserts.iter() {
-                                            let crafting_recipe_desc: entity::crafting_recipe_desc::Model =
+                                            let crafting_recipe_desc: entity::crafting_recipe::Model =
                                                 match serde_json::from_str(&row) {
                                                     Ok(crafting_recipe_desc) => crafting_recipe_desc,
                                                     Err(error) => {
@@ -573,7 +573,7 @@ pub fn start_websocket_bitcraft_logic(
                             ) {
                                 Ok(user_state) => {
                                     app_state.user_map.insert(
-                                        user_state.identity.__identity_bytes,
+                                        user_state.identity.__identity__,
                                         user_state.entity_id,
                                     );
                                 }
@@ -1071,7 +1071,7 @@ pub(crate) struct IdentityToken {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Identity {
-    pub(crate) __identity_bytes: Box<str>,
+    pub(crate) __identity__: Box<str>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

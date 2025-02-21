@@ -19,5 +19,5 @@ impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize)]
 pub struct Identity {
-    pub __identity_bytes: String,
+    pub __identity__: String,
 }
