@@ -8,6 +8,9 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
     - uses: actions/checkout@v4
     - uses: oven-sh/setup-bun@v1
@@ -17,6 +20,9 @@ jobs:
       run: bun run format:check
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
     - uses: actions/checkout@v4
     - uses: oven-sh/setup-bun@v1
