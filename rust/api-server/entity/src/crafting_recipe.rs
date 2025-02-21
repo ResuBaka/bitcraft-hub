@@ -4,23 +4,22 @@ use sea_orm::entity::prelude::*;
 use sea_orm::FromJsonQueryResult;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct ConsumedItemStack {
     pub item_id: i64,
     pub quantity: i64,
     pub item_type: serde_json::Value,
     pub discovery_score: i64,
-    //@TODO change to f32 
-    pub consumption_chance: i64,
+    pub consumption_chance: f32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConsumedItemStackWithInner {
     pub item_id: i64,
     pub quantity: i64,
     pub item_type: serde_json::Value,
     pub discovery_score: i64,
-    pub consumption_chance: i64,
+    pub consumption_chance: f32,
     pub inner: Option<Vec<Vec<Self>>>,
 }
 
@@ -37,7 +36,7 @@ impl From<ConsumedItemStack> for ConsumedItemStackWithInner {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct CraftedItemStack {
     pub item_id: i64,
     pub quantity: i64,
@@ -45,7 +44,7 @@ pub struct CraftedItemStack {
     pub durability: serde_json::Value,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CraftedItemStackWithInner {
     pub item_id: i64,
     pub quantity: i64,
@@ -66,20 +65,20 @@ impl From<CraftedItemStack> for CraftedItemStackWithInner {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CraftingRecipeWithInner {
     pub id: i64,
     pub name: String,
     //@TODO change to f32 
-    pub time_requirement: i32,
+    pub time_requirement: f32,
     //@TODO change to f32 
-    pub stamina_requirement: i32,
+    pub stamina_requirement: f32,
     pub building_requirement: Json,
     pub level_requirements: Json,
     pub tool_requirements: Json,
     pub consumed_item_stacks: Vec<ConsumedItemStackWithInner>,
-    pub discovery_triggers: Vec<i32>,
-    pub required_knowledges: Vec<i32>,
+    pub discovery_triggers: Json,
+    pub required_knowledges: Json,
     pub required_claim_tech_id: i32,
     pub full_discovery_score: i32,
     pub experience_per_progress: Json,
@@ -125,24 +124,22 @@ impl From<Model> for CraftingRecipeWithInner {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "crafting_recipe")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i64,
     pub name: String,
-    pub time_requirement: i32,
-    pub stamina_requirement: i32,
+    pub time_requirement: f32,
+    pub stamina_requirement: f32,
     pub tool_durability_lost: i32,
     pub building_requirement: Json,
     pub level_requirements: Json,
     pub tool_requirements: Json,
     #[sea_orm(column_type = "Json")]
     pub consumed_item_stacks: Vec<ConsumedItemStack>,
-    #[sea_orm(column_type = "Json")]
-    pub discovery_triggers: Vec<i32>,
-    #[sea_orm(column_type = "Json")]
-    pub required_knowledges:  Vec<i32>,
+    pub discovery_triggers: Json,
+    pub required_knowledges:  Json,
     pub required_claim_tech_id: i32,
     pub full_discovery_score: i32,
     pub experience_per_progress: Json,

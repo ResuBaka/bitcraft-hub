@@ -1,6 +1,7 @@
 use sea_orm::entity::prelude::*;
 use serde::de::{self, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
@@ -10,10 +11,10 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub description: String,
-    pub collectible_type: CollectibleType,
-    pub invalidates_type: InvalidatesType,
+    pub collectible_type: Json,
+    pub invalidates_type: Json,
     pub auto_collect: bool,
-    pub collectible_rarity: CollectibleRarity,
+    pub collectible_rarity: Json,
     pub starting_loadout: bool,
     pub locked: bool,
     pub variant: i32,
@@ -28,12 +29,64 @@ pub struct Model {
     pub item_deed_id: i32,
 }
 
+
+// #[derive(Eq,Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+// #[serde(transparent)]
+// pub struct EnumType<T>(pub (T,Json))
+
+// impl<T> sea_orm::TryGetableFromJson for EnumType<T> where for<'de> T: Deserialize<'de> {}
+
+// impl<T> std::convert::From<EnumType<T>> for sea_orm::Value
+// where
+// EnumType<T>: Serialize,
+// {
+//     fn from(source: EnumType<T>) -> Self {
+//         sea_orm::Value::Json(
+//             serde_json::to_value(&source)
+//                 .ok()
+//                 .map(|s| std::boxed::Box::new(s)),
+//         )
+//     }
+// }
+
+// impl<T> sea_orm::sea_query::ValueType for EnumType<T>
+// where
+// EnumType<T>: DeserializeOwned,
+// {
+//     fn try_from(v: sea_orm::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
+//         match v {
+//             sea_orm::Value::Json(Some(json)) => {
+//                 Ok(serde_json::from_value(*json).map_err(|_| sea_orm::sea_query::ValueTypeErr)?)
+//             }
+//             _ => Err(sea_orm::sea_query::ValueTypeErr),
+//         }
+//     }
+
+//     fn type_name() -> String {
+//         stringify!(#ident).to_owned()
+//     }
+
+//     fn array_type() -> sea_orm::sea_query::ArrayType {
+//         sea_orm::sea_query::ArrayType::Json
+//     }
+
+//     fn column_type() -> sea_orm::sea_query::ColumnType {
+//         sea_orm::sea_query::ColumnType::Json
+//     }
+// }
+
+// impl<T> sea_orm::sea_query::Nullable for EnumType<T> {
+//     fn null() -> sea_orm::Value {
+//         sea_orm::Value::Json(None)
+//     }
+// }
+
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum InvalidatesType {
     Default = 0,
@@ -55,89 +108,8 @@ pub enum InvalidatesType {
     Crown = 16,
 }
 
-impl<'de> Deserialize<'de> for InvalidatesType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct InvalidatesTypeVisitor;
 
-        impl<'de> Visitor<'de> for InvalidatesTypeVisitor {
-            type Value = InvalidatesType;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter
-                    .write_str("a map with a single key representing the enum variant or an array")
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                if let Some((key, _)) = map.next_entry::<String, serde_json::Value>()? {
-                    match key.as_str() {
-                        "0" => Ok(InvalidatesType::Default),
-                        "1" => Ok(InvalidatesType::Hair),
-                        "2" => Ok(InvalidatesType::Mask),
-                        "3" => Ok(InvalidatesType::MaskPattern),
-                        "4" => Ok(InvalidatesType::HairColor),
-                        "5" => Ok(InvalidatesType::Nameplate),
-                        "6" => Ok(InvalidatesType::BodyColor),
-                        "7" => Ok(InvalidatesType::Emblem),
-                        "8" => Ok(InvalidatesType::ClothesHead),
-                        "9" => Ok(InvalidatesType::ClothesBelt),
-                        "10" => Ok(InvalidatesType::ClothesTorso),
-                        "11" => Ok(InvalidatesType::ClothesArms),
-                        "12" => Ok(InvalidatesType::ClothesLegs),
-                        "13" => Ok(InvalidatesType::ClothesFeet),
-                        "14" => Ok(InvalidatesType::Deployable),
-                        "15" => Ok(InvalidatesType::Title),
-                        "16" => Ok(InvalidatesType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
-                    }
-                } else {
-                    Err(de::Error::custom("expected a map with a single key"))
-                }
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                if let Some(key) = seq.next_element::<String>()? {
-                    match key.as_str() {
-                        "0" => Ok(InvalidatesType::Default),
-                        "1" => Ok(InvalidatesType::Hair),
-                        "2" => Ok(InvalidatesType::Mask),
-                        "3" => Ok(InvalidatesType::MaskPattern),
-                        "4" => Ok(InvalidatesType::HairColor),
-                        "5" => Ok(InvalidatesType::Nameplate),
-                        "6" => Ok(InvalidatesType::BodyColor),
-                        "7" => Ok(InvalidatesType::Emblem),
-                        "8" => Ok(InvalidatesType::ClothesHead),
-                        "9" => Ok(InvalidatesType::ClothesBelt),
-                        "10" => Ok(InvalidatesType::ClothesTorso),
-                        "11" => Ok(InvalidatesType::ClothesArms),
-                        "12" => Ok(InvalidatesType::ClothesLegs),
-                        "13" => Ok(InvalidatesType::ClothesFeet),
-                        "14" => Ok(InvalidatesType::Deployable),
-                        "15" => Ok(InvalidatesType::Title),
-                        "16" => Ok(InvalidatesType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
-                    }
-                } else {
-                    Err(de::Error::custom(
-                        "expected a sequence with a single element",
-                    ))
-                }
-            }
-        }
-
-        deserializer.deserialize_any(InvalidatesTypeVisitor)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum CollectibleType {
     Default = 0,
@@ -159,89 +131,8 @@ pub enum CollectibleType {
     Crown = 16,
 }
 
-impl<'de> Deserialize<'de> for CollectibleType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CollectibleTypeVisitor;
 
-        impl<'de> Visitor<'de> for CollectibleTypeVisitor {
-            type Value = CollectibleType;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter
-                    .write_str("a map with a single key representing the enum variant or an array")
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                if let Some((key, _)) = map.next_entry::<String, serde_json::Value>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleType::Default),
-                        "1" => Ok(CollectibleType::Hair),
-                        "2" => Ok(CollectibleType::Mask),
-                        "3" => Ok(CollectibleType::MaskPattern),
-                        "4" => Ok(CollectibleType::HairColor),
-                        "5" => Ok(CollectibleType::Nameplate),
-                        "6" => Ok(CollectibleType::BodyColor),
-                        "7" => Ok(CollectibleType::Emblem),
-                        "8" => Ok(CollectibleType::ClothesHead),
-                        "9" => Ok(CollectibleType::ClothesBelt),
-                        "10" => Ok(CollectibleType::ClothesTorso),
-                        "11" => Ok(CollectibleType::ClothesArms),
-                        "12" => Ok(CollectibleType::ClothesLegs),
-                        "13" => Ok(CollectibleType::ClothesFeet),
-                        "14" => Ok(CollectibleType::Deployable),
-                        "15" => Ok(CollectibleType::Title),
-                        "16" => Ok(CollectibleType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
-                    }
-                } else {
-                    Err(de::Error::custom("expected a map with a single key"))
-                }
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                if let Some(key) = seq.next_element::<String>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleType::Default),
-                        "1" => Ok(CollectibleType::Hair),
-                        "2" => Ok(CollectibleType::Mask),
-                        "3" => Ok(CollectibleType::MaskPattern),
-                        "4" => Ok(CollectibleType::HairColor),
-                        "5" => Ok(CollectibleType::Nameplate),
-                        "6" => Ok(CollectibleType::BodyColor),
-                        "7" => Ok(CollectibleType::Emblem),
-                        "8" => Ok(CollectibleType::ClothesHead),
-                        "9" => Ok(CollectibleType::ClothesBelt),
-                        "10" => Ok(CollectibleType::ClothesTorso),
-                        "11" => Ok(CollectibleType::ClothesArms),
-                        "12" => Ok(CollectibleType::ClothesLegs),
-                        "13" => Ok(CollectibleType::ClothesFeet),
-                        "14" => Ok(CollectibleType::Deployable),
-                        "15" => Ok(CollectibleType::Title),
-                        "16" => Ok(CollectibleType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
-                    }
-                } else {
-                    Err(de::Error::custom(
-                        "expected a sequence with a single element",
-                    ))
-                }
-            }
-        }
-
-        deserializer.deserialize_any(CollectibleTypeVisitor)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum CollectibleRarity {
     Default = 0,
@@ -251,66 +142,4 @@ pub enum CollectibleRarity {
     Epic = 4,
     Legendary = 5,
     Mythic = 6,
-}
-
-impl<'de> Deserialize<'de> for CollectibleRarity {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CollectibleRarityVisitor;
-
-        impl<'de> Visitor<'de> for CollectibleRarityVisitor {
-            type Value = CollectibleRarity;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter
-                    .write_str("a map with a single key representing the enum variant or an array")
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                if let Some((key, _)) = map.next_entry::<String, serde_json::Value>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleRarity::Default),
-                        "1" => Ok(CollectibleRarity::Common),
-                        "2" => Ok(CollectibleRarity::Uncommon),
-                        "3" => Ok(CollectibleRarity::Rare),
-                        "4" => Ok(CollectibleRarity::Epic),
-                        "5" => Ok(CollectibleRarity::Legendary),
-                        "6" => Ok(CollectibleRarity::Mythic),
-                        _ => Err(de::Error::custom("invalid enum variant")),
-                    }
-                } else {
-                    Err(de::Error::custom("expected a map with a single key"))
-                }
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                if let Some(key) = seq.next_element::<String>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleRarity::Default),
-                        "1" => Ok(CollectibleRarity::Common),
-                        "2" => Ok(CollectibleRarity::Uncommon),
-                        "3" => Ok(CollectibleRarity::Rare),
-                        "4" => Ok(CollectibleRarity::Epic),
-                        "5" => Ok(CollectibleRarity::Legendary),
-                        "6" => Ok(CollectibleRarity::Mythic),
-                        _ => Err(de::Error::custom("invalid enum variant")),
-                    }
-                } else {
-                    Err(de::Error::custom(
-                        "expected a sequence with a single element",
-                    ))
-                }
-            }
-        }
-
-        deserializer.deserialize_any(CollectibleRarityVisitor)
-    }
 }

@@ -1052,35 +1052,37 @@ pub(crate) async fn handle_initial_subscription(
     let mut buffer_before_insert: Vec<PackedExperienceState> =
         Vec::with_capacity(chunk_size.unwrap_or(500));
     let mut experience_state_to_delete = get_known_experience_states(p0).await?;
-    for row in p1.inserts.iter() {
-        match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
-            Ok(experience_state) => {
-                let resolved_buffer_before_insert = experience_state
-                    .experience_stacks
-                    .iter()
-                    .map(|y| experience_state::Model {
-                        entity_id: experience_state.entity_id,
-                        skill_id: y.0,
-                        experience: y.1,
-                    })
-                    .collect::<Vec<experience_state::Model>>();
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<PackedExperienceState>(row.as_ref()) {
+                Ok(experience_state) => {
+                    let resolved_buffer_before_insert = experience_state
+                        .experience_stacks
+                        .iter()
+                        .map(|y| experience_state::Model {
+                            entity_id: experience_state.entity_id,
+                            skill_id: y.0,
+                            experience: y.1,
+                        })
+                        .collect::<Vec<experience_state::Model>>();
 
-                for exp_state in resolved_buffer_before_insert.iter() {
-                    if experience_state_to_delete
-                        .contains(&(exp_state.entity_id, exp_state.skill_id))
-                    {
-                        experience_state_to_delete
-                            .remove(&(exp_state.entity_id, exp_state.skill_id));
+                    for exp_state in resolved_buffer_before_insert.iter() {
+                        if experience_state_to_delete
+                            .contains(&(exp_state.entity_id, exp_state.skill_id))
+                        {
+                            experience_state_to_delete
+                                .remove(&(exp_state.entity_id, exp_state.skill_id));
+                        }
+                    }
+
+                    buffer_before_insert.push(experience_state);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(500) {
+                        db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict).await?;
                     }
                 }
-
-                buffer_before_insert.push(experience_state);
-                if buffer_before_insert.len() == chunk_size.unwrap_or(500) {
-                    db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict).await?;
+                Err(error) => {
+                    error!("Error: {error} for row: {:?}", row);
                 }
-            }
-            Err(error) => {
-                error!("Error: {error} for row: {:?}", row.text);
             }
         }
     }
@@ -1133,7 +1135,7 @@ pub(crate) async fn handle_transaction_update(
 
         if event_type == "delete" {
             for row in p1.deletes.iter() {
-                match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
+                match serde_json::from_str::<PackedExperienceState>(row.as_ref()) {
                     Ok(experience_state) => {
                         experience_state
                             .experience_stacks
@@ -1148,20 +1150,20 @@ pub(crate) async fn handle_transaction_update(
                             });
                     }
                     Err(error) => {
-                        error!("Error: {error} for row: {:?}", row.text);
+                        error!("Error: {error} for row: {:?}", row);
                     }
                 }
             }
         } else if event_type == "update" {
             let mut delete_parsed = HashMap::new();
             for row in p1.deletes.iter() {
-                let parsed = serde_json::from_str::<PackedExperienceState>(row.text.as_ref());
+                let parsed = serde_json::from_str::<PackedExperienceState>(row.as_ref());
 
                 if parsed.is_err() {
                     error!(
                         "Could not parse delete experience_state: {}, row: {:?}",
                         parsed.unwrap_err(),
-                        row.text
+                        row
                     );
                 } else {
                     let parsed = parsed.unwrap();
@@ -1173,13 +1175,13 @@ pub(crate) async fn handle_transaction_update(
             }
 
             for row in p1.inserts.iter().enumerate() {
-                let parsed = serde_json::from_str::<PackedExperienceState>(row.1.text.as_ref());
+                let parsed = serde_json::from_str::<PackedExperienceState>(row.1.as_ref());
 
                 if parsed.is_err() {
                     error!(
                         "Could not parse insert experience_state: {}, row: {:?}",
                         parsed.unwrap_err(),
-                        row.1.text
+                        row.1
                     );
                     continue;
                 }
@@ -1287,7 +1289,7 @@ pub(crate) async fn handle_transaction_update(
             }
         } else if event_type == "insert" {
             for row in p1.inserts.iter() {
-                match serde_json::from_str::<PackedExperienceState>(row.text.as_ref()) {
+                match serde_json::from_str::<PackedExperienceState>(row.as_ref()) {
                     Ok(experience_state) => {
                         experience_state
                             .experience_stacks
@@ -1324,7 +1326,7 @@ pub(crate) async fn handle_transaction_update(
                             });
                     }
                     Err(error) => {
-                        error!("Error: {error} for row: {:?}", row.text);
+                        error!("Error: {error} for row: {:?}", row);
                     }
                 }
             }

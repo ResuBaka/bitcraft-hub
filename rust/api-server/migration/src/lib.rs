@@ -12,7 +12,8 @@ mod m20241208_205237_raw_event_data;
 mod m20241210_182840_raw_event_data_user_id;
 mod m20250219_215440_add_to_item_desc_convert_to_on_durability_zero;
 mod m20250219_221732_add_to_building_desc_interact_permission;
-mod m20250220_115114_add_crafting_recipe;
+mod m20250220_115114_add_crafting_recipe;mod m20250221_122758_add_new_fields_to_collectible_desc;
+
 
 
 

@@ -20,9 +20,9 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(CraftingRecipe::Name).string().not_null())
-                    .col(ColumnDef::new(CraftingRecipe::TimeRequirement).integer().not_null())
+                    .col(ColumnDef::new(CraftingRecipe::TimeRequirement).float().not_null())
                     .col(ColumnDef::new(CraftingRecipe::StaminaRequirement).float().not_null())
-                    .col(ColumnDef::new(CraftingRecipe::ToolDurabilityLost).float().not_null())
+                    .col(ColumnDef::new(CraftingRecipe::ToolDurabilityLost).integer().not_null())
                     .col(ColumnDef::new(CraftingRecipe::BuildingRequirement).json().not_null())
                     .col(ColumnDef::new(CraftingRecipe::LevelRequirements).json().not_null())
                     .col(ColumnDef::new(CraftingRecipe::ToolRequirements).json().not_null())

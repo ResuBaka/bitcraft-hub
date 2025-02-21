@@ -4,6 +4,7 @@ importenabled = true
 import = "Game"
 enabledimporter = []
 storagepath = "C:\\Users\\MERLI\\VSCODE\\bitcraft-crafting-wiki\\storage"
+liveupdatesws = true
 [database]
 url = "postgres://postgres:Welcome01@localhost:5431/postgres"
 [spacetimedb]

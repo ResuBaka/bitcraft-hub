@@ -127,23 +127,25 @@ pub(crate) async fn handle_initial_subscription(
 
     let mut known_collectible_desc_ids = get_known_collectible_desc_ids(p0).await?;
 
-    for row in p1.inserts.iter() {
-        match serde_json::from_str::<collectible_desc::Model>(row.text.as_ref()) {
-            Ok(collectible_desc) => {
-                if known_collectible_desc_ids.contains(&collectible_desc.id) {
-                    known_collectible_desc_ids.remove(&collectible_desc.id);
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<collectible_desc::Model>(row.as_ref()) {
+                Ok(collectible_desc) => {
+                    if known_collectible_desc_ids.contains(&collectible_desc.id) {
+                        known_collectible_desc_ids.remove(&collectible_desc.id);
+                    }
+                    buffer_before_insert.push(collectible_desc);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                        db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict)
+                            .await?;
+                    }
                 }
-                buffer_before_insert.push(collectible_desc);
-                if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                    db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict)
-                        .await?;
+                Err(error) => {
+                    error!(
+                        "TransactionUpdate Insert collectible_desc::Model Error: {error} -> {:?}",
+                        row
+                    );
                 }
-            }
-            Err(error) => {
-                error!(
-                    "TransactionUpdate Insert collectible_desc::Model Error: {error} -> {:?}",
-                    row
-                );
             }
         }
     }

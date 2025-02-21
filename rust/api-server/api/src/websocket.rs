@@ -55,7 +55,7 @@ pub fn start_websocket_bitcraft_logic(
         );
         headers.insert(
             SEC_WEBSOCKET_PROTOCOL,
-            "v1.text.spacetimedb".parse().unwrap(),
+            "v1.json.spacetimedb".parse().unwrap(),
         );
         headers.insert(
             "Sec-WebSocket-Key",
@@ -67,7 +67,6 @@ pub fn start_websocket_bitcraft_logic(
                 .parse()
                 .unwrap(),
         );
-
         let response = Client::default()
             .get(format!(
                 "{}/{}/{}",
@@ -80,30 +79,31 @@ pub fn start_websocket_bitcraft_logic(
                 max_message_size: Some(1024 * 1024 * 1500),
                 ..Default::default()
             })
-            .protocols(vec!["v1.text.spacetimedb"])
+            .protocols(vec!["v1.json.spacetimedb"])
             .send()
             .await
             .unwrap();
-        let mut websocket = response.into_websocket().await.unwrap();
+        let mut websocket1 = response.into_websocket().await;
+        let mut websocket = websocket1.unwrap();
 
         let tables_to_subscribe = vec![
-            "UserState",
-            "MobileEntityState",
-            "ClaimTileState",
-            "CombatActionDesc",
-            "PlayerActionState",
-            "CraftingRecipeDesc",
-            "ActionState",
-            "PlayerState",
-            "PlayerUsernameState",
-            "BuildingState",
-            "VaultState",
-            "ExperienceState",
-            "InventoryState",
-            "ClaimTechState",
-            "ClaimDescriptionState",
-            "DeployableState",
-            "CollectibleDesc",
+            "user_state",
+            "mobile_entity_state",
+            "claim_tile_state",
+            "combat_action_desc",
+            "player_action_state",
+            "crafting_recipe_desc",
+            "action_state",
+            "player_state",
+            "player_username_state",
+            "building_state",
+            "vault_state",
+            "experience_state",
+            "inventory_state",
+            "claim_tech_state",
+            "claim_description_state",
+            "deployable_state",
+            "collectible_desc",
         ];
 
         let select_querys = tables_to_subscribe
@@ -192,10 +192,10 @@ pub fn start_websocket_bitcraft_logic(
                     }
                 }
 
-                raw_event_data::Entity::insert_many(raw_events_data)
-                    .exec(&db)
-                    .await
-                    .unwrap();
+                //raw_event_data::Entity::insert_many(raw_events_data)
+                //    .exec(&db)
+                //    .await
+                //    .unwrap();
 
                 for event in evenets.iter() {
                     match event {
@@ -223,11 +223,13 @@ pub fn start_websocket_bitcraft_logic(
                                 if let Some(table_vec) =
                                     tables.get_mut(&table.table_name.as_ref().to_string())
                                 {
+                                    //TODO this probebly has to be rewriten
+
                                     table_vec.push(TableWithOriginalEventTransactionUpdate {
                                         table_id: table.table_id,
                                         table_name: table.table_name.clone(),
-                                        deletes: table.deletes.clone(),
-                                        inserts: table.inserts.clone(),
+                                        deletes: table.updates.iter().map(|body| body.deletes.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
+                                        inserts: table.updates.iter().map(|body| body.inserts.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
                                         original_event: transaction_update.clone(),
                                     });
                                 } else {
@@ -236,8 +238,8 @@ pub fn start_websocket_bitcraft_logic(
                                         vec![TableWithOriginalEventTransactionUpdate {
                                             table_id: table.table_id,
                                             table_name: table.table_name.clone(),
-                                            deletes: table.deletes.clone(),
-                                            inserts: table.inserts.clone(),
+                                            deletes: table.updates.iter().map(|body| body.deletes.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
+                                            inserts: table.updates.iter().map(|body| body.inserts.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
                                             original_event: transaction_update.clone(),
                                         }],
                                     );
@@ -273,36 +275,38 @@ pub fn start_websocket_bitcraft_logic(
 
                                 let start = std::time::Instant::now();
 
-                                if table.table_name.as_ref() == "UserState" {
-                                    for row in table.inserts.iter() {
-                                        let user_state: user_state::Model =
-                                            match serde_json::from_str(&row.text) {
-                                                Ok(user_state) => user_state,
-                                                Err(error) => {
-                                                    error!("InitialSubscription Insert UserState Error: {:?} -> {:?}", error, row.text);
-                                                    continue;
-                                                }
-                                            };
+                                if table.table_name.as_ref() == "user_state" {
+                                    for update in table.updates.iter() {
+                                        for row in update.inserts.iter() {
+                                            let user_state: user_state::Model =
+                                                match serde_json::from_str(&row) {
+                                                    Ok(user_state) => user_state,
+                                                    Err(error) => {
+                                                        error!("InitialSubscription Insert user_state Error: {:?} -> {:?}", error, row);
+                                                        continue;
+                                                    }
+                                                };
 
-                                        app_state.user_map.insert(
-                                            user_state.identity.__identity_bytes,
-                                            user_state.entity_id,
-                                        );
+                                            app_state.user_map.insert(
+                                                user_state.identity.__identity_bytes,
+                                                user_state.entity_id,
+                                            );
+                                        }
                                     }
                                 }
-                                if table.table_name.as_ref() == "PlayerUsernameState" {
+                                if table.table_name.as_ref() == "player_username_state" {
                                     let result =
                                         player_state::handle_initial_subscription_player_username_state(&db, table)
                                             .await;
 
                                     if result.is_err() {
                                         error!(
-                                            "PlayerUsernameState initial subscription failed: {:?}",
+                                            "player_username_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
-                                if table.table_name.as_ref() == "PlayerState" {
+                                if table.table_name.as_ref() == "player_state" {
                                     let result =
                                         player_state::handle_initial_subscription_player_state(
                                             &db, table,
@@ -311,216 +315,226 @@ pub fn start_websocket_bitcraft_logic(
 
                                     if result.is_err() {
                                         error!(
-                                            "PlayerState initial subscription failed: {:?}",
+                                            "player_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
-                                if table.table_name.as_ref() == "ExperienceState" {
-                                    info!("ExperienceState initial subscription");
+                                if table.table_name.as_ref() == "experience_state" {
+                                    info!("experience_state initial subscription");
                                     let result =
                                         leaderboard::handle_initial_subscription(&db, table).await;
 
                                     if result.is_err() {
                                         error!(
-                                            "ExperienceState initial subscription failed: {:?}",
+                                            "experience_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
-                                if table.table_name.as_ref() == "BuildingState" {
+                                if table.table_name.as_ref() == "building_state" {
                                     let result =
                                         buildings::handle_initial_subscription(&db, table).await;
 
                                     if result.is_err() {
                                         error!(
-                                            "BuildingState initial subscription failed: {:?}",
+                                            "building_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
-                                if table.table_name.as_ref() == "InventoryState" {
+                                if table.table_name.as_ref() == "inventory_state" {
                                     let result =
                                         inventory::handle_initial_subscription(&db, table).await;
 
                                     if result.is_err() {
                                         error!(
-                                            "InventoryState initial subscription failed: {:?}",
+                                            "inventory_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
 
-                                if table.table_name.as_ref() == "ClaimTechState" {
+                                if table.table_name.as_ref() == "claim_tech_state" {
                                     let result =
                                         claim_tech_state::handle_initial_subscription(&db, table)
                                             .await;
 
                                     if result.is_err() {
                                         error!(
-                                            "ClaimTechState initial subscription failed: {:?}",
+                                            "claim_tech_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
 
-                                if table.table_name.as_ref() == "ClaimDescriptionState" {
+                                if table.table_name.as_ref() == "claim_description_state" {
                                     let result =
                                         claims::handle_initial_subscription(&db, table).await;
 
                                     if result.is_err() {
                                         error!(
-                                                "ClaimDescriptionState initial subscription failed: {:?}",
+                                                "claim_description_state initial subscription failed: {:?}",
                                                 result.err()
                                             );
                                     }
                                 }
 
-                                if table.table_name.as_ref() == "DeployableState" {
+                                if table.table_name.as_ref() == "deployable_state" {
                                     let result =
                                         deployable_state::handle_initial_subscription(&db, table)
                                             .await;
 
                                     if result.is_err() {
                                         error!(
-                                            "DeployableState initial subscription failed: {:?}",
+                                            "deployable_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
 
-                                if table.table_name.as_ref() == "VaultState" {
+                                if table.table_name.as_ref() == "vault_state" {
                                     let result =
                                         vault_state::handle_initial_subscription(&db, table).await;
 
                                     if result.is_err() {
                                         error!(
-                                            "DeployableState initial subscription failed: {:?}",
+                                            "vault_state initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
 
-                                if table.table_name.as_ref() == "CollectibleDesc" {
+                                if table.table_name.as_ref() == "collectible_desc" {
                                     let result =
                                         collectible_desc::handle_initial_subscription(&db, table)
                                             .await;
 
                                     if result.is_err() {
                                         error!(
-                                            "CollectibleDesc initial subscription failed: {:?}",
+                                            "collectible_desc initial subscription failed: {:?}",
                                             result.err()
                                         );
                                     }
                                 }
 
-                                if table.table_name.as_ref() == "MobileEntityState" {
-                                    for row in table.inserts.iter() {
-                                        let mobile_entity_state: entity::mobile_entity_state::Model =
-                                            match serde_json::from_str(&row.text) {
-                                                Ok(mobile_entity_state) => mobile_entity_state,
-                                                Err(error) => {
-                                                    error!("InitialSubscription Insert MobileEntityState Error: {:?} -> {:?}", error, row.text);
-                                                    continue;
-                                                }
-                                            };
+                                if table.table_name.as_ref() == "mobile_entity_state" {
+                                    for update in table.updates.iter() {
+                                        for row in update.inserts.iter() {
+                                            let mobile_entity_state: entity::mobile_entity_state::Model =
+                                                match serde_json::from_str(&row) {
+                                                    Ok(mobile_entity_state) => mobile_entity_state,
+                                                    Err(error) => {
+                                                        error!("InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}", error, row);
+                                                        continue;
+                                                    }
+                                                };
 
-                                        global_app_state.mobile_entity_state.insert(
-                                            mobile_entity_state.entity_id,
-                                            mobile_entity_state.clone(),
-                                        );
-
-                                        broadcast_tx
-                                            .send(WebSocketMessages::MobileEntityState(
-                                                mobile_entity_state,
-                                            ))
-                                            .unwrap();
-                                    }
-                                }
-
-                                if table.table_name.as_ref() == "ClaimTileState" {
-                                    for row in table.inserts.iter() {
-                                        let claim_tile_state: entity::claim_tile_state::Model =
-                                            match serde_json::from_str(&row.text) {
-                                                Ok(claim_tile_state) => claim_tile_state,
-                                                Err(error) => {
-                                                    error!("InitialSubscription Insert ClaimTileState Error: {:?} -> {:?}", error, row.text);
-                                                    continue;
-                                                }
-                                            };
-
-                                        global_app_state.claim_tile_state.insert(
-                                            claim_tile_state.entity_id,
-                                            claim_tile_state.clone(),
-                                        );
-                                    }
-                                }
-
-                                if table.table_name.as_ref() == "CraftingRecipeDesc" {
-                                    for row in table.inserts.iter() {
-                                        let crafting_recipe_desc: entity::crafting_recipe_desc::Model =
-                                            match serde_json::from_str(&row.text) {
-                                                Ok(crafting_recipe_desc) => crafting_recipe_desc,
-                                                Err(error) => {
-                                                    error!("InitialSubscription Insert CraftingRecipeDesc Error: {:?} -> {:?}", error, row.text);
-                                                    continue;
-                                                }
-                                            };
-
-                                        global_app_state.crafting_recipe_desc.insert(
-                                            crafting_recipe_desc.id,
-                                            crafting_recipe_desc.clone(),
-                                        );
-                                    }
-                                }
-
-                                if table.table_name.as_ref() == "PlayerActionState" {
-                                    for row in table.inserts.iter() {
-                                        let player_action_state: entity::player_action_state::Model =
-                                            match serde_json::from_str(&row.text) {
-                                                Ok(player_action_state) => player_action_state,
-                                                Err(error) => {
-                                                    error!("InitialSubscription Insert PlayerActionState Error: {:?} -> {:?}", error, row.text);
-                                                    continue;
-                                                }
-                                            };
-
-                                        global_app_state.player_action_state.insert(
-                                            player_action_state.entity_id,
-                                            player_action_state.clone(),
-                                        );
-                                    }
-                                }
-
-                                if table.table_name.as_ref() == "ActionState" {
-                                    for row in table.inserts.iter() {
-                                        let action_state: entity::action_state::Model =
-                                            match serde_json::from_str(&row.text) {
-                                                Ok(action_state) => action_state,
-                                                Err(error) => {
-                                                    error!("InitialSubscription Insert ActionState Error: {:?} -> {:?}", error, row.text);
-                                                    continue;
-                                                }
-                                            };
-
-                                        if let Some(action_states) = global_app_state
-                                            .action_state
-                                            .get_mut(&action_state.owner_entity_id)
-                                        {
-                                            action_states.insert(
-                                                action_state.entity_id,
-                                                action_state.clone(),
+                                            global_app_state.mobile_entity_state.insert(
+                                                mobile_entity_state.entity_id,
+                                                mobile_entity_state.clone(),
                                             );
-                                        } else {
-                                            let action_states = dashmap::DashMap::new();
-                                            action_states.insert(
-                                                action_state.entity_id,
-                                                action_state.clone(),
+
+                                            broadcast_tx
+                                                .send(WebSocketMessages::MobileEntityState(
+                                                    mobile_entity_state,
+                                                ))
+                                                .unwrap();
+                                        }
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "claim_tile_state" {
+                                    for update in table.updates.iter() {
+                                        for row in update.inserts.iter() {
+                                            let claim_tile_state: entity::claim_tile_state::Model =
+                                                match serde_json::from_str(&row) {
+                                                    Ok(claim_tile_state) => claim_tile_state,
+                                                    Err(error) => {
+                                                        error!("InitialSubscription Insert claim_tile_state Error: {:?} -> {:?}", error, row);
+                                                        continue;
+                                                    }
+                                                };
+
+                                            global_app_state.claim_tile_state.insert(
+                                                claim_tile_state.entity_id,
+                                                claim_tile_state.clone(),
                                             );
-                                            global_app_state.action_state.insert(
-                                                action_state.owner_entity_id,
-                                                action_states,
+                                        }
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "crafting_recipe_desc" {
+                                    for update in table.updates.iter() {
+                                        for row in update.inserts.iter() {
+                                            let crafting_recipe_desc: entity::crafting_recipe_desc::Model =
+                                                match serde_json::from_str(&row) {
+                                                    Ok(crafting_recipe_desc) => crafting_recipe_desc,
+                                                    Err(error) => {
+                                                        error!("InitialSubscription Insert crafting_recipe_desc Error: {:?} -> {:?}", error, row);
+                                                        continue;
+                                                    }
+                                                };
+
+                                            global_app_state.crafting_recipe_desc.insert(
+                                                crafting_recipe_desc.id,
+                                                crafting_recipe_desc.clone(),
                                             );
+                                        }
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "player_action_state" {
+                                    for update in table.updates.iter() {
+                                        for row in update.inserts.iter() {
+                                            let player_action_state: entity::player_action_state::Model =
+                                                match serde_json::from_str(&row) {
+                                                    Ok(player_action_state) => player_action_state,
+                                                    Err(error) => {
+                                                        error!("InitialSubscription Insert player_action_state Error: {:?} -> {:?}", error, row);
+                                                        continue;
+                                                    }
+                                                };
+
+                                            global_app_state.player_action_state.insert(
+                                                player_action_state.entity_id,
+                                                player_action_state.clone(),
+                                            );
+                                        }
+                                    }
+                                }
+
+                                if table.table_name.as_ref() == "action_state" {
+                                    for update in table.updates.iter() {
+                                        for row in update.inserts.iter() {
+                                            let action_state: entity::action_state::Model =
+                                                match serde_json::from_str(&row) {
+                                                    Ok(action_state) => action_state,
+                                                    Err(error) => {
+                                                        error!("InitialSubscription Insert action_state Error: {:?} -> {:?}", error, row);
+                                                        continue;
+                                                    }
+                                                };
+
+                                            if let Some(action_states) = global_app_state
+                                                .action_state
+                                                .get_mut(&action_state.owner_entity_id)
+                                            {
+                                                action_states.insert(
+                                                    action_state.entity_id,
+                                                    action_state.clone(),
+                                                );
+                                            } else {
+                                                let action_states = dashmap::DashMap::new();
+                                                action_states.insert(
+                                                    action_state.entity_id,
+                                                    action_state.clone(),
+                                                );
+                                                global_app_state.action_state.insert(
+                                                    action_state.owner_entity_id,
+                                                    action_states,
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -548,14 +562,14 @@ pub fn start_websocket_bitcraft_logic(
                     debug!("Received table: {table_name} -> {:?}", table.len());
                     let start = std::time::Instant::now();
 
-                    if table_name == "UserState" {
+                    if table_name == "user_state" {
                         for row in table.iter() {
                             if row.inserts.len() == 0 {
                                 continue;
                             }
 
                             match serde_json::from_str::<user_state::Model>(
-                                &row.inserts[0].text.as_ref(),
+                                &row.inserts[0].as_ref(),
                             ) {
                                 Ok(user_state) => {
                                     app_state.user_map.insert(
@@ -573,7 +587,7 @@ pub fn start_websocket_bitcraft_logic(
                         }
                     }
 
-                    if table_name == "PlayerUsernameState" {
+                    if table_name == "player_username_state" {
                         let result = player_state::handle_transaction_update_player_username_state(
                             &db, table,
                         )
@@ -581,12 +595,12 @@ pub fn start_websocket_bitcraft_logic(
 
                         if result.is_err() {
                             error!(
-                                "PlayerUsernameState transaction update failed: {:?}",
+                                "player_username_state transaction update failed: {:?}",
                                 result.err()
                             );
                         }
                     }
-                    if table_name == "PlayerState" {
+                    if table_name == "player_state" {
                         let result = player_state::handle_transaction_update_player_state(
                             &db,
                             table,
@@ -595,11 +609,11 @@ pub fn start_websocket_bitcraft_logic(
                         .await;
 
                         if result.is_err() {
-                            error!("PlayerState transaction update failed: {:?}", result.err());
+                            error!("player_state transaction update failed: {:?}", result.err());
                         }
                     }
 
-                    if table_name == "ExperienceState" {
+                    if table_name == "experience_state" {
                         let result = leaderboard::handle_transaction_update(
                             &db,
                             table,
@@ -610,87 +624,87 @@ pub fn start_websocket_bitcraft_logic(
 
                         if result.is_err() {
                             error!(
-                                "ExperienceState transaction update failed: {:?}",
+                                "experience_state transaction update failed: {:?}",
                                 result.err()
                             );
                         }
                     }
 
-                    if table_name == "InventoryState" {
+                    if table_name == "inventory_state" {
                         let result = inventory::handle_transaction_update(&db, table).await;
 
                         if result.is_err() {
                             error!(
-                                "InventoryState transaction update failed: {:?}",
+                                "inventory_state transaction update failed: {:?}",
                                 result.err()
                             );
                         }
                     }
 
-                    if table_name == "BuildingState" {
+                    if table_name == "building_state" {
                         let result = buildings::handle_transaction_update(&db, table).await;
 
                         if result.is_err() {
                             error!(
-                                "BuildingState transaction update failed: {:?}",
+                                "building_state transaction update failed: {:?}",
                                 result.err()
                             );
                         }
                     }
 
-                    if table_name == "ClaimTechState" {
+                    if table_name == "claim_tech_state" {
                         let result = claim_tech_state::handle_transaction_update(&db, table).await;
 
                         if result.is_err() {
                             error!(
-                                "ClaimTechState transaction update failed: {:?}",
+                                "claim_tech_state transaction update failed: {:?}",
                                 result.err()
                             );
                         }
                     }
 
-                    if table_name == "ClaimDescriptionState" {
+                    if table_name == "claim_description_state" {
                         let result =
                             claims::handle_transaction_update(&db, table, broadcast_tx.clone())
                                 .await;
 
                         if result.is_err() {
                             error!(
-                                "ClaimDescriptionState transaction update failed: {:?}",
+                                "claim_description_state transaction update failed: {:?}",
                                 result.err()
                             );
                         }
                     }
 
-                    if table_name == "DeployableState" {
+                    if table_name == "deployable_state" {
                         let result = deployable_state::handle_transaction_update(&db, table).await;
 
                         if result.is_err() {
                             error!(
-                                "DeployableState transaction update failed: {:?}",
+                                "deployable_state transaction update failed: {:?}",
                                 result.err()
                             );
                         }
                     }
 
-                    if table_name == "VaultState" {
+                    if table_name == "vault_state" {
                         let result = vault_state::handle_transaction_update(&db, table).await;
 
                         if result.is_err() {
-                            error!("VaultState transaction update failed: {:?}", result.err());
+                            error!("vault_state transaction update failed: {:?}", result.err());
                         }
                     }
 
-                    if table_name == "MobileEntityState" {
+                    if table_name == "mobile_entity_state" {
                         for current_table in table.iter() {
                             let mut old_data = HashMap::new();
 
                             for row in current_table.deletes.iter() {
                                 let mobile_entity_state: entity::mobile_entity_state::Model =
-                                    match serde_json::from_str(&row.text) {
+                                    match serde_json::from_str(&row) {
                                         Ok(mobile_entity_state) => mobile_entity_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert MobileEntityState Error: {:?} -> {:?}", error, row.text);
+                                            error!("InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}", error, row);
                                             continue;
                                         }
                                     };
@@ -703,10 +717,10 @@ pub fn start_websocket_bitcraft_logic(
 
                             for row in current_table.inserts.iter() {
                                 let mobile_entity_state: entity::mobile_entity_state::Model =
-                                    match serde_json::from_str(&row.text) {
+                                    match serde_json::from_str(&row) {
                                         Ok(mobile_entity_state) => mobile_entity_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert MobileEntityState Error: {:?} -> {:?}", error, row.text);
+                                            error!("InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}", error, row);
                                             continue;
                                         }
                                     };
@@ -862,14 +876,14 @@ pub fn start_websocket_bitcraft_logic(
                         }
                     }
 
-                    if table_name == "ClaimTileState" {
+                    if table_name == "claim_tile_state" {
                         for current_table in table.iter() {
                             for row in current_table.inserts.iter() {
                                 let claim_tile_state: entity::claim_tile_state::Model =
-                                    match serde_json::from_str(&row.text) {
+                                    match serde_json::from_str(&row) {
                                         Ok(claim_tile_state) => claim_tile_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert ClaimTileState Error: {:?} -> {:?}", error, row.text);
+                                            error!("InitialSubscription Insert claim_tile_state Error: {:?} -> {:?}", error, row);
                                             continue;
                                         }
                                     };
@@ -881,14 +895,14 @@ pub fn start_websocket_bitcraft_logic(
                         }
                     }
 
-                    if table_name == "ActionState" {
+                    if table_name == "action_state" {
                         for current_table in table.iter() {
                             for row in current_table.inserts.iter() {
                                 let action_state: entity::action_state::Model =
-                                    match serde_json::from_str(&row.text) {
+                                    match serde_json::from_str(&row) {
                                         Ok(action_state) => action_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert ActionState Error: {:?} -> {:?}", error, row.text);
+                                            error!("InitialSubscription Insert action_state Error: {:?} -> {:?}", error, row);
                                             continue;
                                         }
                                     };
@@ -914,14 +928,14 @@ pub fn start_websocket_bitcraft_logic(
                         }
                     }
 
-                    if table_name == "PlayerActionState" {
+                    if table_name == "player_action_state" {
                         for current_table in table.iter() {
                             for row in current_table.inserts.iter() {
                                 let player_action_state: entity::player_action_state::Model =
-                                    match serde_json::from_str(&row.text) {
+                                    match serde_json::from_str(&row) {
                                         Ok(player_action_state) => player_action_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert PlayerActionState Error: {:?} -> {:?}", error, row.text);
+                                            error!("InitialSubscription Insert player_action_state Error: {:?} -> {:?}", error, row);
                                             continue;
                                         }
                                     };
@@ -983,7 +997,7 @@ pub fn start_websocket_bitcraft_logic(
                     serde_json::from_str(&text);
 
                 if message.is_err() {
-                    info!("Text: {:?}", text);
+                    //info!("Text: {:?}", text);
                     info!("Error: {:?}", message.err());
                     continue;
                 }
@@ -1064,13 +1078,16 @@ pub(crate) struct Identity {
 pub(crate) struct Address {
     pub(crate) __address_bytes: Box<str>,
 }
-
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ConnectionId {
+    __connection_id__: u128,
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct TransactionUpdate {
     pub(crate) status: Status,
     pub(crate) timestamp: Timestamp,
     pub(crate) caller_identity: Identity,
-    pub(crate) caller_address: Address,
+    pub(crate) caller_connection_id: ConnectionId,
     pub(crate) reducer_call: ReducerCall,
     pub(crate) energy_quanta_used: EnergyQuantaUsed,
     pub(crate) host_execution_duration_micros: u64,
@@ -1086,29 +1103,27 @@ pub(crate) struct Status {
 pub(crate) struct Committed {
     pub(crate) tables: Vec<Table>,
 }
-
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub(crate) struct QueryUpdate {
+    pub(crate) deletes: Vec<Box<str>>,
+    pub(crate) inserts: Vec<Box<str>>,
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Table {
     pub(crate) table_id: u64,
     pub(crate) table_name: Box<str>,
-    pub(crate) deletes: Vec<TableText>,
-    pub(crate) inserts: Vec<TableText>,
+    pub(crate) num_rows: u64,
+    pub(crate) updates: Vec<QueryUpdate>,
 }
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct TableWithOriginalEventTransactionUpdate {
     pub(crate) table_id: u64,
     pub(crate) table_name: Box<str>,
-    pub(crate) deletes: Vec<TableText>,
-    pub(crate) inserts: Vec<TableText>,
+    pub(crate) deletes: Vec<Box<str>>,
+    pub(crate) inserts: Vec<Box<str>>,
     pub(crate) original_event: TransactionUpdate,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub(crate) struct TableText {
-    #[serde(rename = "Text")]
-    pub(crate) text: Box<str>,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Timestamp {
