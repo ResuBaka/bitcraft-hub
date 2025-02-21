@@ -32,6 +32,9 @@ jobs:
       run: bun run build
   check-docker:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
     needs: build
     steps:
     - name: Checkout
