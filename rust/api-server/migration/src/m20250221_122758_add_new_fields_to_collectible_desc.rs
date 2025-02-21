@@ -9,10 +9,16 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                    .table(BuildingDesc::Table)
+                    .table(CollectibleDesc::Table)
                     .add_column(
-                        ColumnDef::new(BuildingDesc::InteractPermission)
-                            .json()
+                        ColumnDef::new(CollectibleDesc::RequiredKnowledgesToUse)
+                            .integer()
+                            .null()
+                            .to_owned(),
+                    )
+                    .add_column(
+                        ColumnDef::new(CollectibleDesc::RequiredKnowledgesToConvert)
+                            .integer()
                             .null()
                             .to_owned(),
                     )
@@ -25,16 +31,19 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                    .table(BuildingDesc::Table)
-                    .drop_column(BuildingDesc::InteractPermission)
+                    .table(CollectibleDesc::Table)
+                    .drop_column(CollectibleDesc::RequiredKnowledgesToUse)
+                    .drop_column(CollectibleDesc::RequiredKnowledgesToConvert)
                     .to_owned(),
+                    
             )
             .await
     }
 }
 
 #[derive(DeriveIden)]
-enum BuildingDesc {
+enum CollectibleDesc {
     Table,
-    InteractPermission,
+    RequiredKnowledgesToUse,
+    RequiredKnowledgesToConvert
 }

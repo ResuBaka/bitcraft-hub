@@ -459,28 +459,29 @@ pub(crate) async fn handle_initial_subscription(
 
     let mut known_inventory_ids = get_known_inventory_ids(database_connection).await?;
 
-    for row in table.inserts.iter() {
-        match serde_json::from_str::<inventory::Model>(row.text.as_ref()) {
-            Ok(building_state) => {
-                if known_inventory_ids.contains(&building_state.entity_id) {
-                    known_inventory_ids.remove(&building_state.entity_id);
+    for update in table.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<inventory::Model>(row.as_ref()) {
+                Ok(building_state) => {
+                    if known_inventory_ids.contains(&building_state.entity_id) {
+                        known_inventory_ids.remove(&building_state.entity_id);
+                    }
+                    buffer_before_insert.push(building_state);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                        db_insert_inventory_state(
+                            database_connection,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                        )
+                        .await?;
+                    }
                 }
-                buffer_before_insert.push(building_state);
-                if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                    db_insert_inventory_state(
-                        database_connection,
-                        &mut buffer_before_insert,
-                        &on_conflict,
-                    )
-                    .await?;
+                Err(error) => {
+                    error!("InitialSubscription Insert Inventory Error: {error}");
                 }
-            }
-            Err(error) => {
-                error!("InitialSubscription Insert Inventory Error: {error}");
             }
         }
     }
-
     if buffer_before_insert.len() > 0 {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
             db_insert_inventory_state(database_connection, &mut buffer_chnk.to_vec(), &on_conflict)
@@ -531,25 +532,25 @@ pub(crate) async fn handle_transaction_update(
 
         if event_type == "delete" {
             for row in p1.deletes.iter() {
-                match serde_json::from_str::<inventory::Model>(row.text.as_ref()) {
+                match serde_json::from_str::<inventory::Model>(row.as_ref()) {
                     Ok(inventory) => {
                         potential_deletes.insert(inventory.entity_id);
                     }
                     Err(error) => {
-                        error!("Event: {event_type} Error: {error} for row: {:?}", row.text);
+                        error!("Event: {event_type} Error: {error} for row: {:?}", row);
                     }
                 }
             }
         } else if event_type == "update" {
             let mut delete_parsed = HashMap::new();
             for row in p1.deletes.iter() {
-                let parsed = serde_json::from_str::<inventory::Model>(row.text.as_ref());
+                let parsed = serde_json::from_str::<inventory::Model>(row.as_ref());
 
                 if parsed.is_err() {
                     error!(
                         "Could not parse delete inventory: {}, row: {:?}",
                         parsed.unwrap_err(),
-                        row.text
+                        row
                     );
                 } else {
                     let parsed = parsed.unwrap();
@@ -559,13 +560,13 @@ pub(crate) async fn handle_transaction_update(
             }
 
             for row in p1.inserts.iter().enumerate() {
-                let parsed = serde_json::from_str::<inventory::Model>(row.1.text.as_ref());
+                let parsed = serde_json::from_str::<inventory::Model>(row.1.as_ref());
 
                 if parsed.is_err() {
                     error!(
                         "Could not parse insert inventory: {}, row: {:?}",
                         parsed.unwrap_err(),
-                        row.1.text
+                        row.1
                     );
                     continue;
                 }

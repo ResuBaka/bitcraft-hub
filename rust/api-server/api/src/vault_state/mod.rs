@@ -208,29 +208,31 @@ pub(crate) async fn handle_initial_subscription(
         .into_iter()
         .collect::<HashSet<(i64, i32)>>();
 
-    for row in p1.inserts.iter() {
-        match serde_json::from_str::<RawVaultState>(row.text.as_ref()) {
-            Ok(player_state) => {
-                if known_player_state_ids.contains(&player_state.entity_id) {
-                    known_player_state_ids.remove(&player_state.entity_id);
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<RawVaultState>(row.as_ref()) {
+                Ok(player_state) => {
+                    if known_player_state_ids.contains(&player_state.entity_id) {
+                        known_player_state_ids.remove(&player_state.entity_id);
+                    }
+                    buffer_before_insert.push(player_state);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                        db_insert_player_states(
+                            p0,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                            &vault_state_collectible_on_conflict,
+                            &mut Some(&mut known_vault_state_collectibles_ids),
+                        )
+                        .await?;
+                    }
                 }
-                buffer_before_insert.push(player_state);
-                if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                    db_insert_player_states(
-                        p0,
-                        &mut buffer_before_insert,
-                        &on_conflict,
-                        &vault_state_collectible_on_conflict,
-                        &mut Some(&mut known_vault_state_collectibles_ids),
-                    )
-                    .await?;
+                Err(error) => {
+                    error!(
+                        "TransactionUpdate Insert RawVaultState Error: {error} -> {:?}",
+                        row
+                    );
                 }
-            }
-            Err(error) => {
-                error!(
-                    "TransactionUpdate Insert RawVaultState Error: {error} -> {:?}",
-                    row
-                );
             }
         }
     }
@@ -318,7 +320,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<RawVaultState>(row.text.as_ref()) {
+            match serde_json::from_str::<RawVaultState>(row.as_ref()) {
                 Ok(player_state) => {
                     found_in_inserts.insert(player_state.entity_id);
                     buffer_before_insert.insert(player_state.entity_id, player_state);
@@ -362,7 +364,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<RawVaultState>(row.text.as_ref()) {
+            match serde_json::from_str::<RawVaultState>(row.as_ref()) {
                 Ok(player_state) => {
                     if !found_in_inserts.contains(&player_state.entity_id) {
                         players_to_delete.insert(player_state.entity_id);

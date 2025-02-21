@@ -388,23 +388,25 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
         .to_owned();
 
     let mut known_player_username_state_ids = get_known_player_username_state_ids(p0).await?;
-    for row in p1.inserts.iter() {
-        match serde_json::from_str::<player_username_state::Model>(row.text.as_ref()) {
-            Ok(player_username_state) => {
-                if known_player_username_state_ids.contains(&player_username_state.entity_id) {
-                    known_player_username_state_ids.remove(&player_username_state.entity_id);
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
+                Ok(player_username_state) => {
+                    if known_player_username_state_ids.contains(&player_username_state.entity_id) {
+                        known_player_username_state_ids.remove(&player_username_state.entity_id);
+                    }
+                    buffer_before_insert.push(player_username_state);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                        db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict)
+                            .await?;
+                    }
                 }
-                buffer_before_insert.push(player_username_state);
-                if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                    db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict)
-                        .await?;
+                Err(error) => {
+                    error!(
+                        "TransactionUpdate Insert PlayerUsernameState Error: {error} -> {:?}",
+                        row
+                    );
                 }
-            }
-            Err(error) => {
-                error!(
-                    "TransactionUpdate Insert PlayerUsernameState Error: {error} -> {:?}",
-                    row
-                );
             }
         }
     }
@@ -436,7 +438,7 @@ pub(crate) async fn handle_transaction_update_player_username_state(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<player_username_state::Model>(row.text.as_ref()) {
+            match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
                 Ok(player_username_state) => {
                     found_in_inserts.insert(player_username_state.entity_id);
                     buffer_before_insert.push(player_username_state);
@@ -464,7 +466,7 @@ pub(crate) async fn handle_transaction_update_player_username_state(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<player_username_state::Model>(row.text.as_ref()) {
+            match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
                 Ok(player_username_state) => {
                     if !found_in_inserts.contains(&player_username_state.entity_id) {
                         players_username_to_delete.insert(player_username_state.entity_id);
@@ -505,23 +507,25 @@ pub(crate) async fn handle_initial_subscription_player_state(
         .to_owned();
 
     let mut known_player_state_ids = get_known_player_state_ids(p0).await?;
-    for row in p1.inserts.iter() {
-        match serde_json::from_str::<player_state::Model>(row.text.as_ref()) {
-            Ok(player_state) => {
-                if known_player_state_ids.contains(&player_state.entity_id) {
-                    known_player_state_ids.remove(&player_state.entity_id);
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<player_state::Model>(row.as_ref()) {
+                Ok(player_state) => {
+                    if known_player_state_ids.contains(&player_state.entity_id) {
+                        known_player_state_ids.remove(&player_state.entity_id);
+                    }
+                    buffer_before_insert.push(player_state);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                        info!("PlayerState insert");
+                        db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict).await?;
+                    }
                 }
-                buffer_before_insert.push(player_state);
-                if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                    info!("PlayerState insert");
-                    db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict).await?;
+                Err(error) => {
+                    error!(
+                        "TransactionUpdate Insert PlayerState Error: {error} -> {:?}",
+                        row
+                    );
                 }
-            }
-            Err(error) => {
-                error!(
-                    "TransactionUpdate Insert PlayerState Error: {error} -> {:?}",
-                    row
-                );
             }
         }
     }
@@ -562,7 +566,7 @@ pub(crate) async fn handle_transaction_update_player_state(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<player_state::Model>(row.text.as_ref()) {
+            match serde_json::from_str::<player_state::Model>(row.as_ref()) {
                 Ok(player_state) => {
                     found_in_inserts.insert(player_state.entity_id);
                     sender
@@ -604,7 +608,7 @@ pub(crate) async fn handle_transaction_update_player_state(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<player_state::Model>(row.text.as_ref()) {
+            match serde_json::from_str::<player_state::Model>(row.as_ref()) {
                 Ok(player_state) => {
                     if !found_in_inserts.contains(&player_state.entity_id) {
                         players_to_delete.insert(player_state.entity_id);

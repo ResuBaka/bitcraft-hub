@@ -482,7 +482,7 @@ pub(crate) async fn handle_transaction_update(
     // let mut known_player_username_state_ids = get_known_player_uusername_state_ids(p0).await?;
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<building_state::Model>(row.text.as_ref()) {
+            match serde_json::from_str::<building_state::Model>(row.as_ref()) {
                 Ok(building_state) => {
                     let current_building_state =
                         QueryCore::find_building_state_by_id(&p0, building_state.entity_id).await?;
@@ -514,7 +514,7 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.deletes.iter() {
-            match serde_json::from_str::<building_state::Model>(row.text.as_ref()) {
+            match serde_json::from_str::<building_state::Model>(row.as_ref()) {
                 Ok(building_state) => {
                     if found_in_inserts.contains(&building_state.entity_id) {
                         continue;
@@ -556,20 +556,21 @@ pub(crate) async fn handle_initial_subscription(
     let mut buffer_before_insert: Vec<building_state::Model> = vec![];
 
     let mut known_building_state_ids = get_known_building_state_ids(p0).await?;
-
-    for row in p1.inserts.iter() {
-        match serde_json::from_str::<building_state::Model>(row.text.as_ref()) {
-            Ok(building_state) => {
-                if known_building_state_ids.contains(&building_state.entity_id) {
-                    known_building_state_ids.remove(&building_state.entity_id);
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<building_state::Model>(row.as_ref()) {
+                Ok(building_state) => {
+                    if known_building_state_ids.contains(&building_state.entity_id) {
+                        known_building_state_ids.remove(&building_state.entity_id);
+                    }
+                    buffer_before_insert.push(building_state);
+                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                        db_insert_building_state(p0, &mut buffer_before_insert, &on_conflict).await?;
+                    }
                 }
-                buffer_before_insert.push(building_state);
-                if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                    db_insert_building_state(p0, &mut buffer_before_insert, &on_conflict).await?;
+                Err(error) => {
+                    error!("InitialSubscription Insert BuildingState Error: {error}");
                 }
-            }
-            Err(error) => {
-                error!("InitialSubscription Insert BuildingState Error: {error}");
             }
         }
     }
