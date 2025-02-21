@@ -998,7 +998,7 @@ pub fn start_websocket_bitcraft_logic(
 
                 if message.is_err() {
                     //info!("Text: {:?}", text);
-                    info!("Error: {:?}", message.err());
+                    error!("Error: {:?}, text: {text}", message.err());
                     continue;
                 }
 
@@ -1076,7 +1076,7 @@ pub(crate) struct Identity {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Address {
-    pub(crate) __address_bytes: Box<str>,
+    pub(crate) __address__: u128,
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ConnectionId {
