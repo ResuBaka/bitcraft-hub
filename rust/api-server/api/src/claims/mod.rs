@@ -812,22 +812,21 @@ pub(crate) fn get_merged_inventories(
 
     for inventory in inventorys {
         for pocket in inventory.pockets {
-            for (_, content) in pocket.contents.iter() {
-                let resolved = resolve_contents(content, items, cargos);
+            let (_, content) = pocket.contents;
+            let resolved = resolve_contents(&content, items, cargos);
 
-                if resolved.is_none() {
-                    continue;
+            if resolved.is_none() {
+                continue;
+            }
+
+            let resolved = resolved.unwrap();
+
+            match hashmap.get_mut(&(resolved.item_id, resolved.item_type.clone())) {
+                Some(value) => {
+                    value.quantity += resolved.quantity;
                 }
-
-                let resolved = resolved.unwrap();
-
-                match hashmap.get_mut(&(resolved.item_id, resolved.item_type.clone())) {
-                    Some(value) => {
-                        value.quantity += resolved.quantity;
-                    }
-                    None => {
-                        hashmap.insert((resolved.item_id, resolved.item_type.clone()), resolved);
-                    }
+                None => {
+                    hashmap.insert((resolved.item_id, resolved.item_type.clone()), resolved);
                 }
             }
         }

@@ -45,7 +45,7 @@ pub struct ItemSlotResolved {
 #[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct ItemSlot {
     pub volume: i64,
-    pub contents: HashMap<i64, Option<JsonValue>>,
+    pub contents: (i64, Option<JsonValue>),
     pub locked: bool,
 }
 
