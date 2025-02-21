@@ -153,32 +153,31 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
     for inventory in &inventorys {
         for pocket in &inventory.pockets {
-            if pocket.contents.len() == 0 {
+            if pocket.contents.1.is_none() {
                 continue;
             }
 
-            for (_item_id, refrence) in pocket.clone().contents.iter() {
-                if refrence.is_some() {
-                    let refrence = refrence.clone().unwrap();
+            let (_item_id, refrence) = pocket.clone().contents;
+            if refrence.is_some() {
+                let refrence = refrence.clone().unwrap();
 
-                    let content = serde_json::from_value::<Content>(refrence);
+                let content = serde_json::from_value::<Content>(refrence);
 
-                    if content.is_ok() {
-                        let content = content.unwrap();
+                if content.is_ok() {
+                    let content = content.unwrap();
 
-                        let item_type = content
-                            .item_type
-                            .as_object()
-                            .unwrap()
-                            .keys()
-                            .next()
-                            .unwrap();
+                    let item_type = content
+                        .item_type
+                        .as_object()
+                        .unwrap()
+                        .keys()
+                        .next()
+                        .unwrap();
 
-                        if item_type == "0" {
-                            item_ids.push(content.item_id.clone());
-                        } else {
-                            cargo_ids.push(content.item_id.clone());
-                        }
+                    if item_type == "0" {
+                        item_ids.push(content.item_id.clone());
+                    } else {
+                        cargo_ids.push(content.item_id.clone());
                     }
                 }
             }
@@ -368,9 +367,8 @@ pub(crate) fn resolve_pocket(
     cargo_desc: &HashMap<i64, cargo_desc::Model>,
 ) -> ItemSlotResolved {
     let mut contents = None;
-    for (_, refrence) in pocket.clone().contents.iter() {
-        contents = resolve_contents(refrence, item_desc, cargo_desc);
-    }
+    let (_, refrence) = pocket.clone().contents;
+    contents = resolve_contents(&refrence, item_desc, cargo_desc);
     ItemSlotResolved {
         volume: pocket.volume,
         contents,
@@ -477,7 +475,7 @@ pub(crate) async fn handle_initial_subscription(
                     }
                 }
                 Err(error) => {
-                    error!("InitialSubscription Insert Inventory Error: {error}");
+                    error!("InitialSubscription Insert Inventory Error: {error:#?} -> {row}");
                 }
             }
         }
