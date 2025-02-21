@@ -74,25 +74,25 @@ impl<'de> Deserialize<'de> for InvalidatesType {
             where
                 M: MapAccess<'de>,
             {
-                if let Some((key, _)) = map.next_entry::<String, serde_json::Value>()? {
-                    match key.as_str() {
-                        "0" => Ok(InvalidatesType::Default),
-                        "1" => Ok(InvalidatesType::Hair),
-                        "2" => Ok(InvalidatesType::Mask),
-                        "3" => Ok(InvalidatesType::MaskPattern),
-                        "4" => Ok(InvalidatesType::HairColor),
-                        "5" => Ok(InvalidatesType::Nameplate),
-                        "6" => Ok(InvalidatesType::BodyColor),
-                        "7" => Ok(InvalidatesType::Emblem),
-                        "8" => Ok(InvalidatesType::ClothesHead),
-                        "9" => Ok(InvalidatesType::ClothesBelt),
-                        "10" => Ok(InvalidatesType::ClothesTorso),
-                        "11" => Ok(InvalidatesType::ClothesArms),
-                        "12" => Ok(InvalidatesType::ClothesLegs),
-                        "13" => Ok(InvalidatesType::ClothesFeet),
-                        "14" => Ok(InvalidatesType::Deployable),
-                        "15" => Ok(InvalidatesType::Title),
-                        "16" => Ok(InvalidatesType::Crown),
+                if let Some((key, _)) = map.next_entry::<i32, serde_json::Value>()? {
+                    match key {
+                        0 => Ok(InvalidatesType::Default),
+                        1 => Ok(InvalidatesType::Hair),
+                        2 => Ok(InvalidatesType::Mask),
+                        3 => Ok(InvalidatesType::MaskPattern),
+                        4 => Ok(InvalidatesType::HairColor),
+                        5 => Ok(InvalidatesType::Nameplate),
+                        6 => Ok(InvalidatesType::BodyColor),
+                        7 => Ok(InvalidatesType::Emblem),
+                        8 => Ok(InvalidatesType::ClothesHead),
+                        9 => Ok(InvalidatesType::ClothesBelt),
+                        10 => Ok(InvalidatesType::ClothesTorso),
+                        11 => Ok(InvalidatesType::ClothesArms),
+                        12 => Ok(InvalidatesType::ClothesLegs),
+                        13 => Ok(InvalidatesType::ClothesFeet),
+                        14 => Ok(InvalidatesType::Deployable),
+                        15 => Ok(InvalidatesType::Title),
+                        16 => Ok(InvalidatesType::Crown),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }
                 } else {
@@ -104,25 +104,26 @@ impl<'de> Deserialize<'de> for InvalidatesType {
             where
                 A: SeqAccess<'de>,
             {
-                if let Some(key) = seq.next_element::<String>()? {
-                    match key.as_str() {
-                        "0" => Ok(InvalidatesType::Default),
-                        "1" => Ok(InvalidatesType::Hair),
-                        "2" => Ok(InvalidatesType::Mask),
-                        "3" => Ok(InvalidatesType::MaskPattern),
-                        "4" => Ok(InvalidatesType::HairColor),
-                        "5" => Ok(InvalidatesType::Nameplate),
-                        "6" => Ok(InvalidatesType::BodyColor),
-                        "7" => Ok(InvalidatesType::Emblem),
-                        "8" => Ok(InvalidatesType::ClothesHead),
-                        "9" => Ok(InvalidatesType::ClothesBelt),
-                        "10" => Ok(InvalidatesType::ClothesTorso),
-                        "11" => Ok(InvalidatesType::ClothesArms),
-                        "12" => Ok(InvalidatesType::ClothesLegs),
-                        "13" => Ok(InvalidatesType::ClothesFeet),
-                        "14" => Ok(InvalidatesType::Deployable),
-                        "15" => Ok(InvalidatesType::Title),
-                        "16" => Ok(InvalidatesType::Crown),
+                if let Some(key) = seq.next_element::<i32>()? {
+                    let _ = seq.next_element::<serde_json::Value>()?;
+                    match key {
+                        0 => Ok(InvalidatesType::Default),
+                        1 => Ok(InvalidatesType::Hair),
+                        2 => Ok(InvalidatesType::Mask),
+                        3 => Ok(InvalidatesType::MaskPattern),
+                        4 => Ok(InvalidatesType::HairColor),
+                        5 => Ok(InvalidatesType::Nameplate),
+                        6 => Ok(InvalidatesType::BodyColor),
+                        7 => Ok(InvalidatesType::Emblem),
+                        8 => Ok(InvalidatesType::ClothesHead),
+                        9 => Ok(InvalidatesType::ClothesBelt),
+                        10 => Ok(InvalidatesType::ClothesTorso),
+                        11 => Ok(InvalidatesType::ClothesArms),
+                        12 => Ok(InvalidatesType::ClothesLegs),
+                        13 => Ok(InvalidatesType::ClothesFeet),
+                        14 => Ok(InvalidatesType::Deployable),
+                        15 => Ok(InvalidatesType::Title),
+                        16 => Ok(InvalidatesType::Crown),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }
                 } else {
@@ -178,25 +179,25 @@ impl<'de> Deserialize<'de> for CollectibleType {
             where
                 M: MapAccess<'de>,
             {
-                if let Some((key, _)) = map.next_entry::<String, serde_json::Value>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleType::Default),
-                        "1" => Ok(CollectibleType::Hair),
-                        "2" => Ok(CollectibleType::Mask),
-                        "3" => Ok(CollectibleType::MaskPattern),
-                        "4" => Ok(CollectibleType::HairColor),
-                        "5" => Ok(CollectibleType::Nameplate),
-                        "6" => Ok(CollectibleType::BodyColor),
-                        "7" => Ok(CollectibleType::Emblem),
-                        "8" => Ok(CollectibleType::ClothesHead),
-                        "9" => Ok(CollectibleType::ClothesBelt),
-                        "10" => Ok(CollectibleType::ClothesTorso),
-                        "11" => Ok(CollectibleType::ClothesArms),
-                        "12" => Ok(CollectibleType::ClothesLegs),
-                        "13" => Ok(CollectibleType::ClothesFeet),
-                        "14" => Ok(CollectibleType::Deployable),
-                        "15" => Ok(CollectibleType::Title),
-                        "16" => Ok(CollectibleType::Crown),
+                if let Some((key, _)) = map.next_entry::<i32, serde_json::Value>()? {
+                    match key {
+                        0 => Ok(CollectibleType::Default),
+                        1 => Ok(CollectibleType::Hair),
+                        2 => Ok(CollectibleType::Mask),
+                        3 => Ok(CollectibleType::MaskPattern),
+                        4 => Ok(CollectibleType::HairColor),
+                        5 => Ok(CollectibleType::Nameplate),
+                        6 => Ok(CollectibleType::BodyColor),
+                        7 => Ok(CollectibleType::Emblem),
+                        8 => Ok(CollectibleType::ClothesHead),
+                        9 => Ok(CollectibleType::ClothesBelt),
+                        10 => Ok(CollectibleType::ClothesTorso),
+                        11 => Ok(CollectibleType::ClothesArms),
+                        12 => Ok(CollectibleType::ClothesLegs),
+                        13 => Ok(CollectibleType::ClothesFeet),
+                        14 => Ok(CollectibleType::Deployable),
+                        15 => Ok(CollectibleType::Title),
+                        16 => Ok(CollectibleType::Crown),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }
                 } else {
@@ -208,25 +209,27 @@ impl<'de> Deserialize<'de> for CollectibleType {
             where
                 A: SeqAccess<'de>,
             {
-                if let Some(key) = seq.next_element::<String>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleType::Default),
-                        "1" => Ok(CollectibleType::Hair),
-                        "2" => Ok(CollectibleType::Mask),
-                        "3" => Ok(CollectibleType::MaskPattern),
-                        "4" => Ok(CollectibleType::HairColor),
-                        "5" => Ok(CollectibleType::Nameplate),
-                        "6" => Ok(CollectibleType::BodyColor),
-                        "7" => Ok(CollectibleType::Emblem),
-                        "8" => Ok(CollectibleType::ClothesHead),
-                        "9" => Ok(CollectibleType::ClothesBelt),
-                        "10" => Ok(CollectibleType::ClothesTorso),
-                        "11" => Ok(CollectibleType::ClothesArms),
-                        "12" => Ok(CollectibleType::ClothesLegs),
-                        "13" => Ok(CollectibleType::ClothesFeet),
-                        "14" => Ok(CollectibleType::Deployable),
-                        "15" => Ok(CollectibleType::Title),
-                        "16" => Ok(CollectibleType::Crown),
+                if let Some(key) = seq.next_element::<i32>()? {
+                    let _ = seq.next_element::<serde_json::Value>()?;
+
+                    match key {
+                        0 => Ok(CollectibleType::Default),
+                        1 => Ok(CollectibleType::Hair),
+                        2 => Ok(CollectibleType::Mask),
+                        3 => Ok(CollectibleType::MaskPattern),
+                        4 => Ok(CollectibleType::HairColor),
+                        5 => Ok(CollectibleType::Nameplate),
+                        6 => Ok(CollectibleType::BodyColor),
+                        7 => Ok(CollectibleType::Emblem),
+                        8 => Ok(CollectibleType::ClothesHead),
+                        9 => Ok(CollectibleType::ClothesBelt),
+                        10 => Ok(CollectibleType::ClothesTorso),
+                        11 => Ok(CollectibleType::ClothesArms),
+                        12 => Ok(CollectibleType::ClothesLegs),
+                        13 => Ok(CollectibleType::ClothesFeet),
+                        14 => Ok(CollectibleType::Deployable),
+                        15 => Ok(CollectibleType::Title),
+                        16 => Ok(CollectibleType::Crown),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }
                 } else {
@@ -272,15 +275,15 @@ impl<'de> Deserialize<'de> for CollectibleRarity {
             where
                 M: MapAccess<'de>,
             {
-                if let Some((key, _)) = map.next_entry::<String, serde_json::Value>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleRarity::Default),
-                        "1" => Ok(CollectibleRarity::Common),
-                        "2" => Ok(CollectibleRarity::Uncommon),
-                        "3" => Ok(CollectibleRarity::Rare),
-                        "4" => Ok(CollectibleRarity::Epic),
-                        "5" => Ok(CollectibleRarity::Legendary),
-                        "6" => Ok(CollectibleRarity::Mythic),
+                if let Some((key, _)) = map.next_entry::<i32, serde_json::Value>()? {
+                    match key {
+                        0 => Ok(CollectibleRarity::Default),
+                        1 => Ok(CollectibleRarity::Common),
+                        2 => Ok(CollectibleRarity::Uncommon),
+                        3 => Ok(CollectibleRarity::Rare),
+                        4 => Ok(CollectibleRarity::Epic),
+                        5 => Ok(CollectibleRarity::Legendary),
+                        6 => Ok(CollectibleRarity::Mythic),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }
                 } else {
@@ -292,15 +295,16 @@ impl<'de> Deserialize<'de> for CollectibleRarity {
             where
                 A: SeqAccess<'de>,
             {
-                if let Some(key) = seq.next_element::<String>()? {
-                    match key.as_str() {
-                        "0" => Ok(CollectibleRarity::Default),
-                        "1" => Ok(CollectibleRarity::Common),
-                        "2" => Ok(CollectibleRarity::Uncommon),
-                        "3" => Ok(CollectibleRarity::Rare),
-                        "4" => Ok(CollectibleRarity::Epic),
-                        "5" => Ok(CollectibleRarity::Legendary),
-                        "6" => Ok(CollectibleRarity::Mythic),
+                if let Some(key) = seq.next_element::<i32>()? {
+                    let _ = seq.next_element::<serde_json::Value>()?;
+                    match key {
+                        0 => Ok(CollectibleRarity::Default),
+                        1 => Ok(CollectibleRarity::Common),
+                        2 => Ok(CollectibleRarity::Uncommon),
+                        3 => Ok(CollectibleRarity::Rare),
+                        4 => Ok(CollectibleRarity::Epic),
+                        5 => Ok(CollectibleRarity::Legendary),
+                        6 => Ok(CollectibleRarity::Mythic),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }
                 } else {
