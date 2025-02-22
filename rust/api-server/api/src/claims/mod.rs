@@ -6,7 +6,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
-use entity::claim_description_state::Model;
+use entity::claim_description_state::{Member, Model};
 use entity::inventory::{ExpendedRefrence, ItemExpended};
 use entity::{
     building_state, cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc,
@@ -695,7 +695,14 @@ async fn delete_claim_description_state(
         known_claim_description_ids,
     );
     claim_description_state::Entity::delete_many()
-        .filter(claim_description_state::Column::EntityId.is_in(known_claim_description_ids))
+        .filter(
+            claim_description_state::Column::EntityId.is_in(known_claim_description_ids.clone()),
+        )
+        .exec(conn)
+        .await?;
+
+    player_to_claim::Entity::delete_many()
+        .filter(player_to_claim::Column::ClaimId.is_in(known_claim_description_ids))
         .exec(conn)
         .await?;
     Ok(())
@@ -703,16 +710,17 @@ async fn delete_claim_description_state(
 
 async fn delete_player_to_claim(
     conn: &DatabaseConnection,
-    known_claim_description_ids: HashSet<(i64,i64)>,
+    known_claim_description_ids: HashSet<(i64, i64)>,
 ) -> anyhow::Result<()> {
-    info!(
-        "claim_tech_desc's ({}) to delete: {:?}",
-        known_claim_description_ids.len(),
-        known_claim_description_ids,
-    );
     player_to_claim::Entity::delete_many()
-        .filter(player_to_claim::Column::ClaimId.is_in(known_claim_description_ids.iter().map(|value | value.0)))
-        .filter(player_to_claim::Column::PlayerId.is_in(known_claim_description_ids.iter().map(|value | value.1)))
+        .filter(
+            player_to_claim::Column::ClaimId
+                .is_in(known_claim_description_ids.iter().map(|value| value.0)),
+        )
+        .filter(
+            player_to_claim::Column::PlayerId
+                .is_in(known_claim_description_ids.iter().map(|value| value.1)),
+        )
         .exec(conn)
         .await?;
     Ok(())
@@ -745,13 +753,20 @@ async fn db_insert_player_to_claim(
 
     let claim_description_from_db_map = claim_description_from_db
         .into_iter()
-        .map(|claim_description| ((claim_description.claim_id, claim_description.player_id), claim_description))
-        .collect::<HashMap<(i64,i64), player_to_claim::Model>>();
+        .map(|claim_description| {
+            (
+                (claim_description.claim_id, claim_description.player_id),
+                claim_description,
+            )
+        })
+        .collect::<HashMap<(i64, i64), player_to_claim::Model>>();
 
     let things_to_insert = buffer_before_insert
         .iter()
         .filter(|claim_description| {
-            match claim_description_from_db_map.get(&(claim_description.claim_id, claim_description.player_id)) {
+            match claim_description_from_db_map
+                .get(&(claim_description.claim_id, claim_description.player_id))
+            {
                 Some(claim_description_from_db) => {
                     if claim_description_from_db != *claim_description {
                         return true;
@@ -860,7 +875,7 @@ async fn known_claim_description_state_ids(
 
 async fn known_player_to_claim_ids(
     conn: &DatabaseConnection,
-) -> anyhow::Result<HashSet<(i64,i64)>> {
+) -> anyhow::Result<HashSet<(i64, i64)>> {
     let known_player_to_claim_ids = player_to_claim::Entity::find()
         .select_only()
         .column(player_to_claim::Column::ClaimId)
@@ -868,11 +883,10 @@ async fn known_player_to_claim_ids(
         .into_model::<player_to_claim::Model>()
         .all(conn)
         .await?;
-    let mut map: HashSet<(i64,i64)> = HashSet::new();
-    known_player_to_claim_ids
-        .into_iter().for_each(|x| {
-            map.insert(( x.claim_id, x.player_id ));
-        });
+    let mut map: HashSet<(i64, i64)> = HashSet::new();
+    known_player_to_claim_ids.into_iter().for_each(|x| {
+        map.insert((x.claim_id, x.player_id));
+    });
     Ok(map)
 }
 
@@ -899,16 +913,19 @@ fn get_claim_description_state_on_conflict() -> OnConflict {
         .to_owned()
 }
 fn get_player_to_claim_on_conflict() -> OnConflict {
-    sea_query::OnConflict::columns(vec!(player_to_claim::Column::PlayerId,player_to_claim::Column::ClaimId))
-        .update_columns([
-            player_to_claim::Column::PlayerId,
-            player_to_claim::Column::ClaimId,
-            player_to_claim::Column::InventoryPermission,
-            player_to_claim::Column::BuildPermission,
-            player_to_claim::Column::OfficerPermission,
-            player_to_claim::Column::CoOwnerPermission,
-        ])
-        .to_owned()
+    sea_query::OnConflict::columns(vec![
+        player_to_claim::Column::PlayerId,
+        player_to_claim::Column::ClaimId,
+    ])
+    .update_columns([
+        player_to_claim::Column::PlayerId,
+        player_to_claim::Column::ClaimId,
+        player_to_claim::Column::InventoryPermission,
+        player_to_claim::Column::BuildPermission,
+        player_to_claim::Column::OfficerPermission,
+        player_to_claim::Column::CoOwnerPermission,
+    ])
+    .to_owned()
 }
 
 pub(crate) fn get_merged_inventories(
@@ -952,6 +969,7 @@ pub(crate) async fn handle_initial_subscription(
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_description_state_on_conflict();
     let on_conflict_player_to_claim = get_player_to_claim_on_conflict();
+
     let chunk_size = Some(5000);
     let mut buffer_before_insert: Vec<claim_description_state::Model> = vec![];
     let mut buffer_player_to_claim_before_insert: Vec<player_to_claim::Model> = vec![];
@@ -967,36 +985,38 @@ pub(crate) async fn handle_initial_subscription(
                     }
                     buffer_before_insert.push(building_state.clone());
                     if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                        db_insert_claim_description_state(p0, &mut buffer_before_insert, &on_conflict)
-                            .await?;
+                        db_insert_claim_description_state(
+                            p0,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                        )
+                        .await?;
                     }
-                    if known_player_to_claim_ids.contains(&(building_state.entity_id, building_state.owner_building_entity_id )) {
-                        known_player_to_claim_ids.remove(&(building_state.entity_id, building_state.owner_building_entity_id ));
-                    }
-                    buffer_player_to_claim_before_insert.push(player_to_claim::Model {
-                        player_id: building_state.owner_building_entity_id,
-                        claim_id: building_state.entity_id,
-                        inventory_permission: true,
-                        build_permission: true,
-                        officer_permission: true,
-                        co_owner_permission: true
-                    });
-                    building_state.members.iter().for_each(|member: &claim_description_state::Member| {
-                        if known_player_to_claim_ids.contains(&(building_state.entity_id, member.player_entity_id )) {
-                            known_player_to_claim_ids.remove(&(building_state.entity_id, member.player_entity_id ));
-                        }
-                        buffer_player_to_claim_before_insert.push(player_to_claim::Model {
-                            player_id: member.player_entity_id,
-                            claim_id: building_state.entity_id,
-                            inventory_permission: member.inventory_permission,
-                            build_permission: member.build_permission,
-                            officer_permission: member.officer_permission,
-                            co_owner_permission: member.co_owner_permission
-                        });
-                    });
+                    building_state.members.iter().for_each(
+                        |member: &claim_description_state::Member| {
+                            if known_player_to_claim_ids
+                                .contains(&(building_state.entity_id, member.player_entity_id))
+                            {
+                                known_player_to_claim_ids
+                                    .remove(&(building_state.entity_id, member.player_entity_id));
+                            }
+                            buffer_player_to_claim_before_insert.push(player_to_claim::Model {
+                                player_id: member.player_entity_id,
+                                claim_id: building_state.entity_id,
+                                inventory_permission: member.inventory_permission,
+                                build_permission: member.build_permission,
+                                officer_permission: member.officer_permission,
+                                co_owner_permission: member.co_owner_permission,
+                            });
+                        },
+                    );
                     if buffer_player_to_claim_before_insert.len() == chunk_size.unwrap_or(5000) {
-                        db_insert_player_to_claim(p0, &mut buffer_player_to_claim_before_insert, &on_conflict_player_to_claim)
-                            .await?;
+                        db_insert_player_to_claim(
+                            p0,
+                            &mut buffer_player_to_claim_before_insert,
+                            &on_conflict_player_to_claim,
+                        )
+                        .await?;
                     }
                     if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
                         db_insert_claim_description_state(
@@ -1012,6 +1032,14 @@ pub(crate) async fn handle_initial_subscription(
                 }
             }
         }
+    }
+    if buffer_player_to_claim_before_insert.len() > 0 {
+        db_insert_player_to_claim(
+            p0,
+            &mut buffer_player_to_claim_before_insert,
+            &on_conflict_player_to_claim,
+        )
+        .await?;
     }
 
     if buffer_before_insert.len() > 0 {
@@ -1037,9 +1065,12 @@ pub(crate) async fn handle_transaction_update(
     sender: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_description_state_on_conflict();
+    let on_conflict_player_to_claim = get_player_to_claim_on_conflict();
 
     let mut buffer_before_insert = HashMap::new();
     let mut potential_deletes = HashSet::new();
+    let mut buffer_before_player_to_claim_insert: Vec<player_to_claim::Model> = vec![];
+    let mut potential_player_to_claim_deletes: HashSet<(i64, i64)> = HashSet::new();
 
     for p1 in tables.iter() {
         let event_type = if p1.inserts.len() > 0 && p1.deletes.len() > 0 {
@@ -1103,6 +1134,30 @@ pub(crate) async fn handle_transaction_update(
 
                 match (parsed, delete_parsed.get(&id)) {
                     (new_claim_description_state, Some(old_claim_description_state)) => {
+                        old_claim_description_state
+                            .members
+                            .iter()
+                            .for_each(|member| {
+                                if !new_claim_description_state.members.contains(member) {
+                                    potential_player_to_claim_deletes.insert((new_claim_description_state.entity_id,member.player_entity_id));
+                                }
+                            });
+                        new_claim_description_state
+                            .members
+                            .iter()
+                            .for_each(|member| {
+                                if !old_claim_description_state.members.contains(member) {
+                                    buffer_before_player_to_claim_insert.push(player_to_claim::Model {
+                                        player_id: member.player_entity_id,
+                                        claim_id: new_claim_description_state.entity_id,
+                                        inventory_permission: member.inventory_permission,
+                                        build_permission: member.build_permission,
+                                        officer_permission: member.officer_permission,
+                                        co_owner_permission: member.co_owner_permission
+                                    });
+                                }
+                            });
+
                         buffer_before_insert.insert(
                             new_claim_description_state.entity_id,
                             new_claim_description_state.clone(),
@@ -1171,6 +1226,19 @@ pub(crate) async fn handle_transaction_update(
             for row in p1.inserts.iter() {
                 match serde_json::from_str::<claim_description_state::Model>(row.as_ref()) {
                     Ok(claim_description_state) => {
+                        claim_description_state.members.iter().for_each(
+                            |member: &claim_description_state::Member| {
+                                buffer_before_player_to_claim_insert.push(player_to_claim::Model {
+                                    player_id: member.player_entity_id,
+                                    claim_id: claim_description_state.entity_id,
+                                    inventory_permission: member.inventory_permission,
+                                    build_permission: member.build_permission,
+                                    officer_permission: member.officer_permission,
+                                    co_owner_permission: member.co_owner_permission,
+                                });
+                            },
+                        );
+
                         buffer_before_insert.insert(
                             claim_description_state.entity_id,
                             claim_description_state.clone(),
@@ -1202,7 +1270,14 @@ pub(crate) async fn handle_transaction_update(
             continue;
         }
     }
-
+    if buffer_before_player_to_claim_insert.len() > 0 {
+            db_insert_player_to_claim(
+                p0,
+                &mut buffer_before_player_to_claim_insert,
+                &on_conflict_player_to_claim,
+            )
+            .await?;
+        }
     if buffer_before_insert.len() > 0 {
         let mut buffer_before_insert_vec = buffer_before_insert
             .clone()
@@ -1212,6 +1287,10 @@ pub(crate) async fn handle_transaction_update(
         db_insert_claim_description_state(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
         buffer_before_insert.clear();
     }
+    if potential_player_to_claim_deletes.len() > 0 {
+        delete_player_to_claim(p0, potential_player_to_claim_deletes).await?;
+    }
+
 
     if potential_deletes.len() > 0 {
         delete_claim_description_state(p0, potential_deletes).await?;
