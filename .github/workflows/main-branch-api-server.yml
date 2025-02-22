@@ -8,7 +8,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
+  backend_lint:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,7 +19,7 @@ jobs:
         run: rustup toolchain install stable --profile minimal
       - name: Build
         run: cargo fmt --check
-  build:
+  backend_build:
     runs-on: ubuntu-latest
     defaults:
       run:
