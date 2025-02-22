@@ -8,6 +8,7 @@ use ::entity::user_state;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use axum::http::HeaderMap;
 use base64::Engine;
+#[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
 use log::{debug, error, info};
@@ -84,8 +85,7 @@ pub fn start_websocket_bitcraft_logic(
             .send()
             .await
             .unwrap();
-        let mut websocket1 = response.into_websocket().await;
-        let mut websocket = websocket1.unwrap();
+        let mut websocket = response.into_websocket().await.unwrap();
 
         let tables_to_subscribe = vec![
             "user_state",

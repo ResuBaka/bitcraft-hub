@@ -366,9 +366,8 @@ pub(crate) fn resolve_pocket(
     item_desc: &HashMap<i64, item_desc::Model>,
     cargo_desc: &HashMap<i64, cargo_desc::Model>,
 ) -> ItemSlotResolved {
-    let mut contents = None;
     let (_, refrence) = pocket.clone().contents;
-    contents = resolve_contents(&refrence, item_desc, cargo_desc);
+    let contents = resolve_contents(&refrence, item_desc, cargo_desc);
     ItemSlotResolved {
         volume: pocket.volume,
         contents,

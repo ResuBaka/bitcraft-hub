@@ -862,6 +862,7 @@ impl ClientsState {
         false
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn listeners_for_topic(&self, topics: Vec<(String, i64)>) -> bool {
         let topics_listen_to = self.topics_listen_to.read().await;
         for (topic, id) in topics {

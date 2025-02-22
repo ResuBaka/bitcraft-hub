@@ -4,7 +4,6 @@ use crate::{cargo_desc, item_desc};
 use sea_orm::entity::prelude::*;
 use sea_orm::{FromJsonQueryResult, JsonValue};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize, Serialize)]
 #[sea_orm(table_name = "inventory")]
