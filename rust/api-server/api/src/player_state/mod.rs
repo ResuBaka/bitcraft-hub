@@ -397,8 +397,12 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
                     }
                     buffer_before_insert.push(player_username_state);
                     if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                        db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict)
-                            .await?;
+                        db_insert_player_username_states(
+                            p0,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                        )
+                        .await?;
                     }
                 }
                 Err(error) => {
@@ -517,7 +521,8 @@ pub(crate) async fn handle_initial_subscription_player_state(
                     buffer_before_insert.push(player_state);
                     if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
                         info!("PlayerState insert");
-                        db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict).await?;
+                        db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict)
+                            .await?;
                     }
                 }
                 Err(error) => {

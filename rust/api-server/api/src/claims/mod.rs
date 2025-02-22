@@ -854,8 +854,12 @@ pub(crate) async fn handle_initial_subscription(
                     }
                     buffer_before_insert.push(building_state);
                     if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-                        db_insert_claim_description_state(p0, &mut buffer_before_insert, &on_conflict)
-                            .await?;
+                        db_insert_claim_description_state(
+                            p0,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                        )
+                        .await?;
                     }
                 }
                 Err(error) => {
@@ -918,8 +922,7 @@ pub(crate) async fn handle_transaction_update(
         } else if event_type == "update" {
             let mut delete_parsed = HashMap::new();
             for row in p1.deletes.iter() {
-                let parsed =
-                    serde_json::from_str::<claim_description_state::Model>(row.as_ref());
+                let parsed = serde_json::from_str::<claim_description_state::Model>(row.as_ref());
 
                 if parsed.is_err() {
                     error!(
@@ -935,8 +938,7 @@ pub(crate) async fn handle_transaction_update(
             }
 
             for row in p1.inserts.iter().enumerate() {
-                let parsed =
-                    serde_json::from_str::<claim_description_state::Model>(row.1.as_ref());
+                let parsed = serde_json::from_str::<claim_description_state::Model>(row.1.as_ref());
 
                 if parsed.is_err() {
                     error!(

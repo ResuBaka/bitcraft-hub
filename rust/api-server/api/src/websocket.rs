@@ -166,8 +166,7 @@ pub fn start_websocket_bitcraft_logic(
                             compressor.flush().await.unwrap();
                             compressor.shutdown().await.unwrap();
 
-                            let user_id =
-                                transaction_update.caller_identity.__identity__.clone();
+                            let user_id = transaction_update.caller_identity.__identity__.clone();
 
                             let user_id = app_state.user_map.get(&user_id.as_ref().to_string());
 
@@ -228,8 +227,20 @@ pub fn start_websocket_bitcraft_logic(
                                     table_vec.push(TableWithOriginalEventTransactionUpdate {
                                         table_id: table.table_id,
                                         table_name: table.table_name.clone(),
-                                        deletes: table.updates.iter().map(|body| body.deletes.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
-                                        inserts: table.updates.iter().map(|body| body.inserts.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
+                                        deletes: table
+                                            .updates
+                                            .iter()
+                                            .map(|body| body.deletes.clone())
+                                            .flatten()
+                                            .collect::<Vec<Box<str>>>()
+                                            .clone(),
+                                        inserts: table
+                                            .updates
+                                            .iter()
+                                            .map(|body| body.inserts.clone())
+                                            .flatten()
+                                            .collect::<Vec<Box<str>>>()
+                                            .clone(),
                                         original_event: transaction_update.clone(),
                                     });
                                 } else {
@@ -238,8 +249,20 @@ pub fn start_websocket_bitcraft_logic(
                                         vec![TableWithOriginalEventTransactionUpdate {
                                             table_id: table.table_id,
                                             table_name: table.table_name.clone(),
-                                            deletes: table.updates.iter().map(|body| body.deletes.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
-                                            inserts: table.updates.iter().map(|body| body.inserts.clone()).flatten().collect::< Vec<Box<str>>>().clone(),
+                                            deletes: table
+                                                .updates
+                                                .iter()
+                                                .map(|body| body.deletes.clone())
+                                                .flatten()
+                                                .collect::<Vec<Box<str>>>()
+                                                .clone(),
+                                            inserts: table
+                                                .updates
+                                                .iter()
+                                                .map(|body| body.inserts.clone())
+                                                .flatten()
+                                                .collect::<Vec<Box<str>>>()
+                                                .clone(),
                                             original_event: transaction_update.clone(),
                                         }],
                                     );
@@ -1123,7 +1146,6 @@ pub(crate) struct TableWithOriginalEventTransactionUpdate {
     pub(crate) inserts: Vec<Box<str>>,
     pub(crate) original_event: TransactionUpdate,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Timestamp {

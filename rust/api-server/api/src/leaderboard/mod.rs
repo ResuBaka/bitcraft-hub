@@ -1077,7 +1077,8 @@ pub(crate) async fn handle_initial_subscription(
 
                     buffer_before_insert.push(experience_state);
                     if buffer_before_insert.len() == chunk_size.unwrap_or(500) {
-                        db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict).await?;
+                        db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict)
+                            .await?;
                     }
                 }
                 Err(error) => {

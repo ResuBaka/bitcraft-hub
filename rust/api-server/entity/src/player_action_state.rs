@@ -134,8 +134,8 @@ impl<'de> Deserialize<'de> for ActionType {
                         22 => Ok(ActionType::PlayerMove),
                         23 => Ok(ActionType::DeployableMove),
                         24 => Ok(ActionType::ResupplyEmpireNode),
-                        25  => Ok(ActionType::SetHome),
-                        26  => Ok(ActionType::UseElevator),
+                        25 => Ok(ActionType::SetHome),
+                        26 => Ok(ActionType::UseElevator),
                         27 => Ok(ActionType::MobileEmote),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }
@@ -176,8 +176,8 @@ impl<'de> Deserialize<'de> for ActionType {
                         22 => Ok(ActionType::PlayerMove),
                         23 => Ok(ActionType::DeployableMove),
                         24 => Ok(ActionType::ResupplyEmpireNode),
-                        25  => Ok(ActionType::SetHome),
-                        26  => Ok(ActionType::UseElevator),
+                        25 => Ok(ActionType::SetHome),
+                        26 => Ok(ActionType::UseElevator),
                         27 => Ok(ActionType::MobileEmote),
                         _ => Err(de::Error::custom("invalid enum variant")),
                     }

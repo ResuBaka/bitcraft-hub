@@ -69,9 +69,9 @@ impl From<CraftedItemStack> for CraftedItemStackWithInner {
 pub struct CraftingRecipeWithInner {
     pub id: i64,
     pub name: String,
-    //@TODO change to f32 
+    //@TODO change to f32
     pub time_requirement: f32,
-    //@TODO change to f32 
+    //@TODO change to f32
     pub stamina_requirement: f32,
     pub building_requirement: Json,
     pub level_requirements: Json,
@@ -87,7 +87,7 @@ pub struct CraftingRecipeWithInner {
     pub is_passive: bool,
     pub actions_required: i32,
     pub tool_mesh_index: i32,
-    pub recipe_performance_id: i32
+    pub recipe_performance_id: i32,
 }
 
 impl From<Model> for CraftingRecipeWithInner {
@@ -119,7 +119,7 @@ impl From<Model> for CraftingRecipeWithInner {
             is_passive: value.is_passive,
             actions_required: value.actions_required,
             tool_mesh_index: value.tool_mesh_index,
-            recipe_performance_id: value.recipe_performance_id
+            recipe_performance_id: value.recipe_performance_id,
         }
     }
 }
@@ -139,7 +139,7 @@ pub struct Model {
     #[sea_orm(column_type = "Json")]
     pub consumed_item_stacks: Vec<ConsumedItemStack>,
     pub discovery_triggers: Json,
-    pub required_knowledges:  Json,
+    pub required_knowledges: Json,
     pub required_claim_tech_id: i32,
     pub full_discovery_score: i32,
     pub experience_per_progress: Json,
@@ -149,7 +149,7 @@ pub struct Model {
     pub is_passive: bool,
     pub actions_required: i32,
     pub tool_mesh_index: i32,
-    pub recipe_performance_id: i32
+    pub recipe_performance_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

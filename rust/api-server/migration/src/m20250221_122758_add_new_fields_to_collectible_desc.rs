@@ -35,7 +35,6 @@ impl MigrationTrait for Migration {
                     .drop_column(CollectibleDesc::RequiredKnowledgesToUse)
                     .drop_column(CollectibleDesc::RequiredKnowledgesToConvert)
                     .to_owned(),
-                    
             )
             .await
     }
@@ -45,5 +44,5 @@ impl MigrationTrait for Migration {
 enum CollectibleDesc {
     Table,
     RequiredKnowledgesToUse,
-    RequiredKnowledgesToConvert
+    RequiredKnowledgesToConvert,
 }

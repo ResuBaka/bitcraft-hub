@@ -8,9 +8,9 @@ use axum::routing::get;
 use axum::{Json, Router};
 use entity::crafting_recipe;
 use entity::crafting_recipe::ConsumedItemStackWithInner;
-use reqwest::Client;
 use log::{debug, error, info};
 use migration::sea_query;
+use reqwest::Client;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
 use serde_json::Value;
 use service::Query as QueryCore;
@@ -100,7 +100,7 @@ pub(crate) async fn get_needed_to_craft(
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
     let recipes = recipes.into_iter().map(|x| x.into()).collect();
 
-    return Ok(Json(get_all_consumed_items_from_item(&recipes, id as i64)))
+    return Ok(Json(get_all_consumed_items_from_item(&recipes, id as i64)));
 }
 
 fn get_all_consumed_items_from_item(
@@ -335,7 +335,8 @@ pub(crate) async fn import_crafting_recipe_descs(
         .to_owned();
 
     let mut crafting_recipe_descs_to_delete = Vec::new();
-    let err = while let Ok(value) = json_stream_reader.deserialize_next::<crafting_recipe::Model>() {
+    let err = while let Ok(value) = json_stream_reader.deserialize_next::<crafting_recipe::Model>()
+    {
         buffer_before_insert.push(value);
 
         if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
@@ -640,7 +641,6 @@ pub(crate) async fn import_crafting_recipe_descs(
 
 //     Ok(())
 // }
-
 
 // pub(crate) async fn handle_transaction_update(
 //     database_connection: &DatabaseConnection,

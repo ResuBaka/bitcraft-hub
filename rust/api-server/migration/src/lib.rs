@@ -15,9 +15,6 @@ mod m20250219_221732_add_to_building_desc_interact_permission;
 mod m20250220_115114_add_crafting_recipe;
 mod m20250221_122758_add_new_fields_to_collectible_desc;
 
-
-
-
 pub struct Migrator;
 
 #[async_trait::async_trait]
