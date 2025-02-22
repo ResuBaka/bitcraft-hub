@@ -224,48 +224,27 @@ pub fn start_websocket_bitcraft_logic(
                                     tables.get_mut(&table.table_name.as_ref().to_string())
                                 {
                                     //TODO this probebly has to be rewriten
-
-                                    table_vec.push(TableWithOriginalEventTransactionUpdate {
-                                        table_id: table.table_id,
-                                        table_name: table.table_name.clone(),
-                                        deletes: table
-                                            .updates
-                                            .iter()
-                                            .map(|body| body.deletes.clone())
-                                            .flatten()
-                                            .collect::<Vec<Box<str>>>()
-                                            .clone(),
-                                        inserts: table
-                                            .updates
-                                            .iter()
-                                            .map(|body| body.inserts.clone())
-                                            .flatten()
-                                            .collect::<Vec<Box<str>>>()
-                                            .clone(),
-                                        original_event: transaction_update.clone(),
-                                    });
+                                    table.updates.iter().for_each(|updates| {
+                                        table_vec.push(TableWithOriginalEventTransactionUpdate {
+                                            table_id: table.table_id,
+                                            table_name: table.table_name.clone(),
+                                            deletes: updates.deletes.clone(),
+                                            inserts: updates.inserts.clone(),
+                                            original_event: transaction_update.clone(),
+                                        });
+                                    })
                                 } else {
                                     tables.insert(
                                         table.table_name.clone().as_ref().to_string(),
-                                        vec![TableWithOriginalEventTransactionUpdate {
-                                            table_id: table.table_id,
-                                            table_name: table.table_name.clone(),
-                                            deletes: table
-                                                .updates
-                                                .iter()
-                                                .map(|body| body.deletes.clone())
-                                                .flatten()
-                                                .collect::<Vec<Box<str>>>()
-                                                .clone(),
-                                            inserts: table
-                                                .updates
-                                                .iter()
-                                                .map(|body| body.inserts.clone())
-                                                .flatten()
-                                                .collect::<Vec<Box<str>>>()
-                                                .clone(),
-                                            original_event: transaction_update.clone(),
-                                        }],
+                                        table.updates.iter().map(|updates| {
+                                            TableWithOriginalEventTransactionUpdate {
+                                                table_id: table.table_id,
+                                                table_name: table.table_name.clone(),
+                                                deletes: updates.deletes.clone(),
+                                                inserts: updates.inserts.clone(),
+                                                original_event: transaction_update.clone()
+                                            }
+                                        }).collect::<Vec<TableWithOriginalEventTransactionUpdate>>()
                                     );
                                 }
                             }

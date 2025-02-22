@@ -11,17 +11,8 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(PlayerToClaim::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(PlayerToClaim::PlayerId)
-                            .integer()
-                            .not_null()
-                            .primary_key(),
-                        )
-                    .col(
-                        ColumnDef::new(PlayerToClaim::ClaimId)
-                            .integer()
-                            .not_null()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(PlayerToClaim::PlayerId).integer().not_null())
+                    .col(ColumnDef::new(PlayerToClaim::ClaimId).integer().not_null())
                     .col(
                         ColumnDef::new(PlayerToClaim::InventoryPermission)
                             .boolean()
@@ -42,12 +33,17 @@ impl MigrationTrait for Migration {
                             .boolean()
                             .not_null(),
                     )
+                    .primary_key(
+                        Index::create()
+                            .col(PlayerToClaim::PlayerId)
+                            .col(PlayerToClaim::ClaimId),
+                    )
                     .to_owned(),
             )
             .await
             .expect("Creating EntityToClaim Table");
 
-            manager
+        manager
             .create_index(
                 Index::create()
                     .name("player_to_claim_player_id")
@@ -81,10 +77,8 @@ impl MigrationTrait for Migration {
 #[derive(DeriveIden)]
 enum PlayerToClaim {
     Table,
-    Id,
     PlayerId,
     ClaimId,
-    UserName,
     InventoryPermission,
     BuildPermission,
     OfficerPermission,

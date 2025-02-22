@@ -16,7 +16,6 @@ mod m20250220_115114_add_crafting_recipe;
 mod m20250221_122758_add_new_fields_to_collectible_desc;
 mod m20250221_220058_player_to_claim;
 
-
 pub struct Migrator;
 
 #[async_trait::async_trait]
