@@ -2,7 +2,7 @@ use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use entity::claim_tech_state::Model;
 use entity::{claim_tech_desc, claim_tech_state};
 use log::{debug, error, info};
-use migration::{sea_query, OnConflict};
+use migration::{OnConflict, sea_query};
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
 };

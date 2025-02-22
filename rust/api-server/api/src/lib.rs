@@ -20,10 +20,10 @@ mod vault_state;
 mod websocket;
 
 use axum::{
+    Router,
     http::StatusCode,
     middleware,
     routing::{get, get_service},
-    Router,
 };
 use service::sea_orm::{Database, DatabaseConnection};
 use std::collections::{HashMap, HashSet};
@@ -32,8 +32,8 @@ use tower_http::cors::{Any, CorsLayer};
 use crate::config::Config;
 use crate::websocket::WebSocketMessages;
 use axum::extract::{
-    ws::{Message, WebSocket, WebSocketUpgrade},
     MatchedPath, Request, State,
+    ws::{Message, WebSocket, WebSocketUpgrade},
 };
 use axum::http::{HeaderValue, Version};
 use axum::middleware::Next;
@@ -44,8 +44,8 @@ use futures::{SinkExt, StreamExt};
 use log::{error, info};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
-use reqwest::header::HeaderMap;
 use reqwest::Client;
+use reqwest::header::HeaderMap;
 use sea_orm::ConnectOptions;
 use serde::Deserialize;
 use std::env;
@@ -55,8 +55,8 @@ use std::ops::{AddAssign, SubAssign};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tower_cookies::CookieManagerLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;

@@ -11,8 +11,8 @@ use log::{debug, error, info};
 use migration::OnConflict;
 use reqwest::Client;
 use sea_orm::{
-    sea_query, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
-    QuerySelect,
+    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
+    sea_query,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

@@ -1,5 +1,5 @@
 use crate::inventory::resolve_contents;
-use crate::leaderboard::{experience_to_level, LeaderboardSkill, EXCLUDED_USERS_FROM_LEADERBOARD};
+use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
 use crate::{AppRouter, AppState};
 use axum::extract::{Path, Query, State};
@@ -14,10 +14,10 @@ use entity::{
 };
 use log::{debug, error, info};
 use migration::OnConflict;
-use sea_orm::{sea_query, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, sea_query};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use service::{sea_orm::DatabaseConnection, Query as QueryCore};
+use service::{Query as QueryCore, sea_orm::DatabaseConnection};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;

@@ -2,7 +2,7 @@
 
 use sea_orm::entity::prelude::*;
 use serde::de::{MapAccess, SeqAccess, Visitor};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

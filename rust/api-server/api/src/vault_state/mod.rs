@@ -4,7 +4,7 @@ use entity::{vault_state, vault_state_collectibles};
 use log::{debug, error, info};
 use migration::OnConflict;
 use sea_orm::IntoActiveModel;
-use sea_orm::{sea_query, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, sea_query};
 use std::collections::{HashMap, HashSet};
 
 async fn get_known_player_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {

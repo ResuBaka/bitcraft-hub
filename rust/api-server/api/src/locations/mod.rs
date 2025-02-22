@@ -1,8 +1,8 @@
 use crate::{AppState, Params};
+use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use axum::Json;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use service::Query as QueryCore;
 
 pub(crate) async fn list_locations(

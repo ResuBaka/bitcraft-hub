@@ -1,12 +1,12 @@
 use crate::config::Config;
 use crate::{
-    buildings, claim_tech_state, claims, collectible_desc, deployable_state, inventory,
-    leaderboard, player_state, vault_state, AppState,
+    AppState, buildings, claim_tech_state, claims, collectible_desc, deployable_state, inventory,
+    leaderboard, player_state, vault_state,
 };
 use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
-use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use axum::http::HeaderMap;
+use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use base64::Engine;
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
@@ -306,7 +306,10 @@ pub fn start_websocket_bitcraft_logic(
                                                 match serde_json::from_str(&row) {
                                                     Ok(user_state) => user_state,
                                                     Err(error) => {
-                                                        error!("InitialSubscription Insert user_state Error: {:?} -> {:?}", error, row);
+                                                        error!(
+                                                            "InitialSubscription Insert user_state Error: {:?} -> {:?}",
+                                                            error, row
+                                                        );
                                                         continue;
                                                     }
                                                 };
@@ -398,9 +401,9 @@ pub fn start_websocket_bitcraft_logic(
 
                                     if result.is_err() {
                                         error!(
-                                                "claim_description_state initial subscription failed: {:?}",
-                                                result.err()
-                                            );
+                                            "claim_description_state initial subscription failed: {:?}",
+                                            result.err()
+                                        );
                                     }
                                 }
 
@@ -475,7 +478,10 @@ pub fn start_websocket_bitcraft_logic(
                                                 match serde_json::from_str(&row) {
                                                     Ok(claim_tile_state) => claim_tile_state,
                                                     Err(error) => {
-                                                        error!("InitialSubscription Insert claim_tile_state Error: {:?} -> {:?}", error, row);
+                                                        error!(
+                                                            "InitialSubscription Insert claim_tile_state Error: {:?} -> {:?}",
+                                                            error, row
+                                                        );
                                                         continue;
                                                     }
                                                 };
@@ -535,7 +541,10 @@ pub fn start_websocket_bitcraft_logic(
                                                 match serde_json::from_str(&row) {
                                                     Ok(action_state) => action_state,
                                                     Err(error) => {
-                                                        error!("InitialSubscription Insert action_state Error: {:?} -> {:?}", error, row);
+                                                        error!(
+                                                            "InitialSubscription Insert action_state Error: {:?} -> {:?}",
+                                                            error, row
+                                                        );
                                                         continue;
                                                     }
                                                 };
@@ -728,7 +737,10 @@ pub fn start_websocket_bitcraft_logic(
                                     match serde_json::from_str(&row) {
                                         Ok(mobile_entity_state) => mobile_entity_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}", error, row);
+                                            error!(
+                                                "InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}",
+                                                error, row
+                                            );
                                             continue;
                                         }
                                     };
@@ -744,7 +756,10 @@ pub fn start_websocket_bitcraft_logic(
                                     match serde_json::from_str(&row) {
                                         Ok(mobile_entity_state) => mobile_entity_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}", error, row);
+                                            error!(
+                                                "InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}",
+                                                error, row
+                                            );
                                             continue;
                                         }
                                     };
@@ -907,7 +922,10 @@ pub fn start_websocket_bitcraft_logic(
                                     match serde_json::from_str(&row) {
                                         Ok(claim_tile_state) => claim_tile_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert claim_tile_state Error: {:?} -> {:?}", error, row);
+                                            error!(
+                                                "InitialSubscription Insert claim_tile_state Error: {:?} -> {:?}",
+                                                error, row
+                                            );
                                             continue;
                                         }
                                     };
@@ -926,7 +944,10 @@ pub fn start_websocket_bitcraft_logic(
                                     match serde_json::from_str(&row) {
                                         Ok(action_state) => action_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert action_state Error: {:?} -> {:?}", error, row);
+                                            error!(
+                                                "InitialSubscription Insert action_state Error: {:?} -> {:?}",
+                                                error, row
+                                            );
                                             continue;
                                         }
                                     };
@@ -959,7 +980,10 @@ pub fn start_websocket_bitcraft_logic(
                                     match serde_json::from_str(&row) {
                                         Ok(player_action_state) => player_action_state,
                                         Err(error) => {
-                                            error!("InitialSubscription Insert player_action_state Error: {:?} -> {:?}", error, row);
+                                            error!(
+                                                "InitialSubscription Insert player_action_state Error: {:?} -> {:?}",
+                                                error, row
+                                            );
                                             continue;
                                         }
                                     };

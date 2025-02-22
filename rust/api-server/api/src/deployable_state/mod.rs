@@ -2,7 +2,7 @@ use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use entity::deployable_state;
 use entity::deployable_state::Model;
 use log::{debug, error, info};
-use migration::{sea_query, OnConflict};
+use migration::{OnConflict, sea_query};
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
 };
