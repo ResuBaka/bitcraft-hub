@@ -1139,7 +1139,10 @@ pub(crate) async fn handle_transaction_update(
                             .iter()
                             .for_each(|member| {
                                 if !new_claim_description_state.members.contains(member) {
-                                    potential_player_to_claim_deletes.insert((new_claim_description_state.entity_id,member.player_entity_id));
+                                    potential_player_to_claim_deletes.insert((
+                                        new_claim_description_state.entity_id,
+                                        member.player_entity_id,
+                                    ));
                                 }
                             });
                         new_claim_description_state
@@ -1147,14 +1150,16 @@ pub(crate) async fn handle_transaction_update(
                             .iter()
                             .for_each(|member| {
                                 if !old_claim_description_state.members.contains(member) {
-                                    buffer_before_player_to_claim_insert.push(player_to_claim::Model {
-                                        player_id: member.player_entity_id,
-                                        claim_id: new_claim_description_state.entity_id,
-                                        inventory_permission: member.inventory_permission,
-                                        build_permission: member.build_permission,
-                                        officer_permission: member.officer_permission,
-                                        co_owner_permission: member.co_owner_permission
-                                    });
+                                    buffer_before_player_to_claim_insert.push(
+                                        player_to_claim::Model {
+                                            player_id: member.player_entity_id,
+                                            claim_id: new_claim_description_state.entity_id,
+                                            inventory_permission: member.inventory_permission,
+                                            build_permission: member.build_permission,
+                                            officer_permission: member.officer_permission,
+                                            co_owner_permission: member.co_owner_permission,
+                                        },
+                                    );
                                 }
                             });
 
@@ -1271,13 +1276,13 @@ pub(crate) async fn handle_transaction_update(
         }
     }
     if buffer_before_player_to_claim_insert.len() > 0 {
-            db_insert_player_to_claim(
-                p0,
-                &mut buffer_before_player_to_claim_insert,
-                &on_conflict_player_to_claim,
-            )
-            .await?;
-        }
+        db_insert_player_to_claim(
+            p0,
+            &mut buffer_before_player_to_claim_insert,
+            &on_conflict_player_to_claim,
+        )
+        .await?;
+    }
     if buffer_before_insert.len() > 0 {
         let mut buffer_before_insert_vec = buffer_before_insert
             .clone()
@@ -1290,7 +1295,6 @@ pub(crate) async fn handle_transaction_update(
     if potential_player_to_claim_deletes.len() > 0 {
         delete_player_to_claim(p0, potential_player_to_claim_deletes).await?;
     }
-
 
     if potential_deletes.len() > 0 {
         delete_claim_description_state(p0, potential_deletes).await?;
