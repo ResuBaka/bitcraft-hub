@@ -31,3 +31,4 @@ pub mod trade_order;
 pub mod user_state;
 pub mod vault_state;
 pub mod vault_state_collectibles;
+pub mod player_to_claim;

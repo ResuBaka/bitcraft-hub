@@ -20,3 +20,4 @@ pub use super::trade_order::Entity as TradeOrder;
 pub use super::user_state::Entity as UserState;
 pub use super::vault_state::Entity as VaultState;
 pub use super::vault_state_collectibles::Entity as VaultStateCollectibles;
+pub use super::player_to_claim::Entity as PlayerToClaim;

@@ -14,7 +14,7 @@ mod m20250219_215440_add_to_item_desc_convert_to_on_durability_zero;
 mod m20250219_221732_add_to_building_desc_interact_permission;
 mod m20250220_115114_add_crafting_recipe;
 mod m20250221_122758_add_new_fields_to_collectible_desc;
-
+mod m20250221_220058_player_to_claim;
 
 
 
@@ -37,6 +37,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250219_215440_add_to_item_desc_convert_to_on_durability_zero::Migration),
             Box::new(m20250219_221732_add_to_building_desc_interact_permission::Migration),
             Box::new(m20250220_115114_add_crafting_recipe::Migration),
+            Box::new(m20250221_220058_player_to_claim::Migration),
         ]
     }
 }
