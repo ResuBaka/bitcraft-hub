@@ -11,8 +11,16 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(PlayerToClaim::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(PlayerToClaim::PlayerId).integer().not_null())
-                    .col(ColumnDef::new(PlayerToClaim::ClaimId).integer().not_null())
+                    .col(
+                        ColumnDef::new(PlayerToClaim::PlayerId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerToClaim::ClaimId)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(PlayerToClaim::InventoryPermission)
                             .boolean()
@@ -29,7 +37,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(PlayerToClaim::CoOwnerPermissioN)
+                        ColumnDef::new(PlayerToClaim::CoOwnerPermission)
                             .boolean()
                             .not_null(),
                     )
@@ -82,5 +90,5 @@ enum PlayerToClaim {
     InventoryPermission,
     BuildPermission,
     OfficerPermission,
-    CoOwnerPermissioN,
+    CoOwnerPermission,
 }
