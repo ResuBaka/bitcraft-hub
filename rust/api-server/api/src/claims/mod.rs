@@ -6,7 +6,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
-use entity::claim_description_state::{Member, Model};
+use entity::claim_description_state::Model;
 use entity::inventory::{ExpendedRefrence, ItemExpended};
 use entity::{
     building_state, cargo_desc, claim_description_state, claim_tech_desc, inventory, item_desc,
