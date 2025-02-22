@@ -1,8 +1,9 @@
 [package]
 name = "entity"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 publish = false
+rust-version = "1.85.0"
 
 [lib]
 name = "entity"
@@ -12,4 +13,4 @@ path = "src/lib.rs"
 sea-orm = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-anyhow = "1.0.93"
+anyhow = { workspace = true }

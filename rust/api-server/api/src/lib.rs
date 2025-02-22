@@ -64,7 +64,9 @@ use tower_http::services::ServeDir;
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
     if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info");
+        unsafe {
+            env::set_var("RUST_LOG", "info");
+        }
     }
 
     dotenvy::dotenv().ok();

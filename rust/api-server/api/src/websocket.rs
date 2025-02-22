@@ -22,6 +22,7 @@ use std::time::Duration;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::warn;
 
 struct WebSocketAppState {
     user_map: HashMap<String, i64>,
@@ -1047,13 +1048,13 @@ pub fn start_websocket_bitcraft_logic(
                         debug!("Received subscription update: {subscription_update:?}");
                     }
                     WebSocketMessage::IdentityToken(identity_token) => {
-                        info!("Received identity token: {identity_token:?}");
+                        debug!("Received identity token: {identity_token:?}");
                     }
                 }
             } else {
                 if let Message::Ping(_) = message {
                 } else {
-                    info!("Message: {:?}", message);
+                    warn!("Message: {:?}", message);
                 }
             }
         }
