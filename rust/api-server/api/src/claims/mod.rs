@@ -880,15 +880,15 @@ async fn known_player_to_claim_ids(
         .select_only()
         .column(player_to_claim::Column::ClaimId)
         .column(player_to_claim::Column::PlayerId)
-        .into_model::<player_to_claim::Model>()
+        .into_tuple()
         .all(conn)
         .await?;
-    let mut map: HashSet<(i64, i64)> = HashSet::new();
-    known_player_to_claim_ids.into_iter().for_each(|x| {
-        map.insert((x.claim_id, x.player_id));
-    });
-    Ok(map)
+    let known_player_to_claim_ids = known_player_to_claim_ids
+        .into_iter()
+        .collect::<HashSet<(i64,i64)>>();
+    Ok(known_player_to_claim_ids)
 }
+
 
 fn get_claim_description_state_on_conflict() -> OnConflict {
     sea_query::OnConflict::column(claim_description_state::Column::EntityId)
