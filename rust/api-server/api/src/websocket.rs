@@ -1114,7 +1114,7 @@ pub(crate) struct TransactionUpdate {
     pub(crate) status: Status,
     pub(crate) timestamp: Timestamp,
     pub(crate) caller_identity: Identity,
-    pub(crate) caller_connection_id: ConnectionId,
+    pub(crate) caller_address: Address,
     pub(crate) reducer_call: ReducerCall,
     pub(crate) energy_quanta_used: EnergyQuantaUsed,
     pub(crate) host_execution_duration_micros: u64,
