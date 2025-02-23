@@ -885,10 +885,9 @@ async fn known_player_to_claim_ids(
         .await?;
     let known_player_to_claim_ids = known_player_to_claim_ids
         .into_iter()
-        .collect::<HashSet<(i64,i64)>>();
+        .collect::<HashSet<(i64, i64)>>();
     Ok(known_player_to_claim_ids)
 }
-
 
 fn get_claim_description_state_on_conflict() -> OnConflict {
     sea_query::OnConflict::column(claim_description_state::Column::EntityId)
