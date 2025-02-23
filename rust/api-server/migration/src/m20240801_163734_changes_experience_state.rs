@@ -400,9 +400,7 @@ impl MigrationTrait for Migration {
             .await
             .expect("Dropping BuildingDesc table");
 
-        manager
-            .drop_table(Table::drop().table(ItemDesc::Table).to_owned())
-            .await
+        Ok(())
     }
 }
 
