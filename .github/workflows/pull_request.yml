@@ -4,9 +4,10 @@ on:
 
 env:
   TEST_TAG: my-test:test
+  CARGO_TERM_COLOR: always
 
 jobs:
-  frontend_lint:
+  frontend-lint:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,7 +19,7 @@ jobs:
       run: bun install --frozen-lockfile
     - name: Check formatting
       run: bun run format:check
-  frontend_build:
+  frontend-build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,12 +31,15 @@ jobs:
       run: bun install --frozen-lockfile
     - name: Build
       run: bun run build
-  frontend_check-docker:
+  frontend-check-docker:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./frontend
-    needs: frontend_build
+    needs:
+      - frontend-build
+      - frontend-lint
+    if: ${{ needs.frontend-build.result == 'success' && needs.frontend-lint.result == 'success' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -49,3 +53,57 @@ jobs:
         context: ./frontend
         load: true
         tags: ${{ env.TEST_TAG }}
+  backend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./rust/api-server
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust setup
+        run: rustup toolchain install stable --profile minimal
+      - name: Lint
+        run: cargo fmt --check
+  backend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./rust/api-server
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust setup
+        run: rustup toolchain install stable --profile minimal
+      - name: Cache Cargo build target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            rust/api-server/target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build
+        run: cargo build --release --bin bitcraft-hub-api
+  backend-check-docker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./rust/api-server
+    needs:
+      - backend-build
+      - backend-lint
+    if: ${{ needs.backend-build.result == 'success' && needs.backend-lint.result == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: ./rust/api-server
+          load: true
+          tags: ${{ env.TEST_TAG }}
