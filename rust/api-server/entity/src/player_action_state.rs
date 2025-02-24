@@ -15,11 +15,41 @@ pub struct Model {
     pub start_time: u64,
     pub duration: u64,
     pub target: serde_json::Value,
+    #[serde(deserialize_with = "deserialize_with_recipe_id")]
+    pub recipe_id: Option<i32>,
     pub client_cancel: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
+
+fn deserialize_with_recipe_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let json = serde_json::Value::deserialize(deserializer)?;
+    match json {
+        serde_json::Value::Array(array) => {
+            if array.len() == 2 {
+                if let serde_json::Value::Number(number) = array[0].clone() {
+                    if let Some(number) = number.as_i64() {
+                        if number == 1 {
+                            return Ok(None);
+                        }
+                    }
+                }
+
+                if let serde_json::Value::Number(number) = array[1].clone() {
+                    if let Some(number) = number.as_i64() {
+                        return Ok(Some(number as i32));
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    Err(serde::de::Error::custom("Invalid value"))
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum ActionType {
@@ -190,5 +220,27 @@ impl<'de> Deserialize<'de> for ActionType {
         }
 
         deserializer.deserialize_any(InvalidatesTypeVisitor)
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize() {
+        let json = r#"[1,72057594038086099,[0,[]],[0,[]],[0,[]],1740412031898,0,[1,[]],[1,[]],false]"#;
+
+        let parsed = serde_json::from_str::<Model>(json);
+
+        assert_eq!(parsed.is_err(), false);
+
+        let parsed = parsed.unwrap();
+
+        assert_eq!(parsed.auto_id, 1);
+        assert_eq!(parsed.entity_id, 72057594038086099);
+        assert_eq!(parsed.start_time, 1740412031898);
+        assert_eq!(parsed.duration, 0);
+        assert_eq!(parsed.recipe_id, None);
+        assert_eq!(parsed.client_cancel, false);
     }
 }
