@@ -228,7 +228,8 @@ mod tests {
 
     #[test]
     fn test_deserialize() {
-        let json = r#"[1,72057594038086099,[0,[]],[0,[]],[0,[]],1740412031898,0,[1,[]],[1,[]],false]"#;
+        let json =
+            r#"[1,72057594038086099,[0,[]],[0,[]],[0,[]],1740412031898,0,[1,[]],[1,[]],false]"#;
 
         let parsed = serde_json::from_str::<Model>(json);
 
