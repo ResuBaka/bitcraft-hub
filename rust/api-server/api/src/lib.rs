@@ -19,16 +19,6 @@ mod trading_orders;
 mod vault_state;
 mod websocket;
 
-use axum::{
-    Router,
-    http::StatusCode,
-    middleware,
-    routing::{get, get_service},
-};
-use service::sea_orm::{Database, DatabaseConnection};
-use std::collections::{HashMap, HashSet};
-use tower_http::cors::{Any, CorsLayer};
-
 use crate::config::Config;
 use crate::websocket::WebSocketMessages;
 use axum::extract::{
@@ -39,7 +29,14 @@ use axum::http::{HeaderValue, Version};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum::routing::any;
+use axum::{
+    Router,
+    http::StatusCode,
+    middleware,
+    routing::{get, get_service},
+};
 use base64::Engine;
+use clap::{Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
 use log::{error, info};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
@@ -47,47 +44,32 @@ use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use reqwest::header::HeaderMap;
 use sea_orm::ConnectOptions;
+use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
+use service::sea_orm::{Database, DatabaseConnection};
+use std::collections::{HashMap, HashSet};
 use std::env;
+use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::ops::{AddAssign, SubAssign};
 use std::path::PathBuf;
+use std::process::exit;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tower_cookies::CookieManagerLayer;
 use tower_http::compression::CompressionLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt;
 
-#[tokio::main]
-async fn start() -> anyhow::Result<()> {
-    if env::var("RUST_LOG").is_err() {
-        unsafe {
-            env::set_var("RUST_LOG", "info");
-        }
-    }
-
-    dotenvy::dotenv().ok();
-    let config = Config::new();
-
-    tracing_subscriber::fmt::init();
-
+async fn start(database_connection: DatabaseConnection, config: Config) -> anyhow::Result<()> {
     let prometheus = setup_metrics_recorder();
 
-    let mut connection_options = ConnectOptions::new(config.database.url.clone());
-    connection_options
-        .max_connections(100)
-        .min_connections(5)
-        .connect_timeout(Duration::from_secs(8))
-        .idle_timeout(Duration::from_secs(8))
-        .sqlx_logging(env::var("SQLX_LOG").is_ok());
-
-    let conn = Database::connect(connection_options.clone())
-        .await
-        .expect("Database connection failed");
-    Migrator::up(&conn, None).await?;
+    Migrator::up(&database_connection, None).await?;
 
     if env::var("DOWNLOAD_ALL_TABLES").is_ok() {
         let client = create_default_client(config.clone());
@@ -106,7 +88,7 @@ async fn start() -> anyhow::Result<()> {
         import_data(config.clone());
     }
 
-    let state = Arc::new(AppState::new(conn.clone(), &config));
+    let state = Arc::new(AppState::new(database_connection.clone(), &config));
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -137,6 +119,22 @@ async fn start() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn create_db_connection(config: &Config) -> DatabaseConnection {
+    let mut connection_options = ConnectOptions::new(config.database.url.clone());
+    connection_options
+        .max_connections(100)
+        .min_connections(5)
+        .set_schema_search_path("public")
+        .connect_timeout(Duration::from_secs(8))
+        .idle_timeout(Duration::from_secs(8))
+        .sqlx_logging(env::var("SQLX_LOG").is_ok());
+
+    let conn = Database::connect(connection_options)
+        .await
+        .expect("Database connection failed");
+    conn
 }
 
 async fn websocket_handler(
@@ -955,82 +953,82 @@ pub async fn download_all_tables(
     storage_path: &PathBuf,
 ) {
     let desc_tables = vec![
-        // "AchievementDesc",
-        // "AlertDesc",
-        // "BiomeDesc",
-        // "BuffDesc",
-        // "BuffTypeDesc",
-        // "BuildingClaimDesc",
-        // "BuildingDesc",
-        // "BuildingFunctionTypeMappingDesc",
-        // "BuildingPortalDesc",
-        // "BuildingRepairsDesc",
-        // "BuildingSpawnDesc",
-        // "BuildingTypeDesc",
-        // "CargoDesc",
-        // "CharacterStatDesc",
-        // "ChestRarityDesc",
-        // "ClaimDescriptionState",
-        // "ClaimTechDesc",
-        // "ClimbRequirementDesc",
-        // "ClothingDesc",
-        // "CollectibleDesc",
-        // "CombatActionDesc",
-        // "ConstructionRecipeDesc",
-        // "CraftingRecipeDesc",
-        // "DeconstructionRecipeDesc",
-        // "DeployableDesc",
-        // "DimensionDescriptionState",
-        // "ElevatorDesc",
-        // "EmoteDesc",
-        // "EmpireColorDesc",
-        // "EmpireNotificationDesc",
-        // "EmpireRankDesc",
-        // "EmpireSuppliesDesc",
-        // "EmpireTerritoryDesc",
-        // "EnemyAiParamsDesc",
-        // "EnemyDesc",
-        // "EnvironmentDebuffDesc",
-        // "EquipmentDesc",
-        // "ExtractionRecipeDesc",
-        // "FoodDesc",
-        // "GateDesc",
-        // "InteriorInstanceDesc",
-        // "InteriorNetworkDesc",
-        // "InteriorPortalConnectionsDesc",
-        // "InteriorShapeDesc",
-        // "InteriorSpawnDesc",
-        // "ItemConversionRecipeDesc",
-        // "ItemDesc",
-        // "ItemListDesc",
-        // "KnowledgeScrollDesc",
-        // "KnowledgeScrollTypeDesc",
-        // "LootChestDesc",
-        // "LootRarityDesc",
-        // "LootTableDesc",
-        // "NpcDesc",
-        // "OnboardingRewardDesc",
-        // "ParametersDesc",
-        // "PathfindingDesc",
-        // "PavingTileDesc",
-        // "PlayerActionDesc",
-        // "PrivateParametersDesc",
-        // "ResourceClumpDesc",
-        // "ResourceDesc",
-        // "ResourceGrowthRecipeDesc",
-        // "ResourcePlacementRecipeDesc",
-        // "SecondaryKnowledgeDesc",
-        // "SingleResourceToClumpDesc",
-        // "SkillDesc",
-        // "TargetingMatrixDesc",
-        // "TeleportItemDesc",
-        // "TerraformRecipeDesc",
-        // "ToolDesc",
-        // "ToolTypeDesc",
-        // "TravelerTradeOrderDesc",
-        // "WallDesc",
-        // "WeaponDesc",
-        // "WeaponTypeDesc",
+        "AchievementDesc",
+        "AlertDesc",
+        "BiomeDesc",
+        "BuffDesc",
+        "BuffTypeDesc",
+        "BuildingClaimDesc",
+        "BuildingDesc",
+        "BuildingFunctionTypeMappingDesc",
+        "BuildingPortalDesc",
+        "BuildingRepairsDesc",
+        "BuildingSpawnDesc",
+        "BuildingTypeDesc",
+        "CargoDesc",
+        "CharacterStatDesc",
+        "ChestRarityDesc",
+        "ClaimDescriptionState",
+        "ClaimTechDesc",
+        "ClimbRequirementDesc",
+        "ClothingDesc",
+        "CollectibleDesc",
+        "CombatActionDesc",
+        "ConstructionRecipeDesc",
+        "CraftingRecipeDesc",
+        "DeconstructionRecipeDesc",
+        "DeployableDesc",
+        "DimensionDescriptionState",
+        "ElevatorDesc",
+        "EmoteDesc",
+        "EmpireColorDesc",
+        "EmpireNotificationDesc",
+        "EmpireRankDesc",
+        "EmpireSuppliesDesc",
+        "EmpireTerritoryDesc",
+        "EnemyAiParamsDesc",
+        "EnemyDesc",
+        "EnvironmentDebuffDesc",
+        "EquipmentDesc",
+        "ExtractionRecipeDesc",
+        "FoodDesc",
+        "GateDesc",
+        "InteriorInstanceDesc",
+        "InteriorNetworkDesc",
+        "InteriorPortalConnectionsDesc",
+        "InteriorShapeDesc",
+        "InteriorSpawnDesc",
+        "ItemConversionRecipeDesc",
+        "ItemDesc",
+        "ItemListDesc",
+        "KnowledgeScrollDesc",
+        "KnowledgeScrollTypeDesc",
+        "LootChestDesc",
+        "LootRarityDesc",
+        "LootTableDesc",
+        "NpcDesc",
+        "OnboardingRewardDesc",
+        "ParametersDesc",
+        "PathfindingDesc",
+        "PavingTileDesc",
+        "PlayerActionDesc",
+        "PrivateParametersDesc",
+        "ResourceClumpDesc",
+        "ResourceDesc",
+        "ResourceGrowthRecipeDesc",
+        "ResourcePlacementRecipeDesc",
+        "SecondaryKnowledgeDesc",
+        "SingleResourceToClumpDesc",
+        "SkillDesc",
+        "TargetingMatrixDesc",
+        "TeleportItemDesc",
+        "TerraformRecipeDesc",
+        "ToolDesc",
+        "ToolTypeDesc",
+        "TravelerTradeOrderDesc",
+        "WallDesc",
+        "WeaponDesc",
+        "WeaponTypeDesc",
     ];
 
     let state_tables = vec![
@@ -1302,10 +1300,182 @@ pub async fn download_all_table(
     Ok(())
 }
 
-pub fn main() {
-    let result = start();
+#[derive(Parser, Debug)]
+#[command(version, author)]
+pub struct Cli {
+    #[arg(global = true, short = 'u', long, help = "Database URL")]
+    database_url: Option<String>,
 
-    if let Some(err) = result.err() {
-        error!("Error: {err}");
+    #[arg(global = true, short = 'c', long, help = "Config path")]
+    config_path: Option<String>,
+
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Subcommand, PartialEq, Eq, Debug)]
+pub enum Commands {
+    #[command(about = "Migration related commands", display_order = 20)]
+    Migrate {
+        #[arg(
+            global = true,
+            short = 'd',
+            long,
+            env = "MIGRATION_DIR",
+            help = "Migration script directory.
+If your migrations are in their own crate,
+you can provide the root of that crate.
+If your migrations are in a submodule of your app,
+you should provide the directory of that submodule.",
+            default_value = "./migration"
+        )]
+        migration_dir: String,
+
+        #[command(subcommand)]
+        command: Option<sea_orm_cli::MigrateSubcommands>,
+    },
+    Serve {
+        #[arg(long, short = 'p', help = "Port to listen on")]
+        port: Option<u16>,
+
+        #[arg(long, short = 'H', help = "Host to listen on")]
+        host: Option<String>,
+
+        #[arg(long, help = "Storage path")]
+        storage_path: Option<String>,
+    },
+}
+
+pub async fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
+    let mut cli_config_parameters = crate::config::CliConfigParameters::default();
+
+    if let Some(db_url) = cli.database_url {
+        cli_config_parameters.database_url = Some(db_url);
     }
+
+    if let Some(config_path) = cli.config_path {
+        cli_config_parameters.config_path = Some(config_path);
+    }
+
+    match &cli.command {
+        Commands::Migrate { .. } => {}
+        Commands::Serve {
+            port,
+            host,
+            storage_path,
+        } => {
+            cli_config_parameters.host = host.clone();
+            cli_config_parameters.port = port.clone();
+            cli_config_parameters.storage_path = storage_path.clone();
+        }
+    }
+
+    dotenvy::dotenv().ok();
+    let config = Config::new(Some(cli_config_parameters))?;
+
+    setup_tracing(&config);
+
+    match cli.command {
+        Commands::Migrate {
+            command,
+            migration_dir,
+        } => {
+            let database_connection = create_db_connection(&config).await;
+
+            match command {
+                Some(MigrateSubcommands::Fresh) => Migrator::fresh(&database_connection)
+                    .await
+                    .unwrap_or_else(handle_error),
+                Some(MigrateSubcommands::Refresh) => Migrator::refresh(&database_connection)
+                    .await
+                    .unwrap_or_else(handle_error),
+                Some(MigrateSubcommands::Reset) => Migrator::reset(&database_connection)
+                    .await
+                    .unwrap_or_else(handle_error),
+                Some(MigrateSubcommands::Status) => Migrator::status(&database_connection)
+                    .await
+                    .unwrap_or_else(handle_error),
+                Some(MigrateSubcommands::Up { num }) => Migrator::up(&database_connection, num)
+                    .await
+                    .unwrap_or_else(handle_error),
+                Some(MigrateSubcommands::Down { num }) => {
+                    Migrator::down(&database_connection, Some(num))
+                        .await
+                        .unwrap_or_else(handle_error)
+                }
+                Some(MigrateSubcommands::Init) => {
+                    sea_orm_cli::run_migrate_init(&migration_dir).unwrap_or_else(handle_error)
+                }
+                Some(MigrateSubcommands::Generate {
+                    migration_name,
+                    universal_time: _,
+                    local_time,
+                }) => {
+                    sea_orm_cli::run_migrate_generate(&migration_dir, &migration_name, !local_time)
+                        .unwrap_or_else(handle_error)
+                }
+                _ => Migrator::up(&database_connection, None)
+                    .await
+                    .unwrap_or_else(handle_error),
+            };
+        }
+        Commands::Serve { .. } => {
+            let database_connection = create_db_connection(&config).await;
+
+            let result = start(database_connection, config).await;
+
+            if let Some(err) = result.err() {
+                error!("Error: {err}");
+            }
+        }
+    };
+
+    Ok(())
+}
+
+fn setup_tracing(cfg: &Config) {
+    let filter_directive = std::env::var("RUST_LOG").unwrap_or_else(|e| {
+        if let std::env::VarError::NotUnicode(_) = e {
+            eprintln!("RUST_LOG is not unicode");
+        };
+
+        const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
+        format!("{}={},axum={}", CRATE_NAME, cfg.log_level, cfg.log_level)
+    });
+
+    println!("Filter directive: {filter_directive}");
+
+    match cfg.log_type {
+        config::LogType::Default => {
+            let stdout_layer = tracing_subscriber::fmt::layer();
+
+            tracing_subscriber::Registry::default()
+                .with(stdout_layer)
+                .with(tracing_subscriber::EnvFilter::new(filter_directive))
+                .init()
+        }
+        config::LogType::Json => {
+            let fmt = tracing_subscriber::fmt::format().json().flatten_event(true);
+            let json_fields = tracing_subscriber::fmt::format::JsonFields::new();
+
+            let stdout_layer = tracing_subscriber::fmt::layer()
+                .event_format(fmt)
+                .fmt_fields(json_fields);
+
+            tracing_subscriber::Registry::default()
+                .with(stdout_layer)
+                .with(tracing_subscriber::EnvFilter::new(filter_directive))
+                .init()
+        }
+    };
+}
+
+fn handle_error<E>(error: E)
+where
+    E: Display,
+{
+    eprintln!("{error}");
+    exit(1);
 }
