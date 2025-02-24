@@ -23,6 +23,8 @@ hyper = { version = "1.6.0", features = ["full"] }
 rayon = "1.10.0"
 time = { version = "0.3.37", features = ["serde"] }
 anyhow = "1.0.96"
+clap = { version = "4.5.30", features = ["derive"] }
 
 [dependencies]
 api = { path = "api" }
+tokio = { version = "1.43.0", features = [ "full" ] }
