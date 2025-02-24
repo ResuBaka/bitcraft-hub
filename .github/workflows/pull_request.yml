@@ -64,6 +64,17 @@ jobs:
         run: rustup toolchain install stable --profile minimal
       - name: Lint
         run: cargo fmt --check
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./rust/api-server
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust setup
+        run: rustup toolchain install stable --profile minimal
+      - name: Test
+        run: cargo test --workspace -- --nocapture
   backend-build:
     runs-on: ubuntu-latest
     defaults:
@@ -93,7 +104,8 @@ jobs:
     needs:
       - backend-build
       - backend-lint
-    if: ${{ needs.backend-build.result == 'success' && needs.backend-lint.result == 'success' }}
+      - backend-test
+    if: ${{ needs.backend-build.result == 'success' && needs.backend-lint.result == 'success' && needs.backend-test.result == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
