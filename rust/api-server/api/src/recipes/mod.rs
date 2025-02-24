@@ -8,6 +8,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use dashmap::DashMap;
 use entity::crafting_recipe::ConsumedItemStackWithInner;
+use entity::crafting_recipe::ItemType;
 use entity::crafting_recipe::{self, CraftingRecipeWithInner};
 use log::{debug, error, info};
 use migration::sea_query;
@@ -37,7 +38,7 @@ pub(crate) fn get_routes() -> AppRouter {
             get(get_produced_in_crafting),
         )
         .route(
-            "/api/bitcraft/recipes/needed_to_craft/{id}",
+            "/api/bitcraft/recipes/needed_to_craft/{item_type}/{id}",
             get(get_needed_to_craft),
         )
         .route(
@@ -48,7 +49,10 @@ pub(crate) fn get_routes() -> AppRouter {
             "/recipes/produced_in_crafting/{id}",
             get(get_produced_in_crafting),
         )
-        .route("/recipes/needed_to_craft/{id}", get(get_needed_to_craft))
+        .route(
+            "/recipes/needed_to_craft/{item_type}/{id}",
+            get(get_needed_to_craft),
+        )
 }
 
 pub(crate) async fn get_needed_in_crafting(
@@ -98,31 +102,42 @@ pub(crate) async fn get_produced_in_crafting(
 
 pub(crate) async fn get_needed_to_craft(
     state: State<std::sync::Arc<AppState>>,
-    Path(id): Path<u64>,
+    Path((item_type, id)): Path<(i8, i64)>,
 ) -> Result<Json<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
     let recipes = &state.crafting_recipe_desc;
-    let mut consumed_item: HashMap<i64, Vec<i64>> = HashMap::new();
-    let mut crafted_item: HashMap<i64, Vec<i64>> = HashMap::new();
+    let mut consumed_item: HashMap<(ItemType, i64), Vec<i64>> = HashMap::new();
+    let mut crafted_item: HashMap<(ItemType, i64), Vec<i64>> = HashMap::new();
+
+    let item_type = item_type.try_into();
+    if let Err(err) = item_type {
+        return Err((StatusCode::NOT_FOUND, err));
+    }
+    let item_type = item_type.unwrap();
     for recipe in recipes.iter() {
         let model = recipe.value();
         for item in model.consumed_item_stacks.iter() {
-            if let Some(consumed_item) = consumed_item.get_mut(&item.item_id) {
+            if let Some(consumed_item) =
+                consumed_item.get_mut(&(item.item_type.clone(), item.item_id))
+            {
                 consumed_item.push(model.id.clone())
             } else {
-                consumed_item.insert(item.item_id, vec![model.id]);
+                consumed_item.insert((item.item_type.clone(), item.item_id), vec![model.id]);
             }
         }
         for item in model.crafted_item_stacks.iter() {
-            if let Some(crafted_item) = crafted_item.get_mut(&item.item_id) {
+            if let Some(crafted_item) =
+                crafted_item.get_mut(&(item.item_type.clone(), item.item_id))
+            {
                 crafted_item.push(model.id.clone())
             } else {
-                crafted_item.insert(item.item_id, vec![model.id]);
+                crafted_item.insert((item.item_type.clone(), item.item_id), vec![model.id]);
             }
         }
     }
     return Ok(Json(get_all_consumed_items_from_item(
         recipes,
-        id as i64,
+        id,
+        item_type,
         &crafted_item,
     )));
 }
@@ -130,12 +145,13 @@ pub(crate) async fn get_needed_to_craft(
 fn get_all_consumed_items_from_item(
     rows: &Arc<DashMap<i64, entity::crafting_recipe::Model>>,
     item_id: i64,
-    crafted_item: &HashMap<i64, Vec<i64>>,
+    item_type: ItemType,
+    crafted_item: &HashMap<(ItemType, i64), Vec<i64>>,
 ) -> Vec<Vec<ConsumedItemStackWithInner>> {
     let mut list = Vec::new();
 
     let posibilities: Vec<Vec<ConsumedItemStackWithInner>> = vec![];
-    let crafted_items = crafted_item.get(&item_id);
+    let crafted_items = crafted_item.get(&(item_type, item_id));
     if let Some(crafted_items) = crafted_items {
         for crafted_item_id in crafted_items {
             list.push(get_all_consumed_items_from_stack(
@@ -153,13 +169,13 @@ fn get_all_consumed_items_from_item(
 fn get_all_consumed_items_from_stack(
     rows: &Arc<DashMap<i64, entity::crafting_recipe::Model>>,
     item: &mut crafting_recipe::CraftingRecipeWithInner,
-    crafted_item: &HashMap<i64, Vec<i64>>,
+    crafted_item: &HashMap<(ItemType, i64), Vec<i64>>,
     already_used: Vec<i64>,
 ) -> Vec<ConsumedItemStackWithInner> {
     for itemstack in item.consumed_item_stacks.iter_mut() {
         let mut posibilities: Vec<entity::crafting_recipe::CraftingRecipeWithInner> = vec![];
 
-        let crafted_items = crafted_item.get(&itemstack.item_id);
+        let crafted_items = crafted_item.get(&(itemstack.item_type.clone(), itemstack.item_id));
         if let Some(crafted_items) = crafted_items {
             for crafted_item_id in crafted_items {
                 posibilities.push(rows.get(&crafted_item_id).unwrap().value().clone().into());
