@@ -6,6 +6,7 @@ mod claims;
 mod collectible_desc;
 mod config;
 mod deployable_state;
+mod download;
 mod inventory;
 mod items;
 mod items_and_cargo;
@@ -50,8 +51,6 @@ use service::sea_orm::{Database, DatabaseConnection};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt::Display;
-use std::fs::File;
-use std::io::Write;
 use std::ops::{AddAssign, SubAssign};
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -70,19 +69,6 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
     let prometheus = setup_metrics_recorder();
 
     Migrator::up(&database_connection, None).await?;
-
-    if env::var("DOWNLOAD_ALL_TABLES").is_ok() {
-        let client = create_default_client(config.clone());
-
-        download_all_tables(
-            &client,
-            &config.spacetimedb.domain.clone(),
-            &config.spacetimedb.protocol.clone(),
-            &config.spacetimedb.database.clone(),
-            Path::new(&config.storage_path.clone()),
-        )
-        .await;
-    }
 
     if config.import_enabled {
         import_data(config.clone());
@@ -938,361 +924,6 @@ async fn track_metrics(req: Request, next: Next) -> impl IntoResponse {
     response
 }
 
-pub async fn download_all_tables(
-    client: &Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    storage_path: &Path,
-) {
-    let desc_tables = vec![
-        "AchievementDesc",
-        "AlertDesc",
-        "BiomeDesc",
-        "BuffDesc",
-        "BuffTypeDesc",
-        "BuildingClaimDesc",
-        "BuildingDesc",
-        "BuildingFunctionTypeMappingDesc",
-        "BuildingPortalDesc",
-        "BuildingRepairsDesc",
-        "BuildingSpawnDesc",
-        "BuildingTypeDesc",
-        "CargoDesc",
-        "CharacterStatDesc",
-        "ChestRarityDesc",
-        "ClaimDescriptionState",
-        "ClaimTechDesc",
-        "ClimbRequirementDesc",
-        "ClothingDesc",
-        "CollectibleDesc",
-        "CombatActionDesc",
-        "ConstructionRecipeDesc",
-        "CraftingRecipeDesc",
-        "DeconstructionRecipeDesc",
-        "DeployableDesc",
-        "DimensionDescriptionState",
-        "ElevatorDesc",
-        "EmoteDesc",
-        "EmpireColorDesc",
-        "EmpireNotificationDesc",
-        "EmpireRankDesc",
-        "EmpireSuppliesDesc",
-        "EmpireTerritoryDesc",
-        "EnemyAiParamsDesc",
-        "EnemyDesc",
-        "EnvironmentDebuffDesc",
-        "EquipmentDesc",
-        "ExtractionRecipeDesc",
-        "FoodDesc",
-        "GateDesc",
-        "InteriorInstanceDesc",
-        "InteriorNetworkDesc",
-        "InteriorPortalConnectionsDesc",
-        "InteriorShapeDesc",
-        "InteriorSpawnDesc",
-        "ItemConversionRecipeDesc",
-        "ItemDesc",
-        "ItemListDesc",
-        "KnowledgeScrollDesc",
-        "KnowledgeScrollTypeDesc",
-        "LootChestDesc",
-        "LootRarityDesc",
-        "LootTableDesc",
-        "NpcDesc",
-        "OnboardingRewardDesc",
-        "ParametersDesc",
-        "PathfindingDesc",
-        "PavingTileDesc",
-        "PlayerActionDesc",
-        "PrivateParametersDesc",
-        "ResourceClumpDesc",
-        "ResourceDesc",
-        "ResourceGrowthRecipeDesc",
-        "ResourcePlacementRecipeDesc",
-        "SecondaryKnowledgeDesc",
-        "SingleResourceToClumpDesc",
-        "SkillDesc",
-        "TargetingMatrixDesc",
-        "TeleportItemDesc",
-        "TerraformRecipeDesc",
-        "ToolDesc",
-        "ToolTypeDesc",
-        "TravelerTradeOrderDesc",
-        "WallDesc",
-        "WeaponDesc",
-        "WeaponTypeDesc",
-    ];
-
-    let state_tables = vec![
-        "AIDebugState",
-        "ActionState",
-        "ActiveBuffState",
-        "AdminRestorePlayerStateTimer",
-        "AlertState",
-        "AttachedHerdsState",
-        "AttackOutcomeState",
-        "AutoClaimState",
-        "BarterStallState",
-        "BuildingState",
-        "CargoState",
-        "CharacterStatsState",
-        "ChatMessageState",
-        "ClaimDescriptionState",
-        "ClaimRecruitmentState",
-        "ClaimTechState",
-        "ClaimTileState",
-        "CombatState",
-        "DeployableCollectibleState",
-        "DeployableState",
-        "DimensionDescriptionState",
-        "DimensionNetworkState",
-        "EmpireChunkState",
-        "EmpireExpansionState",
-        "EmpireFoundryState",
-        "EmpireLogState",
-        "EmpireNodeSiegeState",
-        "EmpireNodeState",
-        "EmpireNotificationState",
-        "EmpirePlayerDataState",
-        "EmpirePlayerLogState",
-        "EmpireRankState",
-        "EmpireSettlementState",
-        "EmpireSiegeEngineState",
-        "EmpireState",
-        "EnemyMobMonitorState",
-        "EnemyState",
-        "EquipmentState",
-        "ExperienceState",
-        "ExplorationChunksState",
-        "FootprintTileState",
-        "GlobalSearchState",
-        "GrowthState",
-        "HealthState",
-        "HerdState",
-        "InteriorCollapseTriggerState",
-        "InventoryState",
-        "ItemPileState",
-        "KnowledgeAchievementState",
-        "KnowledgeBattleActionState",
-        "KnowledgeBuildingState",
-        "KnowledgeCargoState",
-        "KnowledgeConstructionState",
-        "KnowledgeCraftState",
-        "KnowledgeDeployableState",
-        "KnowledgeEnemyState",
-        "KnowledgeExtractState",
-        "KnowledgeItemState",
-        "KnowledgeLoreState",
-        "KnowledgeNpcState",
-        "KnowledgePavingState",
-        "KnowledgeResourcePlacementState",
-        "KnowledgeResourceState",
-        "KnowledgeRuinsState",
-        "KnowledgeSecondaryState",
-        "KnowledgeVaultState",
-        "LightSourceState",
-        "LocationState",
-        "LootChestState",
-        "MobileEntityState",
-        "MountingState",
-        "MoveValidationStrikeCounterState",
-        "NpcState",
-        "OnboardingState",
-        "PassiveCraftState",
-        "PavedTileState",
-        "PlayerActionState",
-        "PlayerLowercaseUsernameState",
-        "PlayerNoteState",
-        "PlayerPrefsState",
-        "PlayerState",
-        "PlayerTimestampState",
-        "PlayerUsernameState",
-        "PlayerVoteState",
-        "PortalState",
-        "ProgressiveActionState",
-        "ProjectSiteState",
-        "RentState",
-        "ResourceState",
-        "SatiationState",
-        "SignedInPlayerState",
-        "SignedInUserState",
-        "StaminaState",
-        "StarvingPlayerState",
-        "TargetState",
-        "TargetableState",
-        "TerraformProgressState",
-        "TerrainChunkState",
-        "ThreatState",
-        "ToolbarState",
-        "TradeOrderState",
-        "TradeSessionState",
-        "UnclaimedCollectiblesState",
-        "UnclaimedShardsState",
-        "UserModerationState",
-        "UserSignInState",
-        "UserState",
-        "VaultState",
-    ];
-
-    let rest_tables = vec![
-        "AdminBroadcast",
-        "AttackImpactTimer",
-        "AttackTimer",
-        "AutoLogoutLoopTimer",
-        "BuildingDecayLoopTimer",
-        "BuildingDespawnTimer",
-        "CargoDespawnTimer",
-        "CargoSpawnTimer",
-        "ChatCache",
-        "ClaimTechUnlockTimer",
-        "ClaimTileCost",
-        "CollectStatsTimer",
-        "Config",
-        "DayNightLoopTimer",
-        "DeployableDismountTimer",
-        "DestroyDimensionNetworkTimer",
-        "EmpireCraftSuppliesTimer",
-        "EmpireDecayLoopTimer",
-        "EmpireSiegeLoopTimer",
-        "EndGracePeriodTimer",
-        "EnemyDespawnTimer",
-        "EnemyRegenLoopTimer",
-        "EnvironmentDebuffLoopTimer",
-        "ForceGenerateTypes",
-        "Globals",
-        "GlobalsAppeared",
-        "GrowthLoopTimer",
-        "HideDeployableTimer",
-        "IdentityRole",
-        "InteriorSetCollapsedTimer",
-        "ItemPileDespawnTimer",
-        "LocationCache",
-        "LootChestDespawnTimer",
-        "LootChestSpawnTimer",
-        "NpcAiLoopTimer",
-        "PassiveCraftTimer",
-        "PlayerDeathTimer",
-        "PlayerRegenLoopTimer",
-        "PlayerRespawnAfterDeathTimer",
-        "PlayerUseElevatorTimer",
-        "PlayerVoteConcludeTimer",
-        "RentCollectorLoopTimer",
-        "RentEvictTimer",
-        "ResetChunkIndexTimer",
-        "ResetMobileEntityTimer",
-        "ResourceCount",
-        "ResourceSpawnTimer",
-        "ResourcesLog",
-        "ResourcesRegenLoopTimer",
-        "RespawnResourceInChunkTimer",
-        "ServerIdentity",
-        "SingleResourceClumpInfo",
-        "StagedStaticData",
-        "StarvingLoopTimer",
-        "TeleportPlayerTimer",
-        "TradeSessionLoopTimer",
-    ];
-
-    for table in desc_tables {
-        let desc_result = download_all_table(
-            client,
-            domain,
-            protocol,
-            database,
-            table,
-            storage_path,
-            "desc",
-        )
-        .await;
-
-        if let Err(error) = desc_result {
-            error!("Error while downloading desc table: {error}");
-        }
-    }
-
-    for table in state_tables {
-        let state_result = download_all_table(
-            client,
-            domain,
-            protocol,
-            database,
-            table,
-            storage_path,
-            "state",
-        )
-        .await;
-
-        if let Err(error) = state_result {
-            error!("Error while downloading state table: {error}");
-        }
-    }
-
-    for table in rest_tables {
-        let rest_result = download_all_table(
-            client,
-            domain,
-            protocol,
-            database,
-            table,
-            storage_path,
-            "rest",
-        )
-        .await;
-
-        if let Err(error) = rest_result {
-            error!("Error while downloading rest table: {error}");
-        }
-    }
-}
-
-///
-/// Donwload the table and save it to the storage path with the type as the folder before the name
-pub async fn download_all_table(
-    client: &Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    table: &str,
-    storage_path: &Path,
-    folder: &str,
-) -> anyhow::Result<()> {
-    let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
-        .body(format!("SELECT * FROM {table}"))
-        .send()
-        .await;
-
-    let json = match response {
-        Ok(response) => {
-            if !response.status().is_success() {
-                let error = response.text().await?;
-                error!("Error: {error}");
-                return Err(anyhow::anyhow!("Error: {error}"));
-            }
-
-            response.text().await?
-        }
-        Err(error) => {
-            error!("Error: {error}");
-            return Err(anyhow::anyhow!("Error: {error}"));
-        }
-    };
-
-    let folder_to_create = storage_path.join(folder);
-    if !folder_to_create.exists() {
-        std::fs::create_dir_all(&folder_to_create)?;
-    }
-    let path = storage_path.join(format!("{folder}/{table}.json"));
-    let mut file = File::create(&path)?;
-
-    println!("Saving to {path:?}");
-
-    file.write_all(json.as_bytes())?;
-
-    Ok(())
-}
-
 #[derive(Parser, Debug)]
 #[command(version, author)]
 pub struct Cli {
@@ -1337,6 +968,10 @@ you should provide the directory of that submodule.",
         #[arg(long, help = "Storage path")]
         storage_path: Option<String>,
     },
+    Download {
+        #[command(subcommand)]
+        command: crate::download::DownloadSubcommand,
+    },
 }
 
 pub async fn main() -> anyhow::Result<()> {
@@ -1354,6 +989,7 @@ pub async fn main() -> anyhow::Result<()> {
 
     match &cli.command {
         Commands::Migrate { .. } => {}
+        Commands::Download { .. } => {}
         Commands::Serve {
             port,
             host,
@@ -1422,6 +1058,17 @@ pub async fn main() -> anyhow::Result<()> {
             if let Some(err) = result.err() {
                 error!("Error: {err}");
             }
+        }
+        Commands::Download { command } => {
+            let client = create_default_client(config.clone());
+
+            crate::download::download_all_tables(
+                command,
+                &client,
+                Path::new(&config.storage_path.clone()),
+                &config,
+            )
+            .await;
         }
     };
 

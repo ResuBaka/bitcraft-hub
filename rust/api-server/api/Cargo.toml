@@ -24,7 +24,7 @@ tower = "0.5.2"
 service = { path = "../service" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-tracing-subscriber = { version = "0.3.19", features = ["json"] }
+tracing-subscriber = { version = "0.3.19", features = ["json", "serde", "serde_json"] }
 tower-http = { version = "0.6.2", features = ["fs", "cors", "compression-full"] }
 tower-cookies = "0.11.0"
 dotenvy = "0.15.7"
