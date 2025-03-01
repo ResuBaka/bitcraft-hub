@@ -529,9 +529,13 @@ async fn db_insert_experience_state(
     buffer_before_insert: &mut Vec<PackedExperienceState>,
     on_conflict: &OnConflict,
 ) -> anyhow::Result<()> {
+    let mut experience_state_user_to_search = HashSet::new();
+
     let resolved_buffer_before_insert = buffer_before_insert
         .iter()
         .flat_map(|x| {
+            experience_state_user_to_search.insert(x.entity_id);
+
             x.experience_stacks.iter().map(|y| experience_state::Model {
                 entity_id: x.entity_id,
                 skill_id: y.0,
@@ -541,14 +545,7 @@ async fn db_insert_experience_state(
         .collect::<Vec<experience_state::Model>>();
 
     let experience_state_from_db = experience_state::Entity::find()
-        .filter(
-            experience_state::Column::EntityId.is_in(
-                resolved_buffer_before_insert
-                    .iter()
-                    .map(|experience_state| experience_state.entity_id)
-                    .collect::<Vec<i64>>(),
-            ),
-        )
+        .filter(experience_state::Column::EntityId.is_in(experience_state_user_to_search))
         .all(conn)
         .await?;
 
@@ -563,16 +560,18 @@ async fn db_insert_experience_state(
         .collect::<HashMap<(i64, i32), experience_state::Model>>();
 
     let things_to_insert = resolved_buffer_before_insert
-        .iter()
-        .filter(|experience_state| {
+        .into_iter()
+        .filter_map(|experience_state| {
             match experience_state_from_db_map
                 .get(&(experience_state.entity_id, experience_state.skill_id))
             {
-                Some(experience_state_from_db) => experience_state_from_db != *experience_state,
-                None => true,
+                Some(experience_state_from_db) if experience_state_from_db != &experience_state => {
+                    Some(experience_state.into_active_model())
+                }
+                None => Some(experience_state.into_active_model()),
+                _ => None,
             }
         })
-        .map(|experience_state| experience_state.clone().into_active_model())
         .collect::<Vec<experience_state::ActiveModel>>();
 
     if things_to_insert.is_empty() {
@@ -1095,8 +1094,8 @@ pub(crate) async fn handle_transaction_update(
     .update_columns([experience_state::Column::Experience])
     .to_owned();
 
-    // let mut found_in_inserts = HashSet::new();
-    let mut skills_to_update = HashMap::new();
+    let mut user_ids = HashSet::new();
+    let mut skills_to_update_vec = vec![];
 
     let mut potential_deletes = HashSet::new();
 
@@ -1157,14 +1156,14 @@ pub(crate) async fn handle_transaction_update(
                 }
             }
 
-            for row in p1.inserts.iter().enumerate() {
-                let parsed = serde_json::from_str::<PackedExperienceState>(row.1.as_ref());
+            for row in p1.inserts.iter() {
+                let parsed = serde_json::from_str::<PackedExperienceState>(row.as_ref());
 
                 if parsed.is_err() {
                     error!(
                         "Could not parse insert experience_state: {}, row: {:?}",
                         parsed.unwrap_err(),
-                        row.1
+                        row
                     );
                     continue;
                 }
@@ -1212,8 +1211,8 @@ pub(crate) async fn handle_transaction_update(
                                 let old_value = old_experience_state_map.get(key).unwrap();
 
                                 if old_value != value {
-                                    skills_to_update
-                                        .insert(*key, value.clone().into_active_model());
+                                    user_ids.insert(new_experience_state.entity_id);
+                                    skills_to_update_vec.push(value.clone().into_active_model());
 
                                     if let Some(skill_name) = skill_name {
                                         tx.send(WebSocketMessages::Experience {
@@ -1251,7 +1250,8 @@ pub(crate) async fn handle_transaction_update(
                                     }
                                 }
                             } else {
-                                skills_to_update.insert(*key, value.clone().into_active_model());
+                                user_ids.insert(new_experience_state.entity_id);
+                                skills_to_update_vec.push(value.clone().into_active_model());
 
                                 if let Some(skill_name) = skill_name {
                                     metrics::counter!(
@@ -1288,7 +1288,8 @@ pub(crate) async fn handle_transaction_update(
 
                                 let key = (x.entity_id, x.skill_id);
                                 potential_deletes.remove(&key);
-                                skills_to_update.insert(key, x.clone().into_active_model());
+                                user_ids.insert(x.entity_id);
+                                skills_to_update_vec.push(x.clone().into_active_model());
 
                                 if let Some(skill_name) = skill_name {
                                     tx.send(WebSocketMessages::Experience {
@@ -1315,16 +1316,6 @@ pub(crate) async fn handle_transaction_update(
             }
         }
     }
-
-    let user_ids = skills_to_update
-        .iter()
-        .map(|x| x.1.entity_id.clone().unwrap())
-        .collect::<HashSet<i64>>();
-
-    let skills_to_update_vec = skills_to_update
-        .into_iter()
-        .map(|x| x.1)
-        .collect::<Vec<experience_state::ActiveModel>>();
 
     for skill_entries_to_insert_chunk in skills_to_update_vec.chunks(5000) {
         let result = experience_state::Entity::insert_many(skill_entries_to_insert_chunk.to_vec())
