@@ -1438,8 +1438,6 @@ fn setup_tracing(cfg: &Config) {
         format!("{}={},axum={}", CRATE_NAME, cfg.log_level, cfg.log_level)
     });
 
-    println!("Filter directive: {filter_directive}");
-
     match cfg.log_type {
         config::LogType::Default => {
             let stdout_layer = tracing_subscriber::fmt::layer();
