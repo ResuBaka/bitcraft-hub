@@ -33,12 +33,7 @@ impl RawVaultState {
     pub fn to_model_collectibles(&self) -> Vec<crate::vault_state_collectibles::Model> {
         self.collectibles
             .iter()
-            .map(|collectible| crate::vault_state_collectibles::Model {
-                entity_id: self.entity_id,
-                id: collectible.id,
-                activated: collectible.activated,
-                count: collectible.count,
-            })
+            .map(|collectible| collectible.to_model(self.entity_id))
             .collect()
     }
 }

@@ -3,8 +3,8 @@ use entity::vault_state::RawVaultState;
 use entity::{vault_state, vault_state_collectibles};
 use log::{debug, error, info};
 use migration::OnConflict;
-use sea_orm::{DbErr, IntoActiveModel};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, sea_query};
+use sea_orm::{DbErr, IntoActiveModel};
 use std::collections::{HashMap, HashSet};
 
 async fn get_known_vault_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
@@ -243,7 +243,9 @@ pub(crate) async fn handle_initial_subscription(
     Ok(())
 }
 
-fn get_known_vault_state_collectibles_ids(conn: &DatabaseConnection) -> impl Future<Output=Result<Vec<(i64, i32)>, DbErr>> + Sized {
+fn get_known_vault_state_collectibles_ids(
+    conn: &DatabaseConnection,
+) -> impl Future<Output = Result<Vec<(i64, i32)>, DbErr>> + Sized {
     vault_state_collectibles::Entity::find()
         .select_only()
         .column(vault_state_collectibles::Column::EntityId)
