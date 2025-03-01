@@ -8,7 +8,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
-use std::path::PathBuf;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -95,24 +94,16 @@ pub(crate) async fn import_cargo_description(
 
             let things_to_insert = buffer_before_insert
                 .iter()
-                .filter(|cargo_desc| {
-                    match cargo_desc_from_db_map.get(&cargo_desc.id) {
-                        Some(cargo_desc_from_db) => {
-                            if cargo_desc_from_db != *cargo_desc {
-                                return true;
-                            }
-                        }
-                        None => {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                })
+                .filter(
+                    |cargo_desc| match cargo_desc_from_db_map.get(&cargo_desc.id) {
+                        Some(cargo_desc_from_db) => cargo_desc_from_db != *cargo_desc,
+                        None => true,
+                    },
+                )
                 .map(|cargo_desc| cargo_desc.clone().into_active_model())
                 .collect::<Vec<cargo_desc::ActiveModel>>();
 
-            if things_to_insert.len() == 0 {
+            if things_to_insert.is_empty() {
                 debug!("Nothing to insert");
                 buffer_before_insert.clear();
                 continue;
@@ -124,8 +115,8 @@ pub(crate) async fn import_cargo_description(
                 let cargo_desc_in = cargo_desc_to_delete
                     .iter()
                     .position(|id| id == cargo_desc.id.as_ref());
-                if cargo_desc_in.is_some() {
-                    cargo_desc_to_delete.remove(cargo_desc_in.unwrap());
+                if let Some(cargo_desc_in) = cargo_desc_in {
+                    cargo_desc_to_delete.remove(cargo_desc_in);
                 }
             }
 
@@ -138,7 +129,7 @@ pub(crate) async fn import_cargo_description(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let cargo_desc_from_db = cargo_desc::Entity::find()
             .filter(
                 cargo_desc::Column::Id.is_in(
@@ -158,24 +149,16 @@ pub(crate) async fn import_cargo_description(
 
         let things_to_insert = buffer_before_insert
             .iter()
-            .filter(|cargo_desc| {
-                match cargo_desc_from_db_map.get(&cargo_desc.id) {
-                    Some(cargo_desc_from_db) => {
-                        if cargo_desc_from_db != *cargo_desc {
-                            return true;
-                        }
-                    }
-                    None => {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
+            .filter(
+                |cargo_desc| match cargo_desc_from_db_map.get(&cargo_desc.id) {
+                    Some(cargo_desc_from_db) => cargo_desc_from_db != *cargo_desc,
+                    None => true,
+                },
+            )
             .map(|cargo_desc| cargo_desc.clone().into_active_model())
             .collect::<Vec<cargo_desc::ActiveModel>>();
 
-        if things_to_insert.len() == 0 {
+        if things_to_insert.is_empty() {
             debug!("Nothing to insert");
             buffer_before_insert.clear();
         } else {
@@ -194,7 +177,7 @@ pub(crate) async fn import_cargo_description(
         start.elapsed().as_secs()
     );
 
-    if cargo_desc_to_delete.len() > 0 {
+    if !cargo_desc_to_delete.is_empty() {
         info!("cargo_desc's to delete: {:?}", cargo_desc_to_delete);
         cargo_desc::Entity::delete_many()
             .filter(cargo_desc::Column::Id.is_in(cargo_desc_to_delete))
@@ -207,7 +190,7 @@ pub(crate) async fn import_cargo_description(
 
 #[allow(dead_code)]
 pub(crate) async fn load_cargo_description_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<cargo_desc::Model>> {
     let cargo_descriptions: Vec<cargo_desc::Model> = {
         let item_file = File::open(storage_path.join("Desc/CargoDesc.json"))?;
@@ -259,12 +242,12 @@ pub(crate) async fn load_desc_from_spacetimedb(
     let cargo_descriptions =
         load_cargo_description_from_spacetimedb(client, domain, protocol, database).await?;
 
-    import_cargo_description(&conn, cargo_descriptions, None).await?;
+    import_cargo_description(conn, cargo_descriptions, None).await?;
 
     Ok(())
 }
 
-pub async fn import_job_cargo_desc(temp_config: Config) -> () {
+pub async fn import_job_cargo_desc(temp_config: Config) {
     let config = temp_config.clone();
     if config.live_updates {
         let conn = super::create_importer_default_db_connection(config.clone()).await;

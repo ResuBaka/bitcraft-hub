@@ -15,7 +15,6 @@ use serde_json::{Value, json};
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -111,19 +110,14 @@ pub async fn find_player_by_id(
             vec![]
         });
 
-    let player_location = state.mobile_entity_state.get(&(id as u64));
+    let player_location = state
+        .mobile_entity_state
+        .get(&(id as u64))
+        .map(|player_location| player_location.clone());
 
-    let player_location = if player_location.is_none() {
-        None
-    } else {
-        Some(player_location.unwrap().clone())
-    };
-
-    let chunk_index = if let Some(player_location) = &player_location {
-        Some(player_location.chunk_index)
-    } else {
-        None
-    };
+    let chunk_index = player_location
+        .as_ref()
+        .map(|player_location| player_location.chunk_index);
 
     let claim_id = if chunk_index.is_some() {
         if let Some(claim_id) = state.claim_tile_state.get(&(chunk_index.unwrap())) {
@@ -135,33 +129,15 @@ pub async fn find_player_by_id(
         None
     };
 
-    let player_action_state = state.player_action_state.get(&(id as u64));
-    let plyer_action_state2 = if player_action_state.is_none() {
-        None
-    } else {
-        Some(player_action_state.unwrap().value().clone())
-    };
-
-    let player_action_state = state.player_action_state.get(&(id as u64));
-    let player_action_state = if player_action_state.is_none() {
-        None
-    } else {
-        Some(player_action_state.unwrap().action_type.get_action_name())
-        // let player_action_state = player_action_state.unwrap().auto_id;
-
-        // if let Some(crafting_recipe) = state.crafting_recipe_desc.get(&player_action_state) {
-        //     Some(crafting_recipe.name.clone())
-        // } else {
-        //     None
-        // }
-    };
-
+    let plyer_action_state2 = state
+        .player_action_state
+        .get(&(id as u64))
+        .map(|player_action_state| player_action_state.value().clone());
+    let player_action_state = state
+        .player_action_state
+        .get(&(id as u64))
+        .map(|player_action_state| player_action_state.action_type.get_action_name());
     let current_action_state = state.action_state.get(&(id as u64));
-    let current_action_state = if current_action_state.is_none() {
-        None
-    } else {
-        Some(current_action_state.unwrap())
-    };
 
     Ok(Json(json!({
         "entity_id": player.entity_id,
@@ -184,7 +160,7 @@ pub async fn find_player_by_id(
 
 #[allow(dead_code)]
 pub(crate) async fn load_player_state_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<player_state::Model>> {
     let player_state_file = File::open(storage_path.join("State/PlayerState.json"))?;
     let player_state: Value = serde_json::from_reader(&player_state_file)?;
@@ -230,24 +206,16 @@ async fn db_insert_player_states(
 
     let things_to_insert = buffer_before_insert
         .iter()
-        .filter(|player_state| {
-            match player_states_from_db_map.get(&player_state.entity_id) {
-                Some(player_state_from_db) => {
-                    if player_state_from_db != *player_state {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
-            }
-
-            return false;
-        })
+        .filter(
+            |player_state| match player_states_from_db_map.get(&player_state.entity_id) {
+                Some(player_state_from_db) => player_state_from_db != *player_state,
+                None => true,
+            },
+        )
         .map(|player_state| player_state.clone().into_active_model())
         .collect::<Vec<player_state::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -340,21 +308,15 @@ async fn db_insert_player_username_states(
         .filter(|player_username_state| {
             match player_username_states_from_db_map.get(&player_username_state.entity_id) {
                 Some(player_username_state_from_db) => {
-                    if player_username_state_from_db != *player_username_state {
-                        return true;
-                    }
+                    player_username_state_from_db != *player_username_state
                 }
-                None => {
-                    return true;
-                }
+                None => true,
             }
-
-            return false;
         })
         .map(|player_username_state| player_username_state.clone().into_active_model())
         .collect::<Vec<player_username_state::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -379,9 +341,9 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
     p0: &DatabaseConnection,
     p1: &Table,
 ) -> anyhow::Result<()> {
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert: Vec<player_username_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
+        Vec::with_capacity(chunk_size);
 
     let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
         .update_columns([player_username_state::Column::Username])
@@ -396,7 +358,7 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
                         known_player_username_state_ids.remove(&player_username_state.entity_id);
                     }
                     buffer_before_insert.push(player_username_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_player_username_states(
                             p0,
                             &mut buffer_before_insert,
@@ -415,11 +377,11 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict).await?;
     }
 
-    if known_player_username_state_ids.len() > 0 {
+    if !known_player_username_state_ids.is_empty() {
         delete_player_username_state(p0, known_player_username_state_ids).await?;
     }
 
@@ -428,15 +390,15 @@ pub(crate) async fn handle_initial_subscription_player_username_state(
 
 pub(crate) async fn handle_transaction_update_player_username_state(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
         .update_columns([player_username_state::Column::Username])
         .to_owned();
 
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert: Vec<player_username_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(1000));
+        Vec::with_capacity(chunk_size);
 
     let mut found_in_inserts = HashSet::new();
 
@@ -446,7 +408,7 @@ pub(crate) async fn handle_transaction_update_player_username_state(
                 Ok(player_username_state) => {
                     found_in_inserts.insert(player_username_state.entity_id);
                     buffer_before_insert.push(player_username_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_player_username_states(
                             p0,
                             &mut buffer_before_insert,
@@ -462,7 +424,7 @@ pub(crate) async fn handle_transaction_update_player_username_state(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict).await?;
     }
 
@@ -483,7 +445,7 @@ pub(crate) async fn handle_transaction_update_player_username_state(
         }
     }
 
-    if players_username_to_delete.len() > 0 {
+    if !players_username_to_delete.is_empty() {
         delete_player_username_state(p0, players_username_to_delete).await?;
     }
 
@@ -494,9 +456,8 @@ pub(crate) async fn handle_initial_subscription_player_state(
     p0: &DatabaseConnection,
     p1: &Table,
 ) -> anyhow::Result<()> {
-    let chunk_size = Some(5000);
-    let mut buffer_before_insert: Vec<player_state::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
+    let chunk_size = 5000;
+    let mut buffer_before_insert: Vec<player_state::Model> = Vec::with_capacity(chunk_size);
 
     let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
         .update_columns([
@@ -519,7 +480,7 @@ pub(crate) async fn handle_initial_subscription_player_state(
                         known_player_state_ids.remove(&player_state.entity_id);
                     }
                     buffer_before_insert.push(player_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         info!("PlayerState insert");
                         db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict)
                             .await?;
@@ -535,12 +496,12 @@ pub(crate) async fn handle_initial_subscription_player_state(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         info!("PlayerState insert");
         db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict).await?;
     }
 
-    if known_player_state_ids.len() > 0 {
+    if !known_player_state_ids.is_empty() {
         delete_player_state(p0, known_player_state_ids).await?;
     }
 
@@ -549,7 +510,7 @@ pub(crate) async fn handle_initial_subscription_player_state(
 
 pub(crate) async fn handle_transaction_update_player_state(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
     sender: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
@@ -564,7 +525,7 @@ pub(crate) async fn handle_transaction_update_player_state(
         ])
         .to_owned();
 
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert = HashMap::new();
 
     let mut found_in_inserts = HashSet::new();
@@ -579,7 +540,7 @@ pub(crate) async fn handle_transaction_update_player_state(
                         .unwrap();
                     buffer_before_insert.insert(player_state.entity_id, player_state);
 
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
+                    if buffer_before_insert.len() == chunk_size {
                         let mut buffer_before_insert_vec = buffer_before_insert
                             .clone()
                             .into_iter()
@@ -598,7 +559,7 @@ pub(crate) async fn handle_transaction_update_player_state(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let mut buffer_before_insert_vec = buffer_before_insert
             .clone()
             .into_iter()
@@ -626,7 +587,7 @@ pub(crate) async fn handle_transaction_update_player_state(
         }
     }
 
-    if players_to_delete.len() > 0 {
+    if !players_to_delete.is_empty() {
         delete_player_state(p0, players_to_delete).await?;
     }
 

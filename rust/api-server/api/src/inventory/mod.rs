@@ -20,7 +20,6 @@ use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -119,25 +118,20 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
     let mut mobile_entiety_map: HashMap<i64, String> = HashMap::new();
 
-    match &player {
-        Some(player) => {
-            let mobile_entiety_from_player =
-                QueryCore::find_deployable_entity_by_owner_entity_id(&state.conn, player.entity_id)
-                    .await
-                    .map_err(|e| {
-                        error!("Error: {:?}", e);
+    if let Some(player) = &player {
+        let mobile_entiety_from_player =
+            QueryCore::find_deployable_entity_by_owner_entity_id(&state.conn, player.entity_id)
+                .await
+                .map_err(|e| {
+                    error!("Error: {:?}", e);
 
-                        (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-                    })?;
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+                })?;
 
-            for mobile_entiety in mobile_entiety_from_player {
-                mobile_entiety_map.insert(mobile_entiety.entity_id, mobile_entiety.nickname);
-                inventory_ids.push(mobile_entiety.entity_id);
-            }
-
-            ()
+        for mobile_entiety in mobile_entiety_from_player {
+            mobile_entiety_map.insert(mobile_entiety.entity_id, mobile_entiety.nickname);
+            inventory_ids.push(mobile_entiety.entity_id);
         }
-        None => (),
     };
 
     let (inventorys, num_pages) =
@@ -175,9 +169,9 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                         .unwrap();
 
                     if item_type == "0" {
-                        item_ids.push(content.item_id.clone());
+                        item_ids.push(content.item_id);
                     } else {
-                        cargo_ids.push(content.item_id.clone());
+                        cargo_ids.push(content.item_id);
                     }
                 }
             }
@@ -209,7 +203,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         .map(|item| (item.id, item))
         .collect::<HashMap<i64, item_desc::Model>>();
 
-    for (_index, inventory) in inventorys.into_iter().enumerate() {
+    for inventory in inventorys.into_iter() {
         let mut pockets = vec![];
 
         for pocket in &inventory.pockets {
@@ -264,7 +258,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
 #[allow(dead_code)]
 pub(crate) async fn load_inventory_state_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<inventory::Model>> {
     let item_file = File::open(storage_path.join("State/InventoryState.json"))?;
     let inventory: Value = serde_json::from_reader(&item_file)?;
@@ -326,24 +320,16 @@ async fn db_insert_inventory_state(
 
     let things_to_insert = buffer_before_insert
         .iter()
-        .filter(|inventory| {
-            match inventorys_from_db_map.get(&inventory.entity_id) {
-                Some(inventory_from_db) => {
-                    if inventory_from_db != *inventory {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
-            }
-
-            return false;
-        })
+        .filter(
+            |inventory| match inventorys_from_db_map.get(&inventory.entity_id) {
+                Some(inventory_from_db) => inventory_from_db != *inventory,
+                None => true,
+            },
+        )
         .map(|inventory| inventory.clone().into_active_model())
         .collect::<Vec<inventory::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -451,7 +437,7 @@ pub(crate) async fn handle_initial_subscription(
         ])
         .to_owned();
 
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert: Vec<inventory::Model> = vec![];
 
     let mut known_inventory_ids = get_known_inventory_ids(database_connection).await?;
@@ -464,7 +450,7 @@ pub(crate) async fn handle_initial_subscription(
                         known_inventory_ids.remove(&building_state.entity_id);
                     }
                     buffer_before_insert.push(building_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_inventory_state(
                             database_connection,
                             &mut buffer_before_insert,
@@ -479,14 +465,14 @@ pub(crate) async fn handle_initial_subscription(
             }
         }
     }
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
             db_insert_inventory_state(database_connection, &mut buffer_chnk.to_vec(), &on_conflict)
                 .await?;
         }
     }
 
-    if known_inventory_ids.len() > 0 {
+    if !known_inventory_ids.is_empty() {
         db_delete_inventorys(database_connection, known_inventory_ids).await?;
     }
 
@@ -495,7 +481,7 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     database_connection: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
         .update_columns([
@@ -512,11 +498,11 @@ pub(crate) async fn handle_transaction_update(
     // let mut inventory_changes = vec![];
 
     for p1 in tables.iter() {
-        let event_type = if p1.inserts.len() > 0 && p1.deletes.len() > 0 {
+        let event_type = if !p1.inserts.is_empty() && !p1.deletes.is_empty() {
             "update"
-        } else if p1.inserts.len() > 0 && p1.deletes.len() == 0 {
+        } else if !p1.inserts.is_empty() && p1.deletes.is_empty() {
             "insert"
-        } else if p1.deletes.len() > 0 && p1.inserts.len() == 0 {
+        } else if !p1.deletes.is_empty() && p1.inserts.is_empty() {
             "delete"
         } else {
             "unknown"
@@ -589,7 +575,7 @@ pub(crate) async fn handle_transaction_update(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let mut buffer_before_insert_vec = buffer_before_insert
             .clone()
             .into_iter()
@@ -604,7 +590,7 @@ pub(crate) async fn handle_transaction_update(
         buffer_before_insert.clear();
     }
 
-    if potential_deletes.len() > 0 {
+    if !potential_deletes.is_empty() {
         db_delete_inventorys(database_connection, potential_deletes).await?;
     }
 

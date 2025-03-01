@@ -8,7 +8,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
-use std::path::PathBuf;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -16,7 +15,7 @@ use tokio::time::Instant;
 
 #[allow(dead_code)]
 pub(crate) async fn load_claim_tech_desc_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<claim_tech_desc::Model>> {
     let item_file = File::open(storage_path.join("Desc/ClaimTechDesc.json"))?;
     let claim_tech_desc: Value = serde_json::from_reader(&item_file)?;
@@ -57,7 +56,7 @@ pub(crate) async fn load_claim_tech_desc(
 ) -> anyhow::Result<()> {
     let claim_tech_descs =
         load_claim_tech_desc_from_spacetimedb(client, domain, protocol, database).await?;
-    import_claim_tech_desc(&conn, claim_tech_descs, None).await?;
+    import_claim_tech_desc(conn, claim_tech_descs, None).await?;
     Ok(())
 }
 
@@ -134,21 +133,15 @@ pub(crate) async fn import_claim_tech_desc(
                 .filter(|claim_tech_desc| {
                     match claim_tech_desc_from_db_map.get(&claim_tech_desc.id) {
                         Some(claim_tech_desc_from_db) => {
-                            if claim_tech_desc_from_db != *claim_tech_desc {
-                                return true;
-                            }
+                            claim_tech_desc_from_db != *claim_tech_desc
                         }
-                        None => {
-                            return true;
-                        }
+                        None => true,
                     }
-
-                    return false;
                 })
                 .map(|claim_tech_desc| claim_tech_desc.clone().into_active_model())
                 .collect::<Vec<claim_tech_desc::ActiveModel>>();
 
-            if things_to_insert.len() == 0 {
+            if things_to_insert.is_empty() {
                 debug!("Nothing to insert");
                 buffer_before_insert.clear();
                 continue;
@@ -160,8 +153,8 @@ pub(crate) async fn import_claim_tech_desc(
                 let claim_tech_desc_in = claim_tech_desc_to_delete
                     .iter()
                     .position(|id| id == claim_tech_desc.id.as_ref());
-                if claim_tech_desc_in.is_some() {
-                    claim_tech_desc_to_delete.remove(claim_tech_desc_in.unwrap());
+                if let Some(claim_tech_desc_in) = claim_tech_desc_in {
+                    claim_tech_desc_to_delete.remove(claim_tech_desc_in);
                 }
             }
 
@@ -174,7 +167,7 @@ pub(crate) async fn import_claim_tech_desc(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let claim_tech_desc_from_db = claim_tech_desc::Entity::find()
             .filter(
                 claim_tech_desc::Column::Id.is_in(
@@ -194,24 +187,16 @@ pub(crate) async fn import_claim_tech_desc(
 
         let things_to_insert = buffer_before_insert
             .iter()
-            .filter(|claim_tech_desc| {
-                match claim_tech_desc_from_db_map.get(&claim_tech_desc.id) {
-                    Some(claim_tech_desc_from_db) => {
-                        if claim_tech_desc_from_db != *claim_tech_desc {
-                            return true;
-                        }
-                    }
-                    None => {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
+            .filter(
+                |claim_tech_desc| match claim_tech_desc_from_db_map.get(&claim_tech_desc.id) {
+                    Some(claim_tech_desc_from_db) => claim_tech_desc_from_db != *claim_tech_desc,
+                    None => true,
+                },
+            )
             .map(|claim_tech_desc| claim_tech_desc.clone().into_active_model())
             .collect::<Vec<claim_tech_desc::ActiveModel>>();
 
-        if things_to_insert.len() == 0 {
+        if things_to_insert.is_empty() {
             debug!("Nothing to insert");
             buffer_before_insert.clear();
         } else {
@@ -230,7 +215,7 @@ pub(crate) async fn import_claim_tech_desc(
         start.elapsed().as_secs()
     );
 
-    if claim_tech_desc_to_delete.len() > 0 {
+    if !claim_tech_desc_to_delete.is_empty() {
         info!(
             "claim_tech_desc's to delete: {:?}",
             claim_tech_desc_to_delete
@@ -269,7 +254,7 @@ fn import_interal_claim_tech_desc(config: Config, conn: DatabaseConnection, clie
     });
 }
 
-pub async fn import_job_claim_tech_desc(temp_config: Config) -> () {
+pub async fn import_job_claim_tech_desc(temp_config: Config) {
     let config = temp_config.clone();
     if config.live_updates {
         let conn = super::create_importer_default_db_connection(config.clone()).await;

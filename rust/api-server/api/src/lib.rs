@@ -53,7 +53,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::ops::{AddAssign, SubAssign};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -79,7 +79,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
             &config.spacetimedb.domain.clone(),
             &config.spacetimedb.protocol.clone(),
             &config.spacetimedb.database.clone(),
-            &config.storage_path.clone().into(),
+            Path::new(&config.storage_path.clone()),
         )
         .await;
     }
@@ -131,10 +131,9 @@ async fn create_db_connection(config: &Config) -> DatabaseConnection {
         .idle_timeout(Duration::from_secs(8))
         .sqlx_logging(env::var("SQLX_LOG").is_ok());
 
-    let conn = Database::connect(connection_options)
+    Database::connect(connection_options)
         .await
-        .expect("Database connection failed");
-    conn
+        .expect("Database connection failed")
 }
 
 async fn websocket_handler(
@@ -545,7 +544,7 @@ fn import_data(config: Config) {
                 //
 
                 if config.enabled_importer.contains(&"skill_desc".to_string())
-                    || config.enabled_importer.len() == 0
+                    || config.enabled_importer.is_empty()
                 {
                     let temp_config = config.clone();
                     tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(
@@ -556,7 +555,7 @@ fn import_data(config: Config) {
                 if config
                     .enabled_importer
                     .contains(&"claim_tech_desc".to_string())
-                    || config.enabled_importer.len() == 0
+                    || config.enabled_importer.is_empty()
                 {
                     let temp_config = config.clone();
                     tasks.push(tokio::spawn(claim_tech_desc::import_job_claim_tech_desc(
@@ -565,21 +564,21 @@ fn import_data(config: Config) {
                 }
 
                 if config.enabled_importer.contains(&"recipes".to_string())
-                    || config.enabled_importer.len() == 0
+                    || config.enabled_importer.is_empty()
                 {
                     let temp_config = config.clone();
                     tasks.push(tokio::spawn(recipes::import_job_recipes_desc(temp_config)));
                 }
 
                 if config.enabled_importer.contains(&"items".to_string())
-                    || config.enabled_importer.len() == 0
+                    || config.enabled_importer.is_empty()
                 {
                     let temp_config = config.clone();
                     tasks.push(tokio::spawn(items::import_job_item_desc(temp_config)));
                 }
 
                 if config.enabled_importer.contains(&"cargo_desc".to_string())
-                    || config.enabled_importer.len() == 0
+                    || config.enabled_importer.is_empty()
                 {
                     let temp_config = config.clone();
                     tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));
@@ -588,7 +587,7 @@ fn import_data(config: Config) {
                 if config
                     .enabled_importer
                     .contains(&"building_desc".to_string())
-                    || config.enabled_importer.len() == 0
+                    || config.enabled_importer.is_empty()
                 {
                     let temp_config = config.clone();
                     tasks.push(tokio::spawn(buildings::import_job_building_desc(
@@ -671,7 +670,7 @@ fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Cl
                 )
                 .await;
 
-                if let Ok(_) = trade_order_state {
+                if trade_order_state.is_ok() {
                     info!("TradeOrderState imported");
                 } else {
                     error!("TradeOrderState import failed: {:?}", trade_order_state);
@@ -707,18 +706,13 @@ impl AppState {
     }
 }
 
+type WebsocketClient = (
+    tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
+    HashMap<String, HashSet<i64>>,
+);
+
 struct ClientsState {
-    clients: Arc<
-        RwLock<
-            HashMap<
-                String,
-                (
-                    tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
-                    HashMap<String, HashSet<i64>>,
-                ),
-            >,
-        >,
-    >,
+    clients: Arc<RwLock<HashMap<String, WebsocketClient>>>,
     topics_listen_to: Arc<RwLock<HashMap<String, HashMap<i64, u64>>>>,
 }
 
@@ -758,12 +752,11 @@ impl ClientsState {
                 client
                     .1
                     .iter()
-                    .map(|(topic, ids)| {
+                    .flat_map(|(topic, ids)| {
                         ids.iter()
                             .map(|id| format!("{}.{:?}", topic, id))
                             .collect::<Vec<String>>()
                     })
-                    .flatten()
                     .collect::<Vec<String>>(),
             );
         }
@@ -950,7 +943,7 @@ pub async fn download_all_tables(
     domain: &str,
     protocol: &str,
     database: &str,
-    storage_path: &PathBuf,
+    storage_path: &Path,
 ) {
     let desc_tables = vec![
         "AchievementDesc",
@@ -1261,7 +1254,7 @@ pub async fn download_all_table(
     protocol: &str,
     database: &str,
     table: &str,
-    storage_path: &PathBuf,
+    storage_path: &Path,
     folder: &str,
 ) -> anyhow::Result<()> {
     let response = client
@@ -1367,7 +1360,7 @@ pub async fn main() -> anyhow::Result<()> {
             storage_path,
         } => {
             cli_config_parameters.host = host.clone();
-            cli_config_parameters.port = port.clone();
+            cli_config_parameters.port = *port;
             cli_config_parameters.storage_path = storage_path.clone();
         }
     }

@@ -128,7 +128,7 @@ pub fn start_websocket_bitcraft_logic(
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
         let tmp_config = config.clone();
-        let _ = tokio::spawn(async move {
+        tokio::spawn(async move {
             let db = crate::create_importer_default_db_connection(tmp_config.clone()).await;
 
             let skill_id_to_skill_name = skill_desc::Entity::find()
@@ -140,7 +140,6 @@ pub fn start_websocket_bitcraft_logic(
                 .await
                 .unwrap()
                 .into_iter()
-                .map(|(id, name)| (id, name))
                 .collect::<HashMap<i64, String>>();
 
             loop {
@@ -153,42 +152,39 @@ pub fn start_websocket_bitcraft_logic(
                 let mut raw_events_data = vec![];
 
                 for event in evenets.iter() {
-                    match event {
-                        WebSocketMessage::TransactionUpdate(transaction_update) => {
-                            let mut compressor =
-                                async_compression::tokio::write::ZstdEncoder::new(vec![]);
-                            let _ = compressor
-                                .write_all(
-                                    serde_json::to_string(&transaction_update)
-                                        .unwrap()
-                                        .as_bytes(),
-                                )
-                                .await;
-                            compressor.flush().await.unwrap();
-                            compressor.shutdown().await.unwrap();
+                    if let WebSocketMessage::TransactionUpdate(transaction_update) = event {
+                        let mut compressor =
+                            async_compression::tokio::write::ZstdEncoder::new(vec![]);
+                        let _ = compressor
+                            .write_all(
+                                serde_json::to_string(&transaction_update)
+                                    .unwrap()
+                                    .as_bytes(),
+                            )
+                            .await;
+                        compressor.flush().await.unwrap();
+                        compressor.shutdown().await.unwrap();
 
-                            let user_id = transaction_update.caller_identity.__identity__.clone();
+                        let user_id = transaction_update.caller_identity.__identity__.clone();
 
-                            let user_id = app_state.user_map.get(&user_id.as_ref().to_string());
+                        let user_id = app_state.user_map.get(&user_id.to_string());
 
-                            raw_events_data.push(
-                                RawEventData {
-                                    timestamp: transaction_update.timestamp.microseconds,
-                                    request_id: transaction_update.reducer_call.request_id as i64,
-                                    reducer_name: transaction_update
-                                        .reducer_call
-                                        .reducer_name
-                                        .clone()
-                                        .parse()
-                                        .unwrap(),
-                                    reducer_id: transaction_update.reducer_call.reducer_id as i64,
-                                    event_data: compressor.into_inner(),
-                                    user_id: user_id.cloned(),
-                                }
-                                .into_active_model(),
-                            );
-                        }
-                        _ => {}
+                        raw_events_data.push(
+                            RawEventData {
+                                timestamp: transaction_update.timestamp.microseconds,
+                                request_id: transaction_update.reducer_call.request_id as i64,
+                                reducer_name: transaction_update
+                                    .reducer_call
+                                    .reducer_name
+                                    .clone()
+                                    .parse()
+                                    .unwrap(),
+                                reducer_id: transaction_update.reducer_call.reducer_id as i64,
+                                event_data: compressor.into_inner(),
+                                user_id: user_id.cloned(),
+                            }
+                            .into_active_model(),
+                        );
                     }
                 }
 
@@ -206,7 +202,7 @@ pub fn start_websocket_bitcraft_logic(
                             )
                             .increment(1);
 
-                            if transaction_update.status.committed.tables.len() == 0 {
+                            if transaction_update.status.committed.tables.is_empty() {
                                 continue;
                             }
 
@@ -215,13 +211,13 @@ pub fn start_websocket_bitcraft_logic(
                                     "websocket_message_table_count",
                                     &[
                                         ("type", "TransactionUpdate".to_string()),
-                                        ("table", format!("{}", table.table_name.as_ref())),
+                                        ("table", format!("{}", table.table_name)),
                                     ]
                                 )
                                 .increment(1);
 
                                 if let Some(table_vec) =
-                                    tables.get_mut(&table.table_name.as_ref().to_string())
+                                    tables.get_mut(&table.table_name.to_string())
                                 {
                                     //TODO this probebly has to be rewriten
                                     table.updates.iter().for_each(|updates| {
@@ -262,7 +258,7 @@ pub fn start_websocket_bitcraft_logic(
                             )
                             .increment(1);
 
-                            if subscription_update.database_update.tables.len() == 0 {
+                            if subscription_update.database_update.tables.is_empty() {
                                 continue;
                             }
 
@@ -271,7 +267,7 @@ pub fn start_websocket_bitcraft_logic(
                                     "websocket_message_table_count",
                                     &[
                                         ("type", "InitialSubscription".to_string()),
-                                        ("table", format!("{}", table.table_name.as_ref())),
+                                        ("table", format!("{}", table.table_name)),
                                     ]
                                 )
                                 .increment(1);
@@ -282,7 +278,7 @@ pub fn start_websocket_bitcraft_logic(
                                     for update in table.updates.iter() {
                                         for row in update.inserts.iter() {
                                             let user_state: user_state::Model =
-                                                match serde_json::from_str(&row) {
+                                                match serde_json::from_str(row) {
                                                     Ok(user_state) => user_state,
                                                     Err(error) => {
                                                         error!(
@@ -428,7 +424,7 @@ pub fn start_websocket_bitcraft_logic(
                                     for update in table.updates.iter() {
                                         for row in update.inserts.iter() {
                                             let mobile_entity_state: entity::mobile_entity_state::Model =
-                                                match serde_json::from_str(&row) {
+                                                match serde_json::from_str(row) {
                                                     Ok(mobile_entity_state) => mobile_entity_state,
                                                     Err(error) => {
                                                         error!("InitialSubscription Insert mobile_entity_state Error: {:?} -> {:?}", error, row);
@@ -454,7 +450,7 @@ pub fn start_websocket_bitcraft_logic(
                                     for update in table.updates.iter() {
                                         for row in update.inserts.iter() {
                                             let claim_tile_state: entity::claim_tile_state::Model =
-                                                match serde_json::from_str(&row) {
+                                                match serde_json::from_str(row) {
                                                     Ok(claim_tile_state) => claim_tile_state,
                                                     Err(error) => {
                                                         error!(
@@ -477,7 +473,7 @@ pub fn start_websocket_bitcraft_logic(
                                     for update in table.updates.iter() {
                                         for row in update.inserts.iter() {
                                             let crafting_recipe_desc: entity::crafting_recipe::Model =
-                                                match serde_json::from_str(&row) {
+                                                match serde_json::from_str(row) {
                                                     Ok(crafting_recipe_desc) => crafting_recipe_desc,
                                                     Err(error) => {
                                                         error!("InitialSubscription Insert crafting_recipe_desc Error: {:?} -> {:?}", error, row);
@@ -497,7 +493,7 @@ pub fn start_websocket_bitcraft_logic(
                                     for update in table.updates.iter() {
                                         for row in update.inserts.iter() {
                                             let player_action_state: entity::player_action_state::Model =
-                                                match serde_json::from_str(&row) {
+                                                match serde_json::from_str(row) {
                                                     Ok(player_action_state) => player_action_state,
                                                     Err(error) => {
                                                         error!("InitialSubscription Insert player_action_state Error: {:?} -> {:?}", error, row);
@@ -517,7 +513,7 @@ pub fn start_websocket_bitcraft_logic(
                                     for update in table.updates.iter() {
                                         for row in update.inserts.iter() {
                                             let action_state: entity::action_state::Model =
-                                                match serde_json::from_str(&row) {
+                                                match serde_json::from_str(row) {
                                                     Ok(action_state) => action_state,
                                                     Err(error) => {
                                                         error!(
@@ -576,13 +572,11 @@ pub fn start_websocket_bitcraft_logic(
 
                     if table_name == "user_state" {
                         for row in table.iter() {
-                            if row.inserts.len() == 0 {
+                            if row.inserts.is_empty() {
                                 continue;
                             }
 
-                            match serde_json::from_str::<user_state::Model>(
-                                &row.inserts[0].as_ref(),
-                            ) {
+                            match serde_json::from_str::<user_state::Model>(&row.inserts[0]) {
                                 Ok(user_state) => {
                                     app_state.user_map.insert(
                                         user_state.identity.__identity__,
@@ -713,7 +707,7 @@ pub fn start_websocket_bitcraft_logic(
 
                             for row in current_table.deletes.iter() {
                                 let mobile_entity_state: entity::mobile_entity_state::Model =
-                                    match serde_json::from_str(&row) {
+                                    match serde_json::from_str(row) {
                                         Ok(mobile_entity_state) => mobile_entity_state,
                                         Err(error) => {
                                             error!(
@@ -732,7 +726,7 @@ pub fn start_websocket_bitcraft_logic(
 
                             for row in current_table.inserts.iter() {
                                 let mobile_entity_state: entity::mobile_entity_state::Model =
-                                    match serde_json::from_str(&row) {
+                                    match serde_json::from_str(row) {
                                         Ok(mobile_entity_state) => mobile_entity_state,
                                         Err(error) => {
                                             error!(
@@ -898,7 +892,7 @@ pub fn start_websocket_bitcraft_logic(
                         for current_table in table.iter() {
                             for row in current_table.inserts.iter() {
                                 let claim_tile_state: entity::claim_tile_state::Model =
-                                    match serde_json::from_str(&row) {
+                                    match serde_json::from_str(row) {
                                         Ok(claim_tile_state) => claim_tile_state,
                                         Err(error) => {
                                             error!(
@@ -920,7 +914,7 @@ pub fn start_websocket_bitcraft_logic(
                         for current_table in table.iter() {
                             for row in current_table.inserts.iter() {
                                 let action_state: entity::action_state::Model =
-                                    match serde_json::from_str(&row) {
+                                    match serde_json::from_str(row) {
                                         Ok(action_state) => action_state,
                                         Err(error) => {
                                             error!(
@@ -956,7 +950,7 @@ pub fn start_websocket_bitcraft_logic(
                         for current_table in table.iter() {
                             for row in current_table.inserts.iter() {
                                 let player_action_state: entity::player_action_state::Model =
-                                    match serde_json::from_str(&row) {
+                                    match serde_json::from_str(row) {
                                         Ok(player_action_state) => player_action_state,
                                         Err(error) => {
                                             error!(
@@ -1054,11 +1048,9 @@ pub fn start_websocket_bitcraft_logic(
                         debug!("Received identity token: {identity_token:?}");
                     }
                 }
+            } else if let Message::Ping(_) = message {
             } else {
-                if let Message::Ping(_) = message {
-                } else {
-                    warn!("Message: {:?}", message);
-                }
+                warn!("Message: {:?}", message);
             }
         }
     });

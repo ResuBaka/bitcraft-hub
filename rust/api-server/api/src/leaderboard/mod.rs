@@ -15,7 +15,6 @@ use serde_json::Value;
 use service::Query;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
-use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[macro_export]
@@ -203,6 +202,9 @@ pub(crate) struct LeaderboardTime {
     pub(crate) rank: u64,
 }
 
+type LeaderboardRankTypeTasks =
+    Vec<tokio::task::JoinHandle<Result<(String, Vec<RankType>), (StatusCode, &'static str)>>>;
+
 pub(crate) async fn get_top_100(
     state: State<std::sync::Arc<AppState>>,
 ) -> Result<Json<Value>, (StatusCode, &'static str)> {
@@ -218,9 +220,7 @@ pub(crate) async fn get_top_100(
 
     let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
-    let mut tasks: Vec<
-        tokio::task::JoinHandle<Result<(String, Vec<RankType>), (StatusCode, &'static str)>>,
-    > = vec![];
+    let mut tasks: LeaderboardRankTypeTasks = vec![];
 
     for skill in skills {
         if skill.skill_category == 2 || skill.skill_category == 0 {
@@ -250,7 +250,7 @@ pub(crate) async fn get_top_100(
                     player_id: entry.entity_id,
                     player_name,
                     experience: entry.experience,
-                    level: experience_to_level(entry.experience.clone() as i64),
+                    level: experience_to_level(entry.experience as i64),
                     rank: rank as u64,
                 }));
             }
@@ -345,29 +345,27 @@ pub(crate) async fn get_top_100(
     let results = futures::future::join_all(tasks).await;
     let mut player_ids: Vec<i64> = vec![];
 
-    for results_inner in results {
-        if let Ok(result) = results_inner {
-            if let Ok((name, mut leaderboard)) = result {
-                player_ids.append(
-                    &mut leaderboard
-                        .iter()
-                        .map(|x| match x {
-                            RankType::Skill(x) => x.player_id,
-                            RankType::Level(x) => x.player_id,
-                            RankType::Experience(x) => x.player_id,
-                            RankType::Time(x) => x.player_id,
-                            RankType::ExperiencePerHour(x) => x.player_id,
-                        })
-                        .collect::<Vec<i64>>(),
-                );
+    for result in results.into_iter().flatten() {
+        if let Ok((name, mut leaderboard)) = result {
+            player_ids.append(
+                &mut leaderboard
+                    .iter()
+                    .map(|x| match x {
+                        RankType::Skill(x) => x.player_id,
+                        RankType::Level(x) => x.player_id,
+                        RankType::Experience(x) => x.player_id,
+                        RankType::Time(x) => x.player_id,
+                        RankType::ExperiencePerHour(x) => x.player_id,
+                    })
+                    .collect::<Vec<i64>>(),
+            );
 
-                leaderboard_result
-                    .entry(name)
-                    .or_insert(Vec::new())
-                    .append(&mut leaderboard);
-            } else {
-                error!("Error: {result:?}");
-            }
+            leaderboard_result
+                .entry(name)
+                .or_default()
+                .append(&mut leaderboard);
+        } else {
+            error!("Error: {result:?}");
         }
     }
 
@@ -455,7 +453,7 @@ pub(crate) fn experience_to_level(experience: i64) -> i32 {
 
 #[allow(dead_code)]
 pub(crate) async fn load_experience_state_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<experience_state::Model>> {
     let item_file = File::open(storage_path.join("State/ExperienceState.json"))?;
     let experience_state: Value = serde_json::from_reader(&item_file)?;
@@ -469,8 +467,7 @@ pub(crate) async fn load_experience_state_from_file(
                 .clone(),
         )?
         .into_iter()
-        .map(|x| row_to_xp_values(x))
-        .flatten()
+        .flat_map(row_to_xp_values)
         .collect();
 
     Ok(experience_states)
@@ -534,14 +531,13 @@ async fn db_insert_experience_state(
 ) -> anyhow::Result<()> {
     let resolved_buffer_before_insert = buffer_before_insert
         .iter()
-        .map(|x| {
+        .flat_map(|x| {
             x.experience_stacks.iter().map(|y| experience_state::Model {
                 entity_id: x.entity_id,
                 skill_id: y.0,
                 experience: y.1,
             })
         })
-        .flatten()
         .collect::<Vec<experience_state::Model>>();
 
     let experience_state_from_db = experience_state::Entity::find()
@@ -572,22 +568,14 @@ async fn db_insert_experience_state(
             match experience_state_from_db_map
                 .get(&(experience_state.entity_id, experience_state.skill_id))
             {
-                Some(experience_state_from_db) => {
-                    if experience_state_from_db != *experience_state {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
+                Some(experience_state_from_db) => experience_state_from_db != *experience_state,
+                None => true,
             }
-
-            return false;
         })
         .map(|experience_state| experience_state.clone().into_active_model())
         .collect::<Vec<experience_state::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -627,6 +615,9 @@ fn row_to_xp_values(row: Value) -> Vec<experience_state::Model> {
         .collect::<Vec<experience_state::Model>>()
 }
 
+type PlayerLeaderboardTasks =
+    Vec<tokio::task::JoinHandle<Result<(String, RankType), (StatusCode, &'static str)>>>;
+
 pub(crate) async fn player_leaderboard(
     state: State<std::sync::Arc<AppState>>,
     Path(player_id): Path<i64>,
@@ -641,9 +632,7 @@ pub(crate) async fn player_leaderboard(
 
     let mut leaderboard_result: BTreeMap<String, RankType> = BTreeMap::new();
 
-    let mut tasks: Vec<
-        tokio::task::JoinHandle<Result<(String, RankType), (StatusCode, &'static str)>>,
-    > = vec![];
+    let mut tasks: PlayerLeaderboardTasks = vec![];
 
     for skill in skills {
         if skill.skill_category == 2 || skill.skill_category == 0 {
@@ -679,7 +668,7 @@ pub(crate) async fn player_leaderboard(
                     player_id: entry.entity_id,
                     player_name,
                     experience: entry.experience,
-                    level: experience_to_level(entry.experience.clone() as i64),
+                    level: experience_to_level(entry.experience as i64),
                     rank: rank.unwrap(),
                 }),
             ))
@@ -742,13 +731,11 @@ pub(crate) async fn player_leaderboard(
 
     let results = futures::future::join_all(tasks).await;
 
-    for results_inner in results {
-        if let Ok(result) = results_inner {
-            if let Ok((name, leaderboard)) = result {
-                leaderboard_result.entry(name).or_insert(leaderboard);
-            } else {
-                error!("Error: {result:?}");
-            }
+    for result in results.into_iter().flatten() {
+        if let Ok((name, leaderboard)) = result {
+            leaderboard_result.entry(name).or_insert(leaderboard);
+        } else {
+            error!("Error: {result:?}");
         }
     }
 
@@ -837,9 +824,7 @@ pub(crate) async fn get_claim_leaderboard(
 
     let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
-    let mut tasks: Vec<
-        tokio::task::JoinHandle<Result<(String, Vec<RankType>), (StatusCode, &'static str)>>,
-    > = vec![];
+    let mut tasks: LeaderboardRankTypeTasks = vec![];
 
     for skill in skills {
         if skill.skill_category == 2 || skill.skill_category == 0 {
@@ -871,7 +856,7 @@ pub(crate) async fn get_claim_leaderboard(
                     player_id: entry.entity_id,
                     player_name,
                     experience: entry.experience,
-                    level: experience_to_level(entry.experience.clone() as i64),
+                    level: experience_to_level(entry.experience as i64),
                     rank: rank as u64,
                 }));
             }
@@ -943,29 +928,27 @@ pub(crate) async fn get_claim_leaderboard(
     let results = futures::future::join_all(tasks).await;
     let mut player_ids: Vec<i64> = vec![];
 
-    for results_inner in results {
-        if let Ok(result) = results_inner {
-            if let Ok((name, mut leaderboard)) = result {
-                player_ids.append(
-                    &mut leaderboard
-                        .iter()
-                        .map(|x| match x {
-                            RankType::Skill(x) => x.player_id,
-                            RankType::Level(x) => x.player_id,
-                            RankType::Experience(x) => x.player_id,
-                            RankType::Time(x) => x.player_id,
-                            RankType::ExperiencePerHour(x) => x.player_id,
-                        })
-                        .collect::<Vec<i64>>(),
-                );
+    for result in results.into_iter().flatten() {
+        if let Ok((name, mut leaderboard)) = result {
+            player_ids.append(
+                &mut leaderboard
+                    .iter()
+                    .map(|x| match x {
+                        RankType::Skill(x) => x.player_id,
+                        RankType::Level(x) => x.player_id,
+                        RankType::Experience(x) => x.player_id,
+                        RankType::Time(x) => x.player_id,
+                        RankType::ExperiencePerHour(x) => x.player_id,
+                    })
+                    .collect::<Vec<i64>>(),
+            );
 
-                leaderboard_result
-                    .entry(name)
-                    .or_insert(Vec::new())
-                    .append(&mut leaderboard);
-            } else {
-                error!("Error: {result:?}");
-            }
+            leaderboard_result
+                .entry(name)
+                .or_default()
+                .append(&mut leaderboard);
+        } else {
+            error!("Error: {result:?}");
         }
     }
 
@@ -1048,9 +1031,8 @@ pub(crate) async fn handle_initial_subscription(
     .update_columns([experience_state::Column::Experience])
     .to_owned();
 
-    let chunk_size = Some(500);
-    let mut buffer_before_insert: Vec<PackedExperienceState> =
-        Vec::with_capacity(chunk_size.unwrap_or(500));
+    let chunk_size = 500;
+    let mut buffer_before_insert: Vec<PackedExperienceState> = Vec::with_capacity(chunk_size);
     let mut experience_state_to_delete = get_known_experience_states(p0).await?;
     for update in p1.updates.iter() {
         for row in update.inserts.iter() {
@@ -1076,7 +1058,7 @@ pub(crate) async fn handle_initial_subscription(
                     }
 
                     buffer_before_insert.push(experience_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(500) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict)
                             .await?;
                     }
@@ -1088,12 +1070,12 @@ pub(crate) async fn handle_initial_subscription(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         db_insert_experience_state(p0, &mut buffer_before_insert, &on_conflict).await?;
         info!("experience_state last batch imported");
     }
 
-    if experience_state_to_delete.len() > 0 {
+    if !experience_state_to_delete.is_empty() {
         delete_experience_state(p0, &mut experience_state_to_delete).await?;
     }
 
@@ -1102,7 +1084,7 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
     skill_id_to_skill_name: &HashMap<i64, String>,
     tx: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
@@ -1119,11 +1101,11 @@ pub(crate) async fn handle_transaction_update(
     let mut potential_deletes = HashSet::new();
 
     for p1 in tables.iter() {
-        let event_type = if p1.inserts.len() > 0 && p1.deletes.len() > 0 {
+        let event_type = if !p1.inserts.is_empty() && !p1.deletes.is_empty() {
             "update"
-        } else if p1.inserts.len() > 0 && p1.deletes.len() == 0 {
+        } else if !p1.inserts.is_empty() && p1.deletes.is_empty() {
             "insert"
-        } else if p1.deletes.len() > 0 && p1.inserts.len() == 0 {
+        } else if !p1.deletes.is_empty() && p1.inserts.is_empty() {
             "delete"
         } else {
             "unknown"
@@ -1376,7 +1358,7 @@ pub(crate) async fn handle_transaction_update(
         .expect("Could not send total experience to websocket");
     }
 
-    if potential_deletes.len() > 0 {
+    if !potential_deletes.is_empty() {
         delete_experience_state(p0, &mut potential_deletes).await?;
     }
 

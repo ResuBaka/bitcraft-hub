@@ -45,10 +45,7 @@ pub(crate) async fn list_items_and_cargo(
 ) -> Result<Json<ItemsAndCargoResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(5);
-    let search = match params.search {
-        Some(search) => Some(search.to_lowercase()),
-        None => None,
-    };
+    let search = params.search.map(|search| search.to_lowercase());
     let tier = params.tier;
     let tag = params.tag;
 

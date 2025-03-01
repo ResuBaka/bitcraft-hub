@@ -16,7 +16,6 @@ use sea_orm::{
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
@@ -65,13 +64,13 @@ async fn get_trade_orders(
         vec![]
     };
 
-    let items_ids = if items_ids.len() > 0 {
+    let items_ids = if !items_ids.is_empty() {
         Some(items_ids)
     } else {
         None
     };
 
-    let cargo_ids = if cargo_ids.len() > 0 {
+    let cargo_ids = if !cargo_ids.is_empty() {
         Some(cargo_ids)
     } else {
         None
@@ -183,7 +182,9 @@ pub(crate) struct TradeOrdersResponse {
     per_page: u64,
 }
 
-pub(crate) async fn load_trade_order_from_file(storage_path: &PathBuf) -> anyhow::Result<String> {
+pub(crate) async fn load_trade_order_from_file(
+    storage_path: &std::path::PathBuf,
+) -> anyhow::Result<String> {
     Ok(std::fs::read_to_string(
         storage_path.join("State/TradeOrderState.json"),
     )?)
@@ -221,7 +222,7 @@ pub(crate) async fn load_trade_order(
 ) -> anyhow::Result<()> {
     let trade_orders = match &config.import_type {
         crate::config::ImportType::File => {
-            load_trade_order_from_file(&PathBuf::from(&config.storage_path)).await?
+            load_trade_order_from_file(&std::path::PathBuf::from(&config.storage_path)).await?
         }
         crate::config::ImportType::Game => {
             load_trade_order_from_spacetimedb(client, domain, protocol, database).await?
@@ -313,7 +314,7 @@ pub(crate) async fn import_trade_order(
                 .map(|trade_order| trade_order.clone().into_active_model())
                 .collect::<Vec<trade_order::ActiveModel>>();
 
-            if things_to_insert.len() == 0 {
+            if things_to_insert.is_empty() {
                 debug!("Nothing to insert");
                 buffer_before_insert.clear();
                 continue;
@@ -339,7 +340,7 @@ pub(crate) async fn import_trade_order(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let trade_order_from_db = trade_order::Entity::find()
             .filter(
                 trade_order::Column::EntityId.is_in(
@@ -376,7 +377,7 @@ pub(crate) async fn import_trade_order(
             .map(|trade_order| trade_order.clone().into_active_model())
             .collect::<Vec<trade_order::ActiveModel>>();
 
-        if things_to_insert.len() == 0 {
+        if things_to_insert.is_empty() {
             debug!("Nothing to insert");
             buffer_before_insert.clear();
         } else {
@@ -395,7 +396,7 @@ pub(crate) async fn import_trade_order(
         start.elapsed().as_secs()
     );
 
-    if trade_order_to_delete.len() > 0 {
+    if !trade_order_to_delete.is_empty() {
         info!("trade_order's to delete: {:?}", trade_order_to_delete);
         trade_order::Entity::delete_many()
             .filter(trade_order::Column::EntityId.is_in(trade_order_to_delete))

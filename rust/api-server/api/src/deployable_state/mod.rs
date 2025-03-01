@@ -9,11 +9,10 @@ use sea_orm::{
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::path::PathBuf;
 
 #[allow(dead_code)]
 pub(crate) async fn load_deployable_state_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<deployable_state::Model>> {
     let item_file = File::open(storage_path.join("State/DeployableState.json"))?;
     let deployable_state: Value = serde_json::from_reader(&item_file)?;
@@ -71,22 +70,14 @@ async fn db_insert_deployable_state(
         .iter()
         .filter(|deployable_state| {
             match deployable_state_from_db_map.get(&deployable_state.entity_id) {
-                Some(deployable_state_from_db) => {
-                    if deployable_state_from_db != *deployable_state {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
+                Some(deployable_state_from_db) => deployable_state_from_db != *deployable_state,
+                None => true,
             }
-
-            return false;
         })
         .map(|deployable_state| deployable_state.clone().into_active_model())
         .collect::<Vec<deployable_state::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -132,13 +123,13 @@ fn get_deployable_state_on_conflict() -> OnConflict {
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
 ) -> anyhow::Result<()> {
     let on_conflict = get_deployable_state_on_conflict();
 
     let mut buffer_before_insert = HashMap::new();
     let mut found_in_inserts = HashSet::new();
-    let chunk_size = Some(1000);
+    let chunk_size = 1000;
 
     // let mut known_player_username_state_ids = get_known_player_uusername_state_ids(p0).await?;
     for p1 in tables.iter() {
@@ -148,7 +139,7 @@ pub(crate) async fn handle_transaction_update(
                     found_in_inserts.insert(building_state.entity_id);
                     buffer_before_insert.insert(building_state.entity_id, building_state);
 
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(1000) {
+                    if buffer_before_insert.len() == chunk_size {
                         let mut buffer_before_insert_vec = buffer_before_insert
                             .clone()
                             .into_iter()
@@ -167,7 +158,7 @@ pub(crate) async fn handle_transaction_update(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let mut buffer_before_insert_vec = buffer_before_insert
             .clone()
             .into_iter()
@@ -194,7 +185,7 @@ pub(crate) async fn handle_transaction_update(
         }
     }
 
-    if players_to_delete.len() > 0 {
+    if !players_to_delete.is_empty() {
         delete_deployable_state(p0, players_to_delete).await?;
     }
 
@@ -209,7 +200,7 @@ pub(crate) async fn handle_initial_subscription(
 
     let mut known_deployable_state_ids = known_deployable_state_ids(conn).await?;
 
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert: Vec<deployable_state::Model> = vec![];
 
     for update in p1.updates.iter() {
@@ -220,7 +211,7 @@ pub(crate) async fn handle_initial_subscription(
                         known_deployable_state_ids.remove(&building_state.entity_id);
                     }
                     buffer_before_insert.push(building_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_deployable_state(conn, &mut buffer_before_insert, &on_conflict)
                             .await?;
                     }
@@ -231,13 +222,13 @@ pub(crate) async fn handle_initial_subscription(
             }
         }
     }
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
             db_insert_deployable_state(conn, &mut buffer_chnk.to_vec(), &on_conflict).await?;
         }
     }
 
-    if known_deployable_state_ids.len() > 0 {
+    if !known_deployable_state_ids.is_empty() {
         delete_deployable_state(conn, known_deployable_state_ids).await?;
     }
 

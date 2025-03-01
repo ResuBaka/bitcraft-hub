@@ -14,7 +14,6 @@ use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
-use std::path::PathBuf;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -50,7 +49,7 @@ pub async fn list_items(
 
 #[allow(dead_code)]
 pub(crate) async fn load_item_desc_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<item_desc::Model>> {
     let item_file = File::open(storage_path.join("State/InventoryState.json"))?;
     let inventory: Value = serde_json::from_reader(&item_file)?;
@@ -92,7 +91,7 @@ pub(crate) async fn load_state_from_spacetimedb(
     let claim_descriptions =
         load_item_desc_from_spacetimedb(client, domain, protocol, database).await?;
 
-    import_items(&conn, claim_descriptions, Some(3000)).await?;
+    import_items(conn, claim_descriptions, Some(3000)).await?;
 
     Ok(())
 }
@@ -168,24 +167,14 @@ pub(crate) async fn import_items(
 
             let things_to_insert = buffer_before_insert
                 .iter()
-                .filter(|item| {
-                    match items_from_db_map.get(&item.id) {
-                        Some(item_from_db) => {
-                            if item_from_db != *item {
-                                return true;
-                            }
-                        }
-                        None => {
-                            return true;
-                        }
-                    }
-
-                    return false;
+                .filter(|item| match items_from_db_map.get(&item.id) {
+                    Some(item_from_db) => item_from_db != *item,
+                    None => true,
                 })
                 .map(|item| item.clone().into_active_model())
                 .collect::<Vec<item_desc::ActiveModel>>();
 
-            if things_to_insert.len() == 0 {
+            if things_to_insert.is_empty() {
                 debug!("Nothing to insert");
                 buffer_before_insert.clear();
                 continue;
@@ -195,8 +184,8 @@ pub(crate) async fn import_items(
 
             for item in &things_to_insert {
                 let item_in = items_to_delete.iter().position(|id| id == item.id.as_ref());
-                if item_in.is_some() {
-                    items_to_delete.remove(item_in.unwrap());
+                if let Some(item_in) = item_in {
+                    items_to_delete.remove(item_in);
                 }
             }
 
@@ -209,7 +198,7 @@ pub(crate) async fn import_items(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let items_from_db = item_desc::Entity::find()
             .filter(
                 item_desc::Column::Id.is_in(
@@ -229,24 +218,14 @@ pub(crate) async fn import_items(
 
         let things_to_insert = buffer_before_insert
             .iter()
-            .filter(|item| {
-                match items_from_db_map.get(&item.id) {
-                    Some(item_from_db) => {
-                        if item_from_db != *item {
-                            return true;
-                        }
-                    }
-                    None => {
-                        return true;
-                    }
-                }
-
-                return false;
+            .filter(|item| match items_from_db_map.get(&item.id) {
+                Some(item_from_db) => item_from_db != *item,
+                None => true,
             })
             .map(|item| item.clone().into_active_model())
             .collect::<Vec<item_desc::ActiveModel>>();
 
-        if things_to_insert.len() == 0 {
+        if things_to_insert.is_empty() {
             debug!("Nothing to insert");
             buffer_before_insert.clear();
         } else {
@@ -262,7 +241,7 @@ pub(crate) async fn import_items(
     }
     info!("Importing item finished in {}s", start.elapsed().as_secs());
 
-    if items_to_delete.len() > 0 {
+    if !items_to_delete.is_empty() {
         info!("item's to delete: {:?}", items_to_delete);
         item_desc::Entity::delete_many()
             .filter(item_desc::Column::Id.is_in(items_to_delete))
@@ -273,7 +252,7 @@ pub(crate) async fn import_items(
     Ok(())
 }
 
-pub async fn import_job_item_desc(temp_config: Config) -> () {
+pub async fn import_job_item_desc(temp_config: Config) {
     let temp_config = temp_config.clone();
     let config = temp_config.clone();
     if config.live_updates {

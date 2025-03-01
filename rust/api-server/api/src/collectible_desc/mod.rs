@@ -44,24 +44,16 @@ async fn db_insert_collectible_descs(
 
     let things_to_insert = buffer_before_insert
         .iter()
-        .filter(|collectible_desc| {
-            match collectible_descs_from_db_map.get(&collectible_desc.id) {
-                Some(collectible_desc_from_db) => {
-                    if collectible_desc_from_db != *collectible_desc {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
-            }
-
-            return false;
-        })
+        .filter(
+            |collectible_desc| match collectible_descs_from_db_map.get(&collectible_desc.id) {
+                Some(collectible_desc_from_db) => collectible_desc_from_db != *collectible_desc,
+                None => true,
+            },
+        )
         .map(|collectible_desc| collectible_desc.clone().into_active_model())
         .collect::<Vec<collectible_desc::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
     } else {
@@ -98,9 +90,8 @@ pub(crate) async fn handle_initial_subscription(
     p0: &DatabaseConnection,
     p1: &Table,
 ) -> anyhow::Result<()> {
-    let chunk_size = Some(500);
-    let mut buffer_before_insert: Vec<collectible_desc::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
+    let chunk_size = 500;
+    let mut buffer_before_insert: Vec<collectible_desc::Model> = Vec::with_capacity(chunk_size);
 
     let on_conflict = sea_query::OnConflict::column(collectible_desc::Column::Id)
         .update_columns([
@@ -135,7 +126,7 @@ pub(crate) async fn handle_initial_subscription(
                         known_collectible_desc_ids.remove(&collectible_desc.id);
                     }
                     buffer_before_insert.push(collectible_desc);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict)
                             .await?;
                     }
@@ -150,11 +141,11 @@ pub(crate) async fn handle_initial_subscription(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict).await?;
     }
 
-    if known_collectible_desc_ids.len() > 0 {
+    if !known_collectible_desc_ids.is_empty() {
         delete_collectible_desc(p0, known_collectible_desc_ids).await?;
     }
 
@@ -201,7 +192,7 @@ pub(crate) async fn handle_initial_subscription(
 //         }
 //     }
 //
-//     if buffer_before_insert.len() > 0 {
+//     if !buffer_before_insert.is_empty() {
 //         let mut buffer_before_insert_vec = buffer_before_insert
 //             .clone()
 //             .into_iter()
@@ -229,7 +220,7 @@ pub(crate) async fn handle_initial_subscription(
 //         }
 //     }
 //
-//     if players_to_delete.len() > 0 {
+//     if !players_to_delete.is_empty() {
 //         delete_collectible_desc(p0, players_to_delete).await?;
 //     }
 //

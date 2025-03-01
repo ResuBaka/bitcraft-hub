@@ -20,7 +20,6 @@ use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
-use std::path::PathBuf;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -189,7 +188,7 @@ pub(crate) async fn find_building_state(
 
 #[allow(dead_code)]
 pub(crate) async fn load_building_state_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<building_state::Model>> {
     let building_states: Vec<building_state::Model> = {
         let item_file = File::open(storage_path.join("State/BuildingState.json"))?;
@@ -234,7 +233,7 @@ pub(crate) async fn load_state_from_spacetimedb(
     let building_descs =
         load_building_state_from_spacetimedb(client, domain, protocol, database).await?;
 
-    import_building_state(&conn, building_descs, None).await?;
+    import_building_state(conn, building_descs, None).await?;
 
     Ok(())
 }
@@ -279,7 +278,7 @@ pub(crate) async fn import_building_state(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         db_insert_building_state(conn, &mut buffer_before_insert, &on_conflict).await?;
         info!("building_state last batch imported");
     }
@@ -288,7 +287,7 @@ pub(crate) async fn import_building_state(
         start.elapsed().as_secs()
     );
 
-    if known_building_state_ids.len() > 0 {
+    if !known_building_state_ids.is_empty() {
         delete_building_state(conn, known_building_state_ids).await?;
     }
 
@@ -349,24 +348,16 @@ async fn db_insert_building_state(
 
     let things_to_insert = buffer_before_insert
         .iter()
-        .filter(|building_state| {
-            match building_state_from_db_map.get(&building_state.entity_id) {
-                Some(building_state_from_db) => {
-                    if building_state_from_db != *building_state {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
-            }
-
-            return false;
-        })
+        .filter(
+            |building_state| match building_state_from_db_map.get(&building_state.entity_id) {
+                Some(building_state_from_db) => building_state_from_db != *building_state,
+                None => true,
+            },
+        )
         .map(|building_state| building_state.clone().into_active_model())
         .collect::<Vec<building_state::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -386,7 +377,7 @@ async fn db_insert_building_state(
 
 #[allow(dead_code)]
 pub(crate) async fn load_building_desc_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<building_desc::Model>> {
     let building_descs: Vec<building_desc::Model> = {
         let item_file = File::open(storage_path.join("Desc/BuildingDesc.json"))?;
@@ -411,7 +402,7 @@ async fn delete_building_descs(
     Ok(())
 }
 
-pub async fn import_job_building_desc(temp_config: Config) -> () {
+pub async fn import_job_building_desc(temp_config: Config) {
     let config = temp_config.clone();
     if config.live_updates {
         let conn = super::create_importer_default_db_connection(config.clone()).await;
@@ -465,7 +456,7 @@ fn import_internal_building_state(config: Config, conn: DatabaseConnection, clie
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(building_state::Column::EntityId)
         .update_columns([
@@ -485,7 +476,7 @@ pub(crate) async fn handle_transaction_update(
             match serde_json::from_str::<building_state::Model>(row.as_ref()) {
                 Ok(building_state) => {
                     let current_building_state =
-                        QueryCore::find_building_state_by_id(&p0, building_state.entity_id).await?;
+                        QueryCore::find_building_state_by_id(p0, building_state.entity_id).await?;
 
                     if current_building_state.is_some() {
                         let current_building_state = current_building_state.unwrap();
@@ -507,7 +498,9 @@ pub(crate) async fn handle_transaction_update(
                         .await?;
                     }
                 }
-                Err(_) => {}
+                Err(error) => {
+                    error!("TransactionUpdate Insert BuildingState Error: {error}");
+                }
             }
         }
     }
@@ -521,7 +514,7 @@ pub(crate) async fn handle_transaction_update(
                     }
 
                     let current_building_state =
-                        QueryCore::find_building_state_by_id(&p0, building_state.entity_id).await?;
+                        QueryCore::find_building_state_by_id(p0, building_state.entity_id).await?;
 
                     if current_building_state.is_some() {
                         let _ = building_state::Entity::delete_many()
@@ -530,7 +523,9 @@ pub(crate) async fn handle_transaction_update(
                             .await?;
                     }
                 }
-                Err(_) => {}
+                Err(error) => {
+                    error!("TransactionUpdate Insert BuildingState Error: {error}");
+                }
             }
         }
     }
@@ -552,7 +547,7 @@ pub(crate) async fn handle_initial_subscription(
         ])
         .to_owned();
 
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert: Vec<building_state::Model> = vec![];
 
     let mut known_building_state_ids = get_known_building_state_ids(p0).await?;
@@ -564,7 +559,7 @@ pub(crate) async fn handle_initial_subscription(
                         known_building_state_ids.remove(&building_state.entity_id);
                     }
                     buffer_before_insert.push(building_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_building_state(p0, &mut buffer_before_insert, &on_conflict)
                             .await?;
                     }
@@ -576,13 +571,13 @@ pub(crate) async fn handle_initial_subscription(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
             db_insert_building_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
         }
     }
 
-    if known_building_state_ids.len() > 0 {
+    if !known_building_state_ids.is_empty() {
         delete_building_state(p0, known_building_state_ids).await?;
     }
 

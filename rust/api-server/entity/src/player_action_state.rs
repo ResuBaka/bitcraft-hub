@@ -28,26 +28,25 @@ where
     D: Deserializer<'de>,
 {
     let json = serde_json::Value::deserialize(deserializer)?;
-    match json {
-        serde_json::Value::Array(array) => {
-            if array.len() == 2 {
-                if let serde_json::Value::Number(number) = array[0].clone() {
-                    if let Some(number) = number.as_i64() {
-                        if number == 1 {
-                            return Ok(None);
-                        }
-                    }
-                }
 
-                if let serde_json::Value::Number(number) = array[1].clone() {
-                    if let Some(number) = number.as_i64() {
-                        return Ok(Some(number as i32));
+    if let serde_json::Value::Array(array) = json {
+        if array.len() == 2 {
+            if let serde_json::Value::Number(number) = array[0].clone() {
+                if let Some(number) = number.as_i64() {
+                    if number == 1 {
+                        return Ok(None);
                     }
                 }
             }
+
+            if let serde_json::Value::Number(number) = array[1].clone() {
+                if let Some(number) = number.as_i64() {
+                    return Ok(Some(number as i32));
+                }
+            }
         }
-        _ => {}
     }
+
     Err(serde::de::Error::custom("Invalid value"))
 }
 
@@ -223,6 +222,7 @@ impl<'de> Deserialize<'de> for ActionType {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

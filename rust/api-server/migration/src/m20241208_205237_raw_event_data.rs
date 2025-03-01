@@ -36,7 +36,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(RawEventData::EventData)
-                            .var_binary(1000000000 as u32)
+                            .var_binary(1_000_000_000_u32)
                             .not_null(),
                     )
                     .to_owned(),

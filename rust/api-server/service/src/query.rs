@@ -184,13 +184,9 @@ impl Query {
                     _ => unreachable!(),
                 }
             })
-            .apply_if(tier.clone(), |query, value| {
-                match db.get_database_backend() {
-                    DbBackend::Postgres => {
-                        query.filter(Expr::col(item_desc::Column::Tier).eq(value))
-                    }
-                    _ => unreachable!(),
-                }
+            .apply_if(*tier, |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Tier).eq(value)),
+                _ => unreachable!(),
             })
             .all(db)
             .await
@@ -276,13 +272,9 @@ impl Query {
                     _ => unreachable!(),
                 }
             })
-            .apply_if(tier.clone(), |query, value| {
-                match db.get_database_backend() {
-                    DbBackend::Postgres => {
-                        query.filter(Expr::col(cargo_desc::Column::Tier).eq(value))
-                    }
-                    _ => unreachable!(),
-                }
+            .apply_if(*tier, |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(Expr::col(cargo_desc::Column::Tier).eq(value)),
+                _ => unreachable!(),
             })
             .all(db)
             .await
@@ -1396,7 +1388,7 @@ impl Query {
                 u64::try_from(level).unwrap()
             })
             .collect::<Vec<u64>>();
-        let level = level.get(0).unwrap().clone();
+        let level = *level.first().unwrap();
 
         let query_rank = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
@@ -1575,11 +1567,7 @@ impl Query {
                 let total_experience: i64 = row.try_get("", "total_experience").unwrap();
                 let experience_per_hour: i64 = row.try_get("", "experience_per_hour").unwrap();
 
-                (
-                    entity_id,
-                    total_experience.try_into().unwrap(),
-                    experience_per_hour.try_into().unwrap(),
-                )
+                (entity_id, total_experience, experience_per_hour)
             })
             .collect())
     }
@@ -1611,8 +1599,7 @@ impl Query {
                                 .select_only()
                                 .filter(skill_desc::Column::SkillCategory.is_in(value))
                                 .column(skill_desc::Column::Id)
-                                .into_query()
-                                .into(),
+                                .into_query(),
                         ),
                 );
             })
@@ -1762,11 +1749,7 @@ impl Query {
                 let total_experience: i64 = row.try_get("", "total_experience").unwrap();
                 let experience_per_hour: i64 = row.try_get("", "experience_per_hour").unwrap();
 
-                (
-                    entity_id,
-                    total_experience.try_into().unwrap(),
-                    experience_per_hour.try_into().unwrap(),
-                )
+                (entity_id, total_experience, experience_per_hour)
             })
             .collect())
     }

@@ -10,11 +10,10 @@ use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::path::PathBuf;
 
 #[allow(dead_code)]
 pub(crate) async fn load_claim_tech_state_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<claim_tech_desc::Model>> {
     let item_file = File::open(storage_path.join("State/ClaimTechState.json"))?;
     let claim_tech_state: Value = serde_json::from_reader(&item_file)?;
@@ -72,22 +71,14 @@ async fn db_insert_claim_tech_state(
         .iter()
         .filter(|claim_tech_state| {
             match claim_tech_state_from_db_map.get(&claim_tech_state.entity_id) {
-                Some(claim_tech_state_from_db) => {
-                    if claim_tech_state_from_db != *claim_tech_state {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
+                Some(claim_tech_state_from_db) => claim_tech_state_from_db != *claim_tech_state,
+                None => true,
             }
-
-            return false;
         })
         .map(|claim_tech_state| claim_tech_state.clone().into_active_model())
         .collect::<Vec<claim_tech_state::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -137,7 +128,7 @@ pub(crate) async fn handle_initial_subscription(
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_tech_state_on_conflict();
 
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert: Vec<claim_tech_state::Model> = vec![];
 
     let mut known_building_state_ids = get_known_claim_tech_state_ids(p0).await?;
@@ -149,7 +140,7 @@ pub(crate) async fn handle_initial_subscription(
                         known_building_state_ids.remove(&building_state.entity_id);
                     }
                     buffer_before_insert.push(building_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_claim_tech_state(p0, &mut buffer_before_insert, &on_conflict)
                             .await?;
                     }
@@ -161,13 +152,13 @@ pub(crate) async fn handle_initial_subscription(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
             db_insert_claim_tech_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
         }
     }
 
-    if known_building_state_ids.len() > 0 {
+    if !known_building_state_ids.is_empty() {
         delete_claim_tech_state(p0, known_building_state_ids).await?;
     }
 
@@ -176,7 +167,7 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_tech_state_on_conflict();
 
@@ -187,13 +178,11 @@ pub(crate) async fn handle_transaction_update(
         for row in p1.inserts.iter() {
             match serde_json::from_str::<claim_tech_state::Model>(row.as_ref()) {
                 Ok(building_state) => {
-                    let current_building_state = QueryCore::find_claim_tech_state_by_ids(
-                        &p0,
-                        vec![building_state.entity_id],
-                    )
-                    .await?;
+                    let current_building_state =
+                        QueryCore::find_claim_tech_state_by_ids(p0, vec![building_state.entity_id])
+                            .await?;
 
-                    if current_building_state.len() > 0 {
+                    if !current_building_state.is_empty() {
                         let current_building_state = current_building_state.first().unwrap();
                         if current_building_state != &building_state {
                             found_in_inserts.insert(building_state.entity_id);
@@ -239,7 +228,7 @@ pub(crate) async fn handle_transaction_update(
         }
     }
 
-    if ids_to_delete.len() > 0 {
+    if !ids_to_delete.is_empty() {
         delete_claim_tech_state(p0, ids_to_delete).await?;
     }
 

@@ -93,7 +93,7 @@ impl<'de> Deserialize<'de> for InvalidatesType {
                         14 => Ok(InvalidatesType::Deployable),
                         15 => Ok(InvalidatesType::Title),
                         16 => Ok(InvalidatesType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
+                        _ => Err(de::Error::custom("invalid enum variant invalidates_type")),
                     }
                 } else {
                     Err(de::Error::custom("expected a map with a single key"))
@@ -124,7 +124,7 @@ impl<'de> Deserialize<'de> for InvalidatesType {
                         14 => Ok(InvalidatesType::Deployable),
                         15 => Ok(InvalidatesType::Title),
                         16 => Ok(InvalidatesType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
+                        _ => Err(de::Error::custom("invalid enum variant invalidates_type")),
                     }
                 } else {
                     Err(de::Error::custom(
@@ -158,6 +158,7 @@ pub enum CollectibleType {
     Deployable = 14,
     Title = 15,
     Crown = 16,
+    Pet = 17,
 }
 
 impl<'de> Deserialize<'de> for CollectibleType {
@@ -198,7 +199,8 @@ impl<'de> Deserialize<'de> for CollectibleType {
                         14 => Ok(CollectibleType::Deployable),
                         15 => Ok(CollectibleType::Title),
                         16 => Ok(CollectibleType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
+                        17 => Ok(CollectibleType::Pet),
+                        _ => Err(de::Error::custom("invalid enum variant collectible_type")),
                     }
                 } else {
                     Err(de::Error::custom("expected a map with a single key"))
@@ -230,7 +232,8 @@ impl<'de> Deserialize<'de> for CollectibleType {
                         14 => Ok(CollectibleType::Deployable),
                         15 => Ok(CollectibleType::Title),
                         16 => Ok(CollectibleType::Crown),
-                        _ => Err(de::Error::custom("invalid enum variant")),
+                        17 => Ok(CollectibleType::Pet),
+                        _ => Err(de::Error::custom("invalid enum variant collectible_type")),
                     }
                 } else {
                     Err(de::Error::custom(
@@ -284,7 +287,7 @@ impl<'de> Deserialize<'de> for CollectibleRarity {
                         4 => Ok(CollectibleRarity::Epic),
                         5 => Ok(CollectibleRarity::Legendary),
                         6 => Ok(CollectibleRarity::Mythic),
-                        _ => Err(de::Error::custom("invalid enum variant")),
+                        _ => Err(de::Error::custom("invalid enum variant collectible_rarity")),
                     }
                 } else {
                     Err(de::Error::custom("expected a map with a single key"))
@@ -305,7 +308,7 @@ impl<'de> Deserialize<'de> for CollectibleRarity {
                         4 => Ok(CollectibleRarity::Epic),
                         5 => Ok(CollectibleRarity::Legendary),
                         6 => Ok(CollectibleRarity::Mythic),
-                        _ => Err(de::Error::custom("invalid enum variant")),
+                        _ => Err(de::Error::custom("invalid enum variant collectible_rarity")),
                     }
                 } else {
                     Err(de::Error::custom(

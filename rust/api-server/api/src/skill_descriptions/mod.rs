@@ -10,7 +10,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
-use std::path::PathBuf;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -18,7 +17,7 @@ use tokio::time::Instant;
 
 #[allow(dead_code)]
 pub(crate) async fn load_skill_desc_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<skill_desc::Model>> {
     let skill_desc_file = File::open(storage_path.join("Desc/SkillDesc.json"))?;
     let skill_desc: Value = serde_json::from_reader(&skill_desc_file)?;
@@ -60,7 +59,7 @@ pub(crate) async fn load_desc_from_spacetimedb(
     let claim_descriptions =
         load_skill_desc_from_spacetimedb(client, domain, protocol, database).await?;
 
-    import_skill_descs(&conn, claim_descriptions, Some(3000)).await?;
+    import_skill_descs(conn, claim_descriptions, Some(3000)).await?;
 
     Ok(())
 }
@@ -131,24 +130,16 @@ pub(crate) async fn import_skill_descs(
 
             let things_to_insert = buffer_before_insert
                 .iter()
-                .filter(|skill_desc| {
-                    match skill_descs_from_db_map.get(&skill_desc.id) {
-                        Some(skill_desc_from_db) => {
-                            if skill_desc_from_db != *skill_desc {
-                                return true;
-                            }
-                        }
-                        None => {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                })
+                .filter(
+                    |skill_desc| match skill_descs_from_db_map.get(&skill_desc.id) {
+                        Some(skill_desc_from_db) => skill_desc_from_db != *skill_desc,
+                        None => true,
+                    },
+                )
                 .map(|skill_desc| skill_desc.clone().into_active_model())
                 .collect::<Vec<skill_desc::ActiveModel>>();
 
-            if things_to_insert.len() == 0 {
+            if things_to_insert.is_empty() {
                 debug!("Nothing to insert");
                 buffer_before_insert.clear();
                 continue;
@@ -160,8 +151,8 @@ pub(crate) async fn import_skill_descs(
                 let skill_desc_in = skill_descs_to_delete
                     .iter()
                     .position(|id| id == skill_desc.id.as_ref());
-                if skill_desc_in.is_some() {
-                    skill_descs_to_delete.remove(skill_desc_in.unwrap());
+                if let Some(skill_desc_in) = skill_desc_in {
+                    skill_descs_to_delete.remove(skill_desc_in);
                 }
             }
 
@@ -174,7 +165,7 @@ pub(crate) async fn import_skill_descs(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let skill_descs_from_db = skill_desc::Entity::find()
             .filter(
                 skill_desc::Column::Id.is_in(
@@ -194,24 +185,16 @@ pub(crate) async fn import_skill_descs(
 
         let things_to_insert = buffer_before_insert
             .iter()
-            .filter(|skill_desc| {
-                match skill_descs_from_db_map.get(&skill_desc.id) {
-                    Some(skill_desc_from_db) => {
-                        if skill_desc_from_db != *skill_desc {
-                            return true;
-                        }
-                    }
-                    None => {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
+            .filter(
+                |skill_desc| match skill_descs_from_db_map.get(&skill_desc.id) {
+                    Some(skill_desc_from_db) => skill_desc_from_db != *skill_desc,
+                    None => true,
+                },
+            )
             .map(|skill_desc| skill_desc.clone().into_active_model())
             .collect::<Vec<skill_desc::ActiveModel>>();
 
-        if things_to_insert.len() == 0 {
+        if things_to_insert.is_empty() {
             debug!("Nothing to insert");
             buffer_before_insert.clear();
         } else {
@@ -230,7 +213,7 @@ pub(crate) async fn import_skill_descs(
         start.elapsed().as_secs()
     );
 
-    if skill_descs_to_delete.len() > 0 {
+    if !skill_descs_to_delete.is_empty() {
         info!("skill_desc's to delete: {:?}", skill_descs_to_delete);
         skill_desc::Entity::delete_many()
             .filter(skill_desc::Column::Id.is_in(skill_descs_to_delete))
@@ -258,7 +241,7 @@ fn import_skill_descriptions(config: Config, conn: DatabaseConnection, client: C
                 )
                 .await;
 
-                if let Ok(_) = skill_descriptions_desc {
+                if skill_descriptions_desc.is_ok() {
                     info!("SkillDescriptionsDesc imported");
                 } else {
                     error!(
@@ -270,7 +253,7 @@ fn import_skill_descriptions(config: Config, conn: DatabaseConnection, client: C
     });
 }
 
-pub async fn import_job_skill_desc(temp_config: Config) -> () {
+pub async fn import_job_skill_desc(temp_config: Config) {
     let config = temp_config.clone();
     if config.live_updates {
         let conn = super::create_importer_default_db_connection(config.clone()).await;

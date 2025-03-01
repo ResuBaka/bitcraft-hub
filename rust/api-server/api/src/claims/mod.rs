@@ -21,7 +21,6 @@ use service::{Query as QueryCore, sea_orm::DatabaseConnection};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
-use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
@@ -170,6 +169,11 @@ pub(crate) async fn get_claim_tiles(
     ))
 }
 
+type ClaimLeaderboardTasks =
+    Vec<JoinHandle<Result<(String, Vec<LeaderboardSkill>), (StatusCode, &'static str)>>>;
+
+type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>)>>>;
+
 pub(crate) async fn get_claim(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
@@ -185,7 +189,7 @@ pub(crate) async fn get_claim(
     let claim = claim.unwrap();
 
     let claim_tech_states =
-        QueryCore::find_claim_tech_state_by_ids(&state.conn, vec![claim.entity_id.clone()])
+        QueryCore::find_claim_tech_state_by_ids(&state.conn, vec![claim.entity_id])
             .await
             .expect("Cannot find claim tech states");
     let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
@@ -194,7 +198,7 @@ pub(crate) async fn get_claim(
     let tier_upgrades = claim_tech_descs
         .iter()
         .filter(|desc| desc.description.starts_with("Tier "))
-        .map(|desc| desc.clone())
+        .cloned()
         .collect::<Vec<claim_tech_desc::Model>>();
     let tier_upgrades_ids = tier_upgrades
         .iter()
@@ -232,13 +236,10 @@ pub(crate) async fn get_claim(
 
         match claim_tech_state {
             Some(claim_tech_state) => {
-                claim.running_upgrade = match tier_upgrades
+                claim.running_upgrade = tier_upgrades
                     .iter()
                     .find(|desc| desc.id == (claim_tech_state.researching as i64))
-                {
-                    Some(tier) => Some(tier.clone()),
-                    None => None,
-                };
+                    .cloned();
                 claim.running_upgrade_started = Some(claim_tech_state.start_timestamp);
                 let learned: Vec<i64> = claim_tech_state.learned.clone();
                 claim.upgrades = learned
@@ -254,10 +255,10 @@ pub(crate) async fn get_claim(
                 let found_tiers = learned
                     .iter()
                     .filter(|id| tier_upgrades_ids.contains(&(**id)))
-                    .map(|id| id.clone())
+                    .copied()
                     .collect::<Vec<i64>>();
 
-                if found_tiers.len() > 0 {
+                if !found_tiers.is_empty() {
                     claim.tier = tier_upgrades
                         .iter()
                         .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1]))
@@ -284,11 +285,7 @@ pub(crate) async fn get_claim(
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
 
-    let mut tasks: Vec<
-        tokio::task::JoinHandle<
-            Result<(String, Vec<LeaderboardSkill>), (StatusCode, &'static str)>,
-        >,
-    > = vec![];
+    let mut tasks: ClaimLeaderboardTasks = vec![];
     let player_ids = claim
         .members
         .iter()
@@ -341,7 +338,7 @@ pub(crate) async fn get_claim(
                     player_id: entry.entity_id,
                     player_name,
                     experience: entry.experience,
-                    level: experience_to_level(entry.experience.clone() as i64),
+                    level: experience_to_level(entry.experience as i64),
                     rank: rank as u64,
                 });
             }
@@ -462,7 +459,7 @@ pub(crate) async fn get_claim(
         building_states,
     };
 
-    let mut jobs: Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>)>>> = vec![];
+    let mut jobs: FlatInventoryTasks = vec![];
 
     let conn = state.conn.clone();
     let job_items = items.clone();
@@ -581,7 +578,7 @@ pub(crate) async fn list_claims(
     let tier_upgrades = claim_tech_descs
         .iter()
         .filter(|desc| desc.description.starts_with("Tier "))
-        .map(|desc| desc.clone())
+        .cloned()
         .collect::<Vec<claim_tech_desc::Model>>();
     let tier_upgrades_ids = tier_upgrades
         .iter()
@@ -598,13 +595,10 @@ pub(crate) async fn list_claims(
 
             match claim_tech_state {
                 Some(claim_tech_state) => {
-                    claim_description.running_upgrade = match tier_upgrades
+                    claim_description.running_upgrade = tier_upgrades
                         .iter()
                         .find(|desc| desc.id == (claim_tech_state.researching as i64))
-                    {
-                        Some(tier) => Some(tier.clone()),
-                        None => None,
-                    };
+                        .cloned();
                     let learned: Vec<i64> = claim_tech_state.learned.clone();
                     claim_description.upgrades = learned
                         .iter()
@@ -619,10 +613,10 @@ pub(crate) async fn list_claims(
                     let found_tiers = learned
                         .iter()
                         .filter(|id| tier_upgrades_ids.contains(&(**id)))
-                        .map(|id| id.clone())
+                        .cloned()
                         .collect::<Vec<i64>>();
 
-                    if found_tiers.len() > 0 {
+                    if !found_tiers.is_empty() {
                         claim_description.tier = tier_upgrades
                             .iter()
                             .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1]))
@@ -669,7 +663,7 @@ pub(crate) async fn find_claim_descriptions(
 
 #[allow(dead_code)]
 pub(crate) async fn load_claim_description_state_from_file(
-    storage_path: &PathBuf,
+    storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<claim_description_state::Model>> {
     let item_file = File::open(storage_path.join("State/ClaimDescriptionState.json"))?;
     let claim_descriptions: Value = serde_json::from_reader(&item_file)?;
@@ -767,22 +761,14 @@ async fn db_insert_player_to_claim(
             match claim_description_from_db_map
                 .get(&(claim_description.claim_id, claim_description.player_id))
             {
-                Some(claim_description_from_db) => {
-                    if claim_description_from_db != *claim_description {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
+                Some(claim_description_from_db) => claim_description_from_db != *claim_description,
+                None => true,
             }
-
-            return false;
         })
         .map(|claim_description| claim_description.clone().into_active_model())
         .collect::<Vec<player_to_claim::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -825,22 +811,14 @@ async fn db_insert_claim_description_state(
         .iter()
         .filter(|claim_description| {
             match claim_description_from_db_map.get(&claim_description.entity_id) {
-                Some(claim_description_from_db) => {
-                    if claim_description_from_db != *claim_description {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
+                Some(claim_description_from_db) => claim_description_from_db != *claim_description,
+                None => true,
             }
-
-            return false;
         })
         .map(|claim_description| claim_description.clone().into_active_model())
         .collect::<Vec<claim_description_state::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
         return Ok(());
@@ -959,7 +937,7 @@ pub(crate) fn get_merged_inventories(
         }
     }
 
-    hashmap.into_iter().map(|(_, value)| value).collect()
+    hashmap.into_values().collect()
 }
 
 pub(crate) async fn handle_initial_subscription(
@@ -969,7 +947,7 @@ pub(crate) async fn handle_initial_subscription(
     let on_conflict = get_claim_description_state_on_conflict();
     let on_conflict_player_to_claim = get_player_to_claim_on_conflict();
 
-    let chunk_size = Some(5000);
+    let chunk_size = 5000;
     let mut buffer_before_insert: Vec<claim_description_state::Model> = vec![];
     let mut buffer_player_to_claim_before_insert: Vec<player_to_claim::Model> = vec![];
 
@@ -983,7 +961,7 @@ pub(crate) async fn handle_initial_subscription(
                         known_inventory_ids.remove(&building_state.entity_id);
                     }
                     buffer_before_insert.push(building_state.clone());
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_claim_description_state(
                             p0,
                             &mut buffer_before_insert,
@@ -1009,7 +987,7 @@ pub(crate) async fn handle_initial_subscription(
                             });
                         },
                     );
-                    if buffer_player_to_claim_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_player_to_claim_before_insert.len() == chunk_size {
                         db_insert_player_to_claim(
                             p0,
                             &mut buffer_player_to_claim_before_insert,
@@ -1017,7 +995,7 @@ pub(crate) async fn handle_initial_subscription(
                         )
                         .await?;
                     }
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_claim_description_state(
                             p0,
                             &mut buffer_before_insert,
@@ -1032,7 +1010,7 @@ pub(crate) async fn handle_initial_subscription(
             }
         }
     }
-    if buffer_player_to_claim_before_insert.len() > 0 {
+    if !buffer_player_to_claim_before_insert.is_empty() {
         db_insert_player_to_claim(
             p0,
             &mut buffer_player_to_claim_before_insert,
@@ -1041,17 +1019,17 @@ pub(crate) async fn handle_initial_subscription(
         .await?;
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
             db_insert_claim_description_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
         }
     }
 
-    if known_inventory_ids.len() > 0 {
+    if !known_inventory_ids.is_empty() {
         delete_claim_description_state(p0, known_inventory_ids).await?;
     }
 
-    if known_player_to_claim_ids.len() > 0 {
+    if !known_player_to_claim_ids.is_empty() {
         delete_player_to_claim(p0, known_player_to_claim_ids).await?;
     }
 
@@ -1060,7 +1038,7 @@ pub(crate) async fn handle_initial_subscription(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
     sender: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_description_state_on_conflict();
@@ -1072,11 +1050,11 @@ pub(crate) async fn handle_transaction_update(
     let mut potential_player_to_claim_deletes: HashSet<(i64, i64)> = HashSet::new();
 
     for p1 in tables.iter() {
-        let event_type = if p1.inserts.len() > 0 && p1.deletes.len() > 0 {
+        let event_type = if !p1.inserts.is_empty() && !p1.deletes.is_empty() {
             "update"
-        } else if p1.inserts.len() > 0 && p1.deletes.len() == 0 {
+        } else if !p1.inserts.is_empty() && p1.deletes.is_empty() {
             "insert"
-        } else if p1.deletes.len() > 0 && p1.inserts.len() == 0 {
+        } else if !p1.deletes.is_empty() && p1.inserts.is_empty() {
             "delete"
         } else {
             "unknown"
@@ -1274,7 +1252,7 @@ pub(crate) async fn handle_transaction_update(
             continue;
         }
     }
-    if buffer_before_player_to_claim_insert.len() > 0 {
+    if !buffer_before_player_to_claim_insert.is_empty() {
         db_insert_player_to_claim(
             p0,
             &mut buffer_before_player_to_claim_insert,
@@ -1282,7 +1260,7 @@ pub(crate) async fn handle_transaction_update(
         )
         .await?;
     }
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let mut buffer_before_insert_vec = buffer_before_insert
             .clone()
             .into_iter()
@@ -1291,11 +1269,11 @@ pub(crate) async fn handle_transaction_update(
         db_insert_claim_description_state(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
         buffer_before_insert.clear();
     }
-    if potential_player_to_claim_deletes.len() > 0 {
+    if !potential_player_to_claim_deletes.is_empty() {
         delete_player_to_claim(p0, potential_player_to_claim_deletes).await?;
     }
 
-    if potential_deletes.len() > 0 {
+    if !potential_deletes.is_empty() {
         delete_claim_description_state(p0, potential_deletes).await?;
     }
 

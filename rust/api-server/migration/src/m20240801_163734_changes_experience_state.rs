@@ -455,6 +455,7 @@ enum Inventory {
     Table,
     EntityId,
     Pockets,
+    #[allow(clippy::enum_variant_names)]
     InventoryIndex,
     CargoIndex,
     OwnerEntityId,

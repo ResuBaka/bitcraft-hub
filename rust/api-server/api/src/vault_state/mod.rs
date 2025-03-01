@@ -71,26 +71,18 @@ async fn db_insert_player_states(
     let things_to_insert = buffer_before_insert
         .iter()
         .map(|player_state| player_state.clone().to_model())
-        .filter(|player_state| {
-            match player_states_from_db_map.get(&player_state.entity_id) {
-                Some(player_state_from_db) => {
-                    if player_state_from_db != player_state {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
-            }
-
-            return false;
-        })
+        .filter(
+            |player_state| match player_states_from_db_map.get(&player_state.entity_id) {
+                Some(player_state_from_db) => player_state_from_db != player_state,
+                None => true,
+            },
+        )
         .map(|player_state| player_state.clone().into_active_model())
         .collect::<Vec<vault_state::ActiveModel>>();
 
     let mut things_to_insert_collectibles = buffer_before_insert
-        .into_iter()
-        .map(|player_state| {
+        .iter_mut()
+        .flat_map(|player_state| {
             player_state
                 .clone()
                 .collectibles
@@ -98,7 +90,6 @@ async fn db_insert_player_states(
                 .map(|collectible| collectible.to_model(player_state.entity_id))
                 .collect::<Vec<vault_state_collectibles::Model>>()
         })
-        .flatten()
         .filter(|player_state| {
             if let Some(list_of_vault_state_collectibles_to_delete) =
                 list_of_vault_state_collectibles_to_delete
@@ -109,21 +100,14 @@ async fn db_insert_player_states(
             match vault_states_collectibles_from_db_map
                 .get(&(player_state.entity_id, player_state.id))
             {
-                Some(player_state_from_db) => {
-                    if player_state_from_db != player_state {
-                        return true;
-                    }
-                }
-                None => {
-                    return true;
-                }
+                Some(player_state_from_db) => player_state_from_db != player_state,
+                None => true,
             }
-            return false;
         })
         .map(|player_state| player_state.clone().into_active_model())
         .collect::<Vec<vault_state_collectibles::ActiveModel>>();
 
-    if things_to_insert.len() == 0 {
+    if things_to_insert.is_empty() {
         debug!("Nothing to insert");
         buffer_before_insert.clear();
     } else {
@@ -135,7 +119,7 @@ async fn db_insert_player_states(
         buffer_before_insert.clear();
     }
 
-    if things_to_insert_collectibles.len() == 0 {
+    if things_to_insert_collectibles.is_empty() {
         debug!("Nothing to insert");
         things_to_insert_collectibles.clear();
     } else {
@@ -179,9 +163,8 @@ pub(crate) async fn handle_initial_subscription(
     p0: &DatabaseConnection,
     p1: &Table,
 ) -> anyhow::Result<()> {
-    let chunk_size = Some(500);
-    let mut buffer_before_insert: Vec<RawVaultState> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
+    let chunk_size = 500;
+    let mut buffer_before_insert: Vec<RawVaultState> = Vec::with_capacity(chunk_size);
 
     let on_conflict = sea_query::OnConflict::column(vault_state::Column::EntityId)
         .update_columns([vault_state::Column::Shards])
@@ -216,7 +199,7 @@ pub(crate) async fn handle_initial_subscription(
                         known_player_state_ids.remove(&player_state.entity_id);
                     }
                     buffer_before_insert.push(player_state);
-                    if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
+                    if buffer_before_insert.len() == chunk_size {
                         db_insert_player_states(
                             p0,
                             &mut buffer_before_insert,
@@ -237,7 +220,7 @@ pub(crate) async fn handle_initial_subscription(
         }
     }
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         db_insert_player_states(
             p0,
             &mut buffer_before_insert,
@@ -248,11 +231,11 @@ pub(crate) async fn handle_initial_subscription(
         .await?;
     }
 
-    if known_player_state_ids.len() > 0 {
+    if !known_player_state_ids.is_empty() {
         delete_player_state(p0, known_player_state_ids, false).await?;
     }
 
-    if known_vault_state_collectibles_ids.len() > 0 {
+    if !known_vault_state_collectibles_ids.is_empty() {
         delete_vault_state_collectibles(p0, known_vault_state_collectibles_ids).await?;
     }
 
@@ -263,15 +246,15 @@ async fn delete_vault_state_collectibles(
     p0: &DatabaseConnection,
     p1: HashSet<(i64, i32)>,
 ) -> anyhow::Result<()> {
-    let to_chunk = p1.iter().map(|x| x.clone()).collect::<Vec<_>>();
+    let to_chunk = p1.iter().clone().collect::<Vec<_>>();
 
     for chunk in to_chunk.chunks(3000) {
         let filter_to_process = chunk
             .iter()
             .map(|(entity_id, id)| {
                 vault_state_collectibles::Column::EntityId
-                    .eq(entity_id.clone())
-                    .and(vault_state_collectibles::Column::Id.eq(id.clone()))
+                    .eq(*entity_id)
+                    .and(vault_state_collectibles::Column::Id.eq(*id))
             })
             .collect::<Vec<_>>();
 
@@ -298,7 +281,7 @@ async fn delete_vault_state_collectibles(
 
 pub(crate) async fn handle_transaction_update(
     p0: &DatabaseConnection,
-    tables: &Vec<TableWithOriginalEventTransactionUpdate>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
 ) -> anyhow::Result<()> {
     let on_conflict = sea_query::OnConflict::column(vault_state::Column::EntityId)
         .update_columns([vault_state::Column::Shards])
@@ -343,7 +326,7 @@ pub(crate) async fn handle_transaction_update(
         .into_iter()
         .collect::<HashSet<(i64, i32)>>();
 
-    if buffer_before_insert.len() > 0 {
+    if !buffer_before_insert.is_empty() {
         let mut buffer_before_insert_vec = buffer_before_insert
             .clone()
             .into_iter()
@@ -377,11 +360,11 @@ pub(crate) async fn handle_transaction_update(
         }
     }
 
-    if players_to_delete.len() > 0 {
+    if !players_to_delete.is_empty() {
         delete_player_state(p0, players_to_delete, true).await?;
     }
 
-    if known_vault_state_collectibles_ids.len() > 0 {
+    if !known_vault_state_collectibles_ids.is_empty() {
         delete_vault_state_collectibles(p0, known_vault_state_collectibles_ids).await?;
     }
 
