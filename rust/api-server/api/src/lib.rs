@@ -82,22 +82,9 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     let app = create_app(&config, state.clone(), prometheus);
 
-    let websocket_url = config.weboosocket_url();
-    let websocket_password = config.spacetimedb.password.clone();
-    let websocket_username = config.spacetimedb.username.clone();
-    let database_name = config.spacetimedb.database.clone();
-
     if config.live_updates_ws {
         let tmp_config = config.clone();
-        websocket::start_websocket_bitcraft_logic(
-            websocket_url,
-            websocket_password,
-            websocket_username,
-            database_name,
-            tmp_config,
-            tx,
-            state.clone(),
-        );
+        websocket::start_websocket_bitcraft_logic(tmp_config, tx, state.clone());
     }
 
     let server_url = config.server_url();
@@ -967,6 +954,9 @@ you should provide the directory of that submodule.",
 
         #[arg(long, help = "Storage path")]
         storage_path: Option<String>,
+
+        #[arg(long, help = "Live updates")]
+        live_updates_ws: Option<bool>,
     },
     Download {
         #[command(subcommand)]
@@ -994,10 +984,12 @@ pub async fn main() -> anyhow::Result<()> {
             port,
             host,
             storage_path,
+            live_updates_ws,
         } => {
             cli_config_parameters.host = host.clone();
             cli_config_parameters.port = *port;
             cli_config_parameters.storage_path = storage_path.clone();
+            cli_config_parameters.live_updates_ws = *live_updates_ws;
         }
     }
 

@@ -420,6 +420,7 @@ pub(crate) struct CliConfigParameters {
     pub(crate) database_url: Option<String>,
     pub(crate) storage_path: Option<String>,
     pub(crate) config_path: Option<String>,
+    pub(crate) live_updates_ws: Option<bool>,
 }
 
 impl Config {
@@ -454,6 +455,10 @@ impl Config {
 
             if let Some(storage_path) = cli_config_parameters.storage_path {
                 cli_overrides = cli_overrides.set_default("storage_path", storage_path)?;
+            }
+
+            if let Some(live_updates_ws) = cli_config_parameters.live_updates_ws {
+                cli_overrides = cli_overrides.set_default("live_updates_ws", live_updates_ws)?;
             }
 
             config.add_source(cli_overrides.build()?)
