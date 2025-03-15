@@ -5,6 +5,7 @@ export function useFetchMsPack<T>(
   request: string | (() => string),
   options: UseFetchOptions<T>,
 ) {
+  // @ts-ignore
   return useFetch(request, {
     ...options,
     headers: {
@@ -13,6 +14,7 @@ export function useFetchMsPack<T>(
     transform: async (response: Blob) => {
       try {
         return unpack((await response.arrayBuffer()) as Buffer, {
+          // @ts-ignore
           int64AsType: "auto",
         });
       } catch (e) {

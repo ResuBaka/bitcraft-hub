@@ -1,4 +1,5 @@
 import {useWebSocket} from "@vueuse/core";
+import { unpack } from "msgpackr/unpack";
 
 export const useWebsocketStore = defineStore('websocket', () => {
     const configStore = useConfigStore()
@@ -31,8 +32,31 @@ export const useWebsocketStore = defineStore('websocket', () => {
         open()
     }
 
-    function handleMessage(_ws: WebSocket, event: MessageEvent) {
-        const message = JSON.parse(event.data)
+    async function handleMessage(_ws: WebSocket, event: MessageEvent) {
+        let message
+        if (typeof event.data === "string") {
+            if (event.data.startsWith("{")) {
+                message = JSON.parse(event.data)
+            } else if (event.data.startsWith("t: ")) {
+                console.warn("yaml", event.data)
+            } else if (event.data.startsWith("t =")) {
+                console.warn("toml", event.data)
+            }
+
+        } else if (event.data instanceof Blob) {
+            message = unpack(await event.data.arrayBuffer(), {
+                // @ts-ignore
+                int64AsType: "auto",
+            });
+
+            console.log("message", message);
+        }
+
+        if (!message) {
+            console.warn("no message")
+            return
+        }
+
         const messageHandler = websocket_message_event_handler[message.t]
 
         if (messageHandler) {

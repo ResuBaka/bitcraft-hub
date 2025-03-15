@@ -138,40 +138,51 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     state.clients_state.add_client(id.clone(), tx.clone()).await;
 
-    // // Username gets set in the receive loop, if it's valid.
-    // let mut username = String::new();
-    // // Loop until a text message is found.
-    // while let Some(Ok(message)) = receiver.next().await {
-    //     if let Message::Text(name) = message {
-    //         // If username that is sent by client is not taken, fill username string.
-    //
-    //         // If not empty we want to quit the loop else we want to quit function.
-    //         if !username.is_empty() {
-    //             break;
-    //         } else {
-    //             // Only send our client that username is taken.
-    //             let _ = sender
-    //                 .send(Message::Text(String::from("Username already taken.")))
-    //                 .await;
-    //
-    //             return;
-    //         }
-    //     }
-    // }
-
     // Now send the "joined" message to all subscribers.
     let msg = format!("{id} joined.");
     let _ = tx.send(WebSocketMessages::Message(msg));
 
+    let internal_id = id.clone();
+    let inner_state = state.clone();
     // Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client.
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
+            let a = axum_codec::Codec(msg.clone());
+            let encoding = inner_state
+                .clients_state
+                .get_encode_format_for_client(&internal_id)
+                .await;
+
+            if encoding.is_none() {
+                tracing::warn!("Could not find encoding for {internal_id}")
+            };
+
+            let encoding = encoding.unwrap();
+
+            let send_result = if encoding == *"JSON" {
+                sender
+                    .send(Message::Text(serde_json::to_string(&msg).unwrap().into()))
+                    .await
+            } else if encoding == *"TOML" {
+                sender
+                    .send(Message::Text(a.to_toml().unwrap().into()))
+                    .await
+            } else if encoding == *"YAML" {
+                sender
+                    .send(Message::Text(a.to_yaml().unwrap().into()))
+                    .await
+            } else if encoding == *"MSPACK" {
+                sender
+                    .send(Message::Binary(a.to_msgpack().unwrap().into()))
+                    .await
+            } else {
+                tracing::warn!("Unsupported encoding {encoding}");
+                continue;
+            };
+
             // In any websocket error, break loop.
-            if let Err(error) = sender
-                .send(Message::Text(serde_json::to_string(&msg).unwrap().into()))
-                .await
-            {
+            if let Err(error) = send_result {
                 tracing::error!("Error sending message to client: {error}");
                 break;
             }
@@ -691,6 +702,7 @@ impl AppState {
 type WebsocketClient = (
     tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
     HashMap<String, HashSet<i64>>,
+    String,
 );
 
 struct ClientsState {
@@ -711,7 +723,10 @@ impl ClientsState {
         id: String,
         tx: tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
     ) {
-        self.clients.write().await.insert(id, (tx, HashMap::new()));
+        self.clients
+            .write()
+            .await
+            .insert(id, (tx, HashMap::new(), "JSON".to_string()));
         metrics::gauge!("websocket_clients_connected_total").increment(1);
     }
 
@@ -725,6 +740,14 @@ impl ClientsState {
 
         self.clients.write().await.remove(id);
         metrics::gauge!("websocket_clients_connected_total").decrement(1);
+    }
+
+    pub(crate) async fn get_encode_format_for_client(&self, id: &String) -> Option<String> {
+        self.clients
+            .read()
+            .await
+            .get(id)
+            .map(|client| client.2.clone())
     }
 
     pub(crate) async fn get_topics_for_client(&self, id: &String) -> Option<Vec<String>> {
@@ -806,7 +829,7 @@ impl ClientsState {
         let mut senders = vec![];
         let clients = self.clients.read().await;
 
-        for (_, (tx, topics)) in clients.iter() {
+        for (_, (tx, topics, _)) in clients.iter() {
             if let Some(found_topic) = topics.get(topic) {
                 if found_topic.contains(&topic_id) {
                     senders.push(tx.clone());
