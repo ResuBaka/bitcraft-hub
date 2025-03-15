@@ -247,16 +247,14 @@ const expeirence = computed(() => {
   let newExperience: Record<string, any> = {};
 
   for (const [skill, xp_info] of Object.entries(experienceFetch.value)) {
-    let shouldAddClass = xp_info.level && xp_info.experience;
+    let shouldAddClass = true;
 
     newExperience[skill] = {
       experience: xp_info.experience,
       level: xp_info.level,
       rank: xp_info.rank,
       classes: {
-        list: shouldAddClass
-          ? `background-tier-${levelToTier(xp_info.level)}`
-          : "",
+        list: `background-tier-${levelToTier(xp_info.level)}`,
         container: shouldAddClass ? "container" : "",
         content: shouldAddClass ? "content" : "",
       },

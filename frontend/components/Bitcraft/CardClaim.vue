@@ -50,12 +50,16 @@ const claimOwner = computed(() => {
     <v-card-item>
       <v-card-title>
         <nuxt-link
-          class="text-decoration-none text-high-emphasis font-weight-black"
+          class="text-decoration-none font-weight-black" :class="`color-tier-${claim.tier}`"
           :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
         >
           {{ claim.name }}
         </nuxt-link>
       </v-card-title>
+      <v-card-subtitle>
+        Tier: {{ claim.tier }}
+        Tiles: {{ claim.num_tiles }}
+      </v-card-subtitle>
       <template #append v-if="shouldShowMoreMembers">
         <v-btn icon density="compact" @click="toggleShowMoreMembers">
           <v-icon>{{ showMoreMembers ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
@@ -73,20 +77,10 @@ const claimOwner = computed(() => {
           <th>Supplies:</th>
           <td>{{ parseInt(claim.supplies) }}</td>
         </tr>
-        <tr style='text-align: right'>
-          <th>Tiles:</th>
-          <td>{{ claim.num_tiles }}</td>
-        </tr>
-        <tr style='text-align: right'>
+        <tr style='text-align: right' v-if="claim.location[0][1]">
           <th>Location:</th>
           <td>
             N: {{ Math.ceil(claim.location[0][1] / 3)  }}, E: {{ Math.ceil(claim.location[0][0] / 3) }}
-          </td>
-        </tr>
-        <tr v-if="claim.tier" style='text-align: right'>
-          <th>Tier:</th>
-          <td>
-            {{ claim.tier }}
           </td>
         </tr>
         <tr v-if="claim.running_upgrade" style='text-align: right'>

@@ -20,9 +20,15 @@ const { data: producedInCrafting } = await useLazyFetchMsPack(() => {
   return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
 });
 
-const { data: neededToCraft } = await useLazyFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
-});
+const { data: neededToCraft, execute: neededToCraftExecute } =
+  await useLazyFetchMsPack(
+    () => {
+      return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
+    },
+    {
+      immediate: false,
+    },
+  );
 
 const neededInCraftingData = computed(() => {
   return neededInCrafting.value ?? [];
@@ -37,6 +43,16 @@ const neededToCraftData = computed(() => {
 });
 
 const contetentToShow = ref("default");
+
+const toggleContentToShow = (contetentArg: string) => {
+  if (contetentArg === "neededToCraft") {
+    if (neededToCraftData.value.length === 0) {
+      neededToCraftExecute();
+    }
+  }
+
+  contetentToShow.value = contetentArg;
+};
 
 const theme = useTheme();
 
@@ -65,10 +81,10 @@ const iconUrl = computed(() => {
       <template #prepend v-if="iconUrl.show && imagedErrored !== true">
         <v-img @error="imagedErrored = true" :src="iconUrl.url" height="50" width="50"></v-img>
       </template>
-      <v-card-title :style="{ 'color': `rgba(var(--v-color-tier-${item.tier}), var(--v-list-item-subtitle-opacity, var(--v-medium-emphasis-opacity)))` }">
+      <v-card-title :class="`color-tier-${item.tier}`">
         {{ item.name }}
       </v-card-title>
-      <v-card-subtitle :style="{ 'color': `rgba(var(--v-color-tier-${item.tier}), var(--v-list-item-subtitle-opacity, var(--v-medium-emphasis-opacity)))` }">
+      <v-card-subtitle :class="`color-tier-${item.tier}`">
         <template v-if="dev">
           Id: {{ item.id }}
         </template>
@@ -99,7 +115,7 @@ const iconUrl = computed(() => {
             <v-btn
                 icon
                 v-bind="props"
-                @click="contetentToShow = 'neededToCraft'"
+                @click="toggleContentToShow('neededToCraft')"
             >
               <v-icon>
                 mdi-chart-bar-stacked
