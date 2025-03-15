@@ -65,7 +65,16 @@ const iconUrl = computed(() => {
       <template #prepend v-if="iconUrl.show && imagedErrored !== true">
         <v-img @error="imagedErrored = true" :src="iconUrl.url" height="50" width="50"></v-img>
       </template>
-      <v-card-title>{{ item.name }}{{ dev ? ' - ' + item.id : '' }}</v-card-title>
+      <v-card-title :style="{ 'color': `rgba(var(--v-color-tier-${item.tier}), var(--v-list-item-subtitle-opacity, var(--v-medium-emphasis-opacity)))` }">
+        {{ item.name }}
+      </v-card-title>
+      <v-card-subtitle :style="{ 'color': `rgba(var(--v-color-tier-${item.tier}), var(--v-list-item-subtitle-opacity, var(--v-medium-emphasis-opacity)))` }">
+        <template v-if="dev">
+          Id: {{ item.id }}
+        </template>
+         Tier: {{ item.tier }}
+         Tag: {{ item.tag }}
+      </v-card-subtitle>
       <template v-slot:append>
         <v-tooltip
             location="bottom"
@@ -139,27 +148,19 @@ const iconUrl = computed(() => {
     </v-card-item>
     <v-card-text :class="computedClass">
       <template v-if="contetentToShow == 'default'">
-        <v-table :class="computedClass" density="compact">
+        <v-table :class="computedClass" density="compact" style="padding-top: 10px">
           <tbody>
-          <tr style='text-align: right'>
-            <th>Description:</th>
-            <td>{{ item.description }}</td>
+          <tr >
+            <th style='text-align: left'>Description:</th>
+            <td style='text-align: right'>{{ item.description }}</td>
           </tr>
-          <tr style='text-align: right'>
-            <th>Volume:</th>
-            <td>{{ item.volume }}</td>
+          <tr>
+            <th style='text-align: left'>Volume:</th>
+            <td style='text-align: right'>{{ item.volume }}</td>
           </tr>
-          <tr style='text-align: right'>
-            <th>Tag:</th>
-            <td>{{ item.tag }}</td>
-          </tr>
-          <tr style='text-align: right'>
-            <th>Tier:</th>
-            <td>{{ item.tier }}</td>
-          </tr>
-          <tr style='text-align: right'>
-            <th>Effort:</th>
-            <td>{{ producedInCraftingData.length ? producedInCraftingData[0].actions_required : 0 }}</td>
+          <tr>
+            <th style='text-align: left'>Effort:</th>
+            <td style='text-align: right'>{{ producedInCraftingData.length ? producedInCraftingData[0].actions_required : 0 }}</td>
           </tr>
           </tbody>
         </v-table>
