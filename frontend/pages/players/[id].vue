@@ -225,14 +225,17 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: playerFetch, pending: playerPnding } = useFetch(() => {
+const { data: playerFetch, pending: playerPnding } = useFetchMsPack(() => {
   return `${api.base}/api/bitcraft/players/${route.params.id}`;
 });
-const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
-  return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
-});
 
-const { data: experienceFetch } = useFetch(() => {
+const { data: inventoryFetch, pending: inventoryPending } = useFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+  },
+);
+
+const { data: experienceFetch } = useFetchMsPack(() => {
   return `${api.base}/api/bitcraft/experience/${route.params.id}`;
 });
 

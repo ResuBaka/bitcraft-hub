@@ -38,7 +38,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PlayerStateMerged {
     pub teleport_location: Json,
-    pub entity_id: i64,
+    pub entity_id: u64,
     pub time_played: i32,
     pub session_start_timestamp: i32,
     pub time_signed_in: i32,

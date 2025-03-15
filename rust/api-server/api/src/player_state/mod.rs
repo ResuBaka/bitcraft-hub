@@ -1,16 +1,15 @@
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
 use crate::{AppRouter, AppState};
+use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
 use entity::player_username_state::Model;
 use entity::{player_state, player_username_state};
 use log::{debug, error, info};
 use migration::OnConflict;
 use sea_orm::IntoActiveModel;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, sea_query};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
@@ -19,10 +18,19 @@ use tokio::sync::mpsc::UnboundedSender;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
-        .route("/players", get(list_players))
-        .route("/players/{id}", get(find_player_by_id))
-        .route("/api/bitcraft/players", get(list_players))
-        .route("/api/bitcraft/players/{id}", get(find_player_by_id))
+        .route("/players", axum_codec::routing::get(list_players).into())
+        .route(
+            "/players/{id}",
+            axum_codec::routing::get(find_player_by_id).into(),
+        )
+        .route(
+            "/api/bitcraft/players",
+            axum_codec::routing::get(list_players).into(),
+        )
+        .route(
+            "/api/bitcraft/players/{id}",
+            axum_codec::routing::get(find_player_by_id).into(),
+        )
 }
 
 #[derive(Deserialize)]
@@ -36,7 +44,7 @@ pub struct ListPlayersParams {
 pub async fn list_players(
     state: State<std::sync::Arc<AppState>>,
     Query(params): Query<ListPlayersParams>,
-) -> Result<Json<Value>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<PlayersResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(5);
     let search = params.search;
@@ -56,7 +64,7 @@ pub async fn list_players(
                 .unwrap();
 
             player_state::PlayerStateMerged {
-                entity_id: player.entity_id,
+                entity_id: player.entity_id as u64,
                 time_played: player.time_played,
                 session_start_timestamp: player.session_start_timestamp,
                 time_signed_in: player.time_signed_in,
@@ -69,18 +77,27 @@ pub async fn list_players(
         })
         .collect::<Vec<player_state::PlayerStateMerged>>();
 
-    Ok(Json(json!({
-        "players": merged_player,
-        "perPage": posts_per_page,
-        "total": num_pages.number_of_items,
-        "page": page,
-    })))
+    Ok(axum_codec::Codec(PlayersResponse {
+        players: merged_player,
+        per_page: posts_per_page,
+        total: num_pages.number_of_items,
+        page,
+    }))
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PlayersResponse {
+    pub players: Vec<player_state::PlayerStateMerged>,
+    #[serde(rename = "perPage")]
+    pub per_page: u64,
+    pub total: u64,
+    pub page: u64,
 }
 
 pub async fn find_player_by_id(
     State(state): State<std::sync::Arc<AppState>>,
-    Path(id): Path<i32>,
-) -> Result<Json<Value>, (StatusCode, &'static str)> {
+    Path(id): Path<i64>,
+) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
     let player = player_state::Entity::find_by_id(id)
         .one(&state.conn)
         .await
@@ -103,7 +120,7 @@ pub async fn find_player_by_id(
         None => "".to_string(),
     };
 
-    let deployables = QueryCore::find_vault_deployable_by_player_with_desc(&state.conn, id as i64)
+    let deployables = QueryCore::find_vault_deployable_by_player_with_desc(&state.conn, id)
         .await
         .unwrap_or_else(|error| {
             error!("find_player_by_id -> Error: {:?}", error);
@@ -139,7 +156,7 @@ pub async fn find_player_by_id(
         .map(|player_action_state| player_action_state.action_type.get_action_name());
     let current_action_state = state.action_state.get(&(id as u64));
 
-    Ok(Json(json!({
+    Ok(axum_codec::Codec(json!({
         "entity_id": player.entity_id,
         "time_played": player.time_played,
         "session_start_timestamp": player.session_start_timestamp,
@@ -274,8 +291,8 @@ async fn delete_player_username_state(
         known_player_username_state_ids.len(),
         known_player_username_state_ids
     );
-    player_state::Entity::delete_many()
-        .filter(player_state::Column::EntityId.is_in(known_player_username_state_ids))
+    player_username_state::Entity::delete_many()
+        .filter(player_username_state::Column::EntityId.is_in(known_player_username_state_ids))
         .exec(conn)
         .await?;
     Ok(())

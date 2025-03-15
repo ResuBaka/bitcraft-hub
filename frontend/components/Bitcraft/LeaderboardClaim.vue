@@ -8,7 +8,7 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: leaderboard, pending } = await useFetch(
+const { data: leaderboard, pending } = await useFetchMsPack(
   () => {
     return `${api.base}/api/bitcraft/leaderboard/claims/${props["claimId"]}`;
   },

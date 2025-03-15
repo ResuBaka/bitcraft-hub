@@ -41,13 +41,15 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: claimFetch, pending: claimPnding } = useFetch(() => {
+const { data: claimFetch, pending: claimPnding } = useFetchMsPack(() => {
   return `${api.base}/api/bitcraft/claims/${route.params.id}`;
 });
 
-const { data: buidlingsFetch, pending: buildingsPending } = useFetch(() => {
-  return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
-});
+const { data: buidlingsFetch, pending: buildingsPending } = useFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
+  },
+);
 
 const topicsPlayer = computed<string[]>(() => {
   return (

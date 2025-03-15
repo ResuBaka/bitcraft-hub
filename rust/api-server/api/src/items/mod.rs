@@ -1,6 +1,5 @@
 use crate::config::Config;
 use crate::{AppState, Params};
-use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use entity::item_desc;
@@ -22,7 +21,7 @@ use tokio::time::Instant;
 pub async fn list_items(
     state: State<std::sync::Arc<AppState>>,
     Query(params): Query<Params>,
-) -> Result<Json<Value>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(5);
     let search = params.search;
@@ -37,7 +36,7 @@ pub async fn list_items(
     let tags = tags.expect("Cannot find tags");
     let tiers = tiers.expect("Cannot find tiers");
 
-    Ok(Json(json!({
+    Ok(axum_codec::Codec(json!({
         "items": items,
         "tiers": tiers,
         "tags": tags,

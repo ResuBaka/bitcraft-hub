@@ -8,7 +8,7 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: neededInCrafting } = useFetch(() => {
+const { data: neededInCrafting } = useFetchMsPack(() => {
   return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${props.craftId}`;
 });
 const replacedTempalte = computed(() =>

@@ -2,10 +2,9 @@ use crate::inventory::resolve_contents;
 use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
 use crate::{AppRouter, AppState};
+use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
 use entity::claim_description_state::Model;
 use entity::inventory::{ExpendedRefrence, ItemExpended};
 use entity::{
@@ -26,11 +25,23 @@ use tokio::task::JoinHandle;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
-        .route("/claims", get(list_claims))
-        .route("/api/bitcraft/claims", get(list_claims))
-        .route("/api/bitcraft/claims/{id}", get(get_claim))
-        .route("/claims/{id}", get(find_claim_descriptions))
-        .route("/claims/tiles/{id}", get(get_claim_tiles))
+        .route("/claims", axum_codec::routing::get(list_claims).into())
+        .route(
+            "/api/bitcraft/claims",
+            axum_codec::routing::get(list_claims).into(),
+        )
+        .route(
+            "/api/bitcraft/claims/{id}",
+            axum_codec::routing::get(get_claim).into(),
+        )
+        .route(
+            "/claims/{id}",
+            axum_codec::routing::get(find_claim_descriptions).into(),
+        )
+        .route(
+            "/claims/tiles/{id}",
+            axum_codec::routing::get(get_claim_tiles).into(),
+        )
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -157,14 +168,14 @@ pub(crate) enum OnlineState {
 pub(crate) async fn get_claim_tiles(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Json<Vec<entity::claim_tile_state::Model>>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<Vec<entity::claim_tile_state::Model>>, (StatusCode, &'static str)> {
     let claim_tiles = state
         .claim_tile_state
         .iter()
         .filter(|a| a.claim_id == id)
         .collect::<Vec<_>>();
 
-    Ok(Json(
+    Ok(axum_codec::Codec(
         claim_tiles.iter().map(|a| a.value().clone()).collect(),
     ))
 }
@@ -177,7 +188,10 @@ type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRef
 pub(crate) async fn get_claim(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Json<ClaimDescriptionStateWithInventoryAndPlayTime>, (StatusCode, &'static str)> {
+) -> Result<
+    axum_codec::Codec<ClaimDescriptionStateWithInventoryAndPlayTime>,
+    (StatusCode, &'static str),
+> {
     let claim = QueryCore::find_claim_description(&state.conn, id as i64)
         .await
         .expect("Cannot find posts in page");
@@ -518,7 +532,7 @@ pub(crate) async fn get_claim(
         }
     }
 
-    Ok(Json(claim))
+    Ok(axum_codec::Codec(claim))
 }
 
 fn inventory_sort_by(a: &ExpendedRefrence, b: &ExpendedRefrence) -> Ordering {
@@ -550,7 +564,7 @@ pub(crate) struct ListClaimsParams {
 pub(crate) async fn list_claims(
     state: State<std::sync::Arc<AppState>>,
     Query(params): Query<ListClaimsParams>,
-) -> Result<Json<ClaimResponse>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<ClaimResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.per_page.unwrap_or(25);
     let search = params.search;
@@ -636,7 +650,7 @@ pub(crate) async fn list_claims(
         })
         .collect::<Vec<ClaimDescriptionState>>();
 
-    Ok(Json(ClaimResponse {
+    Ok(axum_codec::Codec(ClaimResponse {
         claims,
         per_page: posts_per_page,
         total: num_pages.number_of_items,
@@ -647,7 +661,7 @@ pub(crate) async fn list_claims(
 pub(crate) async fn find_claim_descriptions(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Json<ClaimDescriptionState>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<ClaimDescriptionState>, (StatusCode, &'static str)> {
     let claim = QueryCore::find_claim_description_by_id(&state.conn, id as i64)
         .await
         .expect("Cannot find posts in page");
@@ -658,7 +672,7 @@ pub(crate) async fn find_claim_descriptions(
 
     let posts: ClaimDescriptionState = claim.unwrap().into();
 
-    Ok(Json(posts))
+    Ok(axum_codec::Codec(posts))
 }
 
 #[allow(dead_code)]

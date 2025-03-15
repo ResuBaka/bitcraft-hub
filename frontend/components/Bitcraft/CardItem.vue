@@ -12,15 +12,15 @@ const {
   public: { iconDomain, api },
 } = useRuntimeConfig();
 
-const { data: neededInCrafting } = await useLazyFetch(() => {
+const { data: neededInCrafting } = await useLazyFetchMsPack(() => {
   return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
 });
 
-const { data: producedInCrafting } = await useLazyFetch(() => {
+const { data: producedInCrafting } = await useLazyFetchMsPack(() => {
   return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
 });
 
-const { data: neededToCraft } = await useLazyFetch(() => {
+const { data: neededToCraft } = await useLazyFetchMsPack(() => {
   return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
 });
 

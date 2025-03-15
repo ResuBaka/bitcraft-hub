@@ -1,10 +1,9 @@
 use crate::claims::ClaimDescriptionState;
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
 use crate::{AppRouter, AppState, leaderboard};
+use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
 use entity::experience_state;
 use log::{debug, error, info};
 use migration::OnConflict;
@@ -138,15 +137,21 @@ pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
-        .route("/leaderboard", get(leaderboard::get_top_100))
-        .route("/experience/{player_id}", get(player_leaderboard))
+        .route(
+            "/leaderboard",
+            axum_codec::routing::get(leaderboard::get_top_100).into(),
+        )
+        .route(
+            "/experience/{player_id}",
+            axum_codec::routing::get(player_leaderboard).into(),
+        )
         .route(
             "/api/bitcraft/experience/{player_id}",
-            get(player_leaderboard),
+            axum_codec::routing::get(player_leaderboard).into(),
         )
         .route(
             "/api/bitcraft/leaderboard/claims/{claim_id}",
-            get(get_claim_leaderboard),
+            axum_codec::routing::get(get_claim_leaderboard).into(),
         )
 }
 
@@ -207,7 +212,7 @@ type LeaderboardRankTypeTasks =
 
 pub(crate) async fn get_top_100(
     state: State<std::sync::Arc<AppState>>,
-) -> Result<Json<Value>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -431,7 +436,7 @@ pub(crate) async fn get_top_100(
         .map(|player| (player.entity_id, player.time_signed_in))
         .collect::<HashMap<i64, i32>>();
 
-    Ok(Json(serde_json::json!({
+    Ok(axum_codec::Codec(serde_json::json!({
         "player_map": players,
         "leaderboard": leaderboard_result
     })))
@@ -620,7 +625,7 @@ type PlayerLeaderboardTasks =
 pub(crate) async fn player_leaderboard(
     state: State<std::sync::Arc<AppState>>,
     Path(player_id): Path<i64>,
-) -> Result<Json<BTreeMap<String, RankType>>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<BTreeMap<String, RankType>>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -784,13 +789,13 @@ pub(crate) async fn player_leaderboard(
         };
     }
 
-    Ok(Json(leaderboard_result))
+    Ok(axum_codec::Codec(leaderboard_result))
 }
 
 pub(crate) async fn get_claim_leaderboard(
     state: State<std::sync::Arc<AppState>>,
     Path(claim_id): Path<i64>,
-) -> Result<Json<Value>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -1013,7 +1018,7 @@ pub(crate) async fn get_claim_leaderboard(
         .map(|player| (player.entity_id, player.time_signed_in))
         .collect::<HashMap<i64, i32>>();
 
-    Ok(Json(serde_json::json!({
+    Ok(axum_codec::Codec(serde_json::json!({
         "player_map": players,
         "leaderboard": leaderboard_result
     })))

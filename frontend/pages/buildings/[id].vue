@@ -11,13 +11,15 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: buildingsFetch } = useFetch(() => {
+const { data: buildingsFetch } = useFetchMsPack(() => {
   return `${api.base}/buildings/${route.params.id}`;
 });
 
-const { data: inventoryFetch, pending: inventoryPending } = useFetch(() => {
-  return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
-});
+const { data: inventoryFetch, pending: inventoryPending } = useFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+  },
+);
 
 const building = computed(() => {
   return buildingsFetch.value ?? undefined;

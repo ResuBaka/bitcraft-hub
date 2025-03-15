@@ -14,3 +14,4 @@ sea-orm = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+axum-codec = { workspace = true }

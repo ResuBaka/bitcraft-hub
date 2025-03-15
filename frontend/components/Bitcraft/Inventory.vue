@@ -69,7 +69,7 @@ const {
 } = useRuntimeConfig();
 
 const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
-  useFetch(() => {
+  useFetchMsPack(() => {
     return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
   });
 

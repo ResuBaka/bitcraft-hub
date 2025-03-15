@@ -14,7 +14,7 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: claimFetch, pending: claimPnding } = useFetch(() => {
+const { data: claimFetch, pending: claimPnding } = useFetchMsPack(() => {
   return `${api.base}/api/bitcraft/claims/${route.params.id}?per_Page=${perPage.value}`;
 });
 

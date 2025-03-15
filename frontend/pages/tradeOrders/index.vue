@@ -25,7 +25,7 @@ const {
   data: tradeOrders,
   pending,
   refresh,
-} = await useLazyFetch(
+} = await useLazyFetchMsPack(
   () => {
     return `${api.base}/api/bitcraft/tradeOrders`;
   },

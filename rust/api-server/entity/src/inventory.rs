@@ -64,6 +64,35 @@ pub struct Content {
     pub durability: JsonValue,
 }
 
+impl Content {
+    pub fn get_item_type(&self) -> ItemType {
+        let item_type = self
+            .item_type
+            .as_array()
+            .unwrap()
+            .first()
+            .unwrap()
+            .as_i64()
+            .unwrap();
+
+        match item_type {
+            0 => ItemType::Item,
+            1 => ItemType::Cargo,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_durability(&self) -> Option<i64> {
+        let array = self.durability.as_array().unwrap();
+
+        match array.first().unwrap().as_i64().unwrap() {
+            0 => array.get(1).unwrap().as_i64(),
+            1 => None,
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize)]
 pub enum ItemType {
     Item,

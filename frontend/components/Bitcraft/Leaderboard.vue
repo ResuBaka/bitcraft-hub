@@ -8,7 +8,7 @@ const {
   data: leaderboard,
   pending,
   refresh,
-} = await useFetch(
+} = await useFetchMsPack(
   () => {
     return `${api.base}/leaderboard`;
   },

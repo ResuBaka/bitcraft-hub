@@ -1,10 +1,9 @@
 #![allow(warnings)]
 
 use crate::{AppRouter, AppState};
+use axum::Router;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
 use entity::trade_order;
 use futures::StreamExt;
 use log::{debug, error, info};
@@ -23,7 +22,7 @@ use tokio::time::Instant;
 pub(crate) fn get_routes() -> AppRouter {
     Router::new().route(
         "/api/bitcraft/trade_orders/get_trade_orders",
-        get(get_trade_orders),
+        axum_codec::routing::get(get_trade_orders).into(),
     )
 }
 
@@ -37,7 +36,7 @@ struct TradeOrdersQuery {
 async fn get_trade_orders(
     state: State<std::sync::Arc<AppState>>,
     Query(query): Query<TradeOrdersQuery>,
-) -> Result<Json<TradeOrdersResponse>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
     let page = query.page.unwrap_or(1);
     let per_page = query.per_page.unwrap_or(24);
     let search = query.search;
@@ -77,7 +76,7 @@ async fn get_trade_orders(
     };
 
     if items_ids.is_none() && cargo_ids.is_none() && search.is_some() {
-        return Ok(Json(TradeOrdersResponse {
+        return Ok(axum_codec::Codec(TradeOrdersResponse {
             trade_orders: vec![],
             total: 0,
             page: 1,
@@ -165,7 +164,7 @@ async fn get_trade_orders(
         trade_orders
     };
 
-    Ok(Json(TradeOrdersResponse {
+    Ok(axum_codec::Codec(TradeOrdersResponse {
         trade_orders: filtered_trade_orders,
         total,
         page,

@@ -24,6 +24,7 @@ rayon = "1.10.0"
 time = { version = "0.3.37", features = ["serde"] }
 anyhow = "1.0.96"
 clap = { version = "4.5.30", features = ["derive"] }
+axum-codec = { version = "0.0.19", features = ["serde", "json", "msgpack", "toml", "yaml"] }
 
 [dependencies]
 api = { path = "api" }

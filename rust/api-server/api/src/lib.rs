@@ -294,13 +294,22 @@ pub(crate) type AppRouter = Router<Arc<AppState>>;
 
 fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandle) -> Router {
     let desc_router = Router::new()
-        .route("/buildings/{id}", get(buildings::find_claim_description))
-        .route("/buildings", get(buildings::find_building_descriptions));
+        .route(
+            "/buildings/{id}",
+            axum_codec::routing::get(buildings::find_claim_description).into(),
+        )
+        .route(
+            "/buildings",
+            axum_codec::routing::get(buildings::find_building_descriptions).into(),
+        );
 
     let app = Router::new()
         .route("/websocket", any(websocket_handler))
-        .route("/locations", get(locations::list_locations))
-        .route("/items", get(items::list_items))
+        .route(
+            "/locations",
+            axum_codec::routing::get(locations::list_locations).into(),
+        )
+        .route("/items", axum_codec::routing::get(items::list_items).into())
         .merge(player_state::get_routes())
         .merge(claims::get_routes())
         .merge(buildings::get_routes())

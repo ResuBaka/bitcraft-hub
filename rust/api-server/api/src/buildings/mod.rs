@@ -1,10 +1,9 @@
 use crate::config::Config;
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{AppRouter, AppState, Params};
+use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
 use entity::building_state::Model;
 use entity::{building_desc, building_state};
 use log::{debug, error, info};
@@ -27,13 +26,25 @@ use tokio::time::Instant;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
-        .route("/buildings", get(find_building_states))
-        .route("/api/bitcraft/buildings", get(find_building_states))
-        .route("/buildings/{id}", get(find_building_state))
-        .route("/api/bitcraft/buildings/{id}", get(find_building_state))
+        .route(
+            "/buildings",
+            axum_codec::routing::get(find_building_states).into(),
+        )
+        .route(
+            "/api/bitcraft/buildings",
+            axum_codec::routing::get(find_building_states).into(),
+        )
+        .route(
+            "/buildings/{id}",
+            axum_codec::routing::get(find_building_state).into(),
+        )
+        .route(
+            "/api/bitcraft/buildings/{id}",
+            axum_codec::routing::get(find_building_state).into(),
+        )
         .route(
             "/api/bitcraft/desc/buildings",
-            get(find_building_descriptions),
+            axum_codec::routing::get(find_building_descriptions).into(),
         )
 }
 
@@ -48,7 +59,7 @@ pub(crate) struct BuildingDescriptionsResponse {
 pub(crate) async fn find_building_descriptions(
     state: State<std::sync::Arc<AppState>>,
     Query(params): Query<Params>,
-) -> Result<Json<BuildingDescriptionsResponse>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<BuildingDescriptionsResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(30);
     let search = params.search;
@@ -91,7 +102,7 @@ pub(crate) async fn find_building_descriptions(
         })
         .collect::<Vec<building_desc::ApiResponse>>();
 
-    Ok(Json(BuildingDescriptionsResponse {
+    Ok(axum_codec::Codec(BuildingDescriptionsResponse {
         buildings,
         per_page,
         total: posts.1.number_of_items,
@@ -102,7 +113,7 @@ pub(crate) async fn find_building_descriptions(
 pub(crate) async fn find_claim_description(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Json<building_desc::Model>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<building_desc::Model>, (StatusCode, &'static str)> {
     let posts = QueryCore::find_building_desc_by_id(&state.conn, id as i64)
         .await
         .expect("Cannot find posts in page");
@@ -111,7 +122,7 @@ pub(crate) async fn find_claim_description(
         return Err((StatusCode::NOT_FOUND, "BuildingDesc not found"));
     }
 
-    Ok(Json(posts.unwrap()))
+    Ok(axum_codec::Codec(posts.unwrap()))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -133,7 +144,7 @@ pub(crate) struct BuildingStatesParams {
 pub(crate) async fn find_building_states(
     state: State<std::sync::Arc<AppState>>,
     Query(params): Query<BuildingStatesParams>,
-) -> Result<Json<BuildingStatesResponse>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<BuildingStatesResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(30);
     let search = params.claim_entity_id;
@@ -163,7 +174,7 @@ pub(crate) async fn find_building_states(
     .await
     .expect("Cannot find posts in page");
 
-    Ok(Json(BuildingStatesResponse {
+    Ok(axum_codec::Codec(BuildingStatesResponse {
         buildings: posts.0,
         per_page,
         total: posts.1.number_of_items,
@@ -174,7 +185,7 @@ pub(crate) async fn find_building_states(
 pub(crate) async fn find_building_state(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
-) -> Result<Json<building_state::Model>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<building_state::Model>, (StatusCode, &'static str)> {
     let posts = QueryCore::find_building_state_by_id(&state.conn, id as i64)
         .await
         .expect("Cannot find posts in page");
@@ -183,7 +194,7 @@ pub(crate) async fn find_building_state(
         return Err((StatusCode::NOT_FOUND, "BuildingState not found"));
     }
 
-    Ok(Json(posts.unwrap()))
+    Ok(axum_codec::Codec(posts.unwrap()))
 }
 
 #[allow(dead_code)]

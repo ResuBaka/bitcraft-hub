@@ -26,7 +26,7 @@ const {
   data: claims,
   pending,
   refresh,
-} = await useLazyFetch(
+} = await useLazyFetchMsPack(
   () => {
     return `${api.base}/api/bitcraft/claims`;
   },

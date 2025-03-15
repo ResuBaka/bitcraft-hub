@@ -27,7 +27,7 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data, pending, refresh } = await useLazyFetch(
+const { data, pending, refresh } = await useLazyFetchMsPack(
   () => {
     return `${api.base}/api/bitcraft/itemsAndCargo`;
   },

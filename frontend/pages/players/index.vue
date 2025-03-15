@@ -27,7 +27,7 @@ const {
   data: players,
   pending,
   refresh,
-} = await useLazyFetch(
+} = await useLazyFetchMsPack(
   () => {
     return `${api.base}/api/bitcraft/players`;
   },
