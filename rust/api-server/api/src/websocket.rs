@@ -462,8 +462,11 @@ fn start_websocket_message_thread(
                             }
 
                             if table.table_name.as_ref() == "claim_tech_state" {
-                                let result =
-                                    claim_tech_state::handle_initial_subscription(&db, table).await;
+                                let result = claim_tech_state::handle_initial_subscription(
+                                    &global_app_state,
+                                    table,
+                                )
+                                .await;
 
                                 if result.is_err() {
                                     error!(
@@ -776,7 +779,8 @@ fn start_websocket_message_thread(
                 }
 
                 if table_name == "claim_tech_state" {
-                    let result = claim_tech_state::handle_transaction_update(&db, table).await;
+                    let result =
+                        claim_tech_state::handle_transaction_update(&global_app_state, table).await;
 
                     if result.is_err() {
                         error!(

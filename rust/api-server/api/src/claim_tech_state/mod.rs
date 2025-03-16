@@ -1,3 +1,4 @@
+use crate::AppState;
 use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use entity::claim_tech_state::Model;
 use entity::{claim_tech_desc, claim_tech_state};
@@ -10,6 +11,7 @@ use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
+use std::sync::Arc;
 
 #[allow(dead_code)]
 pub(crate) async fn load_claim_tech_state_from_file(
@@ -123,7 +125,7 @@ async fn get_known_claim_tech_state_ids(conn: &DatabaseConnection) -> anyhow::Re
 }
 
 pub(crate) async fn handle_initial_subscription(
-    p0: &DatabaseConnection,
+    app_state: &Arc<AppState>,
     p1: &Table,
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_tech_state_on_conflict();
@@ -131,7 +133,7 @@ pub(crate) async fn handle_initial_subscription(
     let chunk_size = 5000;
     let mut buffer_before_insert: Vec<claim_tech_state::Model> = vec![];
 
-    let mut known_building_state_ids = get_known_claim_tech_state_ids(p0).await?;
+    let mut known_building_state_ids = get_known_claim_tech_state_ids(&app_state.conn).await?;
     for update in p1.updates.iter() {
         for row in update.inserts.iter() {
             match serde_json::from_str::<claim_tech_state::Model>(row.as_ref()) {
@@ -141,8 +143,12 @@ pub(crate) async fn handle_initial_subscription(
                     }
                     buffer_before_insert.push(building_state);
                     if buffer_before_insert.len() == chunk_size {
-                        db_insert_claim_tech_state(p0, &mut buffer_before_insert, &on_conflict)
-                            .await?;
+                        db_insert_claim_tech_state(
+                            &app_state.conn,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                        )
+                        .await?;
                     }
                 }
                 Err(error) => {
@@ -154,19 +160,20 @@ pub(crate) async fn handle_initial_subscription(
 
     if !buffer_before_insert.is_empty() {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
-            db_insert_claim_tech_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
+            db_insert_claim_tech_state(&app_state.conn, &mut buffer_chnk.to_vec(), &on_conflict)
+                .await?;
         }
     }
 
     if !known_building_state_ids.is_empty() {
-        delete_claim_tech_state(p0, known_building_state_ids).await?;
+        delete_claim_tech_state(&app_state.conn, known_building_state_ids).await?;
     }
 
     Ok(())
 }
 
 pub(crate) async fn handle_transaction_update(
-    p0: &DatabaseConnection,
+    app_state: &Arc<AppState>,
     tables: &[TableWithOriginalEventTransactionUpdate],
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_tech_state_on_conflict();
@@ -178,9 +185,11 @@ pub(crate) async fn handle_transaction_update(
         for row in p1.inserts.iter() {
             match serde_json::from_str::<claim_tech_state::Model>(row.as_ref()) {
                 Ok(building_state) => {
-                    let current_building_state =
-                        QueryCore::find_claim_tech_state_by_ids(p0, vec![building_state.entity_id])
-                            .await?;
+                    let current_building_state = QueryCore::find_claim_tech_state_by_ids(
+                        &app_state.conn,
+                        vec![building_state.entity_id],
+                    )
+                    .await?;
 
                     if !current_building_state.is_empty() {
                         let current_building_state = current_building_state.first().unwrap();
@@ -190,7 +199,7 @@ pub(crate) async fn handle_transaction_update(
                                 building_state.clone().into_active_model(),
                             )
                             .on_conflict(on_conflict.clone())
-                            .exec(p0)
+                            .exec(&app_state.conn)
                             .await?;
                         }
                     } else {
@@ -198,7 +207,7 @@ pub(crate) async fn handle_transaction_update(
                         let _ = claim_tech_state::Entity::insert(
                             building_state.clone().into_active_model(),
                         )
-                        .exec(p0)
+                        .exec(&app_state.conn)
                         .await?;
                     }
                 }
@@ -229,7 +238,7 @@ pub(crate) async fn handle_transaction_update(
     }
 
     if !ids_to_delete.is_empty() {
-        delete_claim_tech_state(p0, ids_to_delete).await?;
+        delete_claim_tech_state(&app_state.conn, ids_to_delete).await?;
     }
 
     Ok(())
