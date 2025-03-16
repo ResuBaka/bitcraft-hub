@@ -34,7 +34,7 @@ pub(crate) struct ItemsAndCargoParams {
 pub(crate) struct ItemsAndCargoResponse {
     items: Vec<ItemCargo>,
     tags: Vec<String>,
-    tiers: Vec<i32>,
+    tiers: Vec<i64>,
     per_page: u64,
     total: u64,
     page: u64,
@@ -51,31 +51,166 @@ pub(crate) async fn list_items_and_cargo(
     let tier = params.tier;
     let tag = params.tag;
 
-    let (items, items_tags, items_tiers, cargos, cargos_tags, cargos_tiers) = tokio::join!(
-        QueryCore::search_items_desc(&state.conn, &search, &tier, &tag),
-        QueryCore::find_unique_item_tags(&state.conn),
-        QueryCore::find_unique_item_tiers(&state.conn),
-        QueryCore::search_cargos_desc(&state.conn, &search, &tier, &tag),
-        QueryCore::find_unique_cargo_tags(&state.conn),
-        QueryCore::find_unique_cargo_tiers(&state.conn),
+    if state.cargo_tags.is_empty()
+        || state.cargo_tiers.is_empty()
+        || state.item_tags.is_empty()
+        || state.item_tiers.is_empty()
+    {
+        let (items_tags, items_tiers, cargos_tags, cargos_tiers) = tokio::join!(
+            QueryCore::find_unique_item_tags(&state.conn),
+            QueryCore::find_unique_item_tiers(&state.conn),
+            QueryCore::find_unique_cargo_tags(&state.conn),
+            QueryCore::find_unique_cargo_tiers(&state.conn),
+        );
+
+        let items_tags = items_tags.expect("Cannot find tags");
+        let items_tiers = items_tiers.expect("Cannot find tiers");
+        let cargos_tags = cargos_tags.expect("Cannot find tags");
+        let cargos_tiers = cargos_tiers.expect("Cannot find tiers");
+
+        for item_tag in items_tags {
+            state.item_tags.insert(item_tag);
+        }
+
+        for item_tier in items_tiers {
+            state.item_tiers.insert(item_tier as i64);
+        }
+
+        for cargo_tag in cargos_tags {
+            state.cargo_tags.insert(cargo_tag);
+        }
+
+        for cargo_tier in cargos_tiers {
+            state.cargo_tiers.insert(cargo_tier as i64);
+        }
+    }
+
+    if state.item_desc.is_empty() || state.cargo_desc.is_empty() {
+        let (items, cargos) = tokio::join!(
+            QueryCore::search_items_desc(&state.conn, &search, &tier, &tag),
+            QueryCore::search_cargos_desc(&state.conn, &search, &tier, &tag),
+        );
+
+        let items = items.expect("Cannot find items");
+        let cargos = cargos.expect("Cannot find cargos");
+
+        for cargo in cargos {
+            state.cargo_desc.insert(cargo.id, cargo);
+        }
+
+        for item in items {
+            state.item_desc.insert(item.id, item);
+        }
+    }
+
+    let mut merged_tags = merge_tags(
+        state.item_tags.iter().map(|tier| tier.to_owned()).collect(),
+        state
+            .cargo_tags
+            .iter()
+            .map(|tier| tier.to_owned())
+            .collect(),
     );
+    let mut merged_tiers = merge_tiers(
+        state
+            .item_tiers
+            .iter()
+            .map(|tier| tier.to_owned())
+            .collect(),
+        state
+            .cargo_tiers
+            .iter()
+            .map(|tier| tier.to_owned())
+            .collect(),
+    );
+    let mut merged_items_and_cargo = merge_items_and_cargo(
+        state
+            .item_desc
+            .iter()
+            .filter_map(|item| {
+                if let Some(tier) = &tier {
+                    if &item.tier != tier {
+                        return None;
+                    }
+                };
 
-    let items = items.expect("Cannot find items");
-    let items_tags = items_tags.expect("Cannot find tags");
-    let items_tiers = items_tiers.expect("Cannot find tiers");
+                if let Some(tag) = &tag {
+                    if &item.tag != tag {
+                        return None;
+                    }
+                };
 
-    let cargos = cargos.expect("Cannot find cargos");
-    let cargos_tags = cargos_tags.expect("Cannot find tags");
-    let cargos_tiers = cargos_tiers.expect("Cannot find tiers");
+                if let Some(search) = &search {
+                    if !item
+                        .name
+                        .to_lowercase()
+                        .contains(search.to_lowercase().as_str())
+                    {
+                        return None;
+                    }
+                };
 
-    let mut merged_tags = merge_tags(items_tags, cargos_tags);
-    let mut merged_tiers = merge_tiers(items_tiers, cargos_tiers);
-    let merged_items_and_cargo = merge_items_and_cargo(items, cargos);
+                Some(item.to_owned())
+            })
+            .collect(),
+        state
+            .cargo_desc
+            .iter()
+            .filter_map(|cargo| {
+                if let Some(tier) = &tier {
+                    if &cargo.tier != tier {
+                        return None;
+                    }
+                };
+
+                if let Some(tag) = &tag {
+                    if &cargo.tag != tag {
+                        return None;
+                    }
+                };
+
+                if let Some(search) = &search {
+                    if !cargo
+                        .name
+                        .to_lowercase()
+                        .contains(search.to_lowercase().as_str())
+                    {
+                        return None;
+                    }
+                };
+
+                Some(cargo.to_owned())
+            })
+            .collect(),
+    );
 
     let (start, end) = (
         ((page - 1) * posts_per_page) as usize,
         (page * posts_per_page) as usize,
     );
+
+    merged_items_and_cargo.sort_by(|a, b| {
+        let (a_tier, b_tier, a_id, b_id) = match (a, b) {
+            (ItemCargo::Cargo(a), ItemCargo::Cargo(b)) => (a.tier, b.tier, a.id, b.id),
+            (ItemCargo::Cargo(a), ItemCargo::Item(b)) => (a.tier, b.tier, a.id, b.id),
+            (ItemCargo::Item(a), ItemCargo::Cargo(b)) => (a.tier, b.tier, a.id, b.id),
+            (ItemCargo::Item(a), ItemCargo::Item(b)) => (a.tier, b.tier, a.id, b.id),
+        };
+
+        if b_tier == a_tier {
+            a_id.cmp(&b_id)
+        } else {
+            if a_tier <= 0 && b_tier > 0 {
+                return std::cmp::Ordering::Greater;
+            }
+
+            if a_tier > 0 && b_tier <= 0 {
+                return std::cmp::Ordering::Less;
+            }
+
+            a_tier.cmp(&b_tier)
+        }
+    });
 
     let items = match merged_items_and_cargo.len() {
         x if x > end => merged_items_and_cargo[start..end].to_vec(),
@@ -106,7 +241,7 @@ fn merge_tags(items_tags: Vec<String>, cargo_tags: Vec<String>) -> Vec<String> {
     merged_tags
 }
 
-fn merge_tiers(items_tiers: Vec<i32>, cargo_tiers: Vec<i32>) -> Vec<i32> {
+fn merge_tiers(items_tiers: Vec<i64>, cargo_tiers: Vec<i64>) -> Vec<i64> {
     let mut merged_tiers = items_tiers;
     for tier in cargo_tiers {
         if !merged_tiers.contains(&tier) {

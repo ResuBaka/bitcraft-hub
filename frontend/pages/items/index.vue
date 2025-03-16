@@ -2,7 +2,7 @@
 import { watchDebounced, watchThrottled } from "@vueuse/shared";
 
 const page = ref(1);
-const perPage = 24;
+const perPage = 16;
 
 const tag = ref<string | null>(null);
 const tier = ref<number | null>(null);
@@ -88,9 +88,13 @@ watchDebounced(
 );
 
 watchThrottled(
-  () => [tag.value, tier.value],
+  () => [tag.value, tier.value, search.value],
   (value, oldValue) => {
-    if (value[1] !== oldValue[1] || value[2] !== oldValue[2]) {
+    if (
+      value[1] !== oldValue[1] ||
+      value[2] !== oldValue[2] ||
+      value[3] !== oldValue[3]
+    ) {
       page.value = 1;
     }
 

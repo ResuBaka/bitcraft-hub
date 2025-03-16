@@ -681,6 +681,12 @@ struct AppState {
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
     player_action_state: Arc<dashmap::DashMap<u64, entity::player_action_state::Model>>,
     crafting_recipe_desc: Arc<dashmap::DashMap<i64, entity::crafting_recipe::Model>>,
+    item_tags: Arc<dashmap::DashSet<String>>,
+    item_tiers: Arc<dashmap::DashSet<i64>>,
+    item_desc: Arc<dashmap::DashMap<i64, entity::item_desc::Model>>,
+    cargo_desc: Arc<dashmap::DashMap<i64, entity::cargo_desc::Model>>,
+    cargo_tags: Arc<dashmap::DashSet<String>>,
+    cargo_tiers: Arc<dashmap::DashSet<i64>>,
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
 }
 
@@ -694,6 +700,12 @@ impl AppState {
             claim_tile_state: Arc::new(dashmap::DashMap::new()),
             player_action_state: Arc::new(dashmap::DashMap::new()),
             crafting_recipe_desc: Arc::new(dashmap::DashMap::new()),
+            item_tags: Arc::new(dashmap::DashSet::new()),
+            item_tiers: Arc::new(dashmap::DashSet::new()),
+            item_desc: Arc::new(dashmap::DashMap::new()),
+            cargo_tags: Arc::new(dashmap::DashSet::new()),
+            cargo_tiers: Arc::new(dashmap::DashSet::new()),
+            cargo_desc: Arc::new(dashmap::DashMap::new()),
             action_state: Arc::new(dashmap::DashMap::new()),
         }
     }

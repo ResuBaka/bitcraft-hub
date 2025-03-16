@@ -179,28 +179,29 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
     let mut resolved_inventory = vec![];
 
-    let item_descs = QueryCore::find_item_by_ids(&state.conn, item_ids)
-        .await
-        .map_err(|e| {
-            error!("Error: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-        })?;
+    let item_descs_map = state
+        .item_desc
+        .iter()
+        .filter_map(|item| {
+            if !item_ids.contains(&item.id) {
+                return None;
+            }
 
-    let cargo_descs = QueryCore::find_cargo_by_ids(&state.conn, cargo_ids)
-        .await
-        .map_err(|e| {
-            error!("Error: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-        })?;
-
-    let cargo_descs_map = cargo_descs
-        .into_iter()
-        .map(|cargo| (cargo.id, cargo))
-        .collect::<HashMap<i64, cargo_desc::Model>>();
-    let item_descs_map = item_descs
-        .into_iter()
-        .map(|item| (item.id, item))
+            Some((item.id, item.clone()))
+        })
         .collect::<HashMap<i64, item_desc::Model>>();
+
+    let cargo_descs_map = state
+        .cargo_desc
+        .iter()
+        .filter_map(|cargo| {
+            if !cargo_ids.contains(&cargo.id) {
+                return None;
+            }
+
+            Some((cargo.id, cargo.clone()))
+        })
+        .collect::<HashMap<i64, cargo_desc::Model>>();
 
     for inventory in inventorys.into_iter() {
         let mut pockets = vec![];

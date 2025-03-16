@@ -98,12 +98,22 @@ pub(crate) async fn get_needed_to_craft(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
-    let recipes = QueryCore::load_all_recipes(&state.conn).await;
-    let recipes = recipes.into_iter().map(|x| x.into()).collect();
+    if state.crafting_recipe_desc.is_empty() {
+        let recipes = QueryCore::load_all_recipes(&state.conn).await;
 
-    return Ok(axum_codec::Codec(get_all_consumed_items_from_item(
+        for recipe in recipes {
+            state.crafting_recipe_desc.insert(recipe.id, recipe);
+        }
+    }
+    let recipes: Vec<crafting_recipe::CraftingRecipeWithInner> = state
+        .crafting_recipe_desc
+        .iter()
+        .map(|x| x.to_owned().into())
+        .collect();
+
+    Ok(axum_codec::Codec(get_all_consumed_items_from_item(
         &recipes, id as i64,
-    )));
+    )))
 }
 
 fn get_all_consumed_items_from_item(

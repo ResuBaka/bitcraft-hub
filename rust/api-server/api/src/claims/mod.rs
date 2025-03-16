@@ -219,27 +219,16 @@ pub(crate) async fn get_claim(
         .map(|desc| desc.id)
         .collect::<Vec<i64>>();
 
-    let items = QueryCore::all_items(&state.conn)
-        .await
-        .unwrap_or_else(|err| {
-            error!("Error loading items: {err}");
-            vec![]
-        });
-
-    let items = items
-        .into_iter()
-        .map(|item| (item.id, item))
+    let items = state
+        .item_desc
+        .iter()
+        .map(|item| (item.id, item.to_owned()))
         .collect::<HashMap<i64, item_desc::Model>>();
 
-    let cargos = QueryCore::all_cargos_desc(&state.conn)
-        .await
-        .unwrap_or_else(|err| {
-            error!("Error loading cargos: {err}");
-            vec![]
-        });
-    let cargos = cargos
-        .into_iter()
-        .map(|cargo| (cargo.id, cargo))
+    let cargos = state
+        .cargo_desc
+        .iter()
+        .map(|cargo| (cargo.id, cargo.to_owned()))
         .collect::<HashMap<i64, cargo_desc::Model>>();
 
     let mut claim = {

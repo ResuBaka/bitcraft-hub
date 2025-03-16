@@ -12,23 +12,44 @@ const {
   public: { iconDomain, api },
 } = useRuntimeConfig();
 
-const { data: neededInCrafting } = await useLazyFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
-});
+const {
+  data: neededInCrafting,
+  execute: neededInCraftingExecute,
+  status: neededInCraftingStatus,
+} = await useLazyFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
+  },
+  {
+    immediate: false,
+  },
+);
 
-const { data: producedInCrafting } = await useLazyFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
-});
+const {
+  data: producedInCrafting,
+  execute: producedInCraftingExecute,
+  status: producedInCraftingStatus,
+} = await useLazyFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
+  },
+  {
+    immediate: false,
+  },
+);
 
-const { data: neededToCraft, execute: neededToCraftExecute } =
-  await useLazyFetchMsPack(
-    () => {
-      return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
-    },
-    {
-      immediate: false,
-    },
-  );
+const {
+  data: neededToCraft,
+  execute: neededToCraftExecute,
+  status: neededToCraftStatus,
+} = await useLazyFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
+  },
+  {
+    immediate: false,
+  },
+);
 
 const neededInCraftingData = computed(() => {
   return neededInCrafting.value ?? [];
@@ -46,8 +67,29 @@ const contetentToShow = ref("default");
 
 const toggleContentToShow = (contetentArg: string) => {
   if (contetentArg === "neededToCraft") {
-    if (neededToCraftData.value.length === 0) {
+    if (
+      neededToCraftData.value.length === 0 &&
+      neededToCraftStatus.value !== "sucess"
+    ) {
       neededToCraftExecute();
+    }
+  }
+
+  if (contetentArg === "neededInCrafting") {
+    if (
+      neededInCraftingData.value.length === 0 &&
+      neededInCraftingStatus.value !== "sucess"
+    ) {
+      neededInCraftingExecute();
+    }
+  }
+
+  if (contetentArg === "producedInCrafting") {
+    if (
+      producedInCraftingData.value.length === 0 &&
+      producedInCraftingStatus.value !== "sucess"
+    ) {
+      producedInCraftingExecute();
     }
   }
 
@@ -131,7 +173,7 @@ const iconUrl = computed(() => {
             <v-btn
                 icon
                 v-bind="props"
-                @click="contetentToShow = 'neededInCrafting'"
+                @click="toggleContentToShow('neededInCrafting')"
             >
               <v-badge color="primary" :content="neededInCraftingData.length">
                 <v-icon>
@@ -149,7 +191,7 @@ const iconUrl = computed(() => {
             <v-btn
                 icon
                 v-bind="props"
-                @click="contetentToShow = 'producedInCrafting'"
+                @click="toggleContentToShow('producedInCrafting')"
             >
               <v-badge color="primary" :content="producedInCraftingData.length">
                 <v-icon>
