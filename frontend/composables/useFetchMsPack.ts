@@ -3,7 +3,7 @@ import type { UseFetchOptions } from "nuxt/app";
 
 export function useFetchMsPack<T>(
   request: string | (() => string),
-  options: UseFetchOptions<T>,
+  options: UseFetchOptions<T> = {},
 ) {
   // @ts-ignore
   return useFetch(request, {

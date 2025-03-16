@@ -8,10 +8,15 @@ use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 
 pub(crate) fn get_routes() -> AppRouter {
-    Router::new().route(
-        "/api/bitcraft/itemsAndCargo",
-        axum_codec::routing::get(list_items_and_cargo).into(),
-    )
+    Router::new()
+        .route(
+            "/api/bitcraft/itemsAndCargo",
+            axum_codec::routing::get(list_items_and_cargo).into(),
+        )
+        .route(
+            "/api/bitcraft/itemsAndCargo/meta",
+            axum_codec::routing::get(meta).into(),
+        )
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -39,6 +44,12 @@ pub(crate) struct ItemsAndCargoResponse {
     total: u64,
     page: u64,
     pages: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct MetaResponse {
+    tags: Vec<String>,
+    tiers: Vec<i64>,
 }
 
 pub(crate) async fn list_items_and_cargo(
@@ -228,6 +239,72 @@ pub(crate) async fn list_items_and_cargo(
         total: merged_items_and_cargo.len() as u64,
         page,
         pages: merged_items_and_cargo.len() as u64 / posts_per_page,
+    }))
+}
+
+pub(crate) async fn meta(
+    state: State<std::sync::Arc<AppState>>,
+) -> Result<axum_codec::Codec<MetaResponse>, (StatusCode, &'static str)> {
+    if state.cargo_tags.is_empty()
+        || state.cargo_tiers.is_empty()
+        || state.item_tags.is_empty()
+        || state.item_tiers.is_empty()
+    {
+        let (items_tags, items_tiers, cargos_tags, cargos_tiers) = tokio::join!(
+            QueryCore::find_unique_item_tags(&state.conn),
+            QueryCore::find_unique_item_tiers(&state.conn),
+            QueryCore::find_unique_cargo_tags(&state.conn),
+            QueryCore::find_unique_cargo_tiers(&state.conn),
+        );
+
+        let items_tags = items_tags.expect("Cannot find tags");
+        let items_tiers = items_tiers.expect("Cannot find tiers");
+        let cargos_tags = cargos_tags.expect("Cannot find tags");
+        let cargos_tiers = cargos_tiers.expect("Cannot find tiers");
+
+        for item_tag in items_tags {
+            state.item_tags.insert(item_tag);
+        }
+
+        for item_tier in items_tiers {
+            state.item_tiers.insert(item_tier as i64);
+        }
+
+        for cargo_tag in cargos_tags {
+            state.cargo_tags.insert(cargo_tag);
+        }
+
+        for cargo_tier in cargos_tiers {
+            state.cargo_tiers.insert(cargo_tier as i64);
+        }
+    }
+
+    let mut merged_tags = merge_tags(
+        state.item_tags.iter().map(|tier| tier.to_owned()).collect(),
+        state
+            .cargo_tags
+            .iter()
+            .map(|tier| tier.to_owned())
+            .collect(),
+    );
+    let mut merged_tiers = merge_tiers(
+        state
+            .item_tiers
+            .iter()
+            .map(|tier| tier.to_owned())
+            .collect(),
+        state
+            .cargo_tiers
+            .iter()
+            .map(|tier| tier.to_owned())
+            .collect(),
+    );
+
+    merged_tiers.sort();
+    merged_tags.sort();
+    Ok(axum_codec::Codec(MetaResponse {
+        tiers: merged_tiers,
+        tags: merged_tags,
     }))
 }
 

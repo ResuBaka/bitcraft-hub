@@ -66,6 +66,14 @@ const { data, pending, refresh } = await useLazyFetchMsPack(
   },
 );
 
+const {
+  data: metaData,
+  pending: metaPending,
+  refresh: metaRefresh,
+} = await useLazyFetchMsPack(() => {
+  return `${api.base}/api/bitcraft/itemsAndCargo/meta`;
+});
+
 const changePage = (value: number) => {
   page.value = value;
   router.push({
@@ -104,7 +112,7 @@ watchThrottled(
 );
 
 useSeoMeta({
-  title: "Items",
+  title: () => `Items ${data.value?.total ?? 0} ${search.value ?? ''}`,
   description: "List of all the Items in the game",
 });
 </script>
@@ -124,7 +132,7 @@ useSeoMeta({
       <v-col>
         <v-autocomplete
             v-model="tag"
-            :items="data?.tags || []"
+            :items="metaData?.tags || []"
             label="Tag"
             outlined
             dense
@@ -134,7 +142,7 @@ useSeoMeta({
       <v-col>
         <v-select
             v-model="tier"
-            :items="data?.tiers || []"
+            :items="metaData?.tiers || []"
             label="Tier"
             outlined
             dense
