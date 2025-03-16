@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::{
-    AppState, buildings, claim_tech_state, claims, collectible_desc, deployable_state, inventory,
-    leaderboard, player_state, vault_state,
+    AppState, buildings, cargo_desc, claim_tech_state, claims, collectible_desc, deployable_state,
+    inventory, items, leaderboard, player_state, vault_state,
 };
 use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
@@ -50,6 +50,8 @@ pub fn start_websocket_bitcraft_logic(
             "mobile_entity_state",
             "claim_tile_state",
             "combat_action_desc",
+            "item_desc",
+            "cargo_desc",
             "player_action_state",
             "crafting_recipe_desc",
             "action_state",
@@ -429,6 +431,36 @@ fn start_websocket_message_thread(
                                 }
                             }
 
+                            if table.table_name.as_ref() == "item_desc" {
+                                let result = items::handle_initial_subscription_item_desc(
+                                    &global_app_state,
+                                    table,
+                                )
+                                .await;
+
+                                if result.is_err() {
+                                    error!(
+                                        "item_desc initial subscription failed: {:?}",
+                                        result.err()
+                                    );
+                                }
+                            }
+
+                            if table.table_name.as_ref() == "cargo_desc" {
+                                let result = cargo_desc::handle_initial_subscription_cargo_desc(
+                                    &global_app_state,
+                                    table,
+                                )
+                                .await;
+
+                                if result.is_err() {
+                                    error!(
+                                        "cargo_desc initial subscription failed: {:?}",
+                                        result.err()
+                                    );
+                                }
+                            }
+
                             if table.table_name.as_ref() == "claim_tech_state" {
                                 let result =
                                     claim_tech_state::handle_initial_subscription(&db, table).await;
@@ -721,6 +753,25 @@ fn start_websocket_message_thread(
                             "building_state transaction update failed: {:?}",
                             result.err()
                         );
+                    }
+                }
+
+                if table_name == "item_desc" {
+                    let result =
+                        items::handle_transaction_update_item_desc(&global_app_state, table).await;
+
+                    if result.is_err() {
+                        error!("item_desc transaction update failed: {:?}", result.err());
+                    }
+                }
+
+                if table_name == "cargo_desc" {
+                    let result =
+                        cargo_desc::handle_transaction_update_cargo_desc(&global_app_state, table)
+                            .await;
+
+                    if result.is_err() {
+                        error!("cargo_desc transaction update failed: {:?}", result.err());
                     }
                 }
 
