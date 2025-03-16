@@ -112,7 +112,7 @@ watchThrottled(
 );
 
 useSeoMeta({
-  title: () => `Items ${data.value?.total ?? 0} ${search.value ?? ''}`,
+  title: () => `Items ${data.value?.total ?? 0} ${search.value ?? ""}`,
   description: "List of all the Items in the game",
 });
 </script>
