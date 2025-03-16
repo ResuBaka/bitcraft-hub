@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::{
     AppState, buildings, cargo_desc, claim_tech_state, claims, collectible_desc, deployable_state,
-    inventory, items, leaderboard, player_state, vault_state,
+    inventory, items, leaderboard, player_state, skill_descriptions, vault_state,
 };
 use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
@@ -476,6 +476,21 @@ fn start_websocket_message_thread(
                                 }
                             }
 
+                            if table.table_name.as_ref() == "skill_desc" {
+                                let result = skill_descriptions::handle_initial_subscription(
+                                    &global_app_state,
+                                    table,
+                                )
+                                .await;
+
+                                if result.is_err() {
+                                    error!(
+                                        "skill_desc initial subscription failed: {:?}",
+                                        result.err()
+                                    );
+                                }
+                            }
+
                             if table.table_name.as_ref() == "claim_tech_desc" {
                                 let result = crate::claim_tech_desc::handle_initial_subscription(
                                     &global_app_state,
@@ -802,6 +817,16 @@ fn start_websocket_message_thread(
                             "claim_tech_state transaction update failed: {:?}",
                             result.err()
                         );
+                    }
+                }
+
+                if table_name == "skill_desc" {
+                    let result =
+                        skill_descriptions::handle_transaction_update(&global_app_state, table)
+                            .await;
+
+                    if result.is_err() {
+                        error!("skill_desc transaction update failed: {:?}", result.err());
                     }
                 }
 

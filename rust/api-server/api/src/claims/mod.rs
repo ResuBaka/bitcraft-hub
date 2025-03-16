@@ -297,22 +297,28 @@ pub(crate) async fn get_claim(
         claim
     };
 
-    let skills = service::Query::skill_descriptions(&state.conn)
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
+    if state.skill_desc.is_empty() {
+        let skills = service::Query::skill_descriptions(&state.conn)
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
 
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?;
+
+        for skill in skills {
+            state.skill_desc.insert(skill.id, skill.clone());
+        }
+    }
 
     let mut tasks: ClaimLeaderboardTasks = vec![];
     let player_ids = claim
         .members
         .iter()
-        .map(|claim| claim.entity_id)
+        .map(|member| member.entity_id)
         .collect::<Vec<i64>>();
 
-    for skill in skills {
+    for skill in state.skill_desc.iter() {
         if skill.name == "ANY" {
             continue;
         }
@@ -335,11 +341,14 @@ pub(crate) async fn get_claim(
 
         let db = state.conn.clone();
         let player_ids = player_ids.clone();
+
+        let skill_id = skill.id;
+        let skill_name = skill.name.clone();
         tasks.push(tokio::spawn(async move {
             let mut leaderboard: Vec<LeaderboardSkill> = Vec::new();
             let entries = service::Query::get_experience_state_player_ids_by_skill_id(
                 &db,
-                skill.id,
+                skill_id,
                 player_ids,
                 Some(EXCLUDED_USERS_FROM_LEADERBOARD),
             )
@@ -363,7 +372,7 @@ pub(crate) async fn get_claim(
                 });
             }
 
-            Ok((skill.name.clone(), leaderboard))
+            Ok((skill_name, leaderboard))
         }));
     }
 
