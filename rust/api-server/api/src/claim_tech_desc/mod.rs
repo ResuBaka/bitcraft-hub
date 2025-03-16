@@ -1,13 +1,19 @@
+use crate::AppState;
 use crate::config::Config;
+use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use entity::claim_tech_desc;
 use log::{debug, error, info};
 use migration::sea_query;
 use reqwest::Client;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::sea_query::OnConflict;
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
+};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
+use std::sync::Arc;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -279,4 +285,248 @@ pub async fn import_job_claim_tech_desc(temp_config: Config) {
 
         import_interal_claim_tech_desc(config.clone(), conn, client);
     }
+}
+
+async fn get_known_claim_tech_desc_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
+    let known_claim_tech_desc_ids: Vec<i64> = claim_tech_desc::Entity::find()
+        .select_only()
+        .column(claim_tech_desc::Column::Id)
+        .into_tuple()
+        .all(conn)
+        .await?;
+
+    let known_claim_tech_desc_ids = known_claim_tech_desc_ids
+        .into_iter()
+        .collect::<HashSet<i64>>();
+    Ok(known_claim_tech_desc_ids)
+}
+
+async fn db_insert_claim_tech_descs(
+    conn: &DatabaseConnection,
+    buffer_before_insert: &mut Vec<claim_tech_desc::Model>,
+    on_conflict: &OnConflict,
+) -> anyhow::Result<()> {
+    let claim_tech_descs_from_db = claim_tech_desc::Entity::find()
+        .filter(
+            claim_tech_desc::Column::Id.is_in(
+                buffer_before_insert
+                    .iter()
+                    .map(|claim_tech_desc| claim_tech_desc.id)
+                    .collect::<Vec<i64>>(),
+            ),
+        )
+        .all(conn)
+        .await?;
+
+    let claim_tech_descs_from_db_map = claim_tech_descs_from_db
+        .into_iter()
+        .map(|claim_tech_desc| (claim_tech_desc.id, claim_tech_desc))
+        .collect::<HashMap<i64, claim_tech_desc::Model>>();
+
+    let things_to_insert = buffer_before_insert
+        .iter()
+        .filter(
+            |claim_tech_desc| match claim_tech_descs_from_db_map.get(&claim_tech_desc.id) {
+                Some(claim_tech_desc_from_db) => claim_tech_desc_from_db != *claim_tech_desc,
+                None => true,
+            },
+        )
+        .map(|claim_tech_desc| claim_tech_desc.clone().into_active_model())
+        .collect::<Vec<claim_tech_desc::ActiveModel>>();
+
+    if things_to_insert.is_empty() {
+        debug!("Nothing to insert");
+        buffer_before_insert.clear();
+        return Ok(());
+    } else {
+        debug!("Inserting {} claim_tech_descs", things_to_insert.len());
+    }
+
+    let _ = claim_tech_desc::Entity::insert_many(things_to_insert)
+        .on_conflict(on_conflict.clone())
+        .exec(conn)
+        .await?;
+
+    buffer_before_insert.clear();
+    Ok(())
+}
+
+async fn delete_claim_tech_desc(
+    conn: &DatabaseConnection,
+    known_claim_tech_desc_ids: HashSet<i64>,
+) -> anyhow::Result<()> {
+    info!(
+        "claim_tech_desc's ({}) to delete: {:?}",
+        known_claim_tech_desc_ids.len(),
+        known_claim_tech_desc_ids
+    );
+    claim_tech_desc::Entity::delete_many()
+        .filter(claim_tech_desc::Column::Id.is_in(known_claim_tech_desc_ids))
+        .exec(conn)
+        .await?;
+    Ok(())
+}
+
+pub(crate) async fn handle_initial_subscription(
+    app_state: &Arc<AppState>,
+    p1: &Table,
+) -> anyhow::Result<()> {
+    let chunk_size = 5000;
+    let mut buffer_before_insert: Vec<claim_tech_desc::Model> = Vec::with_capacity(chunk_size);
+
+    let on_conflict = sea_query::OnConflict::column(claim_tech_desc::Column::Id)
+        .update_columns([
+            claim_tech_desc::Column::Description,
+            claim_tech_desc::Column::Tier,
+            claim_tech_desc::Column::SuppliesCost,
+            claim_tech_desc::Column::ResearchTime,
+            claim_tech_desc::Column::Requirements,
+            claim_tech_desc::Column::Input,
+            claim_tech_desc::Column::Members,
+            claim_tech_desc::Column::Area,
+            claim_tech_desc::Column::Supply,
+            claim_tech_desc::Column::XpToMintHexCoin,
+        ])
+        .to_owned();
+
+    let mut known_claim_tech_desc_ids = get_known_claim_tech_desc_ids(&app_state.conn).await?;
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<claim_tech_desc::Model>(row.as_ref()) {
+                Ok(claim_tech_desc) => {
+                    if known_claim_tech_desc_ids.contains(&claim_tech_desc.id) {
+                        known_claim_tech_desc_ids.remove(&claim_tech_desc.id);
+                    }
+                    app_state
+                        .claim_tech_desc
+                        .insert(claim_tech_desc.id, claim_tech_desc.clone());
+                    buffer_before_insert.push(claim_tech_desc);
+                    if buffer_before_insert.len() == chunk_size {
+                        info!("ClaimTechDesc insert");
+                        db_insert_claim_tech_descs(
+                            &app_state.conn,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                        )
+                        .await?;
+                    }
+                }
+                Err(error) => {
+                    error!(
+                        "TransactionUpdate Insert ClaimTechDesc Error: {error} -> {:?}",
+                        row
+                    );
+                }
+            }
+        }
+    }
+
+    if !buffer_before_insert.is_empty() {
+        info!("ClaimTechDesc insert");
+        db_insert_claim_tech_descs(&app_state.conn, &mut buffer_before_insert, &on_conflict)
+            .await?;
+    }
+
+    if !known_claim_tech_desc_ids.is_empty() {
+        for claim_tech_desc_id in &known_claim_tech_desc_ids {
+            app_state.claim_tech_desc.remove(claim_tech_desc_id);
+        }
+        delete_claim_tech_desc(&app_state.conn, known_claim_tech_desc_ids).await?;
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn handle_transaction_update(
+    app_state: &Arc<AppState>,
+    tables: &[TableWithOriginalEventTransactionUpdate],
+) -> anyhow::Result<()> {
+    let on_conflict = sea_query::OnConflict::column(claim_tech_desc::Column::Id)
+        .update_columns([
+            claim_tech_desc::Column::Description,
+            claim_tech_desc::Column::Tier,
+            claim_tech_desc::Column::SuppliesCost,
+            claim_tech_desc::Column::ResearchTime,
+            claim_tech_desc::Column::Requirements,
+            claim_tech_desc::Column::Input,
+            claim_tech_desc::Column::Members,
+            claim_tech_desc::Column::Area,
+            claim_tech_desc::Column::Supply,
+            claim_tech_desc::Column::XpToMintHexCoin,
+        ])
+        .to_owned();
+
+    let chunk_size = 5000;
+    let mut buffer_before_insert = HashMap::new();
+
+    let mut found_in_inserts = HashSet::new();
+
+    for p1 in tables.iter() {
+        for row in p1.inserts.iter() {
+            match serde_json::from_str::<claim_tech_desc::Model>(row.as_ref()) {
+                Ok(claim_tech_desc) => {
+                    app_state
+                        .claim_tech_desc
+                        .insert(claim_tech_desc.id, claim_tech_desc.clone());
+                    found_in_inserts.insert(claim_tech_desc.id);
+                    buffer_before_insert.insert(claim_tech_desc.id, claim_tech_desc);
+
+                    if buffer_before_insert.len() == chunk_size {
+                        let mut buffer_before_insert_vec = buffer_before_insert
+                            .clone()
+                            .into_iter()
+                            .map(|x| x.1)
+                            .collect::<Vec<claim_tech_desc::Model>>();
+
+                        db_insert_claim_tech_descs(
+                            &app_state.conn,
+                            &mut buffer_before_insert_vec,
+                            &on_conflict,
+                        )
+                        .await?;
+                        buffer_before_insert.clear();
+                    }
+                }
+                Err(error) => {
+                    error!("TransactionUpdate Insert ClaimTechDesc Error: {error}");
+                }
+            }
+        }
+    }
+
+    if !buffer_before_insert.is_empty() {
+        let mut buffer_before_insert_vec = buffer_before_insert
+            .clone()
+            .into_iter()
+            .map(|x| x.1)
+            .collect::<Vec<claim_tech_desc::Model>>();
+
+        db_insert_claim_tech_descs(&app_state.conn, &mut buffer_before_insert_vec, &on_conflict)
+            .await?;
+        buffer_before_insert.clear();
+    }
+
+    let mut claim_tech_descs_to_delete = HashSet::new();
+
+    for p1 in tables.iter() {
+        for row in p1.deletes.iter() {
+            match serde_json::from_str::<claim_tech_desc::Model>(row.as_ref()) {
+                Ok(claim_tech_desc) => {
+                    if !found_in_inserts.contains(&claim_tech_desc.id) {
+                        app_state.claim_tech_desc.remove(&claim_tech_desc.id);
+                        claim_tech_descs_to_delete.insert(claim_tech_desc.id);
+                    }
+                }
+                Err(error) => {
+                    error!("TransactionUpdate Delete ClaimTechDesc Error: {error}");
+                }
+            }
+        }
+    }
+
+    if !claim_tech_descs_to_delete.is_empty() {
+        delete_claim_tech_desc(&app_state.conn, claim_tech_descs_to_delete).await?;
+    }
+
+    Ok(())
 }

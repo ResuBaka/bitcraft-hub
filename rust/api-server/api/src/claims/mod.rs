@@ -206,13 +206,29 @@ pub(crate) async fn get_claim(
         QueryCore::find_claim_tech_state_by_ids(&state.conn, vec![claim.entity_id])
             .await
             .expect("Cannot find claim tech states");
-    let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
-        .await
-        .expect("Cannot find claim tech descs");
-    let tier_upgrades = claim_tech_descs
+
+    if state.claim_tech_desc.is_empty() {
+        let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
+            .await
+            .expect("Cannot find claim tech descs");
+
+        for claim_tech_desc in claim_tech_descs {
+            state
+                .claim_tech_desc
+                .insert(claim_tech_desc.id, claim_tech_desc);
+        }
+    }
+
+    let tier_upgrades = state
+        .claim_tech_desc
         .iter()
-        .filter(|desc| desc.description.starts_with("Tier "))
-        .cloned()
+        .filter_map(|desc| {
+            if desc.description.starts_with("Tier ") {
+                return Some(desc.to_owned());
+            };
+
+            None
+        })
         .collect::<Vec<claim_tech_desc::Model>>();
     let tier_upgrades_ids = tier_upgrades
         .iter()
@@ -248,7 +264,8 @@ pub(crate) async fn get_claim(
                 claim.upgrades = learned
                     .iter()
                     .map(|id| {
-                        claim_tech_descs
+                        state
+                            .claim_tech_desc
                             .iter()
                             .find(|desc| desc.id == (*id))
                             .unwrap()
