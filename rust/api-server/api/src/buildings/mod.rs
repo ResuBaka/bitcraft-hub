@@ -19,6 +19,7 @@ use service::Query as QueryCore;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
+use std::sync::Arc;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -91,7 +92,6 @@ pub(crate) async fn find_building_descriptions(
             max_health: x.max_health,
             decay: x.decay,
             maintenance: x.maintenance,
-            interaction_level: x.interaction_level,
             has_action: x.has_action,
             show_in_compendium: x.show_in_compendium,
             is_ruins: x.is_ruins,
@@ -335,6 +335,17 @@ async fn get_known_building_state_ids(conn: &DatabaseConnection) -> anyhow::Resu
     Ok(known_building_state_ids)
 }
 
+async fn get_known_building_desc_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
+    Ok(building_desc::Entity::find()
+        .select_only()
+        .column(building_desc::Column::Id)
+        .into_tuple()
+        .all(conn)
+        .await?
+        .into_iter()
+        .collect::<HashSet<i64>>())
+}
+
 async fn db_insert_building_state(
     conn: &DatabaseConnection,
     buffer_before_insert: &mut Vec<Model>,
@@ -386,6 +397,57 @@ async fn db_insert_building_state(
     Ok(())
 }
 
+async fn db_insert_building_desc(
+    conn: &DatabaseConnection,
+    buffer_before_insert: &mut Vec<building_desc::Model>,
+    on_conflict: &OnConflict,
+) -> anyhow::Result<()> {
+    let building_desc_from_db = building_desc::Entity::find()
+        .filter(
+            building_desc::Column::Id.is_in(
+                buffer_before_insert
+                    .iter()
+                    .map(|building_desc| building_desc.id)
+                    .collect::<Vec<i64>>(),
+            ),
+        )
+        .all(conn)
+        .await?;
+
+    let building_desc_from_db_map = building_desc_from_db
+        .into_iter()
+        .map(|building_desc| (building_desc.id, building_desc))
+        .collect::<HashMap<i64, building_desc::Model>>();
+
+    let things_to_insert = buffer_before_insert
+        .iter()
+        .filter(
+            |building_desc| match building_desc_from_db_map.get(&building_desc.id) {
+                Some(building_desc_from_db) => building_desc_from_db != *building_desc,
+                None => true,
+            },
+        )
+        .map(|building_desc| building_desc.clone().into_active_model())
+        .collect::<Vec<building_desc::ActiveModel>>();
+
+    if things_to_insert.is_empty() {
+        debug!("Nothing to insert");
+        buffer_before_insert.clear();
+        return Ok(());
+    } else {
+        debug!("Inserting {} building_desc", things_to_insert.len());
+    }
+
+    let _ = building_desc::Entity::insert_many(things_to_insert)
+        .on_conflict(on_conflict.clone())
+        .exec(conn)
+        .await?;
+
+    buffer_before_insert.clear();
+
+    Ok(())
+}
+
 #[allow(dead_code)]
 pub(crate) async fn load_building_desc_from_file(
     storage_path: &std::path::Path,
@@ -400,7 +462,6 @@ pub(crate) async fn load_building_desc_from_file(
     Ok(building_descs)
 }
 
-#[allow(dead_code)]
 async fn delete_building_descs(
     conn: &DatabaseConnection,
     buildings_desc_to_delete: Vec<i64>,
@@ -590,6 +651,84 @@ pub(crate) async fn handle_initial_subscription(
 
     if !known_building_state_ids.is_empty() {
         delete_building_state(p0, known_building_state_ids).await?;
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn handle_initial_subscription_desc(
+    app_state: &Arc<AppState>,
+    p1: &Table,
+) -> anyhow::Result<()> {
+    let on_conflict = sea_query::OnConflict::column(building_desc::Column::Id)
+        .update_columns([
+            building_desc::Column::Functions,
+            building_desc::Column::Name,
+            building_desc::Column::Description,
+            building_desc::Column::RestedBuffDuration,
+            building_desc::Column::LightRadius,
+            building_desc::Column::ModelAssetName,
+            building_desc::Column::IconAssetName,
+            building_desc::Column::Unenterable,
+            building_desc::Column::Wilderness,
+            building_desc::Column::Footprint,
+            building_desc::Column::MaxHealth,
+            building_desc::Column::DefenseLevel,
+            building_desc::Column::Decay,
+            building_desc::Column::Maintenance,
+            building_desc::Column::BuildPermission,
+            building_desc::Column::InteractPermission,
+            building_desc::Column::HasAction,
+            building_desc::Column::ShowInCompendium,
+            building_desc::Column::IsRuins,
+            building_desc::Column::NotDeconstructible,
+        ])
+        .to_owned();
+
+    let chunk_size = 5000;
+    let mut buffer_before_insert: Vec<building_desc::Model> = vec![];
+
+    let mut known_building_desc_ids = get_known_building_desc_ids(&app_state.conn).await?;
+    for update in p1.updates.iter() {
+        for row in update.inserts.iter() {
+            match serde_json::from_str::<building_desc::Model>(row.as_ref()) {
+                Ok(building_desc) => {
+                    if known_building_desc_ids.contains(&building_desc.id) {
+                        known_building_desc_ids.remove(&building_desc.id);
+                    }
+                    buffer_before_insert.push(building_desc);
+                    if buffer_before_insert.len() == chunk_size {
+                        db_insert_building_desc(
+                            &app_state.conn,
+                            &mut buffer_before_insert,
+                            &on_conflict,
+                        )
+                        .await?;
+                    }
+                }
+                Err(error) => {
+                    error!(
+                        "InitialSubscription Insert BuildingState Error: {error} \n {}",
+                        row.as_ref()
+                    );
+                }
+            }
+        }
+    }
+
+    if !buffer_before_insert.is_empty() {
+        for buffer_chnk in buffer_before_insert.chunks(5000) {
+            db_insert_building_desc(&app_state.conn, &mut buffer_chnk.to_vec(), &on_conflict)
+                .await?;
+        }
+    }
+
+    if !known_building_desc_ids.is_empty() {
+        delete_building_descs(
+            &app_state.conn,
+            known_building_desc_ids.into_iter().collect(),
+        )
+        .await?;
     }
 
     Ok(())

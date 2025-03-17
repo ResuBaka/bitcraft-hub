@@ -57,6 +57,7 @@ pub fn start_websocket_bitcraft_logic(
             "action_state",
             "player_state",
             "player_username_state",
+            "building_desc",
             "building_state",
             "vault_state",
             "experience_state",
@@ -415,6 +416,20 @@ fn start_websocket_message_thread(
                                 if result.is_err() {
                                     error!(
                                         "building_state initial subscription failed: {:?}",
+                                        result.err()
+                                    );
+                                }
+                            }
+                            if table.table_name.as_ref() == "building_desc" {
+                                let result = buildings::handle_initial_subscription_desc(
+                                    &global_app_state,
+                                    table,
+                                )
+                                .await;
+
+                                if result.is_err() {
+                                    error!(
+                                        "building_desc initial subscription failed: {:?}",
                                         result.err()
                                     );
                                 }
@@ -787,6 +802,17 @@ fn start_websocket_message_thread(
                             result.err()
                         );
                     }
+                }
+
+                if table_name == "building_desc" {
+                    // let result = buildings::handle_transaction_update_desc(&global_app_state, table).await;
+                    //
+                    // if result.is_err() {
+                    //     error!(
+                    //         "building_desc transaction update failed: {:?}",
+                    //         result.err()
+                    //     );
+                    // }
                 }
 
                 if table_name == "item_desc" {
