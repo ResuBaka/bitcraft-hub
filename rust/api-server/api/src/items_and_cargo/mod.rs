@@ -238,7 +238,7 @@ pub(crate) async fn list_items_and_cargo(
         per_page: posts_per_page,
         total: merged_items_and_cargo.len() as u64,
         page,
-        pages: merged_items_and_cargo.len() as u64 / posts_per_page,
+        pages: (merged_items_and_cargo.len() as u64).div_ceil(posts_per_page),
     }))
 }
 
