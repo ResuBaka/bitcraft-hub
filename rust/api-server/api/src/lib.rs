@@ -40,6 +40,9 @@ use base64::Engine;
 use clap::{Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
 use log::{error, info};
+use logforth::append;
+use logforth::layout::JsonLayout;
+use logforth::layout::TextLayout;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
@@ -62,8 +65,6 @@ use tower_cookies::CookieManagerLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
-use tracing_subscriber::layer::SubscriberExt as _;
-use tracing_subscriber::util::SubscriberInitExt;
 
 async fn start(database_connection: DatabaseConnection, config: Config) -> anyhow::Result<()> {
     let prometheus = setup_metrics_recorder();
@@ -114,7 +115,7 @@ async fn websocket_handler(
     version: Version,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    tracing::debug!("Websocket upgraded with version: {version:?}");
+    log::debug!("Websocket upgraded with version: {version:?}");
     ws.on_upgrade(|socket| websocket(socket, state))
 }
 
@@ -155,7 +156,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
                 .await;
 
             if encoding.is_none() {
-                tracing::warn!("Could not find encoding for {internal_id}")
+                log::warn!("Could not find encoding for {internal_id}")
             };
 
             let encoding = encoding.unwrap();
@@ -177,13 +178,13 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
                     .send(Message::Binary(a.to_msgpack().unwrap().into()))
                     .await
             } else {
-                tracing::warn!("Unsupported encoding {encoding}");
+                log::warn!("Unsupported encoding {encoding}");
                 continue;
             };
 
             // In any websocket error, break loop.
             if let Err(error) = send_result {
-                tracing::error!("Error sending message to client: {error}");
+                log::error!("Error sending message to client: {error}");
                 break;
             }
         }
@@ -231,7 +232,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
                     _ => {}
                 },
                 Err(error) => {
-                    tracing::error!("Error handling websocket message from client: {error}");
+                    log::error!("Error handling websocket message from client: {error}");
                 }
             }
         }
@@ -1127,25 +1128,32 @@ fn setup_tracing(cfg: &Config) {
 
     match cfg.log_type {
         config::LogType::Default => {
-            let stdout_layer = tracing_subscriber::fmt::layer();
-
-            tracing_subscriber::Registry::default()
-                .with(stdout_layer)
-                .with(tracing_subscriber::EnvFilter::new(filter_directive))
-                .init()
+            logforth::builder()
+                .dispatch(|d| {
+                    d.filter(logforth::filter::EnvFilter::from(filter_directive.as_str()))
+                        .append(append::Stdout::default().with_layout(TextLayout::default()))
+                })
+                .apply();
         }
         config::LogType::Json => {
-            let fmt = tracing_subscriber::fmt::format().json().flatten_event(true);
-            let json_fields = tracing_subscriber::fmt::format::JsonFields::new();
+            logforth::builder()
+                .dispatch(|d| {
+                    d.filter(logforth::filter::EnvFilter::from(filter_directive.as_str()))
+                        .append(append::Stdout::default().with_layout(JsonLayout::default()))
+                })
+                .apply()
 
-            let stdout_layer = tracing_subscriber::fmt::layer()
-                .event_format(fmt)
-                .fmt_fields(json_fields);
-
-            tracing_subscriber::Registry::default()
-                .with(stdout_layer)
-                .with(tracing_subscriber::EnvFilter::new(filter_directive))
-                .init()
+            // let fmt = tracing_subscriber::fmt::format().json().flatten_event(true);
+            // let json_fields = tracing_subscriber::fmt::format::JsonFields::new();
+            //
+            // let stdout_layer = tracing_subscriber::fmt::layer()
+            //     .event_format(fmt)
+            //     .fmt_fields(json_fields);
+            //
+            // tracing_subscriber::Registry::default()
+            //     .with(stdout_layer)
+            //     .with(tracing_subscriber::EnvFilter::new(filter_directive))
+            //     .init()
         }
     };
 }
