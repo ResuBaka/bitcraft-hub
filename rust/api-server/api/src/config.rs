@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use tracing::Level;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(default)]
 pub(crate) struct Config {
     pub(crate) host: String,
@@ -51,7 +51,7 @@ impl Default for Config {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DownloadConfig {
     pub desc_tables: Vec<String>,
     pub state_tables: Vec<String>,
@@ -309,7 +309,7 @@ impl Default for DownloadConfig {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub enum LogLevel {
     #[serde(alias = "error")]
     Error,
@@ -337,7 +337,7 @@ impl fmt::Display for LogLevel {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub(crate) enum ImportType {
     File,
     Game,
@@ -349,7 +349,7 @@ impl Default for ImportType {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(default)]
 pub(crate) struct DatabaseConfig {
     pub(crate) url: String,
@@ -373,7 +373,7 @@ impl Default for DatabaseConfig {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(default)]
 pub(crate) struct SpacetimeDbConfig {
     pub(crate) domain: String,
@@ -397,7 +397,7 @@ impl Default for SpacetimeDbConfig {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(default)]
 pub(crate) struct AllowedOriginConfig {
     pub(crate) origin: Vec<String>,
@@ -411,7 +411,7 @@ impl Default for AllowedOriginConfig {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub(crate) enum LogType {
     Default,
     #[serde(alias = "json")]

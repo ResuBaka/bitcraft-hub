@@ -802,6 +802,13 @@ you should provide the directory of that submodule.",
         #[command(subcommand)]
         command: crate::download::DownloadSubcommand,
     },
+    PrintConfig {
+        #[arg(long, help = "Format to print the config", default_value = "json", value_parser = ["yml","yaml","json","toml"])]
+        format: String,
+
+        #[arg(long, help = "Show only default config", default_value_t = false)]
+        show_default: bool,
+    },
 }
 
 pub async fn main() -> anyhow::Result<()> {
@@ -820,6 +827,7 @@ pub async fn main() -> anyhow::Result<()> {
     match &cli.command {
         Commands::Migrate { .. } => {}
         Commands::Download { .. } => {}
+        Commands::PrintConfig { .. } => {}
         Commands::Serve {
             port,
             host,
@@ -901,6 +909,35 @@ pub async fn main() -> anyhow::Result<()> {
                 &config,
             )
             .await;
+        }
+        Commands::PrintConfig {
+            format,
+            show_default,
+        } => {
+            let config = if show_default {
+                Config::default()
+            } else {
+                config
+            };
+
+            match format.as_str() {
+                "yml" => {
+                    println!("{:}", serde_yml::to_string(&config)?);
+                }
+                "yaml" => {
+                    println!("{:}", serde_yml::to_string(&config)?);
+                }
+                "json" => {
+                    println!("{:}", serde_json::to_string_pretty(&config)?);
+                }
+                "toml" => {
+                    println!("{:}", toml::to_string_pretty(&config)?)
+                }
+                _ => {
+                    error!("Unknown format: {format}");
+                    exit(1);
+                }
+            }
         }
     };
 
