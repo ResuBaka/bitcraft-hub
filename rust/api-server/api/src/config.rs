@@ -1,6 +1,6 @@
-use log::Level;
 use serde::Deserialize;
 use std::fmt;
+use tracing::Level;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(default)]
@@ -326,11 +326,11 @@ pub enum LogLevel {
 impl fmt::Display for LogLevel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Error => Level::Error,
-            Self::Warn => Level::Warn,
-            Self::Info => Level::Info,
-            Self::Debug => Level::Debug,
-            Self::Trace => Level::Trace,
+            Self::Error => Level::ERROR,
+            Self::Warn => Level::WARN,
+            Self::Info => Level::INFO,
+            Self::Debug => Level::DEBUG,
+            Self::Trace => Level::TRACE,
         }
         .fmt(f)
     }

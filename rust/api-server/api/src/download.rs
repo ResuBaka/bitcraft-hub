@@ -1,10 +1,10 @@
 use crate::config::Config;
 use log::error;
-use log::info;
 use reqwest::Client;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use tracing::info;
 
 #[derive(clap::Subcommand, PartialEq, Eq, Debug)]
 pub enum DownloadSubcommand {

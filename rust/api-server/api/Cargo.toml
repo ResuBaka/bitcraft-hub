@@ -25,6 +25,7 @@ tower = "0.5.2"
 service = { path = "../service" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
+tracing-subscriber = { version = "0.3.19", features = ["json", "serde", "serde_json"] }
 tower-http = { version = "0.6.2", features = ["fs", "cors", "compression-full"] }
 tower-cookies = "0.11.0"
 dotenvy = "0.15.7"
@@ -35,9 +36,9 @@ reqwest-websocket = {  version = "0.4.4" }
 base64 = "0.22.1"
 tungstenite = "0.24.0"
 async-compression = { version = "0.4.21", features = ["tokio", "deflate", "zstd"] }
+tracing = "0.1.41"
 nanoid = "0.4.0"
 config = "0.15.11"
-logforth = { version = "0.23.0", features = ["json", "colored"] }
 
 [dependencies.sea-orm-cli]
 version = "1.1.7"

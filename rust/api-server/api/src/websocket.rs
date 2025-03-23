@@ -11,7 +11,6 @@ use base64::Engine;
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
-use log::warn;
 use log::{debug, error, info};
 use reqwest::Client;
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
@@ -25,6 +24,7 @@ use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
+use tracing::warn;
 
 struct WebSocketAppState {
     user_map: HashMap<String, i64>,
@@ -185,7 +185,7 @@ async fn websocket_retry_helper(
 
     let wait_time = reconnect_wait_time * retry_count.pow(backoff_factor);
 
-    log::debug!("Wait time {wait_time}");
+    tracing::debug!("Wait time {wait_time}");
 
     tokio::time::sleep(Duration::from_secs(wait_time as u64)).await;
     *retry_count += 1;
@@ -193,7 +193,7 @@ async fn websocket_retry_helper(
         return true;
     }
 
-    log::info!("Reconnecting to websocket {retry_count} {max_retry_count}");
+    tracing::info!("Reconnecting to websocket {retry_count} {max_retry_count}");
     false
 }
 
