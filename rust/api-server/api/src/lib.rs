@@ -39,7 +39,7 @@ use axum::{
 use base64::Engine;
 use clap::{Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
-use log::{error, info};
+use log::error;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
@@ -76,18 +76,29 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     let state = Arc::new(AppState::new(database_connection.clone(), &config));
 
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let server_url = config.server_url();
 
-    tokio::spawn(boradcast_message(state.clone(), rx));
-
-    let app = create_app(&config, state.clone(), prometheus);
+    let server_url = if server_url.is_err() {
+        log::error!("Could not create socket {}", server_url.err().unwrap());
+        exit(1)
+    } else {
+        server_url?
+    };
 
     if config.live_updates_ws {
+        tracing::info!("Staring Bitcraft websocket connection");
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+        tokio::spawn(broadcast_message(state.clone(), rx));
+
         let tmp_config = config.clone();
         websocket::start_websocket_bitcraft_logic(tmp_config, tx, state.clone());
     }
 
-    let server_url = config.server_url();
+    let app = create_app(&config, state.clone(), prometheus);
+
+    tracing::info!("Starting server on http://{}", server_url);
+
     let listener = tokio::net::TcpListener::bind(&server_url).await?;
     axum::serve(listener, app).await?;
 
@@ -97,12 +108,18 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 async fn create_db_connection(config: &Config) -> DatabaseConnection {
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
-        .max_connections(100)
-        .min_connections(5)
+        .max_connections(config.database.max_connections)
+        .min_connections(config.database.min_connections)
         .set_schema_search_path("public")
-        .connect_timeout(Duration::from_secs(8))
-        .idle_timeout(Duration::from_secs(8))
+        .connect_timeout(Duration::from_secs(config.database.connect_timeout))
+        .idle_timeout(Duration::from_secs(config.database.idle_timeout))
         .sqlx_logging(env::var("SQLX_LOG").is_ok());
+
+    if let Some(max_lifetime) = config.database.max_lifetime {
+        connection_options = connection_options
+            .max_lifetime(Duration::from_secs(max_lifetime))
+            .to_owned();
+    }
 
     Database::connect(connection_options)
         .await
@@ -247,7 +264,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     state.clients_state.remove_client(&id).await;
 }
 
-async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSocketMessages>) {
+async fn broadcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSocketMessages>) {
     while let Some(message) = rx.recv().await {
         if message.topics().is_none() {
             continue;
@@ -270,36 +287,6 @@ async fn boradcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSo
         }
     }
 }
-
-// #[derive(Debug)]
-// enum DisconnectReason {
-//     Reconnect,
-//     Timeout,
-//     Unknown,
-//     Disconnect,
-// }
-//
-// async fn handle_disconnect_reconnect(state: Arc<AppState>, mut rx: UnboundedReceiver<DisconnectReason>) {
-//     while let Some(message) = rx.recv().await {
-//         let clients = state.user_map.read().await;
-//         let connection_to_send_to = clients.iter().filter(|(_, topics)| {
-//             let topic_name = match message {
-//                 WebSocketMessages::Experience { user_id,.. } => { format!("experience.{user_id}") },
-//                 WebSocketMessages::Subscribe { .. } => return false,
-//                 WebSocketMessages::Message(_) => return false,
-//                 WebSocketMessages::Unsubscribe{ .. } => return false,
-//                 WebSocketMessages::ListSubscribedTopics{ .. } => return false,
-//                 WebSocketMessages::SubscribedTopics{ .. } => return false,
-//             }.to_string();
-//
-//             topics.1.contains(&topic_name)
-//         }).collect::<Vec<_>>();
-//
-//         for (user_id, (tx, _)) in connection_to_send_to {
-//             tx.send(message.clone()).unwrap();
-//         }
-//     }
-// }
 
 pub(crate) type AppRouter = Router<Arc<AppState>>;
 
@@ -420,122 +407,6 @@ fn import_data(config: Config) {
             .block_on(async {
                 let mut tasks = vec![];
 
-                //
-                // let temp_config = config.clone();
-                // tasks.push(tokio::spawn(async move {
-                //     let config = temp_config.clone();
-                //     if config.live_updates {
-                //         loop {
-                //             let conn = create_importer_default_db_connection(config.clone()).await;
-                //             let client = create_default_client(config.clone());
-                //
-                //             let now = Instant::now();
-                //             let now_in = now.add(Duration::from_secs(60));
-                //
-                //             import_recipes(config.clone(), conn, client);
-                //
-                //             let now = Instant::now();
-                //             let wait_time = now_in.duration_since(now);
-                //
-                //             if wait_time.as_secs() > 0 {
-                //                 tokio::time::sleep(wait_time).await;
-                //             }
-                //         }
-                //     } else {
-                //         let conn = create_importer_default_db_connection(config.clone()).await;
-                //         let client = create_default_client(config.clone());
-                //
-                //         import_recipes(config.clone(), conn, client);
-                //     }
-                // }));
-                // let temp_config = config.clone();
-                // tasks.push(tokio::spawn(async move {
-                //     let config = temp_config.clone();
-                //     if config.live_updates {
-                //         loop {
-                //             let conn = create_importer_default_db_connection(config.clone()).await;
-                //             let client = create_default_client(config.clone());
-                //
-                //             let now = Instant::now();
-                //             let now_in = now.add(Duration::from_secs(60));
-                //
-                //             import_claim_tech_desc(config.clone(), conn, client);
-                //
-                //             let now = Instant::now();
-                //             let wait_time = now_in.duration_since(now);
-                //
-                //             if wait_time.as_secs() > 0 {
-                //                 tokio::time::sleep(wait_time).await;
-                //             }
-                //         }
-                //     } else {
-                //         let conn = create_importer_default_db_connection(config.clone()).await;
-                //         let client = create_default_client(config.clone());
-                //
-                //         import_claim_tech_desc(config.clone(), conn, client);
-                //     }
-                // }));
-                //
-                // let temp_config = config.clone();
-                // tasks.push(tokio::spawn(async move {
-                //     let config = temp_config.clone();
-                //     if config.live_updates {
-                //         loop {
-                //             let conn = create_importer_default_db_connection(config.clone()).await;
-                //             let client = create_default_client(config.clone());
-                //
-                //             let now = Instant::now();
-                //             let now_in = now.add(Duration::from_secs(60));
-                //
-                //             import_skill_descs(config.clone(), conn, client);
-                //
-                //             let now = Instant::now();
-                //             let wait_time = now_in.duration_since(now);
-                //
-                //             if wait_time.as_secs() > 0 {
-                //                 tokio::time::sleep(wait_time).await;
-                //             }
-                //         }
-                //     } else {
-                //         let conn = create_importer_default_db_connection(config.clone()).await;
-                //         let client = create_default_client(config.clone());
-                //
-                //         import_skill_descs(config.clone(), conn, client);
-                //     }
-                // }));
-                //
-                //
-
-                //
-                // let temp_config = config.clone();
-                // tasks.push(tokio::spawn(async move {
-                //     let config = temp_config.clone();
-                //     if config.live_updates {
-                //         loop {
-                //             let conn = create_importer_default_db_connection(config.clone()).await;
-                //             let client = create_default_client(config.clone());
-                //
-                //             let now = Instant::now();
-                //             let now_in = now.add(Duration::from_secs(60));
-                //
-                //             import_trade_order_state(config.clone(), conn, client);
-                //
-                //             let now = Instant::now();
-                //             let wait_time = now_in.duration_since(now);
-                //
-                //             if wait_time.as_secs() > 0 {
-                //                 tokio::time::sleep(wait_time).await;
-                //             }
-                //         }
-                //     } else {
-                //         let conn = create_importer_default_db_connection(config.clone()).await;
-                //         let client = create_default_client(config.clone());
-                //
-                //         import_trade_order_state(config.clone(), conn, client);
-                //     }
-                // }));
-                //
-
                 if config.enabled_importer.contains(&"skill_desc".to_string())
                     || config.enabled_importer.is_empty()
                 {
@@ -589,85 +460,6 @@ fn import_data(config: Config) {
                 }
 
                 futures::future::join_all(tasks).await;
-            });
-    });
-}
-
-#[allow(dead_code)]
-fn import_recipes(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let vehicle_state = recipes::load_desc_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_vehicle_state) = vehicle_state {
-                    info!("Recipes imported");
-                } else {
-                    error!("Recipes import failed: {:?}", vehicle_state);
-                }
-            });
-    });
-}
-
-#[allow(dead_code)]
-fn import_skill_descs(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let vehicle_state = recipes::load_desc_from_spacetimedb(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                )
-                .await;
-
-                if let Ok(_vehicle_state) = vehicle_state {
-                    info!("SkillDescriptions imported");
-                } else {
-                    error!("SkillDescriptions import failed: {:?}", vehicle_state);
-                }
-            });
-    });
-}
-
-#[allow(dead_code)]
-fn import_trade_order_state(config: Config, conn: DatabaseConnection, client: Client) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let trade_order_state = trading_orders::load_trade_order(
-                    &client,
-                    &config.spacetimedb.domain,
-                    &config.spacetimedb.protocol,
-                    &config.spacetimedb.database,
-                    &conn,
-                    &config,
-                )
-                .await;
-
-                if trade_order_state.is_ok() {
-                    info!("TradeOrderState imported");
-                } else {
-                    error!("TradeOrderState import failed: {:?}", trade_order_state);
-                }
             });
     });
 }
@@ -1127,7 +919,9 @@ fn setup_tracing(cfg: &Config) {
 
     match cfg.log_type {
         config::LogType::Default => {
-            let stdout_layer = tracing_subscriber::fmt::layer();
+            let stdout_layer = tracing_subscriber::fmt::layer()
+                .with_file(true)
+                .with_line_number(true);
 
             tracing_subscriber::Registry::default()
                 .with(stdout_layer)
@@ -1135,7 +929,27 @@ fn setup_tracing(cfg: &Config) {
                 .init()
         }
         config::LogType::Json => {
-            let fmt = tracing_subscriber::fmt::format().json().flatten_event(true);
+            let fmt = tracing_subscriber::fmt::format()
+                .json()
+                .flatten_event(true)
+                .with_file(true)
+                .with_line_number(true);
+            let json_fields = tracing_subscriber::fmt::format::JsonFields::new();
+
+            let stdout_layer = tracing_subscriber::fmt::layer()
+                .event_format(fmt)
+                .fmt_fields(json_fields);
+
+            tracing_subscriber::Registry::default()
+                .with(stdout_layer)
+                .with(tracing_subscriber::EnvFilter::new(filter_directive))
+                .init()
+        }
+        config::LogType::Pretty => {
+            let fmt = tracing_subscriber::fmt::format()
+                .pretty()
+                .with_file(true)
+                .with_line_number(true);
             let json_fields = tracing_subscriber::fmt::format::JsonFields::new();
 
             let stdout_layer = tracing_subscriber::fmt::layer()

@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use std::fmt;
+use std::net::{SocketAddr, ToSocketAddrs};
 use tracing::Level;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -352,12 +353,22 @@ impl Default for ImportType {
 #[serde(default)]
 pub(crate) struct DatabaseConfig {
     pub(crate) url: String,
+    pub(crate) max_connections: u32,
+    pub(crate) min_connections: u32,
+    pub(crate) connect_timeout: u64,
+    pub(crate) idle_timeout: u64,
+    pub(crate) max_lifetime: Option<u64>,
 }
 
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
             url: "".to_string(),
+            max_connections: 100,
+            min_connections: 5,
+            connect_timeout: 15,
+            idle_timeout: 60 * 5,
+            max_lifetime: None,
         }
     }
 }
@@ -405,6 +416,8 @@ pub(crate) enum LogType {
     Default,
     #[serde(alias = "json")]
     Json,
+    #[serde(alias = "pretty")]
+    Pretty,
 }
 
 impl Default for LogType {
@@ -479,8 +492,17 @@ impl Config {
         Ok(config.try_deserialize()?)
     }
 
-    pub fn server_url(&self) -> String {
-        format!("{}:{}", self.host, self.port)
+    pub fn server_url(&self) -> anyhow::Result<SocketAddr> {
+        match resolve_socket_addrs(self.host.as_str(), self.port) {
+            Ok(addrs) => {
+                if let Some(addr) = addrs.into_iter().next() {
+                    return Ok(addr);
+                }
+            }
+            Err(err) => return Err(err.into()),
+        }
+
+        Err(anyhow::anyhow!("Server URL resolution failed"))
     }
 
     #[allow(dead_code)]
@@ -495,4 +517,9 @@ impl Config {
     pub fn spacetimedb_url(&self) -> String {
         format!("{}{}", self.spacetimedb.protocol, self.spacetimedb.domain)
     }
+}
+
+fn resolve_socket_addrs(addr: &str, port: u16) -> Result<Vec<SocketAddr>, std::io::Error> {
+    let addr_with_port = format!("{}:{}", addr, port);
+    addr_with_port.to_socket_addrs().map(|iter| iter.collect())
 }
