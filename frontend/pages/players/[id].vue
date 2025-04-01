@@ -457,9 +457,9 @@ useSeoMeta({
               <th>Claims:</th>
               <td>
                 <nuxt-link class="text-decoration-none font-weight-black text-high-emphasis"
-                           :to="{ name: 'claims-id', params: { id: claim_id } }"
+                           :to="{ name: 'claims-id', params: { id: claim_id[0] } }"
                            v-for="(claim_id, index) in player?.claim_ids"
-                >{{ claim_id }}{{ index === (player?.claim_ids?.length - 1) ? '' : ', ' }}
+                >{{ claim_id[1] }}{{ index === (player?.claim_ids?.length - 1) ? '' : ', ' }}
                 </nuxt-link>
               </td>
             </tr>

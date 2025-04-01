@@ -165,12 +165,12 @@ pub async fn find_player_by_id(
                 .iter()
                 .any(|member| member.player_entity_id == player.entity_id)
             {
-                Some(claim_description_state.entity_id as u64)
+                Some((claim_description_state.entity_id as u64, claim_description_state.name.clone()))
             } else {
                 None
             }
         })
-        .collect::<Vec<u64>>();
+        .collect::<Vec<(u64, String)>>();
 
     Ok(axum_codec::Codec(json!({
         "entity_id": player.entity_id,
