@@ -156,6 +156,22 @@ pub async fn find_player_by_id(
         .map(|player_action_state| player_action_state.action_type.get_action_name());
     let current_action_state = state.action_state.get(&(id as u64));
 
+    let claim_ids = state
+        .claim_description_state
+        .iter()
+        .filter_map(|claim_description_state| {
+            if claim_description_state
+                .members
+                .iter()
+                .any(|member| member.player_entity_id == player.entity_id)
+            {
+                Some(claim_description_state.entity_id as u64)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<u64>>();
+
     Ok(axum_codec::Codec(json!({
         "entity_id": player.entity_id,
         "time_played": player.time_played,
@@ -169,6 +185,7 @@ pub async fn find_player_by_id(
         "deployables": deployables,
         "player_location": player_location,
         "claim_id": claim_id,
+        "claim_ids": claim_ids,
         "player_action_state": player_action_state,
         "player_action_state2": plyer_action_state2,
         "current_action_state": current_action_state,

@@ -20,6 +20,7 @@ use service::{Query as QueryCore, sea_orm::DatabaseConnection};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
+use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
@@ -970,7 +971,7 @@ pub(crate) fn get_merged_inventories(
 }
 
 pub(crate) async fn handle_initial_subscription(
-    p0: &DatabaseConnection,
+    app_state: &Arc<AppState>,
     p1: &Table,
 ) -> anyhow::Result<()> {
     let on_conflict = get_claim_description_state_on_conflict();
@@ -980,8 +981,8 @@ pub(crate) async fn handle_initial_subscription(
     let mut buffer_before_insert: Vec<claim_description_state::Model> = vec![];
     let mut buffer_player_to_claim_before_insert: Vec<player_to_claim::Model> = vec![];
 
-    let mut known_inventory_ids = known_claim_description_state_ids(p0).await?;
-    let mut known_player_to_claim_ids = known_player_to_claim_ids(p0).await?;
+    let mut known_inventory_ids = known_claim_description_state_ids(&app_state.conn).await?;
+    let mut known_player_to_claim_ids = known_player_to_claim_ids(&app_state.conn).await?;
     for update in p1.updates.iter() {
         for row in update.inserts.iter() {
             match serde_json::from_str::<claim_description_state::Model>(row.as_ref()) {
@@ -990,9 +991,12 @@ pub(crate) async fn handle_initial_subscription(
                         known_inventory_ids.remove(&building_state.entity_id);
                     }
                     buffer_before_insert.push(building_state.clone());
+                    app_state
+                        .claim_description_state
+                        .insert(building_state.entity_id as u64, building_state.clone());
                     if buffer_before_insert.len() == chunk_size {
                         db_insert_claim_description_state(
-                            p0,
+                            &app_state.conn,
                             &mut buffer_before_insert,
                             &on_conflict,
                         )
@@ -1018,7 +1022,7 @@ pub(crate) async fn handle_initial_subscription(
                     );
                     if buffer_player_to_claim_before_insert.len() == chunk_size {
                         db_insert_player_to_claim(
-                            p0,
+                            &app_state.conn,
                             &mut buffer_player_to_claim_before_insert,
                             &on_conflict_player_to_claim,
                         )
@@ -1026,7 +1030,7 @@ pub(crate) async fn handle_initial_subscription(
                     }
                     if buffer_before_insert.len() == chunk_size {
                         db_insert_claim_description_state(
-                            p0,
+                            &app_state.conn,
                             &mut buffer_before_insert,
                             &on_conflict,
                         )
@@ -1041,7 +1045,7 @@ pub(crate) async fn handle_initial_subscription(
     }
     if !buffer_player_to_claim_before_insert.is_empty() {
         db_insert_player_to_claim(
-            p0,
+            &app_state.conn,
             &mut buffer_player_to_claim_before_insert,
             &on_conflict_player_to_claim,
         )
@@ -1050,23 +1054,34 @@ pub(crate) async fn handle_initial_subscription(
 
     if !buffer_before_insert.is_empty() {
         for buffer_chnk in buffer_before_insert.chunks(5000) {
-            db_insert_claim_description_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
+            db_insert_claim_description_state(
+                &app_state.conn,
+                &mut buffer_chnk.to_vec(),
+                &on_conflict,
+            )
+            .await?;
         }
     }
 
     if !known_inventory_ids.is_empty() {
-        delete_claim_description_state(p0, known_inventory_ids).await?;
+        delete_claim_description_state(&app_state.conn, known_inventory_ids).await?;
     }
 
     if !known_player_to_claim_ids.is_empty() {
-        delete_player_to_claim(p0, known_player_to_claim_ids).await?;
+        for known_player_to_claim_id in known_player_to_claim_ids.iter() {
+            app_state
+                .claim_description_state
+                .remove(&(known_player_to_claim_id.0 as u64));
+        }
+
+        delete_player_to_claim(&app_state.conn, known_player_to_claim_ids).await?;
     }
 
     Ok(())
 }
 
 pub(crate) async fn handle_transaction_update(
-    p0: &DatabaseConnection,
+    app_state: &Arc<AppState>,
     tables: &[TableWithOriginalEventTransactionUpdate],
     sender: UnboundedSender<WebSocketMessages>,
 ) -> anyhow::Result<()> {
@@ -1169,6 +1184,10 @@ pub(crate) async fn handle_transaction_update(
                                 }
                             });
 
+                        app_state.claim_description_state.insert(
+                            new_claim_description_state.entity_id as u64,
+                            new_claim_description_state.clone(),
+                        );
                         buffer_before_insert.insert(
                             new_claim_description_state.entity_id,
                             new_claim_description_state.clone(),
@@ -1250,6 +1269,10 @@ pub(crate) async fn handle_transaction_update(
                             },
                         );
 
+                        app_state.claim_description_state.insert(
+                            claim_description_state.entity_id as u64,
+                            claim_description_state.clone(),
+                        );
                         buffer_before_insert.insert(
                             claim_description_state.entity_id,
                             claim_description_state.clone(),
@@ -1283,7 +1306,7 @@ pub(crate) async fn handle_transaction_update(
     }
     if !buffer_before_player_to_claim_insert.is_empty() {
         db_insert_player_to_claim(
-            p0,
+            &app_state.conn,
             &mut buffer_before_player_to_claim_insert,
             &on_conflict_player_to_claim,
         )
@@ -1295,15 +1318,26 @@ pub(crate) async fn handle_transaction_update(
             .into_iter()
             .map(|x| x.1)
             .collect::<Vec<claim_description_state::Model>>();
-        db_insert_claim_description_state(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
+        db_insert_claim_description_state(
+            &app_state.conn,
+            &mut buffer_before_insert_vec,
+            &on_conflict,
+        )
+        .await?;
         buffer_before_insert.clear();
     }
     if !potential_player_to_claim_deletes.is_empty() {
-        delete_player_to_claim(p0, potential_player_to_claim_deletes).await?;
+        delete_player_to_claim(&app_state.conn, potential_player_to_claim_deletes).await?;
     }
 
     if !potential_deletes.is_empty() {
-        delete_claim_description_state(p0, potential_deletes).await?;
+        for potential_delete in potential_deletes.iter() {
+            app_state
+                .claim_description_state
+                .remove(&(*potential_delete as u64));
+        }
+
+        delete_claim_description_state(&app_state.conn, potential_deletes).await?;
     }
 
     Ok(())

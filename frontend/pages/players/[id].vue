@@ -453,6 +453,16 @@ useSeoMeta({
               <th>Hex Coints:</th>
               <td>{{ playerWallet?.pockets[0].contents?.quantity ?? 0 }}</td>
             </tr>
+            <tr style='text-align: right' v-if="player?.claim_ids?.length">
+              <th>Claims:</th>
+              <td>
+                <nuxt-link class="text-decoration-none font-weight-black text-high-emphasis"
+                           :to="{ name: 'claims-id', params: { id: claim_id } }"
+                           v-for="(claim_id, index) in player?.claim_ids"
+                >{{ claim_id }}{{ index === (player?.claim_ids?.length - 1) ? '' : ', ' }}
+                </nuxt-link>
+              </td>
+            </tr>
             </tbody>
           </v-table>
           <v-row>
