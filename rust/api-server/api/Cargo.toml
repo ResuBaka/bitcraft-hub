@@ -21,7 +21,7 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 axum-codec = { workspace = true }
 dashmap = { version = "6.1.0", features = ["serde"] }
-tokio-util = "0.7.14"
+tokio-util = "0.7.15"
 futures = "0.3.31"
 tower = "0.5.2"
 service = { path = "../service" }
@@ -31,16 +31,16 @@ tracing-subscriber = { version = "0.3.19", features = ["json", "serde", "serde_j
 tower-http = { version = "0.6.2", features = ["fs", "cors", "compression-full"] }
 tower-cookies = "0.11.0"
 dotenvy = "0.15.7"
-metrics = { version = "0.24.1", default-features = false }
-metrics-exporter-prometheus = { version = "0.16.2", default-features = false }
+metrics = { version = "0.24.2", default-features = false }
+metrics-exporter-prometheus = { version = "0.17.0", default-features = false }
 struson = { version = "0.6.0", features = ["serde"] }
 reqwest-websocket = {  version = "0.4.4" }
 base64 = "0.22.1"
 tungstenite = "0.24.0"
-async-compression = { version = "0.4.22", features = ["tokio", "deflate", "zstd"] }
+async-compression = { version = "0.4.23", features = ["tokio", "deflate", "zstd"] }
 tracing = "0.1.41"
 nanoid = "0.4.0"
 config = "0.15.11"
 
 [dependencies.sea-orm-cli]
-version = "1.1.8"
+version = "1.1.10"

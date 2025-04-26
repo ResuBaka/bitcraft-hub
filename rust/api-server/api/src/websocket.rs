@@ -12,7 +12,7 @@ use base64::Engine;
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
 use log::{debug, error, info};
-use reqwest::Client;
+use reqwest::{Client, ClientBuilder};
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use sea_orm::{EntityTrait, IntoActiveModel, QuerySelect};
 use serde::{Deserialize, Serialize};
@@ -93,10 +93,14 @@ pub fn start_websocket_bitcraft_logic(
                 )
                 .await
             {
+                tracing::error!("Could not connect to bitcraft server with following error {websocket:?}");
                 break;
             } else if websocket.is_err() {
+                tracing::error!("Could not connect to bitcraft server with following error {websocket:?}");
                 continue;
             }
+
+            tracing::info!("Websocket connection established");
 
             let mut websocket = websocket.unwrap();
 
@@ -1217,7 +1221,7 @@ async fn create_websocket_connection(config: &Config) -> anyhow::Result<WebSocke
         format!("Bitcraft-Hub-Api/{}", env!("CARGO_PKG_VERSION")).parse()?,
     );
 
-    let response = Client::default()
+    let response = ClientBuilder::default().timeout(Duration::from_millis(5000)).connect_timeout(Duration::from_millis(2500)).build()?
         .get(format!(
             "{}/{}/{}",
             config.weboosocket_url(),
