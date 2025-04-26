@@ -12,7 +12,7 @@ use base64::Engine;
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
 use log::{debug, error, info};
-use reqwest::{Client, ClientBuilder};
+use reqwest::{ClientBuilder};
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use sea_orm::{EntityTrait, IntoActiveModel, QuerySelect};
 use serde::{Deserialize, Serialize};
