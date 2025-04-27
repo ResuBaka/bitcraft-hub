@@ -353,12 +353,9 @@ fn create_default_client(config: Config) -> Client {
     let mut default_header = HeaderMap::new();
     default_header.insert(
         "Authorization",
-        format!(
-            "Bearer {}",
-            config.spacetimedb.password
-        )
-        .parse()
-        .unwrap(),
+        format!("Bearer {}", config.spacetimedb.password)
+            .parse()
+            .unwrap(),
     );
     default_header.insert(
         "User-Agent",

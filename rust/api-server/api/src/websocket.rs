@@ -1208,11 +1208,7 @@ async fn create_websocket_connection(config: &Config) -> anyhow::Result<WebSocke
     let mut headers = HeaderMap::new();
     headers.insert(
         "Authorization",
-        format!(
-            "Bearer {}",
-            config.spacetimedb.password
-        )
-        .parse()?,
+        format!("Bearer {}", config.spacetimedb.password).parse()?,
     );
     headers.insert(SEC_WEBSOCKET_PROTOCOL, "v1.json.spacetimedb".parse()?);
     headers.insert("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==".parse()?);
