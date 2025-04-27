@@ -62,7 +62,7 @@ pub fn start_websocket_bitcraft_logic(
             "experience_state",
             "inventory_state",
             "claim_tech_state",
-            "claim_description_state",
+            "claim_state",
             "deployable_state",
             "collectible_desc",
         ];
@@ -253,7 +253,9 @@ fn start_websocket_message_thread(
 
                     raw_events_data.push(
                         RawEventData {
-                            timestamp: transaction_update.timestamp.microseconds,
+                            timestamp: transaction_update
+                                .timestamp
+                                .__timestamp_micros_since_unix_epoch__,
                             request_id: transaction_update.reducer_call.request_id as i64,
                             reducer_name: transaction_update
                                 .reducer_call
@@ -284,11 +286,33 @@ fn start_websocket_message_thread(
                         )
                         .increment(1);
 
-                        if transaction_update.status.committed.tables.is_empty() {
+                        if transaction_update.status.failed.is_some() {
+                            error!(
+                                "Transaction with error {}",
+                                transaction_update.status.failed.as_ref().unwrap()
+                            );
                             continue;
                         }
 
-                        for table in transaction_update.status.committed.tables.iter() {
+                        if transaction_update
+                            .status
+                            .committed
+                            .as_ref()
+                            .unwrap()
+                            .tables
+                            .is_empty()
+                        {
+                            continue;
+                        }
+
+                        for table in transaction_update
+                            .status
+                            .committed
+                            .as_ref()
+                            .unwrap()
+                            .tables
+                            .iter()
+                        {
                             metrics::counter!(
                                 "websocket_message_table_count",
                                 &[
@@ -1260,7 +1284,7 @@ pub(crate) enum WebSocketMessage {
 pub(crate) struct InitialSubscription {
     pub(crate) database_update: DatabaseUpdate,
     pub(crate) request_id: u64,
-    pub(crate) total_host_execution_duration_micros: u64,
+    pub(crate) total_host_execution_duration: TotalHostExecutionDuration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -1272,7 +1296,7 @@ pub(crate) struct DatabaseUpdate {
 pub(crate) struct IdentityToken {
     pub(crate) identity: Identity,
     pub(crate) token: Box<str>,
-    pub(crate) address: Address,
+    pub(crate) connection_id: ConnectionId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -1293,16 +1317,23 @@ pub(crate) struct TransactionUpdate {
     pub(crate) status: Status,
     pub(crate) timestamp: Timestamp,
     pub(crate) caller_identity: Identity,
-    pub(crate) caller_address: Address,
+    pub(crate) caller_connection_id: ConnectionId,
     pub(crate) reducer_call: ReducerCall,
     pub(crate) energy_quanta_used: EnergyQuantaUsed,
-    pub(crate) host_execution_duration_micros: u64,
+    pub(crate) total_host_execution_duration: TotalHostExecutionDuration,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub(crate) struct TotalHostExecutionDuration {
+    pub(crate) __time_duration_micros__: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Status {
     #[serde(rename = "Committed")]
-    pub(crate) committed: Committed,
+    pub(crate) committed: Option<Committed>,
+    #[serde(rename = "Failed")]
+    pub(crate) failed: Option<Box<str>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -1333,7 +1364,7 @@ pub(crate) struct TableWithOriginalEventTransactionUpdate {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) struct Timestamp {
     #[serde(with = "time::serde::timestamp::microseconds")]
-    pub(crate) microseconds: OffsetDateTime,
+    pub(crate) __timestamp_micros_since_unix_epoch__: OffsetDateTime,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

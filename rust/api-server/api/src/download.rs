@@ -12,6 +12,7 @@ pub enum DownloadSubcommand {
     State,
     Desc,
     Rest,
+    Schema,
 }
 
 pub async fn download_desc_tables(client: &Client, storage_path: &Path, config: &Config) {
@@ -65,6 +66,13 @@ pub async fn download_all_tables(
         DownloadSubcommand::Rest => {
             download_rest_tables(client, storage_path, config).await;
         }
+        DownloadSubcommand::Schema => {
+            let error = download_schema(client, config, storage_path).await;
+
+            if error.is_err() {
+                error!("Error while downloading schema {error:?}");
+            }
+        }
     }
 }
 
@@ -107,6 +115,48 @@ pub async fn download_tables(
         std::fs::create_dir_all(&folder_to_create)?;
     }
     let path = storage_path.join(format!("{folder}/{table}.json"));
+    let mut file = File::create(&path)?;
+
+    info!("Saving to {path:?}");
+
+    file.write_all(json.as_bytes())?;
+
+    Ok(())
+}
+
+pub async fn download_schema(
+    client: &Client,
+    config: &Config,
+    storage_path: &Path,
+) -> anyhow::Result<()> {
+    let domain = &config.spacetimedb.domain;
+    let protocol = &config.spacetimedb.protocol;
+    let database = &config.spacetimedb.database;
+
+    let response = client
+        .get(format!(
+            "{protocol}{domain}/v1/database/{database}/schema?version=9"
+        ))
+        .send()
+        .await;
+
+    let json = match response {
+        Ok(response) => {
+            if !response.status().is_success() {
+                let error = response.text().await?;
+                error!("Error: {error}");
+                return Err(anyhow::anyhow!("Error: {error}"));
+            }
+
+            response.text().await?
+        }
+        Err(error) => {
+            error!("Error: {error}");
+            return Err(anyhow::anyhow!("Error: {error}"));
+        }
+    };
+
+    let path = storage_path.join("schema.json");
     let mut file = File::create(&path)?;
 
     info!("Saving to {path:?}");

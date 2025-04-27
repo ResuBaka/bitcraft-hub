@@ -708,7 +708,7 @@ pub(crate) async fn handle_initial_subscription_desc(
                 }
                 Err(error) => {
                     error!(
-                        "InitialSubscription Insert BuildingState Error: {error} \n {}",
+                        "InitialSubscription Insert BuildingDesc Error: {error} \n {}",
                         row.as_ref()
                     );
                 }

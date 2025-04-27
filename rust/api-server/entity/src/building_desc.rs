@@ -21,6 +21,7 @@ pub struct Model {
     pub wilderness: bool,
     pub footprint: Json,
     pub max_health: i32,
+    pub ignore_damage: bool,
     pub defense_level: i32,
     pub decay: f32,
     pub maintenance: f32,
@@ -53,6 +54,8 @@ pub struct Function {
     pub buff_ids: Vec<i32>,
     pub concurrent_crafts_per_player: i32,
     pub terraform: bool,
+    pub housing_slots: i32,
+    pub housing_income: u32,
 }
 
 #[derive(Serialize, Deserialize)]

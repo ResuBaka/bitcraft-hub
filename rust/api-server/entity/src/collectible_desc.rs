@@ -53,6 +53,8 @@ pub enum InvalidatesType {
     Deployable = 14,
     Title = 15,
     Crown = 16,
+    Pet = 17,
+    ClothesCape = 18,
 }
 
 impl<'de> Deserialize<'de> for InvalidatesType {
@@ -93,6 +95,8 @@ impl<'de> Deserialize<'de> for InvalidatesType {
                         14 => Ok(InvalidatesType::Deployable),
                         15 => Ok(InvalidatesType::Title),
                         16 => Ok(InvalidatesType::Crown),
+                        17 => Ok(InvalidatesType::Pet),
+                        18 => Ok(InvalidatesType::ClothesCape),
                         _ => Err(de::Error::custom("invalid enum variant invalidates_type")),
                     }
                 } else {
@@ -124,6 +128,8 @@ impl<'de> Deserialize<'de> for InvalidatesType {
                         14 => Ok(InvalidatesType::Deployable),
                         15 => Ok(InvalidatesType::Title),
                         16 => Ok(InvalidatesType::Crown),
+                        17 => Ok(InvalidatesType::Pet),
+                        18 => Ok(InvalidatesType::ClothesCape),
                         _ => Err(de::Error::custom("invalid enum variant invalidates_type")),
                     }
                 } else {
@@ -159,6 +165,7 @@ pub enum CollectibleType {
     Title = 15,
     Crown = 16,
     Pet = 17,
+    ClothesCape = 18,
 }
 
 impl<'de> Deserialize<'de> for CollectibleType {
@@ -200,6 +207,7 @@ impl<'de> Deserialize<'de> for CollectibleType {
                         15 => Ok(CollectibleType::Title),
                         16 => Ok(CollectibleType::Crown),
                         17 => Ok(CollectibleType::Pet),
+                        18 => Ok(CollectibleType::ClothesCape),
                         _ => Err(de::Error::custom("invalid enum variant collectible_type")),
                     }
                 } else {
@@ -233,6 +241,7 @@ impl<'de> Deserialize<'de> for CollectibleType {
                         15 => Ok(CollectibleType::Title),
                         16 => Ok(CollectibleType::Crown),
                         17 => Ok(CollectibleType::Pet),
+                        18 => Ok(CollectibleType::ClothesCape),
                         _ => Err(de::Error::custom("invalid enum variant collectible_type")),
                     }
                 } else {
