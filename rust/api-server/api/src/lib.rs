@@ -36,7 +36,6 @@ use axum::{
     middleware,
     routing::{get, get_service},
 };
-use base64::Engine;
 use clap::{Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
 use log::error;

@@ -7,7 +7,6 @@ use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
 use axum::http::HeaderMap;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
-use base64::Engine;
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, TryStreamExt};
