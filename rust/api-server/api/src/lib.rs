@@ -355,11 +355,8 @@ fn create_default_client(config: Config) -> Client {
     default_header.insert(
         "Authorization",
         format!(
-            "Basic {}",
-            base64::prelude::BASE64_STANDARD.encode(format!(
-                "{}:{}",
-                config.spacetimedb.username, config.spacetimedb.password
-            ))
+            "Bearer {}",
+            config.spacetimedb.password
         )
         .parse()
         .unwrap(),

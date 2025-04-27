@@ -196,7 +196,7 @@ pub(crate) async fn load_trade_order_from_spacetimedb(
     database: &str,
 ) -> anyhow::Result<String> {
     let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .post(format!("{protocol}{domain}/v1/database/{database}/sql"))
         .body("SELECT * FROM trade_order_state")
         .send()
         .await;

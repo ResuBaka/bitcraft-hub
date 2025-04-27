@@ -1210,16 +1210,14 @@ async fn create_websocket_connection(config: &Config) -> anyhow::Result<WebSocke
     headers.insert(
         "Authorization",
         format!(
-            "Basic {}",
-            base64::prelude::BASE64_STANDARD.encode(format!(
-                "{}:{}",
-                config.spacetimedb.username, config.spacetimedb.password
-            ))
+            "Bearer {}",
+            config.spacetimedb.password
         )
         .parse()?,
     );
     headers.insert(SEC_WEBSOCKET_PROTOCOL, "v1.json.spacetimedb".parse()?);
     headers.insert("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==".parse()?);
+    headers.insert("Sec-WebSocket-Version", "13".parse()?);
     headers.insert(
         reqwest::header::USER_AGENT,
         format!("Bitcraft-Hub-Api/{}", env!("CARGO_PKG_VERSION")).parse()?,
@@ -1230,10 +1228,11 @@ async fn create_websocket_connection(config: &Config) -> anyhow::Result<WebSocke
         .connect_timeout(Duration::from_millis(2500))
         .build()?
         .get(format!(
-            "{}/{}/{}",
+            "{}/{}/{}/{}",
             config.weboosocket_url(),
-            "database/subscribe",
-            config.spacetimedb.database
+            "database",
+            config.spacetimedb.database,
+            "subscribe"
         ))
         .headers(headers)
         .upgrade()

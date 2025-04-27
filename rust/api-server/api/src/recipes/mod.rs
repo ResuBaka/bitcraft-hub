@@ -225,7 +225,7 @@ pub(crate) async fn load_crafting_recipe_desc_from_spacetimedb(
     database: &str,
 ) -> anyhow::Result<String> {
     let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .post(format!("{protocol}{domain}/v1/database/{database}/sql"))
         .body("SELECT * FROM crafting_recipe_desc")
         .send()
         .await;

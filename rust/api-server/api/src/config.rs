@@ -508,7 +508,7 @@ impl Config {
     #[allow(dead_code)]
     pub fn weboosocket_url(&self) -> String {
         format!(
-            "{}{}",
+            "{}{}/v1",
             self.spacetimedb.websocket_protocol, self.spacetimedb.domain
         )
     }

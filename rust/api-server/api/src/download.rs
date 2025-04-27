@@ -81,7 +81,7 @@ pub async fn download_tables(
     let database = &config.spacetimedb.database;
 
     let response = client
-        .post(format!("{protocol}{domain}/database/sql/{database}"))
+        .post(format!("{protocol}{domain}/v1/database/{database}/sql"))
         .body(format!("SELECT * FROM {table}"))
         .send()
         .await;
