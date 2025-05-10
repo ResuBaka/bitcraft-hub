@@ -302,10 +302,10 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
 
     let app = Router::new()
         .route("/websocket", any(websocket_handler))
-        .route(
-            "/locations",
-            axum_codec::routing::get(locations::list_locations).into(),
-        )
+        // .route(
+        //     "/locations",
+        //     axum_codec::routing::get(locations::list_locations).into(),
+        // )
         .route("/items", axum_codec::routing::get(items::list_items).into())
         .merge(player_state::get_routes())
         .merge(claims::get_routes())
@@ -463,11 +463,14 @@ struct AppState {
     storage_path: PathBuf,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
-    claim_description_state: Arc<dashmap::DashMap<u64, entity::claim_description_state::Model>>,
+    claim_state: Arc<dashmap::DashMap<u64, entity::claim_state::Model>>,
+    claim_member_state: Arc<dashmap::DashMap<u64, dashmap::DashSet<entity::claim_member_state::Model>>>,
+    player_to_claim_id_cache: Arc<dashmap::DashMap<u64, dashmap::DashSet<u64>>>,
+    claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
     player_action_state: Arc<dashmap::DashMap<u64, entity::player_action_state::Model>>,
     crafting_recipe_desc: Arc<dashmap::DashMap<i64, entity::crafting_recipe::Model>>,
-    claim_tech_desc: Arc<dashmap::DashMap<i64, entity::claim_tech_desc::Model>>,
+    claim_tech_desc: Arc<dashmap::DashMap<i32, entity::claim_tech_desc::Model>>,
     item_tags: Arc<dashmap::DashSet<String>>,
     item_tiers: Arc<dashmap::DashSet<i64>>,
     item_desc: Arc<dashmap::DashMap<i64, entity::item_desc::Model>>,
@@ -476,6 +479,8 @@ struct AppState {
     cargo_tags: Arc<dashmap::DashSet<String>>,
     cargo_tiers: Arc<dashmap::DashSet<i64>>,
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
+    location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
+    connected_user_map: Arc<dashmap::DashMap<String, i64>>
 }
 
 impl AppState {
@@ -485,7 +490,10 @@ impl AppState {
             storage_path: PathBuf::from(config.storage_path.clone()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
-            claim_description_state: Arc::new(dashmap::DashMap::new()),
+            claim_state: Arc::new(dashmap::DashMap::new()),
+            claim_member_state: Arc::new(dashmap::DashMap::new()),
+            player_to_claim_id_cache: Arc::new(dashmap::DashMap::new()),
+            claim_local_state: Arc::new(dashmap::DashMap::new()),
             claim_tile_state: Arc::new(dashmap::DashMap::new()),
             player_action_state: Arc::new(dashmap::DashMap::new()),
             crafting_recipe_desc: Arc::new(dashmap::DashMap::new()),
@@ -498,7 +506,54 @@ impl AppState {
             cargo_tiers: Arc::new(dashmap::DashSet::new()),
             cargo_desc: Arc::new(dashmap::DashMap::new()),
             action_state: Arc::new(dashmap::DashMap::new()),
+            location_state: Arc::new(dashmap::DashMap::new()),
+            connected_user_map: Arc::new(dashmap::DashMap::new()),
         }
+    }
+
+    fn add_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
+        let claim_entity_id = claim_member_state.claim_entity_id;
+        let entity_id=  claim_member_state.entity_id;
+
+        let cms = self.claim_member_state.get(&(claim_member_state.entity_id as u64));
+
+        if let Some(cms) = cms {
+            cms.insert(claim_member_state);
+        } else {
+            let dashset = dashmap::DashSet::new();
+            dashset.insert(claim_member_state);
+
+            self.claim_member_state.insert(
+                entity_id as u64,
+                dashset
+            );
+        }
+
+        if let Some(claim_state_to_member_set) = self.player_to_claim_id_cache.get_mut(
+            &(entity_id as u64)
+        ) {
+            claim_state_to_member_set.insert(claim_entity_id as u64);
+        } else {
+            let claim_state_to_member_set = dashmap::DashSet::new();
+            claim_state_to_member_set.insert(claim_entity_id as u64);
+
+            self.player_to_claim_id_cache.insert(entity_id as u64, claim_state_to_member_set);
+        };
+    }
+
+    fn remove_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
+        let claim_entity_id = claim_member_state.claim_entity_id;
+        let entity_id=  claim_member_state.entity_id;
+
+        self.claim_member_state.remove(
+            &(claim_member_state.entity_id as u64),
+        );
+
+        if let Some(claim_state_to_member_set) = self.player_to_claim_id_cache.get_mut(
+            &(entity_id as u64)
+        ) {
+            claim_state_to_member_set.remove(&(claim_entity_id as u64));
+        };
     }
 }
 
@@ -794,6 +849,9 @@ you should provide the directory of that submodule.",
         live_updates_ws: Option<bool>,
     },
     Download {
+        #[arg(long, help = "Use remote schema to get tables", default_value_t = true)]
+        remote_schema: bool,
+
         #[command(subcommand)]
         command: crate::download::DownloadSubcommand,
     },
@@ -894,7 +952,7 @@ pub async fn main() -> anyhow::Result<()> {
                 error!("Error: {err}");
             }
         }
-        Commands::Download { command } => {
+        Commands::Download { command, remote_schema } => {
             let client = create_default_client(config.clone());
 
             crate::download::download_all_tables(
@@ -902,6 +960,7 @@ pub async fn main() -> anyhow::Result<()> {
                 &client,
                 Path::new(&config.storage_path.clone()),
                 &config,
+                remote_schema,
             )
             .await;
         }

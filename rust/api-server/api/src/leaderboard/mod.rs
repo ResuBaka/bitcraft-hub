@@ -804,7 +804,7 @@ pub(crate) async fn get_claim_leaderboard(
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
 
-    let claim = Query::find_claim_description_by_id(&state.conn, claim_id)
+    let claim_member = Query::find_claim_member_by_claim_id(&state.conn, claim_id)
         .await
         .map_err(|error| {
             error!("Error: {error}");
@@ -812,14 +812,11 @@ pub(crate) async fn get_claim_leaderboard(
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
 
-    if claim.is_none() {
+    if claim_member.is_empty() {
         return Err((StatusCode::NOT_FOUND, ""));
     }
 
-    let claim: ClaimDescriptionState = claim.unwrap().into();
-
-    let player_ids = claim
-        .members
+    let player_ids = claim_member
         .iter()
         .map(|member| member.entity_id)
         .collect::<Vec<i64>>();

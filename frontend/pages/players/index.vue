@@ -156,11 +156,11 @@ const timeStampToDateSince = (timestamp: number) => {
     minute: "numeric",
     second: "numeric",
   };
-  return date.toLocaleDateString("en-US", options);
+  return date.toLocaleDateString(undefined, options);
 };
 
 useSeoMeta({
-  title: "Players",
+  title: () => `Players ${players.value?.total ?? 0}`,
   description: "Players",
 });
 </script>

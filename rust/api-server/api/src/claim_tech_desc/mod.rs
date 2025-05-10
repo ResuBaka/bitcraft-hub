@@ -92,7 +92,7 @@ pub(crate) async fn import_claim_tech_desc(
             claim_tech_desc::Column::Input,
             claim_tech_desc::Column::Members,
             claim_tech_desc::Column::Area,
-            claim_tech_desc::Column::Supply,
+            claim_tech_desc::Column::Supplies,
         ])
         .to_owned();
 
@@ -108,7 +108,7 @@ pub(crate) async fn import_claim_tech_desc(
                         buffer_before_insert
                             .iter()
                             .map(|claim_tech_desc| claim_tech_desc.id)
-                            .collect::<Vec<i64>>(),
+                            .collect::<Vec<i32>>(),
                     ),
                 )
                 .all(conn)
@@ -132,7 +132,7 @@ pub(crate) async fn import_claim_tech_desc(
             let claim_tech_desc_from_db_map = claim_tech_desc_from_db
                 .into_iter()
                 .map(|claim_tech_desc| (claim_tech_desc.id, claim_tech_desc))
-                .collect::<HashMap<i64, claim_tech_desc::Model>>();
+                .collect::<HashMap<i32, claim_tech_desc::Model>>();
 
             let things_to_insert = buffer_before_insert
                 .iter()
@@ -180,7 +180,7 @@ pub(crate) async fn import_claim_tech_desc(
                     buffer_before_insert
                         .iter()
                         .map(|claim_tech_desc| claim_tech_desc.id)
-                        .collect::<Vec<i64>>(),
+                        .collect::<Vec<i32>>(),
                 ),
             )
             .all(conn)
@@ -189,7 +189,7 @@ pub(crate) async fn import_claim_tech_desc(
         let claim_tech_desc_from_db_map = claim_tech_desc_from_db
             .into_iter()
             .map(|claim_tech_desc| (claim_tech_desc.id, claim_tech_desc))
-            .collect::<HashMap<i64, claim_tech_desc::Model>>();
+            .collect::<HashMap<i32, claim_tech_desc::Model>>();
 
         let things_to_insert = buffer_before_insert
             .iter()
@@ -287,8 +287,8 @@ pub async fn import_job_claim_tech_desc(temp_config: Config) {
     }
 }
 
-async fn get_known_claim_tech_desc_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
-    let known_claim_tech_desc_ids: Vec<i64> = claim_tech_desc::Entity::find()
+async fn get_known_claim_tech_desc_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i32>> {
+    let known_claim_tech_desc_ids: Vec<i32> = claim_tech_desc::Entity::find()
         .select_only()
         .column(claim_tech_desc::Column::Id)
         .into_tuple()
@@ -297,7 +297,7 @@ async fn get_known_claim_tech_desc_ids(conn: &DatabaseConnection) -> anyhow::Res
 
     let known_claim_tech_desc_ids = known_claim_tech_desc_ids
         .into_iter()
-        .collect::<HashSet<i64>>();
+        .collect::<HashSet<i32>>();
     Ok(known_claim_tech_desc_ids)
 }
 
@@ -312,7 +312,7 @@ async fn db_insert_claim_tech_descs(
                 buffer_before_insert
                     .iter()
                     .map(|claim_tech_desc| claim_tech_desc.id)
-                    .collect::<Vec<i64>>(),
+                    .collect::<Vec<i32>>(),
             ),
         )
         .all(conn)
@@ -321,7 +321,7 @@ async fn db_insert_claim_tech_descs(
     let claim_tech_descs_from_db_map = claim_tech_descs_from_db
         .into_iter()
         .map(|claim_tech_desc| (claim_tech_desc.id, claim_tech_desc))
-        .collect::<HashMap<i64, claim_tech_desc::Model>>();
+        .collect::<HashMap<i32, claim_tech_desc::Model>>();
 
     let things_to_insert = buffer_before_insert
         .iter()
@@ -353,7 +353,7 @@ async fn db_insert_claim_tech_descs(
 
 async fn delete_claim_tech_desc(
     conn: &DatabaseConnection,
-    known_claim_tech_desc_ids: HashSet<i64>,
+    known_claim_tech_desc_ids: HashSet<i32>,
 ) -> anyhow::Result<()> {
     info!(
         "claim_tech_desc's ({}) to delete: {:?}",
@@ -384,7 +384,7 @@ pub(crate) async fn handle_initial_subscription(
             claim_tech_desc::Column::Input,
             claim_tech_desc::Column::Members,
             claim_tech_desc::Column::Area,
-            claim_tech_desc::Column::Supply,
+            claim_tech_desc::Column::Supplies,
             claim_tech_desc::Column::XpToMintHexCoin,
         ])
         .to_owned();
@@ -451,7 +451,7 @@ pub(crate) async fn handle_transaction_update(
             claim_tech_desc::Column::Input,
             claim_tech_desc::Column::Members,
             claim_tech_desc::Column::Area,
-            claim_tech_desc::Column::Supply,
+            claim_tech_desc::Column::Supplies,
             claim_tech_desc::Column::XpToMintHexCoin,
         ])
         .to_owned();

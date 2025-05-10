@@ -271,7 +271,6 @@ pub(crate) async fn import_building_state(
             building_state::Column::DirectionIndex,
             building_state::Column::BuildingDescriptionId,
             building_state::Column::ConstructedByPlayerEntityId,
-            building_state::Column::Nickname,
         ])
         .to_owned();
 
@@ -536,7 +535,6 @@ pub(crate) async fn handle_transaction_update(
             building_state::Column::DirectionIndex,
             building_state::Column::BuildingDescriptionId,
             building_state::Column::ConstructedByPlayerEntityId,
-            building_state::Column::Nickname,
         ])
         .to_owned();
 
@@ -615,7 +613,6 @@ pub(crate) async fn handle_initial_subscription(
             building_state::Column::DirectionIndex,
             building_state::Column::BuildingDescriptionId,
             building_state::Column::ConstructedByPlayerEntityId,
-            building_state::Column::Nickname,
         ])
         .to_owned();
 
@@ -637,7 +634,7 @@ pub(crate) async fn handle_initial_subscription(
                     }
                 }
                 Err(error) => {
-                    error!("InitialSubscription Insert BuildingState Error: {error}");
+                    tracing::error!(json = row, "InitialSubscription Insert BuildingState Error: {error}");
                 }
             }
         }

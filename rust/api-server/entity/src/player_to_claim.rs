@@ -23,12 +23,6 @@ pub enum Relation {
         to = "super::player_username_state::Column::EntityId"
     )]
     PlayerUsernameState,
-    #[sea_orm(
-        belongs_to = "super::claim_description_state::Entity",
-        from = "Column::ClaimId",
-        to = "super::claim_description_state::Column::EntityId"
-    )]
-    ClaimDescriptionState,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -77,10 +77,10 @@ const claimOwner = computed(() => {
           <th>Supplies:</th>
           <td>{{ parseInt(claim.supplies) }}</td>
         </tr>
-        <tr style='text-align: right' v-if="claim.location[0][1]">
+        <tr style='text-align: right' v-if="claim.location">
           <th>Location:</th>
           <td>
-            N: {{ Math.ceil(claim.location[0][1] / 3)  }}, E: {{ Math.ceil(claim.location[0][0] / 3) }}
+            N: {{ Math.ceil(claim.location.z / 3)  }}, E: {{ Math.ceil(claim.location.x / 3) }}
           </td>
         </tr>
         <tr v-if="claim.running_upgrade" style='text-align: right'>

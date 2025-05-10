@@ -3,10 +3,11 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "location")]
+// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+// #[sea_orm(table_name = "location")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
+    // #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     pub chunk_index: i64,
     pub x: i32,
@@ -14,7 +15,7 @@ pub struct Model {
     pub dimension: i32,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+// pub enum Relation {}
 
-impl ActiveModelBehavior for ActiveModel {}
+// impl ActiveModelBehavior for ActiveModel {}

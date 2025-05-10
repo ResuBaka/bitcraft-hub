@@ -12,7 +12,6 @@ pub struct Model {
     pub direction_index: i32,
     pub building_description_id: i32,
     pub constructed_by_player_entity_id: i64,
-    pub nickname: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

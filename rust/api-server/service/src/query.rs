@@ -1,3 +1,4 @@
+use ::entity::claim_member_state;
 use ::entity::building_state;
 use ::entity::cargo_desc;
 use ::entity::claim_tech_desc;
@@ -11,8 +12,9 @@ use ::entity::trade_order;
 use ::entity::vault_state_collectibles;
 use ::entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
 use ::entity::{
-    building_desc, claim_description_state, claim_description_state::Entity as ClaimDescription,
-    experience_state, item_desc, item_desc::Entity as Item, location, location::Entity as Location,
+    building_desc,
+    claim_state,
+    experience_state, item_desc, item_desc::Entity as Item,
     player_state, player_state::Entity as PlayerState, player_username_state,
     player_username_state::Entity as PlayerUsernameState, skill_desc,
 };
@@ -118,21 +120,21 @@ impl Query {
         Ok((player_states, player_usernames, num_pages))
     }
 
-    /// If ok, returns (post models, num pages).
-    pub async fn find_locations(
-        db: &DbConn,
-        page: u64,
-        posts_per_page: u64,
-    ) -> Result<(Vec<location::Model>, ItemsAndPagesNumber), DbErr> {
-        // Setup paginator
-        let paginator = Location::find()
-            .order_by_asc(location::Column::EntityId)
-            .paginate(db, posts_per_page);
-        let num_pages = paginator.num_items_and_pages().await?;
-
-        // Fetch paginated posts
-        paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
-    }
+    // /// If ok, returns (post models, num pages).
+    // pub async fn find_locations(
+    //     db: &DbConn,
+    //     page: u64,
+    //     posts_per_page: u64,
+    // ) -> Result<(Vec<location::Model>, ItemsAndPagesNumber), DbErr> {
+    //     // Setup paginator
+    //     let paginator = Location::find()
+    //         .order_by_asc(location::Column::EntityId)
+    //         .paginate(db, posts_per_page);
+    //     let num_pages = paginator.num_items_and_pages().await?;
+    //
+    //     // Fetch paginated posts
+    //     paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
+    // }
 
     /// If ok, returns (post models, num pages).
     pub async fn find_items(
@@ -342,11 +344,11 @@ impl Query {
         search: Option<String>,
         has_research: Option<i32>,
         is_running_upgrade: Option<bool>,
-    ) -> Result<(Vec<claim_description_state::Model>, ItemsAndPagesNumber), DbErr> {
+    ) -> Result<(Vec<claim_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let paginator = ClaimDescription::find()
+        let paginator = claim_state::Entity::find()
             .order_by_desc(Expr::cust("boost"))
-            .order_by_asc(claim_description_state::Column::EntityId)
+            .order_by_asc(claim_state::Column::EntityId)
             .expr_as(
                 Expr::case(
                     Expr::eq(
@@ -1091,16 +1093,16 @@ impl Query {
             )
             .join_rev(
                 JoinType::LeftJoin,
-                claim_tech_state::Entity::belongs_to(claim_description_state::Entity)
+                claim_tech_state::Entity::belongs_to(claim_state::Entity)
                     .from(claim_tech_state::Column::EntityId)
-                    .to(claim_description_state::Column::EntityId)
+                    .to(claim_state::Column::EntityId)
                     .into(),
             )
-            .filter(claim_description_state::Column::Name.ne("Watchtower"))
-            .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
+            .filter(claim_state::Column::Neutral.ne(true))
+            // .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => query.filter(
-                    Expr::col(claim_description_state::Column::Name).ilike(format!("%{}%", value)),
+                    Expr::col(claim_state::Column::Name).ilike(format!("%{}%", value)),
                 ),
                 _ => unreachable!(),
             })
@@ -1111,7 +1113,7 @@ impl Query {
                     DbBackend::Postgres => {
                         query.filter(
                             Condition::any().add(
-                                claim_description_state::Column::EntityId.in_subquery(
+                                claim_state::Column::EntityId.in_subquery(
                                     sea_query::Query::select()
                                         .column(claim_tech_state::Column::EntityId)
                                         // .and_where(SimpleExpr::from(PgFunc::any(Expr::col(claim_tech_state::Column::Learned)).eq(
@@ -1143,7 +1145,7 @@ impl Query {
 
                         query.filter(
                             Condition::any().add(
-                                claim_description_state::Column::EntityId.in_subquery(
+                                claim_state::Column::EntityId.in_subquery(
                                     sea_query::Query::select()
                                         .column(claim_tech_state::Column::EntityId)
                                         .and_where(where_query)
@@ -1163,20 +1165,23 @@ impl Query {
         paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
     }
 
-    pub async fn find_claim_description(
+    pub async fn find_claim_state(
         db: &DbConn,
         id: i64,
-    ) -> Result<Option<claim_description_state::Model>, DbErr> {
-        claim_description_state::Entity::find_by_id(id)
+    ) -> Result<Option<claim_state::Model>, DbErr> {
+        claim_state::Entity::find_by_id(id)
             .one(db)
             .await
     }
 
-    pub async fn find_claim_description_by_id(
+    pub async fn find_claim_member_by_claim_id(
         db: &DbConn,
         id: i64,
-    ) -> Result<Option<claim_description_state::Model>, DbErr> {
-        ClaimDescription::find_by_id(id).one(db).await
+    ) -> Result<Vec<claim_member_state::Model>, DbErr> {
+        claim_member_state::Entity::find()
+            .filter(claim_member_state::Column::ClaimEntityId.eq(id))
+            .all(db)
+            .await
     }
 
     pub async fn skill_descriptions(db: &DbConn) -> Result<Vec<skill_desc::Model>, DbErr> {

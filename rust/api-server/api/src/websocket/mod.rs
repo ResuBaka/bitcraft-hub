@@ -25,10 +25,6 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 use tracing::warn;
 
-struct WebSocketAppState {
-    user_map: HashMap<String, i64>,
-}
-
 pub fn start_websocket_bitcraft_logic(
     config: Config,
     broadcast_tx: UnboundedSender<WebSocketMessages>,
@@ -39,10 +35,6 @@ pub fn start_websocket_bitcraft_logic(
         let mut retry_count = 1_u32;
         let max_retry_count = 10;
         let backoff_factor = 2;
-
-        let app_state = WebSocketAppState {
-            user_map: HashMap::new(),
-        };
 
         let tables_to_subscribe = vec![
             "user_state",
@@ -55,16 +47,27 @@ pub fn start_websocket_bitcraft_logic(
             "crafting_recipe_desc",
             "action_state",
             "player_state",
+            "skill_desc",
             "player_username_state",
             "building_desc",
             "building_state",
-            "vault_state",
+            // "vault_state",
             "experience_state",
-            "inventory_state",
             "claim_tech_state",
             "claim_state",
+            "claim_member_state",
+            "claim_local_state",
             "deployable_state",
             "collectible_desc",
+            "claim_tech_desc",
+            // "claim_description_state", -> claim_state
+            "mobile_entity_state",
+            "claim_tile_state",
+            "crafting_recipe_desc",
+            "player_action_state",
+            "action_state",
+            "location_state",
+            "inventory_state",
         ];
 
         let select_querys = tables_to_subscribe
@@ -75,7 +78,8 @@ pub fn start_websocket_bitcraft_logic(
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         let tmp_config = config.clone();
-        start_websocket_message_thread(broadcast_tx, global_app_state, app_state, rx, tmp_config);
+        start_websocket_message_thread(broadcast_tx, global_app_state, rx, tmp_config);
+
 
         loop {
             let now = Instant::now();
@@ -83,13 +87,13 @@ pub fn start_websocket_bitcraft_logic(
 
             if websocket.is_err()
                 && websocket_retry_helper(
-                    reconnect_wait_time_sec,
-                    &mut retry_count,
-                    max_retry_count,
-                    backoff_factor,
-                    now,
-                    false,
-                )
+                reconnect_wait_time_sec,
+                &mut retry_count,
+                max_retry_count,
+                backoff_factor,
+                now,
+                false,
+            )
                 .await
             {
                 tracing::error!(
@@ -115,50 +119,61 @@ pub fn start_websocket_bitcraft_logic(
                             "request_id": 1,
                         },
                     })
-                    .to_string(),
+                        .to_string(),
                 ))
                 .await
                 .unwrap();
 
-            while let Ok(Some(message)) = websocket.try_next().await {
-                if let Message::Text(text) = message {
-                    let message: Result<WebSocketMessage, serde_json::Error> =
-                        serde_json::from_str(&text);
+            tracing::info!("Websocket send Subscribe query");
 
-                    if message.is_err() {
-                        //info!("Text: {:?}", text);
-                        error!("Error: {:?}, text: {text}", message.err());
-                        continue;
-                    }
+            while let result = websocket.try_next().await {
+                if result.is_err() {
+                    let error = result.unwrap_err();
+                    tracing::error!("WebSocket message could not be decoded {error:?}");
+                    break;
+                }
 
-                    let message = message.unwrap();
+                if let Ok(Some(message)) = result {
+                    if let Message::Text(text) = message {
+                        let message: Result<WebSocketMessage, serde_json::Error> =
+                            serde_json::from_str(&text);
 
-                    match &message {
-                        WebSocketMessage::TransactionUpdate(transaction_update) => {
-                            metrics::gauge!(
+                        if message.is_err() {
+                            //info!("Text: {:?}", text);
+                            error!("Error: {:?}, text: {text}", message.err());
+                            continue;
+                        }
+
+                        let message = message.unwrap();
+
+                        match &message {
+                            WebSocketMessage::TransactionUpdate(transaction_update) => {
+                                metrics::gauge!(
                                 "websocket_message_inflight_gauge",
                                 &[("type", "TransactionUpdate"),]
                             )
-                            .increment(1);
-                            tx.send(message.clone()).unwrap();
-                            debug!("Received transaction update: {transaction_update:?}");
-                        }
-                        WebSocketMessage::InitialSubscription(subscription_update) => {
-                            metrics::gauge!(
+                                    .increment(1);
+                                tx.send(message.to_owned()).unwrap();
+                                debug!("Received transaction update: {transaction_update:?}");
+                            }
+                            WebSocketMessage::InitialSubscription(subscription_update) => {
+                                tracing::info!("Good InitialSubscription response");
+                                metrics::gauge!(
                                 "websocket_message_inflight_gauge",
                                 &[("type", "InitialSubscription"),]
                             )
-                            .increment(1);
-                            tx.send(message.clone()).unwrap();
-                            debug!("Received subscription update: {subscription_update:?}");
+                                    .increment(1);
+                                tx.send(message.to_owned()).unwrap();
+                                debug!("Received subscription update: {subscription_update:?}");
+                            }
+                            WebSocketMessage::IdentityToken(identity_token) => {
+                                debug!("Received identity token: {identity_token:?}");
+                            }
                         }
-                        WebSocketMessage::IdentityToken(identity_token) => {
-                            debug!("Received identity token: {identity_token:?}");
-                        }
+                    } else if let Message::Ping(_) = message {
+                    } else {
+                        warn!("Message: {:?}", message);
                     }
-                } else if let Message::Ping(_) = message {
-                } else {
-                    warn!("Message: {:?}", message);
                 }
             }
 
@@ -170,7 +185,7 @@ pub fn start_websocket_bitcraft_logic(
                 now,
                 true,
             )
-            .await
+                .await
             {
                 break;
             }
@@ -207,7 +222,6 @@ async fn websocket_retry_helper(
 fn start_websocket_message_thread(
     broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
-    mut app_state: WebSocketAppState,
     mut rx: UnboundedReceiver<WebSocketMessage>,
     tmp_config: Config,
 ) {
@@ -249,7 +263,11 @@ fn start_websocket_message_thread(
 
                     let user_id = transaction_update.caller_identity.__identity__.clone();
 
-                    let user_id = app_state.user_map.get(&user_id.to_string());
+                    let user_id = if let Some(user_id_ref) = global_app_state.connected_user_map.get(&user_id.to_string()) {
+                        Some(user_id_ref.to_owned())
+                    } else {
+                        None
+                    };
 
                     raw_events_data.push(
                         RawEventData {
@@ -265,9 +283,9 @@ fn start_websocket_message_thread(
                                 .unwrap(),
                             reducer_id: transaction_update.reducer_call.reducer_id as i64,
                             event_data: compressor.into_inner(),
-                            user_id: user_id.cloned(),
+                            user_id,
                         }
-                        .into_active_model(),
+                            .into_active_model(),
                     );
                 }
             }
@@ -284,7 +302,7 @@ fn start_websocket_message_thread(
                             "websocket.message.count",
                             &[("type", "TransactionUpdate"),]
                         )
-                        .increment(1);
+                            .increment(1);
 
                         if transaction_update.status.failed.is_some() {
                             error!(
@@ -320,7 +338,7 @@ fn start_websocket_message_thread(
                                     ("table", format!("{}", table.table_name)),
                                 ]
                             )
-                            .increment(1);
+                                .increment(1);
 
                             if let Some(table_vec) = tables.get_mut(&table.table_name.to_string()) {
                                 //TODO this probebly has to be rewriten
@@ -355,14 +373,14 @@ fn start_websocket_message_thread(
                             "websocket_message_inflight_gauge",
                             &[("type", "TransactionUpdate"),]
                         )
-                        .decrement(1);
+                            .decrement(1);
                     }
                     WebSocketMessage::InitialSubscription(subscription_update) => {
                         metrics::counter!(
                             "websocket.message.count",
                             &[("type", "InitialSubscription"),]
                         )
-                        .increment(1);
+                            .increment(1);
 
                         if subscription_update.database_update.tables.is_empty() {
                             continue;
@@ -376,7 +394,7 @@ fn start_websocket_message_thread(
                                     ("table", format!("{}", table.table_name)),
                                 ]
                             )
-                            .increment(1);
+                                .increment(1);
 
                             let start = std::time::Instant::now();
 
@@ -395,7 +413,7 @@ fn start_websocket_message_thread(
                                                 }
                                             };
 
-                                        app_state.user_map.insert(
+                                        global_app_state.connected_user_map.insert(
                                             user_state.identity.__identity__,
                                             user_state.entity_id,
                                         );
@@ -419,7 +437,7 @@ fn start_websocket_message_thread(
                                     player_state::handle_initial_subscription_player_state(
                                         &db, table,
                                     )
-                                    .await;
+                                        .await;
 
                                 if result.is_err() {
                                     error!(
@@ -456,7 +474,7 @@ fn start_websocket_message_thread(
                                     &global_app_state,
                                     table,
                                 )
-                                .await;
+                                    .await;
 
                                 if result.is_err() {
                                     error!(
@@ -482,7 +500,7 @@ fn start_websocket_message_thread(
                                     &global_app_state,
                                     table,
                                 )
-                                .await;
+                                    .await;
 
                                 if result.is_err() {
                                     error!(
@@ -497,7 +515,7 @@ fn start_websocket_message_thread(
                                     &global_app_state,
                                     table,
                                 )
-                                .await;
+                                    .await;
 
                                 if result.is_err() {
                                     error!(
@@ -512,7 +530,7 @@ fn start_websocket_message_thread(
                                     &global_app_state,
                                     table,
                                 )
-                                .await;
+                                    .await;
 
                                 if result.is_err() {
                                     error!(
@@ -527,7 +545,7 @@ fn start_websocket_message_thread(
                                     &global_app_state,
                                     table,
                                 )
-                                .await;
+                                    .await;
 
                                 if result.is_err() {
                                     error!(
@@ -542,7 +560,7 @@ fn start_websocket_message_thread(
                                     &global_app_state,
                                     table,
                                 )
-                                .await;
+                                    .await;
 
                                 if result.is_err() {
                                     error!(
@@ -552,18 +570,75 @@ fn start_websocket_message_thread(
                                 }
                             }
 
-                            if table.table_name.as_ref() == "claim_description_state" {
-                                let result =
-                                    claims::handle_initial_subscription(&global_app_state, table)
-                                        .await;
+                            if table.table_name.as_ref() == "claim_state" {
+                                let result = crate::claims::claim_state::handle_initial_subscription(
+                                    &global_app_state,
+                                    table,
+                                )
+                                    .await;
 
                                 if result.is_err() {
                                     error!(
-                                        "claim_description_state initial subscription failed: {:?}",
+                                        "claim_state initial subscription failed: {:?}",
                                         result.err()
+                                    );
+                                } else {
+                                    info!(
+                                        "claim_state initial subscription success",
                                     );
                                 }
                             }
+
+                            if table.table_name.as_ref() == "claim_local_state" {
+                                let result = crate::claims::claim_local_state::handle_initial_subscription(
+                                    &global_app_state,
+                                    table,
+                                )
+                                    .await;
+
+                                if result.is_err() {
+                                    error!(
+                                        "claim_local_state initial subscription failed: {:?}",
+                                        result.err()
+                                    );
+                                } else {
+                                    info!(
+                                        "claim_local_state initial subscription success",
+                                    );
+                                }
+                            }
+
+                            if table.table_name.as_ref() == "claim_member_state" {
+                                let result = crate::claims::claim_member_state::handle_initial_subscription(
+                                    &global_app_state,
+                                    table,
+                                )
+                                    .await;
+
+                                if result.is_err() {
+                                    error!(
+                                        "claim_member_state initial subscription failed: {:?}",
+                                        result.err()
+                                    );
+                                } else {
+                                    info!(
+                                        "claim_member_state initial subscription success",
+                                    );
+                                }
+                            }
+
+                            // if table.table_name.as_ref() == "claim_description_state" {
+                            //     let result =
+                            //         claims::handle_initial_subscription(&global_app_state, table)
+                            //             .await;
+                            //
+                            //     if result.is_err() {
+                            //         error!(
+                            //             "claim_description_state initial subscription failed: {:?}",
+                            //             result.err()
+                            //         );
+                            //     }
+                            // }
 
                             if table.table_name.as_ref() == "deployable_state" {
                                 let result =
@@ -693,6 +768,32 @@ fn start_websocket_message_thread(
                                 }
                             }
 
+                            if table.table_name.as_ref() == "location_state" {
+                                let mut num_entries = 0;
+                                for update in table.updates.iter() {
+                                    num_entries = update.inserts.len();
+                                    for row in update.inserts.iter() {
+                                        let location_state: entity::location::Model =
+                                            match serde_json::from_str(row) {
+                                                Ok(location_state) => location_state,
+                                                Err(error) => {
+                                                    error!("InitialSubscription Insert location_state Error: {:?} -> {:?}", error, row);
+                                                    continue;
+                                                }
+                                            };
+
+                                        global_app_state.location_state.insert(
+                                            location_state.entity_id,
+                                            location_state.clone(),
+                                        );
+                                    }
+                                }
+
+                                info!(
+                                    "location_state initial subscription success",
+                                );
+                            }
+
                             if table.table_name.as_ref() == "action_state" {
                                 for update in table.updates.iter() {
                                     for row in update.inserts.iter() {
@@ -735,14 +836,14 @@ fn start_websocket_message_thread(
                                 "bitraft_event_handler_initial_subscription_duration_seconds",
                                 &[("table", table.table_name.as_ref().to_string())]
                             )
-                            .record(start.elapsed().as_secs_f64());
+                                .record(start.elapsed().as_secs_f64());
                         }
 
                         metrics::gauge!(
                             "websocket_message_inflight_gauge",
                             &[("type", "InitialSubscription"),]
                         )
-                        .decrement(1);
+                            .decrement(1);
                     }
                     WebSocketMessage::IdentityToken(identity_token) => {
                         println!("IdentityToken: {identity_token:?}");
@@ -762,8 +863,7 @@ fn start_websocket_message_thread(
 
                         match serde_json::from_str::<user_state::Model>(&row.inserts[0]) {
                             Ok(user_state) => {
-                                app_state
-                                    .user_map
+                                global_app_state.connected_user_map
                                     .insert(user_state.identity.__identity__, user_state.entity_id);
                             }
                             Err(error) => {
@@ -791,7 +891,7 @@ fn start_websocket_message_thread(
                         table,
                         broadcast_tx.clone(),
                     )
-                    .await;
+                        .await;
 
                     if result.is_err() {
                         error!("player_state transaction update failed: {:?}", result.err());
@@ -805,7 +905,7 @@ fn start_websocket_message_thread(
                         &skill_id_to_skill_name,
                         broadcast_tx.clone(),
                     )
-                    .await;
+                        .await;
 
                     if result.is_err() {
                         error!(
@@ -902,21 +1002,60 @@ fn start_websocket_message_thread(
                     }
                 }
 
-                if table_name == "claim_description_state" {
-                    let result = claims::handle_transaction_update(
-                        &global_app_state,
-                        table,
-                        broadcast_tx.clone(),
-                    )
-                    .await;
+                if table_name == "claim_state" {
+                    let result =
+                        crate::claims::claim_state::handle_transaction_update(&global_app_state, table, broadcast_tx.clone())
+                            .await;
 
                     if result.is_err() {
                         error!(
-                            "claim_description_state transaction update failed: {:?}",
+                            "claim_state transaction update failed: {:?}",
                             result.err()
                         );
                     }
                 }
+
+                if table_name == "claim_member_state" {
+                    let result =
+                        crate::claims::claim_member_state::handle_transaction_update(&global_app_state, table, broadcast_tx.clone())
+                            .await;
+
+                    if result.is_err() {
+                        error!(
+                            "claim_member_state transaction update failed: {:?}",
+                            result.err()
+                        );
+                    }
+                }
+
+                if table_name == "claim_local_state" {
+                    let result =
+                        crate::claims::claim_local_state::handle_transaction_update(&global_app_state, table, broadcast_tx.clone())
+                            .await;
+
+                    if result.is_err() {
+                        error!(
+                            "claim_local_state transaction update failed: {:?}",
+                            result.err()
+                        );
+                    }
+                }
+
+                // if table_name == "claim_description_state" {
+                //     let result = claims::handle_transaction_update(
+                //         &global_app_state,
+                //         table,
+                //         broadcast_tx.clone(),
+                //     )
+                //         .await;
+                //
+                //     if result.is_err() {
+                //         error!(
+                //             "claim_description_state transaction update failed: {:?}",
+                //             result.err()
+                //         );
+                //     }
+                // }
 
                 if table_name == "deployable_state" {
                     let result = deployable_state::handle_transaction_update(&db, table).await;
@@ -975,8 +1114,8 @@ fn start_websocket_message_thread(
                                 .mobile_entity_state
                                 .insert(mobile_entity_state.entity_id, mobile_entity_state.clone());
 
-                            if !app_state.user_map.iter().any(|(_, user_id)| {
-                                *user_id == mobile_entity_state.entity_id as i64
+                            if !global_app_state.connected_user_map.iter().any(|connected_user| {
+                                *connected_user == mobile_entity_state.entity_id as i64
                             }) {
                                 continue;
                             }
@@ -1165,6 +1304,7 @@ fn start_websocket_message_thread(
                 if table_name == "player_action_state" {
                     for current_table in table.iter() {
                         for row in current_table.inserts.iter() {
+
                             let player_action_state: entity::player_action_state::Model =
                                 match serde_json::from_str(row) {
                                     Ok(player_action_state) => player_action_state,
@@ -1214,11 +1354,33 @@ fn start_websocket_message_thread(
                     }
                 }
 
+                if table_name == "location_state" {
+                    for current_table in table.iter() {
+                        for row in current_table.inserts.iter() {
+                            let location_state: entity::location::Model =
+                                match serde_json::from_str(row) {
+                                    Ok(location_state) => location_state,
+                                    Err(error) => {
+                                        error!(
+                                            "InitialSubscription Insert location_state Error: {:?} -> {:?}",
+                                            error, row
+                                        );
+                                        continue;
+                                    }
+                                };
+
+                            global_app_state
+                                .location_state
+                                .insert(location_state.entity_id, location_state.clone());
+                        }
+                    }
+                }
+
                 metrics::histogram!(
                     "bitraft_event_handler_transaction_update_duration_seconds",
                     &[("table", table_name.to_string())]
                 )
-                .record(start.elapsed().as_secs_f64());
+                    .record(start.elapsed().as_secs_f64());
             }
 
             debug!("Received {count} events");
@@ -1255,6 +1417,10 @@ async fn create_websocket_connection(config: &Config) -> anyhow::Result<WebSocke
         ))
         .headers(headers)
         .upgrade()
+        // .web_socket_config(tungstenite::protocol::WebSocketConfig::default()
+        //    .max_frame_size(Some(1024 * 1024 * 1500))
+        //    .max_message_size(Some(1024 * 1024 * 1500))
+        // )
         .web_socket_config(tungstenite::protocol::WebSocketConfig {
             max_frame_size: Some(1024 * 1024 * 1500),
             max_message_size: Some(1024 * 1024 * 1500),
@@ -1456,7 +1622,7 @@ pub(crate) enum WebSocketMessages {
         skill_name: String,
     },
     PlayerState(entity::player_state::Model),
-    ClaimDescriptionState(entity::claim_description_state::Model),
+    // ClaimDescriptionState(entity::claim_description_state::Model),
     Message(String),
     ActionState(entity::action_state::Model),
 }
@@ -1499,9 +1665,9 @@ impl WebSocketMessages {
                 "mobile_entity_state".to_string(),
                 mobile_entity_state.entity_id as i64,
             )]),
-            WebSocketMessages::ClaimDescriptionState(claim) => {
-                Some(vec![("claim".to_string(), claim.entity_id)])
-            }
+            // WebSocketMessages::ClaimDescriptionState(claim) => {
+            //     Some(vec![("claim".to_string(), claim.entity_id)])
+            // }
             WebSocketMessages::TotalExperience { user_id, .. } => {
                 Some(vec![("total_experience".to_string(), *user_id)])
             }

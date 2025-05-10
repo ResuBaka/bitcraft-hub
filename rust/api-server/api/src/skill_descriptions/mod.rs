@@ -382,15 +382,17 @@ pub(crate) async fn handle_initial_subscription(
     let mut known_skill_desc_ids = get_known_skill_desc_ids(&app_state.conn).await?;
     for update in p1.updates.iter() {
         for row in update.inserts.iter() {
-            match serde_json::from_str::<skill_desc::Model>(row.as_ref()) {
+            match serde_json::from_str::<skill_desc::SkillDescRaw>(row.as_ref()) {
                 Ok(skill_desc) => {
                     if known_skill_desc_ids.contains(&skill_desc.id) {
                         known_skill_desc_ids.remove(&skill_desc.id);
                     }
+                    
+                    let skill_desc_model = skill_desc.to_model().unwrap();
                     app_state
                         .skill_desc
-                        .insert(skill_desc.id, skill_desc.clone());
-                    buffer_before_insert.push(skill_desc);
+                        .insert(skill_desc.id, skill_desc_model.clone());
+                    buffer_before_insert.push(skill_desc_model);
                     if buffer_before_insert.len() == chunk_size {
                         info!("SkillDesc insert");
                         db_insert_skill_descs(
@@ -448,13 +450,14 @@ pub(crate) async fn handle_transaction_update(
 
     for p1 in tables.iter() {
         for row in p1.inserts.iter() {
-            match serde_json::from_str::<skill_desc::Model>(row.as_ref()) {
+            match serde_json::from_str::<skill_desc::SkillDescRaw>(row.as_ref()) {
                 Ok(skill_desc) => {
+                    let skill_desc_model = skill_desc.to_model().unwrap();
                     app_state
                         .skill_desc
-                        .insert(skill_desc.id, skill_desc.clone());
+                        .insert(skill_desc.id, skill_desc_model.clone());
                     found_in_inserts.insert(skill_desc.id);
-                    buffer_before_insert.insert(skill_desc.id, skill_desc);
+                    buffer_before_insert.insert(skill_desc.id, skill_desc_model);
 
                     if buffer_before_insert.len() == chunk_size {
                         let mut buffer_before_insert_vec = buffer_before_insert

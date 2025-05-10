@@ -69,8 +69,8 @@ pub async fn list_players(
                 session_start_timestamp: player.session_start_timestamp,
                 time_signed_in: player.time_signed_in,
                 sign_in_timestamp: player.sign_in_timestamp,
-                last_shard_claim: player.last_shard_claim,
                 signed_in: player.signed_in,
+                traveler_tasks_expiration: player.traveler_tasks_expiration,
                 teleport_location: player.teleport_location,
                 username: player_username.username.clone(),
             }
@@ -157,23 +157,10 @@ pub async fn find_player_by_id(
     let current_action_state = state.action_state.get(&(id as u64));
 
     let claim_ids = state
-        .claim_description_state
-        .iter()
-        .filter_map(|claim_description_state| {
-            if claim_description_state
-                .members
-                .iter()
-                .any(|member| member.player_entity_id == player.entity_id)
-            {
-                Some((
-                    claim_description_state.entity_id as u64,
-                    claim_description_state.name.clone(),
-                ))
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<(u64, String)>>();
+        .player_to_claim_id_cache.get(&(player.entity_id as u64))
+        .map_or(vec![], |ids| {
+            ids.iter().map(|id| *id).collect()
+        });
 
     Ok(axum_codec::Codec(json!({
         "entity_id": player.entity_id,
@@ -181,9 +168,9 @@ pub async fn find_player_by_id(
         "session_start_timestamp": player.session_start_timestamp,
         "time_signed_in": player.time_signed_in,
         "sign_in_timestamp": player.sign_in_timestamp,
-        "last_shard_claim": player.last_shard_claim,
         "signed_in": player.signed_in,
         "teleport_location": player.teleport_location,
+        "traveler_tasks_expiration": player.traveler_tasks_expiration,
         "username": player_username,
         "deployables": deployables,
         "player_location": player_location,
@@ -504,7 +491,7 @@ pub(crate) async fn handle_initial_subscription_player_state(
             player_state::Column::SignInTimestamp,
             player_state::Column::SignedIn,
             player_state::Column::TeleportLocation,
-            player_state::Column::LastShardClaim,
+            player_state::Column::TravelerTasksExpiration,
         ])
         .to_owned();
 
@@ -558,7 +545,7 @@ pub(crate) async fn handle_transaction_update_player_state(
             player_state::Column::SignInTimestamp,
             player_state::Column::SignedIn,
             player_state::Column::TeleportLocation,
-            player_state::Column::LastShardClaim,
+            player_state::Column::TravelerTasksExpiration,
         ])
         .to_owned();
 

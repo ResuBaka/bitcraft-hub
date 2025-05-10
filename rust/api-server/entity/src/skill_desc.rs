@@ -24,7 +24,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SkillDescRaw {
     pub id: i64,
-    pub skill: i32,
+    pub skill_type: i32,
     pub name: String,
     pub description: String,
     pub icon_asset_name: String,
@@ -38,7 +38,7 @@ impl SkillDescRaw {
 
         Ok(Model {
             id: self.id,
-            skill: self.skill,
+            skill: self.skill_type,
             name: self.name.clone(),
             description: self.description.clone(),
             icon_asset_name: self.icon_asset_name.clone(),
