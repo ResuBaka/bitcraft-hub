@@ -1,5 +1,5 @@
 use super::module_bindings::*;
-use crate::config::Config;
+use crate::config::{Config, SpacetimeDbConfig};
 use crate::{
     AppState, buildings, cargo_desc, claim_tech_state, claims, collectible_desc, deployable_state,
     inventory, items, leaderboard, player_state, skill_descriptions, vault_state,
@@ -95,6 +95,185 @@ fn on_disconnected(_ctx: &ErrorContext, err: Option<Error>) {
         // std::process::exit(0);
     }
 }
+fn connect_to_db_logic(
+    config: &Config,
+    database: &String,
+    mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
+    player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
+    player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
+    experience_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ExperienceState>>,
+) {
+    let ctx = connect_to_db(&database, config.spacetimedb_url().as_ref());
+    let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
+    ctx.db.mobile_entity_state().on_update(
+        move |_ctx: &EventContext, old: &MobileEntityState, new: &MobileEntityState| {
+            temp_mobile_entity_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
+    ctx.db
+        .mobile_entity_state()
+        .on_insert(move |_ctx: &EventContext, new: &MobileEntityState| {
+            temp_mobile_entity_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
+    ctx.db
+        .mobile_entity_state()
+        .on_delete(move |_ctx: &EventContext, new: &MobileEntityState| {
+            temp_mobile_entity_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_player_state_tx = player_state_tx.clone();
+    ctx.db.player_state().on_update(
+        move |_ctx: &EventContext, old: &PlayerState, new: &PlayerState| {
+            temp_player_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_player_state_tx = player_state_tx.clone();
+    ctx.db
+        .player_state()
+        .on_insert(move |_ctx: &EventContext, new: &PlayerState| {
+            temp_player_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_player_state_tx = player_state_tx.clone();
+    ctx.db
+        .player_state()
+        .on_delete(move |_ctx: &EventContext, new: &PlayerState| {
+            temp_player_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_player_username_state_tx = player_username_state_tx.clone();
+    ctx.db.player_username_state().on_update(
+        move |_ctx: &EventContext, old: &PlayerUsernameState, new: &PlayerUsernameState| {
+            temp_player_username_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_player_username_state_tx = player_username_state_tx.clone();
+    ctx.db.player_username_state().on_insert(
+        move |_ctx: &EventContext, new: &PlayerUsernameState| {
+            temp_player_username_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        },
+    );
+    let temp_player_username_state_tx = player_username_state_tx.clone();
+    ctx.db.player_username_state().on_delete(
+        move |_ctx: &EventContext, new: &PlayerUsernameState| {
+            temp_player_username_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+
+    let temp_experience_state_tx = experience_state_tx.clone();
+    ctx.db.experience_state().on_update(
+        move |_ctx: &EventContext, old: &ExperienceState, new: &ExperienceState| {
+            tracing::info!("good update for experience_state");
+            temp_experience_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_experience_state_tx = experience_state_tx.clone();
+    ctx.db
+        .experience_state()
+        .on_insert(move |_ctx: &EventContext, new: &ExperienceState| {
+            temp_experience_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_experience_state_tx = experience_state_tx.clone();
+    ctx.db
+        .experience_state()
+        .on_delete(move |_ctx: &EventContext, new: &ExperienceState| {
+            temp_experience_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let tables_to_subscribe = vec![
+        // "user_state",
+        // "mobile_entity_state",
+        // "claim_tile_state",
+        // "combat_action_desc",
+        // "item_desc",
+        // "cargo_desc",
+        // "player_action_state",
+        // "crafting_recipe_desc",
+        // "action_state",
+        "player_state",
+        // "skill_desc",
+        "player_username_state",
+        // "building_desc",
+        // "building_state",
+        // "vault_state",
+        "experience_state",
+        // "claim_tech_state",
+        // "claim_state",
+        // "claim_member_state",
+        // "claim_local_state",
+        // "deployable_state",
+        // "collectible_desc",
+        // "claim_tech_desc",
+        // "claim_description_state", -> claim_state
+        // "mobile_entity_state",
+        // "claim_tile_state",
+        // "crafting_recipe_desc",
+        // "player_action_state",
+        // "action_state",
+        // "location_state",
+        // "inventory_state",
+    ];
+
+    let temp_tx = mobile_entity_state_tx.clone();
+    ctx.subscription_builder()
+        .on_applied(move |ctx: &SubscriptionEventContext| {})
+        .on_error(on_sub_error)
+        .subscribe(
+            tables_to_subscribe
+                .into_iter()
+                .map(|table| format!("select * from {table}"))
+                .collect::<Vec<_>>(),
+        );
+
+    tokio::spawn(async move {
+        let _ = ctx.run_async().await;
+    });
+}
 
 pub fn start_websocket_bitcraft_logic(
     config: Config,
@@ -102,187 +281,26 @@ pub fn start_websocket_bitcraft_logic(
     global_app_state: Arc<AppState>,
 ) {
     tokio::spawn(async move {
-        let ctx = connect_to_db(
-            config.spacetimedb.database.as_ref(),
-            config.spacetimedb_url().as_ref(),
-        );
-
         let (mobile_entity_state_tx, mobile_entity_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
 
-        let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
-        ctx.db.mobile_entity_state().on_update(
-            move |_ctx: &EventContext, old: &MobileEntityState, new: &MobileEntityState| {
-                temp_mobile_entity_state_tx
-                    .send(SpacetimeUpdateMessages::Update {
-                        old: old.clone(),
-                        new: new.clone(),
-                    })
-                    .unwrap()
-            },
-        );
-        let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
-        ctx.db.mobile_entity_state().on_insert(
-            move |_ctx: &EventContext, new: &MobileEntityState| {
-                temp_mobile_entity_state_tx
-                    .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
-                    .unwrap()
-            },
-        );
-        let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
-        ctx.db.mobile_entity_state().on_delete(
-            move |_ctx: &EventContext, new: &MobileEntityState| {
-                temp_mobile_entity_state_tx
-                    .send(SpacetimeUpdateMessages::Remove {
-                        delete: new.clone(),
-                    })
-                    .unwrap()
-            },
-        );
-
         let (player_state_tx, player_state_rx) = tokio::sync::mpsc::unbounded_channel();
-
-        let temp_player_state_tx = player_state_tx.clone();
-        ctx.db.player_state().on_update(
-            move |_ctx: &EventContext, old: &PlayerState, new: &PlayerState| {
-                temp_player_state_tx
-                    .send(SpacetimeUpdateMessages::Update {
-                        old: old.clone(),
-                        new: new.clone(),
-                    })
-                    .unwrap()
-            },
-        );
-        let temp_player_state_tx = player_state_tx.clone();
-        ctx.db
-            .player_state()
-            .on_insert(move |_ctx: &EventContext, new: &PlayerState| {
-                temp_player_state_tx
-                    .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
-                    .unwrap()
-            });
-        let temp_player_state_tx = player_state_tx.clone();
-        ctx.db
-            .player_state()
-            .on_delete(move |_ctx: &EventContext, new: &PlayerState| {
-                temp_player_state_tx
-                    .send(SpacetimeUpdateMessages::Remove {
-                        delete: new.clone(),
-                    })
-                    .unwrap()
-            });
 
         let (player_username_state_tx, player_username_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
 
-        let temp_player_username_state_tx = player_username_state_tx.clone();
-        ctx.db.player_username_state().on_update(
-            move |_ctx: &EventContext, old: &PlayerUsernameState, new: &PlayerUsernameState| {
-                temp_player_username_state_tx
-                    .send(SpacetimeUpdateMessages::Update {
-                        old: old.clone(),
-                        new: new.clone(),
-                    })
-                    .unwrap()
-            },
-        );
-        let temp_player_username_state_tx = player_username_state_tx.clone();
-        ctx.db.player_username_state().on_insert(
-            move |_ctx: &EventContext, new: &PlayerUsernameState| {
-                temp_player_username_state_tx
-                    .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
-                    .unwrap()
-            },
-        );
-        let temp_player_username_state_tx = player_username_state_tx.clone();
-        ctx.db.player_username_state().on_delete(
-            move |_ctx: &EventContext, new: &PlayerUsernameState| {
-                temp_player_username_state_tx
-                    .send(SpacetimeUpdateMessages::Remove {
-                        delete: new.clone(),
-                    })
-                    .unwrap()
-            },
-        );
-
         let (experience_state_tx, experience_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let temp_experience_state_tx = experience_state_tx.clone();
-        ctx.db.experience_state().on_update(
-            move |_ctx: &EventContext, old: &ExperienceState, new: &ExperienceState| {
-                tracing::info!("good update for experience_state");
-                temp_experience_state_tx
-                    .send(SpacetimeUpdateMessages::Update {
-                        old: old.clone(),
-                        new: new.clone(),
-                    })
-                    .unwrap()
-            },
-        );
-        let temp_experience_state_tx = experience_state_tx.clone();
-        ctx.db
-            .experience_state()
-            .on_insert(move |_ctx: &EventContext, new: &ExperienceState| {
-                temp_experience_state_tx
-                    .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
-                    .unwrap()
-            });
-        let temp_experience_state_tx = experience_state_tx.clone();
-        ctx.db
-            .experience_state()
-            .on_delete(move |_ctx: &EventContext, new: &ExperienceState| {
-                temp_experience_state_tx
-                    .send(SpacetimeUpdateMessages::Remove {
-                        delete: new.clone(),
-                    })
-                    .unwrap()
-            });
-
-        let tables_to_subscribe = vec![
-            // "user_state",
-            // "mobile_entity_state",
-            // "claim_tile_state",
-            // "combat_action_desc",
-            // "item_desc",
-            // "cargo_desc",
-            // "player_action_state",
-            // "crafting_recipe_desc",
-            // "action_state",
-            "player_state",
-            // "skill_desc",
-            "player_username_state",
-            // "building_desc",
-            // "building_state",
-            // "vault_state",
-            "experience_state",
-            // "claim_tech_state",
-            // "claim_state",
-            // "claim_member_state",
-            // "claim_local_state",
-            // "deployable_state",
-            // "collectible_desc",
-            // "claim_tech_desc",
-            // "claim_description_state", -> claim_state
-            // "mobile_entity_state",
-            // "claim_tile_state",
-            // "crafting_recipe_desc",
-            // "player_action_state",
-            // "action_state",
-            // "location_state",
-            // "inventory_state",
-        ];
-
-        let temp_tx = mobile_entity_state_tx.clone();
-        ctx.subscription_builder()
-            .on_applied(move |ctx: &SubscriptionEventContext| {})
-            .on_error(on_sub_error)
-            .subscribe(
-                tables_to_subscribe
-                    .into_iter()
-                    .map(|table| format!("select * from {table}"))
-                    .collect::<Vec<_>>(),
-            );
-
+        config.spacetimedb.databases.iter().for_each(|database| {
+            connect_to_db_logic(
+                &config,
+                database,
+                &mobile_entity_state_tx,
+                &player_state_tx,
+                &player_username_state_tx,
+                &experience_state_tx,
+            )
+        });
         start_worker_mobile_entity_state(
             broadcast_tx.clone(),
             global_app_state.clone(),
@@ -309,8 +327,6 @@ pub fn start_websocket_bitcraft_logic(
             2000,
             Duration::from_millis(25),
         );
-
-        ctx.run_async().await;
     });
 }
 
