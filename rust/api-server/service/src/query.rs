@@ -1,6 +1,6 @@
-use ::entity::claim_member_state;
 use ::entity::building_state;
 use ::entity::cargo_desc;
+use ::entity::claim_member_state;
 use ::entity::claim_tech_desc;
 use ::entity::claim_tech_state;
 use ::entity::collectible_desc;
@@ -12,9 +12,7 @@ use ::entity::trade_order;
 use ::entity::vault_state_collectibles;
 use ::entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
 use ::entity::{
-    building_desc,
-    claim_state,
-    experience_state, item_desc, item_desc::Entity as Item,
+    building_desc, claim_state, experience_state, item_desc, item_desc::Entity as Item,
     player_state, player_state::Entity as PlayerState, player_username_state,
     player_username_state::Entity as PlayerUsernameState, skill_desc,
 };
@@ -1101,9 +1099,9 @@ impl Query {
             .filter(claim_state::Column::Neutral.ne(true))
             // .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(
-                    Expr::col(claim_state::Column::Name).ilike(format!("%{}%", value)),
-                ),
+                DbBackend::Postgres => {
+                    query.filter(Expr::col(claim_state::Column::Name).ilike(format!("%{}%", value)))
+                }
                 _ => unreachable!(),
             })
             // Look at how to write this query so it works and seo-orm does not to make things I would not like it do to here.
@@ -1169,9 +1167,7 @@ impl Query {
         db: &DbConn,
         id: i64,
     ) -> Result<Option<claim_state::Model>, DbErr> {
-        claim_state::Entity::find_by_id(id)
-            .one(db)
-            .await
+        claim_state::Entity::find_by_id(id).one(db).await
     }
 
     pub async fn find_claim_member_by_claim_id(

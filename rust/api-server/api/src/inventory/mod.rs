@@ -1,4 +1,4 @@
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
+// use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, State};
@@ -402,177 +402,177 @@ pub(crate) fn resolve_contents(
         })
     }
 }
-
-pub(crate) async fn handle_initial_subscription(
-    database_connection: &DatabaseConnection,
-    table: &Table,
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
-        .update_columns([
-            inventory::Column::Pockets,
-            inventory::Column::InventoryIndex,
-            inventory::Column::CargoIndex,
-            inventory::Column::OwnerEntityId,
-            inventory::Column::PlayerOwnerEntityId,
-        ])
-        .to_owned();
-
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<inventory::Model> = vec![];
-
-    let mut known_inventory_ids = get_known_inventory_ids(database_connection).await?;
-
-    for update in table.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<inventory::Model>(row.as_ref()) {
-                Ok(building_state) => {
-                    if known_inventory_ids.contains(&building_state.entity_id) {
-                        known_inventory_ids.remove(&building_state.entity_id);
-                    }
-                    buffer_before_insert.push(building_state);
-                    if buffer_before_insert.len() == chunk_size {
-                        db_insert_inventory_state(
-                            database_connection,
-                            &mut buffer_before_insert,
-                            &on_conflict,
-                        )
-                        .await?;
-                    }
-                }
-                Err(error) => {
-                    error!("InitialSubscription Insert Inventory Error: {error:#?} -> {row}");
-                }
-            }
-        }
-    }
-    if !buffer_before_insert.is_empty() {
-        for buffer_chnk in buffer_before_insert.chunks(5000) {
-            db_insert_inventory_state(database_connection, &mut buffer_chnk.to_vec(), &on_conflict)
-                .await?;
-        }
-    }
-
-    if !known_inventory_ids.is_empty() {
-        db_delete_inventorys(database_connection, known_inventory_ids).await?;
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_transaction_update(
-    database_connection: &DatabaseConnection,
-    tables: &[TableWithOriginalEventTransactionUpdate],
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
-        .update_columns([
-            inventory::Column::Pockets,
-            inventory::Column::InventoryIndex,
-            inventory::Column::CargoIndex,
-            inventory::Column::OwnerEntityId,
-            inventory::Column::PlayerOwnerEntityId,
-        ])
-        .to_owned();
-
-    let mut buffer_before_insert = HashMap::new();
-    let mut potential_deletes = HashSet::new();
-    // let mut inventory_changes = vec![];
-
-    for p1 in tables.iter() {
-        let event_type = if !p1.inserts.is_empty() && !p1.deletes.is_empty() {
-            "update"
-        } else if !p1.inserts.is_empty() && p1.deletes.is_empty() {
-            "insert"
-        } else if !p1.deletes.is_empty() && p1.inserts.is_empty() {
-            "delete"
-        } else {
-            "unknown"
-        };
-
-        if event_type == "unknown" {
-            error!("Unknown event type {:?}", p1);
-            continue;
-        }
-
-        if event_type == "delete" {
-            for row in p1.deletes.iter() {
-                match serde_json::from_str::<inventory::Model>(row.as_ref()) {
-                    Ok(inventory) => {
-                        potential_deletes.insert(inventory.entity_id);
-                    }
-                    Err(error) => {
-                        error!("Event: {event_type} Error: {error} for row: {:?}", row);
-                    }
-                }
-            }
-        } else if event_type == "update" {
-            let mut delete_parsed = HashMap::new();
-            for row in p1.deletes.iter() {
-                let parsed = serde_json::from_str::<inventory::Model>(row.as_ref());
-
-                if parsed.is_err() {
-                    error!(
-                        "Could not parse delete inventory: {}, row: {:?}",
-                        parsed.unwrap_err(),
-                        row
-                    );
-                } else {
-                    let parsed = parsed.unwrap();
-                    delete_parsed.insert(parsed.entity_id, parsed.clone());
-                    potential_deletes.remove(&parsed.entity_id);
-                }
-            }
-
-            for row in p1.inserts.iter().enumerate() {
-                let parsed = serde_json::from_str::<inventory::Model>(row.1.as_ref());
-
-                if parsed.is_err() {
-                    error!(
-                        "Could not parse insert inventory: {}, row: {:?}",
-                        parsed.unwrap_err(),
-                        row.1
-                    );
-                    continue;
-                }
-
-                let parsed = parsed.unwrap();
-                let id = parsed.entity_id;
-
-                match (parsed, delete_parsed.get(&id)) {
-                    (new_inventory, Some(_old_inventory)) => {
-                        potential_deletes.remove(&new_inventory.entity_id);
-                        buffer_before_insert.insert(new_inventory.entity_id, new_inventory);
-                    }
-                    (new_inventory, None) => {
-                        potential_deletes.remove(&new_inventory.entity_id);
-                        buffer_before_insert.insert(new_inventory.entity_id, new_inventory);
-                    }
-                }
-            }
-        } else if event_type == "insert" {
-        } else {
-            error!("Unknown event type {:?}", p1);
-            continue;
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        let mut buffer_before_insert_vec = buffer_before_insert
-            .clone()
-            .into_iter()
-            .map(|x| x.1)
-            .collect::<Vec<inventory::Model>>();
-        db_insert_inventory_state(
-            database_connection,
-            &mut buffer_before_insert_vec,
-            &on_conflict,
-        )
-        .await?;
-        buffer_before_insert.clear();
-    }
-
-    if !potential_deletes.is_empty() {
-        db_delete_inventorys(database_connection, potential_deletes).await?;
-    }
-
-    Ok(())
-}
+//
+// pub(crate) async fn handle_initial_subscription(
+//     database_connection: &DatabaseConnection,
+//     table: &Table,
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
+//         .update_columns([
+//             inventory::Column::Pockets,
+//             inventory::Column::InventoryIndex,
+//             inventory::Column::CargoIndex,
+//             inventory::Column::OwnerEntityId,
+//             inventory::Column::PlayerOwnerEntityId,
+//         ])
+//         .to_owned();
+//
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<inventory::Model> = vec![];
+//
+//     let mut known_inventory_ids = get_known_inventory_ids(database_connection).await?;
+//
+//     for update in table.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<inventory::Model>(row.as_ref()) {
+//                 Ok(building_state) => {
+//                     if known_inventory_ids.contains(&building_state.entity_id) {
+//                         known_inventory_ids.remove(&building_state.entity_id);
+//                     }
+//                     buffer_before_insert.push(building_state);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         db_insert_inventory_state(
+//                             database_connection,
+//                             &mut buffer_before_insert,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("InitialSubscription Insert Inventory Error: {error:#?} -> {row}");
+//                 }
+//             }
+//         }
+//     }
+//     if !buffer_before_insert.is_empty() {
+//         for buffer_chnk in buffer_before_insert.chunks(5000) {
+//             db_insert_inventory_state(database_connection, &mut buffer_chnk.to_vec(), &on_conflict)
+//                 .await?;
+//         }
+//     }
+//
+//     if !known_inventory_ids.is_empty() {
+//         db_delete_inventorys(database_connection, known_inventory_ids).await?;
+//     }
+//
+//     Ok(())
+// }
+//
+// pub(crate) async fn handle_transaction_update(
+//     database_connection: &DatabaseConnection,
+//     tables: &[TableWithOriginalEventTransactionUpdate],
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(inventory::Column::EntityId)
+//         .update_columns([
+//             inventory::Column::Pockets,
+//             inventory::Column::InventoryIndex,
+//             inventory::Column::CargoIndex,
+//             inventory::Column::OwnerEntityId,
+//             inventory::Column::PlayerOwnerEntityId,
+//         ])
+//         .to_owned();
+//
+//     let mut buffer_before_insert = HashMap::new();
+//     let mut potential_deletes = HashSet::new();
+//     // let mut inventory_changes = vec![];
+//
+//     for p1 in tables.iter() {
+//         let event_type = if !p1.inserts.is_empty() && !p1.deletes.is_empty() {
+//             "update"
+//         } else if !p1.inserts.is_empty() && p1.deletes.is_empty() {
+//             "insert"
+//         } else if !p1.deletes.is_empty() && p1.inserts.is_empty() {
+//             "delete"
+//         } else {
+//             "unknown"
+//         };
+//
+//         if event_type == "unknown" {
+//             error!("Unknown event type {:?}", p1);
+//             continue;
+//         }
+//
+//         if event_type == "delete" {
+//             for row in p1.deletes.iter() {
+//                 match serde_json::from_str::<inventory::Model>(row.as_ref()) {
+//                     Ok(inventory) => {
+//                         potential_deletes.insert(inventory.entity_id);
+//                     }
+//                     Err(error) => {
+//                         error!("Event: {event_type} Error: {error} for row: {:?}", row);
+//                     }
+//                 }
+//             }
+//         } else if event_type == "update" {
+//             let mut delete_parsed = HashMap::new();
+//             for row in p1.deletes.iter() {
+//                 let parsed = serde_json::from_str::<inventory::Model>(row.as_ref());
+//
+//                 if parsed.is_err() {
+//                     error!(
+//                         "Could not parse delete inventory: {}, row: {:?}",
+//                         parsed.unwrap_err(),
+//                         row
+//                     );
+//                 } else {
+//                     let parsed = parsed.unwrap();
+//                     delete_parsed.insert(parsed.entity_id, parsed.clone());
+//                     potential_deletes.remove(&parsed.entity_id);
+//                 }
+//             }
+//
+//             for row in p1.inserts.iter().enumerate() {
+//                 let parsed = serde_json::from_str::<inventory::Model>(row.1.as_ref());
+//
+//                 if parsed.is_err() {
+//                     error!(
+//                         "Could not parse insert inventory: {}, row: {:?}",
+//                         parsed.unwrap_err(),
+//                         row.1
+//                     );
+//                     continue;
+//                 }
+//
+//                 let parsed = parsed.unwrap();
+//                 let id = parsed.entity_id;
+//
+//                 match (parsed, delete_parsed.get(&id)) {
+//                     (new_inventory, Some(_old_inventory)) => {
+//                         potential_deletes.remove(&new_inventory.entity_id);
+//                         buffer_before_insert.insert(new_inventory.entity_id, new_inventory);
+//                     }
+//                     (new_inventory, None) => {
+//                         potential_deletes.remove(&new_inventory.entity_id);
+//                         buffer_before_insert.insert(new_inventory.entity_id, new_inventory);
+//                     }
+//                 }
+//             }
+//         } else if event_type == "insert" {
+//         } else {
+//             error!("Unknown event type {:?}", p1);
+//             continue;
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         let mut buffer_before_insert_vec = buffer_before_insert
+//             .clone()
+//             .into_iter()
+//             .map(|x| x.1)
+//             .collect::<Vec<inventory::Model>>();
+//         db_insert_inventory_state(
+//             database_connection,
+//             &mut buffer_before_insert_vec,
+//             &on_conflict,
+//         )
+//         .await?;
+//         buffer_before_insert.clear();
+//     }
+//
+//     if !potential_deletes.is_empty() {
+//         db_delete_inventorys(database_connection, potential_deletes).await?;
+//     }
+//
+//     Ok(())
+// }

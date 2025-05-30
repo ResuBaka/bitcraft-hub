@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
+// use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{AppState, Params};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
@@ -386,170 +386,170 @@ async fn delete_item_desc(
     Ok(())
 }
 
-pub(crate) async fn handle_initial_subscription_item_desc(
-    app_state: &Arc<AppState>,
-    p1: &Table,
-) -> anyhow::Result<()> {
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<item_desc::Model> = Vec::with_capacity(chunk_size);
-
-    let on_conflict = sea_query::OnConflict::column(item_desc::Column::Id)
-        .update_columns([
-            item_desc::Column::Name,
-            item_desc::Column::Description,
-            item_desc::Column::Volume,
-            item_desc::Column::Durability,
-            item_desc::Column::ConvertToOnDurabilityZero,
-            item_desc::Column::SecondaryKnowledgeId,
-            item_desc::Column::ModelAssetName,
-            item_desc::Column::IconAssetName,
-            item_desc::Column::Tier,
-            item_desc::Column::Tag,
-            item_desc::Column::Rarity,
-            item_desc::Column::CompendiumEntry,
-            item_desc::Column::ItemListId,
-        ])
-        .to_owned();
-
-    let mut known_item_desc_ids = get_known_item_desc_ids(&app_state.conn).await?;
-    for update in p1.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<item_desc::Model>(row.as_ref()) {
-                Ok(item_desc) => {
-                    if known_item_desc_ids.contains(&item_desc.id) {
-                        known_item_desc_ids.remove(&item_desc.id);
-                    }
-                    app_state.item_desc.insert(item_desc.id, item_desc.clone());
-                    app_state.item_tiers.insert(item_desc.tier as i64);
-                    app_state.item_tags.insert(item_desc.tag.clone());
-                    buffer_before_insert.push(item_desc);
-                    if buffer_before_insert.len() == chunk_size {
-                        info!("ItemDesc insert");
-                        db_insert_item_descs(
-                            &app_state.conn,
-                            &mut buffer_before_insert,
-                            &on_conflict,
-                        )
-                        .await?;
-                    }
-                }
-                Err(error) => {
-                    error!(
-                        "TransactionUpdate Insert ItemDesc Error: {error} -> {:?}",
-                        row
-                    );
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        info!("ItemDesc insert");
-        db_insert_item_descs(&app_state.conn, &mut buffer_before_insert, &on_conflict).await?;
-    }
-
-    if !known_item_desc_ids.is_empty() {
-        for item_desc_id in &known_item_desc_ids {
-            app_state.item_desc.remove(item_desc_id);
-        }
-        delete_item_desc(&app_state.conn, known_item_desc_ids).await?;
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_transaction_update_item_desc(
-    app_state: &Arc<AppState>,
-    tables: &[TableWithOriginalEventTransactionUpdate],
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(item_desc::Column::Id)
-        .update_columns([
-            item_desc::Column::Name,
-            item_desc::Column::Description,
-            item_desc::Column::Volume,
-            item_desc::Column::Durability,
-            item_desc::Column::ConvertToOnDurabilityZero,
-            item_desc::Column::SecondaryKnowledgeId,
-            item_desc::Column::ModelAssetName,
-            item_desc::Column::IconAssetName,
-            item_desc::Column::Tier,
-            item_desc::Column::Tag,
-            item_desc::Column::Rarity,
-            item_desc::Column::CompendiumEntry,
-            item_desc::Column::ItemListId,
-        ])
-        .to_owned();
-
-    let chunk_size = 5000;
-    let mut buffer_before_insert = HashMap::new();
-
-    let mut found_in_inserts = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.inserts.iter() {
-            match serde_json::from_str::<item_desc::Model>(row.as_ref()) {
-                Ok(item_desc) => {
-                    app_state.item_desc.insert(item_desc.id, item_desc.clone());
-                    app_state.item_tiers.insert(item_desc.tier as i64);
-                    app_state.item_tags.insert(item_desc.tag.clone());
-                    found_in_inserts.insert(item_desc.id);
-                    buffer_before_insert.insert(item_desc.id, item_desc);
-
-                    if buffer_before_insert.len() == chunk_size {
-                        let mut buffer_before_insert_vec = buffer_before_insert
-                            .clone()
-                            .into_iter()
-                            .map(|x| x.1)
-                            .collect::<Vec<item_desc::Model>>();
-
-                        db_insert_item_descs(
-                            &app_state.conn,
-                            &mut buffer_before_insert_vec,
-                            &on_conflict,
-                        )
-                        .await?;
-                        buffer_before_insert.clear();
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Insert ItemDesc Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        let mut buffer_before_insert_vec = buffer_before_insert
-            .clone()
-            .into_iter()
-            .map(|x| x.1)
-            .collect::<Vec<item_desc::Model>>();
-
-        db_insert_item_descs(&app_state.conn, &mut buffer_before_insert_vec, &on_conflict).await?;
-        buffer_before_insert.clear();
-    }
-
-    let mut item_descs_to_delete = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.deletes.iter() {
-            match serde_json::from_str::<item_desc::Model>(row.as_ref()) {
-                Ok(item_desc) => {
-                    if !found_in_inserts.contains(&item_desc.id) {
-                        app_state.item_desc.remove(&item_desc.id);
-                        item_descs_to_delete.insert(item_desc.id);
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Delete ItemDesc Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !item_descs_to_delete.is_empty() {
-        delete_item_desc(&app_state.conn, item_descs_to_delete).await?;
-    }
-
-    Ok(())
-}
+// pub(crate) async fn handle_initial_subscription_item_desc(
+//     app_state: &Arc<AppState>,
+//     p1: &Table,
+// ) -> anyhow::Result<()> {
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<item_desc::Model> = Vec::with_capacity(chunk_size);
+//
+//     let on_conflict = sea_query::OnConflict::column(item_desc::Column::Id)
+//         .update_columns([
+//             item_desc::Column::Name,
+//             item_desc::Column::Description,
+//             item_desc::Column::Volume,
+//             item_desc::Column::Durability,
+//             item_desc::Column::ConvertToOnDurabilityZero,
+//             item_desc::Column::SecondaryKnowledgeId,
+//             item_desc::Column::ModelAssetName,
+//             item_desc::Column::IconAssetName,
+//             item_desc::Column::Tier,
+//             item_desc::Column::Tag,
+//             item_desc::Column::Rarity,
+//             item_desc::Column::CompendiumEntry,
+//             item_desc::Column::ItemListId,
+//         ])
+//         .to_owned();
+//
+//     let mut known_item_desc_ids = get_known_item_desc_ids(&app_state.conn).await?;
+//     for update in p1.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<item_desc::Model>(row.as_ref()) {
+//                 Ok(item_desc) => {
+//                     if known_item_desc_ids.contains(&item_desc.id) {
+//                         known_item_desc_ids.remove(&item_desc.id);
+//                     }
+//                     app_state.item_desc.insert(item_desc.id, item_desc.clone());
+//                     app_state.item_tiers.insert(item_desc.tier as i64);
+//                     app_state.item_tags.insert(item_desc.tag.clone());
+//                     buffer_before_insert.push(item_desc);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         info!("ItemDesc insert");
+//                         db_insert_item_descs(
+//                             &app_state.conn,
+//                             &mut buffer_before_insert,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!(
+//                         "TransactionUpdate Insert ItemDesc Error: {error} -> {:?}",
+//                         row
+//                     );
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         info!("ItemDesc insert");
+//         db_insert_item_descs(&app_state.conn, &mut buffer_before_insert, &on_conflict).await?;
+//     }
+//
+//     if !known_item_desc_ids.is_empty() {
+//         for item_desc_id in &known_item_desc_ids {
+//             app_state.item_desc.remove(item_desc_id);
+//         }
+//         delete_item_desc(&app_state.conn, known_item_desc_ids).await?;
+//     }
+//
+//     Ok(())
+// }
+//
+// pub(crate) async fn handle_transaction_update_item_desc(
+//     app_state: &Arc<AppState>,
+//     tables: &[TableWithOriginalEventTransactionUpdate],
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(item_desc::Column::Id)
+//         .update_columns([
+//             item_desc::Column::Name,
+//             item_desc::Column::Description,
+//             item_desc::Column::Volume,
+//             item_desc::Column::Durability,
+//             item_desc::Column::ConvertToOnDurabilityZero,
+//             item_desc::Column::SecondaryKnowledgeId,
+//             item_desc::Column::ModelAssetName,
+//             item_desc::Column::IconAssetName,
+//             item_desc::Column::Tier,
+//             item_desc::Column::Tag,
+//             item_desc::Column::Rarity,
+//             item_desc::Column::CompendiumEntry,
+//             item_desc::Column::ItemListId,
+//         ])
+//         .to_owned();
+//
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert = HashMap::new();
+//
+//     let mut found_in_inserts = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.inserts.iter() {
+//             match serde_json::from_str::<item_desc::Model>(row.as_ref()) {
+//                 Ok(item_desc) => {
+//                     app_state.item_desc.insert(item_desc.id, item_desc.clone());
+//                     app_state.item_tiers.insert(item_desc.tier as i64);
+//                     app_state.item_tags.insert(item_desc.tag.clone());
+//                     found_in_inserts.insert(item_desc.id);
+//                     buffer_before_insert.insert(item_desc.id, item_desc);
+//
+//                     if buffer_before_insert.len() == chunk_size {
+//                         let mut buffer_before_insert_vec = buffer_before_insert
+//                             .clone()
+//                             .into_iter()
+//                             .map(|x| x.1)
+//                             .collect::<Vec<item_desc::Model>>();
+//
+//                         db_insert_item_descs(
+//                             &app_state.conn,
+//                             &mut buffer_before_insert_vec,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                         buffer_before_insert.clear();
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Insert ItemDesc Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         let mut buffer_before_insert_vec = buffer_before_insert
+//             .clone()
+//             .into_iter()
+//             .map(|x| x.1)
+//             .collect::<Vec<item_desc::Model>>();
+//
+//         db_insert_item_descs(&app_state.conn, &mut buffer_before_insert_vec, &on_conflict).await?;
+//         buffer_before_insert.clear();
+//     }
+//
+//     let mut item_descs_to_delete = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.deletes.iter() {
+//             match serde_json::from_str::<item_desc::Model>(row.as_ref()) {
+//                 Ok(item_desc) => {
+//                     if !found_in_inserts.contains(&item_desc.id) {
+//                         app_state.item_desc.remove(&item_desc.id);
+//                         item_descs_to_delete.insert(item_desc.id);
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Delete ItemDesc Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !item_descs_to_delete.is_empty() {
+//         delete_item_desc(&app_state.conn, item_descs_to_delete).await?;
+//     }
+//
+//     Ok(())
+// }

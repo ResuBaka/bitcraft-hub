@@ -1,5 +1,5 @@
-use sea_orm_migration::{prelude::*, schema::*};
 use sea_orm_migration::sea_orm::{EntityName, Schema};
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -11,12 +11,15 @@ impl MigrationTrait for Migration {
         let db = manager.get_connection();
         let schema = Schema::new(builder);
 
-
         manager
             .alter_table(
                 Table::alter()
                     .table(PlayerState::Table)
-                    .add_column(integer(PlayerState::TravelerTasksExpiration).not_null().default(0))
+                    .add_column(
+                        integer(PlayerState::TravelerTasksExpiration)
+                            .not_null()
+                            .default(0),
+                    )
                     .drop_column(PlayerState::LastShardClaim)
                     .to_owned(),
             )
@@ -30,7 +33,13 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        if manager.has_column(ClaimTechState::Table.to_string(), ClaimTechState::StartTimestamp.to_string()).await? {
+        if manager
+            .has_column(
+                ClaimTechState::Table.to_string(),
+                ClaimTechState::StartTimestamp.to_string(),
+            )
+            .await?
+        {
             manager
                 .alter_table(
                     Table::alter()
@@ -41,12 +50,19 @@ impl MigrationTrait for Migration {
                 .await?;
         }
 
-        db.execute(builder.build(&schema.create_table_from_entity(entity::claim_state::Entity))).await?;
-        db.execute(builder.build(&schema.create_table_from_entity(entity::claim_member_state::Entity))).await?;
-        db.execute(builder.build(&schema.create_table_from_entity(entity::claim_local_state::Entity))).await?;
+        db.execute(builder.build(&schema.create_table_from_entity(entity::claim_state::Entity)))
+            .await?;
+        db.execute(
+            builder.build(&schema.create_table_from_entity(entity::claim_member_state::Entity)),
+        )
+        .await?;
+        db.execute(
+            builder.build(&schema.create_table_from_entity(entity::claim_local_state::Entity)),
+        )
+        .await?;
 
-        manager.truncate_table(Table::truncate()
-            .table(ClaimTechState::Table).to_owned())
+        manager
+            .truncate_table(Table::truncate().table(ClaimTechState::Table).to_owned())
             .await?;
 
         manager
@@ -84,39 +100,33 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-
         if !manager.has_table(ClaimState::Table.to_string()).await? {
             manager
                 .create_table(
                     Table::create()
                         .table(ClaimState::Table)
-                        .col(
-                            big_unsigned(ClaimState::EntityId)
-                        )
-                        .col(
-                            big_unsigned(ClaimState::OwnerPlayerEntityId)
-                        )
-                        .col(
-                            big_unsigned(ClaimState::OwnerBuildingEntityId)
-                        )
-                        .col(
-                            string(ClaimState::Name).default("")
-                        )
-                        .col(
-                            boolean(ClaimState::Neutral).default(false)
-                        )
-                        .to_owned()
+                        .col(big_unsigned(ClaimState::EntityId))
+                        .col(big_unsigned(ClaimState::OwnerPlayerEntityId))
+                        .col(big_unsigned(ClaimState::OwnerBuildingEntityId))
+                        .col(string(ClaimState::Name).default(""))
+                        .col(boolean(ClaimState::Neutral).default(false))
+                        .to_owned(),
                 )
                 .await?;
         }
 
         manager
-        .alter_table(
-            Table::alter()
-                .table(BuildingDesc::Table)
-                .add_column(boolean(BuildingDesc::IgnoreDamage).not_null().default(false))
-                .to_owned()
-        ).await
+            .alter_table(
+                Table::alter()
+                    .table(BuildingDesc::Table)
+                    .add_column(
+                        boolean(BuildingDesc::IgnoreDamage)
+                            .not_null()
+                            .default(false),
+                    )
+                    .to_owned(),
+            )
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -130,37 +140,63 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        let mut player_state_down = Table::alter().table(PlayerState::Table).to_owned();
 
-        let mut player_state_down =  Table::alter()
-            .table(PlayerState::Table)
-            .to_owned();
-
-        if manager.has_column(PlayerState::Table.to_string(), PlayerState::TravelerTasksExpiration.to_string()).await? {
-            player_state_down = player_state_down.drop_column(PlayerState::TravelerTasksExpiration).to_owned();
+        if manager
+            .has_column(
+                PlayerState::Table.to_string(),
+                PlayerState::TravelerTasksExpiration.to_string(),
+            )
+            .await?
+        {
+            player_state_down = player_state_down
+                .drop_column(PlayerState::TravelerTasksExpiration)
+                .to_owned();
         }
 
-        if !manager.has_column(PlayerState::Table.to_string(), PlayerState::LastShardClaim.to_string()).await? {
-            player_state_down = player_state_down.add_column(integer(PlayerState::LastShardClaim).not_null().default(0)).to_owned();
+        if !manager
+            .has_column(
+                PlayerState::Table.to_string(),
+                PlayerState::LastShardClaim.to_string(),
+            )
+            .await?
+        {
+            player_state_down = player_state_down
+                .add_column(integer(PlayerState::LastShardClaim).not_null().default(0))
+                .to_owned();
         }
 
         let player_state_down = player_state_down.to_owned();
 
-
-        if !manager.has_column(PlayerState::Table.to_string(), PlayerState::LastShardClaim.to_string()).await? || manager.has_column(PlayerState::Table.to_string(), PlayerState::TravelerTasksExpiration.to_string()).await? {
-            manager
-                .alter_table(
-                    player_state_down
+        if !manager
+            .has_column(
+                PlayerState::Table.to_string(),
+                PlayerState::LastShardClaim.to_string(),
+            )
+            .await?
+            || manager
+                .has_column(
+                    PlayerState::Table.to_string(),
+                    PlayerState::TravelerTasksExpiration.to_string(),
                 )
-                .await?;
+                .await?
+        {
+            manager.alter_table(player_state_down).await?;
         }
 
         if manager.has_table(ClaimState::Table.to_string()).await? {
             manager
-                .drop_table(Table::drop().table(ClaimState::Table).to_owned()).await?;
+                .drop_table(Table::drop().table(ClaimState::Table).to_owned())
+                .await?;
         }
 
-
-        if manager.has_column(ClaimTechState::Table.to_string(), ClaimTechState::StartTimestamp.to_string()).await? {
+        if manager
+            .has_column(
+                ClaimTechState::Table.to_string(),
+                ClaimTechState::StartTimestamp.to_string(),
+            )
+            .await?
+        {
             manager
                 .alter_table(
                     Table::alter()
@@ -206,26 +242,39 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-
-        if manager.has_table(entity::claim_state::Entity.table_name()).await? {
-            manager.drop_table(Table::drop()
-                .table(entity::claim_state::Entity)
-                .to_owned()
-            ).await?;
+        if manager
+            .has_table(entity::claim_state::Entity.table_name())
+            .await?
+        {
+            manager
+                .drop_table(Table::drop().table(entity::claim_state::Entity).to_owned())
+                .await?;
         }
 
-        if manager.has_table(entity::claim_member_state::Entity.table_name()).await? {
-            manager.drop_table(Table::drop()
-                .table(entity::claim_member_state::Entity)
-                .to_owned()
-            ).await?;
+        if manager
+            .has_table(entity::claim_member_state::Entity.table_name())
+            .await?
+        {
+            manager
+                .drop_table(
+                    Table::drop()
+                        .table(entity::claim_member_state::Entity)
+                        .to_owned(),
+                )
+                .await?;
         }
 
-        if manager.has_table(entity::claim_local_state::Entity.table_name()).await? {
-            manager.drop_table(Table::drop()
-                .table(entity::claim_local_state::Entity)
-                .to_owned()
-            ).await?;
+        if manager
+            .has_table(entity::claim_local_state::Entity.table_name())
+            .await?
+        {
+            manager
+                .drop_table(
+                    Table::drop()
+                        .table(entity::claim_local_state::Entity)
+                        .to_owned(),
+                )
+                .await?;
         }
 
         manager
@@ -291,5 +340,3 @@ enum ClaimState {
     Name,
     Neutral,
 }
-
-

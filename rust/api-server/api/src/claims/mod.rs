@@ -1,18 +1,19 @@
-pub(crate) mod claim_state;
-pub(crate) mod claim_member_state;
 pub(crate) mod claim_local_state;
+pub(crate) mod claim_member_state;
+pub(crate) mod claim_state;
 
 use crate::inventory::resolve_contents;
 use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
+use crate::websocket::WebSocketMessages;
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::inventory::{ExpendedRefrence, ItemExpended};
+use entity::shared::location::Location;
 use entity::{
-    building_state, cargo_desc, claim_tech_desc, inventory, item_desc,
-    player_state, player_to_claim,
+    building_state, cargo_desc, claim_tech_desc, inventory, item_desc, player_state,
+    player_to_claim,
 };
 use log::{debug, error, info};
 use migration::OnConflict;
@@ -26,7 +27,6 @@ use std::fs::File;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
-use entity::shared::location::Location;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -257,26 +257,26 @@ pub(crate) async fn get_claim(
             .iter()
             .find(|state| state.entity_id == claim.entity_id);
 
-        let claim_local_state = state.claim_local_state.get(
-            &(claim.entity_id as u64)
-        );
+        let claim_local_state = state.claim_local_state.get(&(claim.entity_id as u64));
 
-        let claim_member_state = state.claim_member_state.get(
-            &(claim.entity_id as u64)
-        ).map_or(vec![], |claim_members| {
-            claim_members.iter().map(|member| {
-                ClaimDescriptionStateMember {
-                    entity_id: member.player_entity_id,
-                    user_name: member.user_name.clone(),
-                    inventory_permission: member.inventory_permission,
-                    build_permission: member.build_permission,
-                    officer_permission: member.officer_permission,
-                    co_owner_permission: member.co_owner_permission,
-                    online_state: OnlineState::Offline,
-                    skills_ranks: Some(BTreeMap::new()),
-                }
-            }).collect()
-        });
+        let claim_member_state = state
+            .claim_member_state
+            .get(&(claim.entity_id as u64))
+            .map_or(vec![], |claim_members| {
+                claim_members
+                    .iter()
+                    .map(|member| ClaimDescriptionStateMember {
+                        entity_id: member.player_entity_id,
+                        user_name: member.user_name.clone(),
+                        inventory_permission: member.inventory_permission,
+                        build_permission: member.build_permission,
+                        officer_permission: member.officer_permission,
+                        co_owner_permission: member.co_owner_permission,
+                        online_state: OnlineState::Offline,
+                        skills_ranks: Some(BTreeMap::new()),
+                    })
+                    .collect()
+            });
 
         let mut claim = ClaimDescriptionState {
             entity_id: claim.entity_id,
@@ -304,7 +304,8 @@ pub(crate) async fn get_claim(
             claim.num_tiles = claim_local_state.num_tiles.clone();
             claim.treasury = claim_local_state.treasury.clone();
             claim.location = claim_local_state.location.clone();
-            claim.xp_gained_since_last_coin_minting = claim_local_state.xp_gained_since_last_coin_minting.clone();
+            claim.xp_gained_since_last_coin_minting =
+                claim_local_state.xp_gained_since_last_coin_minting.clone();
         }
 
         match claim_tech_state {
@@ -675,26 +676,28 @@ pub(crate) async fn list_claims(
                 .iter()
                 .find(|state| state.entity_id == claim_description.entity_id);
 
-            let claim_local_state = state.claim_local_state.get(
-                &(claim_description.entity_id as u64)
-            );
+            let claim_local_state = state
+                .claim_local_state
+                .get(&(claim_description.entity_id as u64));
 
-            let claim_member_state = state.claim_member_state.get(
-                &(claim_description.entity_id as u64)
-            ).map_or(vec![], |claim_members| {
-                claim_members.iter().map(|member| {
-                    ClaimDescriptionStateMember {
-                        entity_id: member.player_entity_id,
-                        user_name: member.user_name.clone(),
-                        inventory_permission: member.inventory_permission,
-                        build_permission: member.build_permission,
-                        officer_permission: member.officer_permission,
-                        co_owner_permission: member.co_owner_permission,
-                        online_state: OnlineState::Offline,
-                        skills_ranks: Some(BTreeMap::new()),
-                    }
-                }).collect()
-            });
+            let claim_member_state = state
+                .claim_member_state
+                .get(&(claim_description.entity_id as u64))
+                .map_or(vec![], |claim_members| {
+                    claim_members
+                        .iter()
+                        .map(|member| ClaimDescriptionStateMember {
+                            entity_id: member.player_entity_id,
+                            user_name: member.user_name.clone(),
+                            inventory_permission: member.inventory_permission,
+                            build_permission: member.build_permission,
+                            officer_permission: member.officer_permission,
+                            co_owner_permission: member.co_owner_permission,
+                            online_state: OnlineState::Offline,
+                            skills_ranks: Some(BTreeMap::new()),
+                        })
+                        .collect()
+                });
 
             let mut claim_description = ClaimDescriptionState {
                 entity_id: claim_description.entity_id,
@@ -718,11 +721,13 @@ pub(crate) async fn list_claims(
 
             if let Some(claim_local_state) = claim_local_state {
                 claim_description.supplies = claim_local_state.supplies.clone();
-                claim_description.building_maintenance = claim_local_state.building_maintenance.clone();
+                claim_description.building_maintenance =
+                    claim_local_state.building_maintenance.clone();
                 claim_description.num_tiles = claim_local_state.num_tiles.clone();
                 claim_description.treasury = claim_local_state.treasury.clone();
                 claim_description.location = claim_local_state.location.clone();
-                claim_description.xp_gained_since_last_coin_minting = claim_local_state.xp_gained_since_last_coin_minting.clone();
+                claim_description.xp_gained_since_last_coin_minting =
+                    claim_local_state.xp_gained_since_last_coin_minting.clone();
             }
 
             match claim_tech_state {

@@ -12,6 +12,7 @@ mod items;
 mod items_and_cargo;
 mod leaderboard;
 mod locations;
+mod module_bindings;
 mod player_state;
 mod recipes;
 mod reducer_event_handler;
@@ -464,7 +465,8 @@ struct AppState {
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
     claim_state: Arc<dashmap::DashMap<u64, entity::claim_state::Model>>,
-    claim_member_state: Arc<dashmap::DashMap<u64, dashmap::DashSet<entity::claim_member_state::Model>>>,
+    claim_member_state:
+        Arc<dashmap::DashMap<u64, dashmap::DashSet<entity::claim_member_state::Model>>>,
     player_to_claim_id_cache: Arc<dashmap::DashMap<u64, dashmap::DashSet<u64>>>,
     claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
@@ -480,7 +482,7 @@ struct AppState {
     cargo_tiers: Arc<dashmap::DashSet<i64>>,
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
     location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
-    connected_user_map: Arc<dashmap::DashMap<String, i64>>
+    connected_user_map: Arc<dashmap::DashMap<String, i64>>,
 }
 
 impl AppState {
@@ -513,9 +515,11 @@ impl AppState {
 
     fn add_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
         let claim_entity_id = claim_member_state.claim_entity_id;
-        let entity_id=  claim_member_state.entity_id;
+        let entity_id = claim_member_state.entity_id;
 
-        let cms = self.claim_member_state.get(&(claim_member_state.entity_id as u64));
+        let cms = self
+            .claim_member_state
+            .get(&(claim_member_state.entity_id as u64));
 
         if let Some(cms) = cms {
             cms.insert(claim_member_state);
@@ -523,35 +527,32 @@ impl AppState {
             let dashset = dashmap::DashSet::new();
             dashset.insert(claim_member_state);
 
-            self.claim_member_state.insert(
-                entity_id as u64,
-                dashset
-            );
+            self.claim_member_state.insert(entity_id as u64, dashset);
         }
 
-        if let Some(claim_state_to_member_set) = self.player_to_claim_id_cache.get_mut(
-            &(entity_id as u64)
-        ) {
+        if let Some(claim_state_to_member_set) =
+            self.player_to_claim_id_cache.get_mut(&(entity_id as u64))
+        {
             claim_state_to_member_set.insert(claim_entity_id as u64);
         } else {
             let claim_state_to_member_set = dashmap::DashSet::new();
             claim_state_to_member_set.insert(claim_entity_id as u64);
 
-            self.player_to_claim_id_cache.insert(entity_id as u64, claim_state_to_member_set);
+            self.player_to_claim_id_cache
+                .insert(entity_id as u64, claim_state_to_member_set);
         };
     }
 
     fn remove_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
         let claim_entity_id = claim_member_state.claim_entity_id;
-        let entity_id=  claim_member_state.entity_id;
+        let entity_id = claim_member_state.entity_id;
 
-        self.claim_member_state.remove(
-            &(claim_member_state.entity_id as u64),
-        );
+        self.claim_member_state
+            .remove(&(claim_member_state.entity_id as u64));
 
-        if let Some(claim_state_to_member_set) = self.player_to_claim_id_cache.get_mut(
-            &(entity_id as u64)
-        ) {
+        if let Some(claim_state_to_member_set) =
+            self.player_to_claim_id_cache.get_mut(&(entity_id as u64))
+        {
             claim_state_to_member_set.remove(&(claim_entity_id as u64));
         };
     }
@@ -952,7 +953,10 @@ pub async fn main() -> anyhow::Result<()> {
                 error!("Error: {err}");
             }
         }
-        Commands::Download { command, remote_schema } => {
+        Commands::Download {
+            command,
+            remote_schema,
+        } => {
             let client = create_default_client(config.clone());
 
             crate::download::download_all_tables(

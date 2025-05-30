@@ -1,17 +1,16 @@
-use crate::websocket::TransactionUpdate;
 use entity::inventory_changelog::Model as InventoryChangelogModel;
 
-#[allow(dead_code)]
-fn get_cargo_pick_up_change(
-    transaction: &TransactionUpdate,
-    _user_id: Option<i64>,
-) -> Option<InventoryChangelogModel> {
-    if transaction.reducer_call.reducer_name.as_ref() != "cargo_pick_up" {
-        return None;
-    }
-
-    None
-}
+// #[allow(dead_code)]
+// fn get_cargo_pick_up_change(
+//     transaction: &TransactionUpdate,
+//     _user_id: Option<i64>,
+// ) -> Option<InventoryChangelogModel> {
+//     if transaction.reducer_call.reducer_name.as_ref() != "cargo_pick_up" {
+//         return None;
+//     }
+//
+//     None
+// }
 //
 // #[cfg(test)]
 // mod tests {

@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
+// use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{AppState, skill_descriptions};
 use entity::skill_desc;
 use log::{debug, error, info};
@@ -361,159 +361,159 @@ async fn delete_skill_desc(
     Ok(())
 }
 
-pub(crate) async fn handle_initial_subscription(
-    app_state: &Arc<AppState>,
-    p1: &Table,
-) -> anyhow::Result<()> {
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<skill_desc::Model> = Vec::with_capacity(chunk_size);
+// pub(crate) async fn handle_initial_subscription(
+//     app_state: &Arc<AppState>,
+//     p1: &Table,
+// ) -> anyhow::Result<()> {
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<skill_desc::Model> = Vec::with_capacity(chunk_size);
+//
+//     let on_conflict = sea_query::OnConflict::column(skill_desc::Column::Id)
+//         .update_columns([
+//             skill_desc::Column::Skill,
+//             skill_desc::Column::Name,
+//             skill_desc::Column::Description,
+//             skill_desc::Column::IconAssetName,
+//             skill_desc::Column::Title,
+//             skill_desc::Column::SkillCategory,
+//         ])
+//         .to_owned();
+//
+//     let mut known_skill_desc_ids = get_known_skill_desc_ids(&app_state.conn).await?;
+//     for update in p1.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<skill_desc::SkillDescRaw>(row.as_ref()) {
+//                 Ok(skill_desc) => {
+//                     if known_skill_desc_ids.contains(&skill_desc.id) {
+//                         known_skill_desc_ids.remove(&skill_desc.id);
+//                     }
+//
+//                     let skill_desc_model = skill_desc.to_model().unwrap();
+//                     app_state
+//                         .skill_desc
+//                         .insert(skill_desc.id, skill_desc_model.clone());
+//                     buffer_before_insert.push(skill_desc_model);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         info!("SkillDesc insert");
+//                         db_insert_skill_descs(
+//                             &app_state.conn,
+//                             &mut buffer_before_insert,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!(
+//                         "TransactionUpdate Insert SkillDesc Error: {error} -> {:?}",
+//                         row
+//                     );
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         info!("SkillDesc insert");
+//         db_insert_skill_descs(&app_state.conn, &mut buffer_before_insert, &on_conflict).await?;
+//     }
+//
+//     if !known_skill_desc_ids.is_empty() {
+//         for skill_desc_id in &known_skill_desc_ids {
+//             app_state.skill_desc.remove(skill_desc_id);
+//         }
+//         delete_skill_desc(&app_state.conn, known_skill_desc_ids).await?;
+//     }
+//
+//     Ok(())
+// }
 
-    let on_conflict = sea_query::OnConflict::column(skill_desc::Column::Id)
-        .update_columns([
-            skill_desc::Column::Skill,
-            skill_desc::Column::Name,
-            skill_desc::Column::Description,
-            skill_desc::Column::IconAssetName,
-            skill_desc::Column::Title,
-            skill_desc::Column::SkillCategory,
-        ])
-        .to_owned();
-
-    let mut known_skill_desc_ids = get_known_skill_desc_ids(&app_state.conn).await?;
-    for update in p1.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<skill_desc::SkillDescRaw>(row.as_ref()) {
-                Ok(skill_desc) => {
-                    if known_skill_desc_ids.contains(&skill_desc.id) {
-                        known_skill_desc_ids.remove(&skill_desc.id);
-                    }
-                    
-                    let skill_desc_model = skill_desc.to_model().unwrap();
-                    app_state
-                        .skill_desc
-                        .insert(skill_desc.id, skill_desc_model.clone());
-                    buffer_before_insert.push(skill_desc_model);
-                    if buffer_before_insert.len() == chunk_size {
-                        info!("SkillDesc insert");
-                        db_insert_skill_descs(
-                            &app_state.conn,
-                            &mut buffer_before_insert,
-                            &on_conflict,
-                        )
-                        .await?;
-                    }
-                }
-                Err(error) => {
-                    error!(
-                        "TransactionUpdate Insert SkillDesc Error: {error} -> {:?}",
-                        row
-                    );
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        info!("SkillDesc insert");
-        db_insert_skill_descs(&app_state.conn, &mut buffer_before_insert, &on_conflict).await?;
-    }
-
-    if !known_skill_desc_ids.is_empty() {
-        for skill_desc_id in &known_skill_desc_ids {
-            app_state.skill_desc.remove(skill_desc_id);
-        }
-        delete_skill_desc(&app_state.conn, known_skill_desc_ids).await?;
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_transaction_update(
-    app_state: &Arc<AppState>,
-    tables: &[TableWithOriginalEventTransactionUpdate],
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(skill_desc::Column::Id)
-        .update_columns([
-            skill_desc::Column::Skill,
-            skill_desc::Column::Name,
-            skill_desc::Column::Description,
-            skill_desc::Column::IconAssetName,
-            skill_desc::Column::Title,
-            skill_desc::Column::SkillCategory,
-        ])
-        .to_owned();
-
-    let chunk_size = 5000;
-    let mut buffer_before_insert = HashMap::new();
-
-    let mut found_in_inserts = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.inserts.iter() {
-            match serde_json::from_str::<skill_desc::SkillDescRaw>(row.as_ref()) {
-                Ok(skill_desc) => {
-                    let skill_desc_model = skill_desc.to_model().unwrap();
-                    app_state
-                        .skill_desc
-                        .insert(skill_desc.id, skill_desc_model.clone());
-                    found_in_inserts.insert(skill_desc.id);
-                    buffer_before_insert.insert(skill_desc.id, skill_desc_model);
-
-                    if buffer_before_insert.len() == chunk_size {
-                        let mut buffer_before_insert_vec = buffer_before_insert
-                            .clone()
-                            .into_iter()
-                            .map(|x| x.1)
-                            .collect::<Vec<skill_desc::Model>>();
-
-                        db_insert_skill_descs(
-                            &app_state.conn,
-                            &mut buffer_before_insert_vec,
-                            &on_conflict,
-                        )
-                        .await?;
-                        buffer_before_insert.clear();
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Insert SkillDesc Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        let mut buffer_before_insert_vec = buffer_before_insert
-            .clone()
-            .into_iter()
-            .map(|x| x.1)
-            .collect::<Vec<skill_desc::Model>>();
-
-        db_insert_skill_descs(&app_state.conn, &mut buffer_before_insert_vec, &on_conflict).await?;
-        buffer_before_insert.clear();
-    }
-
-    let mut skill_descs_to_delete = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.deletes.iter() {
-            match serde_json::from_str::<skill_desc::Model>(row.as_ref()) {
-                Ok(skill_desc) => {
-                    if !found_in_inserts.contains(&skill_desc.id) {
-                        app_state.skill_desc.remove(&skill_desc.id);
-                        skill_descs_to_delete.insert(skill_desc.id);
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Delete SkillDesc Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !skill_descs_to_delete.is_empty() {
-        delete_skill_desc(&app_state.conn, skill_descs_to_delete).await?;
-    }
-
-    Ok(())
-}
+// pub(crate) async fn handle_transaction_update(
+//     app_state: &Arc<AppState>,
+//     tables: &[TableWithOriginalEventTransactionUpdate],
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(skill_desc::Column::Id)
+//         .update_columns([
+//             skill_desc::Column::Skill,
+//             skill_desc::Column::Name,
+//             skill_desc::Column::Description,
+//             skill_desc::Column::IconAssetName,
+//             skill_desc::Column::Title,
+//             skill_desc::Column::SkillCategory,
+//         ])
+//         .to_owned();
+//
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert = HashMap::new();
+//
+//     let mut found_in_inserts = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.inserts.iter() {
+//             match serde_json::from_str::<skill_desc::SkillDescRaw>(row.as_ref()) {
+//                 Ok(skill_desc) => {
+//                     let skill_desc_model = skill_desc.to_model().unwrap();
+//                     app_state
+//                         .skill_desc
+//                         .insert(skill_desc.id, skill_desc_model.clone());
+//                     found_in_inserts.insert(skill_desc.id);
+//                     buffer_before_insert.insert(skill_desc.id, skill_desc_model);
+//
+//                     if buffer_before_insert.len() == chunk_size {
+//                         let mut buffer_before_insert_vec = buffer_before_insert
+//                             .clone()
+//                             .into_iter()
+//                             .map(|x| x.1)
+//                             .collect::<Vec<skill_desc::Model>>();
+//
+//                         db_insert_skill_descs(
+//                             &app_state.conn,
+//                             &mut buffer_before_insert_vec,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                         buffer_before_insert.clear();
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Insert SkillDesc Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         let mut buffer_before_insert_vec = buffer_before_insert
+//             .clone()
+//             .into_iter()
+//             .map(|x| x.1)
+//             .collect::<Vec<skill_desc::Model>>();
+//
+//         db_insert_skill_descs(&app_state.conn, &mut buffer_before_insert_vec, &on_conflict).await?;
+//         buffer_before_insert.clear();
+//     }
+//
+//     let mut skill_descs_to_delete = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.deletes.iter() {
+//             match serde_json::from_str::<skill_desc::Model>(row.as_ref()) {
+//                 Ok(skill_desc) => {
+//                     if !found_in_inserts.contains(&skill_desc.id) {
+//                         app_state.skill_desc.remove(&skill_desc.id);
+//                         skill_descs_to_delete.insert(skill_desc.id);
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Delete SkillDesc Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !skill_descs_to_delete.is_empty() {
+//         delete_skill_desc(&app_state.conn, skill_descs_to_delete).await?;
+//     }
+//
+//     Ok(())
+// }

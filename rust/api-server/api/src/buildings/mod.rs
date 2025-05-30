@@ -1,5 +1,4 @@
 use crate::config::Config;
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
 use crate::{AppRouter, AppState, Params};
 use axum::Router;
 use axum::extract::{Path, Query, State};
@@ -524,209 +523,209 @@ fn import_internal_building_state(config: Config, conn: DatabaseConnection, clie
             });
     });
 }
-
-pub(crate) async fn handle_transaction_update(
-    p0: &DatabaseConnection,
-    tables: &[TableWithOriginalEventTransactionUpdate],
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(building_state::Column::EntityId)
-        .update_columns([
-            building_state::Column::ClaimEntityId,
-            building_state::Column::DirectionIndex,
-            building_state::Column::BuildingDescriptionId,
-            building_state::Column::ConstructedByPlayerEntityId,
-        ])
-        .to_owned();
-
-    let mut found_in_inserts = HashSet::new();
-
-    // let mut known_player_username_state_ids = get_known_player_uusername_state_ids(p0).await?;
-    for p1 in tables.iter() {
-        for row in p1.inserts.iter() {
-            match serde_json::from_str::<building_state::Model>(row.as_ref()) {
-                Ok(building_state) => {
-                    let current_building_state =
-                        QueryCore::find_building_state_by_id(p0, building_state.entity_id).await?;
-
-                    if current_building_state.is_some() {
-                        let current_building_state = current_building_state.unwrap();
-                        if current_building_state != building_state {
-                            found_in_inserts.insert(building_state.entity_id);
-                            let _ = building_state::Entity::insert(
-                                building_state.clone().into_active_model(),
-                            )
-                            .on_conflict(on_conflict.clone())
-                            .exec(p0)
-                            .await?;
-                        }
-                    } else {
-                        found_in_inserts.insert(building_state.entity_id);
-                        let _ = building_state::Entity::insert(
-                            building_state.clone().into_active_model(),
-                        )
-                        .exec(p0)
-                        .await?;
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Insert BuildingState Error: {error}");
-                }
-            }
-        }
-    }
-
-    for p1 in tables.iter() {
-        for row in p1.deletes.iter() {
-            match serde_json::from_str::<building_state::Model>(row.as_ref()) {
-                Ok(building_state) => {
-                    if found_in_inserts.contains(&building_state.entity_id) {
-                        continue;
-                    }
-
-                    let current_building_state =
-                        QueryCore::find_building_state_by_id(p0, building_state.entity_id).await?;
-
-                    if current_building_state.is_some() {
-                        let _ = building_state::Entity::delete_many()
-                            .filter(building_state::Column::EntityId.eq(building_state.entity_id))
-                            .exec(p0)
-                            .await?;
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Insert BuildingState Error: {error}");
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_initial_subscription(
-    p0: &DatabaseConnection,
-    p1: &Table,
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(building_state::Column::EntityId)
-        .update_columns([
-            building_state::Column::ClaimEntityId,
-            building_state::Column::DirectionIndex,
-            building_state::Column::BuildingDescriptionId,
-            building_state::Column::ConstructedByPlayerEntityId,
-        ])
-        .to_owned();
-
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<building_state::Model> = vec![];
-
-    let mut known_building_state_ids = get_known_building_state_ids(p0).await?;
-    for update in p1.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<building_state::Model>(row.as_ref()) {
-                Ok(building_state) => {
-                    if known_building_state_ids.contains(&building_state.entity_id) {
-                        known_building_state_ids.remove(&building_state.entity_id);
-                    }
-                    buffer_before_insert.push(building_state);
-                    if buffer_before_insert.len() == chunk_size {
-                        db_insert_building_state(p0, &mut buffer_before_insert, &on_conflict)
-                            .await?;
-                    }
-                }
-                Err(error) => {
-                    tracing::error!(json = row, "InitialSubscription Insert BuildingState Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        for buffer_chnk in buffer_before_insert.chunks(5000) {
-            db_insert_building_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
-        }
-    }
-
-    if !known_building_state_ids.is_empty() {
-        delete_building_state(p0, known_building_state_ids).await?;
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_initial_subscription_desc(
-    app_state: &Arc<AppState>,
-    p1: &Table,
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(building_desc::Column::Id)
-        .update_columns([
-            building_desc::Column::Functions,
-            building_desc::Column::Name,
-            building_desc::Column::Description,
-            building_desc::Column::RestedBuffDuration,
-            building_desc::Column::LightRadius,
-            building_desc::Column::ModelAssetName,
-            building_desc::Column::IconAssetName,
-            building_desc::Column::Unenterable,
-            building_desc::Column::Wilderness,
-            building_desc::Column::Footprint,
-            building_desc::Column::MaxHealth,
-            building_desc::Column::DefenseLevel,
-            building_desc::Column::Decay,
-            building_desc::Column::Maintenance,
-            building_desc::Column::BuildPermission,
-            building_desc::Column::InteractPermission,
-            building_desc::Column::HasAction,
-            building_desc::Column::ShowInCompendium,
-            building_desc::Column::IsRuins,
-            building_desc::Column::NotDeconstructible,
-        ])
-        .to_owned();
-
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<building_desc::Model> = vec![];
-
-    let mut known_building_desc_ids = get_known_building_desc_ids(&app_state.conn).await?;
-    for update in p1.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<building_desc::Model>(row.as_ref()) {
-                Ok(building_desc) => {
-                    if known_building_desc_ids.contains(&building_desc.id) {
-                        known_building_desc_ids.remove(&building_desc.id);
-                    }
-                    buffer_before_insert.push(building_desc);
-                    if buffer_before_insert.len() == chunk_size {
-                        db_insert_building_desc(
-                            &app_state.conn,
-                            &mut buffer_before_insert,
-                            &on_conflict,
-                        )
-                        .await?;
-                    }
-                }
-                Err(error) => {
-                    error!(
-                        "InitialSubscription Insert BuildingDesc Error: {error} \n {}",
-                        row.as_ref()
-                    );
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        for buffer_chnk in buffer_before_insert.chunks(5000) {
-            db_insert_building_desc(&app_state.conn, &mut buffer_chnk.to_vec(), &on_conflict)
-                .await?;
-        }
-    }
-
-    if !known_building_desc_ids.is_empty() {
-        delete_building_descs(
-            &app_state.conn,
-            known_building_desc_ids.into_iter().collect(),
-        )
-        .await?;
-    }
-
-    Ok(())
-}
+//
+// pub(crate) async fn handle_transaction_update(
+//     p0: &DatabaseConnection,
+//     tables: &[TableWithOriginalEventTransactionUpdate],
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(building_state::Column::EntityId)
+//         .update_columns([
+//             building_state::Column::ClaimEntityId,
+//             building_state::Column::DirectionIndex,
+//             building_state::Column::BuildingDescriptionId,
+//             building_state::Column::ConstructedByPlayerEntityId,
+//         ])
+//         .to_owned();
+//
+//     let mut found_in_inserts = HashSet::new();
+//
+//     // let mut known_player_username_state_ids = get_known_player_uusername_state_ids(p0).await?;
+//     for p1 in tables.iter() {
+//         for row in p1.inserts.iter() {
+//             match serde_json::from_str::<building_state::Model>(row.as_ref()) {
+//                 Ok(building_state) => {
+//                     let current_building_state =
+//                         QueryCore::find_building_state_by_id(p0, building_state.entity_id).await?;
+//
+//                     if current_building_state.is_some() {
+//                         let current_building_state = current_building_state.unwrap();
+//                         if current_building_state != building_state {
+//                             found_in_inserts.insert(building_state.entity_id);
+//                             let _ = building_state::Entity::insert(
+//                                 building_state.clone().into_active_model(),
+//                             )
+//                             .on_conflict(on_conflict.clone())
+//                             .exec(p0)
+//                             .await?;
+//                         }
+//                     } else {
+//                         found_in_inserts.insert(building_state.entity_id);
+//                         let _ = building_state::Entity::insert(
+//                             building_state.clone().into_active_model(),
+//                         )
+//                         .exec(p0)
+//                         .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Insert BuildingState Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     for p1 in tables.iter() {
+//         for row in p1.deletes.iter() {
+//             match serde_json::from_str::<building_state::Model>(row.as_ref()) {
+//                 Ok(building_state) => {
+//                     if found_in_inserts.contains(&building_state.entity_id) {
+//                         continue;
+//                     }
+//
+//                     let current_building_state =
+//                         QueryCore::find_building_state_by_id(p0, building_state.entity_id).await?;
+//
+//                     if current_building_state.is_some() {
+//                         let _ = building_state::Entity::delete_many()
+//                             .filter(building_state::Column::EntityId.eq(building_state.entity_id))
+//                             .exec(p0)
+//                             .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Insert BuildingState Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     Ok(())
+// }
+//
+// pub(crate) async fn handle_initial_subscription(
+//     p0: &DatabaseConnection,
+//     p1: &Table,
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(building_state::Column::EntityId)
+//         .update_columns([
+//             building_state::Column::ClaimEntityId,
+//             building_state::Column::DirectionIndex,
+//             building_state::Column::BuildingDescriptionId,
+//             building_state::Column::ConstructedByPlayerEntityId,
+//         ])
+//         .to_owned();
+//
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<building_state::Model> = vec![];
+//
+//     let mut known_building_state_ids = get_known_building_state_ids(p0).await?;
+//     for update in p1.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<building_state::Model>(row.as_ref()) {
+//                 Ok(building_state) => {
+//                     if known_building_state_ids.contains(&building_state.entity_id) {
+//                         known_building_state_ids.remove(&building_state.entity_id);
+//                     }
+//                     buffer_before_insert.push(building_state);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         db_insert_building_state(p0, &mut buffer_before_insert, &on_conflict)
+//                             .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     tracing::error!(json = row, "InitialSubscription Insert BuildingState Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         for buffer_chnk in buffer_before_insert.chunks(5000) {
+//             db_insert_building_state(p0, &mut buffer_chnk.to_vec(), &on_conflict).await?;
+//         }
+//     }
+//
+//     if !known_building_state_ids.is_empty() {
+//         delete_building_state(p0, known_building_state_ids).await?;
+//     }
+//
+//     Ok(())
+// }
+//
+// pub(crate) async fn handle_initial_subscription_desc(
+//     app_state: &Arc<AppState>,
+//     p1: &Table,
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(building_desc::Column::Id)
+//         .update_columns([
+//             building_desc::Column::Functions,
+//             building_desc::Column::Name,
+//             building_desc::Column::Description,
+//             building_desc::Column::RestedBuffDuration,
+//             building_desc::Column::LightRadius,
+//             building_desc::Column::ModelAssetName,
+//             building_desc::Column::IconAssetName,
+//             building_desc::Column::Unenterable,
+//             building_desc::Column::Wilderness,
+//             building_desc::Column::Footprint,
+//             building_desc::Column::MaxHealth,
+//             building_desc::Column::DefenseLevel,
+//             building_desc::Column::Decay,
+//             building_desc::Column::Maintenance,
+//             building_desc::Column::BuildPermission,
+//             building_desc::Column::InteractPermission,
+//             building_desc::Column::HasAction,
+//             building_desc::Column::ShowInCompendium,
+//             building_desc::Column::IsRuins,
+//             building_desc::Column::NotDeconstructible,
+//         ])
+//         .to_owned();
+//
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<building_desc::Model> = vec![];
+//
+//     let mut known_building_desc_ids = get_known_building_desc_ids(&app_state.conn).await?;
+//     for update in p1.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<building_desc::Model>(row.as_ref()) {
+//                 Ok(building_desc) => {
+//                     if known_building_desc_ids.contains(&building_desc.id) {
+//                         known_building_desc_ids.remove(&building_desc.id);
+//                     }
+//                     buffer_before_insert.push(building_desc);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         db_insert_building_desc(
+//                             &app_state.conn,
+//                             &mut buffer_before_insert,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!(
+//                         "InitialSubscription Insert BuildingDesc Error: {error} \n {}",
+//                         row.as_ref()
+//                     );
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         for buffer_chnk in buffer_before_insert.chunks(5000) {
+//             db_insert_building_desc(&app_state.conn, &mut buffer_chnk.to_vec(), &on_conflict)
+//                 .await?;
+//         }
+//     }
+//
+//     if !known_building_desc_ids.is_empty() {
+//         delete_building_descs(
+//             &app_state.conn,
+//             known_building_desc_ids.into_iter().collect(),
+//         )
+//         .await?;
+//     }
+//
+//     Ok(())
+// }

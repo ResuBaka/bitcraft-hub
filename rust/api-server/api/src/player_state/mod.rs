@@ -1,4 +1,4 @@
-use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate, WebSocketMessages};
+use crate::websocket::WebSocketMessages;
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
@@ -157,10 +157,9 @@ pub async fn find_player_by_id(
     let current_action_state = state.action_state.get(&(id as u64));
 
     let claim_ids = state
-        .player_to_claim_id_cache.get(&(player.entity_id as u64))
-        .map_or(vec![], |ids| {
-            ids.iter().map(|id| *id).collect()
-        });
+        .player_to_claim_id_cache
+        .get(&(player.entity_id as u64))
+        .map_or(vec![], |ids| ids.iter().map(|id| *id).collect());
 
     Ok(axum_codec::Codec(json!({
         "entity_id": player.entity_id,
@@ -361,259 +360,259 @@ async fn db_insert_player_username_states(
     Ok(())
 }
 
-pub(crate) async fn handle_initial_subscription_player_username_state(
-    p0: &DatabaseConnection,
-    p1: &Table,
-) -> anyhow::Result<()> {
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<player_username_state::Model> =
-        Vec::with_capacity(chunk_size);
+// pub(crate) async fn handle_initial_subscription_player_username_state(
+//     p0: &DatabaseConnection,
+//     p1: &Table,
+// ) -> anyhow::Result<()> {
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<player_username_state::Model> =
+//         Vec::with_capacity(chunk_size);
+//
+//     let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
+//         .update_columns([player_username_state::Column::Username])
+//         .to_owned();
+//
+//     let mut known_player_username_state_ids = get_known_player_username_state_ids(p0).await?;
+//     for update in p1.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
+//                 Ok(player_username_state) => {
+//                     if known_player_username_state_ids.contains(&player_username_state.entity_id) {
+//                         known_player_username_state_ids.remove(&player_username_state.entity_id);
+//                     }
+//                     buffer_before_insert.push(player_username_state);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         db_insert_player_username_states(
+//                             p0,
+//                             &mut buffer_before_insert,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!(
+//                         "TransactionUpdate Insert PlayerUsernameState Error: {error} -> {:?}",
+//                         row
+//                     );
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict).await?;
+//     }
+//
+//     if !known_player_username_state_ids.is_empty() {
+//         delete_player_username_state(p0, known_player_username_state_ids).await?;
+//     }
+//
+//     Ok(())
+// }
+//
+// pub(crate) async fn handle_transaction_update_player_username_state(
+//     p0: &DatabaseConnection,
+//     tables: &[TableWithOriginalEventTransactionUpdate],
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
+//         .update_columns([player_username_state::Column::Username])
+//         .to_owned();
+//
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<player_username_state::Model> =
+//         Vec::with_capacity(chunk_size);
+//
+//     let mut found_in_inserts = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.inserts.iter() {
+//             match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
+//                 Ok(player_username_state) => {
+//                     found_in_inserts.insert(player_username_state.entity_id);
+//                     buffer_before_insert.push(player_username_state);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         db_insert_player_username_states(
+//                             p0,
+//                             &mut buffer_before_insert,
+//                             &on_conflict,
+//                         )
+//                         .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Insert PlayerUsernameState Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict).await?;
+//     }
+//
+//     let mut players_username_to_delete = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.deletes.iter() {
+//             match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
+//                 Ok(player_username_state) => {
+//                     if !found_in_inserts.contains(&player_username_state.entity_id) {
+//                         players_username_to_delete.insert(player_username_state.entity_id);
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Delete PlayerUsernameState Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !players_username_to_delete.is_empty() {
+//         delete_player_username_state(p0, players_username_to_delete).await?;
+//     }
+//
+//     Ok(())
+// }
 
-    let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
-        .update_columns([player_username_state::Column::Username])
-        .to_owned();
+// pub(crate) async fn handle_initial_subscription_player_state(
+//     p0: &DatabaseConnection,
+//     p1: &Table,
+// ) -> anyhow::Result<()> {
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert: Vec<player_state::Model> = Vec::with_capacity(chunk_size);
+//
+//     let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
+//         .update_columns([
+//             player_state::Column::TimePlayed,
+//             player_state::Column::SessionStartTimestamp,
+//             player_state::Column::TimeSignedIn,
+//             player_state::Column::SignInTimestamp,
+//             player_state::Column::SignedIn,
+//             player_state::Column::TeleportLocation,
+//             player_state::Column::TravelerTasksExpiration,
+//         ])
+//         .to_owned();
+//
+//     let mut known_player_state_ids = get_known_player_state_ids(p0).await?;
+//     for update in p1.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<player_state::Model>(row.as_ref()) {
+//                 Ok(player_state) => {
+//                     if known_player_state_ids.contains(&player_state.entity_id) {
+//                         known_player_state_ids.remove(&player_state.entity_id);
+//                     }
+//                     buffer_before_insert.push(player_state);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         info!("PlayerState insert");
+//                         db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict)
+//                             .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!(
+//                         "TransactionUpdate Insert PlayerState Error: {error} -> {:?}",
+//                         row
+//                     );
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         info!("PlayerState insert");
+//         db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict).await?;
+//     }
+//
+//     if !known_player_state_ids.is_empty() {
+//         delete_player_state(p0, known_player_state_ids).await?;
+//     }
+//
+//     Ok(())
+// }
 
-    let mut known_player_username_state_ids = get_known_player_username_state_ids(p0).await?;
-    for update in p1.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
-                Ok(player_username_state) => {
-                    if known_player_username_state_ids.contains(&player_username_state.entity_id) {
-                        known_player_username_state_ids.remove(&player_username_state.entity_id);
-                    }
-                    buffer_before_insert.push(player_username_state);
-                    if buffer_before_insert.len() == chunk_size {
-                        db_insert_player_username_states(
-                            p0,
-                            &mut buffer_before_insert,
-                            &on_conflict,
-                        )
-                        .await?;
-                    }
-                }
-                Err(error) => {
-                    error!(
-                        "TransactionUpdate Insert PlayerUsernameState Error: {error} -> {:?}",
-                        row
-                    );
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict).await?;
-    }
-
-    if !known_player_username_state_ids.is_empty() {
-        delete_player_username_state(p0, known_player_username_state_ids).await?;
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_transaction_update_player_username_state(
-    p0: &DatabaseConnection,
-    tables: &[TableWithOriginalEventTransactionUpdate],
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(player_username_state::Column::EntityId)
-        .update_columns([player_username_state::Column::Username])
-        .to_owned();
-
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<player_username_state::Model> =
-        Vec::with_capacity(chunk_size);
-
-    let mut found_in_inserts = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.inserts.iter() {
-            match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
-                Ok(player_username_state) => {
-                    found_in_inserts.insert(player_username_state.entity_id);
-                    buffer_before_insert.push(player_username_state);
-                    if buffer_before_insert.len() == chunk_size {
-                        db_insert_player_username_states(
-                            p0,
-                            &mut buffer_before_insert,
-                            &on_conflict,
-                        )
-                        .await?;
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Insert PlayerUsernameState Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        db_insert_player_username_states(p0, &mut buffer_before_insert, &on_conflict).await?;
-    }
-
-    let mut players_username_to_delete = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.deletes.iter() {
-            match serde_json::from_str::<player_username_state::Model>(row.as_ref()) {
-                Ok(player_username_state) => {
-                    if !found_in_inserts.contains(&player_username_state.entity_id) {
-                        players_username_to_delete.insert(player_username_state.entity_id);
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Delete PlayerUsernameState Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !players_username_to_delete.is_empty() {
-        delete_player_username_state(p0, players_username_to_delete).await?;
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_initial_subscription_player_state(
-    p0: &DatabaseConnection,
-    p1: &Table,
-) -> anyhow::Result<()> {
-    let chunk_size = 5000;
-    let mut buffer_before_insert: Vec<player_state::Model> = Vec::with_capacity(chunk_size);
-
-    let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
-        .update_columns([
-            player_state::Column::TimePlayed,
-            player_state::Column::SessionStartTimestamp,
-            player_state::Column::TimeSignedIn,
-            player_state::Column::SignInTimestamp,
-            player_state::Column::SignedIn,
-            player_state::Column::TeleportLocation,
-            player_state::Column::TravelerTasksExpiration,
-        ])
-        .to_owned();
-
-    let mut known_player_state_ids = get_known_player_state_ids(p0).await?;
-    for update in p1.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<player_state::Model>(row.as_ref()) {
-                Ok(player_state) => {
-                    if known_player_state_ids.contains(&player_state.entity_id) {
-                        known_player_state_ids.remove(&player_state.entity_id);
-                    }
-                    buffer_before_insert.push(player_state);
-                    if buffer_before_insert.len() == chunk_size {
-                        info!("PlayerState insert");
-                        db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict)
-                            .await?;
-                    }
-                }
-                Err(error) => {
-                    error!(
-                        "TransactionUpdate Insert PlayerState Error: {error} -> {:?}",
-                        row
-                    );
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        info!("PlayerState insert");
-        db_insert_player_states(p0, &mut buffer_before_insert, &on_conflict).await?;
-    }
-
-    if !known_player_state_ids.is_empty() {
-        delete_player_state(p0, known_player_state_ids).await?;
-    }
-
-    Ok(())
-}
-
-pub(crate) async fn handle_transaction_update_player_state(
-    p0: &DatabaseConnection,
-    tables: &[TableWithOriginalEventTransactionUpdate],
-    sender: UnboundedSender<WebSocketMessages>,
-) -> anyhow::Result<()> {
-    let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
-        .update_columns([
-            player_state::Column::TimePlayed,
-            player_state::Column::SessionStartTimestamp,
-            player_state::Column::TimeSignedIn,
-            player_state::Column::SignInTimestamp,
-            player_state::Column::SignedIn,
-            player_state::Column::TeleportLocation,
-            player_state::Column::TravelerTasksExpiration,
-        ])
-        .to_owned();
-
-    let chunk_size = 5000;
-    let mut buffer_before_insert = HashMap::new();
-
-    let mut found_in_inserts = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.inserts.iter() {
-            match serde_json::from_str::<player_state::Model>(row.as_ref()) {
-                Ok(player_state) => {
-                    found_in_inserts.insert(player_state.entity_id);
-                    sender
-                        .send(WebSocketMessages::PlayerState(player_state.clone()))
-                        .unwrap();
-                    buffer_before_insert.insert(player_state.entity_id, player_state);
-
-                    if buffer_before_insert.len() == chunk_size {
-                        let mut buffer_before_insert_vec = buffer_before_insert
-                            .clone()
-                            .into_iter()
-                            .map(|x| x.1)
-                            .collect::<Vec<player_state::Model>>();
-
-                        db_insert_player_states(p0, &mut buffer_before_insert_vec, &on_conflict)
-                            .await?;
-                        buffer_before_insert.clear();
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Insert PlayerState Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        let mut buffer_before_insert_vec = buffer_before_insert
-            .clone()
-            .into_iter()
-            .map(|x| x.1)
-            .collect::<Vec<player_state::Model>>();
-
-        db_insert_player_states(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
-        buffer_before_insert.clear();
-    }
-
-    let mut players_to_delete = HashSet::new();
-
-    for p1 in tables.iter() {
-        for row in p1.deletes.iter() {
-            match serde_json::from_str::<player_state::Model>(row.as_ref()) {
-                Ok(player_state) => {
-                    if !found_in_inserts.contains(&player_state.entity_id) {
-                        players_to_delete.insert(player_state.entity_id);
-                    }
-                }
-                Err(error) => {
-                    error!("TransactionUpdate Delete PlayerState Error: {error}");
-                }
-            }
-        }
-    }
-
-    if !players_to_delete.is_empty() {
-        delete_player_state(p0, players_to_delete).await?;
-    }
-
-    Ok(())
-}
+// pub(crate) async fn handle_transaction_update_player_state(
+//     p0: &DatabaseConnection,
+//     tables: &[TableWithOriginalEventTransactionUpdate],
+//     sender: UnboundedSender<WebSocketMessages>,
+// ) -> anyhow::Result<()> {
+//     let on_conflict = sea_query::OnConflict::column(player_state::Column::EntityId)
+//         .update_columns([
+//             player_state::Column::TimePlayed,
+//             player_state::Column::SessionStartTimestamp,
+//             player_state::Column::TimeSignedIn,
+//             player_state::Column::SignInTimestamp,
+//             player_state::Column::SignedIn,
+//             player_state::Column::TeleportLocation,
+//             player_state::Column::TravelerTasksExpiration,
+//         ])
+//         .to_owned();
+//
+//     let chunk_size = 5000;
+//     let mut buffer_before_insert = HashMap::new();
+//
+//     let mut found_in_inserts = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.inserts.iter() {
+//             match serde_json::from_str::<player_state::Model>(row.as_ref()) {
+//                 Ok(player_state) => {
+//                     found_in_inserts.insert(player_state.entity_id);
+//                     sender
+//                         .send(WebSocketMessages::PlayerState(player_state.clone()))
+//                         .unwrap();
+//                     buffer_before_insert.insert(player_state.entity_id, player_state);
+//
+//                     if buffer_before_insert.len() == chunk_size {
+//                         let mut buffer_before_insert_vec = buffer_before_insert
+//                             .clone()
+//                             .into_iter()
+//                             .map(|x| x.1)
+//                             .collect::<Vec<player_state::Model>>();
+//
+//                         db_insert_player_states(p0, &mut buffer_before_insert_vec, &on_conflict)
+//                             .await?;
+//                         buffer_before_insert.clear();
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Insert PlayerState Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         let mut buffer_before_insert_vec = buffer_before_insert
+//             .clone()
+//             .into_iter()
+//             .map(|x| x.1)
+//             .collect::<Vec<player_state::Model>>();
+//
+//         db_insert_player_states(p0, &mut buffer_before_insert_vec, &on_conflict).await?;
+//         buffer_before_insert.clear();
+//     }
+//
+//     let mut players_to_delete = HashSet::new();
+//
+//     for p1 in tables.iter() {
+//         for row in p1.deletes.iter() {
+//             match serde_json::from_str::<player_state::Model>(row.as_ref()) {
+//                 Ok(player_state) => {
+//                     if !found_in_inserts.contains(&player_state.entity_id) {
+//                         players_to_delete.insert(player_state.entity_id);
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!("TransactionUpdate Delete PlayerState Error: {error}");
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !players_to_delete.is_empty() {
+//         delete_player_state(p0, players_to_delete).await?;
+//     }
+//
+//     Ok(())
+// }

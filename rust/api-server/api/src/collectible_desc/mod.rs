@@ -1,4 +1,4 @@
-use crate::websocket::Table;
+// use crate::websocket::Table;
 use entity::collectible_desc;
 use log::{debug, error, info};
 use migration::OnConflict;
@@ -85,72 +85,72 @@ async fn delete_collectible_desc(
         .await?;
     Ok(())
 }
-
-pub(crate) async fn handle_initial_subscription(
-    p0: &DatabaseConnection,
-    p1: &Table,
-) -> anyhow::Result<()> {
-    let chunk_size = 500;
-    let mut buffer_before_insert: Vec<collectible_desc::Model> = Vec::with_capacity(chunk_size);
-
-    let on_conflict = sea_query::OnConflict::column(collectible_desc::Column::Id)
-        .update_columns([
-            collectible_desc::Column::Name,
-            collectible_desc::Column::Description,
-            collectible_desc::Column::CollectibleType,
-            collectible_desc::Column::InvalidatesType,
-            collectible_desc::Column::AutoCollect,
-            collectible_desc::Column::CollectibleRarity,
-            collectible_desc::Column::StartingLoadout,
-            collectible_desc::Column::Locked,
-            collectible_desc::Column::Variant,
-            collectible_desc::Column::Color,
-            collectible_desc::Column::Emission,
-            collectible_desc::Column::MaxEquipCount,
-            collectible_desc::Column::ModelAssetName,
-            collectible_desc::Column::VariantMaterial,
-            collectible_desc::Column::IconAssetName,
-            collectible_desc::Column::Tag,
-            collectible_desc::Column::DisplayString,
-            collectible_desc::Column::ItemDeedId,
-        ])
-        .to_owned();
-
-    let mut known_collectible_desc_ids = get_known_collectible_desc_ids(p0).await?;
-
-    for update in p1.updates.iter() {
-        for row in update.inserts.iter() {
-            match serde_json::from_str::<collectible_desc::Model>(row.as_ref()) {
-                Ok(collectible_desc) => {
-                    if known_collectible_desc_ids.contains(&collectible_desc.id) {
-                        known_collectible_desc_ids.remove(&collectible_desc.id);
-                    }
-                    buffer_before_insert.push(collectible_desc);
-                    if buffer_before_insert.len() == chunk_size {
-                        db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict)
-                            .await?;
-                    }
-                }
-                Err(error) => {
-                    error!(
-                        "TransactionUpdate Insert collectible_desc::Model Error: {error} -> {:?}",
-                        row
-                    );
-                }
-            }
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict).await?;
-    }
-
-    if !known_collectible_desc_ids.is_empty() {
-        delete_collectible_desc(p0, known_collectible_desc_ids).await?;
-    }
-
-    Ok(())
-}
+//
+// pub(crate) async fn handle_initial_subscription(
+//     p0: &DatabaseConnection,
+//     p1: &Table,
+// ) -> anyhow::Result<()> {
+//     let chunk_size = 500;
+//     let mut buffer_before_insert: Vec<collectible_desc::Model> = Vec::with_capacity(chunk_size);
+//
+//     let on_conflict = sea_query::OnConflict::column(collectible_desc::Column::Id)
+//         .update_columns([
+//             collectible_desc::Column::Name,
+//             collectible_desc::Column::Description,
+//             collectible_desc::Column::CollectibleType,
+//             collectible_desc::Column::InvalidatesType,
+//             collectible_desc::Column::AutoCollect,
+//             collectible_desc::Column::CollectibleRarity,
+//             collectible_desc::Column::StartingLoadout,
+//             collectible_desc::Column::Locked,
+//             collectible_desc::Column::Variant,
+//             collectible_desc::Column::Color,
+//             collectible_desc::Column::Emission,
+//             collectible_desc::Column::MaxEquipCount,
+//             collectible_desc::Column::ModelAssetName,
+//             collectible_desc::Column::VariantMaterial,
+//             collectible_desc::Column::IconAssetName,
+//             collectible_desc::Column::Tag,
+//             collectible_desc::Column::DisplayString,
+//             collectible_desc::Column::ItemDeedId,
+//         ])
+//         .to_owned();
+//
+//     let mut known_collectible_desc_ids = get_known_collectible_desc_ids(p0).await?;
+//
+//     for update in p1.updates.iter() {
+//         for row in update.inserts.iter() {
+//             match serde_json::from_str::<collectible_desc::Model>(row.as_ref()) {
+//                 Ok(collectible_desc) => {
+//                     if known_collectible_desc_ids.contains(&collectible_desc.id) {
+//                         known_collectible_desc_ids.remove(&collectible_desc.id);
+//                     }
+//                     buffer_before_insert.push(collectible_desc);
+//                     if buffer_before_insert.len() == chunk_size {
+//                         db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict)
+//                             .await?;
+//                     }
+//                 }
+//                 Err(error) => {
+//                     error!(
+//                         "TransactionUpdate Insert collectible_desc::Model Error: {error} -> {:?}",
+//                         row
+//                     );
+//                 }
+//             }
+//         }
+//     }
+//
+//     if !buffer_before_insert.is_empty() {
+//         db_insert_collectible_descs(p0, &mut buffer_before_insert, &on_conflict).await?;
+//     }
+//
+//     if !known_collectible_desc_ids.is_empty() {
+//         delete_collectible_desc(p0, known_collectible_desc_ids).await?;
+//     }
+//
+//     Ok(())
+// }
 
 // pub(crate) async fn handle_transaction_update(
 //     p0: &DatabaseConnection,

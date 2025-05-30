@@ -1,7 +1,7 @@
+use super::shared::location;
+use crate::shared::location::Location;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::shared::location::Location;
-use super::shared::location;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "claim_local_state")]
@@ -43,13 +43,12 @@ pub struct ModelRaw {
 
 impl From<ModelRaw> for Model {
     fn from(model: ModelRaw) -> Self {
-        let location = if model.location[0].as_i64().unwrap() == 1  {
+        let location = if model.location[0].as_i64().unwrap() == 1 {
             None
         } else {
             Some(serde_json::from_value::<Location>(model.location[1].clone()).unwrap())
         };
-        
-        
+
         Model {
             entity_id: model.entity_id,
             supplies: model.supplies,
@@ -65,7 +64,6 @@ impl From<ModelRaw> for Model {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

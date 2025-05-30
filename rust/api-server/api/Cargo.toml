@@ -41,6 +41,7 @@ async-compression = { version = "0.4.23", features = ["tokio", "deflate", "zstd"
 tracing = "0.1.41"
 nanoid = "0.4.0"
 config = "0.15.11"
+spacetimedb-sdk = "1.1.1"
 
 [dependencies.sea-orm-cli]
 version = "1.1.11"

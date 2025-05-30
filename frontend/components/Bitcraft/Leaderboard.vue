@@ -52,7 +52,7 @@ const topics = computed(() => {
   }
 
   for (const player of leaderboard.value?.leaderboard[selectedSkills.value]) {
-    topicsSet.add(`experience:${selectedSkills.value}.${player.player_id}`);
+    topicsSet.add(`experience:${selectedSkills.value}.${player.player_id.toString()}`);
   }
 
   return Array.from(topicsSet);
@@ -79,7 +79,7 @@ const totalExperienceTopics = computed(() => {
   let topicsSet = new Set<string>();
 
   for (const player of leaderboard.value?.leaderboard["Experience"]) {
-    topicsSet.add(`total_experience.${player.player_id}`);
+    topicsSet.add(`total_experience.${player.player_id.toString()}`);
   }
 
   return Array.from(topicsSet);

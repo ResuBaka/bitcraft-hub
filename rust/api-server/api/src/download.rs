@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
 use crate::config::Config;
 use log::error;
 use reqwest::Client;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -16,7 +16,12 @@ pub enum DownloadSubcommand {
     Schema,
 }
 
-pub async fn download_desc_tables(client: &Client, storage_path: &Path, config: &Config, tables: Vec<String>) {
+pub async fn download_desc_tables(
+    client: &Client,
+    storage_path: &Path,
+    config: &Config,
+    tables: Vec<String>,
+) {
     for table in &tables {
         let desc_result = download_tables(client, table, config, storage_path, "desc").await;
 
@@ -26,7 +31,12 @@ pub async fn download_desc_tables(client: &Client, storage_path: &Path, config: 
     }
 }
 
-pub async fn download_state_tables(client: &Client, storage_path: &Path, config: &Config, tables: Vec<String>) {
+pub async fn download_state_tables(
+    client: &Client,
+    storage_path: &Path,
+    config: &Config,
+    tables: Vec<String>,
+) {
     for table in &tables {
         let state_result = download_tables(client, table, config, storage_path, "state").await;
 
@@ -36,7 +46,12 @@ pub async fn download_state_tables(client: &Client, storage_path: &Path, config:
     }
 }
 
-pub async fn download_rest_tables(client: &Client, storage_path: &Path, config: &Config, tables: Vec<String>) {
+pub async fn download_rest_tables(
+    client: &Client,
+    storage_path: &Path,
+    config: &Config,
+    tables: Vec<String>,
+) {
     for table in &tables {
         let rest_result = download_tables(client, table, config, storage_path, "rest").await;
 
@@ -51,13 +66,9 @@ pub async fn download_all_tables(
     client: &Client,
     storage_path: &Path,
     config: &Config,
-    remote_schema: bool
+    remote_schema: bool,
 ) {
-    let (
-        desc_table,
-        state_table,
-        rest_table
-    ) = if remote_schema {
+    let (desc_table, state_table, rest_table) = if remote_schema {
         let schema = download_schema(client, config, storage_path, false).await;
 
         if let Err(error) = &schema {
@@ -86,9 +97,21 @@ pub async fn download_all_tables(
         }
 
         (
-            map.get("desc").unwrap().iter().map(|table| table.to_owned()).collect(),
-            map.get("state").unwrap().iter().map(|table| table.to_owned()).collect(),
-            map.get("rest").unwrap().iter().map(|table| table.to_owned()).collect(),
+            map.get("desc")
+                .unwrap()
+                .iter()
+                .map(|table| table.to_owned())
+                .collect(),
+            map.get("state")
+                .unwrap()
+                .iter()
+                .map(|table| table.to_owned())
+                .collect(),
+            map.get("rest")
+                .unwrap()
+                .iter()
+                .map(|table| table.to_owned())
+                .collect(),
         )
     } else {
         (
@@ -97,8 +120,6 @@ pub async fn download_all_tables(
             config.download.rest_tables.clone(),
         )
     };
-
-
 
     match download_subcommand {
         DownloadSubcommand::All => {
