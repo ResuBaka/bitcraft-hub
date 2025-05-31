@@ -1,14 +1,13 @@
 use super::module_bindings::*;
+use crate::AppState;
 use crate::config::{Config, SpacetimeDbConfig};
-use crate::{
-    AppState, buildings, cargo_desc, claim_tech_state, claims, collectible_desc, deployable_state,
-    inventory, items, leaderboard, player_state, skill_descriptions, vault_state,
-};
 use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
 use axum::http::HeaderMap;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
-use entity::mobile_entity_state;
+use entity::{
+    cargo_desc, item_desc, mobile_entity_state, vault_state_collectibles,
+};
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, StreamExt, TryStreamExt};
@@ -102,6 +101,10 @@ fn connect_to_db_logic(
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
     player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
     experience_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ExperienceState>>,
+    inventory_state_tx: &UnboundedSender<SpacetimeUpdateMessages<InventoryState>>,
+    item_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemDesc>>,
+    cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
+    vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,
 ) {
     let ctx = connect_to_db(&database, config.spacetimedb_url().as_ref());
     let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
@@ -197,7 +200,6 @@ fn connect_to_db_logic(
     let temp_experience_state_tx = experience_state_tx.clone();
     ctx.db.experience_state().on_update(
         move |_ctx: &EventContext, old: &ExperienceState, new: &ExperienceState| {
-            tracing::info!("good update for experience_state");
             temp_experience_state_tx
                 .send(SpacetimeUpdateMessages::Update {
                     old: old.clone(),
@@ -225,13 +227,134 @@ fn connect_to_db_logic(
                 .unwrap()
         });
 
+    let temp_inventory_state_tx = inventory_state_tx.clone();
+    ctx.db.inventory_state().on_update(
+        move |_ctx: &EventContext, old: &InventoryState, new: &InventoryState| {
+            temp_inventory_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_inventory_state_tx = inventory_state_tx.clone();
+    ctx.db
+        .inventory_state()
+        .on_insert(move |_ctx: &EventContext, new: &InventoryState| {
+            tracing::info!("good update for item_desc");
+            temp_inventory_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_inventory_state_tx = inventory_state_tx.clone();
+    ctx.db
+        .inventory_state()
+        .on_delete(move |_ctx: &EventContext, new: &InventoryState| {
+            temp_inventory_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_item_desc_tx = item_desc_tx.clone();
+    ctx.db
+        .item_desc()
+        .on_update(move |_ctx: &EventContext, old: &ItemDesc, new: &ItemDesc| {
+            temp_item_desc_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        });
+    let temp_item_desc_tx = item_desc_tx.clone();
+    ctx.db
+        .item_desc()
+        .on_insert(move |_ctx: &EventContext, new: &ItemDesc| {
+            temp_item_desc_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_item_desc_tx = item_desc_tx.clone();
+    ctx.db
+        .item_desc()
+        .on_delete(move |_ctx: &EventContext, new: &ItemDesc| {
+            temp_item_desc_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_cargo_desc_tx = cargo_desc_tx.clone();
+    ctx.db.cargo_desc().on_update(
+        move |_ctx: &EventContext, old: &CargoDesc, new: &CargoDesc| {
+            temp_cargo_desc_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_cargo_desc_tx = cargo_desc_tx.clone();
+    ctx.db
+        .cargo_desc()
+        .on_insert(move |_ctx: &EventContext, new: &CargoDesc| {
+            temp_cargo_desc_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_cargo_desc_tx = cargo_desc_tx.clone();
+    ctx.db
+        .cargo_desc()
+        .on_delete(move |_ctx: &EventContext, new: &CargoDesc| {
+            temp_cargo_desc_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
+    ctx.db.vault_state().on_update(
+        move |_ctx: &EventContext, old: &VaultState, new: &VaultState| {
+            temp_vault_state_collectibles_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
+    ctx.db
+        .vault_state()
+        .on_insert(move |_ctx: &EventContext, new: &VaultState| {
+            temp_vault_state_collectibles_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
+    ctx.db
+        .vault_state()
+        .on_delete(move |_ctx: &EventContext, new: &VaultState| {
+            temp_vault_state_collectibles_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
     let tables_to_subscribe = vec![
         // "user_state",
         // "mobile_entity_state",
         // "claim_tile_state",
         // "combat_action_desc",
-        // "item_desc",
-        // "cargo_desc",
+        "item_desc",
+        "cargo_desc",
         // "player_action_state",
         // "crafting_recipe_desc",
         // "action_state",
@@ -240,7 +363,7 @@ fn connect_to_db_logic(
         "player_username_state",
         // "building_desc",
         // "building_state",
-        // "vault_state",
+        "vault_state_collectibles",
         "experience_state",
         // "claim_tech_state",
         // "claim_state",
@@ -250,16 +373,10 @@ fn connect_to_db_logic(
         // "collectible_desc",
         // "claim_tech_desc",
         // "claim_description_state", -> claim_state
-        // "mobile_entity_state",
         // "claim_tile_state",
-        // "crafting_recipe_desc",
-        // "player_action_state",
-        // "action_state",
         // "location_state",
-        // "inventory_state",
+        "inventory_state",
     ];
-
-    let temp_tx = mobile_entity_state_tx.clone();
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {})
         .on_error(on_sub_error)
@@ -291,6 +408,15 @@ pub fn start_websocket_bitcraft_logic(
 
         let (experience_state_tx, experience_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
+        let (inventory_state_tx, inventory_state_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let (item_desc_tx, item_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let (cargo_desc_tx, cargo_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let (vault_state_collectibles_tx, vault_state_collectibles_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+
         config.spacetimedb.databases.iter().for_each(|database| {
             connect_to_db_logic(
                 &config,
@@ -299,6 +425,10 @@ pub fn start_websocket_bitcraft_logic(
                 &player_state_tx,
                 &player_username_state_tx,
                 &experience_state_tx,
+                &inventory_state_tx,
+                &item_desc_tx,
+                &cargo_desc_tx,
+                &vault_state_collectibles_tx,
             )
         });
         start_worker_mobile_entity_state(
@@ -324,6 +454,34 @@ pub fn start_websocket_bitcraft_logic(
             broadcast_tx.clone(),
             global_app_state.clone(),
             experience_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_inventory_state(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            inventory_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_vault_state_collectibles(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            vault_state_collectibles_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_item_desc(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            item_desc_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_cargo_desc(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            cargo_desc_rx,
             2000,
             Duration::from_millis(25),
         );
@@ -377,7 +535,148 @@ impl From<MobileEntityState> for ::entity::mobile_entity_state::Model {
         }
     }
 }
+impl From<cargo_desc_type::CargoDesc> for entity::cargo_desc::Model {
+    fn from(value: cargo_desc_type::CargoDesc) -> Self {
+        let rarity = match &value.rarity {
+            Rarity::Default => entity::item_desc::Rarity::Default,
+            Rarity::Common => entity::item_desc::Rarity::Common,
+            Rarity::Uncommon => entity::item_desc::Rarity::Uncommon,
+            Rarity::Rare => entity::item_desc::Rarity::Rare,
+            Rarity::Epic => entity::item_desc::Rarity::Epic,
+            Rarity::Legendary => entity::item_desc::Rarity::Legendary,
+            Rarity::Mythic => entity::item_desc::Rarity::Mythic,
+        };
+        ::entity::cargo_desc::Model {
+            id: value.id,
+            name: value.name,
+            description: value.description,
+            volume: value.volume,
+            secondary_knowledge_id: value.secondary_knowledge_id,
+            model_asset_name: value.model_asset_name,
+            icon_asset_name: value.icon_asset_name,
+            carried_model_asset_name: value.carried_model_asset_name,
+            pick_up_animation_start: value.pick_up_animation_start,
+            pick_up_animation_end: value.pick_up_animation_end,
+            drop_animation_start: value.drop_animation_start,
+            drop_animation_end: value.drop_animation_end,
+            pick_up_time: value.pick_up_time,
+            place_time: value.place_time,
+            animator_state: value.animator_state,
+            movement_modifier: value.movement_modifier,
+            blocks_path: value.blocks_path,
+            on_destroy_yield_cargos: value.on_destroy_yield_cargos,
+            despawn_time: value.despawn_time,
+            tier: value.tier,
+            tag: value.tag,
+            rarity: rarity,
+            not_pickupable: value.not_pickupable,
+        }
+    }
+}
+impl From<item_desc_type::ItemDesc> for entity::item_desc::Model {
+    fn from(value: item_desc_type::ItemDesc) -> Self {
+        let rarity = match &value.rarity {
+            Rarity::Default => entity::item_desc::Rarity::Default,
+            Rarity::Common => entity::item_desc::Rarity::Common,
+            Rarity::Uncommon => entity::item_desc::Rarity::Uncommon,
+            Rarity::Rare => entity::item_desc::Rarity::Rare,
+            Rarity::Epic => entity::item_desc::Rarity::Epic,
+            Rarity::Legendary => entity::item_desc::Rarity::Legendary,
+            Rarity::Mythic => entity::item_desc::Rarity::Mythic,
+        };
+        ::entity::item_desc::Model {
+            id: value.id,
+            name: value.name,
+            description: value.description,
+            volume: value.volume,
+            durability: value.durability,
+            convert_to_on_durability_zero: value.convert_to_on_durability_zero,
+            secondary_knowledge_id: value.secondary_knowledge_id,
+            model_asset_name: value.model_asset_name,
+            icon_asset_name: value.icon_asset_name,
+            tier: value.tier,
+            tag: value.tag,
+            rarity: rarity,
+            compendium_entry: value.compendium_entry,
+            item_list_id: value.item_list_id,
+        }
+    }
+}
+impl From<Pocket> for ::entity::inventory::Pocket {
+    fn from(value: Pocket) -> Self {
+        let contents = match &value.contents {
+            Some(item_stack) => Some(item_stack.clone().into()),
+            None => None,
+        };
+        ::entity::inventory::Pocket {
+            volume: value.volume,
+            contents: contents,
+            locked: value.locked,
+        }
+    }
+}
 
+impl From<ItemStack> for ::entity::inventory::ItemStack {
+    fn from(value: ItemStack) -> Self {
+        ::entity::inventory::ItemStack {
+            item_id: value.item_id,
+            quantity: value.quantity as i64,
+            item_type: value.item_type.into(),
+            durability: value.durability,
+        }
+    }
+}
+impl From<ItemType> for ::entity::inventory::ItemType {
+    fn from(value: ItemType) -> Self {
+        match &value {
+            ItemType::Cargo => ::entity::inventory::ItemType::Cargo,
+            ItemType::Item => ::entity::inventory::ItemType::Item,
+        }
+    }
+}
+
+impl From<InventoryState> for ::entity::inventory::Model {
+    fn from(value: InventoryState) -> Self {
+        let pockets: Vec<entity::inventory::Pocket> = value
+            .pockets
+            .iter()
+            .map(|content| content.clone().into())
+            .collect();
+
+        ::entity::inventory::Model {
+            entity_id: value.entity_id as i64,
+            pockets: pockets,
+            inventory_index: value.inventory_index,
+            cargo_index: value.cargo_index,
+            owner_entity_id: value.owner_entity_id as i64,
+            player_owner_entity_id: value.player_owner_entity_id as i64,
+        }
+    }
+}
+
+impl From<VaultCollectible> for entity::vault_state_collectibles::RawVaultStateCollectibles {
+    fn from(value: VaultCollectible) -> Self {
+        entity::vault_state_collectibles::RawVaultStateCollectibles {
+            id: value.id,
+            activated: value.activated,
+            count: value.count,
+        }
+    }
+
+}
+impl  From<vault_state_type::VaultState> for entity::vault_state_collectibles::RawVaultState {
+     fn from(value: VaultState) -> Self {
+        let collectibles: Vec<entity::vault_state_collectibles::RawVaultStateCollectibles> = value
+            .collectibles
+            .iter()
+            .map(|content| content.clone().into())
+            .collect();
+        ::entity::vault_state_collectibles::RawVaultState {
+            entity_id: value.entity_id as i64,
+            collectibles: collectibles,
+        }
+     }
+}
 impl From<PlayerState> for ::entity::player_state::Model {
     fn from(value: PlayerState) -> Self {
         let teleport_location = ::entity::player_state::TeleportLocation {
@@ -467,6 +766,215 @@ fn start_worker_mobile_entity_state(
     });
 }
 
+fn start_worker_item_desc(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ItemDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(item_desc::Column::Id)
+            .update_columns([
+                item_desc::Column::Name,
+                item_desc::Column::Description,
+                item_desc::Column::Volume,
+                item_desc::Column::Durability,
+                item_desc::Column::ConvertToOnDurabilityZero,
+                item_desc::Column::SecondaryKnowledgeId,
+                item_desc::Column::ModelAssetName,
+                item_desc::Column::IconAssetName,
+                item_desc::Column::Tier,
+                item_desc::Column::Tag,
+                item_desc::Column::Rarity,
+                item_desc::Column::CompendiumEntry,
+                item_desc::Column::ItemListId,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::item_desc::Model = new.into();
+                                global_app_state.item_desc.insert(model.id, model.clone());
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::item_desc::Model = new.into();
+                                global_app_state.item_desc.insert(model.id, model.clone());
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::item_desc::Model = delete.into();
+                                let id = model.id;
+                                global_app_state.item_desc.remove(&id);
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(item_desc = id, "Could not delete item_desc");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::item_desc::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_cargo_desc(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<CargoDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(cargo_desc::Column::Id)
+            .update_columns([
+                cargo_desc::Column::Name,
+                cargo_desc::Column::Description,
+                cargo_desc::Column::Volume,
+                cargo_desc::Column::SecondaryKnowledgeId,
+                cargo_desc::Column::ModelAssetName,
+                cargo_desc::Column::IconAssetName,
+                cargo_desc::Column::CarriedModelAssetName,
+                cargo_desc::Column::PickUpAnimationStart,
+                cargo_desc::Column::PickUpAnimationEnd,
+                cargo_desc::Column::DropAnimationStart,
+                cargo_desc::Column::DropAnimationEnd,
+                cargo_desc::Column::PickUpTime,
+                cargo_desc::Column::PlaceTime,
+                cargo_desc::Column::AnimatorState,
+                cargo_desc::Column::MovementModifier,
+                cargo_desc::Column::BlocksPath,
+                cargo_desc::Column::OnDestroyYieldCargos,
+                cargo_desc::Column::DespawnTime,
+                cargo_desc::Column::Tier,
+                cargo_desc::Column::Tag,
+                cargo_desc::Column::Rarity,
+                cargo_desc::Column::NotPickupable,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::cargo_desc::Model = new.into();
+                                global_app_state.cargo_desc.insert(model.id, model.clone());
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::cargo_desc::Model = new.into();
+                                global_app_state.cargo_desc.insert(model.id, model.clone());
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::cargo_desc::Model = delete.into();
+                                let id = model.id;
+                                global_app_state.cargo_desc.remove(&id);
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(cargo_desc = id, "Could not delete cargo_desc");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::cargo_desc::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
 fn start_worker_player_state(
     broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
@@ -539,7 +1047,7 @@ fn start_worker_player_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!("Processing {} messages in batch", messages.len());
+                //tracing::info!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::player_state::Entity::insert_many(
                     messages
                         .iter()
@@ -625,7 +1133,7 @@ fn start_worker_player_username_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!("Processing {} messages in batch", messages.len());
+                //tracing::info!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::player_username_state::Entity::insert_many(
                     messages
                         .iter()
@@ -732,8 +1240,201 @@ fn start_worker_experience_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!("Processing {} messages in batch", messages.len());
+                //tracing::info!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::experience_state::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_inventory_state(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<InventoryState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(::entity::inventory::Column::EntityId)
+            .update_columns([
+                ::entity::inventory::Column::Pockets,
+                ::entity::inventory::Column::InventoryIndex,
+                ::entity::inventory::Column::CargoIndex,
+                ::entity::inventory::Column::OwnerEntityId,
+                ::entity::inventory::Column::PlayerOwnerEntityId,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let model: ::entity::inventory::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::inventory::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::inventory::Model = delete.into();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(player_username_state = id, "Could not delete player_username_state");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::inventory::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_vault_state_collectibles(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<VaultState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::columns([
+            vault_state_collectibles::Column::EntityId,
+            vault_state_collectibles::Column::Id,
+        ])
+        .update_columns([
+            vault_state_collectibles::Column::Activated,
+            vault_state_collectibles::Column::Count,
+        ])
+        .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
+                               let models = raw_model.to_model_collectibles();
+                                for model in models {
+                                    messages.push(model);
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
+                                let models = raw_model.to_model_collectibles();
+                                for model in models {
+                                    messages.push(model);
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let raw_model: ::entity::vault_state_collectibles::RawVaultState = delete.into();
+                                let models= raw_model.to_model_collectibles();
+                                for model in models {
+
+                                    let id = model.entity_id;
+
+                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                        messages.remove(index);
+                                    }
+
+                                    if let Err(error) = model.delete(&global_app_state.conn).await {
+                                        tracing::error!(vault_state_collectibles = id, "Could not delete vault_state_collectibles");
+                                    }
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::vault_state_collectibles::Entity::insert_many(
                     messages
                         .iter()
                         .map(|value| value.clone().into_active_model())
@@ -1231,13 +1932,13 @@ fn start_worker_experience_state(
 //                                 }
 //                             }
 //
-//                             if table.table_name.as_ref() == "vault_state" {
+//                             if table.table_name.as_ref() == "vault_state_collectibles" {
 //                                 let result =
-//                                     vault_state::handle_initial_subscription(&db, table).await;
+//                                     vault_state_collectibles::handle_initial_subscription(&db, table).await;
 //
 //                                 if result.is_err() {
 //                                     error!(
-//                                         "vault_state initial subscription failed: {:?}",
+//                                         "vault_state_collectibles initial subscription failed: {:?}",
 //                                         result.err()
 //                                     );
 //                                 }
@@ -1647,11 +2348,11 @@ fn start_worker_experience_state(
 //                     }
 //                 }
 //
-//                 if table_name == "vault_state" {
-//                     let result = vault_state::handle_transaction_update(&db, table).await;
+//                 if table_name == "vault_state_collectibles" {
+//                     let result = vault_state_collectibles::handle_transaction_update(&db, table).await;
 //
 //                     if result.is_err() {
-//                         error!("vault_state transaction update failed: {:?}", result.err());
+//                         error!("vault_state_collectibles transaction update failed: {:?}", result.err());
 //                     }
 //                 }
 //

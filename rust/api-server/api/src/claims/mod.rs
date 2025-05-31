@@ -244,13 +244,13 @@ pub(crate) async fn get_claim(
         .item_desc
         .iter()
         .map(|item| (item.id, item.to_owned()))
-        .collect::<HashMap<i64, item_desc::Model>>();
+        .collect::<HashMap<i32, item_desc::Model>>();
 
     let cargos = state
         .cargo_desc
         .iter()
         .map(|cargo| (cargo.id, cargo.to_owned()))
-        .collect::<HashMap<i64, cargo_desc::Model>>();
+        .collect::<HashMap<i32, cargo_desc::Model>>();
 
     let mut claim = {
         let claim_tech_state = claim_tech_states
@@ -1044,18 +1044,17 @@ pub(crate) async fn list_claims(
 
 pub(crate) fn get_merged_inventories(
     inventorys: Vec<inventory::Model>,
-    items: &HashMap<i64, item_desc::Model>,
-    cargos: &HashMap<i64, cargo_desc::Model>,
+    items: &HashMap<i32, item_desc::Model>,
+    cargos: &HashMap<i32, cargo_desc::Model>,
 ) -> Vec<entity::inventory::ExpendedRefrence> {
     let mut hashmap: HashMap<
-        (i64, entity::inventory::ItemType),
+        (i32, entity::inventory::ItemType),
         entity::inventory::ExpendedRefrence,
     > = HashMap::new();
 
     for inventory in inventorys {
         for pocket in inventory.pockets {
-            let (_, content) = pocket.contents;
-            let resolved = resolve_contents(&content, items, cargos);
+            let resolved = resolve_contents(&pocket.contents, items, cargos);
 
             if resolved.is_none() {
                 continue;
