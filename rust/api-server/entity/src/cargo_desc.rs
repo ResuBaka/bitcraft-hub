@@ -3,11 +3,13 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::item_desc::Rarity;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "cargo_desc")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub description: String,
     pub volume: i32,
@@ -27,12 +29,12 @@ pub struct Model {
     #[sea_orm(column_type = "Float")]
     pub movement_modifier: f32,
     pub blocks_path: bool,
-    pub on_destroy_yield_cargos: Json,
+    pub on_destroy_yield_cargos: Vec<i32>,
     #[sea_orm(column_type = "Float")]
     pub despawn_time: f32,
     pub tier: i32,
     pub tag: String,
-    pub rarity: Json,
+    pub rarity: Rarity,
     pub not_pickupable: bool,
 }
 

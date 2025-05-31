@@ -152,26 +152,11 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
     for inventory in &inventorys {
         for pocket in &inventory.pockets {
-            if pocket.contents.1.is_none() {
-                continue;
-            }
-
-            let (_item_id, refrence) = pocket.clone().contents;
-            if refrence.is_some() {
-                let refrence = refrence.clone().unwrap();
-
-                let content = serde_json::from_value::<Content>(refrence);
-
-                if content.is_ok() {
-                    let content = content.unwrap();
-
-                    let item_type = content.get_item_type();
-
-                    if item_type == ItemType::Item {
-                        item_ids.push(content.item_id);
-                    } else {
-                        cargo_ids.push(content.item_id);
-                    }
+            if let Some(contents) = pocket.contents.clone() {
+                if contents.item_type == ItemType::Item {
+                    item_ids.push(contents.item_id);
+                } else {
+                    cargo_ids.push(contents.item_id);
                 }
             }
         }
@@ -189,7 +174,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
             Some((item.id, item.clone()))
         })
-        .collect::<HashMap<i64, item_desc::Model>>();
+        .collect::<HashMap<i32, item_desc::Model>>();
 
     let cargo_descs_map = state
         .cargo_desc
@@ -201,7 +186,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
             Some((cargo.id, cargo.clone()))
         })
-        .collect::<HashMap<i64, cargo_desc::Model>>();
+        .collect::<HashMap<i32, cargo_desc::Model>>();
 
     for inventory in inventorys.into_iter() {
         let mut pockets = vec![];
@@ -348,59 +333,43 @@ async fn db_insert_inventory_state(
 }
 
 pub(crate) fn resolve_pocket(
-    pocket: &inventory::ItemSlot,
-    item_desc: &HashMap<i64, item_desc::Model>,
-    cargo_desc: &HashMap<i64, cargo_desc::Model>,
+    pocket: &inventory::Pocket,
+    item_desc: &HashMap<i32, item_desc::Model>,
+    cargo_desc: &HashMap<i32, cargo_desc::Model>,
 ) -> ItemSlotResolved {
-    let (_, refrence) = pocket.clone().contents;
-    let contents = resolve_contents(&refrence, item_desc, cargo_desc);
+    let contents = resolve_contents(&pocket.contents, item_desc, cargo_desc);
     ItemSlotResolved {
-        volume: pocket.volume,
+        volume: pocket.volume as i64,
         contents,
         locked: pocket.locked,
     }
 }
 
 pub(crate) fn resolve_contents(
-    contents: &Option<sea_orm::JsonValue>,
-    item_desc: &HashMap<i64, item_desc::Model>,
-    cargo_desc: &HashMap<i64, cargo_desc::Model>,
+    contents: &Option<inventory::ItemStack>,
+    item_desc: &HashMap<i32, item_desc::Model>,
+    cargo_desc: &HashMap<i32, cargo_desc::Model>,
 ) -> Option<ExpendedRefrence> {
-    if contents.is_none() {
-        return None;
+    if let Some(content) = contents {
+        if content.item_type == ItemType::Item {
+            return Some(ExpendedRefrence {
+                item_id: content.item_id,
+                item: ItemExpended::Item(item_desc.get(&content.item_id).unwrap().clone()),
+                quantity: content.quantity,
+                item_type: ItemType::Item,
+                durability: content.durability,
+            });
+        } else {
+            return Some(ExpendedRefrence {
+                item_id: content.item_id,
+                item: ItemExpended::Cargo(cargo_desc.get(&content.item_id).unwrap().clone()),
+                quantity: content.quantity,
+                item_type: ItemType::Cargo,
+                durability: content.durability,
+            });
+        }
     }
-
-    let refrence = contents.clone().unwrap();
-
-    let content = serde_json::from_value::<Content>(refrence.clone());
-
-    if content.is_err() {
-        return None;
-    }
-
-    let content = content.unwrap();
-
-    let item_type = content.get_item_type();
-
-    let durability = content.get_durability();
-
-    if item_type == ItemType::Item {
-        Some(ExpendedRefrence {
-            item_id: content.item_id,
-            item: ItemExpended::Item(item_desc.get(&content.item_id).unwrap().clone()),
-            quantity: content.quantity,
-            item_type: ItemType::Item,
-            durability,
-        })
-    } else {
-        Some(ExpendedRefrence {
-            item_id: content.item_id,
-            item: ItemExpended::Cargo(cargo_desc.get(&content.item_id).unwrap().clone()),
-            quantity: content.quantity,
-            item_type: ItemType::Cargo,
-            durability,
-        })
-    }
+    return None;
 }
 //
 // pub(crate) async fn handle_initial_subscription(
