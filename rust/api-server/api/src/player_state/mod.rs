@@ -3,8 +3,10 @@ use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use entity::player_state::TeleportLocation;
 use entity::player_username_state::Model;
-use entity::{player_state, player_username_state};
+use entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
+use entity::{mobile_entity_state, player_state, player_username_state};
 use log::{debug, error, info};
 use migration::OnConflict;
 use sea_orm::IntoActiveModel;
@@ -85,7 +87,8 @@ pub async fn list_players(
     }))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct PlayersResponse {
     pub players: Vec<player_state::PlayerStateMerged>,
     #[serde(rename = "perPage")]
@@ -93,11 +96,30 @@ pub struct PlayersResponse {
     pub total: u64,
     pub page: u64,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FindPlayerByIdResponse {
+    pub teleport_location: TeleportLocation,
+    pub entity_id: i64,
+    pub time_played: i32,
+    pub session_start_timestamp: i32,
+    pub time_signed_in: i32,
+    pub sign_in_timestamp: i32,
+    pub signed_in: bool,
+    pub traveler_tasks_expiration: i32,
+    pub username: String,
+    pub deployables: Vec<VaultStateCollectibleWithDesc>,
+    pub claim_id: Option<u64>,
+    pub claim_ids: Vec<u64>,
+    pub player_location: Option<mobile_entity_state::Model>,
+    pub player_action_state: Option<String>,
+    pub player_action_state2: Option<entity::player_action_state::Model>,
+    //pub current_action_state: Option<entity::player_action_state::Model>
+}
 
 pub async fn find_player_by_id(
     State(state): State<std::sync::Arc<AppState>>,
     Path(id): Path<i64>,
-) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<FindPlayerByIdResponse>, (StatusCode, &'static str)> {
     let player = player_state::Entity::find_by_id(id)
         .one(&state.conn)
         .await
@@ -154,31 +176,33 @@ pub async fn find_player_by_id(
         .player_action_state
         .get(&(id as u64))
         .map(|player_action_state| player_action_state.action_type.get_action_name());
-    let current_action_state = state.action_state.get(&(id as u64));
+
+    //TODO FIX IT SO that it works with the correct type
+    //let current_action_state = state.action_state.get(&(id as u64));
 
     let claim_ids = state
         .player_to_claim_id_cache
         .get(&(player.entity_id as u64))
         .map_or(vec![], |ids| ids.iter().map(|id| *id).collect());
 
-    Ok(axum_codec::Codec(json!({
-        "entity_id": player.entity_id,
-        "time_played": player.time_played,
-        "session_start_timestamp": player.session_start_timestamp,
-        "time_signed_in": player.time_signed_in,
-        "sign_in_timestamp": player.sign_in_timestamp,
-        "signed_in": player.signed_in,
-        "teleport_location": player.teleport_location,
-        "traveler_tasks_expiration": player.traveler_tasks_expiration,
-        "username": player_username,
-        "deployables": deployables,
-        "player_location": player_location,
-        "claim_id": claim_id,
-        "claim_ids": claim_ids,
-        "player_action_state": player_action_state,
-        "player_action_state2": plyer_action_state2,
-        "current_action_state": current_action_state,
-    })))
+    Ok(axum_codec::Codec(FindPlayerByIdResponse {
+        entity_id: player.entity_id,
+        time_played: player.time_played,
+        session_start_timestamp: player.session_start_timestamp,
+        time_signed_in: player.time_signed_in,
+        sign_in_timestamp: player.sign_in_timestamp,
+        signed_in: player.signed_in,
+        teleport_location: player.teleport_location,
+        traveler_tasks_expiration: player.traveler_tasks_expiration,
+        username: player_username,
+        deployables: deployables,
+        player_location: player_location,
+        claim_id: claim_id,
+        claim_ids: claim_ids,
+        player_action_state: player_action_state,
+        player_action_state2: plyer_action_state2,
+        //current_action_state: current_action_state,
+    }))
 }
 
 #[allow(dead_code)]

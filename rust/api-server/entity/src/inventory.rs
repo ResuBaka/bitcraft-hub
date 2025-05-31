@@ -5,17 +5,32 @@ use sea_orm::entity::prelude::*;
 use sea_orm::{FromJsonQueryResult, JsonValue};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "inventory")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     #[sea_orm(column_type = "Json")]
-    pub pockets: Vec<ItemSlot>,
+    pub pockets: Vec<Pocket>,
     pub inventory_index: i32,
     pub cargo_index: i32,
     pub owner_entity_id: i64,
     pub player_owner_entity_id: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+pub struct Pocket {
+    pub volume: i32,
+    pub contents: Option<ItemStack>,
+    pub locked: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+pub struct ItemStack {
+    pub item_id: i32,
+    pub quantity: i64,
+    pub item_type: ItemType,
+    pub durability: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -50,15 +65,15 @@ pub struct ItemSlot {
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct ItemPocket {
-    pub item_id: i64,
+    pub item_id: i32,
     pub quantity: i64,
     pub item_type: ItemType,
-    pub durability: Option<i64>,
+    pub durability: Option<i32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct Content {
-    pub item_id: i64,
+    pub item_id: i32,
     pub quantity: i64,
     pub item_type: JsonValue,
     pub durability: JsonValue,
@@ -108,9 +123,9 @@ pub enum ItemExpended {
 
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct ExpendedRefrence {
-    pub item_id: i64,
+    pub item_id: i32,
     pub item: ItemExpended,
     pub quantity: i64,
     pub item_type: ItemType,
-    pub durability: Option<i64>,
+    pub durability: Option<i32>,
 }

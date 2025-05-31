@@ -73,7 +73,7 @@ pub(crate) async fn import_cargo_description(
                         buffer_before_insert
                             .iter()
                             .map(|cargo_desc| cargo_desc.id)
-                            .collect::<Vec<i64>>(),
+                            .collect::<Vec<i32>>(),
                     ),
                 )
                 .all(conn)
@@ -95,7 +95,7 @@ pub(crate) async fn import_cargo_description(
             let cargo_desc_from_db_map = cargo_desc_from_db
                 .into_iter()
                 .map(|cargo_desc| (cargo_desc.id, cargo_desc))
-                .collect::<HashMap<i64, cargo_desc::Model>>();
+                .collect::<HashMap<i32, cargo_desc::Model>>();
 
             let things_to_insert = buffer_before_insert
                 .iter()
@@ -141,7 +141,7 @@ pub(crate) async fn import_cargo_description(
                     buffer_before_insert
                         .iter()
                         .map(|cargo_desc| cargo_desc.id)
-                        .collect::<Vec<i64>>(),
+                        .collect::<Vec<i32>>(),
                 ),
             )
             .all(conn)
@@ -150,7 +150,7 @@ pub(crate) async fn import_cargo_description(
         let cargo_desc_from_db_map = cargo_desc_from_db
             .into_iter()
             .map(|cargo_desc| (cargo_desc.id, cargo_desc))
-            .collect::<HashMap<i64, cargo_desc::Model>>();
+            .collect::<HashMap<i32, cargo_desc::Model>>();
 
         let things_to_insert = buffer_before_insert
             .iter()
@@ -327,7 +327,7 @@ async fn db_insert_cargo_descs(
                 buffer_before_insert
                     .iter()
                     .map(|cargo_desc| cargo_desc.id)
-                    .collect::<Vec<i64>>(),
+                    .collect::<Vec<i32>>(),
             ),
         )
         .all(conn)
@@ -336,7 +336,7 @@ async fn db_insert_cargo_descs(
     let cargo_descs_from_db_map = cargo_descs_from_db
         .into_iter()
         .map(|cargo_desc| (cargo_desc.id, cargo_desc))
-        .collect::<HashMap<i64, cargo_desc::Model>>();
+        .collect::<HashMap<i32, cargo_desc::Model>>();
 
     let things_to_insert = buffer_before_insert
         .iter()
