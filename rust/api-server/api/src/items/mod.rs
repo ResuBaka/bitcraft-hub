@@ -144,7 +144,7 @@ pub(crate) async fn import_items(
                         buffer_before_insert
                             .iter()
                             .map(|item| item.id)
-                            .collect::<Vec<i64>>(),
+                            .collect::<Vec<i32>>(),
                     ),
                 )
                 .all(conn)
@@ -166,7 +166,7 @@ pub(crate) async fn import_items(
             let items_from_db_map = items_from_db
                 .into_iter()
                 .map(|item| (item.id, item))
-                .collect::<HashMap<i64, item_desc::Model>>();
+                .collect::<HashMap<i32, item_desc::Model>>();
 
             let things_to_insert = buffer_before_insert
                 .iter()
@@ -208,7 +208,7 @@ pub(crate) async fn import_items(
                     buffer_before_insert
                         .iter()
                         .map(|item| item.id)
-                        .collect::<Vec<i64>>(),
+                        .collect::<Vec<i32>>(),
                 ),
             )
             .all(conn)
@@ -217,7 +217,7 @@ pub(crate) async fn import_items(
         let items_from_db_map = items_from_db
             .into_iter()
             .map(|item| (item.id, item))
-            .collect::<HashMap<i64, item_desc::Model>>();
+            .collect::<HashMap<i32, item_desc::Model>>();
 
         let things_to_insert = buffer_before_insert
             .iter()
@@ -331,7 +331,7 @@ async fn db_insert_item_descs(
                 buffer_before_insert
                     .iter()
                     .map(|item_desc| item_desc.id)
-                    .collect::<Vec<i64>>(),
+                    .collect::<Vec<i32>>(),
             ),
         )
         .all(conn)
@@ -340,7 +340,7 @@ async fn db_insert_item_descs(
     let item_descs_from_db_map = item_descs_from_db
         .into_iter()
         .map(|item_desc| (item_desc.id, item_desc))
-        .collect::<HashMap<i64, item_desc::Model>>();
+        .collect::<HashMap<i32, item_desc::Model>>();
 
     let things_to_insert = buffer_before_insert
         .iter()

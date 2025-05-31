@@ -35,11 +35,28 @@ impl RawVaultStateCollectibles {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VaultStateCollectibleWithDesc {
     pub entity_id: i64,
     pub id: i32,
     pub activated: bool,
     pub count: i32,
     pub collectible_desc: collectible_desc::Model,
+}
+
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RawVaultState {
+    pub entity_id: i64,
+    pub collectibles: Vec<RawVaultStateCollectibles>,
+}
+
+impl RawVaultState {
+    
+    pub fn to_model_collectibles(&self) -> Vec<crate::vault_state_collectibles::Model> {
+        self.collectibles
+            .iter()
+            .map(|collectible| collectible.to_model(self.entity_id))
+            .collect()
+    }
 }
