@@ -44,7 +44,6 @@ pub struct VaultStateCollectibleWithDesc {
     pub collectible_desc: collectible_desc::Model,
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawVaultState {
     pub entity_id: i64,
@@ -52,7 +51,6 @@ pub struct RawVaultState {
 }
 
 impl RawVaultState {
-    
     pub fn to_model_collectibles(&self) -> Vec<crate::vault_state_collectibles::Model> {
         self.collectibles
             .iter()
