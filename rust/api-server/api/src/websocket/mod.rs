@@ -6,7 +6,7 @@ use ::entity::user_state;
 use axum::http::HeaderMap;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use entity::{
-    cargo_desc, item_desc, mobile_entity_state, vault_state_collectibles,
+    cargo_desc, deployable_state, item_desc, mobile_entity_state, vault_state_collectibles,
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
@@ -105,6 +105,7 @@ fn connect_to_db_logic(
     item_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemDesc>>,
     cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
     vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,
+    deployable_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DeployableState>>,
 ) {
     let ctx = connect_to_db(&database, config.spacetimedb_url().as_ref());
     let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
@@ -348,6 +349,35 @@ fn connect_to_db_logic(
                 .unwrap()
         });
 
+    let temp_deployable_state_tx = deployable_state_tx.clone();
+    ctx.db.deployable_state().on_update(
+        move |_ctx: &EventContext, old: &DeployableState, new: &DeployableState| {
+            temp_deployable_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_deployable_state_tx = deployable_state_tx.clone();
+    ctx.db
+        .deployable_state()
+        .on_insert(move |_ctx: &EventContext, new: &DeployableState| {
+            temp_deployable_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_deployable_state_tx = deployable_state_tx.clone();
+    ctx.db
+        .deployable_state()
+        .on_delete(move |_ctx: &EventContext, new: &DeployableState| {
+            temp_deployable_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
     let tables_to_subscribe = vec![
         // "user_state",
         // "mobile_entity_state",
@@ -363,13 +393,13 @@ fn connect_to_db_logic(
         "player_username_state",
         // "building_desc",
         // "building_state",
-        "vault_state_collectibles",
+        "vault_state",
         "experience_state",
         // "claim_tech_state",
         // "claim_state",
         // "claim_member_state",
         // "claim_local_state",
-        // "deployable_state",
+        "deployable_state",
         // "collectible_desc",
         // "claim_tech_desc",
         // "claim_description_state", -> claim_state
@@ -417,6 +447,8 @@ pub fn start_websocket_bitcraft_logic(
         let (vault_state_collectibles_tx, vault_state_collectibles_rx) =
             tokio::sync::mpsc::unbounded_channel();
 
+        let (deployable_state_tx, deployable_state_rx) = tokio::sync::mpsc::unbounded_channel();
+
         config.spacetimedb.databases.iter().for_each(|database| {
             connect_to_db_logic(
                 &config,
@@ -429,6 +461,7 @@ pub fn start_websocket_bitcraft_logic(
                 &item_desc_tx,
                 &cargo_desc_tx,
                 &vault_state_collectibles_tx,
+                &deployable_state_tx,
             )
         });
         start_worker_mobile_entity_state(
@@ -482,6 +515,13 @@ pub fn start_websocket_bitcraft_logic(
             broadcast_tx.clone(),
             global_app_state.clone(),
             cargo_desc_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_deployable_state(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            deployable_state_rx,
             2000,
             Duration::from_millis(25),
         );
@@ -662,10 +702,9 @@ impl From<VaultCollectible> for entity::vault_state_collectibles::RawVaultStateC
             count: value.count,
         }
     }
-
 }
-impl  From<vault_state_type::VaultState> for entity::vault_state_collectibles::RawVaultState {
-     fn from(value: VaultState) -> Self {
+impl From<vault_state_type::VaultState> for entity::vault_state_collectibles::RawVaultState {
+    fn from(value: VaultState) -> Self {
         let collectibles: Vec<entity::vault_state_collectibles::RawVaultStateCollectibles> = value
             .collectibles
             .iter()
@@ -675,7 +714,7 @@ impl  From<vault_state_type::VaultState> for entity::vault_state_collectibles::R
             entity_id: value.entity_id as i64,
             collectibles: collectibles,
         }
-     }
+    }
 }
 impl From<PlayerState> for ::entity::player_state::Model {
     fn from(value: PlayerState) -> Self {
@@ -725,7 +764,19 @@ impl From<PlayerUsernameState> for ::entity::player_username_state::Model {
         }
     }
 }
-
+impl From<DeployableState> for entity::deployable_state::Model {
+    fn from(value: DeployableState) -> Self {
+        ::entity::deployable_state::Model {
+            entity_id: value.entity_id as i64,
+            owner_id: value.owner_id as i64,
+            claim_entity_id: value.claim_entity_id as i64,
+            direction: value.direction,
+            deployable_description_id: value.deployable_description_id,
+            nickname: value.nickname,
+            hidden: value.hidden,
+        }
+    }
+}
 fn start_worker_mobile_entity_state(
     broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
@@ -1334,6 +1385,99 @@ fn start_worker_inventory_state(
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::inventory::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_deployable_state(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<DeployableState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(deployable_state::Column::EntityId)
+            .update_columns([
+                deployable_state::Column::OwnerId,
+                deployable_state::Column::ClaimEntityId,
+                deployable_state::Column::Direction,
+                deployable_state::Column::DeployableDescriptionId,
+                deployable_state::Column::Nickname,
+                deployable_state::Column::Hidden,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let model: ::entity::deployable_state::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::deployable_state::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::deployable_state::Model = delete.into();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::deployable_state::Entity::insert_many(
                     messages
                         .iter()
                         .map(|value| value.clone().into_active_model())
