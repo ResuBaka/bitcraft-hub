@@ -23,8 +23,6 @@ pub(crate) struct Config {
     #[serde(rename = "import")]
     #[allow(dead_code)]
     pub(crate) import_type: ImportType,
-    #[serde(rename = "importenabled")]
-    pub(crate) import_enabled: bool,
     #[serde(rename = "enabledimporter")]
     pub(crate) enabled_importer: Vec<String>,
     pub download: DownloadConfig,
@@ -44,7 +42,6 @@ impl Default for Config {
             live_updates: false,
             live_updates_ws: false,
             import_type: ImportType::File,
-            import_enabled: false,
             enabled_importer: vec!["".to_string()],
             download: DownloadConfig::default(),
         }

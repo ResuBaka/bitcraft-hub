@@ -78,7 +78,7 @@ impl From<vault_state_type::VaultState> for crate::vault_state_collectibles::Raw
             .collect();
         crate::vault_state_collectibles::RawVaultState {
             entity_id: value.entity_id as i64,
-            collectibles: collectibles,
+            collectibles,
         }
     }
 }

@@ -29,9 +29,7 @@ impl From<ClaimTechState> for Model {
             learned: claim_tech_state.learned,
             researching: claim_tech_state.researching,
             start_timestamp: claim_tech_state.start_timestamp.into(),
-            scheduled_id: claim_tech_state
-                .scheduled_id
-                .map_or(None, |s| Some(s as i64)),
+            scheduled_id: claim_tech_state.scheduled_id.map(|s| s as i64),
         }
     }
 }

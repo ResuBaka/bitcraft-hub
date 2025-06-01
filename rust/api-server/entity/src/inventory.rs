@@ -133,13 +133,9 @@ pub struct ExpendedRefrence {
 
 impl From<game_module::module_bindings::Pocket> for crate::inventory::Pocket {
     fn from(value: game_module::module_bindings::Pocket) -> Self {
-        let contents = match &value.contents {
-            Some(item_stack) => Some(item_stack.clone().into()),
-            None => None,
-        };
         crate::inventory::Pocket {
             volume: value.volume,
-            contents: contents,
+            contents: value.contents.map(|value| value.clone().into()),
             locked: value.locked,
         }
     }
@@ -175,7 +171,7 @@ impl From<InventoryState> for crate::inventory::Model {
 
         crate::inventory::Model {
             entity_id: value.entity_id as i64,
-            pockets: pockets,
+            pockets,
             inventory_index: value.inventory_index,
             cargo_index: value.cargo_index,
             owner_entity_id: value.owner_entity_id as i64,

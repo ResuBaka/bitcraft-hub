@@ -70,7 +70,7 @@ impl From<item_desc_type::ItemDesc> for crate::item_desc::Model {
             icon_asset_name: value.icon_asset_name,
             tier: value.tier,
             tag: value.tag,
-            rarity: rarity,
+            rarity,
             compendium_entry: value.compendium_entry,
             item_list_id: value.item_list_id,
         }

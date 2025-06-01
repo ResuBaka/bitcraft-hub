@@ -1,6 +1,5 @@
 use crate::inventory::ItemType;
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult)]
 pub struct ItemStack {

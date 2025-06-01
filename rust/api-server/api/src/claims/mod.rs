@@ -1,31 +1,20 @@
 pub(crate) mod claim_local_state;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
-
 use crate::inventory::resolve_contents;
 use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
-use crate::websocket::WebSocketMessages;
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::inventory::{ExpendedRefrence, ItemExpended};
 use entity::shared::location::Location;
-use entity::{
-    building_state, cargo_desc, claim_tech_desc, inventory, item_desc, player_state,
-    player_to_claim,
-};
-use log::{debug, error, info};
-use migration::OnConflict;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, sea_query};
+use entity::{building_state, cargo_desc, claim_tech_desc, inventory, item_desc, player_state};
+use log::error;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use service::{Query as QueryCore, sea_orm::DatabaseConnection};
+use service::Query as QueryCore;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fs::File;
-use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
+use std::collections::{BTreeMap, HashMap};
 use tokio::task::JoinHandle;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -299,13 +288,13 @@ pub(crate) async fn get_claim(
         };
 
         if let Some(claim_local_state) = claim_local_state {
-            claim.supplies = claim_local_state.supplies.clone();
-            claim.building_maintenance = claim_local_state.building_maintenance.clone();
-            claim.num_tiles = claim_local_state.num_tiles.clone();
-            claim.treasury = claim_local_state.treasury.clone();
+            claim.supplies = claim_local_state.supplies;
+            claim.building_maintenance = claim_local_state.building_maintenance;
+            claim.num_tiles = claim_local_state.num_tiles;
+            claim.treasury = claim_local_state.treasury;
             claim.location = claim_local_state.location.clone();
             claim.xp_gained_since_last_coin_minting =
-                claim_local_state.xp_gained_since_last_coin_minting.clone();
+                claim_local_state.xp_gained_since_last_coin_minting;
         }
 
         match claim_tech_state {
@@ -720,14 +709,13 @@ pub(crate) async fn list_claims(
             };
 
             if let Some(claim_local_state) = claim_local_state {
-                claim_description.supplies = claim_local_state.supplies.clone();
-                claim_description.building_maintenance =
-                    claim_local_state.building_maintenance.clone();
-                claim_description.num_tiles = claim_local_state.num_tiles.clone();
-                claim_description.treasury = claim_local_state.treasury.clone();
+                claim_description.supplies = claim_local_state.supplies;
+                claim_description.building_maintenance = claim_local_state.building_maintenance;
+                claim_description.num_tiles = claim_local_state.num_tiles;
+                claim_description.treasury = claim_local_state.treasury;
                 claim_description.location = claim_local_state.location.clone();
                 claim_description.xp_gained_since_last_coin_minting =
-                    claim_local_state.xp_gained_since_last_coin_minting.clone();
+                    claim_local_state.xp_gained_since_last_coin_minting;
             }
 
             match claim_tech_state {

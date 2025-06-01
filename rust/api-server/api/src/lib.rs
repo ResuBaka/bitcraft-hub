@@ -70,9 +70,6 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     Migrator::up(&database_connection, None).await?;
 
-    if config.import_enabled {
-        import_data(config.clone());
-    }
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
     let state = Arc::new(AppState::new(
@@ -96,7 +93,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
         tokio::spawn(broadcast_message(state.clone(), rx));
 
         let tmp_config = config.clone();
-        websocket::start_websocket_bitcraft_logic(tmp_config, tx.clone(), state.clone());
+        websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
     }
 
     let app = create_app(&config, state.clone(), prometheus);
@@ -324,7 +321,7 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
             axum_codec::routing::get(buildings::find_building_descriptions).into(),
         );
 
-    let app = Router::new()
+    Router::new()
         .route("/websocket", any(websocket_handler))
         // .route(
         //     "/locations",
@@ -369,8 +366,7 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
         )
         .layer(CompressionLayer::new())
         .route_layer(middleware::from_fn(track_metrics))
-        .with_state(state);
-    app
+        .with_state(state)
 }
 
 fn create_default_client(config: Config) -> Client {
@@ -413,72 +409,6 @@ async fn create_importer_default_db_connection(config: Config) -> DatabaseConnec
     Database::connect(connection_options)
         .await
         .expect("Database connection failed")
-}
-
-fn import_data(config: Config) {
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let mut tasks = vec![];
-
-                if config.enabled_importer.contains(&"skill_desc".to_string())
-                    || config.enabled_importer.is_empty()
-                {
-                    let temp_config = config.clone();
-                    tasks.push(tokio::spawn(skill_descriptions::import_job_skill_desc(
-                        temp_config,
-                    )));
-                }
-
-                if config
-                    .enabled_importer
-                    .contains(&"claim_tech_desc".to_string())
-                    || config.enabled_importer.is_empty()
-                {
-                    let temp_config = config.clone();
-                    tasks.push(tokio::spawn(claim_tech_desc::import_job_claim_tech_desc(
-                        temp_config,
-                    )));
-                }
-
-                if config.enabled_importer.contains(&"recipes".to_string())
-                    || config.enabled_importer.is_empty()
-                {
-                    let temp_config = config.clone();
-                    tasks.push(tokio::spawn(recipes::import_job_recipes_desc(temp_config)));
-                }
-
-                if config.enabled_importer.contains(&"items".to_string())
-                    || config.enabled_importer.is_empty()
-                {
-                    let temp_config = config.clone();
-                    tasks.push(tokio::spawn(items::import_job_item_desc(temp_config)));
-                }
-
-                if config.enabled_importer.contains(&"cargo_desc".to_string())
-                    || config.enabled_importer.is_empty()
-                {
-                    let temp_config = config.clone();
-                    tasks.push(tokio::spawn(cargo_desc::import_job_cargo_desc(temp_config)));
-                }
-
-                if config
-                    .enabled_importer
-                    .contains(&"building_desc".to_string())
-                    || config.enabled_importer.is_empty()
-                {
-                    let temp_config = config.clone();
-                    tasks.push(tokio::spawn(buildings::import_job_building_desc(
-                        temp_config,
-                    )));
-                }
-
-                futures::future::join_all(tasks).await;
-            });
-    });
 }
 
 #[derive(Clone)]

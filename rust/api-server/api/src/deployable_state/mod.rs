@@ -1,125 +1,125 @@
 // use crate::websocket::{Table, TableWithOriginalEventTransactionUpdate};
-use entity::deployable_state;
-use entity::deployable_state::Model;
-use log::{debug, error, info};
-use migration::{OnConflict, sea_query};
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
-};
-use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
-
-#[allow(dead_code)]
-pub(crate) async fn load_deployable_state_from_file(
-    storage_path: &std::path::Path,
-) -> anyhow::Result<Vec<deployable_state::Model>> {
-    let item_file = File::open(storage_path.join("State/DeployableState.json"))?;
-    let deployable_state: Value = serde_json::from_reader(&item_file)?;
-    let deployable_states: Vec<deployable_state::Model> = serde_json::from_value(
-        deployable_state
-            .get(0)
-            .unwrap()
-            .get("rows")
-            .unwrap()
-            .clone(),
-    )?;
-
-    Ok(deployable_states)
-}
-
-async fn delete_deployable_state(
-    conn: &DatabaseConnection,
-    known_deployable_state_ids: HashSet<i64>,
-) -> anyhow::Result<()> {
-    info!(
-        "deployable_state's ({}) to delete: {:?}",
-        known_deployable_state_ids.len(),
-        known_deployable_state_ids
-    );
-    deployable_state::Entity::delete_many()
-        .filter(deployable_state::Column::EntityId.is_in(known_deployable_state_ids))
-        .exec(conn)
-        .await?;
-    Ok(())
-}
-
-async fn db_insert_deployable_state(
-    conn: &DatabaseConnection,
-    buffer_before_insert: &mut Vec<Model>,
-    on_conflict: &OnConflict,
-) -> anyhow::Result<()> {
-    let deployable_state_from_db = deployable_state::Entity::find()
-        .filter(
-            deployable_state::Column::EntityId.is_in(
-                buffer_before_insert
-                    .iter()
-                    .map(|deployable_state| deployable_state.entity_id)
-                    .collect::<Vec<i64>>(),
-            ),
-        )
-        .all(conn)
-        .await?;
-
-    let deployable_state_from_db_map = deployable_state_from_db
-        .into_iter()
-        .map(|deployable_state| (deployable_state.entity_id, deployable_state))
-        .collect::<HashMap<i64, deployable_state::Model>>();
-
-    let things_to_insert = buffer_before_insert
-        .iter()
-        .filter(|deployable_state| {
-            match deployable_state_from_db_map.get(&deployable_state.entity_id) {
-                Some(deployable_state_from_db) => deployable_state_from_db != *deployable_state,
-                None => true,
-            }
-        })
-        .map(|deployable_state| deployable_state.clone().into_active_model())
-        .collect::<Vec<deployable_state::ActiveModel>>();
-
-    if things_to_insert.is_empty() {
-        debug!("Nothing to insert");
-        buffer_before_insert.clear();
-        return Ok(());
-    } else {
-        debug!("Inserting {} deployable_state", things_to_insert.len());
-    }
-
-    let _ = deployable_state::Entity::insert_many(things_to_insert)
-        .on_conflict(on_conflict.clone())
-        .exec(conn)
-        .await?;
-
-    buffer_before_insert.clear();
-    Ok(())
-}
-
-async fn known_deployable_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
-    let known_deployable_state_ids: Vec<i64> = deployable_state::Entity::find()
-        .select_only()
-        .column(deployable_state::Column::EntityId)
-        .into_tuple()
-        .all(conn)
-        .await?;
-
-    let known_deployable_state_ids = known_deployable_state_ids
-        .into_iter()
-        .collect::<HashSet<i64>>();
-    Ok(known_deployable_state_ids)
-}
-
-fn get_deployable_state_on_conflict() -> OnConflict {
-    sea_query::OnConflict::column(deployable_state::Column::EntityId)
-        .update_columns([
-            deployable_state::Column::OwnerId,
-            deployable_state::Column::ClaimEntityId,
-            deployable_state::Column::Direction,
-            deployable_state::Column::DeployableDescriptionId,
-            deployable_state::Column::Nickname,
-            deployable_state::Column::Hidden,
-        ])
-        .to_owned()
-}
+// use entity::deployable_state;
+// use entity::deployable_state::Model;
+// use log::{debug, info};
+// use migration::{OnConflict, sea_query};
+// use sea_orm::{
+//     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
+// };
+// use serde_json::Value;
+// use std::collections::{HashMap, HashSet};
+// use std::fs::File;
+//
+// #[allow(dead_code)]
+// pub(crate) async fn load_deployable_state_from_file(
+//     storage_path: &std::path::Path,
+// ) -> anyhow::Result<Vec<deployable_state::Model>> {
+//     let item_file = File::open(storage_path.join("State/DeployableState.json"))?;
+//     let deployable_state: Value = serde_json::from_reader(&item_file)?;
+//     let deployable_states: Vec<deployable_state::Model> = serde_json::from_value(
+//         deployable_state
+//             .get(0)
+//             .unwrap()
+//             .get("rows")
+//             .unwrap()
+//             .clone(),
+//     )?;
+//
+//     Ok(deployable_states)
+// }
+//
+// async fn delete_deployable_state(
+//     conn: &DatabaseConnection,
+//     known_deployable_state_ids: HashSet<i64>,
+// ) -> anyhow::Result<()> {
+//     info!(
+//         "deployable_state's ({}) to delete: {:?}",
+//         known_deployable_state_ids.len(),
+//         known_deployable_state_ids
+//     );
+//     deployable_state::Entity::delete_many()
+//         .filter(deployable_state::Column::EntityId.is_in(known_deployable_state_ids))
+//         .exec(conn)
+//         .await?;
+//     Ok(())
+// }
+//
+// async fn db_insert_deployable_state(
+//     conn: &DatabaseConnection,
+//     buffer_before_insert: &mut Vec<Model>,
+//     on_conflict: &OnConflict,
+// ) -> anyhow::Result<()> {
+//     let deployable_state_from_db = deployable_state::Entity::find()
+//         .filter(
+//             deployable_state::Column::EntityId.is_in(
+//                 buffer_before_insert
+//                     .iter()
+//                     .map(|deployable_state| deployable_state.entity_id)
+//                     .collect::<Vec<i64>>(),
+//             ),
+//         )
+//         .all(conn)
+//         .await?;
+//
+//     let deployable_state_from_db_map = deployable_state_from_db
+//         .into_iter()
+//         .map(|deployable_state| (deployable_state.entity_id, deployable_state))
+//         .collect::<HashMap<i64, deployable_state::Model>>();
+//
+//     let things_to_insert = buffer_before_insert
+//         .iter()
+//         .filter(|deployable_state| {
+//             match deployable_state_from_db_map.get(&deployable_state.entity_id) {
+//                 Some(deployable_state_from_db) => deployable_state_from_db != *deployable_state,
+//                 None => true,
+//             }
+//         })
+//         .map(|deployable_state| deployable_state.clone().into_active_model())
+//         .collect::<Vec<deployable_state::ActiveModel>>();
+//
+//     if things_to_insert.is_empty() {
+//         debug!("Nothing to insert");
+//         buffer_before_insert.clear();
+//         return Ok(());
+//     } else {
+//         debug!("Inserting {} deployable_state", things_to_insert.len());
+//     }
+//
+//     let _ = deployable_state::Entity::insert_many(things_to_insert)
+//         .on_conflict(on_conflict.clone())
+//         .exec(conn)
+//         .await?;
+//
+//     buffer_before_insert.clear();
+//     Ok(())
+// }
+//
+// async fn known_deployable_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
+//     let known_deployable_state_ids: Vec<i64> = deployable_state::Entity::find()
+//         .select_only()
+//         .column(deployable_state::Column::EntityId)
+//         .into_tuple()
+//         .all(conn)
+//         .await?;
+//
+//     let known_deployable_state_ids = known_deployable_state_ids
+//         .into_iter()
+//         .collect::<HashSet<i64>>();
+//     Ok(known_deployable_state_ids)
+// }
+//
+// fn get_deployable_state_on_conflict() -> OnConflict {
+//     sea_query::OnConflict::column(deployable_state::Column::EntityId)
+//         .update_columns([
+//             deployable_state::Column::OwnerId,
+//             deployable_state::Column::ClaimEntityId,
+//             deployable_state::Column::Direction,
+//             deployable_state::Column::DeployableDescriptionId,
+//             deployable_state::Column::Nickname,
+//             deployable_state::Column::Hidden,
+//         ])
+//         .to_owned()
+// }
 //
 // pub(crate) async fn handle_transaction_update(
 //     p0: &DatabaseConnection,

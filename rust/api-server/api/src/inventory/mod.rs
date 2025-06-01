@@ -4,19 +4,14 @@ use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use entity::inventory::{
-    Content, ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, Model, ResolvedInventory,
+    ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
 use entity::{cargo_desc, inventory, item_desc};
-use log::{debug, error, info};
-use migration::OnConflict;
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect,
-    sea_query,
-};
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -253,84 +248,84 @@ pub(crate) async fn load_inventory_state_from_file(
     Ok(inventory)
 }
 
-async fn get_known_inventory_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
-    let known_inventory_ids: Vec<i64> = inventory::Entity::find()
-        .select_only()
-        .column(inventory::Column::EntityId)
-        .into_tuple()
-        .all(conn)
-        .await?;
+// async fn get_known_inventory_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
+//     let known_inventory_ids: Vec<i64> = inventory::Entity::find()
+//         .select_only()
+//         .column(inventory::Column::EntityId)
+//         .into_tuple()
+//         .all(conn)
+//         .await?;
+//
+//     let known_inventory_ids = known_inventory_ids.into_iter().collect::<HashSet<i64>>();
+//     Ok(known_inventory_ids)
+// }
 
-    let known_inventory_ids = known_inventory_ids.into_iter().collect::<HashSet<i64>>();
-    Ok(known_inventory_ids)
-}
-
-async fn db_delete_inventorys(
-    conn: &DatabaseConnection,
-    known_inventory_ids: HashSet<i64>,
-) -> anyhow::Result<()> {
-    info!(
-        "Inventory's ({}) to delete: {:?}",
-        known_inventory_ids.len(),
-        known_inventory_ids
-    );
-    inventory::Entity::delete_many()
-        .filter(inventory::Column::EntityId.is_in(known_inventory_ids))
-        .exec(conn)
-        .await?;
-    Ok(())
-}
-
-async fn db_insert_inventory_state(
-    conn: &DatabaseConnection,
-    buffer_before_insert: &mut Vec<Model>,
-    on_conflict: &OnConflict,
-) -> anyhow::Result<()> {
-    let inventorys_from_db = inventory::Entity::find()
-        .filter(
-            inventory::Column::EntityId.is_in(
-                buffer_before_insert
-                    .iter()
-                    .map(|inventory| inventory.entity_id)
-                    .collect::<Vec<i64>>(),
-            ),
-        )
-        .all(conn)
-        .await?;
-
-    let inventorys_from_db_map = inventorys_from_db
-        .into_iter()
-        .map(|inventory| (inventory.entity_id, inventory))
-        .collect::<HashMap<i64, inventory::Model>>();
-
-    let things_to_insert = buffer_before_insert
-        .iter()
-        .filter(
-            |inventory| match inventorys_from_db_map.get(&inventory.entity_id) {
-                Some(inventory_from_db) => inventory_from_db != *inventory,
-                None => true,
-            },
-        )
-        .map(|inventory| inventory.clone().into_active_model())
-        .collect::<Vec<inventory::ActiveModel>>();
-
-    if things_to_insert.is_empty() {
-        debug!("Nothing to insert");
-        buffer_before_insert.clear();
-        return Ok(());
-    } else {
-        debug!("Inserting {} inventorys", things_to_insert.len());
-    }
-
-    let _ = inventory::Entity::insert_many(things_to_insert)
-        .on_conflict(on_conflict.clone())
-        .exec(conn)
-        .await?;
-
-    buffer_before_insert.clear();
-
-    Ok(())
-}
+// async fn db_delete_inventorys(
+//     conn: &DatabaseConnection,
+//     known_inventory_ids: HashSet<i64>,
+// ) -> anyhow::Result<()> {
+//     info!(
+//         "Inventory's ({}) to delete: {:?}",
+//         known_inventory_ids.len(),
+//         known_inventory_ids
+//     );
+//     inventory::Entity::delete_many()
+//         .filter(inventory::Column::EntityId.is_in(known_inventory_ids))
+//         .exec(conn)
+//         .await?;
+//     Ok(())
+// }
+//
+// async fn db_insert_inventory_state(
+//     conn: &DatabaseConnection,
+//     buffer_before_insert: &mut Vec<Model>,
+//     on_conflict: &OnConflict,
+// ) -> anyhow::Result<()> {
+//     let inventorys_from_db = inventory::Entity::find()
+//         .filter(
+//             inventory::Column::EntityId.is_in(
+//                 buffer_before_insert
+//                     .iter()
+//                     .map(|inventory| inventory.entity_id)
+//                     .collect::<Vec<i64>>(),
+//             ),
+//         )
+//         .all(conn)
+//         .await?;
+//
+//     let inventorys_from_db_map = inventorys_from_db
+//         .into_iter()
+//         .map(|inventory| (inventory.entity_id, inventory))
+//         .collect::<HashMap<i64, inventory::Model>>();
+//
+//     let things_to_insert = buffer_before_insert
+//         .iter()
+//         .filter(
+//             |inventory| match inventorys_from_db_map.get(&inventory.entity_id) {
+//                 Some(inventory_from_db) => inventory_from_db != *inventory,
+//                 None => true,
+//             },
+//         )
+//         .map(|inventory| inventory.clone().into_active_model())
+//         .collect::<Vec<inventory::ActiveModel>>();
+//
+//     if things_to_insert.is_empty() {
+//         debug!("Nothing to insert");
+//         buffer_before_insert.clear();
+//         return Ok(());
+//     } else {
+//         debug!("Inserting {} inventorys", things_to_insert.len());
+//     }
+//
+//     let _ = inventory::Entity::insert_many(things_to_insert)
+//         .on_conflict(on_conflict.clone())
+//         .exec(conn)
+//         .await?;
+//
+//     buffer_before_insert.clear();
+//
+//     Ok(())
+// }
 
 pub(crate) fn resolve_pocket(
     pocket: &inventory::Pocket,
@@ -369,7 +364,7 @@ pub(crate) fn resolve_contents(
             });
         }
     }
-    return None;
+    None
 }
 //
 // pub(crate) async fn handle_initial_subscription(

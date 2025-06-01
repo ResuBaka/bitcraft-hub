@@ -77,9 +77,9 @@ impl From<PlayerState> for crate::player_state::Model {
     fn from(value: PlayerState) -> Self {
         let teleport_location = crate::player_state::TeleportLocation {
             location: crate::player_state::OffsetCoordinatesSmallMessage {
-                x: value.teleport_location.location.x.clone(),
-                z: value.teleport_location.location.z.clone(),
-                dimension: value.teleport_location.location.dimension.clone(),
+                x: value.teleport_location.location.x,
+                z: value.teleport_location.location.z,
+                dimension: value.teleport_location.location.dimension,
             },
             location_type: match value.teleport_location.location_type {
                 game_module::module_bindings::TeleportLocationType::BirthLocation => {

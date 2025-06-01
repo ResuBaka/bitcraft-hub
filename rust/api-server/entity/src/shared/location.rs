@@ -1,6 +1,5 @@
 use game_module::module_bindings::OffsetCoordinatesSmallMessage;
-use serde::de::{MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(
     Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult, Default,

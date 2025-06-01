@@ -1,4 +1,4 @@
-use crate::ColumnType::{BigInteger, Integer, Json};
+use crate::ColumnType::Integer;
 use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]

@@ -1,36 +1,20 @@
 use crate::AppState;
-use crate::config::{Config, SpacetimeDbConfig};
+use crate::config::Config;
 use crate::leaderboard::experience_to_level;
-use ::entity::raw_event_data::Model as RawEventData;
-use ::entity::user_state;
-use axum::http::HeaderMap;
-use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use entity::{
     cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
     deployable_state, item_desc, mobile_entity_state, vault_state_collectibles,
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
-use futures::{SinkExt, StreamExt, TryStreamExt};
 use game_module::module_bindings::*;
-use log::{debug, error, info};
-use reqwest::ClientBuilder;
-use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, QuerySelect, sea_query};
+use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, sea_query};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use spacetimedb_sdk::{
-    Compression, DbContext, Error, Identity, Table, TableWithPrimaryKey, credentials,
-};
-use std::collections::HashMap;
+use spacetimedb_sdk::{Compression, DbContext, Error, Table, TableWithPrimaryKey, credentials};
 use std::sync::Arc;
-use time::OffsetDateTime;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 use tokio::time::{Duration, sleep};
-use tracing::instrument::WithSubscriber;
-use tracing::warn;
 
 fn connect_to_db(db_name: &str, db_host: &str) -> DbConnection {
     DbConnection::builder()
@@ -98,7 +82,7 @@ fn on_disconnected(_ctx: &ErrorContext, err: Option<Error>) {
 }
 fn connect_to_db_logic(
     config: &Config,
-    database: &String,
+    database: &str,
     remove_desc: &bool,
     mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
@@ -116,7 +100,7 @@ fn connect_to_db_logic(
     claim_tech_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechState>>,
     claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
 ) {
-    let ctx = connect_to_db(&database, config.spacetimedb_url().as_ref());
+    let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
     let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
     ctx.db.mobile_entity_state().on_update(
         move |_ctx: &EventContext, old: &MobileEntityState, new: &MobileEntityState| {
@@ -596,7 +580,7 @@ fn connect_to_db_logic(
     ];
 
     ctx.subscription_builder()
-        .on_applied(move |ctx: &SubscriptionEventContext| {})
+        .on_applied(move |_ctx: &SubscriptionEventContext| {})
         .on_error(on_sub_error)
         .subscribe(
             tables_to_subscribe
@@ -616,11 +600,7 @@ fn connect_to_db_logic(
     });
 }
 
-pub fn start_websocket_bitcraft_logic(
-    config: Config,
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
-    global_app_state: Arc<AppState>,
-) {
+pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppState>) {
     tokio::spawn(async move {
         let (mobile_entity_state_tx, mobile_entity_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
@@ -680,104 +660,86 @@ pub fn start_websocket_bitcraft_logic(
 
             remove_desc = true;
         });
-        start_worker_mobile_entity_state(
-            broadcast_tx.clone(),
-            global_app_state.clone(),
-            mobile_entity_state_rx,
-        );
+        start_worker_mobile_entity_state(global_app_state.clone(), mobile_entity_state_rx);
         start_worker_player_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             player_state_rx,
             1000,
             Duration::from_millis(25),
         );
         start_worker_player_username_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             player_username_state_rx,
             1000,
             Duration::from_millis(25),
         );
         start_worker_experience_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             experience_state_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_inventory_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             inventory_state_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_vault_state_collectibles(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             vault_state_collectibles_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_item_desc(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             item_desc_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_cargo_desc(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             cargo_desc_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_deployable_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             deployable_state_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_claim_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             claim_state_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_claim_local_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             claim_local_state_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_claim_member_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             claim_member_state_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_skill_desc(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             skill_desc_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_claim_tech_state(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             claim_tech_state_rx,
             2000,
             Duration::from_millis(25),
         );
         start_worker_claim_tech_desc(
-            broadcast_tx.clone(),
             global_app_state.clone(),
             claim_tech_desc_rx,
             2000,
@@ -786,6 +748,7 @@ pub fn start_websocket_bitcraft_logic(
     });
 }
 
+#[allow(dead_code)]
 async fn websocket_retry_helper(
     reconnect_wait_time: u32,
     retry_count: &mut u32,
@@ -819,7 +782,6 @@ enum SpacetimeUpdateMessages<T> {
 }
 
 fn start_worker_mobile_entity_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<MobileEntityState>>,
 ) {
@@ -833,7 +795,8 @@ fn start_worker_mobile_entity_state(
                         .mobile_entity_state
                         .insert(model.entity_id, model.clone());
 
-                    broadcast_tx
+                    global_app_state
+                        .tx
                         .send(WebSocketMessages::MobileEntityState(model))
                         .unwrap();
                 }
@@ -844,7 +807,8 @@ fn start_worker_mobile_entity_state(
                         .mobile_entity_state
                         .insert(model.entity_id, model.clone());
 
-                    broadcast_tx
+                    global_app_state
+                        .tx
                         .send(WebSocketMessages::MobileEntityState(model))
                         .unwrap();
                 }
@@ -859,7 +823,6 @@ fn start_worker_mobile_entity_state(
 }
 
 fn start_worker_item_desc(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ItemDesc>>,
     batch_size: usize,
@@ -918,10 +881,10 @@ fn start_worker_item_desc(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(item_desc = id, "Could not delete ItemDesc");
+                                    tracing::error!(ItemDesc = id, error = error.to_string(), "Could not delete ItemDesc");
                                 }
 
-                                tracing::info!("ItemDesc::Remove");
+                                tracing::debug!("ItemDesc::Remove");
                             }
                         }
                     }
@@ -959,7 +922,6 @@ fn start_worker_item_desc(
 }
 
 fn start_worker_cargo_desc(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<CargoDesc>>,
     batch_size: usize,
@@ -1027,10 +989,10 @@ fn start_worker_cargo_desc(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(cargo_desc = id, "Could not delete CargoDesc");
+                                    tracing::error!(CargoDesc = id, error = error.to_string(), "Could not delete CargoDesc");
                                 }
 
-                                tracing::info!("CargoDesc::Remove");
+                                tracing::debug!("CargoDesc::Remove");
                             }
                         }
                     }
@@ -1068,7 +1030,6 @@ fn start_worker_cargo_desc(
 }
 
 fn start_worker_player_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerState>>,
     batch_size: usize,
@@ -1120,10 +1081,10 @@ fn start_worker_player_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(player_state = id, "Could not delete PlayerState");
+                                    tracing::error!(PlayerState = id, error = error.to_string(), "Could not delete PlayerState");
                                 }
 
-                                tracing::info!("PlayerState::Remove");
+                                tracing::debug!("PlayerState::Remove");
                             }
                         }
                     }
@@ -1161,7 +1122,6 @@ fn start_worker_player_state(
 }
 
 fn start_worker_player_username_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
     batch_size: usize,
@@ -1206,10 +1166,10 @@ fn start_worker_player_username_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(player_username_state = id, "Could not delete PlayerUsernameState");
+                                    tracing::error!(PlayerUsernameState = id, error = error.to_string(), "Could not delete PlayerUsernameState");
                                 }
 
-                                tracing::info!("PlayerUsernameState::Remove");
+                                tracing::debug!("PlayerUsernameState::Remove");
                             }
                         }
                     }
@@ -1247,7 +1207,6 @@ fn start_worker_player_username_state(
 }
 
 fn start_worker_experience_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ExperienceState>>,
     batch_size: usize,
@@ -1349,7 +1308,7 @@ fn start_worker_experience_state(
                                     }
 
                                     ::entity::experience_state::Model {
-                                        entity_id: id as i64,
+                                        entity_id: id,
                                         skill_id: es.skill_id,
                                         experience: es.quantity,
                                     }
@@ -1357,10 +1316,10 @@ fn start_worker_experience_state(
 
                                 for es in vec_es {
                                     if let Err(error) = es.delete(&global_app_state.conn).await {
-                                        tracing::error!(experience_state = id, "Could not delete ExperienceState");
+                                        tracing::error!(ExperienceState = id, error = error.to_string(), "Could not delete ExperienceState");
                                     }
                                 }
-                                tracing::info!("ExperienceState::Remove");
+                                tracing::debug!("ExperienceState::Remove");
                             }
                         }
                     }
@@ -1398,7 +1357,6 @@ fn start_worker_experience_state(
 }
 
 fn start_worker_inventory_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<InventoryState>>,
     batch_size: usize,
@@ -1449,7 +1407,7 @@ fn start_worker_inventory_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(player_username_state = id, "Could not delete InventoryState");
+                                    tracing::error!(InventoryState = id, error = error.to_string(), "Could not delete InventoryState");
                                 }
 
                                 tracing::debug!("InventoryState::Remove");
@@ -1490,7 +1448,6 @@ fn start_worker_inventory_state(
 }
 
 fn start_worker_deployable_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<DeployableState>>,
     batch_size: usize,
@@ -1542,10 +1499,10 @@ fn start_worker_deployable_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete DeployableState");
+                                    tracing::error!(DeployableState = id, error = error.to_string(), "Could not delete DeployableState");
                                 }
 
-                                tracing::info!("DeployableState::Remove");
+                                tracing::debug!("DeployableState::Remove");
                             }
                         }
                     }
@@ -1583,7 +1540,6 @@ fn start_worker_deployable_state(
 }
 
 fn start_worker_claim_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimState>>,
     batch_size: usize,
@@ -1633,10 +1589,10 @@ fn start_worker_claim_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete ClaimState");
+                                    tracing::error!(ClaimState = id, error = error.to_string(), "Could not delete ClaimState");
                                 }
 
-                                tracing::info!("ClaimState::Remove");
+                                tracing::debug!("ClaimState::Remove");
                             }
                         }
                     }
@@ -1674,7 +1630,6 @@ fn start_worker_claim_state(
 }
 
 fn start_worker_claim_local_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
     batch_size: usize,
@@ -1745,10 +1700,10 @@ fn start_worker_claim_local_state(
                                 global_app_state.claim_local_state.remove(&(model.entity_id as u64));
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete ClaimLocalState");
+                                    tracing::error!(ClaimLocalState = id, error = error.to_string(), "Could not delete ClaimLocalState");
                                 }
 
-                                tracing::info!("ClaimLocalState::Remove");
+                                tracing::debug!("ClaimLocalState::Remove");
                             }
                         }
                     }
@@ -1791,7 +1746,6 @@ fn start_worker_claim_local_state(
 }
 
 fn start_worker_claim_member_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
     batch_size: usize,
@@ -1847,10 +1801,10 @@ fn start_worker_claim_member_state(
                                 global_app_state.remove_claim_member(model.clone());
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete ClaimMemberState");
+                                    tracing::error!(ClaimMemberState = id, error = error.to_string(), "Could not delete ClaimMemberState");
                                 }
 
-                                tracing::info!("ClaimMemberState::Remove");
+                                tracing::debug!("ClaimMemberState::Remove");
                             }
                         }
                     }
@@ -1866,7 +1820,7 @@ fn start_worker_claim_member_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!("Processing {} messages in batch", messages.len());
+                tracing::debug!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::claim_member_state::Entity::insert_many(
                     messages
                         .iter()
@@ -1891,7 +1845,6 @@ fn start_worker_claim_member_state(
 }
 
 fn start_worker_skill_desc(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<SkillDesc>>,
     batch_size: usize,
@@ -1947,10 +1900,10 @@ fn start_worker_skill_desc(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete SkillDesc");
+                                    tracing::error!(SkillDesc = id, error = error.to_string(), "Could not delete SkillDesc");
                                 }
 
-                                tracing::info!("SkillDesc::Remove");
+                                tracing::debug!("SkillDesc::Remove");
                             }
                         }
                     }
@@ -1988,7 +1941,6 @@ fn start_worker_skill_desc(
 }
 
 fn start_worker_vault_state_collectibles(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<VaultState>>,
     batch_size: usize,
@@ -2047,11 +1999,11 @@ fn start_worker_vault_state_collectibles(
                                     }
 
                                     if let Err(error) = model.delete(&global_app_state.conn).await {
-                                        tracing::error!(vault_state_collectibles = id, "Could not delete VaultState");
+                                        tracing::error!(VaultState = id, error = error.to_string(), "Could not delete VaultState");
                                     }
                                 }
 
-                                tracing::info!("VaultState::Remove");
+                                tracing::debug!("VaultState::Remove");
                             }
                         }
                     }
@@ -2089,7 +2041,6 @@ fn start_worker_vault_state_collectibles(
 }
 
 fn start_worker_claim_tech_state(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
     batch_size: usize,
@@ -2138,10 +2089,10 @@ fn start_worker_claim_tech_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ClaimTechState = id, "Could not delete ClaimTechState");
+                                    tracing::error!(ClaimTechState = id, error = error.to_string(), "Could not delete ClaimTechState");
                                 }
 
-                                tracing::info!("ClaimTechState::Remove");
+                                tracing::debug!("ClaimTechState::Remove");
                             }
                         }
                     }
@@ -2157,7 +2108,7 @@ fn start_worker_claim_tech_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!(
+                tracing::debug!(
                     "ClaimTechState ->>>> Processing {} messages in batch",
                     messages.len()
                 );
@@ -2186,7 +2137,6 @@ fn start_worker_claim_tech_state(
 }
 
 fn start_worker_claim_tech_desc(
-    broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
     batch_size: usize,
@@ -2241,10 +2191,10 @@ fn start_worker_claim_tech_desc(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ClaimTechDesc = id, "Could not delete ClaimTechDesc");
+                                    tracing::error!(ClaimTechDesc = id, error = error.to_string(), "Could not delete ClaimTechDesc");
                                 }
 
-                                tracing::info!("ClaimTechDesc::Remove");
+                                tracing::debug!("ClaimTechDesc::Remove");
                             }
                         }
                     }
@@ -2260,7 +2210,7 @@ fn start_worker_claim_tech_desc(
             }
 
             if !messages.is_empty() {
-                tracing::info!(
+                tracing::debug!(
                     "ClaimTechDesc ->>>> Processing {} messages in batch",
                     messages.len()
                 );
@@ -3574,7 +3524,7 @@ impl WebSocketMessages {
                 ("experience".to_string(), *user_id),
             ]),
             WebSocketMessages::ClaimLocalState(claim_local_state) => Some(vec![(
-                format!("claim_local_state"),
+                "claim_local_state".to_string(),
                 claim_local_state.entity_id,
             )]),
             WebSocketMessages::Level {

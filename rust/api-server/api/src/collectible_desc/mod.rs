@@ -1,90 +1,90 @@
 // use crate::websocket::Table;
-use entity::collectible_desc;
-use log::{debug, error, info};
-use migration::OnConflict;
-use sea_orm::IntoActiveModel;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, sea_query};
-use std::collections::{HashMap, HashSet};
-
-async fn get_known_collectible_desc_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i32>> {
-    let known_collectible_desc_ids: Vec<i32> = collectible_desc::Entity::find()
-        .select_only()
-        .column(collectible_desc::Column::Id)
-        .into_tuple()
-        .all(conn)
-        .await?;
-
-    let known_collectible_desc_ids = known_collectible_desc_ids
-        .into_iter()
-        .collect::<HashSet<i32>>();
-    Ok(known_collectible_desc_ids)
-}
-
-async fn db_insert_collectible_descs(
-    conn: &DatabaseConnection,
-    buffer_before_insert: &mut Vec<collectible_desc::Model>,
-    on_conflict: &OnConflict,
-) -> anyhow::Result<()> {
-    let collectible_descs_from_db = collectible_desc::Entity::find()
-        .filter(
-            collectible_desc::Column::Id.is_in(
-                buffer_before_insert
-                    .iter()
-                    .map(|collectible_desc| collectible_desc.id)
-                    .collect::<Vec<i32>>(),
-            ),
-        )
-        .all(conn)
-        .await?;
-
-    let collectible_descs_from_db_map = collectible_descs_from_db
-        .into_iter()
-        .map(|collectible_desc| (collectible_desc.id, collectible_desc))
-        .collect::<HashMap<i32, collectible_desc::Model>>();
-
-    let things_to_insert = buffer_before_insert
-        .iter()
-        .filter(
-            |collectible_desc| match collectible_descs_from_db_map.get(&collectible_desc.id) {
-                Some(collectible_desc_from_db) => collectible_desc_from_db != *collectible_desc,
-                None => true,
-            },
-        )
-        .map(|collectible_desc| collectible_desc.clone().into_active_model())
-        .collect::<Vec<collectible_desc::ActiveModel>>();
-
-    if things_to_insert.is_empty() {
-        debug!("Nothing to insert");
-        buffer_before_insert.clear();
-    } else {
-        info!("Inserting {} things_to_insert", things_to_insert.len());
-
-        let _ = collectible_desc::Entity::insert_many(things_to_insert)
-            .on_conflict(on_conflict.clone())
-            .exec(conn)
-            .await?;
-
-        buffer_before_insert.clear();
-    }
-
-    Ok(())
-}
-
-async fn delete_collectible_desc(
-    conn: &DatabaseConnection,
-    known_collectible_desc_ids: HashSet<i32>,
-) -> anyhow::Result<()> {
-    info!(
-        "collectible_desc's ({}) to delete: {:?}",
-        known_collectible_desc_ids.len(),
-        known_collectible_desc_ids
-    );
-    collectible_desc::Entity::delete_many()
-        .filter(collectible_desc::Column::Id.is_in(known_collectible_desc_ids))
-        .exec(conn)
-        .await?;
-    Ok(())
-}
+// use entity::collectible_desc;
+// use log::{debug, info};
+// use migration::OnConflict;
+// use sea_orm::IntoActiveModel;
+// use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
+// use std::collections::{HashMap, HashSet};
+//
+// async fn get_known_collectible_desc_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i32>> {
+//     let known_collectible_desc_ids: Vec<i32> = collectible_desc::Entity::find()
+//         .select_only()
+//         .column(collectible_desc::Column::Id)
+//         .into_tuple()
+//         .all(conn)
+//         .await?;
+//
+//     let known_collectible_desc_ids = known_collectible_desc_ids
+//         .into_iter()
+//         .collect::<HashSet<i32>>();
+//     Ok(known_collectible_desc_ids)
+// }
+//
+// async fn db_insert_collectible_descs(
+//     conn: &DatabaseConnection,
+//     buffer_before_insert: &mut Vec<collectible_desc::Model>,
+//     on_conflict: &OnConflict,
+// ) -> anyhow::Result<()> {
+//     let collectible_descs_from_db = collectible_desc::Entity::find()
+//         .filter(
+//             collectible_desc::Column::Id.is_in(
+//                 buffer_before_insert
+//                     .iter()
+//                     .map(|collectible_desc| collectible_desc.id)
+//                     .collect::<Vec<i32>>(),
+//             ),
+//         )
+//         .all(conn)
+//         .await?;
+//
+//     let collectible_descs_from_db_map = collectible_descs_from_db
+//         .into_iter()
+//         .map(|collectible_desc| (collectible_desc.id, collectible_desc))
+//         .collect::<HashMap<i32, collectible_desc::Model>>();
+//
+//     let things_to_insert = buffer_before_insert
+//         .iter()
+//         .filter(
+//             |collectible_desc| match collectible_descs_from_db_map.get(&collectible_desc.id) {
+//                 Some(collectible_desc_from_db) => collectible_desc_from_db != *collectible_desc,
+//                 None => true,
+//             },
+//         )
+//         .map(|collectible_desc| collectible_desc.clone().into_active_model())
+//         .collect::<Vec<collectible_desc::ActiveModel>>();
+//
+//     if things_to_insert.is_empty() {
+//         debug!("Nothing to insert");
+//         buffer_before_insert.clear();
+//     } else {
+//         info!("Inserting {} things_to_insert", things_to_insert.len());
+//
+//         let _ = collectible_desc::Entity::insert_many(things_to_insert)
+//             .on_conflict(on_conflict.clone())
+//             .exec(conn)
+//             .await?;
+//
+//         buffer_before_insert.clear();
+//     }
+//
+//     Ok(())
+// }
+//
+// async fn delete_collectible_desc(
+//     conn: &DatabaseConnection,
+//     known_collectible_desc_ids: HashSet<i32>,
+// ) -> anyhow::Result<()> {
+//     info!(
+//         "collectible_desc's ({}) to delete: {:?}",
+//         known_collectible_desc_ids.len(),
+//         known_collectible_desc_ids
+//     );
+//     collectible_desc::Entity::delete_many()
+//         .filter(collectible_desc::Column::Id.is_in(known_collectible_desc_ids))
+//         .exec(conn)
+//         .await?;
+//     Ok(())
+// }
 //
 // pub(crate) async fn handle_initial_subscription(
 //     p0: &DatabaseConnection,

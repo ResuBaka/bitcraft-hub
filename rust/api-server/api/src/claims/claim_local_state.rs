@@ -1,106 +1,102 @@
-use crate::AppState;
-use crate::websocket::WebSocketMessages;
-use entity::claim_local_state;
-use migration::{OnConflict, sea_query};
-use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QuerySelect};
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
+// use entity::claim_local_state;
+// use migration::{OnConflict, sea_query};
+// use sea_orm::QueryFilter;
+// use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QuerySelect};
+// use std::collections::{HashMap, HashSet};
 
-fn get_on_conflict() -> OnConflict {
-    sea_query::OnConflict::column(claim_local_state::Column::EntityId)
-        .update_columns([
-            claim_local_state::Column::Supplies,
-            claim_local_state::Column::BuildingMaintenance,
-            claim_local_state::Column::NumTiles,
-            claim_local_state::Column::NumTileNeighbors,
-            claim_local_state::Column::Location,
-            claim_local_state::Column::Treasury,
-            claim_local_state::Column::XpGainedSinceLastCoinMinting,
-            claim_local_state::Column::SuppliesPurchaseThreshold,
-            claim_local_state::Column::SuppliesPurchasePrice,
-            claim_local_state::Column::BuildingDescriptionId,
-        ])
-        .to_owned()
-}
-
-async fn known_claim_local_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
-    let known_claim_ids: Vec<i64> = claim_local_state::Entity::find()
-        .select_only()
-        .column(claim_local_state::Column::EntityId)
-        .into_tuple()
-        .all(conn)
-        .await?;
-
-    let known_claim_ids = known_claim_ids.into_iter().collect::<HashSet<i64>>();
-    Ok(known_claim_ids)
-}
-
-async fn db_insert_claim_local_state(
-    conn: &DatabaseConnection,
-    buffer_before_insert: &mut Vec<claim_local_state::Model>,
-    on_conflict: &OnConflict,
-) -> anyhow::Result<()> {
-    let claim_from_db = claim_local_state::Entity::find()
-        .filter(
-            claim_local_state::Column::EntityId.is_in(
-                buffer_before_insert
-                    .iter()
-                    .map(|claim| claim.entity_id)
-                    .collect::<Vec<i64>>(),
-            ),
-        )
-        .all(conn)
-        .await?;
-
-    let claim_from_db_map = claim_from_db
-        .into_iter()
-        .map(|claim| (claim.entity_id, claim))
-        .collect::<HashMap<i64, claim_local_state::Model>>();
-
-    let things_to_insert = buffer_before_insert
-        .iter()
-        .filter(|claim| match claim_from_db_map.get(&claim.entity_id) {
-            Some(claim_from_db) => claim_from_db != *claim,
-            None => true,
-        })
-        .map(|claim| claim.clone().into_active_model())
-        .collect::<Vec<claim_local_state::ActiveModel>>();
-
-    if things_to_insert.is_empty() {
-        tracing::debug!("Nothing to insert");
-        buffer_before_insert.clear();
-        return Ok(());
-    } else {
-        tracing::debug!("Inserting {} claim_local_state", things_to_insert.len());
-    }
-
-    let _ = claim_local_state::Entity::insert_many(things_to_insert)
-        .on_conflict(on_conflict.clone())
-        .exec(conn)
-        .await?;
-
-    buffer_before_insert.clear();
-    Ok(())
-}
-
-async fn delete_claim_local_state(
-    conn: &DatabaseConnection,
-    known_claim_ids: HashSet<i64>,
-) -> anyhow::Result<()> {
-    tracing::info!(
-        "claim_local_state's ({}) to delete: {:?}",
-        known_claim_ids.len(),
-        known_claim_ids,
-    );
-    claim_local_state::Entity::delete_many()
-        .filter(claim_local_state::Column::EntityId.is_in(known_claim_ids.clone()))
-        .exec(conn)
-        .await?;
-
-    Ok(())
-}
+// fn get_on_conflict() -> OnConflict {
+//     sea_query::OnConflict::column(claim_local_state::Column::EntityId)
+//         .update_columns([
+//             claim_local_state::Column::Supplies,
+//             claim_local_state::Column::BuildingMaintenance,
+//             claim_local_state::Column::NumTiles,
+//             claim_local_state::Column::NumTileNeighbors,
+//             claim_local_state::Column::Location,
+//             claim_local_state::Column::Treasury,
+//             claim_local_state::Column::XpGainedSinceLastCoinMinting,
+//             claim_local_state::Column::SuppliesPurchaseThreshold,
+//             claim_local_state::Column::SuppliesPurchasePrice,
+//             claim_local_state::Column::BuildingDescriptionId,
+//         ])
+//         .to_owned()
+// }
+//
+// async fn known_claim_local_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
+//     let known_claim_ids: Vec<i64> = claim_local_state::Entity::find()
+//         .select_only()
+//         .column(claim_local_state::Column::EntityId)
+//         .into_tuple()
+//         .all(conn)
+//         .await?;
+//
+//     let known_claim_ids = known_claim_ids.into_iter().collect::<HashSet<i64>>();
+//     Ok(known_claim_ids)
+// }
+//
+// async fn db_insert_claim_local_state(
+//     conn: &DatabaseConnection,
+//     buffer_before_insert: &mut Vec<claim_local_state::Model>,
+//     on_conflict: &OnConflict,
+// ) -> anyhow::Result<()> {
+//     let claim_from_db = claim_local_state::Entity::find()
+//         .filter(
+//             claim_local_state::Column::EntityId.is_in(
+//                 buffer_before_insert
+//                     .iter()
+//                     .map(|claim| claim.entity_id)
+//                     .collect::<Vec<i64>>(),
+//             ),
+//         )
+//         .all(conn)
+//         .await?;
+//
+//     let claim_from_db_map = claim_from_db
+//         .into_iter()
+//         .map(|claim| (claim.entity_id, claim))
+//         .collect::<HashMap<i64, claim_local_state::Model>>();
+//
+//     let things_to_insert = buffer_before_insert
+//         .iter()
+//         .filter(|claim| match claim_from_db_map.get(&claim.entity_id) {
+//             Some(claim_from_db) => claim_from_db != *claim,
+//             None => true,
+//         })
+//         .map(|claim| claim.clone().into_active_model())
+//         .collect::<Vec<claim_local_state::ActiveModel>>();
+//
+//     if things_to_insert.is_empty() {
+//         tracing::debug!("Nothing to insert");
+//         buffer_before_insert.clear();
+//         return Ok(());
+//     } else {
+//         tracing::debug!("Inserting {} claim_local_state", things_to_insert.len());
+//     }
+//
+//     let _ = claim_local_state::Entity::insert_many(things_to_insert)
+//         .on_conflict(on_conflict.clone())
+//         .exec(conn)
+//         .await?;
+//
+//     buffer_before_insert.clear();
+//     Ok(())
+// }
+//
+// async fn delete_claim_local_state(
+//     conn: &DatabaseConnection,
+//     known_claim_ids: HashSet<i64>,
+// ) -> anyhow::Result<()> {
+//     tracing::info!(
+//         "claim_local_state's ({}) to delete: {:?}",
+//         known_claim_ids.len(),
+//         known_claim_ids,
+//     );
+//     claim_local_state::Entity::delete_many()
+//         .filter(claim_local_state::Column::EntityId.is_in(known_claim_ids.clone()))
+//         .exec(conn)
+//         .await?;
+//
+//     Ok(())
+// }
 //
 // pub(crate) async fn handle_initial_subscription(
 //     app_state: &Arc<AppState>,

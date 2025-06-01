@@ -1,22 +1,14 @@
-use crate::websocket::WebSocketMessages;
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::player_state::TeleportLocation;
-use entity::player_username_state::Model;
 use entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
 use entity::{mobile_entity_state, player_state, player_username_state};
-use log::{debug, error, info};
-use migration::OnConflict;
-use sea_orm::IntoActiveModel;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, sea_query};
+use log::error;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 use service::Query as QueryCore;
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use tokio::sync::mpsc::UnboundedSender;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -97,7 +89,7 @@ pub struct PlayersResponse {
     pub page: u64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct FindPlayerByIdResponse {
+pub(crate) struct FindPlayerByIdResponse {
     pub teleport_location: TeleportLocation,
     pub entity_id: i64,
     pub time_played: i32,
@@ -168,7 +160,7 @@ pub async fn find_player_by_id(
         None
     };
 
-    let plyer_action_state2 = state
+    let player_action_state2 = state
         .player_action_state
         .get(&(id as u64))
         .map(|player_action_state| player_action_state.value().clone());
@@ -178,7 +170,7 @@ pub async fn find_player_by_id(
         .map(|player_action_state| player_action_state.action_type.get_action_name());
 
     //TODO FIX IT SO that it works with the correct type
-    let current_action_state = state.action_state.get(&(id as u64)).map_or(None, |value| {
+    let current_action_state = state.action_state.get(&(id as u64)).and_then(|_value| {
         // @todo implement it correctly
         None
     });
@@ -198,194 +190,194 @@ pub async fn find_player_by_id(
         teleport_location: player.teleport_location,
         traveler_tasks_expiration: player.traveler_tasks_expiration,
         username: player_username,
-        deployables: deployables,
-        player_location: player_location,
-        claim_id: claim_id,
-        claim_ids: claim_ids,
-        player_action_state: player_action_state,
-        player_action_state2: plyer_action_state2,
-        current_action_state: current_action_state,
+        deployables,
+        player_location,
+        claim_id,
+        claim_ids,
+        player_action_state,
+        player_action_state2,
+        current_action_state,
     }))
 }
-
-#[allow(dead_code)]
-pub(crate) async fn load_player_state_from_file(
-    storage_path: &std::path::Path,
-) -> anyhow::Result<Vec<player_state::Model>> {
-    let player_state_file = File::open(storage_path.join("State/PlayerState.json"))?;
-    let player_state: Value = serde_json::from_reader(&player_state_file)?;
-    let player_state: Vec<player_state::Model> =
-        serde_json::from_value(player_state.get(0).unwrap().get("rows").unwrap().clone())?;
-
-    Ok(player_state)
-}
-
-async fn get_known_player_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
-    let known_player_state_ids: Vec<i64> = player_state::Entity::find()
-        .select_only()
-        .column(player_state::Column::EntityId)
-        .into_tuple()
-        .all(conn)
-        .await?;
-
-    let known_player_state_ids = known_player_state_ids.into_iter().collect::<HashSet<i64>>();
-    Ok(known_player_state_ids)
-}
-
-async fn db_insert_player_states(
-    conn: &DatabaseConnection,
-    buffer_before_insert: &mut Vec<player_state::Model>,
-    on_conflict: &OnConflict,
-) -> anyhow::Result<()> {
-    let player_states_from_db = player_state::Entity::find()
-        .filter(
-            player_state::Column::EntityId.is_in(
-                buffer_before_insert
-                    .iter()
-                    .map(|player_state| player_state.entity_id)
-                    .collect::<Vec<i64>>(),
-            ),
-        )
-        .all(conn)
-        .await?;
-
-    let player_states_from_db_map = player_states_from_db
-        .into_iter()
-        .map(|player_state| (player_state.entity_id, player_state))
-        .collect::<HashMap<i64, player_state::Model>>();
-
-    let things_to_insert = buffer_before_insert
-        .iter()
-        .filter(
-            |player_state| match player_states_from_db_map.get(&player_state.entity_id) {
-                Some(player_state_from_db) => player_state_from_db != *player_state,
-                None => true,
-            },
-        )
-        .map(|player_state| player_state.clone().into_active_model())
-        .collect::<Vec<player_state::ActiveModel>>();
-
-    if things_to_insert.is_empty() {
-        debug!("Nothing to insert");
-        buffer_before_insert.clear();
-        return Ok(());
-    } else {
-        debug!("Inserting {} player_states", things_to_insert.len());
-    }
-
-    let _ = player_state::Entity::insert_many(things_to_insert)
-        .on_conflict(on_conflict.clone())
-        .exec(conn)
-        .await?;
-
-    buffer_before_insert.clear();
-    Ok(())
-}
-
-async fn delete_player_state(
-    conn: &DatabaseConnection,
-    known_player_state_ids: HashSet<i64>,
-) -> anyhow::Result<()> {
-    info!(
-        "player_state's ({}) to delete: {:?}",
-        known_player_state_ids.len(),
-        known_player_state_ids
-    );
-    player_state::Entity::delete_many()
-        .filter(player_state::Column::EntityId.is_in(known_player_state_ids))
-        .exec(conn)
-        .await?;
-    Ok(())
-}
-
-pub(crate) async fn get_known_player_username_state_ids(
-    conn: &DatabaseConnection,
-) -> anyhow::Result<HashSet<i64>> {
-    let known_player_username_state_ids: Vec<i64> = player_username_state::Entity::find()
-        .select_only()
-        .column(player_username_state::Column::EntityId)
-        .into_tuple()
-        .all(conn)
-        .await?;
-
-    let known_player_username_state_ids = known_player_username_state_ids
-        .into_iter()
-        .collect::<HashSet<i64>>();
-
-    Ok(known_player_username_state_ids)
-}
-
-async fn delete_player_username_state(
-    conn: &DatabaseConnection,
-    known_player_username_state_ids: HashSet<i64>,
-) -> anyhow::Result<()> {
-    info!(
-        "player_username_state's ({}) to delete: {:?}",
-        known_player_username_state_ids.len(),
-        known_player_username_state_ids
-    );
-    player_username_state::Entity::delete_many()
-        .filter(player_username_state::Column::EntityId.is_in(known_player_username_state_ids))
-        .exec(conn)
-        .await?;
-    Ok(())
-}
-
-async fn db_insert_player_username_states(
-    conn: &DatabaseConnection,
-    buffer_before_insert: &mut Vec<Model>,
-    on_conflict: &OnConflict,
-) -> anyhow::Result<()> {
-    let player_username_states_from_db = player_username_state::Entity::find()
-        .filter(
-            player_username_state::Column::EntityId.is_in(
-                buffer_before_insert
-                    .iter()
-                    .map(|player_username_state| player_username_state.entity_id)
-                    .collect::<Vec<i64>>(),
-            ),
-        )
-        .all(conn)
-        .await?;
-
-    let player_username_states_from_db_map = player_username_states_from_db
-        .into_iter()
-        .map(|player_username_state| (player_username_state.entity_id, player_username_state))
-        .collect::<HashMap<i64, player_username_state::Model>>();
-
-    let things_to_insert = buffer_before_insert
-        .iter()
-        .filter(|player_username_state| {
-            match player_username_states_from_db_map.get(&player_username_state.entity_id) {
-                Some(player_username_state_from_db) => {
-                    player_username_state_from_db != *player_username_state
-                }
-                None => true,
-            }
-        })
-        .map(|player_username_state| player_username_state.clone().into_active_model())
-        .collect::<Vec<player_username_state::ActiveModel>>();
-
-    if things_to_insert.is_empty() {
-        debug!("Nothing to insert");
-        buffer_before_insert.clear();
-        return Ok(());
-    } else {
-        debug!(
-            "Inserting {} player_username_states",
-            things_to_insert.len()
-        );
-    }
-
-    let _ = player_username_state::Entity::insert_many(things_to_insert)
-        .on_conflict(on_conflict.clone())
-        .exec(conn)
-        .await?;
-
-    buffer_before_insert.clear();
-
-    Ok(())
-}
+//
+// #[allow(dead_code)]
+// pub(crate) async fn load_player_state_from_file(
+//     storage_path: &std::path::Path,
+// ) -> anyhow::Result<Vec<player_state::Model>> {
+//     let player_state_file = File::open(storage_path.join("State/PlayerState.json"))?;
+//     let player_state: Value = serde_json::from_reader(&player_state_file)?;
+//     let player_state: Vec<player_state::Model> =
+//         serde_json::from_value(player_state.get(0).unwrap().get("rows").unwrap().clone())?;
+//
+//     Ok(player_state)
+// }
+//
+// async fn get_known_player_state_ids(conn: &DatabaseConnection) -> anyhow::Result<HashSet<i64>> {
+//     let known_player_state_ids: Vec<i64> = player_state::Entity::find()
+//         .select_only()
+//         .column(player_state::Column::EntityId)
+//         .into_tuple()
+//         .all(conn)
+//         .await?;
+//
+//     let known_player_state_ids = known_player_state_ids.into_iter().collect::<HashSet<i64>>();
+//     Ok(known_player_state_ids)
+// }
+//
+// async fn db_insert_player_states(
+//     conn: &DatabaseConnection,
+//     buffer_before_insert: &mut Vec<player_state::Model>,
+//     on_conflict: &OnConflict,
+// ) -> anyhow::Result<()> {
+//     let player_states_from_db = player_state::Entity::find()
+//         .filter(
+//             player_state::Column::EntityId.is_in(
+//                 buffer_before_insert
+//                     .iter()
+//                     .map(|player_state| player_state.entity_id)
+//                     .collect::<Vec<i64>>(),
+//             ),
+//         )
+//         .all(conn)
+//         .await?;
+//
+//     let player_states_from_db_map = player_states_from_db
+//         .into_iter()
+//         .map(|player_state| (player_state.entity_id, player_state))
+//         .collect::<HashMap<i64, player_state::Model>>();
+//
+//     let things_to_insert = buffer_before_insert
+//         .iter()
+//         .filter(
+//             |player_state| match player_states_from_db_map.get(&player_state.entity_id) {
+//                 Some(player_state_from_db) => player_state_from_db != *player_state,
+//                 None => true,
+//             },
+//         )
+//         .map(|player_state| player_state.clone().into_active_model())
+//         .collect::<Vec<player_state::ActiveModel>>();
+//
+//     if things_to_insert.is_empty() {
+//         debug!("Nothing to insert");
+//         buffer_before_insert.clear();
+//         return Ok(());
+//     } else {
+//         debug!("Inserting {} player_states", things_to_insert.len());
+//     }
+//
+//     let _ = player_state::Entity::insert_many(things_to_insert)
+//         .on_conflict(on_conflict.clone())
+//         .exec(conn)
+//         .await?;
+//
+//     buffer_before_insert.clear();
+//     Ok(())
+// }
+//
+// async fn delete_player_state(
+//     conn: &DatabaseConnection,
+//     known_player_state_ids: HashSet<i64>,
+// ) -> anyhow::Result<()> {
+//     info!(
+//         "player_state's ({}) to delete: {:?}",
+//         known_player_state_ids.len(),
+//         known_player_state_ids
+//     );
+//     player_state::Entity::delete_many()
+//         .filter(player_state::Column::EntityId.is_in(known_player_state_ids))
+//         .exec(conn)
+//         .await?;
+//     Ok(())
+// }
+//
+// pub(crate) async fn get_known_player_username_state_ids(
+//     conn: &DatabaseConnection,
+// ) -> anyhow::Result<HashSet<i64>> {
+//     let known_player_username_state_ids: Vec<i64> = player_username_state::Entity::find()
+//         .select_only()
+//         .column(player_username_state::Column::EntityId)
+//         .into_tuple()
+//         .all(conn)
+//         .await?;
+//
+//     let known_player_username_state_ids = known_player_username_state_ids
+//         .into_iter()
+//         .collect::<HashSet<i64>>();
+//
+//     Ok(known_player_username_state_ids)
+// }
+//
+// async fn delete_player_username_state(
+//     conn: &DatabaseConnection,
+//     known_player_username_state_ids: HashSet<i64>,
+// ) -> anyhow::Result<()> {
+//     info!(
+//         "player_username_state's ({}) to delete: {:?}",
+//         known_player_username_state_ids.len(),
+//         known_player_username_state_ids
+//     );
+//     player_username_state::Entity::delete_many()
+//         .filter(player_username_state::Column::EntityId.is_in(known_player_username_state_ids))
+//         .exec(conn)
+//         .await?;
+//     Ok(())
+// }
+//
+// async fn db_insert_player_username_states(
+//     conn: &DatabaseConnection,
+//     buffer_before_insert: &mut Vec<Model>,
+//     on_conflict: &OnConflict,
+// ) -> anyhow::Result<()> {
+//     let player_username_states_from_db = player_username_state::Entity::find()
+//         .filter(
+//             player_username_state::Column::EntityId.is_in(
+//                 buffer_before_insert
+//                     .iter()
+//                     .map(|player_username_state| player_username_state.entity_id)
+//                     .collect::<Vec<i64>>(),
+//             ),
+//         )
+//         .all(conn)
+//         .await?;
+//
+//     let player_username_states_from_db_map = player_username_states_from_db
+//         .into_iter()
+//         .map(|player_username_state| (player_username_state.entity_id, player_username_state))
+//         .collect::<HashMap<i64, player_username_state::Model>>();
+//
+//     let things_to_insert = buffer_before_insert
+//         .iter()
+//         .filter(|player_username_state| {
+//             match player_username_states_from_db_map.get(&player_username_state.entity_id) {
+//                 Some(player_username_state_from_db) => {
+//                     player_username_state_from_db != *player_username_state
+//                 }
+//                 None => true,
+//             }
+//         })
+//         .map(|player_username_state| player_username_state.clone().into_active_model())
+//         .collect::<Vec<player_username_state::ActiveModel>>();
+//
+//     if things_to_insert.is_empty() {
+//         debug!("Nothing to insert");
+//         buffer_before_insert.clear();
+//         return Ok(());
+//     } else {
+//         debug!(
+//             "Inserting {} player_username_states",
+//             things_to_insert.len()
+//         );
+//     }
+//
+//     let _ = player_username_state::Entity::insert_many(things_to_insert)
+//         .on_conflict(on_conflict.clone())
+//         .exec(conn)
+//         .await?;
+//
+//     buffer_before_insert.clear();
+//
+//     Ok(())
+// }
 
 // pub(crate) async fn handle_initial_subscription_player_username_state(
 //     p0: &DatabaseConnection,

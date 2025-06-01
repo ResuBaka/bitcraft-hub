@@ -54,7 +54,7 @@ impl SkillDescRaw {
             description: self.description.clone(),
             icon_asset_name: self.icon_asset_name.clone(),
             title: self.title.clone(),
-            skill_category: skill_category,
+            skill_category,
         })
     }
 }

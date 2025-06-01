@@ -76,7 +76,7 @@ impl From<cargo_desc_type::CargoDesc> for Model {
             despawn_time: value.despawn_time,
             tier: value.tier,
             tag: value.tag,
-            rarity: rarity,
+            rarity,
             not_pickupable: value.not_pickupable,
         }
     }

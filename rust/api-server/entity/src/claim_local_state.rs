@@ -109,7 +109,7 @@ impl From<ClaimLocalState> for crate::claim_local_state::Model {
             num_tiles: value.num_tiles,
             num_tile_neighbors: value.num_tile_neighbors as i32,
             treasury: value.treasury as i32,
-            location: location,
+            location,
             xp_gained_since_last_coin_minting: value.xp_gained_since_last_coin_minting as i32,
             supplies_purchase_threshold: value.supplies_purchase_threshold as i32,
             supplies_purchase_price: value.supplies_purchase_price,
