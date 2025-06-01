@@ -298,7 +298,9 @@ const claimOwner = computed(() => {
 
   return (
     claim.value.members.find(
-      (member) => member.entity_id === claim.value.owner_player_entity_id,
+      (member) =>
+        member.entity_id.toString() ===
+        claim.value.owner_player_entity_id.toString(),
     )?.user_name ?? ""
   );
 });
