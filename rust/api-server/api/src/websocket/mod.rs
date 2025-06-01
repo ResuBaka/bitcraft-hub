@@ -6,7 +6,8 @@ use ::entity::user_state;
 use axum::http::HeaderMap;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use entity::{
-    cargo_desc, deployable_state, item_desc, mobile_entity_state, vault_state_collectibles,
+    cargo_desc, claim_local_state, claim_member_state, claim_state, deployable_state, item_desc,
+    mobile_entity_state, vault_state_collectibles,
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
@@ -106,6 +107,10 @@ fn connect_to_db_logic(
     cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
     vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,
     deployable_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DeployableState>>,
+    claim_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimState>>,
+    claim_local_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimLocalState>>,
+    claim_member_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimMemberState>>,
+    skill_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<SkillDesc>>,
 ) {
     let ctx = connect_to_db(&database, config.spacetimedb_url().as_ref());
     let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
@@ -349,6 +354,36 @@ fn connect_to_db_logic(
                 .unwrap()
         });
 
+    let temp_claim_state_tx = claim_state_tx.clone();
+    ctx.db.claim_state().on_update(
+        move |_ctx: &EventContext, old: &ClaimState, new: &ClaimState| {
+            temp_claim_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_claim_state_tx = claim_state_tx.clone();
+    ctx.db
+        .claim_state()
+        .on_insert(move |_ctx: &EventContext, new: &ClaimState| {
+            temp_claim_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_claim_state_tx = claim_state_tx.clone();
+    ctx.db
+        .claim_state()
+        .on_delete(move |_ctx: &EventContext, new: &ClaimState| {
+            temp_claim_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
     let temp_deployable_state_tx = deployable_state_tx.clone();
     ctx.db.deployable_state().on_update(
         move |_ctx: &EventContext, old: &DeployableState, new: &DeployableState| {
@@ -378,9 +413,99 @@ fn connect_to_db_logic(
                 })
                 .unwrap()
         });
+
+    let temp_claim_local_state_tx = claim_local_state_tx.clone();
+    ctx.db.claim_local_state().on_update(
+        move |_ctx: &EventContext, old: &ClaimLocalState, new: &ClaimLocalState| {
+            temp_claim_local_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_claim_local_state_tx = claim_local_state_tx.clone();
+    ctx.db
+        .claim_local_state()
+        .on_insert(move |_ctx: &EventContext, new: &ClaimLocalState| {
+            temp_claim_local_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_claim_local_state_tx = claim_local_state_tx.clone();
+    ctx.db
+        .claim_local_state()
+        .on_delete(move |_ctx: &EventContext, new: &ClaimLocalState| {
+            temp_claim_local_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_claim_member_state_tx = claim_member_state_tx.clone();
+    ctx.db.claim_member_state().on_update(
+        move |_ctx: &EventContext, old: &ClaimMemberState, new: &ClaimMemberState| {
+            temp_claim_member_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_claim_member_state_tx = claim_member_state_tx.clone();
+    ctx.db
+        .claim_member_state()
+        .on_insert(move |_ctx: &EventContext, new: &ClaimMemberState| {
+            temp_claim_member_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_claim_member_state_tx = claim_member_state_tx.clone();
+    ctx.db
+        .claim_member_state()
+        .on_delete(move |_ctx: &EventContext, new: &ClaimMemberState| {
+            temp_claim_member_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_skill_desc_tx = skill_desc_tx.clone();
+    ctx.db.skill_desc().on_update(
+        move |_ctx: &EventContext, old: &SkillDesc, new: &SkillDesc| {
+            temp_skill_desc_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_skill_desc_tx = skill_desc_tx.clone();
+    ctx.db
+        .skill_desc()
+        .on_insert(move |_ctx: &EventContext, new: &SkillDesc| {
+            temp_skill_desc_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_skill_desc_tx = skill_desc_tx.clone();
+    ctx.db
+        .skill_desc()
+        .on_delete(move |_ctx: &EventContext, new: &SkillDesc| {
+            temp_skill_desc_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
     let tables_to_subscribe = vec![
         // "user_state",
-        // "mobile_entity_state",
+        "mobile_entity_state",
         // "claim_tile_state",
         // "combat_action_desc",
         "item_desc",
@@ -389,21 +514,20 @@ fn connect_to_db_logic(
         // "crafting_recipe_desc",
         // "action_state",
         "player_state",
-        // "skill_desc",
+        "skill_desc",
         "player_username_state",
         // "building_desc",
         // "building_state",
         "vault_state",
         "experience_state",
         // "claim_tech_state",
-        // "claim_state",
-        // "claim_member_state",
-        // "claim_local_state",
+        "claim_state",
+        "claim_member_state",
+        "claim_local_state",
         "deployable_state",
         // "collectible_desc",
         // "claim_tech_desc",
         // "claim_description_state", -> claim_state
-        // "claim_tile_state",
         // "location_state",
         "inventory_state",
     ];
@@ -449,6 +573,14 @@ pub fn start_websocket_bitcraft_logic(
 
         let (deployable_state_tx, deployable_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
+        let (claim_state_tx, claim_state_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let (claim_local_state_tx, claim_local_state_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let (claim_member_state_tx, claim_member_state_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let (skill_desc_tx, skill_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+
         config.spacetimedb.databases.iter().for_each(|database| {
             connect_to_db_logic(
                 &config,
@@ -462,6 +594,10 @@ pub fn start_websocket_bitcraft_logic(
                 &cargo_desc_tx,
                 &vault_state_collectibles_tx,
                 &deployable_state_tx,
+                &claim_state_tx,
+                &claim_local_state_tx,
+                &claim_member_state_tx,
+                &skill_desc_tx,
             )
         });
         start_worker_mobile_entity_state(
@@ -522,6 +658,34 @@ pub fn start_websocket_bitcraft_logic(
             broadcast_tx.clone(),
             global_app_state.clone(),
             deployable_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_claim_state(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            claim_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_claim_local_state(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            claim_local_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_claim_member_state(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            claim_member_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_skill_desc(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            skill_desc_rx,
             2000,
             Duration::from_millis(25),
         );
@@ -777,6 +941,87 @@ impl From<DeployableState> for entity::deployable_state::Model {
         }
     }
 }
+
+impl From<ClaimState> for entity::claim_state::Model {
+    fn from(value: ClaimState) -> Self {
+        ::entity::claim_state::Model {
+            entity_id: value.entity_id as i64,
+            owner_player_entity_id: value.owner_player_entity_id as i64,
+            owner_building_entity_id: value.owner_building_entity_id as i64,
+            name: value.name,
+            neutral: value.neutral,
+        }
+    }
+}
+impl From<OffsetCoordinatesSmallMessage> for ::entity::shared::location::Location {
+    fn from(value: OffsetCoordinatesSmallMessage) -> Self {
+        ::entity::shared::location::Location {
+            x: value.x,
+            z: value.z,
+            dimension: value.dimension,
+        }
+    }
+}
+impl From<ClaimLocalState> for entity::claim_local_state::Model {
+    fn from(value: ClaimLocalState) -> Self {
+        let mut location: Option<::entity::shared::location::Location> = None;
+        if let Some(loc) = value.location {
+            location = Some(loc.into())
+        }
+        ::entity::claim_local_state::Model {
+            entity_id: value.entity_id as i64,
+            supplies: value.supplies,
+            building_maintenance: value.building_maintenance,
+            num_tiles: value.num_tiles,
+            num_tile_neighbors: value.num_tile_neighbors as i32,
+            treasury: value.treasury as i32,
+            location: location,
+            xp_gained_since_last_coin_minting: value.xp_gained_since_last_coin_minting as i32,
+            supplies_purchase_threshold: value.supplies_purchase_threshold as i32,
+            supplies_purchase_price: value.supplies_purchase_price,
+            building_description_id: value.building_description_id,
+        }
+    }
+}
+
+impl From<ClaimMemberState> for entity::claim_member_state::Model {
+    fn from(value: ClaimMemberState) -> Self {
+        ::entity::claim_member_state::Model {
+            entity_id: value.entity_id as i64,
+            claim_entity_id: value.claim_entity_id as i64,
+            player_entity_id: value.player_entity_id as i64,
+            user_name: value.user_name,
+            inventory_permission: value.inventory_permission,
+            build_permission: value.build_permission,
+            officer_permission: value.officer_permission,
+            co_owner_permission: value.co_owner_permission,
+        }
+    }
+}
+
+impl From<SkillCategory> for i32 {
+    fn from(value: SkillCategory) -> Self {
+        match &value {
+            SkillCategory::None => 0,
+            SkillCategory::Adventure => 2,
+            SkillCategory::Profession => 1,
+        }
+    }
+}
+impl From<SkillDesc> for entity::skill_desc::Model {
+    fn from(value: SkillDesc) -> Self {
+        ::entity::skill_desc::Model {
+            id: value.id as i64,
+            title: value.title,
+            skill: value.skill_type,
+            name: value.name,
+            description: value.description,
+            icon_asset_name: value.icon_asset_name,
+            skill_category: value.skill_category.into(),
+        }
+    }
+}
+
 fn start_worker_mobile_entity_state(
     broadcast_tx: UnboundedSender<WebSocketMessages>,
     global_app_state: Arc<AppState>,
@@ -1478,6 +1723,381 @@ fn start_worker_deployable_state(
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::deployable_state::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_claim_state(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(claim_state::Column::EntityId)
+            .update_columns([
+                claim_state::Column::OwnerPlayerEntityId,
+                claim_state::Column::OwnerBuildingEntityId,
+                claim_state::Column::Name,
+                claim_state::Column::Neutral,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let model: ::entity::claim_state::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::claim_state::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::claim_state::Model = delete.into();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::claim_state::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_claim_local_state(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(claim_local_state::Column::EntityId)
+            .update_columns([
+                claim_local_state::Column::Supplies,
+                claim_local_state::Column::BuildingMaintenance,
+                claim_local_state::Column::NumTiles,
+                claim_local_state::Column::NumTileNeighbors,
+                claim_local_state::Column::Location,
+                claim_local_state::Column::Treasury,
+                claim_local_state::Column::XpGainedSinceLastCoinMinting,
+                claim_local_state::Column::SuppliesPurchaseThreshold,
+                claim_local_state::Column::SuppliesPurchasePrice,
+                claim_local_state::Column::BuildingDescriptionId,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let model: ::entity::claim_local_state::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::claim_local_state::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::claim_local_state::Model = delete.into();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::claim_local_state::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_claim_member_state(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(claim_member_state::Column::EntityId)
+            .update_columns([
+                claim_member_state::Column::ClaimEntityId,
+                claim_member_state::Column::PlayerEntityId,
+                claim_member_state::Column::UserName,
+                claim_member_state::Column::InventoryPermission,
+                claim_member_state::Column::BuildPermission,
+                claim_member_state::Column::OfficerPermission,
+                claim_member_state::Column::CoOwnerPermission,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let model: ::entity::claim_member_state::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::claim_member_state::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::claim_member_state::Model = delete.into();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::claim_member_state::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_skill_desc(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<SkillDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(skill_desc::Column::Id)
+            .update_columns([
+                skill_desc::Column::Name,
+                skill_desc::Column::Description,
+                skill_desc::Column::IconAssetName,
+                skill_desc::Column::Title,
+                skill_desc::Column::SkillCategory,
+                skill_desc::Column::Skill,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let model: ::entity::skill_desc::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::skill_desc::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::skill_desc::Model = delete.into();
+                                let id = model.id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                }
+
+                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::skill_desc::Entity::insert_many(
                     messages
                         .iter()
                         .map(|value| value.clone().into_active_model())
