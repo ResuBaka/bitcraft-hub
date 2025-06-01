@@ -920,7 +920,7 @@ const countDownUntilResearchIsFinished = computed(() => {
     </v-row>
     <v-row>
       <v-col cols="12">
-        <leaderboard-claim :claim-id="parseInt($route.params.id)"></leaderboard-claim>
+        <leaderboard-claim :claim-id="claim?.entity_id"></leaderboard-claim>
       </v-col>
       <v-col cols="12">
         <v-expansion-panels v-model="buildings_collapsible">

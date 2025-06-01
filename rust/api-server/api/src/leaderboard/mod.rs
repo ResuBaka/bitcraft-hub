@@ -4,7 +4,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use log::error;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
 
@@ -793,7 +792,7 @@ pub(crate) async fn player_leaderboard(
 pub(crate) async fn get_claim_leaderboard(
     state: State<std::sync::Arc<AppState>>,
     Path(claim_id): Path<i64>,
-) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<GetTop100Response>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -816,7 +815,7 @@ pub(crate) async fn get_claim_leaderboard(
 
     let player_ids = claim_member
         .iter()
-        .map(|member| member.entity_id)
+        .map(|member| member.player_entity_id)
         .collect::<Vec<i64>>();
 
     let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();
@@ -1013,10 +1012,10 @@ pub(crate) async fn get_claim_leaderboard(
         .map(|player| (player.entity_id, player.time_signed_in))
         .collect::<HashMap<i64, i32>>();
 
-    Ok(axum_codec::Codec(serde_json::json!({
-        "player_map": players,
-        "leaderboard": leaderboard_result
-    })))
+    Ok(axum_codec::Codec(GetTop100Response {
+        player_map: players,
+        leaderboard: leaderboard_result,
+    }))
 }
 
 // pub(crate) async fn handle_initial_subscription(

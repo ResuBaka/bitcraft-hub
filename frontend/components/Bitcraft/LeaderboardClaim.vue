@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const numberFormat = new Intl.NumberFormat(undefined);
 const props = defineProps<{
-  claimId: number;
+  claimId: number | BigInt;
 }>();
 const leaderboard_collapsible = ref([]);
 const {
