@@ -51,7 +51,7 @@ const claimOwner = computed(() => {
       <v-card-title>
         <nuxt-link
           class="text-decoration-none font-weight-black" :class="`color-tier-${claim.tier}`"
-          :to="{ name: 'claims-id', params: { id: claim.entity_id } }"
+          :to="{ name: 'claims-id', params: { id: claim.entity_id.toString() } }"
         >
           {{ claim.name }}
         </nuxt-link>

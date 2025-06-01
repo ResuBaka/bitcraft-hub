@@ -1,5 +1,6 @@
 use super::shared::location;
 use crate::shared::location::Location;
+use game_module::module_bindings::ClaimLocalState;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -92,5 +93,27 @@ mod tests {
   "building_description_id": 292245080
 }"#;
         let parsed_event_data: Model = serde_json::from_str(raw_event_data).unwrap();
+    }
+}
+
+impl From<ClaimLocalState> for crate::claim_local_state::Model {
+    fn from(value: ClaimLocalState) -> Self {
+        let mut location: Option<crate::shared::location::Location> = None;
+        if let Some(loc) = value.location {
+            location = Some(loc.into())
+        }
+        crate::claim_local_state::Model {
+            entity_id: value.entity_id as i64,
+            supplies: value.supplies,
+            building_maintenance: value.building_maintenance,
+            num_tiles: value.num_tiles,
+            num_tile_neighbors: value.num_tile_neighbors as i32,
+            treasury: value.treasury as i32,
+            location: location,
+            xp_gained_since_last_coin_minting: value.xp_gained_since_last_coin_minting as i32,
+            supplies_purchase_threshold: value.supplies_purchase_threshold as i32,
+            supplies_purchase_price: value.supplies_purchase_price,
+            building_description_id: value.building_description_id,
+        }
     }
 }

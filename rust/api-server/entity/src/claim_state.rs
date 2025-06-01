@@ -1,3 +1,4 @@
+use game_module::module_bindings::ClaimState;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -16,3 +17,15 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl From<ClaimState> for crate::claim_state::Model {
+    fn from(value: ClaimState) -> Self {
+        crate::claim_state::Model {
+            entity_id: value.entity_id as i64,
+            owner_player_entity_id: value.owner_player_entity_id as i64,
+            owner_building_entity_id: value.owner_building_entity_id as i64,
+            name: value.name,
+            neutral: value.neutral,
+        }
+    }
+}

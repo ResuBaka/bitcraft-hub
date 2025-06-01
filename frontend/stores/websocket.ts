@@ -12,7 +12,7 @@ export const useWebsocketStore = defineStore('websocket', () => {
         public: { api },
     } = useRuntimeConfig();
 
-    const { send, status, close, open } = useWebSocket(`${api.websocket}/websocket`, {
+    const { send, status, close, open } = useWebSocket(`${api.websocket}/websocket?encoding=MessagePack`, {
         onMessage: handleMessage,
         autoReconnect: {
             retries: 5,
@@ -48,8 +48,6 @@ export const useWebsocketStore = defineStore('websocket', () => {
                 // @ts-ignore
                 int64AsType: "auto",
             });
-
-            console.log("message", message);
         }
 
         if (!message) {

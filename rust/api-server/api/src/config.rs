@@ -387,7 +387,7 @@ impl Default for SpacetimeDbConfig {
             domain: "localhost".to_string(),
             protocol: "https://".to_string(),
             database: "".to_string(),
-            databases: vec!["".to_string()],
+            databases: vec![],
             password: "".to_string(),
             username: "token".to_string(),
             websocket_protocol: "wss://".to_string(),
@@ -482,6 +482,7 @@ impl Config {
                 .separator("__")
                 .list_separator(",")
                 .with_list_parse_key("origins.origin")
+                .with_list_parse_key("spacetimedb.databases")
                 .with_list_parse_key("enabledimporter")
                 .try_parsing(true),
         );

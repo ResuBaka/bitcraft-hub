@@ -22,7 +22,7 @@ macro_rules! generate_mysql_sum_level_sql_statement {
         let mut sql = String::new();
         sql.push_str("SUM(CASE ");
         for (level, xp) in $experience_per_level.iter().rev() {
-            sql.push_str(format!("WHEN experience > {xp} THEN {level} ").as_str());
+            sql.push_str(format!("WHEN experience >= {xp} THEN {level} ").as_str());
         }
         sql.push_str("ELSE 0 END)");
         sql
@@ -454,7 +454,7 @@ pub(crate) fn experience_to_level(experience: i64) -> i32 {
     }
 
     for (level, xp) in EXPERIENCE_PER_LEVEL.iter().rev() {
-        if experience.gt(xp) {
+        if experience.gt(xp) || experience.eq(xp) {
             return *level;
         }
     }

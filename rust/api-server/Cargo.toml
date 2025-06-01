@@ -9,10 +9,10 @@ rust-version = "1.85.0"
 #lto = true
 
 [workspace]
-members = [".", "api", "service", "entity", "migration"]
+members = [".", "api", "service", "entity", "migration", "game_module"]
 
 [workspace.dependencies]
-sea-orm = { version = "1.1.11", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
+sea-orm = { version = "=1.1.12", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
 serde_json = "1.0.140"
 serde_yml = "0.0.12"
 toml = "0.8.22"
@@ -23,10 +23,11 @@ axum = { version = "0.8.4", features = ["ws"]}
 reqwest = { version = "0.12.15", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
 hyper = { version = "1.6.0", features = ["full"] }
 rayon = "1.10.0"
-time = { version = "0.3.41", features = ["serde"] }
+time = { version = "0.3.41", features = ["serde", "parsing"] }
 anyhow = "1.0.98"
 clap = { version = "4.5.37", features = ["derive"] }
 axum-codec = { version = "0.0.19", features = ["serde", "json", "msgpack", "toml", "yaml"] }
+spacetimedb-sdk = "1.1.1"
 
 [dependencies]
 api = { path = "api" }

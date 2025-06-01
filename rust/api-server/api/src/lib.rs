@@ -12,7 +12,6 @@ mod items;
 mod items_and_cargo;
 mod leaderboard;
 mod locations;
-mod module_bindings;
 mod player_state;
 mod recipes;
 mod reducer_event_handler;
@@ -24,7 +23,7 @@ mod websocket;
 use crate::config::Config;
 use crate::websocket::WebSocketMessages;
 use axum::extract::{
-    MatchedPath, Request, State,
+    MatchedPath, Query, Request, State,
     ws::{Message, WebSocket, WebSocketUpgrade},
 };
 use axum::http::{HeaderValue, Version};
@@ -45,6 +44,7 @@ use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use reqwest::header::HeaderMap;
 use sea_orm::ConnectOptions;
+use sea_orm::strum::Display;
 use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
 use service::sea_orm::{Database, DatabaseConnection};
@@ -73,8 +73,13 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
     if config.import_enabled {
         import_data(config.clone());
     }
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let state = Arc::new(AppState::new(database_connection.clone(), &config));
+    let state = Arc::new(AppState::new(
+        database_connection.clone(),
+        &config,
+        tx.clone(),
+    ));
 
     let server_url = config.server_url();
 
@@ -87,12 +92,11 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     if config.live_updates_ws {
         tracing::info!("Staring Bitcraft websocket connection");
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         tokio::spawn(broadcast_message(state.clone(), rx));
 
         let tmp_config = config.clone();
-        websocket::start_websocket_bitcraft_logic(tmp_config, tx, state.clone());
+        websocket::start_websocket_bitcraft_logic(tmp_config, tx.clone(), state.clone());
     }
 
     let app = create_app(&config, state.clone(), prometheus);
@@ -126,13 +130,19 @@ async fn create_db_connection(config: &Config) -> DatabaseConnection {
         .expect("Database connection failed")
 }
 
+#[derive(Deserialize)]
+struct QueryWebsocketOptions {
+    encoding: Option<WebsocketEncoding>,
+}
+
 async fn websocket_handler(
     ws: WebSocketUpgrade,
     version: Version,
     State(state): State<Arc<AppState>>,
+    Query(websocket_options): Query<QueryWebsocketOptions>,
 ) -> impl IntoResponse {
     tracing::debug!("Websocket upgraded with version: {version:?}");
-    ws.on_upgrade(|socket| websocket(socket, state))
+    ws.on_upgrade(|socket| websocket(socket, state, websocket_options))
 }
 
 #[allow(dead_code)]
@@ -145,7 +155,11 @@ struct ServerInstance {
 // This function deals with a single websocket connection, i.e., a single
 // connected client / user, for which we will spawn two independent tasks (for
 // receiving / sending chat messages).
-async fn websocket(stream: WebSocket, state: Arc<AppState>) {
+async fn websocket(
+    stream: WebSocket,
+    state: Arc<AppState>,
+    websocket_options: QueryWebsocketOptions,
+) {
     // By splitting, we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 
@@ -153,7 +167,16 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     let (tx, mut rx) = tokio::sync::broadcast::channel::<WebSocketMessages>(20);
 
-    state.clients_state.add_client(id.clone(), tx.clone()).await;
+    state
+        .clients_state
+        .add_client(
+            id.clone(),
+            tx.clone(),
+            websocket_options
+                .encoding
+                .map_or(WebsocketEncoding::Json, |value| value),
+        )
+        .await;
 
     // Now send the "joined" message to all subscribers.
     let msg = format!("{id} joined.");
@@ -177,19 +200,19 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
             let encoding = encoding.unwrap();
 
-            let send_result = if encoding == *"JSON" {
+            let send_result = if encoding == WebsocketEncoding::Json {
                 sender
                     .send(Message::Text(serde_json::to_string(&msg).unwrap().into()))
                     .await
-            } else if encoding == *"TOML" {
+            } else if encoding == WebsocketEncoding::Toml {
                 sender
                     .send(Message::Text(a.to_toml().unwrap().into()))
                     .await
-            } else if encoding == *"YAML" {
+            } else if encoding == WebsocketEncoding::Yaml {
                 sender
                     .send(Message::Text(a.to_yaml().unwrap().into()))
                     .await
-            } else if encoding == *"MSPACK" {
+            } else if encoding == WebsocketEncoding::MessagePack {
                 sender
                     .send(Message::Binary(a.to_msgpack().unwrap().into()))
                     .await
@@ -461,6 +484,7 @@ fn import_data(config: Config) {
 #[derive(Clone)]
 struct AppState {
     conn: DatabaseConnection,
+    tx: UnboundedSender<WebSocketMessages>,
     storage_path: PathBuf,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
@@ -486,9 +510,14 @@ struct AppState {
 }
 
 impl AppState {
-    fn new(conn: DatabaseConnection, config: &Config) -> Self {
+    fn new(
+        conn: DatabaseConnection,
+        config: &Config,
+        tx: UnboundedSender<WebSocketMessages>,
+    ) -> Self {
         Self {
             conn,
+            tx,
             storage_path: PathBuf::from(config.storage_path.clone()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
@@ -517,9 +546,7 @@ impl AppState {
         let claim_entity_id = claim_member_state.claim_entity_id;
         let entity_id = claim_member_state.entity_id;
 
-        let cms = self
-            .claim_member_state
-            .get(&(claim_member_state.entity_id as u64));
+        let cms = self.claim_member_state.get(&(claim_entity_id as u64));
 
         if let Some(cms) = cms {
             cms.insert(claim_member_state);
@@ -527,7 +554,8 @@ impl AppState {
             let dashset = dashmap::DashSet::new();
             dashset.insert(claim_member_state);
 
-            self.claim_member_state.insert(entity_id as u64, dashset);
+            self.claim_member_state
+                .insert(claim_entity_id as u64, dashset);
         }
 
         if let Some(claim_state_to_member_set) =
@@ -547,8 +575,9 @@ impl AppState {
         let claim_entity_id = claim_member_state.claim_entity_id;
         let entity_id = claim_member_state.entity_id;
 
-        self.claim_member_state
-            .remove(&(claim_member_state.entity_id as u64));
+        self.claim_member_state.iter().for_each(|cms| {
+            cms.remove(&claim_member_state);
+        });
 
         if let Some(claim_state_to_member_set) =
             self.player_to_claim_id_cache.get_mut(&(entity_id as u64))
@@ -558,10 +587,18 @@ impl AppState {
     }
 }
 
+#[derive(Deserialize, Display, Copy, Clone, Eq, PartialEq)]
+enum WebsocketEncoding {
+    Json,
+    Toml,
+    Yaml,
+    MessagePack,
+}
+
 type WebsocketClient = (
     tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
     HashMap<String, HashSet<i64>>,
-    String,
+    WebsocketEncoding,
 );
 
 struct ClientsState {
@@ -581,11 +618,12 @@ impl ClientsState {
         &self,
         id: String,
         tx: tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
+        encoding: WebsocketEncoding,
     ) {
         self.clients
             .write()
             .await
-            .insert(id, (tx, HashMap::new(), "JSON".to_string()));
+            .insert(id, (tx, HashMap::new(), encoding));
         metrics::gauge!("websocket_clients_connected_total").increment(1);
     }
 
@@ -601,12 +639,11 @@ impl ClientsState {
         metrics::gauge!("websocket_clients_connected_total").decrement(1);
     }
 
-    pub(crate) async fn get_encode_format_for_client(&self, id: &String) -> Option<String> {
-        self.clients
-            .read()
-            .await
-            .get(id)
-            .map(|client| client.2.clone())
+    pub(crate) async fn get_encode_format_for_client(
+        &self,
+        id: &String,
+    ) -> Option<WebsocketEncoding> {
+        self.clients.read().await.get(id).map(|client| client.2)
     }
 
     pub(crate) async fn get_topics_for_client(&self, id: &String) -> Option<Vec<String>> {

@@ -42,7 +42,7 @@ const {
 } = useRuntimeConfig();
 
 const { data: claimFetch, pending: claimPnding } = useFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/claims/${route.params.id}`;
+  return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
 });
 
 const { data: buidlingsFetch, pending: buildingsPending } = useFetchMsPack(
@@ -60,8 +60,8 @@ const topicsPlayer = computed<string[]>(() => {
 });
 
 registerWebsocketMessageHandler(
-  "ClaimDescriptionState",
-  [`claim.${route.params.id}`],
+  "ClaimLocalState",
+  [`claim_local_state.${route.params.id}`],
   (message) => {
     if (message.c.entity_id == route.params.id) {
       if (claimFetch.value) {
@@ -80,7 +80,7 @@ registerWebsocketMessageHandler(
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
   let index = claimFetch.value?.members.findIndex(
-    (member) => member.entity_id === message.c.entity_id,
+    (member) => member.entity_id == message.c.entity_id,
   );
   if (index && index !== -1) {
     let onlineState = message.c.signed_in ? "Online" : "Offline";
@@ -115,7 +115,7 @@ const topicsLevel = computed<string[]>(() => {
 
 registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
   let index = claimFetch.value?.members.findIndex(
-    (member) => member.entity_id === message.c.user_id,
+    (member) => member.entity_id == message.c.user_id,
   );
   if (index && index !== -1) {
     toast(
@@ -514,10 +514,10 @@ const countDownUntilResearchIsFinished = computed(() => {
               <v-col cols="6" md="2" lg="12">
                 <v-list-item>
                   <v-list-item-title>Current xp for minting</v-list-item-title>
-                  <v-list-item-subtitle><bitcraft-animated-number :value="claim.xp_gained_since_last_coin_minting" :speed="8"></bitcraft-animated-number> / 1000</v-list-item-subtitle>
+                  <v-list-item-subtitle><bitcraft-animated-number :value="claim.xp_gained_since_last_coin_minting" :speed="8"></bitcraft-animated-number> / 2500</v-list-item-subtitle>
                 </v-list-item>
               </v-col>
-              <v-col cols="6" md="2" lg="12" v-if="claim.location.x != 0 && claim.location.z != 0">
+              <v-col cols="6" md="2" lg="12" v-if="claim?.location && claim?.location.x != 0 && claim?.location.z != 0">
                 <v-list-item>
                   <v-list-item-title>Location</v-list-item-title>
                   <v-list-item-subtitle>

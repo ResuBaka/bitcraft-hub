@@ -20,6 +20,7 @@ rayon = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
 axum-codec = { workspace = true }
+spacetimedb-sdk = { workspace = true }
 dashmap = { version = "6.1.0", features = ["serde"] }
 tokio-util = "0.7.15"
 futures = "0.3.31"
@@ -27,6 +28,7 @@ tower = "0.5.2"
 service = { path = "../service" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
+game_module = { path = "../game_module" }
 tracing-subscriber = { version = "0.3.19", features = ["json", "serde", "serde_json"] }
 tower-http = { version = "0.6.2", features = ["fs", "cors", "compression-full"] }
 tower-cookies = "0.11.0"
@@ -41,7 +43,6 @@ async-compression = { version = "0.4.23", features = ["tokio", "deflate", "zstd"
 tracing = "0.1.41"
 nanoid = "0.4.0"
 config = "0.15.11"
-spacetimedb-sdk = "1.1.1"
 
 [dependencies.sea-orm-cli]
 version = "1.1.11"

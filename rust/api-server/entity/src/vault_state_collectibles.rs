@@ -1,4 +1,5 @@
 use crate::collectible_desc;
+use game_module::module_bindings::{VaultCollectible, VaultState, vault_state_type};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -56,5 +57,28 @@ impl RawVaultState {
             .iter()
             .map(|collectible| collectible.to_model(self.entity_id))
             .collect()
+    }
+}
+
+impl From<VaultCollectible> for crate::vault_state_collectibles::RawVaultStateCollectibles {
+    fn from(value: VaultCollectible) -> Self {
+        crate::vault_state_collectibles::RawVaultStateCollectibles {
+            id: value.id,
+            activated: value.activated,
+            count: value.count,
+        }
+    }
+}
+impl From<vault_state_type::VaultState> for crate::vault_state_collectibles::RawVaultState {
+    fn from(value: VaultState) -> Self {
+        let collectibles: Vec<crate::vault_state_collectibles::RawVaultStateCollectibles> = value
+            .collectibles
+            .iter()
+            .map(|content| content.clone().into())
+            .collect();
+        crate::vault_state_collectibles::RawVaultState {
+            entity_id: value.entity_id as i64,
+            collectibles: collectibles,
+        }
     }
 }

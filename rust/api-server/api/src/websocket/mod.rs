@@ -1,17 +1,18 @@
-use super::module_bindings::*;
 use crate::AppState;
 use crate::config::{Config, SpacetimeDbConfig};
+use crate::leaderboard::experience_to_level;
 use ::entity::raw_event_data::Model as RawEventData;
 use ::entity::user_state;
 use axum::http::HeaderMap;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use entity::{
-    cargo_desc, claim_local_state, claim_member_state, claim_state, deployable_state, item_desc,
-    mobile_entity_state, vault_state_collectibles,
+    cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
+    deployable_state, item_desc, mobile_entity_state, vault_state_collectibles,
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
 use futures::{SinkExt, StreamExt, TryStreamExt};
+use game_module::module_bindings::*;
 use log::{debug, error, info};
 use reqwest::ClientBuilder;
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
@@ -98,6 +99,7 @@ fn on_disconnected(_ctx: &ErrorContext, err: Option<Error>) {
 fn connect_to_db_logic(
     config: &Config,
     database: &String,
+    remove_desc: &bool,
     mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
     player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
@@ -111,6 +113,8 @@ fn connect_to_db_logic(
     claim_local_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimLocalState>>,
     claim_member_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimMemberState>>,
     skill_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<SkillDesc>>,
+    claim_tech_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechState>>,
+    claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
 ) {
     let ctx = connect_to_db(&database, config.spacetimedb_url().as_ref());
     let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
@@ -248,7 +252,6 @@ fn connect_to_db_logic(
     ctx.db
         .inventory_state()
         .on_insert(move |_ctx: &EventContext, new: &InventoryState| {
-            tracing::info!("good update for item_desc");
             temp_inventory_state_tx
                 .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
                 .unwrap()
@@ -503,6 +506,66 @@ fn connect_to_db_logic(
                 })
                 .unwrap()
         });
+
+    let temp_claim_tech_state_tx = claim_tech_state_tx.clone();
+    ctx.db.claim_tech_state().on_update(
+        move |_ctx: &EventContext, old: &ClaimTechState, new: &ClaimTechState| {
+            temp_claim_tech_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_claim_tech_state_tx = claim_tech_state_tx.clone();
+    ctx.db
+        .claim_tech_state()
+        .on_insert(move |_ctx: &EventContext, new: &ClaimTechState| {
+            temp_claim_tech_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_claim_tech_state_tx = claim_tech_state_tx.clone();
+    ctx.db
+        .claim_tech_state()
+        .on_delete(move |_ctx: &EventContext, new: &ClaimTechState| {
+            temp_claim_tech_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
+    let temp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
+    ctx.db.claim_tech_desc().on_update(
+        move |_ctx: &EventContext, old: &ClaimTechDesc, new: &ClaimTechDesc| {
+            temp_claim_tech_desc_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
+    ctx.db
+        .claim_tech_desc()
+        .on_insert(move |_ctx: &EventContext, new: &ClaimTechDesc| {
+            temp_claim_tech_desc_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
+    ctx.db
+        .claim_tech_desc()
+        .on_delete(move |_ctx: &EventContext, new: &ClaimTechDesc| {
+            temp_claim_tech_desc_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
     let tables_to_subscribe = vec![
         // "user_state",
         "mobile_entity_state",
@@ -520,24 +583,31 @@ fn connect_to_db_logic(
         // "building_state",
         "vault_state",
         "experience_state",
-        // "claim_tech_state",
+        "claim_tech_state",
         "claim_state",
         "claim_member_state",
         "claim_local_state",
         "deployable_state",
         // "collectible_desc",
-        // "claim_tech_desc",
+        "claim_tech_desc",
         // "claim_description_state", -> claim_state
         // "location_state",
         "inventory_state",
     ];
+
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {})
         .on_error(on_sub_error)
         .subscribe(
             tables_to_subscribe
                 .into_iter()
-                .map(|table| format!("select * from {table}"))
+                .filter_map(|table| {
+                    if *remove_desc && table.contains("_desc") {
+                        return None;
+                    }
+
+                    Some(format!("select * from {table}"))
+                })
                 .collect::<Vec<_>>(),
         );
 
@@ -581,10 +651,16 @@ pub fn start_websocket_bitcraft_logic(
 
         let (skill_desc_tx, skill_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
+        let (claim_tech_state_tx, claim_tech_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let mut remove_desc = false;
+
         config.spacetimedb.databases.iter().for_each(|database| {
             connect_to_db_logic(
                 &config,
                 database,
+                &remove_desc,
                 &mobile_entity_state_tx,
                 &player_state_tx,
                 &player_username_state_tx,
@@ -598,7 +674,11 @@ pub fn start_websocket_bitcraft_logic(
                 &claim_local_state_tx,
                 &claim_member_state_tx,
                 &skill_desc_tx,
-            )
+                &claim_tech_state_tx,
+                &claim_tech_desc_tx,
+            );
+
+            remove_desc = true;
         });
         start_worker_mobile_entity_state(
             broadcast_tx.clone(),
@@ -689,6 +769,20 @@ pub fn start_websocket_bitcraft_logic(
             2000,
             Duration::from_millis(25),
         );
+        start_worker_claim_tech_state(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            claim_tech_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_claim_tech_desc(
+            broadcast_tx.clone(),
+            global_app_state.clone(),
+            claim_tech_desc_rx,
+            2000,
+            Duration::from_millis(25),
+        );
     });
 }
 
@@ -722,304 +816,6 @@ enum SpacetimeUpdateMessages<T> {
     Insert { new: T },
     Update { old: T, new: T },
     Remove { delete: T },
-}
-
-impl From<MobileEntityState> for ::entity::mobile_entity_state::Model {
-    fn from(value: MobileEntityState) -> Self {
-        mobile_entity_state::Model {
-            entity_id: value.entity_id,
-            chunk_index: value.chunk_index,
-            timestamp: value.timestamp,
-            location_x: value.location_x,
-            location_z: value.location_z,
-            destination_x: value.destination_x,
-            destination_z: value.destination_z,
-            dimension: value.dimension,
-            is_running: value.is_running,
-        }
-    }
-}
-impl From<cargo_desc_type::CargoDesc> for entity::cargo_desc::Model {
-    fn from(value: cargo_desc_type::CargoDesc) -> Self {
-        let rarity = match &value.rarity {
-            Rarity::Default => entity::item_desc::Rarity::Default,
-            Rarity::Common => entity::item_desc::Rarity::Common,
-            Rarity::Uncommon => entity::item_desc::Rarity::Uncommon,
-            Rarity::Rare => entity::item_desc::Rarity::Rare,
-            Rarity::Epic => entity::item_desc::Rarity::Epic,
-            Rarity::Legendary => entity::item_desc::Rarity::Legendary,
-            Rarity::Mythic => entity::item_desc::Rarity::Mythic,
-        };
-        ::entity::cargo_desc::Model {
-            id: value.id,
-            name: value.name,
-            description: value.description,
-            volume: value.volume,
-            secondary_knowledge_id: value.secondary_knowledge_id,
-            model_asset_name: value.model_asset_name,
-            icon_asset_name: value.icon_asset_name,
-            carried_model_asset_name: value.carried_model_asset_name,
-            pick_up_animation_start: value.pick_up_animation_start,
-            pick_up_animation_end: value.pick_up_animation_end,
-            drop_animation_start: value.drop_animation_start,
-            drop_animation_end: value.drop_animation_end,
-            pick_up_time: value.pick_up_time,
-            place_time: value.place_time,
-            animator_state: value.animator_state,
-            movement_modifier: value.movement_modifier,
-            blocks_path: value.blocks_path,
-            on_destroy_yield_cargos: value.on_destroy_yield_cargos,
-            despawn_time: value.despawn_time,
-            tier: value.tier,
-            tag: value.tag,
-            rarity: rarity,
-            not_pickupable: value.not_pickupable,
-        }
-    }
-}
-impl From<item_desc_type::ItemDesc> for entity::item_desc::Model {
-    fn from(value: item_desc_type::ItemDesc) -> Self {
-        let rarity = match &value.rarity {
-            Rarity::Default => entity::item_desc::Rarity::Default,
-            Rarity::Common => entity::item_desc::Rarity::Common,
-            Rarity::Uncommon => entity::item_desc::Rarity::Uncommon,
-            Rarity::Rare => entity::item_desc::Rarity::Rare,
-            Rarity::Epic => entity::item_desc::Rarity::Epic,
-            Rarity::Legendary => entity::item_desc::Rarity::Legendary,
-            Rarity::Mythic => entity::item_desc::Rarity::Mythic,
-        };
-        ::entity::item_desc::Model {
-            id: value.id,
-            name: value.name,
-            description: value.description,
-            volume: value.volume,
-            durability: value.durability,
-            convert_to_on_durability_zero: value.convert_to_on_durability_zero,
-            secondary_knowledge_id: value.secondary_knowledge_id,
-            model_asset_name: value.model_asset_name,
-            icon_asset_name: value.icon_asset_name,
-            tier: value.tier,
-            tag: value.tag,
-            rarity: rarity,
-            compendium_entry: value.compendium_entry,
-            item_list_id: value.item_list_id,
-        }
-    }
-}
-impl From<Pocket> for ::entity::inventory::Pocket {
-    fn from(value: Pocket) -> Self {
-        let contents = match &value.contents {
-            Some(item_stack) => Some(item_stack.clone().into()),
-            None => None,
-        };
-        ::entity::inventory::Pocket {
-            volume: value.volume,
-            contents: contents,
-            locked: value.locked,
-        }
-    }
-}
-
-impl From<ItemStack> for ::entity::inventory::ItemStack {
-    fn from(value: ItemStack) -> Self {
-        ::entity::inventory::ItemStack {
-            item_id: value.item_id,
-            quantity: value.quantity as i64,
-            item_type: value.item_type.into(),
-            durability: value.durability,
-        }
-    }
-}
-impl From<ItemType> for ::entity::inventory::ItemType {
-    fn from(value: ItemType) -> Self {
-        match &value {
-            ItemType::Cargo => ::entity::inventory::ItemType::Cargo,
-            ItemType::Item => ::entity::inventory::ItemType::Item,
-        }
-    }
-}
-
-impl From<InventoryState> for ::entity::inventory::Model {
-    fn from(value: InventoryState) -> Self {
-        let pockets: Vec<entity::inventory::Pocket> = value
-            .pockets
-            .iter()
-            .map(|content| content.clone().into())
-            .collect();
-
-        ::entity::inventory::Model {
-            entity_id: value.entity_id as i64,
-            pockets: pockets,
-            inventory_index: value.inventory_index,
-            cargo_index: value.cargo_index,
-            owner_entity_id: value.owner_entity_id as i64,
-            player_owner_entity_id: value.player_owner_entity_id as i64,
-        }
-    }
-}
-
-impl From<VaultCollectible> for entity::vault_state_collectibles::RawVaultStateCollectibles {
-    fn from(value: VaultCollectible) -> Self {
-        entity::vault_state_collectibles::RawVaultStateCollectibles {
-            id: value.id,
-            activated: value.activated,
-            count: value.count,
-        }
-    }
-}
-impl From<vault_state_type::VaultState> for entity::vault_state_collectibles::RawVaultState {
-    fn from(value: VaultState) -> Self {
-        let collectibles: Vec<entity::vault_state_collectibles::RawVaultStateCollectibles> = value
-            .collectibles
-            .iter()
-            .map(|content| content.clone().into())
-            .collect();
-        ::entity::vault_state_collectibles::RawVaultState {
-            entity_id: value.entity_id as i64,
-            collectibles: collectibles,
-        }
-    }
-}
-impl From<PlayerState> for ::entity::player_state::Model {
-    fn from(value: PlayerState) -> Self {
-        let teleport_location = ::entity::player_state::TeleportLocation {
-            location: ::entity::player_state::OffsetCoordinatesSmallMessage {
-                x: value.teleport_location.location.x.clone(),
-                z: value.teleport_location.location.z.clone(),
-                dimension: value.teleport_location.location.dimension.clone(),
-            },
-            location_type: match value.teleport_location.location_type {
-                TeleportLocationType::BirthLocation => {
-                    ::entity::player_state::TeleportLocationType::BirthLocation
-                }
-                TeleportLocationType::TradingPost => {
-                    ::entity::player_state::TeleportLocationType::TradingPost
-                }
-                TeleportLocationType::HomeLocation => {
-                    ::entity::player_state::TeleportLocationType::HomeLocation
-                }
-                TeleportLocationType::CustomLocation => {
-                    ::entity::player_state::TeleportLocationType::CustomLocation
-                }
-                TeleportLocationType::Waystone => {
-                    ::entity::player_state::TeleportLocationType::Waystone
-                }
-            },
-        };
-
-        ::entity::player_state::Model {
-            teleport_location,
-            entity_id: value.entity_id as i64,
-            time_played: value.time_played,
-            session_start_timestamp: value.session_start_timestamp,
-            time_signed_in: value.time_signed_in,
-            sign_in_timestamp: value.sign_in_timestamp,
-            signed_in: value.signed_in,
-            traveler_tasks_expiration: value.traveler_tasks_expiration,
-        }
-    }
-}
-
-impl From<PlayerUsernameState> for ::entity::player_username_state::Model {
-    fn from(value: PlayerUsernameState) -> Self {
-        ::entity::player_username_state::Model {
-            entity_id: value.entity_id as i64,
-            username: value.username,
-        }
-    }
-}
-impl From<DeployableState> for entity::deployable_state::Model {
-    fn from(value: DeployableState) -> Self {
-        ::entity::deployable_state::Model {
-            entity_id: value.entity_id as i64,
-            owner_id: value.owner_id as i64,
-            claim_entity_id: value.claim_entity_id as i64,
-            direction: value.direction,
-            deployable_description_id: value.deployable_description_id,
-            nickname: value.nickname,
-            hidden: value.hidden,
-        }
-    }
-}
-
-impl From<ClaimState> for entity::claim_state::Model {
-    fn from(value: ClaimState) -> Self {
-        ::entity::claim_state::Model {
-            entity_id: value.entity_id as i64,
-            owner_player_entity_id: value.owner_player_entity_id as i64,
-            owner_building_entity_id: value.owner_building_entity_id as i64,
-            name: value.name,
-            neutral: value.neutral,
-        }
-    }
-}
-impl From<OffsetCoordinatesSmallMessage> for ::entity::shared::location::Location {
-    fn from(value: OffsetCoordinatesSmallMessage) -> Self {
-        ::entity::shared::location::Location {
-            x: value.x,
-            z: value.z,
-            dimension: value.dimension,
-        }
-    }
-}
-impl From<ClaimLocalState> for entity::claim_local_state::Model {
-    fn from(value: ClaimLocalState) -> Self {
-        let mut location: Option<::entity::shared::location::Location> = None;
-        if let Some(loc) = value.location {
-            location = Some(loc.into())
-        }
-        ::entity::claim_local_state::Model {
-            entity_id: value.entity_id as i64,
-            supplies: value.supplies,
-            building_maintenance: value.building_maintenance,
-            num_tiles: value.num_tiles,
-            num_tile_neighbors: value.num_tile_neighbors as i32,
-            treasury: value.treasury as i32,
-            location: location,
-            xp_gained_since_last_coin_minting: value.xp_gained_since_last_coin_minting as i32,
-            supplies_purchase_threshold: value.supplies_purchase_threshold as i32,
-            supplies_purchase_price: value.supplies_purchase_price,
-            building_description_id: value.building_description_id,
-        }
-    }
-}
-
-impl From<ClaimMemberState> for entity::claim_member_state::Model {
-    fn from(value: ClaimMemberState) -> Self {
-        ::entity::claim_member_state::Model {
-            entity_id: value.entity_id as i64,
-            claim_entity_id: value.claim_entity_id as i64,
-            player_entity_id: value.player_entity_id as i64,
-            user_name: value.user_name,
-            inventory_permission: value.inventory_permission,
-            build_permission: value.build_permission,
-            officer_permission: value.officer_permission,
-            co_owner_permission: value.co_owner_permission,
-        }
-    }
-}
-
-impl From<SkillCategory> for i32 {
-    fn from(value: SkillCategory) -> Self {
-        match &value {
-            SkillCategory::None => 0,
-            SkillCategory::Adventure => 2,
-            SkillCategory::Profession => 1,
-        }
-    }
-}
-impl From<SkillDesc> for entity::skill_desc::Model {
-    fn from(value: SkillDesc) -> Self {
-        ::entity::skill_desc::Model {
-            id: value.id as i64,
-            title: value.title,
-            skill: value.skill_type,
-            name: value.name,
-            description: value.description,
-            icon_asset_name: value.icon_asset_name,
-            skill_category: value.skill_category.into(),
-        }
-    }
 }
 
 fn start_worker_mobile_entity_state(
@@ -1122,10 +918,10 @@ fn start_worker_item_desc(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(item_desc = id, "Could not delete item_desc");
+                                    tracing::error!(item_desc = id, "Could not delete ItemDesc");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("ItemDesc::Remove");
                             }
                         }
                     }
@@ -1231,10 +1027,10 @@ fn start_worker_cargo_desc(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(cargo_desc = id, "Could not delete cargo_desc");
+                                    tracing::error!(cargo_desc = id, "Could not delete CargoDesc");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("CargoDesc::Remove");
                             }
                         }
                     }
@@ -1324,10 +1120,10 @@ fn start_worker_player_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(player_state = id, "Could not delete player_state");
+                                    tracing::error!(player_state = id, "Could not delete PlayerState");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("PlayerState::Remove");
                             }
                         }
                     }
@@ -1410,10 +1206,10 @@ fn start_worker_player_username_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(player_username_state = id, "Could not delete player_username_state");
+                                    tracing::error!(player_username_state = id, "Could not delete PlayerUsernameState");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("PlayerUsernameState::Remove");
                             }
                         }
                     }
@@ -1488,15 +1284,59 @@ fn start_worker_experience_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, .. } => {
+                            SpacetimeUpdateMessages::Update { new, old } => {
                                 let id = new.entity_id;
+
+                                let mut new_level_vec = vec![];
+
                                 new.experience_stacks.iter().for_each(|es| {
+                                    new_level_vec.push((
+                                        es.clone(),
+                                        experience_to_level(es.quantity as i64),
+                                    ));
+
                                     messages.push(::entity::experience_state::Model {
                                         entity_id: id as i64,
                                         skill_id: es.skill_id,
                                         experience: es.quantity,
                                     })
                                 });
+                                old.experience_stacks.iter().for_each(|es| {
+                                    let old_level =
+                                        experience_to_level(es.quantity as i64);
+
+                                    let new_level = new_level_vec.iter().find(|new_level| new_level.0.skill_id.eq(&es.skill_id));
+                                    let skill_name = global_app_state.skill_desc.get(&(es.skill_id as i64));
+
+                                    if let Some(skill_name) = skill_name {
+                                        if let Some(new_level) = new_level {
+                                            if old_level != new_level.1 {
+
+                                                    global_app_state.tx.send(WebSocketMessages::Level {
+                                                        level: new_level.1 as u64,
+                                                        skill_name: skill_name.to_owned().name,
+                                                        user_id: id as i64,
+                                                    })
+                                                    .expect("TODO: panic message");
+                                                }
+
+                                            if new_level.0.quantity > es.quantity {
+                                                global_app_state.tx.send(WebSocketMessages::Experience {
+                                                    level: new_level.1 as u64,
+                                                    experience: new_level.0.quantity as u64,
+                                                    rank: 0,
+                                                    skill_name: skill_name.to_owned().name,
+                                                    user_id: id as i64,
+                                                })
+                                                .expect("TODO: panic message");
+                                            }
+                                        }
+                                    }
+                                });
+
+
+
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1517,10 +1357,10 @@ fn start_worker_experience_state(
 
                                 for es in vec_es {
                                     if let Err(error) = es.delete(&global_app_state.conn).await {
-                                        tracing::error!(experience_state = id, "Could not delete experience_state");
+                                        tracing::error!(experience_state = id, "Could not delete ExperienceState");
                                     }
                                 }
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("ExperienceState::Remove");
                             }
                         }
                     }
@@ -1609,10 +1449,10 @@ fn start_worker_inventory_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(player_username_state = id, "Could not delete player_username_state");
+                                    tracing::error!(player_username_state = id, "Could not delete InventoryState");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::debug!("InventoryState::Remove");
                             }
                         }
                     }
@@ -1702,10 +1542,10 @@ fn start_worker_deployable_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                    tracing::error!(deployable_state = id, "Could not delete DeployableState");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("DeployableState::Remove");
                             }
                         }
                     }
@@ -1793,10 +1633,10 @@ fn start_worker_claim_state(
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                    tracing::error!(deployable_state = id, "Could not delete ClaimState");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("ClaimState::Remove");
                             }
                         }
                     }
@@ -1869,14 +1709,28 @@ fn start_worker_claim_local_state(
 
                                 let model: ::entity::claim_local_state::Model = new.into();
 
-                                messages.push(model);
+                                messages.push(model.clone());
+
+                                global_app_state.tx
+                                    .send(WebSocketMessages::ClaimLocalState(
+                                        model,
+                                    ))
+                                    .unwrap();
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_local_state::Model = new.into();
-                                messages.push(model);
+                                messages.push(model.clone());
+
+                                global_app_state.tx
+                                    .send(WebSocketMessages::ClaimLocalState(
+                                        model,
+                                    ))
+                                    .unwrap();
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1888,12 +1742,13 @@ fn start_worker_claim_local_state(
                                 if let Some(index) = messages.iter().position(|value| value == &model) {
                                     messages.remove(index);
                                 }
+                                global_app_state.claim_local_state.remove(&(model.entity_id as u64));
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                    tracing::error!(deployable_state = id, "Could not delete ClaimLocalState");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("ClaimLocalState::Remove");
                             }
                         }
                     }
@@ -1913,7 +1768,12 @@ fn start_worker_claim_local_state(
                 let _ = ::entity::claim_local_state::Entity::insert_many(
                     messages
                         .iter()
-                        .map(|value| value.clone().into_active_model())
+                        .map(|value| {
+                            global_app_state
+                                .claim_local_state
+                                .insert(value.entity_id as u64, value.clone());
+                            value.clone().into_active_model()
+                        })
                         .collect::<Vec<_>>(),
                 )
                 .on_conflict(on_conflict.clone())
@@ -1983,11 +1843,14 @@ fn start_worker_claim_member_state(
                                     messages.remove(index);
                                 }
 
+
+                                global_app_state.remove_claim_member(model.clone());
+
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                    tracing::error!(deployable_state = id, "Could not delete ClaimMemberState");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("ClaimMemberState::Remove");
                             }
                         }
                     }
@@ -2003,11 +1866,14 @@ fn start_worker_claim_member_state(
             }
 
             if !messages.is_empty() {
-                //tracing::info!("Processing {} messages in batch", messages.len());
+                tracing::info!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::claim_member_state::Entity::insert_many(
                     messages
                         .iter()
-                        .map(|value| value.clone().into_active_model())
+                        .map(|value| {
+                            global_app_state.add_claim_member(value.clone());
+                            value.clone().into_active_model()
+                        })
                         .collect::<Vec<_>>(),
                 )
                 .on_conflict(on_conflict.clone())
@@ -2056,13 +1922,16 @@ fn start_worker_skill_desc(
 
                                 let model: ::entity::skill_desc::Model = new.into();
 
+                                global_app_state.skill_desc.insert(model.id, model.clone());
                                 messages.push(model);
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::skill_desc::Model = new.into();
+                                global_app_state.skill_desc.insert(model.id, model.clone());
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
@@ -2072,15 +1941,16 @@ fn start_worker_skill_desc(
                                 let model: ::entity::skill_desc::Model = delete.into();
                                 let id = model.id;
 
+                                global_app_state.skill_desc.remove(&id);
                                 if let Some(index) = messages.iter().position(|value| value == &model) {
                                     messages.remove(index);
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(deployable_state = id, "Could not delete deployable_state");
+                                    tracing::error!(deployable_state = id, "Could not delete SkillDesc");
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("SkillDesc::Remove");
                             }
                         }
                     }
@@ -2177,11 +2047,11 @@ fn start_worker_vault_state_collectibles(
                                     }
 
                                     if let Err(error) = model.delete(&global_app_state.conn).await {
-                                        tracing::error!(vault_state_collectibles = id, "Could not delete vault_state_collectibles");
+                                        tracing::error!(vault_state_collectibles = id, "Could not delete VaultState");
                                     }
                                 }
 
-                                tracing::info!("SpacetimeUpdateMessages::Remove");
+                                tracing::info!("VaultState::Remove");
                             }
                         }
                     }
@@ -2207,6 +2077,206 @@ fn start_worker_vault_state_collectibles(
                 .on_conflict(on_conflict.clone())
                 .exec(&global_app_state.conn)
                 .await;
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_claim_tech_state(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::columns([claim_tech_state::Column::EntityId])
+            .update_columns([
+                claim_tech_state::Column::Learned,
+                claim_tech_state::Column::Researching,
+                claim_tech_state::Column::StartTimestamp,
+                claim_tech_state::Column::ScheduledId,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::claim_tech_state::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::claim_tech_state::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::claim_tech_state::Model = delete.into();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(ClaimTechState = id, "Could not delete ClaimTechState");
+                                }
+
+                                tracing::info!("ClaimTechState::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                tracing::info!(
+                    "ClaimTechState ->>>> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = ::entity::claim_tech_state::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+
+                if insert.is_err() {
+                    tracing::error!("Error inserting ClaimTechState: {}", insert.unwrap_err())
+                }
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_claim_tech_desc(
+    broadcast_tx: UnboundedSender<WebSocketMessages>,
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::columns([::entity::claim_tech_desc::Column::Id])
+            .update_columns([
+                ::entity::claim_tech_desc::Column::Description,
+                ::entity::claim_tech_desc::Column::Tier,
+                ::entity::claim_tech_desc::Column::SuppliesCost,
+                ::entity::claim_tech_desc::Column::ResearchTime,
+                ::entity::claim_tech_desc::Column::Requirements,
+                ::entity::claim_tech_desc::Column::Input,
+                ::entity::claim_tech_desc::Column::Members,
+                ::entity::claim_tech_desc::Column::Area,
+                ::entity::claim_tech_desc::Column::Supplies,
+                ::entity::claim_tech_desc::Column::XpToMintHexCoin,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::claim_tech_desc::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::claim_tech_desc::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::claim_tech_desc::Model = delete.into();
+                                let id = model.id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(ClaimTechDesc = id, "Could not delete ClaimTechDesc");
+                                }
+
+                                tracing::info!("ClaimTechDesc::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                tracing::info!(
+                    "ClaimTechDesc ->>>> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = ::entity::claim_tech_desc::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+
+                if insert.is_err() {
+                    tracing::error!("Error inserting ClaimTechDesc: {}", insert.unwrap_err())
+                }
                 // Your batch processing logic here
             }
 
@@ -3487,6 +3557,7 @@ pub(crate) enum WebSocketMessages {
     },
     PlayerState(entity::player_state::Model),
     // ClaimDescriptionState(entity::claim_description_state::Model),
+    ClaimLocalState(entity::claim_local_state::Model),
     Message(String),
     ActionState(entity::action_state::Model),
 }
@@ -3502,6 +3573,10 @@ impl WebSocketMessages {
                 (format!("experience:{}", skill_name), *user_id),
                 ("experience".to_string(), *user_id),
             ]),
+            WebSocketMessages::ClaimLocalState(claim_local_state) => Some(vec![(
+                format!("claim_local_state"),
+                claim_local_state.entity_id,
+            )]),
             WebSocketMessages::Level {
                 user_id,
                 skill_name,

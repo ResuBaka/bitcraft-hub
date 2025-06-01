@@ -113,7 +113,7 @@ struct FindPlayerByIdResponse {
     pub player_location: Option<mobile_entity_state::Model>,
     pub player_action_state: Option<String>,
     pub player_action_state2: Option<entity::player_action_state::Model>,
-    //pub current_action_state: Option<entity::player_action_state::Model>
+    pub current_action_state: Option<entity::player_action_state::Model>,
 }
 
 pub async fn find_player_by_id(
@@ -178,7 +178,10 @@ pub async fn find_player_by_id(
         .map(|player_action_state| player_action_state.action_type.get_action_name());
 
     //TODO FIX IT SO that it works with the correct type
-    //let current_action_state = state.action_state.get(&(id as u64));
+    let current_action_state = state.action_state.get(&(id as u64)).map_or(None, |value| {
+        // @todo implement it correctly
+        None
+    });
 
     let claim_ids = state
         .player_to_claim_id_cache
@@ -201,7 +204,7 @@ pub async fn find_player_by_id(
         claim_ids: claim_ids,
         player_action_state: player_action_state,
         player_action_state2: plyer_action_state2,
-        //current_action_state: current_action_state,
+        current_action_state: current_action_state,
     }))
 }
 
