@@ -99,6 +99,7 @@ fn connect_to_db_logic(
     skill_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<SkillDesc>>,
     claim_tech_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechState>>,
     claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
+    building_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingState>>,
 ) {
     let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
     let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
@@ -550,6 +551,37 @@ fn connect_to_db_logic(
                 })
                 .unwrap()
         });
+
+    let temp_building_state_tx = building_state_tx.clone();
+    ctx.db.building_state().on_update(
+        move |_ctx: &EventContext, old: &BuildingState, new: &BuildingState| {
+            temp_building_state_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_building_state_tx = building_state_tx.clone();
+    ctx.db
+        .building_state()
+        .on_insert(move |_ctx: &EventContext, new: &BuildingState| {
+            temp_building_state_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_building_state_tx = building_state_tx.clone();
+    ctx.db
+        .building_state()
+        .on_delete(move |_ctx: &EventContext, new: &BuildingState| {
+            temp_building_state_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
+
     let tables_to_subscribe = vec![
         // "user_state",
         "mobile_entity_state",
@@ -564,7 +596,7 @@ fn connect_to_db_logic(
         "skill_desc",
         "player_username_state",
         // "building_desc",
-        // "building_state",
+        "building_state",
         "vault_state",
         "experience_state",
         "claim_tech_state",
@@ -633,6 +665,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
 
         let (claim_tech_state_tx, claim_tech_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (building_state_tx, building_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let mut remove_desc = false;
 
@@ -656,6 +689,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &skill_desc_tx,
                 &claim_tech_state_tx,
                 &claim_tech_desc_tx,
+                &building_state_tx,
             );
 
             remove_desc = true;
@@ -742,6 +776,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         start_worker_claim_tech_desc(
             global_app_state.clone(),
             claim_tech_desc_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_building_state(
+            global_app_state.clone(),
+            building_state_rx,
             2000,
             Duration::from_millis(25),
         );
@@ -2226,6 +2266,103 @@ fn start_worker_claim_tech_desc(
 
                 if insert.is_err() {
                     tracing::error!("Error inserting ClaimTechDesc: {}", insert.unwrap_err())
+                }
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_building_state(
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict =
+            sea_query::OnConflict::columns([::entity::building_state::Column::EntityId])
+                .update_columns([
+                    ::entity::building_state::Column::ClaimEntityId,
+                    ::entity::building_state::Column::DirectionIndex,
+                    ::entity::building_state::Column::BuildingDescriptionId,
+                    ::entity::building_state::Column::ConstructedByPlayerEntityId,
+                ])
+                .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::building_state::Model = new.into();
+
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::building_state::Model = new.into();
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::building_state::Model = delete.into();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(BuildingState = id, error = error.to_string(), "Could not delete BuildingState");
+                                }
+
+                                tracing::debug!("BuildingState::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                tracing::debug!(
+                    "BuildingState ->>>> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = ::entity::building_state::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+
+                if insert.is_err() {
+                    tracing::error!("Error inserting BuildingState: {}", insert.unwrap_err())
                 }
                 // Your batch processing logic here
             }
