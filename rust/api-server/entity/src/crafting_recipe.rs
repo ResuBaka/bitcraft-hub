@@ -10,7 +10,7 @@ use crate::{inventory::ItemType, shared::item_stack::ItemStack};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct ConsumedItemStack {
-    pub item_id: i64,
+    pub item_id: i32,
     pub quantity: i64,
     pub item_type: ItemType,
     pub discovery_score: i64,
@@ -122,7 +122,7 @@ impl From<module_bindings::InputItemStack> for ConsumedItemStack {
             consumption_chance: value.consumption_chance,
             item_type: value.item_type.into(),
             discovery_score: value.discovery_score as i64,
-            item_id: value.item_id as i64,
+            item_id: value.item_id,
         }
     }
 }

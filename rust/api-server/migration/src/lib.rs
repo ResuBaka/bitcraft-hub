@@ -18,7 +18,6 @@ mod m20250221_220058_player_to_claim;
 mod m20250317_184148_remove_interaction_level_from_building_desc;
 mod m20250427_141500_small_changes_for_beta;
 mod m20250601_141123_fix_type_claim_tech_state_scheduled_id;
-mod m20250602_132531_add_tool_durability_lost_to_crafting_recipe;
 
 
 pub struct Migrator;
@@ -45,7 +44,6 @@ impl MigratorTrait for Migrator {
             Box::new(m20250317_184148_remove_interaction_level_from_building_desc::Migration),
             Box::new(m20250427_141500_small_changes_for_beta::Migration),
             Box::new(m20250601_141123_fix_type_claim_tech_state_scheduled_id::Migration),
-            Box::new(m20250602_132531_add_tool_durability_lost_to_crafting_recipe::Migration)
         ]
     }
 }

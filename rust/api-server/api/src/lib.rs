@@ -425,7 +425,7 @@ struct AppState {
     claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
     player_action_state: Arc<dashmap::DashMap<u64, entity::player_action_state::Model>>,
-    crafting_recipe_desc: Arc<dashmap::DashMap<i64, entity::crafting_recipe::Model>>,
+    crafting_recipe_desc: Arc<dashmap::DashMap<i32, entity::crafting_recipe::Model>>,
     claim_tech_desc: Arc<dashmap::DashMap<i32, entity::claim_tech_desc::Model>>,
     item_tags: Arc<dashmap::DashSet<String>>,
     item_tiers: Arc<dashmap::DashSet<i64>>,

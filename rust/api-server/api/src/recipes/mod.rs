@@ -5,16 +5,20 @@ use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use dashmap::DashMap;
 use entity::crafting_recipe;
+use entity::inventory::ItemType;
 use log::{debug, error, info};
 use migration::sea_query;
 use reqwest::Client;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
+use std::sync::Arc;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -46,8 +50,54 @@ pub(crate) fn get_routes() -> AppRouter {
         //    "/recipes/needed_to_craft/{id}",
         //    axum_codec::routing::get(get_needed_to_craft).into(),
         //)
+        .route(
+            "/recipes/get_all",
+            axum_codec::routing::get(get_produced_in_crafting).into(),
+        )
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct getAllResponce {
+    recipes: Arc<DashMap<i32, crafting_recipe::Model>>,
+    consumed_item: HashMap<(ItemType, i32), Vec<i32>>,
+    crafted_item:  HashMap<(ItemType, i32), Vec<i32>>,
+}
+pub(crate) async fn get_all(
+    state: State<std::sync::Arc<AppState>>,
+    Path(id): Path<u64>,
+) -> Result<axum_codec::Codec<getAllResponce>, (StatusCode, &'static str)> {
+    
+    let recipes = &state.crafting_recipe_desc;
+    let mut consumed_item: HashMap<(ItemType, i32), Vec<i32>> = HashMap::new();
+    let mut crafted_item: HashMap<(ItemType, i32), Vec<i32>> = HashMap::new();
+
+    for recipe in recipes.iter() {
+        let model = recipe.value();
+        for item in model.consumed_item_stacks.iter() {
+            if let Some(consumed_item) =
+                consumed_item.get_mut(&(item.item_type.clone(), item.item_id))
+            {
+                consumed_item.push(model.id.clone())
+            } else {
+                consumed_item.insert((item.item_type.clone(), item.item_id), vec![model.id]);
+            }
+        }
+        for item in model.crafted_item_stacks.iter() {
+            if let Some(crafted_item) =
+                crafted_item.get_mut(&(item.item_type.clone(), item.item_id))
+            {
+                crafted_item.push(model.id.clone())
+            } else {
+                crafted_item.insert((item.item_type.clone(), item.item_id), vec![model.id]);
+            }
+        }
+    }
+    return Ok(axum_codec::Codec(getAllResponce {
+        recipes: recipes.clone(),
+        consumed_item: consumed_item,
+        crafted_item: crafted_item,
+    }))
+}
 pub(crate) async fn get_needed_in_crafting(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
@@ -61,7 +111,7 @@ pub(crate) async fn get_needed_in_crafting(
         .filter(|res| {
             res.consumed_item_stacks
                 .iter()
-                .filter(|cis| cis.item_id == id as i64)
+                .filter(|cis| cis.item_id == id as i32)
                 .count()
                 > 0
         })
