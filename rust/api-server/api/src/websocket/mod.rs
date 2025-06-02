@@ -2,8 +2,7 @@ use crate::AppState;
 use crate::config::Config;
 use crate::leaderboard::experience_to_level;
 use entity::{
-    cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
-    deployable_state, item_desc, mobile_entity_state, vault_state_collectibles,
+    cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state, crafting_recipe, deployable_state, item_desc, mobile_entity_state, vault_state_collectibles
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
@@ -99,6 +98,7 @@ fn connect_to_db_logic(
     skill_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<SkillDesc>>,
     claim_tech_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechState>>,
     claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
+    crafting_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
 ) {
     let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
     let temp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
@@ -550,6 +550,38 @@ fn connect_to_db_logic(
                 })
                 .unwrap()
         });
+
+
+
+    let temp_crafting_recipe_desc_tx_tx = crafting_recipe_desc_tx.clone();
+    ctx.db.crafting_recipe_desc().on_update(
+        move |_ctx: &EventContext, old: &CraftingRecipeDesc, new: &CraftingRecipeDesc| {
+            temp_crafting_recipe_desc_tx_tx
+                .send(SpacetimeUpdateMessages::Update {
+                    old: old.clone(),
+                    new: new.clone(),
+                })
+                .unwrap()
+        },
+    );
+    let temp_crafting_recipe_desc_tx_tx = crafting_recipe_desc_tx.clone();
+    ctx.db
+        .crafting_recipe_desc()
+        .on_insert(move |_ctx: &EventContext, new: &CraftingRecipeDesc| {
+            temp_crafting_recipe_desc_tx_tx
+                .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                .unwrap()
+        });
+    let temp_crafting_recipe_desc_tx_tx = crafting_recipe_desc_tx.clone();
+    ctx.db
+        .crafting_recipe_desc()
+        .on_delete(move |_ctx: &EventContext, new: &CraftingRecipeDesc| {
+            temp_crafting_recipe_desc_tx_tx
+                .send(SpacetimeUpdateMessages::Remove {
+                    delete: new.clone(),
+                })
+                .unwrap()
+        });
     let tables_to_subscribe = vec![
         // "user_state",
         "mobile_entity_state",
@@ -558,7 +590,7 @@ fn connect_to_db_logic(
         "item_desc",
         "cargo_desc",
         // "player_action_state",
-        // "crafting_recipe_desc",
+        "crafting_recipe_desc",
         // "action_state",
         "player_state",
         "skill_desc",
@@ -634,6 +666,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let (claim_tech_state_tx, claim_tech_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
+        let (crafting_recipe_desc_tx, crafting_recipe_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+
         let mut remove_desc = false;
 
         config.spacetimedb.databases.iter().for_each(|database| {
@@ -656,6 +690,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &skill_desc_tx,
                 &claim_tech_state_tx,
                 &claim_tech_desc_tx,
+                &crafting_recipe_desc_tx,
             );
 
             remove_desc = true;
@@ -742,6 +777,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         start_worker_claim_tech_desc(
             global_app_state.clone(),
             claim_tech_desc_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_crafting_recipe_desc(
+            global_app_state.clone(),
+            crafting_recipe_desc_rx,
             2000,
             Duration::from_millis(25),
         );
@@ -2227,6 +2268,111 @@ fn start_worker_claim_tech_desc(
                 if insert.is_err() {
                     tracing::error!("Error inserting ClaimTechDesc: {}", insert.unwrap_err())
                 }
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_crafting_recipe_desc(
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(crafting_recipe::Column::Id)
+        .update_columns([
+            crafting_recipe::Column::Name,
+            crafting_recipe::Column::TimeRequirement,
+            crafting_recipe::Column::StaminaRequirement,
+            crafting_recipe::Column::ToolDurabilityLost,
+            crafting_recipe::Column::BuildingRequirement,
+            crafting_recipe::Column::LevelRequirements,
+            crafting_recipe::Column::ToolRequirements,
+            crafting_recipe::Column::ConsumedItemStacks,
+            crafting_recipe::Column::DiscoveryTriggers,
+            crafting_recipe::Column::RequiredKnowledges,
+            crafting_recipe::Column::RequiredClaimTechId,
+            crafting_recipe::Column::FullDiscoveryScore,
+            crafting_recipe::Column::ExperiencePerProgress,
+            crafting_recipe::Column::AllowUseHands,
+            crafting_recipe::Column::CraftedItemStacks,
+            crafting_recipe::Column::IsPassive,
+            crafting_recipe::Column::ActionsRequired,
+            crafting_recipe::Column::ToolMeshIndex,
+            crafting_recipe::Column::RecipePerformanceId,
+        ])
+        .to_owned();
+
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+
+                                let model: ::entity::crafting_recipe::Model = new.into();
+                                messages.push(model);
+
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::crafting_recipe::Model = new.into();                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::crafting_recipe::Model = delete.into();
+                                let id = model.id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(CraftingRecipeDesc = id, error = error.to_string(), "Could not delete SkillDesc");
+                                }
+
+                                tracing::debug!("CraftingRecipeDesc::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ = ::entity::crafting_recipe::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
                 // Your batch processing logic here
             }
 

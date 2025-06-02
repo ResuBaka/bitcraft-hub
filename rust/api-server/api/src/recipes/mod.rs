@@ -6,7 +6,6 @@ use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use entity::crafting_recipe;
-use entity::crafting_recipe::ConsumedItemStackWithInner;
 use log::{debug, error, info};
 use migration::sea_query;
 use reqwest::Client;
@@ -31,10 +30,10 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/recipes/produced_in_crafting/{id}",
             axum_codec::routing::get(get_produced_in_crafting).into(),
         )
-        .route(
-            "/api/bitcraft/recipes/needed_to_craft/{id}",
-            axum_codec::routing::get(get_needed_to_craft).into(),
-        )
+        //.route(
+        //    "/api/bitcraft/recipes/needed_to_craft/{id}",
+        //    axum_codec::routing::get(get_needed_to_craft).into(),
+        //)
         .route(
             "/recipes/needed_in_crafting/{id}",
             axum_codec::routing::get(get_needed_in_crafting).into(),
@@ -43,10 +42,10 @@ pub(crate) fn get_routes() -> AppRouter {
             "/recipes/produced_in_crafting/{id}",
             axum_codec::routing::get(get_produced_in_crafting).into(),
         )
-        .route(
-            "/recipes/needed_to_craft/{id}",
-            axum_codec::routing::get(get_needed_to_craft).into(),
-        )
+        //.route(
+        //    "/recipes/needed_to_craft/{id}",
+        //    axum_codec::routing::get(get_needed_to_craft).into(),
+        //)
 }
 
 pub(crate) async fn get_needed_in_crafting(
@@ -84,7 +83,7 @@ pub(crate) async fn get_produced_in_crafting(
         .filter(|res| {
             res.crafted_item_stacks
                 .iter()
-                .filter(|cis| cis.item_id == id as i64)
+                .filter(|cis| cis.item_id == id as i32)
                 .count()
                 > 0
         })
@@ -94,7 +93,7 @@ pub(crate) async fn get_produced_in_crafting(
     Ok(axum_codec::Codec(recipes))
 }
 
-pub(crate) async fn get_needed_to_craft(
+/*pub(crate) async fn get_needed_to_craft(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
@@ -176,7 +175,7 @@ fn get_all_consumed_items_from_stack(
     }
 
     item.consumed_item_stacks.clone()
-}
+}*/
 
 // export function getAllConsumedItemsFromItem(
 //   rows: CraftingRecipeRow[],
@@ -359,7 +358,7 @@ pub(crate) async fn import_crafting_recipe_descs(
                         buffer_before_insert
                             .iter()
                             .map(|crafting_recipe_desc| crafting_recipe_desc.id)
-                            .collect::<Vec<i64>>(),
+                            .collect::<Vec<i32>>(),
                     ),
                 )
                 .all(conn)
@@ -383,7 +382,7 @@ pub(crate) async fn import_crafting_recipe_descs(
             let crafting_recipe_descs_from_db_map = crafting_recipe_descs_from_db
                 .into_iter()
                 .map(|crafting_recipe_desc| (crafting_recipe_desc.id, crafting_recipe_desc))
-                .collect::<HashMap<i64, crafting_recipe::Model>>();
+                .collect::<HashMap<i32, crafting_recipe::Model>>();
 
             let things_to_insert = buffer_before_insert
                 .iter()
@@ -437,7 +436,7 @@ pub(crate) async fn import_crafting_recipe_descs(
                     buffer_before_insert
                         .iter()
                         .map(|crafting_recipe_desc| crafting_recipe_desc.id)
-                        .collect::<Vec<i64>>(),
+                        .collect::<Vec<i32>>(),
                 ),
             )
             .all(conn)
@@ -446,7 +445,7 @@ pub(crate) async fn import_crafting_recipe_descs(
         let crafting_recipe_descs_from_db_map = crafting_recipe_descs_from_db
             .into_iter()
             .map(|crafting_recipe_desc| (crafting_recipe_desc.id, crafting_recipe_desc))
-            .collect::<HashMap<i64, crafting_recipe::Model>>();
+            .collect::<HashMap<i32, crafting_recipe::Model>>();
 
         let things_to_insert = buffer_before_insert
             .iter()
