@@ -249,12 +249,18 @@ const expeirence = computed(() => {
   for (const [skill, xp_info] of Object.entries(experienceFetch.value)) {
     let shouldAddClass = true;
 
+    if (skill === "Experience" || skill === "Level") {
+      shouldAddClass = false;
+    }
+
     newExperience[skill] = {
       experience: xp_info.experience,
       level: xp_info.level,
       rank: xp_info.rank,
       classes: {
-        list: `background-tier-${levelToTier(xp_info.level)}`,
+        list: shouldAddClass
+          ? `background-tier-${levelToTier(xp_info.level)}`
+          : "",
         container: shouldAddClass ? "container" : "",
         content: shouldAddClass ? "content" : "",
       },

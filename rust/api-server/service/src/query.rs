@@ -1397,6 +1397,17 @@ impl Query {
             .from(experience_state::Entity)
             .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .group_by_col(experience_state::Column::EntityId)
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    experience_state::Column::SkillId.not_in_subquery(
+                        skill_desc::Entity::find()
+                            .select_only()
+                            .filter(skill_desc::Column::SkillCategory.is_in(value))
+                            .column(skill_desc::Column::Id)
+                            .into_query(),
+                    ),
+                );
+            })
             .order_by_expr(Expr::cust("level"), Order::Desc)
             .to_owned();
 
@@ -1478,6 +1489,17 @@ impl Query {
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
             .and_where(experience_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .apply_if(excluded_skill_category, |query, value| {
+                query.and_where(
+                    experience_state::Column::SkillId.not_in_subquery(
+                        skill_desc::Entity::find()
+                            .select_only()
+                            .filter(skill_desc::Column::SkillCategory.is_in(value))
+                            .column(skill_desc::Column::Id)
+                            .into_query(),
+                    ),
+                );
+            })
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)
             .to_owned();
 
