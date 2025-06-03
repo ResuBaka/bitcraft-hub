@@ -22,6 +22,10 @@ pub struct TravelerTradeOrderDesc {
     pub level_requirements: Vec<LevelRequirement>,
     pub achievement_requirements: Vec<i32>,
     pub hide_if_requirements_are_not_met: bool,
+    pub required_knowledges: Vec<i32>,
+    pub hide_without_required_knowledge: bool,
+    pub blocking_knowledges: Vec<i32>,
+    pub hide_with_blocking_knowledges: bool,
 }
 
 impl __sdk::InModule for TravelerTradeOrderDesc {

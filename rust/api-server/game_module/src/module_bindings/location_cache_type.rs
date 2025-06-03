@@ -16,8 +16,10 @@ pub struct LocationCache {
     pub traveler_ruins: Vec<RuinsEntityValuePair>,
     pub spawn_locations: Vec<SmallHexTileMessage>,
     pub biome_chunks: Vec<f32>,
-    pub world_width: i32,
-    pub world_height: i32,
+    pub region_max_x: i32,
+    pub region_max_z: i32,
+    pub region_min_x: i32,
+    pub region_min_z: i32,
 }
 
 impl __sdk::InModule for LocationCache {

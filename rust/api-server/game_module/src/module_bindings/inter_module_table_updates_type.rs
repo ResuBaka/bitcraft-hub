@@ -21,6 +21,7 @@ use super::location_state_op_type::LocationStateOp;
 use super::player_report_state_op_type::PlayerReportStateOp;
 use super::region_connection_info_op_type::RegionConnectionInfoOp;
 use super::region_population_info_op_type::RegionPopulationInfoOp;
+use super::region_sign_in_parameters_op_type::RegionSignInParametersOp;
 use super::user_authentication_state_op_type::UserAuthenticationStateOp;
 use super::user_moderation_state_op_type::UserModerationStateOp;
 use super::user_state_op_type::UserStateOp;
@@ -45,6 +46,7 @@ pub struct InterModuleTableUpdates {
     pub player_report_state: Option<Vec<PlayerReportStateOp>>,
     pub region_connection_info: Option<Vec<RegionConnectionInfoOp>>,
     pub region_population_info: Option<Vec<RegionPopulationInfoOp>>,
+    pub region_sign_in_parameters: Option<Vec<RegionSignInParametersOp>>,
     pub user_authentication_state: Option<Vec<UserAuthenticationStateOp>>,
     pub user_moderation_state: Option<Vec<UserModerationStateOp>>,
     pub user_state: Option<Vec<UserStateOp>>,

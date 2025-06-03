@@ -14,11 +14,19 @@ pub enum EnemyType {
 
     GrassBird,
 
+    DesertBird,
+
+    SwampBird,
+
     Goat,
+
+    MountainGoat,
 
     DeerFemale,
 
     DeerMale,
+
+    Elk,
 
     BoarFemale,
 
@@ -26,21 +34,43 @@ pub enum EnemyType {
 
     BoarElder,
 
-    Elk,
+    PlainsOx,
 
-    SwampBird,
+    TundraOx,
 
-    DesertBird,
+    JungleLargeBird,
 
-    MountainGoat,
+    DesertLargeBird,
 
     Jakyl,
 
     AlphaJakyl,
 
+    KingJakyl,
+
+    RockCrab,
+
+    DesertCrab,
+
+    FrostCrab,
+
+    ForestToad,
+
+    SwampToad,
+
+    FrostToad,
+
     Umbura,
 
-    SwarmCrab,
+    AlphaUmbura,
+
+    KingUmbura,
+
+    Drone,
+
+    Soldier,
+
+    Queen,
 }
 
 impl __sdk::InModule for EnemyType {

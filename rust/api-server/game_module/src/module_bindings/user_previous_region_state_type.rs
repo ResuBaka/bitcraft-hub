@@ -13,6 +13,7 @@ pub struct UserPreviousRegionState {
     pub previous_region_location: FloatHexTileMessage,
     pub with_vehicle: bool,
     pub allow_cancel: bool,
+    pub teleport_energy_cost: f32,
 }
 
 impl __sdk::InModule for UserPreviousRegionState {

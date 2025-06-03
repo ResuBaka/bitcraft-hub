@@ -16,6 +16,7 @@ pub struct SkillDesc {
     pub icon_asset_name: String,
     pub title: String,
     pub skill_category: SkillCategory,
+    pub max_level: i32,
 }
 
 impl __sdk::InModule for SkillDesc {

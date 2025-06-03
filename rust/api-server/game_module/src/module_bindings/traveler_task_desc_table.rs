@@ -2,9 +2,9 @@
 // WILL NOT BE SAVED. MODIFY TABLES IN YOUR MODULE SOURCE CODE INSTEAD.
 
 #![allow(unused, clippy::all)]
+use super::capped_level_requirement_type::CappedLevelRequirement;
 use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::item_stack_type::ItemStack;
-use super::level_requirement_type::LevelRequirement;
 use super::traveler_task_desc_type::TravelerTaskDesc;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 

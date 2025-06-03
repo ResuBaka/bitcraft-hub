@@ -29,11 +29,15 @@ pub mod admin_broadcast_message_msg_type;
 pub mod admin_broadcast_msg_region_reducer;
 pub mod admin_broadcast_table;
 pub mod admin_broadcast_type;
+pub mod admin_clear_all_resources_reducer;
 pub mod admin_collapse_ruin_reducer;
 pub mod admin_collapse_ruins_reducer;
 pub mod admin_complete_all_passive_crafts_reducer;
+pub mod admin_count_inventory_items_reducer;
 pub mod admin_despawn_overworld_enemies_reducer;
 pub mod admin_grant_collectibles_reducer;
+pub mod admin_reset_all_herd_locations_reducer;
+pub mod admin_reset_herd_locations_reducer;
 pub mod admin_reset_onboarding_completely_reducer;
 pub mod admin_restore_all_collapsed_ruins_reducer;
 pub mod admin_restore_player_state_reducer;
@@ -125,6 +129,7 @@ pub mod building_state_type;
 pub mod building_type_desc_table;
 pub mod building_type_desc_type;
 pub mod buy_order_state_table;
+pub mod capped_level_requirement_type;
 pub mod cargo_desc_table;
 pub mod cargo_desc_type;
 pub mod character_stat_desc_table;
@@ -157,6 +162,7 @@ pub mod cheat_experience_grant_reducer;
 pub mod cheat_experience_grant_request_type;
 pub mod cheat_grant_knowledge_reducer;
 pub mod cheat_grant_knowledge_request_type;
+pub mod cheat_grant_teleport_energy_reducer;
 pub mod cheat_item_stack_grant_and_equip_reducer;
 pub mod cheat_item_stack_grant_reducer;
 pub mod cheat_item_stack_grant_request_type;
@@ -234,6 +240,7 @@ pub mod claim_tile_state_type;
 pub mod claim_transfer_ownership_reducer;
 pub mod claim_type_type;
 pub mod claim_withdraw_from_treasury_reducer;
+pub mod clear_staged_static_data_reducer;
 pub mod climb_requirement_desc_table;
 pub mod climb_requirement_desc_type;
 pub mod closed_listing_collect_reducer;
@@ -419,6 +426,8 @@ pub mod enemy_move_request_type;
 pub mod enemy_regen_agent_loop_reducer;
 pub mod enemy_regen_loop_timer_table;
 pub mod enemy_regen_loop_timer_type;
+pub mod enemy_spawn_loot_reducer;
+pub mod enemy_spawn_loot_request_type;
 pub mod enemy_spawn_reducer;
 pub mod enemy_spawn_request_type;
 pub mod enemy_state_table;
@@ -475,6 +484,7 @@ pub mod global_search_state_type;
 pub mod globals_table;
 pub mod globals_type;
 pub mod grace_period_type_type;
+pub mod grant_hub_item_msg_type;
 pub mod growth_agent_loop_reducer;
 pub mod growth_loop_timer_table;
 pub mod growth_loop_timer_type;
@@ -486,9 +496,13 @@ pub mod health_state_type;
 pub mod herd_state_table;
 pub mod herd_state_type;
 pub mod hex_direction_type;
+pub mod hexite_exchange_entry_desc_table;
+pub mod hexite_exchange_entry_desc_type;
 pub mod hide_deployable_reducer;
 pub mod hide_deployable_timer_table;
 pub mod hide_deployable_timer_type;
+pub mod hub_item_type_type;
+pub mod identity_connected_reducer;
 pub mod identity_disconnected_reducer;
 pub mod identity_role_op_type;
 pub mod identity_role_table;
@@ -560,8 +574,10 @@ pub mod import_globals_reducer;
 pub mod import_growth_state_reducer;
 pub mod import_health_state_reducer;
 pub mod import_herd_cache_reducer;
+pub mod import_hexite_exchange_entry_desc_reducer;
 pub mod import_identity_role_reducer;
 pub mod import_interior_collapse_trigger_state_reducer;
+pub mod import_interior_environment_desc_reducer;
 pub mod import_interior_instance_desc_reducer;
 pub mod import_interior_network_desc_reducer;
 pub mod import_interior_portal_connections_desc_reducer;
@@ -660,9 +676,13 @@ pub mod inter_module_message_counter_table;
 pub mod inter_module_message_counter_type;
 pub mod inter_module_message_table;
 pub mod inter_module_message_type;
+pub mod inter_module_response_message_counter_table;
+pub mod inter_module_response_message_counter_type;
 pub mod inter_module_table_updates_type;
 pub mod interior_collapse_trigger_state_table;
 pub mod interior_collapse_trigger_state_type;
+pub mod interior_environment_desc_table;
+pub mod interior_environment_desc_type;
 pub mod interior_instance_desc_table;
 pub mod interior_instance_desc_type;
 pub mod interior_network_desc_table;
@@ -808,6 +828,7 @@ pub mod on_durability_zero_timer_type;
 pub mod on_empire_building_deleted_msg_type;
 pub mod on_inter_module_message_processed_reducer;
 pub mod on_player_joined_empire_msg_type;
+pub mod on_player_left_empire_msg_type;
 pub mod on_player_name_set_msg_type;
 pub mod on_region_player_created_msg_type;
 pub mod onboarding_reward_desc_table;
@@ -1071,6 +1092,9 @@ pub mod region_population_info_type;
 pub mod region_population_loop_timer_type;
 pub mod region_popuplation_agent_loop_reducer;
 pub mod region_popuplation_loop_timer_table;
+pub mod region_sign_in_parameters_op_type;
+pub mod region_sign_in_parameters_table;
+pub mod region_sign_in_parameters_type;
 pub mod rent_add_listing_reducer;
 pub mod rent_add_listing_request_type;
 pub mod rent_add_tenant_reducer;
@@ -1212,6 +1236,8 @@ pub mod stage_equipment_desc_reducer;
 pub mod stage_extraction_recipe_desc_reducer;
 pub mod stage_food_desc_reducer;
 pub mod stage_gate_desc_reducer;
+pub mod stage_hexite_exchange_entry_desc_reducer;
+pub mod stage_interior_environment_desc_reducer;
 pub mod stage_interior_instance_desc_reducer;
 pub mod stage_interior_network_desc_reducer;
 pub mod stage_interior_portal_connections_desc_reducer;
@@ -1471,6 +1497,10 @@ pub use admin_broadcast_msg_region_reducer::{
 };
 pub use admin_broadcast_table::*;
 pub use admin_broadcast_type::AdminBroadcast;
+pub use admin_clear_all_resources_reducer::{
+    AdminClearAllResourcesCallbackId, admin_clear_all_resources,
+    set_flags_for_admin_clear_all_resources,
+};
 pub use admin_collapse_ruin_reducer::{
     AdminCollapseRuinCallbackId, admin_collapse_ruin, set_flags_for_admin_collapse_ruin,
 };
@@ -1481,6 +1511,10 @@ pub use admin_complete_all_passive_crafts_reducer::{
     AdminCompleteAllPassiveCraftsCallbackId, admin_complete_all_passive_crafts,
     set_flags_for_admin_complete_all_passive_crafts,
 };
+pub use admin_count_inventory_items_reducer::{
+    AdminCountInventoryItemsCallbackId, admin_count_inventory_items,
+    set_flags_for_admin_count_inventory_items,
+};
 pub use admin_despawn_overworld_enemies_reducer::{
     AdminDespawnOverworldEnemiesCallbackId, admin_despawn_overworld_enemies,
     set_flags_for_admin_despawn_overworld_enemies,
@@ -1488,6 +1522,14 @@ pub use admin_despawn_overworld_enemies_reducer::{
 pub use admin_grant_collectibles_reducer::{
     AdminGrantCollectiblesCallbackId, admin_grant_collectibles,
     set_flags_for_admin_grant_collectibles,
+};
+pub use admin_reset_all_herd_locations_reducer::{
+    AdminResetAllHerdLocationsCallbackId, admin_reset_all_herd_locations,
+    set_flags_for_admin_reset_all_herd_locations,
+};
+pub use admin_reset_herd_locations_reducer::{
+    AdminResetHerdLocationsCallbackId, admin_reset_herd_locations,
+    set_flags_for_admin_reset_herd_locations,
 };
 pub use admin_reset_onboarding_completely_reducer::{
     AdminResetOnboardingCompletelyCallbackId, admin_reset_onboarding_completely,
@@ -1642,6 +1684,7 @@ pub use building_state_type::BuildingState;
 pub use building_type_desc_table::*;
 pub use building_type_desc_type::BuildingTypeDesc;
 pub use buy_order_state_table::*;
+pub use capped_level_requirement_type::CappedLevelRequirement;
 pub use cargo_desc_table::*;
 pub use cargo_desc_type::CargoDesc;
 pub use character_stat_desc_table::*;
@@ -1713,6 +1756,10 @@ pub use cheat_grant_knowledge_reducer::{
     CheatGrantKnowledgeCallbackId, cheat_grant_knowledge, set_flags_for_cheat_grant_knowledge,
 };
 pub use cheat_grant_knowledge_request_type::CheatGrantKnowledgeRequest;
+pub use cheat_grant_teleport_energy_reducer::{
+    CheatGrantTeleportEnergyCallbackId, cheat_grant_teleport_energy,
+    set_flags_for_cheat_grant_teleport_energy,
+};
 pub use cheat_item_stack_grant_and_equip_reducer::{
     CheatItemStackGrantAndEquipCallbackId, cheat_item_stack_grant_and_equip,
     set_flags_for_cheat_item_stack_grant_and_equip,
@@ -1874,6 +1921,10 @@ pub use claim_type_type::ClaimType;
 pub use claim_withdraw_from_treasury_reducer::{
     ClaimWithdrawFromTreasuryCallbackId, claim_withdraw_from_treasury,
     set_flags_for_claim_withdraw_from_treasury,
+};
+pub use clear_staged_static_data_reducer::{
+    ClearStagedStaticDataCallbackId, clear_staged_static_data,
+    set_flags_for_clear_staged_static_data,
 };
 pub use climb_requirement_desc_table::*;
 pub use climb_requirement_desc_type::ClimbRequirementDesc;
@@ -2169,6 +2220,10 @@ pub use enemy_regen_agent_loop_reducer::{
 };
 pub use enemy_regen_loop_timer_table::*;
 pub use enemy_regen_loop_timer_type::EnemyRegenLoopTimer;
+pub use enemy_spawn_loot_reducer::{
+    EnemySpawnLootCallbackId, enemy_spawn_loot, set_flags_for_enemy_spawn_loot,
+};
+pub use enemy_spawn_loot_request_type::EnemySpawnLootRequest;
 pub use enemy_spawn_reducer::{EnemySpawnCallbackId, enemy_spawn, set_flags_for_enemy_spawn};
 pub use enemy_spawn_request_type::EnemySpawnRequest;
 pub use enemy_state_table::*;
@@ -2242,6 +2297,7 @@ pub use global_search_state_type::GlobalSearchState;
 pub use globals_table::*;
 pub use globals_type::Globals;
 pub use grace_period_type_type::GracePeriodType;
+pub use grant_hub_item_msg_type::GrantHubItemMsg;
 pub use growth_agent_loop_reducer::{
     GrowthAgentLoopCallbackId, growth_agent_loop, set_flags_for_growth_agent_loop,
 };
@@ -2255,11 +2311,17 @@ pub use health_state_type::HealthState;
 pub use herd_state_table::*;
 pub use herd_state_type::HerdState;
 pub use hex_direction_type::HexDirection;
+pub use hexite_exchange_entry_desc_table::*;
+pub use hexite_exchange_entry_desc_type::HexiteExchangeEntryDesc;
 pub use hide_deployable_reducer::{
     HideDeployableCallbackId, hide_deployable, set_flags_for_hide_deployable,
 };
 pub use hide_deployable_timer_table::*;
 pub use hide_deployable_timer_type::HideDeployableTimer;
+pub use hub_item_type_type::HubItemType;
+pub use identity_connected_reducer::{
+    IdentityConnectedCallbackId, identity_connected, set_flags_for_identity_connected,
+};
 pub use identity_disconnected_reducer::{
     IdentityDisconnectedCallbackId, identity_disconnected, set_flags_for_identity_disconnected,
 };
@@ -2498,12 +2560,20 @@ pub use import_health_state_reducer::{
 pub use import_herd_cache_reducer::{
     ImportHerdCacheCallbackId, import_herd_cache, set_flags_for_import_herd_cache,
 };
+pub use import_hexite_exchange_entry_desc_reducer::{
+    ImportHexiteExchangeEntryDescCallbackId, import_hexite_exchange_entry_desc,
+    set_flags_for_import_hexite_exchange_entry_desc,
+};
 pub use import_identity_role_reducer::{
     ImportIdentityRoleCallbackId, import_identity_role, set_flags_for_import_identity_role,
 };
 pub use import_interior_collapse_trigger_state_reducer::{
     ImportInteriorCollapseTriggerStateCallbackId, import_interior_collapse_trigger_state,
     set_flags_for_import_interior_collapse_trigger_state,
+};
+pub use import_interior_environment_desc_reducer::{
+    ImportInteriorEnvironmentDescCallbackId, import_interior_environment_desc,
+    set_flags_for_import_interior_environment_desc,
 };
 pub use import_interior_instance_desc_reducer::{
     ImportInteriorInstanceDescCallbackId, import_interior_instance_desc,
@@ -2843,9 +2913,13 @@ pub use inter_module_message_counter_table::*;
 pub use inter_module_message_counter_type::InterModuleMessageCounter;
 pub use inter_module_message_table::*;
 pub use inter_module_message_type::InterModuleMessage;
+pub use inter_module_response_message_counter_table::*;
+pub use inter_module_response_message_counter_type::InterModuleResponseMessageCounter;
 pub use inter_module_table_updates_type::InterModuleTableUpdates;
 pub use interior_collapse_trigger_state_table::*;
 pub use interior_collapse_trigger_state_type::InteriorCollapseTriggerState;
+pub use interior_environment_desc_table::*;
+pub use interior_environment_desc_type::InteriorEnvironmentDesc;
 pub use interior_instance_desc_table::*;
 pub use interior_instance_desc_type::InteriorInstanceDesc;
 pub use interior_network_desc_table::*;
@@ -3028,6 +3102,7 @@ pub use on_inter_module_message_processed_reducer::{
     set_flags_for_on_inter_module_message_processed,
 };
 pub use on_player_joined_empire_msg_type::OnPlayerJoinedEmpireMsg;
+pub use on_player_left_empire_msg_type::OnPlayerLeftEmpireMsg;
 pub use on_player_name_set_msg_type::OnPlayerNameSetMsg;
 pub use on_region_player_created_msg_type::OnRegionPlayerCreatedMsg;
 pub use onboarding_reward_desc_table::*;
@@ -3435,6 +3510,9 @@ pub use region_popuplation_agent_loop_reducer::{
     set_flags_for_region_popuplation_agent_loop,
 };
 pub use region_popuplation_loop_timer_table::*;
+pub use region_sign_in_parameters_op_type::RegionSignInParametersOp;
+pub use region_sign_in_parameters_table::*;
+pub use region_sign_in_parameters_type::RegionSignInParameters;
 pub use rent_add_listing_reducer::{
     RentAddListingCallbackId, rent_add_listing, set_flags_for_rent_add_listing,
 };
@@ -3730,6 +3808,14 @@ pub use stage_food_desc_reducer::{
 };
 pub use stage_gate_desc_reducer::{
     StageGateDescCallbackId, set_flags_for_stage_gate_desc, stage_gate_desc,
+};
+pub use stage_hexite_exchange_entry_desc_reducer::{
+    StageHexiteExchangeEntryDescCallbackId, set_flags_for_stage_hexite_exchange_entry_desc,
+    stage_hexite_exchange_entry_desc,
+};
+pub use stage_interior_environment_desc_reducer::{
+    StageInteriorEnvironmentDescCallbackId, set_flags_for_stage_interior_environment_desc,
+    stage_interior_environment_desc,
 };
 pub use stage_interior_instance_desc_reducer::{
     StageInteriorInstanceDescCallbackId, set_flags_for_stage_interior_instance_desc,
@@ -4115,15 +4201,24 @@ pub enum Reducer {
         title: String,
         message: String,
     },
+    AdminClearAllResources,
     AdminCollapseRuin {
         ruin_building_entity_id: u64,
     },
     AdminCollapseRuins,
     AdminCompleteAllPassiveCrafts,
+    AdminCountInventoryItems {
+        item_id: i32,
+        limit: u32,
+    },
     AdminDespawnOverworldEnemies,
     AdminGrantCollectibles {
         identity: String,
         collectibles: Vec<i32>,
+    },
+    AdminResetAllHerdLocations,
+    AdminResetHerdLocations {
+        enemy_ai_params_desc_id: i32,
     },
     AdminResetOnboardingCompletely {
         entity_id: u64,
@@ -4261,6 +4356,9 @@ pub enum Reducer {
     CheatGrantKnowledge {
         request: CheatGrantKnowledgeRequest,
     },
+    CheatGrantTeleportEnergy {
+        player_entity_id: u64,
+    },
     CheatItemStackGrant {
         request: CheatItemStackGrantRequest,
     },
@@ -4375,6 +4473,7 @@ pub enum Reducer {
     ClaimWithdrawFromTreasury {
         request: PlayerClaimWithdrawFromTreasuryRequest,
     },
+    ClearStagedStaticData,
     ClosedListingCollect {
         request: PlayerClosedListingCollectRequest,
     },
@@ -4527,6 +4626,9 @@ pub enum Reducer {
     EnemySpawn {
         request: EnemySpawnRequest,
     },
+    EnemySpawnLoot {
+        request: EnemySpawnLootRequest,
+    },
     EnvironmentDebuffAgentLoop {
         timer: EnvironmentDebuffLoopTimer,
     },
@@ -4554,6 +4656,7 @@ pub enum Reducer {
     HideDeployable {
         timer: HideDeployableTimer,
     },
+    IdentityConnected,
     IdentityDisconnected,
     ImportAchievementDesc {
         records: Vec<AchievementDesc>,
@@ -4756,11 +4859,17 @@ pub enum Reducer {
     ImportHerdCache {
         records: Vec<HerdState>,
     },
+    ImportHexiteExchangeEntryDesc {
+        records: Vec<HexiteExchangeEntryDesc>,
+    },
     ImportIdentityRole {
         records: Vec<IdentityRole>,
     },
     ImportInteriorCollapseTriggerState {
         records: Vec<InteriorCollapseTriggerState>,
+    },
+    ImportInteriorEnvironmentDesc {
+        records: Vec<InteriorEnvironmentDesc>,
     },
     ImportInteriorInstanceDesc {
         records: Vec<InteriorInstanceDesc>,
@@ -5498,6 +5607,12 @@ pub enum Reducer {
     StageGateDesc {
         records: Vec<GateDesc>,
     },
+    StageHexiteExchangeEntryDesc {
+        records: Vec<HexiteExchangeEntryDesc>,
+    },
+    StageInteriorEnvironmentDesc {
+        records: Vec<InteriorEnvironmentDesc>,
+    },
     StageInteriorInstanceDesc {
         records: Vec<InteriorInstanceDesc>,
     },
@@ -5728,11 +5843,15 @@ impl __sdk::Reducer for Reducer {
                 "admin_alpha3_reset_onboarding_to_third_temple_quest"
             }
             Reducer::AdminBroadcastMsgRegion { .. } => "admin_broadcast_msg_region",
+            Reducer::AdminClearAllResources => "admin_clear_all_resources",
             Reducer::AdminCollapseRuin { .. } => "admin_collapse_ruin",
             Reducer::AdminCollapseRuins => "admin_collapse_ruins",
             Reducer::AdminCompleteAllPassiveCrafts => "admin_complete_all_passive_crafts",
+            Reducer::AdminCountInventoryItems { .. } => "admin_count_inventory_items",
             Reducer::AdminDespawnOverworldEnemies => "admin_despawn_overworld_enemies",
             Reducer::AdminGrantCollectibles { .. } => "admin_grant_collectibles",
+            Reducer::AdminResetAllHerdLocations => "admin_reset_all_herd_locations",
+            Reducer::AdminResetHerdLocations { .. } => "admin_reset_herd_locations",
             Reducer::AdminResetOnboardingCompletely { .. } => "admin_reset_onboarding_completely",
             Reducer::AdminRestoreAllCollapsedRuins => "admin_restore_all_collapsed_ruins",
             Reducer::AdminRestorePlayerState { .. } => "admin_restore_player_state",
@@ -5782,6 +5901,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::CheatDiscoverMap { .. } => "cheat_discover_map",
             Reducer::CheatExperienceGrant { .. } => "cheat_experience_grant",
             Reducer::CheatGrantKnowledge { .. } => "cheat_grant_knowledge",
+            Reducer::CheatGrantTeleportEnergy { .. } => "cheat_grant_teleport_energy",
             Reducer::CheatItemStackGrant { .. } => "cheat_item_stack_grant",
             Reducer::CheatItemStackGrantAndEquip { .. } => "cheat_item_stack_grant_and_equip",
             Reducer::CheatKill { .. } => "cheat_kill",
@@ -5826,6 +5946,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::ClaimTechUnlockTech { .. } => "claim_tech_unlock_tech",
             Reducer::ClaimTransferOwnership { .. } => "claim_transfer_ownership",
             Reducer::ClaimWithdrawFromTreasury { .. } => "claim_withdraw_from_treasury",
+            Reducer::ClearStagedStaticData => "clear_staged_static_data",
             Reducer::ClosedListingCollect { .. } => "closed_listing_collect",
             Reducer::CollectStatsReducer { .. } => "collect_stats_reducer",
             Reducer::CollectibleActivate { .. } => "collectible_activate",
@@ -5879,6 +6000,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::EnemyMove { .. } => "enemy_move",
             Reducer::EnemyRegenAgentLoop { .. } => "enemy_regen_agent_loop",
             Reducer::EnemySpawn { .. } => "enemy_spawn",
+            Reducer::EnemySpawnLoot { .. } => "enemy_spawn_loot",
             Reducer::EnvironmentDebuffAgentLoop { .. } => "environment_debuff_agent_loop",
             Reducer::EquipmentAdd { .. } => "equipment_add",
             Reducer::EquipmentRemove { .. } => "equipment_remove",
@@ -5890,6 +6012,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::GenerateWorld { .. } => "generate_world",
             Reducer::GrowthAgentLoop { .. } => "growth_agent_loop",
             Reducer::HideDeployable { .. } => "hide_deployable",
+            Reducer::IdentityConnected => "identity_connected",
             Reducer::IdentityDisconnected => "identity_disconnected",
             Reducer::ImportAchievementDesc { .. } => "import_achievement_desc",
             Reducer::ImportActiveBuffState { .. } => "import_active_buff_state",
@@ -5960,10 +6083,12 @@ impl __sdk::Reducer for Reducer {
             Reducer::ImportGrowthState { .. } => "import_growth_state",
             Reducer::ImportHealthState { .. } => "import_health_state",
             Reducer::ImportHerdCache { .. } => "import_herd_cache",
+            Reducer::ImportHexiteExchangeEntryDesc { .. } => "import_hexite_exchange_entry_desc",
             Reducer::ImportIdentityRole { .. } => "import_identity_role",
             Reducer::ImportInteriorCollapseTriggerState { .. } => {
                 "import_interior_collapse_trigger_state"
             }
+            Reducer::ImportInteriorEnvironmentDesc { .. } => "import_interior_environment_desc",
             Reducer::ImportInteriorInstanceDesc { .. } => "import_interior_instance_desc",
             Reducer::ImportInteriorNetworkDesc { .. } => "import_interior_network_desc",
             Reducer::ImportInteriorPortalConnectionsDesc { .. } => {
@@ -6233,6 +6358,8 @@ impl __sdk::Reducer for Reducer {
             Reducer::StageExtractionRecipeDesc { .. } => "stage_extraction_recipe_desc",
             Reducer::StageFoodDesc { .. } => "stage_food_desc",
             Reducer::StageGateDesc { .. } => "stage_gate_desc",
+            Reducer::StageHexiteExchangeEntryDesc { .. } => "stage_hexite_exchange_entry_desc",
+            Reducer::StageInteriorEnvironmentDesc { .. } => "stage_interior_environment_desc",
             Reducer::StageInteriorInstanceDesc { .. } => "stage_interior_instance_desc",
             Reducer::StageInteriorNetworkDesc { .. } => "stage_interior_network_desc",
             Reducer::StageInteriorPortalConnectionsDesc { .. } => {
@@ -6325,11 +6452,15 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "admin_alpha3_reset_onboarding_to_third_expand_quest" => Ok(__sdk::parse_reducer_args::<admin_alpha_3_reset_onboarding_to_third_expand_quest_reducer::AdminAlpha3ResetOnboardingToThirdExpandQuestArgs>("admin_alpha3_reset_onboarding_to_third_expand_quest", &value.args)?.into()),
             "admin_alpha3_reset_onboarding_to_third_temple_quest" => Ok(__sdk::parse_reducer_args::<admin_alpha_3_reset_onboarding_to_third_temple_quest_reducer::AdminAlpha3ResetOnboardingToThirdTempleQuestArgs>("admin_alpha3_reset_onboarding_to_third_temple_quest", &value.args)?.into()),
             "admin_broadcast_msg_region" => Ok(__sdk::parse_reducer_args::<admin_broadcast_msg_region_reducer::AdminBroadcastMsgRegionArgs>("admin_broadcast_msg_region", &value.args)?.into()),
+            "admin_clear_all_resources" => Ok(__sdk::parse_reducer_args::<admin_clear_all_resources_reducer::AdminClearAllResourcesArgs>("admin_clear_all_resources", &value.args)?.into()),
             "admin_collapse_ruin" => Ok(__sdk::parse_reducer_args::<admin_collapse_ruin_reducer::AdminCollapseRuinArgs>("admin_collapse_ruin", &value.args)?.into()),
             "admin_collapse_ruins" => Ok(__sdk::parse_reducer_args::<admin_collapse_ruins_reducer::AdminCollapseRuinsArgs>("admin_collapse_ruins", &value.args)?.into()),
             "admin_complete_all_passive_crafts" => Ok(__sdk::parse_reducer_args::<admin_complete_all_passive_crafts_reducer::AdminCompleteAllPassiveCraftsArgs>("admin_complete_all_passive_crafts", &value.args)?.into()),
+            "admin_count_inventory_items" => Ok(__sdk::parse_reducer_args::<admin_count_inventory_items_reducer::AdminCountInventoryItemsArgs>("admin_count_inventory_items", &value.args)?.into()),
             "admin_despawn_overworld_enemies" => Ok(__sdk::parse_reducer_args::<admin_despawn_overworld_enemies_reducer::AdminDespawnOverworldEnemiesArgs>("admin_despawn_overworld_enemies", &value.args)?.into()),
             "admin_grant_collectibles" => Ok(__sdk::parse_reducer_args::<admin_grant_collectibles_reducer::AdminGrantCollectiblesArgs>("admin_grant_collectibles", &value.args)?.into()),
+            "admin_reset_all_herd_locations" => Ok(__sdk::parse_reducer_args::<admin_reset_all_herd_locations_reducer::AdminResetAllHerdLocationsArgs>("admin_reset_all_herd_locations", &value.args)?.into()),
+            "admin_reset_herd_locations" => Ok(__sdk::parse_reducer_args::<admin_reset_herd_locations_reducer::AdminResetHerdLocationsArgs>("admin_reset_herd_locations", &value.args)?.into()),
             "admin_reset_onboarding_completely" => Ok(__sdk::parse_reducer_args::<admin_reset_onboarding_completely_reducer::AdminResetOnboardingCompletelyArgs>("admin_reset_onboarding_completely", &value.args)?.into()),
             "admin_restore_all_collapsed_ruins" => Ok(__sdk::parse_reducer_args::<admin_restore_all_collapsed_ruins_reducer::AdminRestoreAllCollapsedRuinsArgs>("admin_restore_all_collapsed_ruins", &value.args)?.into()),
             "admin_restore_player_state" => Ok(__sdk::parse_reducer_args::<admin_restore_player_state_reducer::AdminRestorePlayerStateArgs>("admin_restore_player_state", &value.args)?.into()),
@@ -6373,6 +6504,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "cheat_discover_map" => Ok(__sdk::parse_reducer_args::<cheat_discover_map_reducer::CheatDiscoverMapArgs>("cheat_discover_map", &value.args)?.into()),
             "cheat_experience_grant" => Ok(__sdk::parse_reducer_args::<cheat_experience_grant_reducer::CheatExperienceGrantArgs>("cheat_experience_grant", &value.args)?.into()),
             "cheat_grant_knowledge" => Ok(__sdk::parse_reducer_args::<cheat_grant_knowledge_reducer::CheatGrantKnowledgeArgs>("cheat_grant_knowledge", &value.args)?.into()),
+            "cheat_grant_teleport_energy" => Ok(__sdk::parse_reducer_args::<cheat_grant_teleport_energy_reducer::CheatGrantTeleportEnergyArgs>("cheat_grant_teleport_energy", &value.args)?.into()),
             "cheat_item_stack_grant" => Ok(__sdk::parse_reducer_args::<cheat_item_stack_grant_reducer::CheatItemStackGrantArgs>("cheat_item_stack_grant", &value.args)?.into()),
             "cheat_item_stack_grant_and_equip" => Ok(__sdk::parse_reducer_args::<cheat_item_stack_grant_and_equip_reducer::CheatItemStackGrantAndEquipArgs>("cheat_item_stack_grant_and_equip", &value.args)?.into()),
             "cheat_kill" => Ok(__sdk::parse_reducer_args::<cheat_kill_reducer::CheatKillArgs>("cheat_kill", &value.args)?.into()),
@@ -6411,6 +6543,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "claim_tech_unlock_tech" => Ok(__sdk::parse_reducer_args::<claim_tech_unlock_tech_reducer::ClaimTechUnlockTechArgs>("claim_tech_unlock_tech", &value.args)?.into()),
             "claim_transfer_ownership" => Ok(__sdk::parse_reducer_args::<claim_transfer_ownership_reducer::ClaimTransferOwnershipArgs>("claim_transfer_ownership", &value.args)?.into()),
             "claim_withdraw_from_treasury" => Ok(__sdk::parse_reducer_args::<claim_withdraw_from_treasury_reducer::ClaimWithdrawFromTreasuryArgs>("claim_withdraw_from_treasury", &value.args)?.into()),
+            "clear_staged_static_data" => Ok(__sdk::parse_reducer_args::<clear_staged_static_data_reducer::ClearStagedStaticDataArgs>("clear_staged_static_data", &value.args)?.into()),
             "closed_listing_collect" => Ok(__sdk::parse_reducer_args::<closed_listing_collect_reducer::ClosedListingCollectArgs>("closed_listing_collect", &value.args)?.into()),
             "collect_stats_reducer" => Ok(__sdk::parse_reducer_args::<collect_stats_reducer_reducer::CollectStatsReducerArgs>("collect_stats_reducer", &value.args)?.into()),
             "collectible_activate" => Ok(__sdk::parse_reducer_args::<collectible_activate_reducer::CollectibleActivateArgs>("collectible_activate", &value.args)?.into()),
@@ -6464,6 +6597,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "enemy_move" => Ok(__sdk::parse_reducer_args::<enemy_move_reducer::EnemyMoveArgs>("enemy_move", &value.args)?.into()),
             "enemy_regen_agent_loop" => Ok(__sdk::parse_reducer_args::<enemy_regen_agent_loop_reducer::EnemyRegenAgentLoopArgs>("enemy_regen_agent_loop", &value.args)?.into()),
             "enemy_spawn" => Ok(__sdk::parse_reducer_args::<enemy_spawn_reducer::EnemySpawnArgs>("enemy_spawn", &value.args)?.into()),
+            "enemy_spawn_loot" => Ok(__sdk::parse_reducer_args::<enemy_spawn_loot_reducer::EnemySpawnLootArgs>("enemy_spawn_loot", &value.args)?.into()),
             "environment_debuff_agent_loop" => Ok(__sdk::parse_reducer_args::<environment_debuff_agent_loop_reducer::EnvironmentDebuffAgentLoopArgs>("environment_debuff_agent_loop", &value.args)?.into()),
             "equipment_add" => Ok(__sdk::parse_reducer_args::<equipment_add_reducer::EquipmentAddArgs>("equipment_add", &value.args)?.into()),
             "equipment_remove" => Ok(__sdk::parse_reducer_args::<equipment_remove_reducer::EquipmentRemoveArgs>("equipment_remove", &value.args)?.into()),
@@ -6475,6 +6609,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "generate_world" => Ok(__sdk::parse_reducer_args::<generate_world_reducer::GenerateWorldArgs>("generate_world", &value.args)?.into()),
             "growth_agent_loop" => Ok(__sdk::parse_reducer_args::<growth_agent_loop_reducer::GrowthAgentLoopArgs>("growth_agent_loop", &value.args)?.into()),
             "hide_deployable" => Ok(__sdk::parse_reducer_args::<hide_deployable_reducer::HideDeployableArgs>("hide_deployable", &value.args)?.into()),
+            "identity_connected" => Ok(__sdk::parse_reducer_args::<identity_connected_reducer::IdentityConnectedArgs>("identity_connected", &value.args)?.into()),
             "identity_disconnected" => Ok(__sdk::parse_reducer_args::<identity_disconnected_reducer::IdentityDisconnectedArgs>("identity_disconnected", &value.args)?.into()),
             "import_achievement_desc" => Ok(__sdk::parse_reducer_args::<import_achievement_desc_reducer::ImportAchievementDescArgs>("import_achievement_desc", &value.args)?.into()),
             "import_active_buff_state" => Ok(__sdk::parse_reducer_args::<import_active_buff_state_reducer::ImportActiveBuffStateArgs>("import_active_buff_state", &value.args)?.into()),
@@ -6543,8 +6678,10 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "import_growth_state" => Ok(__sdk::parse_reducer_args::<import_growth_state_reducer::ImportGrowthStateArgs>("import_growth_state", &value.args)?.into()),
             "import_health_state" => Ok(__sdk::parse_reducer_args::<import_health_state_reducer::ImportHealthStateArgs>("import_health_state", &value.args)?.into()),
             "import_herd_cache" => Ok(__sdk::parse_reducer_args::<import_herd_cache_reducer::ImportHerdCacheArgs>("import_herd_cache", &value.args)?.into()),
+            "import_hexite_exchange_entry_desc" => Ok(__sdk::parse_reducer_args::<import_hexite_exchange_entry_desc_reducer::ImportHexiteExchangeEntryDescArgs>("import_hexite_exchange_entry_desc", &value.args)?.into()),
             "import_identity_role" => Ok(__sdk::parse_reducer_args::<import_identity_role_reducer::ImportIdentityRoleArgs>("import_identity_role", &value.args)?.into()),
             "import_interior_collapse_trigger_state" => Ok(__sdk::parse_reducer_args::<import_interior_collapse_trigger_state_reducer::ImportInteriorCollapseTriggerStateArgs>("import_interior_collapse_trigger_state", &value.args)?.into()),
+            "import_interior_environment_desc" => Ok(__sdk::parse_reducer_args::<import_interior_environment_desc_reducer::ImportInteriorEnvironmentDescArgs>("import_interior_environment_desc", &value.args)?.into()),
             "import_interior_instance_desc" => Ok(__sdk::parse_reducer_args::<import_interior_instance_desc_reducer::ImportInteriorInstanceDescArgs>("import_interior_instance_desc", &value.args)?.into()),
             "import_interior_network_desc" => Ok(__sdk::parse_reducer_args::<import_interior_network_desc_reducer::ImportInteriorNetworkDescArgs>("import_interior_network_desc", &value.args)?.into()),
             "import_interior_portal_connections_desc" => Ok(__sdk::parse_reducer_args::<import_interior_portal_connections_desc_reducer::ImportInteriorPortalConnectionsDescArgs>("import_interior_portal_connections_desc", &value.args)?.into()),
@@ -6794,6 +6931,8 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "stage_extraction_recipe_desc" => Ok(__sdk::parse_reducer_args::<stage_extraction_recipe_desc_reducer::StageExtractionRecipeDescArgs>("stage_extraction_recipe_desc", &value.args)?.into()),
             "stage_food_desc" => Ok(__sdk::parse_reducer_args::<stage_food_desc_reducer::StageFoodDescArgs>("stage_food_desc", &value.args)?.into()),
             "stage_gate_desc" => Ok(__sdk::parse_reducer_args::<stage_gate_desc_reducer::StageGateDescArgs>("stage_gate_desc", &value.args)?.into()),
+            "stage_hexite_exchange_entry_desc" => Ok(__sdk::parse_reducer_args::<stage_hexite_exchange_entry_desc_reducer::StageHexiteExchangeEntryDescArgs>("stage_hexite_exchange_entry_desc", &value.args)?.into()),
+            "stage_interior_environment_desc" => Ok(__sdk::parse_reducer_args::<stage_interior_environment_desc_reducer::StageInteriorEnvironmentDescArgs>("stage_interior_environment_desc", &value.args)?.into()),
             "stage_interior_instance_desc" => Ok(__sdk::parse_reducer_args::<stage_interior_instance_desc_reducer::StageInteriorInstanceDescArgs>("stage_interior_instance_desc", &value.args)?.into()),
             "stage_interior_network_desc" => Ok(__sdk::parse_reducer_args::<stage_interior_network_desc_reducer::StageInteriorNetworkDescArgs>("stage_interior_network_desc", &value.args)?.into()),
             "stage_interior_portal_connections_desc" => Ok(__sdk::parse_reducer_args::<stage_interior_portal_connections_desc_reducer::StageInteriorPortalConnectionsDescArgs>("stage_interior_portal_connections_desc", &value.args)?.into()),
@@ -6979,11 +7118,14 @@ pub struct DbUpdate {
     growth_state: __sdk::TableUpdate<GrowthState>,
     health_state: __sdk::TableUpdate<HealthState>,
     herd_state: __sdk::TableUpdate<HerdState>,
+    hexite_exchange_entry_desc: __sdk::TableUpdate<HexiteExchangeEntryDesc>,
     hide_deployable_timer: __sdk::TableUpdate<HideDeployableTimer>,
     identity_role: __sdk::TableUpdate<IdentityRole>,
     inter_module_message: __sdk::TableUpdate<InterModuleMessage>,
     inter_module_message_counter: __sdk::TableUpdate<InterModuleMessageCounter>,
+    inter_module_response_message_counter: __sdk::TableUpdate<InterModuleResponseMessageCounter>,
     interior_collapse_trigger_state: __sdk::TableUpdate<InteriorCollapseTriggerState>,
+    interior_environment_desc: __sdk::TableUpdate<InteriorEnvironmentDesc>,
     interior_instance_desc: __sdk::TableUpdate<InteriorInstanceDesc>,
     interior_network_desc: __sdk::TableUpdate<InteriorNetworkDesc>,
     interior_portal_connections_desc: __sdk::TableUpdate<InteriorPortalConnectionsDesc>,
@@ -7075,6 +7217,7 @@ pub struct DbUpdate {
     region_connection_info: __sdk::TableUpdate<RegionConnectionInfo>,
     region_population_info: __sdk::TableUpdate<RegionPopulationInfo>,
     region_popuplation_loop_timer: __sdk::TableUpdate<RegionPopulationLoopTimer>,
+    region_sign_in_parameters: __sdk::TableUpdate<RegionSignInParameters>,
     rent_collector_loop_timer: __sdk::TableUpdate<RentCollectorLoopTimer>,
     rent_evict_timer: __sdk::TableUpdate<RentEvictTimer>,
     rent_state: __sdk::TableUpdate<RentState>,
@@ -7567,6 +7710,10 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
                 "herd_state" => {
                     db_update.herd_state = herd_state_table::parse_table_update(table_update)?
                 }
+                "hexite_exchange_entry_desc" => {
+                    db_update.hexite_exchange_entry_desc =
+                        hexite_exchange_entry_desc_table::parse_table_update(table_update)?
+                }
                 "hide_deployable_timer" => {
                     db_update.hide_deployable_timer =
                         hide_deployable_timer_table::parse_table_update(table_update)?
@@ -7582,9 +7729,19 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
                     db_update.inter_module_message_counter =
                         inter_module_message_counter_table::parse_table_update(table_update)?
                 }
+                "inter_module_response_message_counter" => {
+                    db_update.inter_module_response_message_counter =
+                        inter_module_response_message_counter_table::parse_table_update(
+                            table_update,
+                        )?
+                }
                 "interior_collapse_trigger_state" => {
                     db_update.interior_collapse_trigger_state =
                         interior_collapse_trigger_state_table::parse_table_update(table_update)?
+                }
+                "interior_environment_desc" => {
+                    db_update.interior_environment_desc =
+                        interior_environment_desc_table::parse_table_update(table_update)?
                 }
                 "interior_instance_desc" => {
                     db_update.interior_instance_desc =
@@ -7946,6 +8103,10 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
                 "region_popuplation_loop_timer" => {
                     db_update.region_popuplation_loop_timer =
                         region_popuplation_loop_timer_table::parse_table_update(table_update)?
+                }
+                "region_sign_in_parameters" => {
+                    db_update.region_sign_in_parameters =
+                        region_sign_in_parameters_table::parse_table_update(table_update)?
                 }
                 "rent_collector_loop_timer" => {
                     db_update.rent_collector_loop_timer =
@@ -8714,6 +8875,12 @@ impl __sdk::DbUpdate for DbUpdate {
         diff.herd_state = cache
             .apply_diff_to_table::<HerdState>("herd_state", &self.herd_state)
             .with_updates_by_pk(|row| &row.entity_id);
+        diff.hexite_exchange_entry_desc = cache
+            .apply_diff_to_table::<HexiteExchangeEntryDesc>(
+                "hexite_exchange_entry_desc",
+                &self.hexite_exchange_entry_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
         diff.hide_deployable_timer = cache
             .apply_diff_to_table::<HideDeployableTimer>(
                 "hide_deployable_timer",
@@ -8735,12 +8902,24 @@ impl __sdk::DbUpdate for DbUpdate {
                 &self.inter_module_message_counter,
             )
             .with_updates_by_pk(|row| &row.module_id);
+        diff.inter_module_response_message_counter = cache
+            .apply_diff_to_table::<InterModuleResponseMessageCounter>(
+                "inter_module_response_message_counter",
+                &self.inter_module_response_message_counter,
+            )
+            .with_updates_by_pk(|row| &row.dst_module_id);
         diff.interior_collapse_trigger_state = cache
             .apply_diff_to_table::<InteriorCollapseTriggerState>(
                 "interior_collapse_trigger_state",
                 &self.interior_collapse_trigger_state,
             )
             .with_updates_by_pk(|row| &row.entity_id);
+        diff.interior_environment_desc = cache
+            .apply_diff_to_table::<InteriorEnvironmentDesc>(
+                "interior_environment_desc",
+                &self.interior_environment_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
         diff.interior_instance_desc = cache
             .apply_diff_to_table::<InteriorInstanceDesc>(
                 "interior_instance_desc",
@@ -9197,6 +9376,12 @@ impl __sdk::DbUpdate for DbUpdate {
                 &self.region_popuplation_loop_timer,
             )
             .with_updates_by_pk(|row| &row.scheduled_id);
+        diff.region_sign_in_parameters = cache
+            .apply_diff_to_table::<RegionSignInParameters>(
+                "region_sign_in_parameters",
+                &self.region_sign_in_parameters,
+            )
+            .with_updates_by_pk(|row| &row.region_id);
         diff.rent_collector_loop_timer = cache
             .apply_diff_to_table::<RentCollectorLoopTimer>(
                 "rent_collector_loop_timer",
@@ -9622,11 +9807,15 @@ pub struct AppliedDiff<'r> {
     growth_state: __sdk::TableAppliedDiff<'r, GrowthState>,
     health_state: __sdk::TableAppliedDiff<'r, HealthState>,
     herd_state: __sdk::TableAppliedDiff<'r, HerdState>,
+    hexite_exchange_entry_desc: __sdk::TableAppliedDiff<'r, HexiteExchangeEntryDesc>,
     hide_deployable_timer: __sdk::TableAppliedDiff<'r, HideDeployableTimer>,
     identity_role: __sdk::TableAppliedDiff<'r, IdentityRole>,
     inter_module_message: __sdk::TableAppliedDiff<'r, InterModuleMessage>,
     inter_module_message_counter: __sdk::TableAppliedDiff<'r, InterModuleMessageCounter>,
+    inter_module_response_message_counter:
+        __sdk::TableAppliedDiff<'r, InterModuleResponseMessageCounter>,
     interior_collapse_trigger_state: __sdk::TableAppliedDiff<'r, InteriorCollapseTriggerState>,
+    interior_environment_desc: __sdk::TableAppliedDiff<'r, InteriorEnvironmentDesc>,
     interior_instance_desc: __sdk::TableAppliedDiff<'r, InteriorInstanceDesc>,
     interior_network_desc: __sdk::TableAppliedDiff<'r, InteriorNetworkDesc>,
     interior_portal_connections_desc: __sdk::TableAppliedDiff<'r, InteriorPortalConnectionsDesc>,
@@ -9720,6 +9909,7 @@ pub struct AppliedDiff<'r> {
     region_connection_info: __sdk::TableAppliedDiff<'r, RegionConnectionInfo>,
     region_population_info: __sdk::TableAppliedDiff<'r, RegionPopulationInfo>,
     region_popuplation_loop_timer: __sdk::TableAppliedDiff<'r, RegionPopulationLoopTimer>,
+    region_sign_in_parameters: __sdk::TableAppliedDiff<'r, RegionSignInParameters>,
     rent_collector_loop_timer: __sdk::TableAppliedDiff<'r, RentCollectorLoopTimer>,
     rent_evict_timer: __sdk::TableAppliedDiff<'r, RentEvictTimer>,
     rent_state: __sdk::TableAppliedDiff<'r, RentState>,
@@ -10297,6 +10487,11 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             event,
         );
         callbacks.invoke_table_row_callbacks::<HerdState>("herd_state", &self.herd_state, event);
+        callbacks.invoke_table_row_callbacks::<HexiteExchangeEntryDesc>(
+            "hexite_exchange_entry_desc",
+            &self.hexite_exchange_entry_desc,
+            event,
+        );
         callbacks.invoke_table_row_callbacks::<HideDeployableTimer>(
             "hide_deployable_timer",
             &self.hide_deployable_timer,
@@ -10317,9 +10512,19 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             &self.inter_module_message_counter,
             event,
         );
+        callbacks.invoke_table_row_callbacks::<InterModuleResponseMessageCounter>(
+            "inter_module_response_message_counter",
+            &self.inter_module_response_message_counter,
+            event,
+        );
         callbacks.invoke_table_row_callbacks::<InteriorCollapseTriggerState>(
             "interior_collapse_trigger_state",
             &self.interior_collapse_trigger_state,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<InteriorEnvironmentDesc>(
+            "interior_environment_desc",
+            &self.interior_environment_desc,
             event,
         );
         callbacks.invoke_table_row_callbacks::<InteriorInstanceDesc>(
@@ -10763,6 +10968,11 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
         callbacks.invoke_table_row_callbacks::<RegionPopulationLoopTimer>(
             "region_popuplation_loop_timer",
             &self.region_popuplation_loop_timer,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<RegionSignInParameters>(
+            "region_sign_in_parameters",
+            &self.region_sign_in_parameters,
             event,
         );
         callbacks.invoke_table_row_callbacks::<RentCollectorLoopTimer>(
@@ -11744,11 +11954,14 @@ impl __sdk::SpacetimeModule for RemoteModule {
         growth_state_table::register_table(client_cache);
         health_state_table::register_table(client_cache);
         herd_state_table::register_table(client_cache);
+        hexite_exchange_entry_desc_table::register_table(client_cache);
         hide_deployable_timer_table::register_table(client_cache);
         identity_role_table::register_table(client_cache);
         inter_module_message_table::register_table(client_cache);
         inter_module_message_counter_table::register_table(client_cache);
+        inter_module_response_message_counter_table::register_table(client_cache);
         interior_collapse_trigger_state_table::register_table(client_cache);
+        interior_environment_desc_table::register_table(client_cache);
         interior_instance_desc_table::register_table(client_cache);
         interior_network_desc_table::register_table(client_cache);
         interior_portal_connections_desc_table::register_table(client_cache);
@@ -11840,6 +12053,7 @@ impl __sdk::SpacetimeModule for RemoteModule {
         region_connection_info_table::register_table(client_cache);
         region_population_info_table::register_table(client_cache);
         region_popuplation_loop_timer_table::register_table(client_cache);
+        region_sign_in_parameters_table::register_table(client_cache);
         rent_collector_loop_timer_table::register_table(client_cache);
         rent_evict_timer_table::register_table(client_cache);
         rent_state_table::register_table(client_cache);

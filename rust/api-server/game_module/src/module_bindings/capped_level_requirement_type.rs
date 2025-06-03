@@ -4,20 +4,14 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::enemy_status_type::EnemyStatus;
-use super::enemy_type_type::EnemyType;
-
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub struct EnemyState {
-    pub entity_id: u64,
-    pub herd_entity_id: u64,
-    pub direction: i32,
-    pub status: EnemyStatus,
-    pub last_ranged_attack_timestamp: __sdk::Timestamp,
-    pub enemy_type: EnemyType,
+pub struct CappedLevelRequirement {
+    pub skill_id: i32,
+    pub min_level: i32,
+    pub max_level: i32,
 }
 
-impl __sdk::InModule for EnemyState {
+impl __sdk::InModule for CappedLevelRequirement {
     type Module = super::RemoteModule;
 }
