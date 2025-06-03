@@ -418,7 +418,6 @@ struct AppState {
     storage_path: PathBuf,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
-    claim_state: Arc<dashmap::DashMap<u64, entity::claim_state::Model>>,
     claim_member_state:
         Arc<dashmap::DashMap<u64, dashmap::DashSet<entity::claim_member_state::Model>>>,
     player_to_claim_id_cache: Arc<dashmap::DashMap<u64, dashmap::DashSet<u64>>>,
@@ -453,7 +452,6 @@ impl AppState {
             storage_path: PathBuf::from(config.storage_path.clone()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
-            claim_state: Arc::new(dashmap::DashMap::new()),
             claim_member_state: Arc::new(dashmap::DashMap::new()),
             player_to_claim_id_cache: Arc::new(dashmap::DashMap::new()),
             claim_local_state: Arc::new(dashmap::DashMap::new()),
