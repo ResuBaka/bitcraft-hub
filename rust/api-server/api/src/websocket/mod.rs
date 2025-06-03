@@ -25,7 +25,6 @@ use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
 use log::{debug, error, warn};
 use futures::{SinkExt, TryStreamExt};
 
-use serde_bytes;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -3876,11 +3875,11 @@ pub fn start_websocket_bitcraft_logic_old(
                             WebSocketMessage::InitialSubscription(subscription_update) => {
                                 let inserts = &subscription_update.database_update.tables[0].updates[0].inserts;
                                 for insert in inserts {
-                                    let value: InternalProgram = serde_json::from_slice(insert.to_string().as_bytes()).unwrap();
-                                    if value.hash == "9a2bb349f418def32dd52b4e51799c88c4ae10d924fb8970e2e2ef9fabfdc1f9" {
+                                    let value: Value = serde_json::from_str(insert).unwrap();
+                                    if value.as_object().unwrap().get("hash").unwrap() == "9a2bb349f418def32dd52b4e51799c88c4ae10d924fb8970e2e2ef9fabfdc1f9" {
                                         let mut file = File::create("foo3.txt").unwrap();
-                                        
-                                        file.write_all(&value.bytes).unwrap();
+                                        let mut text = value.as_object().unwrap().get("bytes").unwrap().as_str().unwrap().to_string();
+                                        file.write_all(&hex::decode(text.to_string()).unwrap()).unwrap();
                                     }
                                 }
                             }
@@ -3910,13 +3909,6 @@ pub fn start_websocket_bitcraft_logic_old(
         }
     });
 }
-#[derive(Deserialize, Clone, Debug)]
-pub(crate) struct InternalProgram {
-    pub(crate) hash: String,
-    #[serde(with = "serde_bytes")]
-    pub(crate) bytes: Vec<u8>,
-}
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct InternalTransactionUpdate {
