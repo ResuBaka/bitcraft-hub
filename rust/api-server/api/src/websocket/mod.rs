@@ -2023,14 +2023,26 @@ fn start_worker_building_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_state::Model = new.into();
 
+                                let already_there = messages.iter().position(|building_state: &::entity::building_state::Model| building_state.entity_id == model.entity_id);
+
+                                if let Some(position) = already_there {
+                                    messages.remove(position);
+                                }
                                 messages.push(model);
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::building_state::Model = new.into();
+                                let already_there = messages.iter().position(|building_state: &::entity::building_state::Model | building_state.entity_id == model.entity_id);
+
+                                if let Some(position) = already_there {
+                                    messages.remove(position);
+                                }
                                 messages.push(model);
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
