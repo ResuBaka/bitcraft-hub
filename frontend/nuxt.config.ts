@@ -4,7 +4,9 @@ import colors from "vuetify/util/colors";
 export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
-
+  future: {
+    compatibilityVersion: 4,
+  },
   nitro: {
     experimental: {
       websocket: true,
