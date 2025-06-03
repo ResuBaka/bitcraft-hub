@@ -44,5 +44,7 @@ tracing = "0.1.41"
 nanoid = "0.4.0"
 config = "0.15.11"
 
+serde_bytes = "0.11.17"
+
 [dependencies.sea-orm-cli]
 version = "1.1.11"
