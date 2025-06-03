@@ -107,8 +107,19 @@ pub(crate) async fn find_claim_description(
 }
 
 #[derive(Serialize, Deserialize)]
+pub(crate) struct BuildingStateWithName {
+    pub entity_id: i64,
+    pub claim_entity_id: i64,
+    pub direction_index: i32,
+    pub building_description_id: i32,
+    pub constructed_by_player_entity_id: i64,
+    pub building_name: String,
+    pub location: Option<entity::location::Model>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub(crate) struct BuildingStatesResponse {
-    buildings: Vec<building_state::Model>,
+    buildings: Vec<BuildingStateWithName>,
     per_page: u64,
     total: u64,
     page: u64,
@@ -156,7 +167,33 @@ pub(crate) async fn find_building_states(
     .expect("Cannot find posts in page");
 
     Ok(axum_codec::Codec(BuildingStatesResponse {
-        buildings: posts.0,
+        buildings: posts
+            .0
+            .iter()
+            .map(|building_state| BuildingStateWithName {
+                entity_id: building_state.entity_id,
+                claim_entity_id: building_state.claim_entity_id,
+                direction_index: building_state.direction_index,
+                building_description_id: building_state.building_description_id,
+                constructed_by_player_entity_id: building_state.constructed_by_player_entity_id,
+                building_name: state
+                    .building_nickname_state
+                    .get(&(building_state.entity_id))
+                    .map_or_else(
+                        || {
+                            state
+                                .building_desc
+                                .get(&(building_state.building_description_id as i64))
+                                .map_or("".into(), |building_desc| building_desc.name.clone())
+                        },
+                        |building_nickname_state| building_nickname_state.nickname.clone(),
+                    ),
+                location: state
+                    .location_state
+                    .get(&(building_state.entity_id))
+                    .map(|location_state| location_state.to_owned()),
+            })
+            .collect(),
         per_page,
         total: posts.1.number_of_items,
         page,

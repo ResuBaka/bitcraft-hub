@@ -300,7 +300,7 @@ const claimOwner = computed(() => {
     claim.value.members.find(
       (member) =>
         member.entity_id.toString() ===
-        claim.value.owner_player_entity_id.toString(),
+        claim.value.owner_player_entity_id?.toString(),
     )?.user_name ?? ""
   );
 });
@@ -959,8 +959,7 @@ const countDownUntilResearchIsFinished = computed(() => {
                       <template #prepend v-if="iconDomain">
                         <v-avatar :image="`${iconDomain}/${building.image_path}`" size="50"></v-avatar>
                       </template>
-                      <template v-if="building.nickname !== ''">{{ building.nickname }}</template>
-                      <template v-else>{{ building.building_name }}</template>
+                      {{ building.building_name }}
                     </v-list-item>
                   </nuxt-link>
                 </v-col>

@@ -4,6 +4,7 @@ pub mod prelude;
 
 pub mod action_state;
 pub mod building_desc;
+pub mod building_nickname_state;
 pub mod building_state;
 pub mod cargo_desc;
 pub mod cargo_state;
