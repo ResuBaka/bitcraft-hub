@@ -15,6 +15,7 @@ pub struct TransferPlayerTimer {
     pub destination: FloatHexTileMessage,
     pub new_region_index: u8,
     pub with_vehicle: bool,
+    pub teleport_energy_cost: f32,
 }
 
 impl __sdk::InModule for TransferPlayerTimer {

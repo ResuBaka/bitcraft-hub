@@ -22,6 +22,7 @@ pub struct InteriorInstanceDesc {
     pub max_zoom: f32,
     pub min_angle: f32,
     pub max_angle: f32,
+    pub intertior_environment_id: Option<i32>,
 }
 
 impl __sdk::InModule for InteriorInstanceDesc {

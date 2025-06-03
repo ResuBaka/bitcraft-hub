@@ -12,6 +12,7 @@ use super::player_action_type_type::PlayerActionType;
 #[sats(crate = __lib)]
 pub struct PlayerActionState {
     pub auto_id: u64,
+    pub chunk_index: u64,
     pub entity_id: u64,
     pub action_type: PlayerActionType,
     pub layer: PlayerActionLayer,

@@ -10,6 +10,7 @@ pub struct KnowledgeScrollDesc {
     pub item_id: i32,
     pub scroll_type: i32,
     pub secondary_knowledge_id: i32,
+    pub known_by_default: bool,
     pub auto_collect: bool,
     pub title: String,
     pub tag: String,

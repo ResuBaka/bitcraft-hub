@@ -14,6 +14,7 @@ use super::deployable_state_type::DeployableState;
 use super::equipment_state_type::EquipmentState;
 use super::experience_state_type::ExperienceState;
 use super::exploration_chunks_state_type::ExplorationChunksState;
+use super::extract_outcome_state_type::ExtractOutcomeState;
 use super::float_hex_tile_message_type::FloatHexTileMessage;
 use super::health_state_type::HealthState;
 use super::inventory_state_type::InventoryState;
@@ -48,6 +49,7 @@ use super::satiation_state_type::SatiationState;
 use super::stamina_state_type::StaminaState;
 use super::teleportation_energy_state_type::TeleportationEnergyState;
 use super::toolbar_state_type::ToolbarState;
+use super::traveler_task_state_type::TravelerTaskState;
 use super::unclaimed_collectibles_state_type::UnclaimedCollectiblesState;
 use super::user_state_type::UserState;
 use super::vault_state_type::VaultState;
@@ -58,6 +60,7 @@ pub struct TransferPlayerMsg {
     pub original_location: FloatHexTileMessage,
     pub destination_location: FloatHexTileMessage,
     pub allow_cancel: bool,
+    pub teleport_energy_cost: f32,
     pub vehicle: Option<DeployableState>,
     pub vehicle_inventory: Option<InventoryState>,
     pub player_state: PlayerState,
@@ -105,6 +108,9 @@ pub struct TransferPlayerMsg {
     pub unclaimed_collectibles_state: Option<UnclaimedCollectiblesState>,
     pub teleportation_energy_state: TeleportationEnergyState,
     pub player_housing_state: Option<PlayerHousingState>,
+    pub traveler_task_states: Vec<TravelerTaskState>,
+    pub extract_outcome_state: ExtractOutcomeState,
+    pub undeployed_deployable_states: Vec<DeployableState>,
 }
 
 impl __sdk::InModule for TransferPlayerMsg {

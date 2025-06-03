@@ -4,20 +4,17 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::enemy_status_type::EnemyStatus;
-use super::enemy_type_type::EnemyType;
+use super::hub_item_type_type::HubItemType;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub struct EnemyState {
-    pub entity_id: u64,
-    pub herd_entity_id: u64,
-    pub direction: i32,
-    pub status: EnemyStatus,
-    pub last_ranged_attack_timestamp: __sdk::Timestamp,
-    pub enemy_type: EnemyType,
+pub struct GrantHubItemMsg {
+    pub player_identity: __sdk::Identity,
+    pub item_type: HubItemType,
+    pub item_id: i32,
+    pub quantity: u32,
 }
 
-impl __sdk::InModule for EnemyState {
+impl __sdk::InModule for GrantHubItemMsg {
     type Module = super::RemoteModule;
 }

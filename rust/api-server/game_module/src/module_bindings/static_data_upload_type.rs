@@ -44,6 +44,8 @@ use super::equipment_desc_type::EquipmentDesc;
 use super::extraction_recipe_desc_type::ExtractionRecipeDesc;
 use super::food_desc_type::FoodDesc;
 use super::gate_desc_type::GateDesc;
+use super::hexite_exchange_entry_desc_type::HexiteExchangeEntryDesc;
+use super::interior_environment_desc_type::InteriorEnvironmentDesc;
 use super::interior_instance_desc_type::InteriorInstanceDesc;
 use super::interior_network_desc_type::InteriorNetworkDesc;
 use super::interior_portal_connections_desc_type::InteriorPortalConnectionsDesc;
@@ -118,6 +120,7 @@ pub struct StaticDataUpload {
     pub achievements: Vec<AchievementDesc>,
     pub knowledge_stat_modifiers: Vec<KnowledgeStatModifierDesc>,
     pub interior_instances: Vec<InteriorInstanceDesc>,
+    pub interior_environments: Vec<InteriorEnvironmentDesc>,
     pub interior_spawns: Vec<InteriorSpawnDesc>,
     pub building_portals: Vec<BuildingPortalDesc>,
     pub portal_connections: Vec<InteriorPortalConnectionsDesc>,
@@ -166,6 +169,7 @@ pub struct StaticDataUpload {
     pub player_actions: Vec<PlayerActionDesc>,
     pub distant_visibile_entities: Vec<DistantVisibleEntityDesc>,
     pub player_housing: Vec<PlayerHousingDesc>,
+    pub hexite_exchange_entries: Vec<HexiteExchangeEntryDesc>,
 }
 
 impl __sdk::InModule for StaticDataUpload {

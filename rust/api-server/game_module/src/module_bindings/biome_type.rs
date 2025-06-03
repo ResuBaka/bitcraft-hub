@@ -33,6 +33,10 @@ pub enum Biome {
     SafeMeadows,
 
     Cave,
+
+    Jungle,
+
+    Sapwoods,
 }
 
 impl __sdk::InModule for Biome {

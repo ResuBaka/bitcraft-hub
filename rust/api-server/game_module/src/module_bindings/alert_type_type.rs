@@ -21,6 +21,8 @@ pub enum AlertType {
     OutOfSuppliesInOneTick,
 
     OutOfSuppliesInTwelveTicks,
+
+    NewLostItems,
 }
 
 impl __sdk::InModule for AlertType {

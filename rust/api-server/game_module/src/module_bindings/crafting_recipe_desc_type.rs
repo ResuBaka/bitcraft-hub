@@ -24,16 +24,19 @@ pub struct CraftingRecipeDesc {
     pub tool_requirements: Vec<ToolRequirement>,
     pub consumed_item_stacks: Vec<InputItemStack>,
     pub discovery_triggers: Vec<i32>,
-    pub required_knowledges: Vec<i32>,
     pub required_claim_tech_id: i32,
     pub full_discovery_score: i32,
     pub experience_per_progress: Vec<ExperienceStackF32>,
-    pub allow_use_hands: bool,
     pub crafted_item_stacks: Vec<ItemStack>,
-    pub is_passive: bool,
     pub actions_required: i32,
     pub tool_mesh_index: i32,
     pub recipe_performance_id: i32,
+    pub required_knowledges: Vec<i32>,
+    pub blocking_knowledges: Vec<i32>,
+    pub hide_without_required_knowledge: bool,
+    pub hide_with_blocking_knowledges: bool,
+    pub allow_use_hands: bool,
+    pub is_passive: bool,
 }
 
 impl __sdk::InModule for CraftingRecipeDesc {
