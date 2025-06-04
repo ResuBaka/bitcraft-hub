@@ -12,6 +12,7 @@ use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, sea_query};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{Compression, DbContext, Error, Table, TableWithPrimaryKey, credentials};
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
@@ -2012,7 +2013,7 @@ fn start_worker_building_state(
                 .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = HashMap::new();
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -2023,12 +2024,7 @@ fn start_worker_building_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_state::Model = new.into();
 
-                                let already_there = messages.iter().position(|building_state: &::entity::building_state::Model| building_state.entity_id == model.entity_id);
-
-                                if let Some(position) = already_there {
-                                    messages.remove(position);
-                                }
-                                messages.push(model);
+                                messages.insert(model.entity_id, model);
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2036,12 +2032,8 @@ fn start_worker_building_state(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::building_state::Model = new.into();
-                                let already_there = messages.iter().position(|building_state: &::entity::building_state::Model | building_state.entity_id == model.entity_id);
 
-                                if let Some(position) = already_there {
-                                    messages.remove(position);
-                                }
-                                messages.push(model);
+                                messages.insert(model.entity_id, model);
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2051,9 +2043,7 @@ fn start_worker_building_state(
                                 let model: ::entity::building_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
-                                    messages.remove(index);
-                                }
+                                messages.remove(&id);
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
                                     tracing::error!(BuildingState = id, error = error.to_string(), "Could not delete BuildingState");
@@ -2081,7 +2071,7 @@ fn start_worker_building_state(
                 );
                 let insert = ::entity::building_state::Entity::insert_many(
                     messages
-                        .iter()
+                        .values()
                         .map(|value| value.clone().into_active_model())
                         .collect::<Vec<_>>(),
                 )
