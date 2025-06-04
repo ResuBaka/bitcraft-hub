@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -189,18 +190,6 @@ pub(crate) async fn get_claim(
         .iter()
         .map(|desc| desc.id)
         .collect::<Vec<i32>>();
-
-    let items = state
-        .item_desc
-        .iter()
-        .map(|item| (item.id, item.to_owned()))
-        .collect::<HashMap<i32, item_desc::Model>>();
-
-    let cargos = state
-        .cargo_desc
-        .iter()
-        .map(|cargo| (cargo.id, cargo.to_owned()))
-        .collect::<HashMap<i32, cargo_desc::Model>>();
 
     let mut claim = {
         let claim_tech_state = claim_tech_states
@@ -496,13 +485,13 @@ pub(crate) async fn get_claim(
     let mut jobs: FlatInventoryTasks = vec![];
 
     let conn = state.conn.clone();
-    let job_items = items.clone();
-    let job_cargos = cargos.clone();
+    let tmp_item_desc = state.item_desc.clone();
+    let tmp_cargo_desc = state.cargo_desc.clone();
     jobs.push(tokio::spawn(async move {
         let offline_players_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_offline_ids).await?;
         let mut merged_offline_players_inventories =
-            get_merged_inventories(offline_players_inventories, &job_items, &job_cargos);
+            get_merged_inventories(offline_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_offline_players_inventories.sort_by(inventory_sort_by);
 
         Ok((
@@ -512,26 +501,26 @@ pub(crate) async fn get_claim(
     }));
 
     let conn = state.conn.clone();
-    let job_items = items.clone();
-    let job_cargos = cargos.clone();
+    let tmp_item_desc = state.item_desc.clone();
+    let tmp_cargo_desc = state.cargo_desc.clone();
     jobs.push(tokio::spawn(async move {
         let claim_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, building_inventories_ids).await?;
         let mut merged_claim_inventories =
-            get_merged_inventories(claim_inventories, &job_items, &job_cargos);
+            get_merged_inventories(claim_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_claim_inventories.sort_by(inventory_sort_by);
 
         Ok(("buildings".to_string(), merged_claim_inventories))
     }));
 
     let conn = state.conn.clone();
-    let job_items = items.clone();
-    let job_cargos = cargos.clone();
+    let tmp_item_desc = state.item_desc.clone();
+    let tmp_cargo_desc = state.cargo_desc.clone();
     jobs.push(tokio::spawn(async move {
         let online_players_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_online_ids).await?;
         let mut merged_online_players_inventories =
-            get_merged_inventories(online_players_inventories, &job_items, &job_cargos);
+            get_merged_inventories(online_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_online_players_inventories.sort_by(inventory_sort_by);
 
         Ok(("players".to_string(), merged_online_players_inventories))
@@ -732,8 +721,8 @@ pub(crate) async fn list_claims(
 
 pub(crate) fn get_merged_inventories(
     inventorys: Vec<inventory::Model>,
-    items: &HashMap<i32, item_desc::Model>,
-    cargos: &HashMap<i32, cargo_desc::Model>,
+    items: &Arc<dashmap::DashMap<i32, item_desc::Model>>,
+    cargos: &Arc<dashmap::DashMap<i32, cargo_desc::Model>>,
 ) -> Vec<entity::inventory::ExpendedRefrence> {
     let mut hashmap: HashMap<
         (i32, entity::inventory::ItemType),

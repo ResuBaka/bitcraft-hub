@@ -13,6 +13,7 @@ use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::sync::Arc;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -158,35 +159,11 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
     let mut resolved_inventory = vec![];
 
-    let item_descs_map = state
-        .item_desc
-        .iter()
-        .filter_map(|item| {
-            if !item_ids.contains(&item.id) {
-                return None;
-            }
-
-            Some((item.id, item.clone()))
-        })
-        .collect::<HashMap<i32, item_desc::Model>>();
-
-    let cargo_descs_map = state
-        .cargo_desc
-        .iter()
-        .filter_map(|cargo| {
-            if !cargo_ids.contains(&cargo.id) {
-                return None;
-            }
-
-            Some((cargo.id, cargo.clone()))
-        })
-        .collect::<HashMap<i32, cargo_desc::Model>>();
-
     for inventory in inventorys.into_iter() {
         let mut pockets = vec![];
 
         for pocket in &inventory.pockets {
-            pockets.push(resolve_pocket(pocket, &item_descs_map, &cargo_descs_map));
+            pockets.push(resolve_pocket(pocket, &state.item_desc, &state.cargo_desc));
         }
 
         let nickname = match mobile_entiety_map.get(&inventory.owner_entity_id) {
@@ -249,8 +226,8 @@ pub(crate) async fn load_inventory_state_from_file(
 
 pub(crate) fn resolve_pocket(
     pocket: &inventory::Pocket,
-    item_desc: &HashMap<i32, item_desc::Model>,
-    cargo_desc: &HashMap<i32, cargo_desc::Model>,
+    item_desc: &Arc<dashmap::DashMap<i32, item_desc::Model>>,
+    cargo_desc: &Arc<dashmap::DashMap<i32, cargo_desc::Model>>,
 ) -> ItemSlotResolved {
     let contents = resolve_contents(&pocket.contents, item_desc, cargo_desc);
     ItemSlotResolved {
@@ -262,8 +239,8 @@ pub(crate) fn resolve_pocket(
 
 pub(crate) fn resolve_contents(
     contents: &Option<inventory::ItemStack>,
-    item_desc: &HashMap<i32, item_desc::Model>,
-    cargo_desc: &HashMap<i32, cargo_desc::Model>,
+    item_desc: &Arc<dashmap::DashMap<i32, item_desc::Model>>,
+    cargo_desc: &Arc<dashmap::DashMap<i32, cargo_desc::Model>>,
 ) -> Option<ExpendedRefrence> {
     if let Some(content) = contents {
         if content.item_type == ItemType::Item {
