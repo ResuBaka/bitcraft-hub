@@ -865,7 +865,7 @@ pub async fn main() -> anyhow::Result<()> {
     }
 
     dotenvy::dotenv().ok();
-    let config = Config::new(Some(cli_config_parameters))?;
+    let config: Config = Config::new(Some(cli_config_parameters))?;
 
     setup_tracing(&config);
 
