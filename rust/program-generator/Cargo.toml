@@ -1,0 +1,23 @@
+[package]
+name = "program-generator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hex = "0.4.3"
+serde_json = "1.0.140"
+serde = { version = "1.0.219", features = ["derive"] }
+reqwest-websocket = {  version = "0.4.4" }
+reqwest = { version = "0.12.15", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
+futures = "0.3.31"
+anyhow = "1.0.98"
+tokio = { version = "1.45.0", features = [ "full" ] }
+spacetimedb-sdk = "1.1.1"
+time = { version = "0.3.41", features = ["serde", "parsing"] }
+config = "0.15.11"
+tungstenite = "0.24.0"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["json", "serde", "serde_json", "env-filter"] }
+
+axum = { version = "0.8.4", features = ["ws"]}
+log = "0.4.27"
