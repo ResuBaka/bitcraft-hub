@@ -1,13 +1,13 @@
 pub(crate) mod claim_local_state;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
-use crate::inventory::resolve_contents;
+use crate::inventory::{resolve_contents, resolve_pocket};
 use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use entity::inventory::{ExpendedRefrence, ItemExpended};
+use entity::inventory::{ExpendedRefrence, ItemExpended, ResolvedInventory};
 use entity::shared::location::Location;
 use entity::{building_state, cargo_desc, claim_tech_desc, inventory, item_desc, player_state};
 use log::error;
@@ -113,6 +113,7 @@ pub(crate) struct ClaimDescriptionStateMember {
     pub co_owner_permission: bool,
     pub online_state: OnlineState,
     pub skills_ranks: Option<BTreeMap<String, LeaderboardSkill>>,
+    pub inventory: Option<ResolvedInventory>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -213,6 +214,7 @@ pub(crate) async fn get_claim(
                         co_owner_permission: member.co_owner_permission,
                         online_state: OnlineState::Offline,
                         skills_ranks: Some(BTreeMap::new()),
+                        inventory: None,
                     })
                     .collect()
             });
@@ -368,6 +370,32 @@ pub(crate) async fn get_claim(
 
             Ok((skill_name, leaderboard))
         }));
+    }
+    for member in &mut claim.members {
+        let (inventorys, num_pages) = QueryCore::find_inventory_by_owner_entity_ids(
+            &state.conn,
+            vec![member.entity_id.clone()],
+        )
+        .await
+        .map_err(|e| {
+            error!("Error: {:?}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+        })?;
+        let mut pockets = vec![];
+        if let Some(inventory) = inventorys.iter().find(|inv| inv.inventory_index == 1) {
+            for pocket in &inventory.pockets {
+                pockets.push(resolve_pocket(pocket, &state.item_desc, &state.cargo_desc));
+            }
+            member.inventory = Some(inventory::ResolvedInventory {
+                entity_id: inventory.entity_id,
+                pockets,
+                inventory_index: inventory.inventory_index,
+                cargo_index: inventory.cargo_index,
+                owner_entity_id: inventory.owner_entity_id,
+                player_owner_entity_id: inventory.player_owner_entity_id,
+                nickname: None,
+            });
+        }
     }
 
     let results = futures::future::join_all(tasks).await;
@@ -634,6 +662,7 @@ pub(crate) async fn list_claims(
                             co_owner_permission: member.co_owner_permission,
                             online_state: OnlineState::Offline,
                             skills_ranks: Some(BTreeMap::new()),
+                            inventory: None,
                         })
                         .collect()
                 });
