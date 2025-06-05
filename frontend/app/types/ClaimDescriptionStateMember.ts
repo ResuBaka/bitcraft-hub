@@ -3,4 +3,14 @@ import type { LeaderboardSkill } from "./LeaderboardSkill";
 import type { OnlineState } from "./OnlineState";
 import type { ResolvedInventory } from "./ResolvedInventory";
 
-export type ClaimDescriptionStateMember = { entity_id: bigint, user_name: string, inventory_permission: boolean, build_permission: boolean, officer_permission: boolean, co_owner_permission: boolean, online_state: OnlineState, skills_ranks: { [key in string]?: LeaderboardSkill } | null, inventory: ResolvedInventory | null, };
+export type ClaimDescriptionStateMember = {
+  entity_id: bigint;
+  user_name: string;
+  inventory_permission: boolean;
+  build_permission: boolean;
+  officer_permission: boolean;
+  co_owner_permission: boolean;
+  online_state: OnlineState;
+  skills_ranks: { [key in string]?: LeaderboardSkill } | null;
+  inventory: ResolvedInventory | null;
+};

@@ -6,4 +6,25 @@ import type { ExpendedRefrence } from "./ExpendedRefrence";
 import type { Location } from "./Location";
 import type { Timestamp } from "./Timestamp";
 
-export type ClaimDescriptionStateWithInventoryAndPlayTime = { entity_id: bigint, owner_player_entity_id: bigint, owner_building_entity_id: bigint, name: string, supplies: number, building_maintenance: number, members: Array<ClaimDescriptionStateMember>, num_tiles: number, extensions: number, neutral: boolean, location: Location | null, treasury: number, xp_gained_since_last_coin_minting: number, running_upgrade: ClaimTechDesc | null, running_upgrade_started: Timestamp | null, tier: number | null, upgrades: Array<ClaimTechDesc>, inventorys: { [key in string]?: Array<ExpendedRefrence> }, time_signed_in: bigint, building_states: Array<BuildingState>, };
+export type ClaimDescriptionStateWithInventoryAndPlayTime = {
+  entity_id: bigint;
+  owner_player_entity_id: bigint;
+  owner_building_entity_id: bigint;
+  name: string;
+  supplies: number;
+  building_maintenance: number;
+  members: Array<ClaimDescriptionStateMember>;
+  num_tiles: number;
+  extensions: number;
+  neutral: boolean;
+  location: Location | null;
+  treasury: number;
+  xp_gained_since_last_coin_minting: number;
+  running_upgrade: ClaimTechDesc | null;
+  running_upgrade_started: Timestamp | null;
+  tier: number | null;
+  upgrades: Array<ClaimTechDesc>;
+  inventorys: { [key in string]?: Array<ExpendedRefrence> };
+  time_signed_in: bigint;
+  building_states: Array<BuildingState>;
+};
