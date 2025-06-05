@@ -40,7 +40,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, TS)]
 pub struct ResolvedInventory {
     pub entity_id: i64,
     pub pockets: Vec<ItemSlotResolved>,
@@ -51,7 +51,7 @@ pub struct ResolvedInventory {
     pub nickname: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 pub struct ItemSlotResolved {
     pub volume: i64,
     pub contents: Option<ExpendedRefrence>,
