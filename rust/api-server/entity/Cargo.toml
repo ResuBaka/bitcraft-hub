@@ -17,4 +17,5 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 axum-codec = { workspace = true }
 time = { workspace = true }
+ts-rs = { workspace = true }
 game_module = { path = "../game_module" }

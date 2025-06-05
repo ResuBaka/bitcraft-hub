@@ -4,8 +4,10 @@ use crate::item_desc::Rarity;
 use game_module::module_bindings::cargo_desc_type;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
+#[ts(rename = "CargoDesc")]
 #[sea_orm(table_name = "cargo_desc")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

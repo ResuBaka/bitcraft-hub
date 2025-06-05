@@ -8,8 +8,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "format": "biome format ./pages ./components ./layouts ./composables --write",
-    "format:check": "biome format ./pages ./components ./layouts ./composables"
+    "format": "biome format ./app/pages ./app/components ./app/layouts ./app/composables --write",
+    "format:check": "biome format ./app/pages ./app/components ./app/layouts ./app/composables"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.11.0",

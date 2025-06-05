@@ -1,8 +1,9 @@
 use game_module::module_bindings::OffsetCoordinatesSmallMessage;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 #[derive(
-    Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult, Default,
+    Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult, Default, TS,
 )]
 pub struct Location {
     pub x: i32,

@@ -4,8 +4,10 @@ use crate::mobile_entity_state;
 use game_module::module_bindings::MobileEntityState;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(rename = "MobileEntityState")]
 pub struct Model {
     pub entity_id: u64,
     pub chunk_index: u64,

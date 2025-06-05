@@ -1,12 +1,12 @@
 import { unpack } from "msgpackr/unpack";
-import type { UseFetchOptions } from "nuxt/app";
 
-export function useFetchMsPack<T>(
-  request: string | (() => string),
-  options: UseFetchOptions<T> = {},
-) {
+export function useFetchMsPack<DataT, ErrorT = undefined>(
+  ...args: Parameters<typeof useFetch<DataT, ErrorT>>
+): ReturnType<typeof useFetch<DataT, ErrorT>> {
+  const [request, options] = args;
+
   // @ts-ignore
-  return useFetch(request, {
+  return useFetch<DataT, ErrorT>(request, {
     ...options,
     headers: {
       Accept: "application/vnd.msgpack",

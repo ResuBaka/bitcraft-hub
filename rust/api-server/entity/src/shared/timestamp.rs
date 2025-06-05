@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use ts_rs::TS;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult, TS)]
 pub struct Timestamp {
     #[serde(with = "time::serde::timestamp::microseconds")]
+    #[ts(as = "String")]
     pub __timestamp_micros_since_unix_epoch__: OffsetDateTime,
 }
 

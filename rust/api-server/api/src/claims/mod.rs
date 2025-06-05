@@ -17,6 +17,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -60,7 +61,8 @@ pub struct ClaimDescriptionState {
     pub xp_gained_since_last_coin_minting: i32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub entity_id: i64,
     pub owner_player_entity_id: i64,
@@ -93,7 +95,7 @@ pub(crate) struct ClaimResponse {
     pub page: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub struct ClaimDescriptionStateMemberTmp {
     pub entity_id: i64,
     pub user_name: String,
@@ -103,7 +105,8 @@ pub struct ClaimDescriptionStateMemberTmp {
     pub co_owner_permission: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct ClaimDescriptionStateMember {
     pub entity_id: i64,
     pub user_name: String,
@@ -116,7 +119,8 @@ pub(crate) struct ClaimDescriptionStateMember {
     pub inventory: Option<ResolvedInventory>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) enum OnlineState {
     Online,
     Offline,

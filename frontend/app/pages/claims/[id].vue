@@ -4,6 +4,8 @@ import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { useNow } from "@vueuse/core";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import { toast } from "vuetify-sonner";
+import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
+import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
 
 const {
   public: { iconDomain },
@@ -40,15 +42,15 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: claimFetch, pending: claimPnding } = useFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
-});
+const { data: claimFetch, pending: claimPnding } =
+  useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(() => {
+    return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
+  });
 
-const { data: buidlingsFetch, pending: buildingsPending } = useFetchMsPack(
-  () => {
+const { data: buidlingsFetch, pending: buildingsPending } =
+  useFetchMsPack<BuildingStatesResponse>(() => {
     return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
-  },
-);
+  });
 
 const topicsPlayer = computed<string[]>(() => {
   return (
@@ -136,10 +138,9 @@ const buildings = computed(() => {
   }
 
   return buidlingsFetch.value?.buildings.filter((building) => {
-    let name_to_check = building.nickname ?? building.building_name;
     return (
       !search.value ||
-      name_to_check.toLowerCase().includes(search.value.toLowerCase())
+      building.building_name.toLowerCase().includes(search.value.toLowerCase())
     );
   });
 });
@@ -310,7 +311,7 @@ const tierToColor = (tier: number) => {
   }
   if (tier == 7) {
     return `red${colorEffect}`;
-  }else{
+  } else {
     return `grey${colorEffect}`;
   }
 };

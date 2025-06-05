@@ -1,7 +1,8 @@
 use crate::inventory::ItemType;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult, TS)]
 pub struct ItemStack {
     pub item_id: i32,
     pub quantity: i32,

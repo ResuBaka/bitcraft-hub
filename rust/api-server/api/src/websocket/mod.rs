@@ -17,6 +17,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 use tokio::time::{Duration, sleep};
+use ts_rs::TS;
 
 fn connect_to_db(db_name: &str, db_host: &str) -> DbConnection {
     DbConnection::builder()
@@ -2431,7 +2432,8 @@ fn start_worker_location_state(
     });
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, TS)]
+#[ts(export)]
 #[serde(tag = "t", content = "c")]
 pub(crate) enum WebSocketMessages {
     Subscribe {

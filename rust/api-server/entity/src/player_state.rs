@@ -4,8 +4,10 @@ use game_module::module_bindings::PlayerState;
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
+#[ts(rename = "PlayerState")]
 #[sea_orm(table_name = "player_state")]
 pub struct Model {
     #[sea_orm(column_type = "Json")]
@@ -38,20 +40,20 @@ impl Related<super::player_username_state::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct TeleportLocation {
     pub location: OffsetCoordinatesSmallMessage,
     pub location_type: TeleportLocationType,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct OffsetCoordinatesSmallMessage {
     pub x: i32,
     pub z: i32,
     pub dimension: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub enum TeleportLocationType {
     BirthLocation,
     TradingPost,
