@@ -843,18 +843,26 @@ fn start_worker_player_state(
                                     ("region", database_name.to_string())
                                 ]).increment(1);
 
+
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                            SpacetimeUpdateMessages::Update { new, database_name, old, .. } => {
                                 let model: ::entity::player_state::Model = new.into();
 
-                                metrics::gauge!("players_current_state", &[
-                                    ("online", model.signed_in.to_string()),
-                                    ("region", database_name.to_string())
-                                ]).increment(1);
+
+                                if model.signed_in != old.signed_in {
+                                    metrics::gauge!("players_current_state", &[
+                                        ("online", model.signed_in.to_string()),
+                                        ("region", database_name.to_string())
+                                    ]).increment(1);
+                                    metrics::gauge!("players_current_state", &[
+                                        ("online", old.signed_in.to_string()),
+                                        ("region", database_name.to_string())
+                                    ]).decrement(1);
+                                }
 
                                 messages.push(model);
                                 if messages.len() >= batch_size {
@@ -872,7 +880,7 @@ fn start_worker_player_state(
                                 metrics::gauge!("players_current_state", &[
                                     ("online", model.signed_in.to_string()),
                                     ("region", database_name.to_string())
-                                ]).increment(1);
+                                ]).decrement(1);
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
                                     tracing::error!(PlayerState = id, error = error.to_string(), "Could not delete PlayerState");
