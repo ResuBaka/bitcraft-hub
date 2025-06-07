@@ -376,9 +376,9 @@ pub(crate) async fn get_claim(
         }));
     }
     for member in &mut claim.members {
-        let (inventorys, num_pages) = QueryCore::find_inventory_by_owner_entity_ids(
+        let (inventorys, _num_pages) = QueryCore::find_inventory_by_owner_entity_ids(
             &state.conn,
-            vec![member.entity_id.clone()],
+            vec![member.entity_id],
         )
         .await
         .map_err(|e| {

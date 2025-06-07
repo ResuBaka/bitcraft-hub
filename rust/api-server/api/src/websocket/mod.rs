@@ -828,6 +828,7 @@ fn start_worker_player_state(
 
         loop {
             let mut messages = Vec::new();
+            let mut ids = vec![];
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -843,7 +844,7 @@ fn start_worker_player_state(
                                     ("region", database_name.to_string())
                                 ]).increment(1);
 
-
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
@@ -864,6 +865,7 @@ fn start_worker_player_state(
                                     ]).decrement(1);
                                 }
 
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
@@ -873,8 +875,10 @@ fn start_worker_player_state(
                                 let model: ::entity::player_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
-                                    messages.remove(index);
+                                if ids.contains(&id) {
+                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                        messages.remove(index);
+                                    }
                                 }
 
                                 metrics::gauge!("players_current_state", &[
@@ -937,6 +941,7 @@ fn start_worker_player_username_state(
 
         loop {
             let mut messages = Vec::new();
+            let mut ids = vec![];
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -947,6 +952,7 @@ fn start_worker_player_username_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::player_username_state::Model = new.into();
 
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
@@ -954,6 +960,7 @@ fn start_worker_player_username_state(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::player_username_state::Model = new.into();
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
@@ -963,8 +970,10 @@ fn start_worker_player_username_state(
                                 let model: ::entity::player_username_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
-                                    messages.remove(index);
+                                if ids.contains(&id) {
+                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                        messages.remove(index);
+                                    }
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
@@ -1185,7 +1194,6 @@ fn start_worker_inventory_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
-
                                 let model: ::entity::inventory::Model = new.into();
 
                                 messages.push(model);
