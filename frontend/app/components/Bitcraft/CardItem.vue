@@ -5,23 +5,9 @@ const imagedErrored = ref(false);
 
 const dev = import.meta.dev;
 
-const { item: TempItem } = defineProps<{
-  item: {
-    Cargo: ItemRow | undefined
-    Item: ItemRow | undefined
-  };
+const { item } = defineProps<{
+  item: ItemRow;
 }>();
-const item = computed<ItemRow | undefined>(() => {
-  let item: ItemRow | undefined
-if(TempItem.Cargo !== undefined){
-  item = TempItem.Cargo
-  item.type = "Cargo"
-}else{
-  item = TempItem.Item
-  item.type = "Item"
-}
-return item
-})
 
 const {
   public: { iconDomain, api },
