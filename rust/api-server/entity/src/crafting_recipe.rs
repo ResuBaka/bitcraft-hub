@@ -5,10 +5,10 @@ use game_module::module_bindings::CraftingRecipeDesc;
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-
+use ts_rs::TS;
 use crate::{inventory::ItemType, shared::item_stack::ItemStack};
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct ConsumedItemStack {
     pub item_id: i32,
     pub quantity: i64,
@@ -17,31 +17,32 @@ pub struct ConsumedItemStack {
     pub consumption_chance: f32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct BuildingRequirement {
     pub building_type: i32,
     pub tier: i32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct LevelRequirement {
     pub skill_id: i32,
     pub level: i32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct ToolRequirement {
     pub tool_type: i32,
     pub level: i32,
     pub power: i32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct ExperienceStackF32 {
     pub skill_id: i32,
     pub quantity: f32,
 }
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
+#[ts(rename = "CraftingRecipe")]
 #[sea_orm(table_name = "crafting_recipe")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

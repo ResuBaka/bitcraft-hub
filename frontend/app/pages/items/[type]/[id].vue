@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
+import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
 
 const page = ref(1);
 const route = useRoute();
@@ -13,68 +14,66 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-
-const { data: allRecipiesFetch, pending: allRecipiesPending } = useFetchMsPack(
-  () => {
+const { data: allRecipiesFetch, pending: allRecipiesPending } =
+  useFetchMsPack<RecipesAllResponse>(() => {
     return `${api.base}/recipes/get_all`;
-  },
-);
-let id = computed(() => {
+  });
+let id = computed<String | Number>(() => {
   return route.params.id;
 });
-let type = computed(() => {
+let type = computed<"Item" | "Cargo">(() => {
   return route.params.type;
 });
 
 const recipeInfo = computed(() => {
-let allRecipies = allRecipiesFetch.value?.recipes ?? {}
-let cargo_desc = allRecipiesFetch.value?.cargo_desc ?? {}
-let item_desc = allRecipiesFetch.value?.item_desc ?? {}
-const consumed = {
-  Item: {},
-  Cargo: {}
-}
-const crafted = {
-  Item: {},
-  Cargo: {}
-}
-for(const recipie of  Object.values(allRecipies) ){
-  for(const item_stack  of  Object.values(recipie.consumed_item_stacks)){
-   if(item_stack.item_type == "Item"){
-    item_stack.item =  item_desc[item_stack.item_id]
-    if(consumed["Item"][item_stack.item_id] == undefined){
-      consumed["Item"][item_stack.item_id] = []
-    }
-    consumed["Item"][item_stack.item_id].push(recipie.id)
-   }else{
-    item_stack.item = cargo_desc[item_stack.item_id]
-    if(consumed["Cargo"][item_stack.item_id] == undefined){
-      consumed["Cargo"][item_stack.item_id] = []
-    }
-    consumed["Cargo"][item_stack.item_id].push(recipie.id)
-   }
-  }
-  for(const item_stack  of  Object.values(recipie.crafted_item_stacks)){
-    if(item_stack.item_type == "Item"){
-      item_stack.item = item_desc[item_stack.item_id]
-        if(crafted["Item"][item_stack.item_id] == undefined){
-          crafted["Item"][item_stack.item_id] = []
+  let allRecipies = allRecipiesFetch.value?.recipes ?? {};
+  let cargo_desc = allRecipiesFetch.value?.cargo_desc ?? {};
+  let item_desc = allRecipiesFetch.value?.item_desc ?? {};
+  const consumed = {
+    Item: {},
+    Cargo: {},
+  };
+  const crafted = {
+    Item: {},
+    Cargo: {},
+  };
+  for (const recipie of Object.values(allRecipies)) {
+    for (const item_stack of Object.values(recipie.consumed_item_stacks)) {
+      if (item_stack.item_type == "Item") {
+        item_stack.item = item_desc[item_stack.item_id];
+        if (consumed["Item"][item_stack.item_id] == undefined) {
+          consumed["Item"][item_stack.item_id] = [];
         }
-        crafted["Item"][item_stack.item_id].push(recipie.id)
-      }else{
-        item_stack.item = cargo_desc[item_stack.item_id]
-        if(crafted["Cargo"][item_stack.item_id] == undefined){
-          crafted["Cargo"][item_stack.item_id] = []
+        consumed["Item"][item_stack.item_id].push(recipie.id);
+      } else {
+        item_stack.item = cargo_desc[item_stack.item_id];
+        if (consumed["Cargo"][item_stack.item_id] == undefined) {
+          consumed["Cargo"][item_stack.item_id] = [];
         }
-        crafted["Cargo"][item_stack.item_id].push(recipie.id)
+        consumed["Cargo"][item_stack.item_id].push(recipie.id);
+      }
+    }
+    for (const item_stack of Object.values(recipie.crafted_item_stacks)) {
+      if (item_stack.item_type == "Item") {
+        item_stack.item = item_desc[item_stack.item_id];
+        if (crafted["Item"][item_stack.item_id] == undefined) {
+          crafted["Item"][item_stack.item_id] = [];
+        }
+        crafted["Item"][item_stack.item_id].push(recipie.id);
+      } else {
+        item_stack.item = cargo_desc[item_stack.item_id];
+        if (crafted["Cargo"][item_stack.item_id] == undefined) {
+          crafted["Cargo"][item_stack.item_id] = [];
+        }
+        crafted["Cargo"][item_stack.item_id].push(recipie.id);
       }
     }
   }
   return {
     allRecipies,
     consumed,
-    crafted
-  }
+    crafted,
+  };
 });
 
 useSeoMeta({
