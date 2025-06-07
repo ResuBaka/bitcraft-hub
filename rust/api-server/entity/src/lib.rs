@@ -23,6 +23,7 @@ pub mod experience_state;
 pub mod inventory;
 pub mod inventory_changelog;
 pub mod item_desc;
+pub mod item_list_desc;
 pub mod location;
 pub mod mobile_entity_state;
 pub mod player_action_state;
