@@ -5,9 +5,24 @@ const imagedErrored = ref(false);
 
 const dev = import.meta.dev;
 
-const { item } = defineProps<{
-  item: ItemRow;
+const { item: TempItem } = defineProps<{
+  item: {
+    Cargo: ItemRow | undefined
+    Item: ItemRow | undefined
+  };
 }>();
+const item = computed<ItemRow | undefined>(() => {
+  let item: ItemRow | undefined
+if(TempItem.Cargo !== undefined){
+  item = TempItem.Cargo
+  item.type = "Cargo"
+}else{
+  item = TempItem.Item
+  item.type = "Item"
+}
+return item
+})
+
 const {
   public: { iconDomain, api },
 } = useRuntimeConfig();
@@ -124,7 +139,12 @@ const iconUrl = computed(() => {
         <v-img @error="imagedErrored = true" :src="iconUrl.url" height="50" width="50"></v-img>
       </template>
       <v-card-title :class="`color-tier-${item.tier}`">
+        <nuxt-link
+          :class="`text-decoration-none color-tier-${item.tier}`"
+          :to="{ name: 'items-type-id', params: { id: item.id, type: item.type } }"
+        >
         {{ item.name }}
+        </nuxt-link>
       </v-card-title>
       <v-card-subtitle :class="`color-tier-${item.tier}`">
         <template v-if="dev">
