@@ -3,12 +3,12 @@
 const props = defineProps<{
   recipeId: number;
   recipeInfo: any;
-  recipies: Array<number>
-
+  recipies: Array<number>;
 }>();
-const exists = props.recipies.findIndex((value) => value == props.recipeId) === -1
-props.recipies.push(props.recipeId)
-console.log(props.recipies)
+const exists =
+  props.recipies.findIndex((value) => value == props.recipeId) === -1;
+props.recipies.push(props.recipeId);
+console.log(props.recipies);
 </script>
 <template >
 <template  v-if="exists" v-for = "item in recipeInfo.allRecipies[recipeId].consumed_item_stacks">

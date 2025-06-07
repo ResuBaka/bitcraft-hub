@@ -23,6 +23,7 @@ use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
 use tokio::time::Instant;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -53,21 +54,22 @@ pub(crate) fn get_routes() -> AppRouter {
         .route("/recipes/get_all", axum_codec::routing::get(get_all).into())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct getAllResponce {
-    recipes: Arc<DashMap<i32, crafting_recipe::Model>>,
-    cargo_desc: Arc<DashMap<i32, cargo_desc::Model>>,
-    item_desc: Arc<DashMap<i32, item_desc::Model>>,
-    item_list_desc: Arc<DashMap<i32, item_list_desc::Model>>,
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct RecipesAllResponse {
+    recipes: HashMap<i32, crafting_recipe::Model>,
+    cargo_desc: HashMap<i32, cargo_desc::Model>,
+    item_desc: HashMap<i32, item_desc::Model>,
+    item_list_desc: HashMap<i32, item_list_desc::Model>,
 }
 pub(crate) async fn get_all(
     state: State<std::sync::Arc<AppState>>,
-) -> Result<axum_codec::Codec<getAllResponce>, (StatusCode, &'static str)> {
-    return Ok(axum_codec::Codec(getAllResponce {
-        recipes:  state.crafting_recipe_desc.clone(),
-        cargo_desc: state.cargo_desc.clone(),
-        item_desc: state.item_desc.clone(),
-        item_list_desc: state.item_list_desc.clone()
+) -> Result<axum_codec::Codec<RecipesAllResponse>, (StatusCode, &'static str)> {
+    return Ok(axum_codec::Codec(RecipesAllResponse {
+        recipes:  state.crafting_recipe_desc.iter().map(|value| (value.key().clone(), value.clone())).collect(),
+        cargo_desc: state.cargo_desc.iter().map(|value| (value.key().clone(), value.clone())).collect(),
+        item_desc: state.item_desc.iter().map(|value| (value.key().clone(), value.clone())).collect(),
+        item_list_desc: state.item_list_desc.iter().map(|value| (value.key().clone(), value.clone())).collect(),
     }));
 }
 

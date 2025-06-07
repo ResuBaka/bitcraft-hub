@@ -3,10 +3,12 @@
 use game_module::module_bindings::{item_desc_type, item_list_desc_type};
 use sea_orm::{FromJsonQueryResult, entity::prelude::*};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use crate::shared::item_stack::ItemStack;
 
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
+#[ts(rename = "ItemListDesc")]
 #[sea_orm(table_name = "item_list_desc")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -16,7 +18,7 @@ pub struct Model {
     pub possibilities: Vec<ItemListPossibility>,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 pub struct ItemListPossibility {
     pub probability: f32,
     pub items: Vec<ItemStack>,
