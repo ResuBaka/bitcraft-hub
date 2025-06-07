@@ -1,13 +1,13 @@
 pub(crate) mod claim_local_state;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
-use crate::inventory::resolve_contents;
+use crate::inventory::{resolve_contents, resolve_pocket};
 use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use entity::inventory::{ExpendedRefrence, ItemExpended};
+use entity::inventory::{ExpendedRefrence, ItemExpended, ResolvedInventory};
 use entity::shared::location::Location;
 use entity::{building_state, cargo_desc, claim_tech_desc, inventory, item_desc, player_state};
 use log::error;
@@ -17,6 +17,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -60,7 +61,8 @@ pub struct ClaimDescriptionState {
     pub xp_gained_since_last_coin_minting: i32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub entity_id: i64,
     pub owner_player_entity_id: i64,
@@ -93,7 +95,7 @@ pub(crate) struct ClaimResponse {
     pub page: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub struct ClaimDescriptionStateMemberTmp {
     pub entity_id: i64,
     pub user_name: String,
@@ -103,7 +105,8 @@ pub struct ClaimDescriptionStateMemberTmp {
     pub co_owner_permission: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct ClaimDescriptionStateMember {
     pub entity_id: i64,
     pub user_name: String,
@@ -113,9 +116,11 @@ pub(crate) struct ClaimDescriptionStateMember {
     pub co_owner_permission: bool,
     pub online_state: OnlineState,
     pub skills_ranks: Option<BTreeMap<String, LeaderboardSkill>>,
+    pub inventory: Option<ResolvedInventory>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) enum OnlineState {
     Online,
     Offline,
@@ -213,6 +218,7 @@ pub(crate) async fn get_claim(
                         co_owner_permission: member.co_owner_permission,
                         online_state: OnlineState::Offline,
                         skills_ranks: Some(BTreeMap::new()),
+                        inventory: None,
                     })
                     .collect()
             });
@@ -368,6 +374,32 @@ pub(crate) async fn get_claim(
 
             Ok((skill_name, leaderboard))
         }));
+    }
+    for member in &mut claim.members {
+        let (inventorys, _num_pages) = QueryCore::find_inventory_by_owner_entity_ids(
+            &state.conn,
+            vec![member.entity_id],
+        )
+        .await
+        .map_err(|e| {
+            error!("Error: {:?}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+        })?;
+        let mut pockets = vec![];
+        if let Some(inventory) = inventorys.iter().find(|inv| inv.inventory_index == 1) {
+            for pocket in &inventory.pockets {
+                pockets.push(resolve_pocket(pocket, &state.item_desc, &state.cargo_desc));
+            }
+            member.inventory = Some(inventory::ResolvedInventory {
+                entity_id: inventory.entity_id,
+                pockets,
+                inventory_index: inventory.inventory_index,
+                cargo_index: inventory.cargo_index,
+                owner_entity_id: inventory.owner_entity_id,
+                player_owner_entity_id: inventory.player_owner_entity_id,
+                nickname: None,
+            });
+        }
     }
 
     let results = futures::future::join_all(tasks).await;
@@ -634,6 +666,7 @@ pub(crate) async fn list_claims(
                             co_owner_permission: member.co_owner_permission,
                             online_state: OnlineState::Offline,
                             skills_ranks: Some(BTreeMap::new()),
+                            inventory: None,
                         })
                         .collect()
                 });

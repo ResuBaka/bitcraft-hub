@@ -16,6 +16,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 use tokio::time::{Duration, sleep};
+use ts_rs::TS;
 
 fn connect_to_db(db_name: &str, db_host: &str) -> DbConnection {
     DbConnection::builder()
@@ -86,6 +87,7 @@ macro_rules! setup_spacetime_db_listeners {
     ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
+        let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
 
         let temp_tx = $tx_channel.clone();
         let labels_update: [(&'static str, Cow<'static, str>); 3] = [
@@ -94,12 +96,15 @@ macro_rules! setup_spacetime_db_listeners {
             ("database", Cow::Owned(database_name_runtime_string.clone())),
             ("type", Cow::Borrowed("update")),
         ];
+
+        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
             move |_ctx: &EventContext, old: &$state_type, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_update).increment(1);
                 temp_tx
                     .send(SpacetimeUpdateMessages::Update {
+                        database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
                     })
@@ -114,12 +119,16 @@ macro_rules! setup_spacetime_db_listeners {
             ("database", Cow::Owned(database_name_runtime_string.clone())),
             ("type", Cow::Borrowed("insert")),
         ];
+        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_insert(
             // Use $state_type for the new parameter
             move |_ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_insert).increment(1);
                 temp_tx
-                    .send(SpacetimeUpdateMessages::Insert { new: new.clone() })
+                    .send(SpacetimeUpdateMessages::Insert {
+                        database_name: tmp_database_name_arc.clone(),
+                        new: new.clone(),
+                    })
                     .unwrap();
             },
         );
@@ -131,12 +140,14 @@ macro_rules! setup_spacetime_db_listeners {
             ("database", Cow::Owned(database_name_runtime_string.clone())),
             ("type", Cow::Borrowed("delete")),
         ];
+        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
             move |_ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
                 temp_tx
                     .send(SpacetimeUpdateMessages::Remove {
+                        database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
                     })
                     .unwrap();
@@ -570,9 +581,19 @@ async fn websocket_retry_helper(
 }
 
 enum SpacetimeUpdateMessages<T> {
-    Insert { new: T },
-    Update { old: T, new: T },
-    Remove { delete: T },
+    Insert {
+        new: T,
+        database_name: Arc<String>,
+    },
+    Update {
+        old: T,
+        new: T,
+        database_name: Arc<String>,
+    },
+    Remove {
+        delete: T,
+        database_name: Arc<String>,
+    },
 }
 
 fn start_worker_mobile_entity_state(
@@ -844,6 +865,7 @@ fn start_worker_player_state(
 
         loop {
             let mut messages = Vec::new();
+            let mut ids = vec![];
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -851,28 +873,55 @@ fn start_worker_player_state(
                 tokio::select! {
                     Some(msg) = rx.recv() => {
                         match msg {
-                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::player_state::Model = new.into();
 
+                                metrics::gauge!("players_current_state", &[
+                                    ("online", model.signed_in.to_string()),
+                                    ("region", database_name.to_string())
+                                ]).increment(1);
+
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, .. } => {
+                            SpacetimeUpdateMessages::Update { new, database_name, old, .. } => {
                                 let model: ::entity::player_state::Model = new.into();
+
+
+                                if model.signed_in != old.signed_in {
+                                    metrics::gauge!("players_current_state", &[
+                                        ("online", model.signed_in.to_string()),
+                                        ("region", database_name.to_string())
+                                    ]).increment(1);
+                                    metrics::gauge!("players_current_state", &[
+                                        ("online", old.signed_in.to_string()),
+                                        ("region", database_name.to_string())
+                                    ]).decrement(1);
+                                }
+
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model: ::entity::player_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
-                                    messages.remove(index);
+                                if ids.contains(&id) {
+                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                        messages.remove(index);
+                                    }
                                 }
+
+                                metrics::gauge!("players_current_state", &[
+                                    ("online", model.signed_in.to_string()),
+                                    ("region", database_name.to_string())
+                                ]).decrement(1);
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
                                     tracing::error!(PlayerState = id, error = error.to_string(), "Could not delete PlayerState");
@@ -929,6 +978,7 @@ fn start_worker_player_username_state(
 
         loop {
             let mut messages = Vec::new();
+            let mut ids = vec![];
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -939,6 +989,7 @@ fn start_worker_player_username_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::player_username_state::Model = new.into();
 
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
@@ -946,6 +997,7 @@ fn start_worker_player_username_state(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::player_username_state::Model = new.into();
+                                ids.push(model.entity_id);
                                 messages.push(model);
                                 if messages.len() >= batch_size {
                                     break;
@@ -955,8 +1007,10 @@ fn start_worker_player_username_state(
                                 let model: ::entity::player_username_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
-                                    messages.remove(index);
+                                if ids.contains(&id) {
+                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                        messages.remove(index);
+                                    }
                                 }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
@@ -1177,7 +1231,6 @@ fn start_worker_inventory_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
-
                                 let model: ::entity::inventory::Model = new.into();
 
                                 messages.push(model);
@@ -2689,7 +2742,8 @@ fn start_worker_location_state(
     });
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, TS)]
+#[ts(export)]
 #[serde(tag = "t", content = "c")]
 pub(crate) enum WebSocketMessages {
     Subscribe {

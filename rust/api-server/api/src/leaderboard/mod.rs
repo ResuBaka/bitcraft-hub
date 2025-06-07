@@ -6,6 +6,7 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
+use ts_rs::TS;
 
 #[macro_export]
 macro_rules! generate_mysql_sum_level_sql_statement {
@@ -156,7 +157,8 @@ pub(crate) enum RankType {
     Time(LeaderboardTime),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, TS)]
+#[ts(export)]
 pub(crate) struct LeaderboardSkill {
     pub(crate) player_id: i64,
     pub(crate) player_name: Option<String>,

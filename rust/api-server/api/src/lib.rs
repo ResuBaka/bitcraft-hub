@@ -122,9 +122,58 @@ async fn create_db_connection(config: &Config) -> DatabaseConnection {
             .to_owned();
     }
 
-    Database::connect(connection_options)
+    let mut connection = Database::connect(connection_options)
         .await
-        .expect("Database connection failed")
+        .expect("Database connection failed");
+
+    connection.set_metric_callback(|arg| {
+        let latency = arg.elapsed.as_secs_f64();
+        let first_parts = arg
+            .statement
+            .sql
+            .split_whitespace()
+            .take(4)
+            .collect::<Vec<&str>>();
+
+        let labels = if let Some(possible_query_type) = first_parts.first() {
+            if possible_query_type.eq(&"SELECT") || possible_query_type.eq(&"select") {
+                let method = "SELECT".to_string();
+                [("method", method), ("failed", arg.failed.to_string())]
+            } else if possible_query_type.eq(&"UPDATE") || possible_query_type.eq(&"update") {
+                let method = "UPDATE".to_string();
+                [("method", method), ("failed", arg.failed.to_string())]
+            } else if possible_query_type.eq(&"INSERT") || possible_query_type.eq(&"insert") {
+                let method = "INSERT".to_string();
+                [("method", method), ("failed", arg.failed.to_string())]
+            } else if possible_query_type.eq(&"ALTER") || possible_query_type.eq(&"alter") {
+                let method = "ALTER".to_string();
+                [("method", method), ("failed", arg.failed.to_string())]
+            } else if possible_query_type.eq(&"CREATE") || possible_query_type.eq(&"create") {
+                let method = "CREATE".to_string();
+                [("method", method), ("failed", arg.failed.to_string())]
+            } else if possible_query_type.eq(&"DELETE") || possible_query_type.eq(&"delete") {
+                let method = "DELETE".to_string();
+                [("method", method), ("failed", arg.failed.to_string())]
+            } else {
+                tracing::info!("Could not find type for {possible_query_type}");
+                [
+                    ("method", "UNKNOWN".to_string()),
+                    ("failed", arg.failed.to_string()),
+                ]
+            }
+        } else {
+            tracing::info!("Could not find type for {}", arg.statement.sql);
+            [
+                ("method", "UNKNOWN".to_string()),
+                ("failed", arg.failed.to_string()),
+            ]
+        };
+
+        metrics::counter!("database_query_total", &labels).increment(1);
+        metrics::histogram!("database_query_duration_seconds", &labels).record(latency);
+    });
+
+    connection
 }
 
 #[derive(Deserialize)]
@@ -406,9 +455,20 @@ async fn create_importer_default_db_connection(config: Config) -> DatabaseConnec
         .max_lifetime(Duration::from_secs(60))
         .sqlx_logging(env::var("SQLX_LOG").is_ok());
 
-    Database::connect(connection_options)
+    let mut connection = Database::connect(connection_options)
         .await
-        .expect("Database connection failed")
+        .expect("Database connection failed");
+
+    connection.set_metric_callback(|arg| {
+        tracing::warn!(
+            "Query {}, Elapsed {}, Failed {}",
+            arg.statement.sql,
+            arg.elapsed.as_millis(),
+            arg.failed
+        );
+    });
+
+    connection
 }
 
 #[derive(Clone)]
@@ -728,6 +788,11 @@ fn setup_metrics_recorder() -> PrometheusHandle {
     PrometheusBuilder::new()
         .set_buckets_for_metric(
             Matcher::Full("http_requests_duration_seconds".to_string()),
+            EXPONENTIAL_SECONDS,
+        )
+        .unwrap()
+        .set_buckets_for_metric(
+            Matcher::Full("database_query_duration_seconds".to_string()),
             EXPONENTIAL_SECONDS,
         )
         .unwrap()

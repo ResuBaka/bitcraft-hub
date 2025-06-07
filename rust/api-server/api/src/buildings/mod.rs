@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use entity::{building_desc, building_state};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -106,7 +107,8 @@ pub(crate) async fn find_claim_description(
     Ok(axum_codec::Codec(posts.unwrap()))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct BuildingStateWithName {
     pub entity_id: i64,
     pub claim_entity_id: i64,
@@ -117,7 +119,8 @@ pub(crate) struct BuildingStateWithName {
     pub location: Option<entity::location::Model>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct BuildingStatesResponse {
     buildings: Vec<BuildingStateWithName>,
     per_page: u64,

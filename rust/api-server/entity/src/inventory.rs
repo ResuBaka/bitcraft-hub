@@ -5,6 +5,7 @@ use game_module::module_bindings::InventoryState;
 use sea_orm::entity::prelude::*;
 use sea_orm::{FromJsonQueryResult, JsonValue};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "inventory")]
@@ -39,7 +40,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, TS)]
 pub struct ResolvedInventory {
     pub entity_id: i64,
     pub pockets: Vec<ItemSlotResolved>,
@@ -50,7 +51,7 @@ pub struct ResolvedInventory {
     pub nickname: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 pub struct ItemSlotResolved {
     pub volume: i64,
     pub contents: Option<ExpendedRefrence>,
@@ -109,20 +110,20 @@ impl Content {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize, TS)]
 pub enum ItemType {
     Item,
     Cargo,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 #[serde(untagged)]
 pub enum ItemExpended {
     Item(item_desc::Model),
     Cargo(cargo_desc::Model),
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 pub struct ExpendedRefrence {
     pub item_id: i32,
     pub item: ItemExpended,

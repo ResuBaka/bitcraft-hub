@@ -4,16 +4,21 @@ use sea_orm::entity::prelude::*;
 use serde::de::{MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, de};
 use std::fmt;
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(rename = "PlayerActionState")]
 pub struct Model {
     pub auto_id: u64,
     pub entity_id: u64,
     pub action_type: ActionType,
+    #[ts(type = "any")]
     pub layer: serde_json::Value,
+    #[ts(type = "any")]
     pub last_action_result: serde_json::Value,
     pub start_time: u64,
     pub duration: u64,
+    #[ts(type = "any")]
     pub target: serde_json::Value,
     #[serde(deserialize_with = "deserialize_with_recipe_id")]
     pub recipe_id: Option<i32>,
@@ -50,7 +55,7 @@ where
     Err(serde::de::Error::custom("Invalid value"))
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
 pub enum ActionType {
     None,
     Attack,

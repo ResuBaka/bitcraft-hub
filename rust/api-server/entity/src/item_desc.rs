@@ -3,8 +3,10 @@
 use game_module::module_bindings::item_desc_type;
 use sea_orm::{FromJsonQueryResult, entity::prelude::*};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
+#[ts(rename = "ItemDesc")]
 #[sea_orm(table_name = "item_desc")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -25,7 +27,7 @@ pub struct Model {
     pub item_list_id: i32,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 pub enum Rarity {
     Default,
 
