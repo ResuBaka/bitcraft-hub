@@ -86,15 +86,12 @@ useSeoMeta({
     <v-card v-if="recipeInfo !== undefined">
       <v-card-text>
         <v-list>
-          <v-list>
             <v-list-item>
                 <v-list-item-title>How to Craft this Item </v-list-item-title>
                 <v-list-item v-for="recipe of recipeInfo.crafted[type][id]">
-
                   <recusive-crafting-recipe :recipies="[]" :recipeId="recipe" :recipeInfo="recipeInfo"></recusive-crafting-recipe>
                 </v-list-item>
             </v-list-item>
-          </v-list>
         </v-list>
       </v-card-text>
     </v-card>

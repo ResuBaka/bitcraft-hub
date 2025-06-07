@@ -1,5 +1,7 @@
 
 <script setup lang="ts">
+import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+
 const props = defineProps<{
   recipeId: number;
   recipeInfo: any;
@@ -13,11 +15,10 @@ console.log(props.recipies);
 <template >
 <template  v-if="exists" v-for = "item in recipeInfo.allRecipies[recipeId].consumed_item_stacks">
     <v-list-item>
-      <v-list-item-title>type: {{ recipeInfo.allRecipies[recipeId].building_requirement.building_type }}</v-list-item-title>
-      <v-list-item-title>recipeId: {{ recipeId }}</v-list-item-title>
-      <v-list-item-title>Quantity: {{ item.quantity }}</v-list-item-title>
-      <v-list-item-title> Id: {{ item.item_id }}</v-list-item-title>
-      <v-list-item-title> Name: {{ item.item.name }}</v-list-item-title>
+      <v-badge :content="item.quantity" location="right" class="align-start">
+        <v-img @error="imagedErrored = true" :src="iconAssetUrlNameRandom(item.item.icon_asset_name).url" height="75" width="75"></v-img>
+      </v-badge>
+      <v-list-item-title>Name: {{ item.item.name }}</v-list-item-title>
       <template  v-if="recipeInfo.crafted[item.item_type][item.item_id]?.length === 1 || recipeInfo.crafted[item.item_type][item.item_id]?.length === undefined">
         <recusive-crafting-recipe :recipies="[...recipies]" :deepth="deepth+1" v-for="recipe in recipeInfo.crafted[item.item_type][item.item_id]" :recipeId="recipe" :recipeInfo="recipeInfo"></recusive-crafting-recipe>
       </template>
