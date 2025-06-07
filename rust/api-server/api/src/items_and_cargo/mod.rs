@@ -20,7 +20,6 @@ pub(crate) fn get_routes() -> AppRouter {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(untagged)]
 enum ItemCargo {
     Item(item_desc::Model),
     Cargo(cargo_desc::Model),

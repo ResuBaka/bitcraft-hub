@@ -33,9 +33,8 @@ impl From<game_module::module_bindings::ItemListPossibility> for ItemListPossibi
     fn from(value: game_module::module_bindings::ItemListPossibility) -> Self {
         ItemListPossibility {
             probability: value.probability,
-            items: value.items.iter()
-                .map(|x| x.clone().into())
-                .collect(),
+            items: value.items.into_iter().map(Into::into).collect()
+
         }
     }
 }
@@ -45,9 +44,7 @@ impl From<item_list_desc_type::ItemListDesc> for Model {
         Model {
             id: value.id,
             name: value.name,
-            possibilities: value.possibilities.iter()
-                .map(|x| x.clone().into())
-                .collect(),
+            possibilities: value.possibilities.into_iter().map(Into::into).collect()
         }
     }
 }
