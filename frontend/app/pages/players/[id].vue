@@ -456,7 +456,7 @@ useSeoMeta({
               <td>{{ player.player_action_state ?? "" }}</td>
             </tr>
             <tr style='text-align: right'>
-              <th>Hex Coints:</th>
+              <th>Hex Coins:</th>
               <td>{{ playerWallet?.pockets[0].contents?.quantity ?? 0 }}</td>
             </tr>
             <tr style='text-align: right' v-if="player?.claim_ids?.length">
