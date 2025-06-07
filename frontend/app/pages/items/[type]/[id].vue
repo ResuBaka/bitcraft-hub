@@ -45,13 +45,13 @@ const recipeInfo = computed(() => {
         if (crafted["Item"][item_stack.item_id] == undefined) {
           crafted["Item"][item_stack.item_id] = [];
         }
-        crafted["Item"][item_stack.item_id].push(recipie.id);
+        crafted["Item"][item_stack.item_id].push({id: recipie.id, quantity: item_stack.quantity});
       } else {
         item_stack.item = cargo_desc[item_stack.item_id];
         if (crafted["Cargo"][item_stack.item_id] == undefined) {
           crafted["Cargo"][item_stack.item_id] = [];
         }
-        crafted["Cargo"][item_stack.item_id].push(recipie.id);
+        crafted["Cargo"][item_stack.item_id].push({id: recipie.id, quantity: item_stack.quantity});
       }
       if(item_stack.item.item_list_id !== 0 && item_list_desc[item_stack.item.item_list_id] !== undefined){
         for(const possibility of item_list_desc[item_stack.item.item_list_id]?.possibilities) {
@@ -101,7 +101,7 @@ useSeoMeta({
             <v-list-item>
                 <v-list-item-title>How to Craft this Item </v-list-item-title>
                 <v-list-item v-for="recipe of recipeInfo.crafted[type][id]">
-                  <recusive-crafting-recipe :recipies="[]" :recipeId="recipe" :recipeInfo="recipeInfo"></recusive-crafting-recipe>
+                  <recusive-crafting-recipe :quantity="1" :recipies="[]" :recipeId="recipe" :recipeInfo="recipeInfo"></recusive-crafting-recipe>
                 </v-list-item>
             </v-list-item>
         </v-list>
