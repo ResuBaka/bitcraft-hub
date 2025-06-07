@@ -5,17 +5,20 @@ use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use entity::crafting_recipe;
-use entity::crafting_recipe::ConsumedItemStackWithInner;
+use dashmap::DashMap;
+use entity::{cargo_desc, crafting_recipe, item_desc, item_list_desc};
+use entity::inventory::ItemType;
 use log::{debug, error, info};
 use migration::sea_query;
 use reqwest::Client;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
+use std::sync::Arc;
 use std::time::Duration;
 use struson::json_path;
 use struson::reader::{JsonReader, JsonStreamReader};
@@ -31,10 +34,10 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/recipes/produced_in_crafting/{id}",
             axum_codec::routing::get(get_produced_in_crafting).into(),
         )
-        .route(
-            "/api/bitcraft/recipes/needed_to_craft/{id}",
-            axum_codec::routing::get(get_needed_to_craft).into(),
-        )
+        //.route(
+        //    "/api/bitcraft/recipes/needed_to_craft/{id}",
+        //    axum_codec::routing::get(get_needed_to_craft).into(),
+        //)
         .route(
             "/recipes/needed_in_crafting/{id}",
             axum_codec::routing::get(get_needed_in_crafting).into(),
@@ -43,15 +46,34 @@ pub(crate) fn get_routes() -> AppRouter {
             "/recipes/produced_in_crafting/{id}",
             axum_codec::routing::get(get_produced_in_crafting).into(),
         )
-        .route(
-            "/recipes/needed_to_craft/{id}",
-            axum_codec::routing::get(get_needed_to_craft).into(),
-        )
+        //.route(
+        //    "/recipes/needed_to_craft/{id}",
+        //    axum_codec::routing::get(get_needed_to_craft).into(),
+        //)
+        .route("/recipes/get_all", axum_codec::routing::get(get_all).into())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct getAllResponce {
+    recipes: Arc<DashMap<i32, crafting_recipe::Model>>,
+    cargo_desc: Arc<DashMap<i32, cargo_desc::Model>>,
+    item_desc: Arc<DashMap<i32, item_desc::Model>>,
+    item_list_desc: Arc<DashMap<i32, item_list_desc::Model>>,
+}
+pub(crate) async fn get_all(
+    state: State<std::sync::Arc<AppState>>,
+) -> Result<axum_codec::Codec<getAllResponce>, (StatusCode, &'static str)> {
+    return Ok(axum_codec::Codec(getAllResponce {
+        recipes:  state.crafting_recipe_desc.clone(),
+        cargo_desc: state.cargo_desc.clone(),
+        item_desc: state.item_desc.clone(),
+        item_list_desc: state.item_list_desc.clone()
+    }));
 }
 
 pub(crate) async fn get_needed_in_crafting(
     state: State<std::sync::Arc<AppState>>,
-    Path(id): Path<u64>,
+    Path(id): Path<i32>,
 ) -> Result<axum_codec::Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
     return Ok(axum_codec::Codec(vec![]));
 
@@ -62,7 +84,7 @@ pub(crate) async fn get_needed_in_crafting(
         .filter(|res| {
             res.consumed_item_stacks
                 .iter()
-                .filter(|cis| cis.item_id == id as i64)
+                .filter(|cis| cis.item_id == id)
                 .count()
                 > 0
         })
@@ -74,7 +96,7 @@ pub(crate) async fn get_needed_in_crafting(
 
 pub(crate) async fn get_produced_in_crafting(
     state: State<std::sync::Arc<AppState>>,
-    Path(id): Path<u64>,
+    Path(id): Path<i32>,
 ) -> Result<axum_codec::Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
     return Ok(axum_codec::Codec(vec![]));
     let recipes = QueryCore::load_all_recipes(&state.conn).await;
@@ -84,7 +106,7 @@ pub(crate) async fn get_produced_in_crafting(
         .filter(|res| {
             res.crafted_item_stacks
                 .iter()
-                .filter(|cis| cis.item_id == id as i64)
+                .filter(|cis| cis.item_id == id)
                 .count()
                 > 0
         })
@@ -94,7 +116,7 @@ pub(crate) async fn get_produced_in_crafting(
     Ok(axum_codec::Codec(recipes))
 }
 
-pub(crate) async fn get_needed_to_craft(
+/*pub(crate) async fn get_needed_to_craft(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
@@ -176,7 +198,7 @@ fn get_all_consumed_items_from_stack(
     }
 
     item.consumed_item_stacks.clone()
-}
+}*/
 
 // export function getAllConsumedItemsFromItem(
 //   rows: CraftingRecipeRow[],
@@ -359,7 +381,7 @@ pub(crate) async fn import_crafting_recipe_descs(
                         buffer_before_insert
                             .iter()
                             .map(|crafting_recipe_desc| crafting_recipe_desc.id)
-                            .collect::<Vec<i64>>(),
+                            .collect::<Vec<i32>>(),
                     ),
                 )
                 .all(conn)
@@ -383,7 +405,7 @@ pub(crate) async fn import_crafting_recipe_descs(
             let crafting_recipe_descs_from_db_map = crafting_recipe_descs_from_db
                 .into_iter()
                 .map(|crafting_recipe_desc| (crafting_recipe_desc.id, crafting_recipe_desc))
-                .collect::<HashMap<i64, crafting_recipe::Model>>();
+                .collect::<HashMap<i32, crafting_recipe::Model>>();
 
             let things_to_insert = buffer_before_insert
                 .iter()
@@ -437,7 +459,7 @@ pub(crate) async fn import_crafting_recipe_descs(
                     buffer_before_insert
                         .iter()
                         .map(|crafting_recipe_desc| crafting_recipe_desc.id)
-                        .collect::<Vec<i64>>(),
+                        .collect::<Vec<i32>>(),
                 ),
             )
             .all(conn)
@@ -446,7 +468,7 @@ pub(crate) async fn import_crafting_recipe_descs(
         let crafting_recipe_descs_from_db_map = crafting_recipe_descs_from_db
             .into_iter()
             .map(|crafting_recipe_desc| (crafting_recipe_desc.id, crafting_recipe_desc))
-            .collect::<HashMap<i64, crafting_recipe::Model>>();
+            .collect::<HashMap<i32, crafting_recipe::Model>>();
 
         let things_to_insert = buffer_before_insert
             .iter()

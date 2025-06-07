@@ -2,8 +2,7 @@ use crate::AppState;
 use crate::config::Config;
 use crate::leaderboard::experience_to_level;
 use entity::{
-    cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
-    deployable_state, item_desc, mobile_entity_state, vault_state_collectibles,
+    cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state, crafting_recipe, deployable_state, item_desc, item_list_desc, mobile_entity_state, vault_state_collectibles
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
@@ -169,6 +168,8 @@ fn connect_to_db_logic(
     building_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingDesc>>,
     location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
     building_nickname_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingNicknameState>>,
+    crafting_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
+    item_list_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemListDesc>>,
 ) {
     let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
 
@@ -270,15 +271,31 @@ fn connect_to_db_logic(
         database
     );
 
+    setup_spacetime_db_listeners!(
+        ctx,
+        crafting_recipe_desc,
+        crafting_recipe_desc_tx,
+        CraftingRecipeDesc,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        item_list_desc,
+        item_list_desc_tx,
+        ItemListDesc,
+        database
+    );
+
     let tables_to_subscribe = vec![
         // "user_state",
         "mobile_entity_state",
         // "claim_tile_state",
         // "combat_action_desc",
         "item_desc",
+        "item_list_desc",
         "cargo_desc",
         // "player_action_state",
-        // "crafting_recipe_desc",
+        "crafting_recipe_desc",
         // "action_state",
         "player_state",
         "skill_desc",
@@ -339,6 +356,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let (inventory_state_tx, inventory_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let (item_desc_tx, item_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (item_list_desc_tx, item_list_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let (cargo_desc_tx, cargo_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -362,6 +380,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let (location_state_tx, location_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (building_nickname_state_tx, building_nickname_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
+
+        let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+
 
         let mut remove_desc = false;
 
@@ -389,6 +411,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &building_desc_tx,
                 &location_state_tx,
                 &building_nickname_state_tx,
+                &crafting_recipe_desc_tx,
+                &item_list_desc_tx
             );
 
             remove_desc = true;
@@ -499,6 +523,19 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         start_worker_building_nickname_state(
             global_app_state.clone(),
             building_nickname_state_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+        start_worker_crafting_recipe_desc(
+            global_app_state.clone(),
+            crafting_recipe_desc_desc_rx,
+            2000,
+            Duration::from_millis(25),
+        );
+
+        start_worker_item_list_desc(
+            global_app_state.clone(),
+            item_list_desc_rx,
             2000,
             Duration::from_millis(25),
         );
@@ -2297,6 +2334,227 @@ fn start_worker_building_nickname_state(
                 if insert.is_err() {
                     tracing::error!(
                         "Error inserting BuildingNicknameState: {}",
+                        insert.unwrap_err()
+                    )
+                }
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_crafting_recipe_desc(
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(crafting_recipe::Column::Id)
+            .update_columns([
+                crafting_recipe::Column::Name,
+                crafting_recipe::Column::TimeRequirement,
+                crafting_recipe::Column::StaminaRequirement,
+                crafting_recipe::Column::ToolDurabilityLost,
+                crafting_recipe::Column::BuildingRequirement,
+                crafting_recipe::Column::LevelRequirements,
+                crafting_recipe::Column::ToolRequirements,
+                crafting_recipe::Column::ConsumedItemStacks,
+                crafting_recipe::Column::DiscoveryTriggers,
+                crafting_recipe::Column::RequiredKnowledges,
+                crafting_recipe::Column::RequiredClaimTechId,
+                crafting_recipe::Column::FullDiscoveryScore,
+                crafting_recipe::Column::ExperiencePerProgress,
+                crafting_recipe::Column::AllowUseHands,
+                crafting_recipe::Column::CraftedItemStacks,
+                crafting_recipe::Column::IsPassive,
+                crafting_recipe::Column::ActionsRequired,
+                crafting_recipe::Column::ToolMeshIndex,
+                crafting_recipe::Column::RecipePerformanceId,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::crafting_recipe::Model = new.into();
+
+                                messages.push(model.clone());
+                                global_app_state.crafting_recipe_desc.insert(model.id, model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::crafting_recipe::Model = new.into();
+                                messages.push(model.clone());
+                                global_app_state.crafting_recipe_desc.insert(model.id, model);
+
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::crafting_recipe::Model = delete.into();
+                                let id = model.id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                global_app_state.crafting_recipe_desc.remove(&id);
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(CraftingRecipeDesc = id, error = error.to_string(), "Could not delete BuildingNicknameState");
+                                }
+
+                                tracing::debug!("CraftingRecipeDesc::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                tracing::debug!(
+                    "CraftingRecipeDesc ->>>> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = ::entity::crafting_recipe::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+
+                if insert.is_err() {
+                    tracing::error!(
+                        "Error inserting CraftingRecipeDesc: {}",
+                        insert.unwrap_err()
+                    )
+                }
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_item_list_desc(
+    global_app_state: Arc<AppState>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ItemListDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(item_list_desc::Column::Id)
+            .update_columns([
+                item_list_desc::Column::Name,
+                item_list_desc::Column::Possibilities,
+            ])
+            .to_owned();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::item_list_desc::Model = new.into();
+
+                                messages.push(model.clone());
+                                global_app_state.item_list_desc.insert(model.id, model);
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::item_list_desc::Model = new.into();
+                                messages.push(model.clone());
+                                global_app_state.item_list_desc.insert(model.id, model);
+
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::item_list_desc::Model = delete.into();
+                                let id = model.id;
+
+                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    messages.remove(index);
+                                }
+
+                                global_app_state.item_list_desc.remove(&id);
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(ItemListDesc = id, error = error.to_string(), "Could not delete BuildingNicknameState");
+                                }
+
+                                tracing::debug!("ItemListDesc::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                tracing::debug!(
+                    "ItemListDesc ->>>> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = ::entity::item_list_desc::Entity::insert_many(
+                    messages
+                        .iter()
+                        .map(|value| value.clone().into_active_model())
+                        .collect::<Vec<_>>(),
+                )
+                .on_conflict(on_conflict.clone())
+                .exec(&global_app_state.conn)
+                .await;
+
+                if insert.is_err() {
+                    tracing::error!(
+                        "Error inserting ItemListDesc: {}",
                         insert.unwrap_err()
                     )
                 }
