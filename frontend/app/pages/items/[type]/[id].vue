@@ -124,14 +124,12 @@ const recipeInfo = computed(() => {
     }
     for(const recipe of crafted[type][id]){
       let itemChildren = []
-      console.log(recipes)
       const exists =
         recipes.findIndex((value) => value == recipe.id) !== -1;
       if(exists){
         continue
       }
       recipes.push(recipe.id);
-      console.log(recipes)
       for(const item of allRecipies[recipe.id].consumed_item_stacks){
         let get_qauntity = getQuantity(item.quantity,quantity, recipe.quantity)
         itemChildren.push({
@@ -150,18 +148,15 @@ const recipeInfo = computed(() => {
     return children
   }
   let children = getCraftedChildren()
-  console.log(JSON.stringify(children))
   let items = [{
-      id: item.id,
-      type: item.type ,
+      id: id,
+      type: type ,
       quantity: 1,
       children: children,
   }]
     
   return {
     items,
-    consumed,
-    crafted,
   };
 });
 
@@ -172,13 +167,16 @@ useSeoMeta({
 
 <template>
   <v-container fluid>
-    <v-treeview
-    :items="recipeInfo.items"
-    density="compact"
-    item-value="title"
-    activatable
-    open-on-click
-  >
-  </v-treeview>
+     <v-card v-if="recipeInfo !== undefined">
+      <v-card-text>
+        <v-list>
+      <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined" v-for="item of recipeInfo.items"
+      :item="item"
+      :item_desc="allRecipiesFetch.item_desc"
+      :cargo_desc="allRecipiesFetch.cargo_desc"
+    />
+    </v-list>
+    </v-card-text>
+    </v-card>
   </v-container>
 </template>
