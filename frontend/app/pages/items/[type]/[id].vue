@@ -19,14 +19,16 @@ const { data: allRecipiesFetch, pending: allRecipiesPending } =
     return `${api.base}/recipes/get_all`;
   });
 
+let id = route.params.id;
+let type = route.params.type;
+
 const recipeInfo = computed(() => {
   let hasValues = allRecipiesFetch.value === undefined;
   let allRecipies = allRecipiesFetch.value?.recipes ?? {};
   let cargo_desc = allRecipiesFetch.value?.cargo_desc ?? {};
   let item_desc = allRecipiesFetch.value?.item_desc ?? {};
   let item_list_desc = allRecipiesFetch.value?.item_list_desc ?? {};
-  let id = route.params.id;
-  let type = route.params.type;
+
   const consumed = {
     Item: {},
     Cargo: {},
@@ -186,7 +188,7 @@ const recipeInfo = computed(() => {
 });
 
 useSeoMeta({
-  title: "Building Info",
+  title: () => `Recipe Id -> ${id} Type -> ${type}`,
 });
 </script>
 
