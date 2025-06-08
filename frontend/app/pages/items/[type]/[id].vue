@@ -42,8 +42,8 @@ const recipeInfo = computed(() => {
           crafted["Item"][item_stack.item_id] = [];
         }
         crafted["Item"][item_stack.item_id].push({id: recipie.id, quantity: item_stack.quantity});
-        if(item_desc["Item"].item_list_id !== 0 && item_list_desc[item_desc["Item"].item_list_id] !== undefined){
-        for(const possibility of item_list_desc[item_list_desc[item_desc["Item"]].item_list_id]?.possibilities) {
+        if(item_desc[item_stack.item_id].item_list_id !== 0 && item_list_desc[item_desc[item_stack.item_id].item_list_id] !== undefined){
+        for(const possibility of item_list_desc[item_desc[item_stack.item_id].item_list_id]?.possibilities) {
             for(const item of possibility.items){
               getCraftedItemStack(item,recipie)
             }
