@@ -38,36 +38,32 @@ const recipeInfo = computed(() => {
   };
   function getCraftedItemStack(item_stack,recipie){
       if (item_stack.item_type == "Item") {
-        item_stack.item = item_desc[item_stack.item_id];
         if (crafted["Item"][item_stack.item_id] == undefined) {
           crafted["Item"][item_stack.item_id] = [];
         }
         crafted["Item"][item_stack.item_id].push({id: recipie.id, quantity: item_stack.quantity});
-      } else {
-        item_stack.item = cargo_desc[item_stack.item_id];
-        if (crafted["Cargo"][item_stack.item_id] == undefined) {
-          crafted["Cargo"][item_stack.item_id] = [];
-        }
-        crafted["Cargo"][item_stack.item_id].push({id: recipie.id, quantity: item_stack.quantity});
-      }
-      if(item_stack.item.item_list_id !== 0 && item_list_desc[item_stack.item.item_list_id] !== undefined){
-        for(const possibility of item_list_desc[item_stack.item.item_list_id]?.possibilities) {
+        if(item_desc["Item"].item_list_id !== 0 && item_list_desc[item_desc["Item"].item_list_id] !== undefined){
+        for(const possibility of item_list_desc[item_list_desc[item_desc["Item"]].item_list_id]?.possibilities) {
             for(const item of possibility.items){
               getCraftedItemStack(item,recipie)
             }
         }
       }
+      } else {
+        if (crafted["Cargo"][item_stack.item_id] == undefined) {
+          crafted["Cargo"][item_stack.item_id] = [];
+        }
+        crafted["Cargo"][item_stack.item_id].push({id: recipie.id, quantity: item_stack.quantity});
+      }
     }
   for (const recipie of Object.values(allRecipies)) {
     for (const item_stack of Object.values(recipie.consumed_item_stacks)) {
       if (item_stack.item_type == "Item") {
-        item_stack.item = item_desc[item_stack.item_id];
         if (consumed["Item"][item_stack.item_id] == undefined) {
           consumed["Item"][item_stack.item_id] = [];
         }
         consumed["Item"][item_stack.item_id].push(recipie.id);
       } else {
-        item_stack.item = cargo_desc[item_stack.item_id];
         if (consumed["Cargo"][item_stack.item_id] == undefined) {
           consumed["Cargo"][item_stack.item_id] = [];
         }
