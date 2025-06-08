@@ -105,7 +105,6 @@ const recipeInfo = computed(() => {
         })
       }
        children.push({
-        recipe: true,
         children: itemChildren
       })
       
