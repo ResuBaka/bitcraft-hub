@@ -30,6 +30,7 @@ export const iconAssetUrlName = <T = any>(
   const {
     public: { iconDomain },
   } = useRuntimeConfig();
+  assetPath = assetPath.replace("Other/GeneratedIcons", "");
 
   const matches = assetPath.match(multipleIconsRegex);
   if (!matches || !iconDomain) {
@@ -96,6 +97,7 @@ export const iconAssetUrlNameAmount = (
     public: { iconDomain },
   } = useRuntimeConfig();
   const matches = assetPath.match(multipleIconsRegex);
+  assetPath = assetPath.replace("Other/GeneratedIcons", "");
 
   if (!matches || !iconDomain) {
     return {
@@ -169,6 +171,8 @@ export const iconAssetUrlNameRandom = (assetPath: string): IconAssetUrl => {
   const {
     public: { iconDomain },
   } = useRuntimeConfig();
+
+  assetPath = assetPath.replace("Other/GeneratedIcons", "");
 
   const matches = assetPath.match(multipleIconsRegex);
   if (!matches || !iconDomain) {
