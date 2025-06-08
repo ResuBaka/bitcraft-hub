@@ -18,6 +18,7 @@ config = "0.15.11"
 tungstenite = "0.24.0"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["json", "serde", "serde_json", "env-filter"] }
+dotenvy = "0.15.7"
 
 axum = { version = "0.8.4", features = ["ws"]}
 log = "0.4.27"

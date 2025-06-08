@@ -1,40 +1,33 @@
 mod config;
 
-use config::*;
-use serde::{Deserialize, Serialize};
-use spacetimedb_sdk::{Compression, DbContext, Error, Table, TableWithPrimaryKey, credentials};
-use std::process::exit;
-use std::sync::Arc;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::time::Instant;
-use tokio::time::{Duration, sleep};
-use serde_json::Value;
-use time::OffsetDateTime;
-use reqwest::ClientBuilder;
-use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use axum::http::HeaderMap;
 use axum::http::header::SEC_WEBSOCKET_PROTOCOL;
-use log::{debug, error, warn};
+use config::*;
 use futures::{SinkExt, TryStreamExt};
+use log::{debug, error, warn};
+use reqwest::ClientBuilder;
+use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use time::OffsetDateTime;
+use tokio::time::Duration;
+use tokio::time::Instant;
 
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use std::fmt::Display;
-
 use std::fs::File;
 use std::io::prelude::*;
 
-
-
 #[tokio::main]
-async fn main()  {
+async fn main() {
+    dotenvy::dotenv().ok();
     let cli_config_parameters = CliConfigParameters::default();
     let config: Config = Config::new(Some(cli_config_parameters)).unwrap();
     setup_tracing(&config);
+    tracing::info!("{:?}", config.program_hash);
     start_websocket_bitcraft_logic_old(config).await;
 }
-
 
 async fn create_websocket_connection(config: &Config) -> anyhow::Result<WebSocket> {
     let mut headers = HeaderMap::new();
@@ -78,25 +71,19 @@ async fn create_websocket_connection(config: &Config) -> anyhow::Result<WebSocke
     Ok(response.into_websocket().await?)
 }
 
-async fn start_websocket_bitcraft_logic_old(
-    config: Config
-) {
-    
+async fn start_websocket_bitcraft_logic_old(config: Config) {
     let handle = tokio::spawn(async move {
         let reconnect_wait_time_sec = 5;
         let mut retry_count = 1_u32;
         let max_retry_count = 10;
         let backoff_factor = 2;
 
-        let tables_to_subscribe = vec![
-            "program",
-        ];
+        let tables_to_subscribe = ["program"];
 
         let select_querys = tables_to_subscribe
             .iter()
             .map(|table_name| format!("SELECT * FROM {};", table_name))
             .collect::<Vec<String>>();
-
 
         loop {
             let now = Instant::now();
@@ -104,13 +91,13 @@ async fn start_websocket_bitcraft_logic_old(
 
             if websocket.is_err()
                 && websocket_retry_helper(
-                reconnect_wait_time_sec,
-                &mut retry_count,
-                max_retry_count,
-                backoff_factor,
-                now,
-                false,
-            )
+                    reconnect_wait_time_sec,
+                    &mut retry_count,
+                    max_retry_count,
+                    backoff_factor,
+                    now,
+                    false,
+                )
                 .await
             {
                 tracing::error!(
@@ -136,13 +123,14 @@ async fn start_websocket_bitcraft_logic_old(
                             "request_id": 1,
                         },
                     })
-                        .to_string(),
+                    .to_string(),
                 ))
                 .await
                 .unwrap();
 
             tracing::info!("Websocket send Subscribe query");
 
+            #[allow(irrefutable_let_patterns)]
             while let result = websocket.try_next().await {
                 if result.is_err() {
                     let error = result.unwrap_err();
@@ -164,20 +152,40 @@ async fn start_websocket_bitcraft_logic_old(
                         let message = message.unwrap();
 
                         match &message {
-                            WebSocketMessage::TransactionUpdate(transaction_update) => {
-                            
-                            }
+                            WebSocketMessage::TransactionUpdate(_transaction_update) => {}
                             WebSocketMessage::InitialSubscription(subscription_update) => {
-                                let inserts = &subscription_update.database_update.tables[0].updates[0].inserts;
+                                let inserts = &subscription_update.database_update.tables[0]
+                                    .updates[0]
+                                    .inserts;
                                 for insert in inserts {
                                     let value: Value = serde_json::from_str(insert).unwrap();
-                                    warn!("{}",value.as_object().unwrap().get("hash").unwrap().to_string());
-                                    if value.as_object().unwrap().get("hash").unwrap().to_string() == config.program_hash {
+
+                                    let hash = value["hash"].as_str().unwrap().to_string();
+                                    warn!(
+                                        "{} {} {}",
+                                        hash,
+                                        config.program_hash,
+                                        hash == config.program_hash
+                                    );
+                                    if hash == config.program_hash {
                                         let mut file = File::create("program.wasm").unwrap();
-                                        let text = value.as_object().unwrap().get("bytes").unwrap().as_str().unwrap().to_string();
-                                        file.write_all(&hex::decode(text.to_string()).unwrap()).unwrap();
+                                        let text = value
+                                            .as_object()
+                                            .unwrap()
+                                            .get("bytes")
+                                            .unwrap()
+                                            .as_str()
+                                            .unwrap()
+                                            .to_string();
+                                        file.write_all(&hex::decode(&text).unwrap()).unwrap();
+
+                                        tracing::info!("Saved the program.wasm file");
+                                        std::process::exit(0);
                                     }
                                 }
+
+                                tracing::info!("Could not find the program you are looking for");
+                                std::process::exit(1);
                             }
                             WebSocketMessage::IdentityToken(identity_token) => {
                                 debug!("Received identity token: {identity_token:?}");
@@ -198,14 +206,13 @@ async fn start_websocket_bitcraft_logic_old(
                 now,
                 true,
             )
-                .await
+            .await
             {
                 break;
             }
         }
-        
     });
-    let _ = handle.await.unwrap();
+    handle.await.unwrap();
 }
 fn setup_tracing(cfg: &Config) {
     let filter_directive = std::env::var("RUST_LOG").unwrap_or_else(|e| {
@@ -264,14 +271,6 @@ fn setup_tracing(cfg: &Config) {
     };
 }
 
-fn handle_error<E>(error: E)
-where
-    E: Display,
-{
-    eprintln!("{error}");
-    exit(1);
-}
-
 async fn websocket_retry_helper(
     reconnect_wait_time: u32,
     retry_count: &mut u32,
@@ -297,13 +296,6 @@ async fn websocket_retry_helper(
     tracing::info!("Reconnecting to websocket {retry_count} {max_retry_count}");
     false
 }
-
-enum SpacetimeUpdateMessages<T> {
-    Insert { new: T },
-    Update { old: T, new: T },
-    Remove { delete: T },
-}
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct InternalTransactionUpdate {
