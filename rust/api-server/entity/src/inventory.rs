@@ -164,15 +164,13 @@ impl From<game_module::module_bindings::ItemType> for crate::inventory::ItemType
 
 impl From<InventoryState> for crate::inventory::Model {
     fn from(value: InventoryState) -> Self {
-        let pockets: Vec<crate::inventory::Pocket> = value
-            .pockets
-            .iter()
-            .map(|content| content.clone().into())
-            .collect();
-
         crate::inventory::Model {
             entity_id: value.entity_id as i64,
-            pockets,
+            pockets: value
+                .pockets
+                .into_iter()
+                .map(|content| content.into())
+                .collect(),
             inventory_index: value.inventory_index,
             cargo_index: value.cargo_index,
             owner_entity_id: value.owner_entity_id as i64,

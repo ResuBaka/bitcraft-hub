@@ -71,14 +71,9 @@ impl From<VaultCollectible> for crate::vault_state_collectibles::RawVaultStateCo
 }
 impl From<vault_state_type::VaultState> for crate::vault_state_collectibles::RawVaultState {
     fn from(value: VaultState) -> Self {
-        let collectibles: Vec<crate::vault_state_collectibles::RawVaultStateCollectibles> = value
-            .collectibles
-            .iter()
-            .map(|content| content.clone().into())
-            .collect();
         crate::vault_state_collectibles::RawVaultState {
             entity_id: value.entity_id as i64,
-            collectibles,
+            collectibles: value.collectibles.into_iter().map(Into::into).collect(),
         }
     }
 }
