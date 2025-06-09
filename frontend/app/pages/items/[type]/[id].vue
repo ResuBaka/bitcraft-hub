@@ -220,9 +220,9 @@ const recipeInfo = computed(() => {
       if (crafted["Item"][item_stack.item_id] === undefined) {
         crafted["Item"][item_stack.item_id] = [];
       }
-      const itemSlot = crafted["Item"][item_stack.item_id];
-      if (itemSlot === undefined) {
-        return;
+      const itemSlot =  crafted["Item"][item_stack.item_id]
+      if(itemSlot === undefined){
+        return
       }
       itemSlot.push({
         id: recipie.id,
@@ -247,9 +247,9 @@ const recipeInfo = computed(() => {
       if (crafted["Cargo"][item_stack.item_id] === undefined) {
         crafted["Cargo"][item_stack.item_id] = [];
       }
-      let craftedSlot = crafted["Cargo"][item_stack.item_id];
-      if (craftedSlot == undefined) {
-        return;
+      let craftedSlot = crafted["Cargo"][item_stack.item_id]
+      if(craftedSlot == undefined){
+        return
       }
       craftedSlot.push({
         id: recipie.id,
@@ -263,20 +263,28 @@ const recipeInfo = computed(() => {
     }
     for (const item_stack of Object.values(recipie.consumed_item_stacks)) {
       if (item_stack.item_id === undefined) {
-        return;
+        continue;
       }
       if (item_stack.item_type == "Item") {
-        let consumedSlot = consumed["Item"][item_stack.item_id];
-        if (consumedSlot == undefined) {
-          consumedSlot = [];
+        let consumedSlot = consumed["Item"];
+        if (consumedSlot[item_stack.item_id] == undefined) {
+          consumedSlot[item_stack.item_id] = [];
         }
-        consumedSlot.push(recipie.id);
+        const itemList = consumedSlot[item_stack.item_id]
+        if(itemList === undefined){
+          continue
+        }
+        itemList.push(recipie.id);
       } else {
-        let consumedSlot = consumed["Cargo"][item_stack.item_id];
-        if (consumedSlot == undefined) {
-          consumedSlot = [];
+        let consumedSlot = consumed["Cargo"];
+        if (consumedSlot[item_stack.item_id] == undefined) {
+          consumedSlot[item_stack.item_id] = [];
         }
-        consumedSlot.push(recipie.id);
+        const cargoList =  consumedSlot[item_stack.item_id]
+        if(cargoList === undefined){
+          continue
+        }
+        cargoList.push(recipie.id);
       }
     }
     for (const item_stack of Object.values(recipie.crafted_item_stacks)) {
@@ -290,7 +298,7 @@ const recipeInfo = computed(() => {
     item = cargo_desc[id];
   }
 
-  function getCraftedChildren() {
+  function getCraftedChildren(): objectWithChildren[] | undefined  {
     const children = [];
     if (crafted[type][id] === undefined) {
       return;
@@ -321,9 +329,12 @@ const recipeInfo = computed(() => {
           ),
         });
       }
-      children.push(itemChildren);
+      children.push({
+        children: itemChildren
+      });
     }
-    return children;
+    console.log(children)
+    return children as objectWithChildren[];
   }
 
   function getQuantity(
@@ -382,7 +393,7 @@ const recipeInfo = computed(() => {
     }
     return children;
   }
-  let items = getCraftedChildren() as objectWithChildren[] | undefined;
+  let items = getCraftedChildren();
   const inventory: {
     Cargo: { [key: number]: number };
     Item: { [key: number]: number };
@@ -422,12 +433,16 @@ const recipeInfo = computed(() => {
     Object.keys(inventory.Item).length !== 0
   ) {
     function recalcQuantityDeep(item: objectWithChildren, quantity: number) {
-      const itemQuantity = item.item_quantity;
-      const itemRecipeQuantity = item.recipe_quantity;
-      if (itemQuantity == undefined || itemRecipeQuantity === undefined) {
-        return;
+      const itemQuantity = item.item_quantity
+      const itemRecipeQuantity = item.recipe_quantity
+      if(itemQuantity == undefined || itemRecipeQuantity === undefined){
+        return
       }
-      const quant = getQuantity(itemQuantity, quantity, itemRecipeQuantity);
+      const quant = getQuantity(
+        itemQuantity,
+        quantity,
+        itemRecipeQuantity,
+      );
       item.quantity = quant;
       if (item?.children == undefined) {
         return;
@@ -461,46 +476,48 @@ const recipeInfo = computed(() => {
       },
     ) {
       for (const itemIndex in recipe) {
-        if (typeof itemIndex !== "number") {
-          return;
+        if(typeof(+itemIndex) !== "number") {
+          return
         }
-        const item = recipe[itemIndex];
-        if (item === undefined) {
-          continue;
+        const item = recipe[itemIndex]
+        if(item === undefined){
+          continue
         }
         const type = item.type;
         const id = item.id;
         const itemQuantity = item.quantity;
-        const shadow_quantity = item.shadow_quantity;
-        if (type !== "Cargo" && type !== "Item") {
-          continue;
+        const shadow_quantity = item.shadow_quantity
+        if(type !== "Cargo" && type !== "Item"){
+          continue
         }
-        if (
-          id === undefined ||
-          itemQuantity === undefined ||
-          shadow_quantity === undefined
-        ) {
-          continue;
+        if( id === undefined || itemQuantity === undefined || shadow_quantity === undefined){
+          continue
         }
         const quantity =
-          (inventory[type][id] || 0) - (shadowInventory[type][id] || 0);
+          (inventory[type][id] || 0) -
+          (shadowInventory[type][id] || 0);
         if (quantity >= itemQuantity) {
           shadowInventory[type][id] =
-            (shadowInventory[type][id] || 0) + itemQuantity;
+            (shadowInventory[type][id] ||
+              0) + itemQuantity;
           item.quantity = 0;
           recipe.splice(itemIndex, 1);
           continue;
         } else {
           shadowInventory[type][id] =
-            (shadowInventory[type][id] || 0) + itemQuantity;
-          recalcQuantityDeep(item, shadow_quantity - quantity);
+            (shadowInventory[type][id] ||
+              0) + itemQuantity;
+          recalcQuantityDeep(
+            item,
+            shadow_quantity - quantity,
+          );
         }
         if (item?.children == undefined) {
           continue;
         }
         for (const recipe2 of item.children) {
-          if (recipe2.children === undefined) {
-            continue;
+          if(recipe2.children === undefined){
+            continue
           }
           inventoryVSItemList(recipe2.children, inventory, {
             ...shadowInventory,
@@ -511,12 +528,13 @@ const recipeInfo = computed(() => {
     if (items === undefined) {
       return;
     }
-    for (item of items) {
-      inventoryVSItemList(items, inventory, {
-        Cargo: {},
-        Item: {},
-      });
+    for(item of items){
+      inventoryVSItemList(item.children, inventory, {
+      Cargo: {},
+      Item: {},
+    });
     }
+
   }
 
   return {
@@ -573,7 +591,7 @@ useSeoMeta({
         </v-row>
         <v-list>
           <template v-if="recipeInfo !== undefined" v-for="special_items of recipeInfo.items">
-              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined" v-for="item of special_items"
+              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined && special_items.children !== undefined" v-for="item of special_items.children"
                     :item="item"
                     :item_desc="allRecipiesFetch.item_desc"
                     :cargo_desc="allRecipiesFetch.cargo_desc"
