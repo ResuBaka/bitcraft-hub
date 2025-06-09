@@ -133,11 +133,11 @@ impl From<CraftingRecipeDesc> for Model {
             building_requirement = Some(building.into())
         }
         Model {
-            id: value.id as i32,
+            id: value.id,
             name: value.name,
             time_requirement: value.time_requirement,
             stamina_requirement: value.stamina_requirement,
-            building_requirement: building_requirement,
+            building_requirement,
             level_requirements: value
                 .level_requirements
                 .into_iter()

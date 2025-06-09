@@ -9,14 +9,13 @@ use entity::{
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
 use game_module::module_bindings::*;
-use kanal::{AsyncReceiver, AsyncSender, Receiver, Sender};
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, sea_query};
+use kanal::{AsyncReceiver, Sender};
+use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel, sea_query};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{Compression, DbContext, Error, Table, TableWithPrimaryKey, credentials};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 use tokio::time::{Duration, sleep};
 use ts_rs::TS;
@@ -540,7 +539,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
             2000,
             Duration::from_millis(50),
         );
-
         start_worker_item_list_desc(
             global_app_state.clone(),
             item_list_desc_rx,
@@ -595,7 +593,7 @@ enum SpacetimeUpdateMessages<T> {
 
 fn start_worker_mobile_entity_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<MobileEntityState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<MobileEntityState>>,
 ) {
     tokio::spawn(async move {
         while let Ok(update) = rx.recv().await {
@@ -636,7 +634,7 @@ fn start_worker_mobile_entity_state(
 
 fn start_worker_item_desc(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ItemDesc>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ItemDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -659,6 +657,14 @@ fn start_worker_item_desc(
             ])
             .to_owned();
 
+        let mut currently_known_item_desc = ::entity::item_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -671,7 +677,17 @@ fn start_worker_item_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::item_desc::Model = new.into();
                                 global_app_state.item_desc.insert(model.id, model.clone());
-                                messages.push(model);
+                                if currently_known_item_desc.contains_key(&model.id) {
+                                    let value = currently_known_item_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_item_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -679,7 +695,17 @@ fn start_worker_item_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::item_desc::Model = new.into();
                                 global_app_state.item_desc.insert(model.id, model.clone());
-                                messages.push(model);
+                                if currently_known_item_desc.contains_key(&model.id) {
+                                    let value = currently_known_item_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_item_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -688,7 +714,7 @@ fn start_worker_item_desc(
                                 let model: ::entity::item_desc::Model = delete.into();
                                 let id = model.id;
                                 global_app_state.item_desc.remove(&id);
-                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
 
@@ -713,15 +739,10 @@ fn start_worker_item_desc(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::item_desc::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::item_desc::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -735,7 +756,7 @@ fn start_worker_item_desc(
 
 fn start_worker_cargo_desc(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<CargoDesc>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<CargoDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -767,6 +788,14 @@ fn start_worker_cargo_desc(
             ])
             .to_owned();
 
+        let mut currently_known_cargo_desc = ::entity::cargo_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -779,7 +808,17 @@ fn start_worker_cargo_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::cargo_desc::Model = new.into();
                                 global_app_state.cargo_desc.insert(model.id, model.clone());
-                                messages.push(model);
+                                if currently_known_cargo_desc.contains_key(&model.id) {
+                                    let value = currently_known_cargo_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_cargo_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -787,7 +826,17 @@ fn start_worker_cargo_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::cargo_desc::Model = new.into();
                                 global_app_state.cargo_desc.insert(model.id, model.clone());
-                                messages.push(model);
+                                if currently_known_cargo_desc.contains_key(&model.id) {
+                                    let value = currently_known_cargo_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_cargo_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -796,7 +845,7 @@ fn start_worker_cargo_desc(
                                 let model: ::entity::cargo_desc::Model = delete.into();
                                 let id = model.id;
                                 global_app_state.cargo_desc.remove(&id);
-                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
 
@@ -821,15 +870,10 @@ fn start_worker_cargo_desc(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::cargo_desc::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::cargo_desc::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -843,7 +887,7 @@ fn start_worker_cargo_desc(
 
 fn start_worker_player_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -859,6 +903,14 @@ fn start_worker_player_state(
                 ::entity::player_state::Column::TravelerTasksExpiration,
             ])
             .to_owned();
+
+        let mut currently_known_player_state = ::entity::player_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
 
         loop {
             let mut messages = Vec::new();
@@ -879,7 +931,17 @@ fn start_worker_player_state(
                                 ]).increment(1);
 
                                 ids.push(model.entity_id);
-                                messages.push(model);
+                                if currently_known_player_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_player_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_player_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -900,7 +962,17 @@ fn start_worker_player_state(
                                 }
 
                                 ids.push(model.entity_id);
-                                messages.push(model);
+                                if currently_known_player_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_player_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_player_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -910,7 +982,7 @@ fn start_worker_player_state(
                                 let id = model.entity_id;
 
                                 if ids.contains(&id) {
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
                                 }
@@ -963,7 +1035,7 @@ fn start_worker_player_state(
 
 fn start_worker_player_username_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -972,6 +1044,15 @@ fn start_worker_player_username_state(
             sea_query::OnConflict::column(::entity::player_username_state::Column::EntityId)
                 .update_columns([::entity::player_username_state::Column::Username])
                 .to_owned();
+
+        let mut currently_known_player_username_state =
+            ::entity::player_username_state::Entity::find()
+                .all(&global_app_state.conn)
+                .await
+                .map_or(vec![], |aa| aa)
+                .into_iter()
+                .map(|value| (value.entity_id, value))
+                .collect::<HashMap<_, _>>();
 
         loop {
             let mut messages = Vec::new();
@@ -987,7 +1068,19 @@ fn start_worker_player_username_state(
                                 let model: ::entity::player_username_state::Model = new.into();
 
                                 ids.push(model.entity_id);
-                                messages.push(model);
+
+                                if currently_known_player_username_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_player_username_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_player_username_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -995,7 +1088,17 @@ fn start_worker_player_username_state(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::player_username_state::Model = new.into();
                                 ids.push(model.entity_id);
-                                messages.push(model);
+                                if currently_known_player_username_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_player_username_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_player_username_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1005,7 +1108,7 @@ fn start_worker_player_username_state(
                                 let id = model.entity_id;
 
                                 if ids.contains(&id) {
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
                                 }
@@ -1031,15 +1134,10 @@ fn start_worker_player_username_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::player_username_state::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::player_username_state::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -1053,7 +1151,7 @@ fn start_worker_player_username_state(
 
 fn start_worker_experience_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ExperienceState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ExperienceState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1064,6 +1162,14 @@ fn start_worker_experience_state(
         ])
         .update_columns([::entity::experience_state::Column::Experience])
         .to_owned();
+
+        let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
 
         loop {
             let mut messages = Vec::new();
@@ -1077,11 +1183,23 @@ fn start_worker_experience_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let id = new.entity_id;
                                 new.experience_stacks.iter().for_each(|es| {
-                                    messages.push(::entity::experience_state::Model {
+                                    let model = ::entity::experience_state::Model {
                                         entity_id: id as i64,
                                         skill_id: es.skill_id,
                                         experience: es.quantity,
-                                    })
+                                    };
+
+                                    if currently_known_experience_state.contains_key(&model.entity_id) {
+                                        let value = currently_known_experience_state.get(&model.entity_id).unwrap();
+
+                                        if &model != value {
+                                            messages.push(model.into_active_model());
+                                        } else {
+                                            currently_known_experience_state.remove(&model.entity_id);
+                                        }
+                                    } else {
+                                        messages.push(model.into_active_model());
+                                    }
                                 });
 
                                 if messages.len() >= batch_size {
@@ -1099,11 +1217,23 @@ fn start_worker_experience_state(
                                         experience_to_level(es.quantity as i64),
                                     ));
 
-                                    messages.push(::entity::experience_state::Model {
+                                    let model = ::entity::experience_state::Model {
                                         entity_id: id as i64,
                                         skill_id: es.skill_id,
                                         experience: es.quantity,
-                                    })
+                                    };
+
+                                    if currently_known_experience_state.contains_key(&model.entity_id) {
+                                        let value = currently_known_experience_state.get(&model.entity_id).unwrap();
+
+                                        if &model != value {
+                                            messages.push(model.into_active_model());
+                                        } else {
+                                            currently_known_experience_state.remove(&model.entity_id);
+                                        }
+                                    } else {
+                                        messages.push(model.into_active_model());
+                                    }
                                 });
                                 old.experience_stacks.iter().for_each(|es| {
                                     let old_level =
@@ -1138,9 +1268,6 @@ fn start_worker_experience_state(
                                     }
                                 });
 
-
-
-
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1148,7 +1275,7 @@ fn start_worker_experience_state(
                             SpacetimeUpdateMessages::Remove { delete,.. } => {
                                 let id = delete.entity_id as i64;
                                 let vec_es = delete.experience_stacks.iter().map(|es| {
-                                    if let Some(index) = messages.iter().position(|value| value.skill_id == es.skill_id && value.entity_id == id) {
+                                    if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
                                         messages.remove(index);
                                     }
 
@@ -1181,15 +1308,10 @@ fn start_worker_experience_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::experience_state::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::experience_state::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -1203,7 +1325,7 @@ fn start_worker_experience_state(
 
 fn start_worker_inventory_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<InventoryState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<InventoryState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1256,7 +1378,17 @@ fn start_worker_inventory_state(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::inventory::Model = new.into();
-                                messages.push(model.into_active_model());
+                                if currently_known_inventory.contains_key(&model.entity_id) {
+                                    let value = currently_known_inventory.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_inventory.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1307,7 +1439,7 @@ fn start_worker_inventory_state(
 
 fn start_worker_deployable_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<DeployableState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<DeployableState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1323,6 +1455,14 @@ fn start_worker_deployable_state(
             ])
             .to_owned();
 
+        let mut currently_known_deployable_state = ::entity::deployable_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -1336,14 +1476,34 @@ fn start_worker_deployable_state(
 
                                 let model: ::entity::deployable_state::Model = new.into();
 
-                                messages.push(model);
+                                if currently_known_deployable_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_deployable_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_deployable_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::deployable_state::Model = new.into();
-                                messages.push(model);
+                                if currently_known_deployable_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_deployable_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_deployable_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1352,7 +1512,7 @@ fn start_worker_deployable_state(
                                 let model: ::entity::deployable_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1377,15 +1537,10 @@ fn start_worker_deployable_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::deployable_state::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::deployable_state::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -1399,7 +1554,7 @@ fn start_worker_deployable_state(
 
 fn start_worker_claim_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1412,6 +1567,14 @@ fn start_worker_claim_state(
                 claim_state::Column::Neutral,
             ])
             .to_owned();
+
+        let mut currently_known_claim_state = ::entity::claim_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
 
         loop {
             let mut messages = Vec::new();
@@ -1426,14 +1589,34 @@ fn start_worker_claim_state(
 
                                 let model: ::entity::claim_state::Model = new.into();
 
-                                messages.push(model);
+                                if currently_known_claim_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_state::Model = new.into();
-                                messages.push(model);
+                                if currently_known_claim_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1442,7 +1625,7 @@ fn start_worker_claim_state(
                                 let model: ::entity::claim_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1467,15 +1650,10 @@ fn start_worker_claim_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::claim_state::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::claim_state::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -1489,7 +1667,7 @@ fn start_worker_claim_state(
 
 fn start_worker_claim_local_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1509,6 +1687,14 @@ fn start_worker_claim_local_state(
             ])
             .to_owned();
 
+        let mut currently_known_claim_local_state = ::entity::claim_local_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -1522,7 +1708,17 @@ fn start_worker_claim_local_state(
 
                                 let model: ::entity::claim_local_state::Model = new.into();
 
-                                messages.push(model.clone());
+                                if currently_known_claim_local_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_local_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.clone().into_active_model());
+                                    } else {
+                                        currently_known_claim_local_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.clone().into_active_model());
+                                }
 
                                 global_app_state.tx
                                     .send(WebSocketMessages::ClaimLocalState(
@@ -1536,7 +1732,18 @@ fn start_worker_claim_local_state(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_local_state::Model = new.into();
-                                messages.push(model.clone());
+
+                                if currently_known_claim_local_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_local_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.clone().into_active_model());
+                                    } else {
+                                        currently_known_claim_local_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.clone().into_active_model());
+                                }
 
                                 global_app_state.tx
                                     .send(WebSocketMessages::ClaimLocalState(
@@ -1552,7 +1759,7 @@ fn start_worker_claim_local_state(
                                 let model: ::entity::claim_local_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
                                 global_app_state.claim_local_state.remove(&(model.entity_id as u64));
@@ -1582,9 +1789,10 @@ fn start_worker_claim_local_state(
                     messages
                         .iter()
                         .map(|value| {
-                            global_app_state
-                                .claim_local_state
-                                .insert(value.entity_id as u64, value.clone());
+                            global_app_state.claim_local_state.insert(
+                                value.entity_id.as_ref().clone().to_owned() as u64,
+                                value.clone().try_into_model().unwrap(),
+                            );
                             value.clone().into_active_model()
                         })
                         .collect::<Vec<_>>(),
@@ -1605,7 +1813,7 @@ fn start_worker_claim_local_state(
 
 fn start_worker_claim_member_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1622,6 +1830,14 @@ fn start_worker_claim_member_state(
             ])
             .to_owned();
 
+        let mut currently_known_claim_member_state = ::entity::claim_member_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -1635,14 +1851,34 @@ fn start_worker_claim_member_state(
 
                                 let model: ::entity::claim_member_state::Model = new.into();
 
-                                messages.push(model);
+                                if currently_known_claim_member_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_member_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_member_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_member_state::Model = new.into();
-                                messages.push(model);
+                                if currently_known_claim_member_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_member_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_member_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1651,7 +1887,7 @@ fn start_worker_claim_member_state(
                                 let model: ::entity::claim_member_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1683,7 +1919,8 @@ fn start_worker_claim_member_state(
                     messages
                         .iter()
                         .map(|value| {
-                            global_app_state.add_claim_member(value.clone());
+                            global_app_state
+                                .add_claim_member(value.clone().try_into_model().unwrap());
                             value.clone().into_active_model()
                         })
                         .collect::<Vec<_>>(),
@@ -1704,7 +1941,7 @@ fn start_worker_claim_member_state(
 
 fn start_worker_skill_desc(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<SkillDesc>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<SkillDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1720,6 +1957,14 @@ fn start_worker_skill_desc(
             ])
             .to_owned();
 
+        let mut currently_known_skill_desc = ::entity::skill_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -1730,11 +1975,20 @@ fn start_worker_skill_desc(
                     Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
-
                                 let model: ::entity::skill_desc::Model = new.into();
 
                                 global_app_state.skill_desc.insert(model.id, model.clone());
-                                messages.push(model);
+                                if currently_known_skill_desc.contains_key(&model.id) {
+                                    let value = currently_known_skill_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_skill_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -1743,7 +1997,17 @@ fn start_worker_skill_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::skill_desc::Model = new.into();
                                 global_app_state.skill_desc.insert(model.id, model.clone());
-                                messages.push(model);
+                                if currently_known_skill_desc.contains_key(&model.id) {
+                                    let value = currently_known_skill_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_skill_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1753,7 +2017,7 @@ fn start_worker_skill_desc(
                                 let id = model.id;
 
                                 global_app_state.skill_desc.remove(&id);
-                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
 
@@ -1778,15 +2042,10 @@ fn start_worker_skill_desc(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::skill_desc::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::skill_desc::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -1800,7 +2059,7 @@ fn start_worker_skill_desc(
 
 fn start_worker_vault_state_collectibles(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<VaultState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<VaultState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1835,19 +2094,19 @@ fn start_worker_vault_state_collectibles(
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
-                                let mut models = raw_model.to_model_collectibles();
+                                let models = raw_model.to_model_collectibles();
 
                                 for model in models {
                                     if currently_known_vault_state_collectibles.contains_key(&model.entity_id) {
                                         let value = currently_known_vault_state_collectibles.get(&model.entity_id).unwrap();
 
                                         if &model != value {
-                                            messages.push(model);
+                                            messages.push(model.into_active_model());
                                         } else {
                                             currently_known_vault_state_collectibles.remove(&model.entity_id);
                                         }
                                     } else {
-                                        messages.push(model);
+                                        messages.push(model.into_active_model());
                                     }
                                 }
 
@@ -1857,8 +2116,20 @@ fn start_worker_vault_state_collectibles(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
-                                let mut models = raw_model.to_model_collectibles();
-                                messages.append(&mut models);
+                                let models = raw_model.to_model_collectibles();
+                                for model in models {
+                                    if currently_known_vault_state_collectibles.contains_key(&model.entity_id) {
+                                        let value = currently_known_vault_state_collectibles.get(&model.entity_id).unwrap();
+
+                                        if &model != value {
+                                            messages.push(model.into_active_model());
+                                        } else {
+                                            currently_known_vault_state_collectibles.remove(&model.entity_id);
+                                        }
+                                    } else {
+                                        messages.push(model.into_active_model());
+                                    }
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1870,7 +2141,7 @@ fn start_worker_vault_state_collectibles(
 
                                     let id = model.entity_id;
 
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
 
@@ -1896,16 +2167,10 @@ fn start_worker_vault_state_collectibles(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::vault_state_collectibles::Entity::insert_many(
-                    messages
-                        .clone()
-                        .into_iter()
-                        .map(|value| value.into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::vault_state_collectibles::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -1919,7 +2184,7 @@ fn start_worker_vault_state_collectibles(
 
 fn start_worker_claim_tech_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1933,6 +2198,14 @@ fn start_worker_claim_tech_state(
             ])
             .to_owned();
 
+        let mut currently_known_claim_tech_state = ::entity::claim_tech_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -1945,14 +2218,34 @@ fn start_worker_claim_tech_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::claim_tech_state::Model = new.into();
 
-                                messages.push(model);
+                                if currently_known_claim_tech_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_tech_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_tech_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_tech_state::Model = new.into();
-                                messages.push(model);
+                                if currently_known_claim_tech_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_claim_tech_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_tech_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1961,7 +2254,7 @@ fn start_worker_claim_tech_state(
                                 let model: ::entity::claim_tech_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1989,15 +2282,10 @@ fn start_worker_claim_tech_state(
                     "ClaimTechState ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::claim_tech_state::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let insert = ::entity::claim_tech_state::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
 
                 if insert.is_err() {
                     tracing::error!("Error inserting ClaimTechState: {}", insert.unwrap_err())
@@ -2015,7 +2303,7 @@ fn start_worker_claim_tech_state(
 
 fn start_worker_claim_tech_desc(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2035,6 +2323,14 @@ fn start_worker_claim_tech_desc(
             ])
             .to_owned();
 
+        let mut currently_known_claim_tech_desc = ::entity::claim_tech_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -2047,14 +2343,34 @@ fn start_worker_claim_tech_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::claim_tech_desc::Model = new.into();
 
-                                messages.push(model);
+                                if currently_known_claim_tech_desc.contains_key(&model.id) {
+                                    let value = currently_known_claim_tech_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_tech_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_tech_desc::Model = new.into();
-                                messages.push(model);
+                                if currently_known_claim_tech_desc.contains_key(&model.id) {
+                                    let value = currently_known_claim_tech_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_claim_tech_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -2063,7 +2379,7 @@ fn start_worker_claim_tech_desc(
                                 let model: ::entity::claim_tech_desc::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2117,7 +2433,7 @@ fn start_worker_claim_tech_desc(
 
 fn start_worker_building_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2132,6 +2448,14 @@ fn start_worker_building_state(
                 ])
                 .to_owned();
 
+        let mut currently_known_building_state = ::entity::building_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = HashMap::new();
             let timer = sleep(time_limit);
@@ -2144,7 +2468,17 @@ fn start_worker_building_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_state::Model = new.into();
 
-                                messages.insert(model.entity_id, model);
+                                if currently_known_building_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_building_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.insert(model.entity_id, model);
+                                    } else {
+                                        currently_known_building_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.insert(model.entity_id, model);
+                                }
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2153,7 +2487,17 @@ fn start_worker_building_state(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::building_state::Model = new.into();
 
-                                messages.insert(model.entity_id, model);
+                                if currently_known_building_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_building_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.insert(model.entity_id, model);
+                                    } else {
+                                        currently_known_building_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.insert(model.entity_id, model);
+                                }
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2215,7 +2559,7 @@ fn start_worker_building_state(
 
 fn start_worker_building_desc(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2246,6 +2590,14 @@ fn start_worker_building_desc(
             ])
             .to_owned();
 
+        let mut currently_known_building_desc = ::entity::building_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -2258,16 +2610,36 @@ fn start_worker_building_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_desc::Model = new.into();
 
-                                messages.push(model.clone());
-                                global_app_state.building_desc.insert(model.id, model);
+                                global_app_state.building_desc.insert(model.id, model.clone());
+                                if currently_known_building_desc.contains_key(&model.id) {
+                                    let value = currently_known_building_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_building_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::building_desc::Model = new.into();
-                                messages.push(model.clone());
-                               global_app_state.building_desc.insert(model.id, model);
+                               global_app_state.building_desc.insert(model.id, model.clone());
+                                if currently_known_building_desc.contains_key(&model.id) {
+                                    let value = currently_known_building_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_building_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2277,7 +2649,7 @@ fn start_worker_building_desc(
                                 let model: ::entity::building_desc::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2307,15 +2679,10 @@ fn start_worker_building_desc(
                     "BuildingDesc ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::building_desc::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let insert = ::entity::building_desc::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
 
                 if insert.is_err() {
                     tracing::error!("Error inserting BuildingDesc: {}", insert.unwrap_err())
@@ -2333,7 +2700,7 @@ fn start_worker_building_desc(
 
 fn start_worker_building_nickname_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2342,6 +2709,15 @@ fn start_worker_building_nickname_state(
             sea_query::OnConflict::columns([::entity::building_nickname_state::Column::EntityId])
                 .update_columns([::entity::building_nickname_state::Column::Nickname])
                 .to_owned();
+
+        let mut currently_known_building_nickname_state =
+            ::entity::building_nickname_state::Entity::find()
+                .all(&global_app_state.conn)
+                .await
+                .map_or(vec![], |aa| aa)
+                .into_iter()
+                .map(|value| (value.entity_id, value))
+                .collect::<HashMap<_, _>>();
 
         loop {
             let mut messages = Vec::new();
@@ -2355,16 +2731,36 @@ fn start_worker_building_nickname_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_nickname_state::Model = new.into();
 
-                                messages.push(model.clone());
-                                global_app_state.building_nickname_state.insert(model.entity_id, model);
+                                global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
+                                if currently_known_building_nickname_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_building_nickname_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_building_nickname_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::building_nickname_state::Model = new.into();
-                                messages.push(model.clone());
-                                global_app_state.building_nickname_state.insert(model.entity_id, model);
+                                global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
+                                if currently_known_building_nickname_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_building_nickname_state.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_building_nickname_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2374,7 +2770,7 @@ fn start_worker_building_nickname_state(
                                 let model: ::entity::building_nickname_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -2404,15 +2800,11 @@ fn start_worker_building_nickname_state(
                     "BuildingNicknameState ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::building_nickname_state::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let insert =
+                    ::entity::building_nickname_state::Entity::insert_many(messages.clone())
+                        .on_conflict(on_conflict.clone())
+                        .exec(&global_app_state.conn)
+                        .await;
 
                 if insert.is_err() {
                     tracing::error!(
@@ -2433,7 +2825,7 @@ fn start_worker_building_nickname_state(
 
 fn start_worker_crafting_recipe_desc(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2462,6 +2854,14 @@ fn start_worker_crafting_recipe_desc(
             ])
             .to_owned();
 
+        let mut currently_known_crafting_recipe = ::entity::crafting_recipe::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -2474,16 +2874,36 @@ fn start_worker_crafting_recipe_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::crafting_recipe::Model = new.into();
 
-                                messages.push(model.clone());
-                                global_app_state.crafting_recipe_desc.insert(model.id, model);
+                                global_app_state.crafting_recipe_desc.insert(model.id, model.clone());
+                                if currently_known_crafting_recipe.contains_key(&model.id) {
+                                    let value = currently_known_crafting_recipe.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_crafting_recipe.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::crafting_recipe::Model = new.into();
-                                messages.push(model.clone());
-                                global_app_state.crafting_recipe_desc.insert(model.id, model);
+                                global_app_state.crafting_recipe_desc.insert(model.id, model.clone());
+                                if currently_known_crafting_recipe.contains_key(&model.id) {
+                                    let value = currently_known_crafting_recipe.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_crafting_recipe.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2493,7 +2913,7 @@ fn start_worker_crafting_recipe_desc(
                                 let model: ::entity::crafting_recipe::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2523,15 +2943,10 @@ fn start_worker_crafting_recipe_desc(
                     "CraftingRecipeDesc ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::crafting_recipe::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let insert = ::entity::crafting_recipe::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
 
                 if insert.is_err() {
                     tracing::error!(
@@ -2552,7 +2967,7 @@ fn start_worker_crafting_recipe_desc(
 
 fn start_worker_item_list_desc(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ItemListDesc>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<ItemListDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2563,6 +2978,14 @@ fn start_worker_item_list_desc(
                 item_list_desc::Column::Possibilities,
             ])
             .to_owned();
+
+        let mut currently_known_item_list_desc = ::entity::item_list_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
 
         loop {
             let mut messages = Vec::new();
@@ -2576,16 +2999,36 @@ fn start_worker_item_list_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::item_list_desc::Model = new.into();
 
-                                messages.push(model.clone());
-                                global_app_state.item_list_desc.insert(model.id, model);
+                                global_app_state.item_list_desc.insert(model.id, model.clone());
+                                if currently_known_item_list_desc.contains_key(&model.id) {
+                                    let value = currently_known_item_list_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_item_list_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::item_list_desc::Model = new.into();
-                                messages.push(model.clone());
-                                global_app_state.item_list_desc.insert(model.id, model);
+                                global_app_state.item_list_desc.insert(model.id, model.clone());
+                                if currently_known_item_list_desc.contains_key(&model.id) {
+                                    let value = currently_known_item_list_desc.get(&model.id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_item_list_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -2595,7 +3038,7 @@ fn start_worker_item_list_desc(
                                 let model: ::entity::item_list_desc::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2625,15 +3068,10 @@ fn start_worker_item_list_desc(
                     "ItemListDesc ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::item_list_desc::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let insert = ::entity::item_list_desc::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
 
                 if insert.is_err() {
                     tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
@@ -2651,7 +3089,7 @@ fn start_worker_item_list_desc(
 
 fn start_worker_location_state(
     global_app_state: Arc<AppState>,
-    mut rx: AsyncReceiver<SpacetimeUpdateMessages<LocationState>>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<LocationState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
