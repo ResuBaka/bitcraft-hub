@@ -2,11 +2,14 @@ use crate::AppState;
 use crate::config::Config;
 use crate::leaderboard::experience_to_level;
 use entity::{
-    cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state, crafting_recipe, deployable_state, item_desc, item_list_desc, mobile_entity_state, vault_state_collectibles
+    cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
+    crafting_recipe, deployable_state, item_desc, item_list_desc, mobile_entity_state,
+    vault_state_collectibles,
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
 use game_module::module_bindings::*;
+use kanal::{AsyncReceiver, AsyncSender, Receiver, Sender};
 use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, sea_query};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{Compression, DbContext, Error, Table, TableWithPrimaryKey, credentials};
@@ -160,27 +163,27 @@ fn connect_to_db_logic(
     config: &Config,
     database: &str,
     remove_desc: &bool,
-    mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
-    player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
-    player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
-    experience_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ExperienceState>>,
-    inventory_state_tx: &UnboundedSender<SpacetimeUpdateMessages<InventoryState>>,
-    item_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemDesc>>,
-    cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
-    vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,
-    deployable_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DeployableState>>,
-    claim_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimState>>,
-    claim_local_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimLocalState>>,
-    claim_member_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimMemberState>>,
-    skill_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<SkillDesc>>,
-    claim_tech_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechState>>,
-    claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
-    building_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingState>>,
-    building_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingDesc>>,
-    location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
-    building_nickname_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingNicknameState>>,
-    crafting_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
-    item_list_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemListDesc>>,
+    mobile_entity_state_tx: &Sender<SpacetimeUpdateMessages<MobileEntityState>>,
+    player_state_tx: &Sender<SpacetimeUpdateMessages<PlayerState>>,
+    player_username_state_tx: &Sender<SpacetimeUpdateMessages<PlayerUsernameState>>,
+    experience_state_tx: &Sender<SpacetimeUpdateMessages<ExperienceState>>,
+    inventory_state_tx: &Sender<SpacetimeUpdateMessages<InventoryState>>,
+    item_desc_tx: &Sender<SpacetimeUpdateMessages<ItemDesc>>,
+    cargo_desc_tx: &Sender<SpacetimeUpdateMessages<CargoDesc>>,
+    vault_state_collectibles_tx: &Sender<SpacetimeUpdateMessages<VaultState>>,
+    deployable_state_tx: &Sender<SpacetimeUpdateMessages<DeployableState>>,
+    claim_state_tx: &Sender<SpacetimeUpdateMessages<ClaimState>>,
+    claim_local_state_tx: &Sender<SpacetimeUpdateMessages<ClaimLocalState>>,
+    claim_member_state_tx: &Sender<SpacetimeUpdateMessages<ClaimMemberState>>,
+    skill_desc_tx: &Sender<SpacetimeUpdateMessages<SkillDesc>>,
+    claim_tech_state_tx: &Sender<SpacetimeUpdateMessages<ClaimTechState>>,
+    claim_tech_desc_tx: &Sender<SpacetimeUpdateMessages<ClaimTechDesc>>,
+    building_state_tx: &Sender<SpacetimeUpdateMessages<BuildingState>>,
+    building_desc_tx: &Sender<SpacetimeUpdateMessages<BuildingDesc>>,
+    location_state_tx: &Sender<SpacetimeUpdateMessages<LocationState>>,
+    building_nickname_state_tx: &Sender<SpacetimeUpdateMessages<BuildingNicknameState>>,
+    crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
+    item_list_desc_tx: &Sender<SpacetimeUpdateMessages<ItemListDesc>>,
 ) {
     let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
 
@@ -354,47 +357,41 @@ fn connect_to_db_logic(
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppState>) {
     tokio::spawn(async move {
-        let (mobile_entity_state_tx, mobile_entity_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (mobile_entity_state_tx, mobile_entity_state_rx) = kanal::unbounded_async();
 
-        let (player_state_tx, player_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (player_state_tx, player_state_rx) = kanal::unbounded_async();
 
-        let (player_username_state_tx, player_username_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (player_username_state_tx, player_username_state_rx) = kanal::unbounded_async();
 
-        let (experience_state_tx, experience_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (experience_state_tx, experience_state_rx) = kanal::unbounded_async();
 
-        let (inventory_state_tx, inventory_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (inventory_state_tx, inventory_state_rx) = kanal::unbounded_async();
 
-        let (item_desc_tx, item_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (item_list_desc_tx, item_list_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (item_desc_tx, item_desc_rx) = kanal::unbounded_async();
+        let (item_list_desc_tx, item_list_desc_rx) = kanal::unbounded_async();
 
-        let (cargo_desc_tx, cargo_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (cargo_desc_tx, cargo_desc_rx) = kanal::unbounded_async();
 
-        let (vault_state_collectibles_tx, vault_state_collectibles_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (vault_state_collectibles_tx, vault_state_collectibles_rx) = kanal::unbounded_async();
 
-        let (deployable_state_tx, deployable_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (deployable_state_tx, deployable_state_rx) = kanal::unbounded_async();
 
-        let (claim_state_tx, claim_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (claim_state_tx, claim_state_rx) = kanal::unbounded_async();
 
-        let (claim_local_state_tx, claim_local_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (claim_local_state_tx, claim_local_state_rx) = kanal::unbounded_async();
 
-        let (claim_member_state_tx, claim_member_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (claim_member_state_tx, claim_member_state_rx) = kanal::unbounded_async();
 
-        let (skill_desc_tx, skill_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (skill_desc_tx, skill_desc_rx) = kanal::unbounded_async();
 
-        let (claim_tech_state_tx, claim_tech_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (building_state_tx, building_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (building_desc_tx, building_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (location_state_tx, location_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (building_nickname_state_tx, building_nickname_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (claim_tech_state_tx, claim_tech_state_rx) = kanal::unbounded_async();
+        let (claim_tech_desc_tx, claim_tech_desc_rx) = kanal::unbounded_async();
+        let (building_state_tx, building_state_rx) = kanal::unbounded_async();
+        let (building_desc_tx, building_desc_rx) = kanal::unbounded_async();
+        let (location_state_tx, location_state_rx) = kanal::unbounded_async();
+        let (building_nickname_state_tx, building_nickname_state_rx) = kanal::unbounded_async();
 
-        let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) =
-            tokio::sync::mpsc::unbounded_channel();
-
+        let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) = kanal::unbounded_async();
 
         let mut remove_desc = false;
 
@@ -403,27 +400,27 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &config,
                 database,
                 &remove_desc,
-                &mobile_entity_state_tx,
-                &player_state_tx,
-                &player_username_state_tx,
-                &experience_state_tx,
-                &inventory_state_tx,
-                &item_desc_tx,
-                &cargo_desc_tx,
-                &vault_state_collectibles_tx,
-                &deployable_state_tx,
-                &claim_state_tx,
-                &claim_local_state_tx,
-                &claim_member_state_tx,
-                &skill_desc_tx,
-                &claim_tech_state_tx,
-                &claim_tech_desc_tx,
-                &building_state_tx,
-                &building_desc_tx,
-                &location_state_tx,
-                &building_nickname_state_tx,
-                &crafting_recipe_desc_tx,
-                &item_list_desc_tx
+                &mobile_entity_state_tx.clone_sync(),
+                &player_state_tx.clone_sync(),
+                &player_username_state_tx.clone_sync(),
+                &experience_state_tx.clone_sync(),
+                &inventory_state_tx.clone_sync(),
+                &item_desc_tx.clone_sync(),
+                &cargo_desc_tx.clone_sync(),
+                &vault_state_collectibles_tx.clone_sync(),
+                &deployable_state_tx.clone_sync(),
+                &claim_state_tx.clone_sync(),
+                &claim_local_state_tx.clone_sync(),
+                &claim_member_state_tx.clone_sync(),
+                &skill_desc_tx.clone_sync(),
+                &claim_tech_state_tx.clone_sync(),
+                &claim_tech_desc_tx.clone_sync(),
+                &building_state_tx.clone_sync(),
+                &building_desc_tx.clone_sync(),
+                &location_state_tx.clone_sync(),
+                &building_nickname_state_tx.clone_sync(),
+                &crafting_recipe_desc_tx.clone_sync(),
+                &item_list_desc_tx.clone_sync(),
             );
 
             remove_desc = true;
@@ -433,122 +430,122 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
             global_app_state.clone(),
             player_state_rx,
             1000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_player_username_state(
             global_app_state.clone(),
             player_username_state_rx,
             1000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_experience_state(
             global_app_state.clone(),
             experience_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_inventory_state(
             global_app_state.clone(),
             inventory_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_vault_state_collectibles(
             global_app_state.clone(),
             vault_state_collectibles_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_item_desc(
             global_app_state.clone(),
             item_desc_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_cargo_desc(
             global_app_state.clone(),
             cargo_desc_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_deployable_state(
             global_app_state.clone(),
             deployable_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_claim_state(
             global_app_state.clone(),
             claim_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_claim_local_state(
             global_app_state.clone(),
             claim_local_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_claim_member_state(
             global_app_state.clone(),
             claim_member_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_skill_desc(
             global_app_state.clone(),
             skill_desc_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_claim_tech_state(
             global_app_state.clone(),
             claim_tech_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_claim_tech_desc(
             global_app_state.clone(),
             claim_tech_desc_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_building_state(
             global_app_state.clone(),
             building_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_building_desc(
             global_app_state.clone(),
             building_desc_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_location_state(
             global_app_state.clone(),
             location_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_building_nickname_state(
             global_app_state.clone(),
             building_nickname_state_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
         start_worker_crafting_recipe_desc(
             global_app_state.clone(),
             crafting_recipe_desc_desc_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
 
         start_worker_item_list_desc(
             global_app_state.clone(),
             item_list_desc_rx,
             2000,
-            Duration::from_millis(25),
+            Duration::from_millis(50),
         );
     });
 }
@@ -598,10 +595,10 @@ enum SpacetimeUpdateMessages<T> {
 
 fn start_worker_mobile_entity_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<MobileEntityState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<MobileEntityState>>,
 ) {
     tokio::spawn(async move {
-        while let Some(update) = rx.recv().await {
+        while let Ok(update) = rx.recv().await {
             match update {
                 SpacetimeUpdateMessages::Insert { new, .. } => {
                     let model: mobile_entity_state::Model = new.into();
@@ -639,7 +636,7 @@ fn start_worker_mobile_entity_state(
 
 fn start_worker_item_desc(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ItemDesc>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ItemDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -669,7 +666,7 @@ fn start_worker_item_desc(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::item_desc::Model = new.into();
@@ -691,7 +688,7 @@ fn start_worker_item_desc(
                                 let model: ::entity::item_desc::Model = delete.into();
                                 let id = model.id;
                                 global_app_state.item_desc.remove(&id);
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
                                     messages.remove(index);
                                 }
 
@@ -738,7 +735,7 @@ fn start_worker_item_desc(
 
 fn start_worker_cargo_desc(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<CargoDesc>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<CargoDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -777,7 +774,7 @@ fn start_worker_cargo_desc(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::cargo_desc::Model = new.into();
@@ -799,7 +796,7 @@ fn start_worker_cargo_desc(
                                 let model: ::entity::cargo_desc::Model = delete.into();
                                 let id = model.id;
                                 global_app_state.cargo_desc.remove(&id);
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
                                     messages.remove(index);
                                 }
 
@@ -846,7 +843,7 @@ fn start_worker_cargo_desc(
 
 fn start_worker_player_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -871,7 +868,7 @@ fn start_worker_player_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::player_state::Model = new.into();
@@ -913,7 +910,7 @@ fn start_worker_player_state(
                                 let id = model.entity_id;
 
                                 if ids.contains(&id) {
-                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                         messages.remove(index);
                                     }
                                 }
@@ -966,7 +963,7 @@ fn start_worker_player_state(
 
 fn start_worker_player_username_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -984,7 +981,7 @@ fn start_worker_player_username_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::player_username_state::Model = new.into();
@@ -1008,7 +1005,7 @@ fn start_worker_player_username_state(
                                 let id = model.entity_id;
 
                                 if ids.contains(&id) {
-                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                         messages.remove(index);
                                     }
                                 }
@@ -1056,7 +1053,7 @@ fn start_worker_player_username_state(
 
 fn start_worker_experience_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ExperienceState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ExperienceState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1075,7 +1072,7 @@ fn start_worker_experience_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let id = new.entity_id;
@@ -1206,7 +1203,7 @@ fn start_worker_experience_state(
 
 fn start_worker_inventory_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<InventoryState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<InventoryState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1221,6 +1218,14 @@ fn start_worker_inventory_state(
             ])
             .to_owned();
 
+        let mut currently_known_inventory = ::entity::inventory::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -1228,19 +1233,30 @@ fn start_worker_inventory_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::inventory::Model = new.into();
 
-                                messages.push(model);
+                                if currently_known_inventory.contains_key(&model.entity_id) {
+                                    let value = currently_known_inventory.get(&model.entity_id).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_inventory.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::inventory::Model = new.into();
-                                messages.push(model);
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1249,7 +1265,7 @@ fn start_worker_inventory_state(
                                 let model: ::entity::inventory::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1274,15 +1290,10 @@ fn start_worker_inventory_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::inventory::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                let _ = ::entity::inventory::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -1296,7 +1307,7 @@ fn start_worker_inventory_state(
 
 fn start_worker_deployable_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<DeployableState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<DeployableState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1319,7 +1330,7 @@ fn start_worker_deployable_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
 
@@ -1341,7 +1352,7 @@ fn start_worker_deployable_state(
                                 let model: ::entity::deployable_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1388,7 +1399,7 @@ fn start_worker_deployable_state(
 
 fn start_worker_claim_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1409,7 +1420,7 @@ fn start_worker_claim_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
 
@@ -1431,7 +1442,7 @@ fn start_worker_claim_state(
                                 let model: ::entity::claim_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1478,7 +1489,7 @@ fn start_worker_claim_state(
 
 fn start_worker_claim_local_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1505,7 +1516,7 @@ fn start_worker_claim_local_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
 
@@ -1541,7 +1552,7 @@ fn start_worker_claim_local_state(
                                 let model: ::entity::claim_local_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
                                 }
                                 global_app_state.claim_local_state.remove(&(model.entity_id as u64));
@@ -1594,7 +1605,7 @@ fn start_worker_claim_local_state(
 
 fn start_worker_claim_member_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1618,7 +1629,7 @@ fn start_worker_claim_member_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
 
@@ -1640,7 +1651,7 @@ fn start_worker_claim_member_state(
                                 let model: ::entity::claim_member_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1693,7 +1704,7 @@ fn start_worker_claim_member_state(
 
 fn start_worker_skill_desc(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<SkillDesc>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<SkillDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1716,7 +1727,7 @@ fn start_worker_skill_desc(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
 
@@ -1742,7 +1753,7 @@ fn start_worker_skill_desc(
                                 let id = model.id;
 
                                 global_app_state.skill_desc.remove(&id);
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
                                     messages.remove(index);
                                 }
 
@@ -1789,7 +1800,7 @@ fn start_worker_skill_desc(
 
 fn start_worker_vault_state_collectibles(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<VaultState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<VaultState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1804,6 +1815,15 @@ fn start_worker_vault_state_collectibles(
         ])
         .to_owned();
 
+        let mut currently_known_vault_state_collectibles =
+            ::entity::vault_state_collectibles::Entity::find()
+                .all(&global_app_state.conn)
+                .await
+                .map_or(vec![], |aa| aa)
+                .into_iter()
+                .map(|value| (value.entity_id, value))
+                .collect::<HashMap<_, _>>();
+
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -1811,25 +1831,34 @@ fn start_worker_vault_state_collectibles(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
-
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
-                               let models = raw_model.to_model_collectibles();
+                                let mut models = raw_model.to_model_collectibles();
+
                                 for model in models {
-                                    messages.push(model);
+                                    if currently_known_vault_state_collectibles.contains_key(&model.entity_id) {
+                                        let value = currently_known_vault_state_collectibles.get(&model.entity_id).unwrap();
+
+                                        if &model != value {
+                                            messages.push(model);
+                                        } else {
+                                            currently_known_vault_state_collectibles.remove(&model.entity_id);
+                                        }
+                                    } else {
+                                        messages.push(model);
+                                    }
                                 }
+
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
-                                let models = raw_model.to_model_collectibles();
-                                for model in models {
-                                    messages.push(model);
-                                }
+                                let mut models = raw_model.to_model_collectibles();
+                                messages.append(&mut models);
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -1841,7 +1870,7 @@ fn start_worker_vault_state_collectibles(
 
                                     let id = model.entity_id;
 
-                                    if let Some(index) = messages.iter().position(|value| value == &model) {
+                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                         messages.remove(index);
                                     }
 
@@ -1869,8 +1898,9 @@ fn start_worker_vault_state_collectibles(
                 //tracing::info!("Processing {} messages in batch", messages.len());
                 let _ = ::entity::vault_state_collectibles::Entity::insert_many(
                     messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
+                        .clone()
+                        .into_iter()
+                        .map(|value| value.into_active_model())
                         .collect::<Vec<_>>(),
                 )
                 .on_conflict(on_conflict.clone())
@@ -1889,7 +1919,7 @@ fn start_worker_vault_state_collectibles(
 
 fn start_worker_claim_tech_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -1910,7 +1940,7 @@ fn start_worker_claim_tech_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::claim_tech_state::Model = new.into();
@@ -1931,7 +1961,7 @@ fn start_worker_claim_tech_state(
                                 let model: ::entity::claim_tech_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -1985,7 +2015,7 @@ fn start_worker_claim_tech_state(
 
 fn start_worker_claim_tech_desc(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2012,7 +2042,7 @@ fn start_worker_claim_tech_desc(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::claim_tech_desc::Model = new.into();
@@ -2033,7 +2063,7 @@ fn start_worker_claim_tech_desc(
                                 let model: ::entity::claim_tech_desc::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2087,7 +2117,7 @@ fn start_worker_claim_tech_desc(
 
 fn start_worker_building_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2109,7 +2139,7 @@ fn start_worker_building_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_state::Model = new.into();
@@ -2185,7 +2215,7 @@ fn start_worker_building_state(
 
 fn start_worker_building_desc(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2223,7 +2253,7 @@ fn start_worker_building_desc(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_desc::Model = new.into();
@@ -2247,7 +2277,7 @@ fn start_worker_building_desc(
                                 let model: ::entity::building_desc::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2303,7 +2333,7 @@ fn start_worker_building_desc(
 
 fn start_worker_building_nickname_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2320,7 +2350,7 @@ fn start_worker_building_nickname_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_nickname_state::Model = new.into();
@@ -2344,7 +2374,7 @@ fn start_worker_building_nickname_state(
                                 let model: ::entity::building_nickname_state::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
                                 }
 
@@ -2403,7 +2433,7 @@ fn start_worker_building_nickname_state(
 
 fn start_worker_crafting_recipe_desc(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2439,7 +2469,7 @@ fn start_worker_crafting_recipe_desc(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::crafting_recipe::Model = new.into();
@@ -2463,7 +2493,7 @@ fn start_worker_crafting_recipe_desc(
                                 let model: ::entity::crafting_recipe::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2522,7 +2552,7 @@ fn start_worker_crafting_recipe_desc(
 
 fn start_worker_item_list_desc(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ItemListDesc>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<ItemListDesc>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2541,7 +2571,7 @@ fn start_worker_item_list_desc(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::item_list_desc::Model = new.into();
@@ -2565,7 +2595,7 @@ fn start_worker_item_list_desc(
                                 let model: ::entity::item_list_desc::Model = delete.into();
                                 let id = model.id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.id == model.id) {
                                     messages.remove(index);
                                 }
 
@@ -2606,10 +2636,7 @@ fn start_worker_item_list_desc(
                 .await;
 
                 if insert.is_err() {
-                    tracing::error!(
-                        "Error inserting ItemListDesc: {}",
-                        insert.unwrap_err()
-                    )
+                    tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
                 }
                 // Your batch processing logic here
             }
@@ -2624,7 +2651,7 @@ fn start_worker_item_list_desc(
 
 fn start_worker_location_state(
     global_app_state: Arc<AppState>,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<LocationState>>,
+    mut rx: AsyncReceiver<SpacetimeUpdateMessages<LocationState>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -2662,7 +2689,7 @@ fn start_worker_location_state(
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::location::Model = new.into();
@@ -2686,7 +2713,7 @@ fn start_worker_location_state(
                                 let model: ::entity::location::Model = delete.into();
                                 let id = model.entity_id;
 
-                                if let Some(index) = messages.iter().position(|value| value == &model) {
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
                                 }
 

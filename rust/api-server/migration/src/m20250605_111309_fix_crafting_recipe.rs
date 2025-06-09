@@ -8,7 +8,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
-         manager
+        manager
             .create_table(
                 Table::create()
                     .table(ItemListDesc::Table)
@@ -19,11 +19,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(ItemListDesc::Name)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(ItemListDesc::Name).string().not_null())
                     .col(
                         ColumnDef::new(ItemListDesc::Possibilities)
                             .json()
@@ -34,7 +30,7 @@ impl MigrationTrait for Migration {
             .await
             .expect("Creating PlayerState table");
 
-         manager
+        manager
             .alter_table(
                 Table::alter()
                     .table(CraftingRecipe::Table)
@@ -43,8 +39,9 @@ impl MigrationTrait for Migration {
                     .drop_column(CraftingRecipe::RequiredKnowledges)
                     .add_column(array(CraftingRecipe::RequiredKnowledges, Integer))
                     .to_owned(),
-            ).await
-        }
+            )
+            .await
+    }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
@@ -66,5 +63,3 @@ enum ItemListDesc {
     Name,
     Possibilities,
 }
-
-
