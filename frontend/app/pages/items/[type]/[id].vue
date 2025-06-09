@@ -196,6 +196,8 @@ const recipeInfo = computed(() => {
     Item: { [key: string]: number[] };
     Cargo: { [key: string]: number[] };
   } = {
+
+  const consumed = {
     Item: {},
     Cargo: {},
   };
