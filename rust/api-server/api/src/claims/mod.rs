@@ -40,7 +40,7 @@ pub(crate) fn get_routes() -> AppRouter {
         )
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub struct ClaimDescriptionState {
     pub entity_id: i64,
     pub owner_player_entity_id: i64,
@@ -86,7 +86,8 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub building_states: Vec<building_state::Model>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize,TS )]
+#[ts(export)]
 pub(crate) struct ClaimResponse {
     pub claims: Vec<ClaimDescriptionState>,
     #[serde(rename = "perPage")]

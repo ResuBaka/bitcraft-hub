@@ -62,7 +62,7 @@ pub enum TeleportLocationType {
     Waystone,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub struct PlayerStateMerged {
     pub teleport_location: TeleportLocation,
     pub entity_id: u64,

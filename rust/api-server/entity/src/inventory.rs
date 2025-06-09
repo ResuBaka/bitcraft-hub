@@ -30,7 +30,7 @@ pub struct Pocket {
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct ItemStack {
     pub item_id: i32,
-    pub quantity: i64,
+    pub quantity: i32,
     pub item_type: ItemType,
     pub durability: Option<i32>,
 }
@@ -127,7 +127,7 @@ pub enum ItemExpended {
 pub struct ExpendedRefrence {
     pub item_id: i32,
     pub item: ItemExpended,
-    pub quantity: i64,
+    pub quantity: i32,
     pub item_type: ItemType,
     pub durability: Option<i32>,
 }
@@ -146,7 +146,7 @@ impl From<game_module::module_bindings::ItemStack> for crate::inventory::ItemSta
     fn from(value: game_module::module_bindings::ItemStack) -> Self {
         crate::inventory::ItemStack {
             item_id: value.item_id,
-            quantity: value.quantity as i64,
+            quantity: value.quantity,
             item_type: value.item_type.into(),
             durability: value.durability,
         }

@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::sync::Arc;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -94,7 +95,8 @@ pub(crate) async fn find_inventory_by_id(
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize,TS)]
+#[ts(export)]
 pub(crate) struct InventorysResponse {
     inventorys: Vec<ResolvedInventory>,
     total: i64,
