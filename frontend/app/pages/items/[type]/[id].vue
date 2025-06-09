@@ -1,18 +1,156 @@
 <script setup lang="ts">
 import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
 import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
+import { watchDebounced, watchThrottled } from "@vueuse/shared";
 
-const page = ref(1);
+const player = ref<string | undefined>("");
+const playerId = ref<BigInt | null>(null);
+const claim = ref<string | undefined>("");
+const claimId = ref<BigInt | null>(null);
+const amount = ref<number | null>(1);
 const route = useRoute();
+const router = useRouter();
 
-const tmpPage = (route.query.page as string) ?? null;
-
-if (tmpPage) {
-  page.value = parseInt(tmpPage);
-}
 const {
   public: { api },
 } = useRuntimeConfig();
+
+const { data: playerData, refresh: refreshPlayer } = await useLazyFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/players`;
+  },
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+
+
+      if (player.value) {
+        options.query.search = player.value;
+      }
+      options.query.per_page = 20;
+
+      if (Object.keys(options.query).length > 2) {
+        const query = { player: player.value };
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+  },
+);
+
+const { data: claimInventoryData, refresh: refreshClaimInventory } = await useLazyFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/claims/${claimId.value}`;
+  },
+  {
+    immediate: false,
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+      options
+      if (player.value) {
+        options.query.search = player.value;
+      }
+      options.query.per_page = 20;
+
+      if (Object.keys(options.query).length > 2) {
+        const query = { player: player.value };
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+
+  },
+);
+
+const { data: playerInventoryData, refresh: refreshPlayerInventory } = await useLazyFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${playerId.value}`;
+  },
+  {
+    immediate: false,
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+      options
+      if (player.value) {
+        options.query.search = player.value;
+      }
+      options.query.per_page = 20;
+
+      if (Object.keys(options.query).length > 2) {
+        const query = { player: player.value };
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+
+  },
+);
+
+
+
+const { data: claimData, refresh: refreshClaim } = await useLazyFetchMsPack(
+  () => {
+    return `${api.base}/api/bitcraft/claims`;
+  },
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+
+
+      if (player.value) {
+        options.query.search = player.value;
+      }
+      options.query.per_page = 20;
+
+      if (Object.keys(options.query).length > 2) {
+        const query = { player: player.value };
+        router.push({ query });
+      } else if (options.query.page <= 1) {
+        router.push({});
+      }
+    },
+  },
+);
+
+watchThrottled(
+  () => [player.value],
+  (value, oldValue) => {
+    refreshPlayer();
+  },
+  { throttle: 50 },
+);
+
+watchThrottled(
+  () => [claim.value],
+  (value, oldValue) => {
+    refreshClaim();
+  },
+  { throttle: 50 },
+);
+watchThrottled(
+  () => [claimId.value],
+  (value, oldValue) => {
+    if(value[0] === null){
+      return
+    }
+    refreshClaimInventory();
+  },
+  { throttle: 50 },
+);
+
+watchThrottled(
+  () => [playerId.value],
+  (value, oldValue) => {
+    if(value[0] === null){
+      return
+    }
+    refreshPlayerInventory();
+  },
+  { throttle: 50 },
+);
 
 const { data: allRecipiesFetch, pending: allRecipiesPending } =
   useFetchMsPack<RecipesAllResponse>(() => {
@@ -35,6 +173,14 @@ const recipeInfo = computed(() => {
     Item: {},
     Cargo: {},
   };
+    if (hasValues) {
+    return {
+      items: [{}],
+      consumed,
+      crafted,
+    };
+  }
+  
   function getCraftedItemStack(item_stack, recipie) {
     if (item_stack.item_type == "Item") {
       if (crafted["Item"][item_stack.item_id] == undefined) {
@@ -85,14 +231,6 @@ const recipeInfo = computed(() => {
     }
   }
 
-  if (hasValues) {
-    return {
-      items: [{}],
-      consumed,
-      crafted,
-    };
-  }
-
   let item;
   if (type == "Item") {
     item = item_desc[id];
@@ -109,13 +247,14 @@ const recipeInfo = computed(() => {
         itemChildren.push({
           id: item.item_id,
           type: item.item_type,
-          quantity: 1,
-          children: getConsumedChildren(item.item_id, item.item_type, 1, []),
+          shadow_quantity: Math.max(amount.value / recipe.quantity),
+          recipe_quantity: recipe.quantity,
+          item_quantity: item.quantity,
+          quantity: amount.value,
+          children: getConsumedChildren(item.item_id, item.item_type, amount.value, []),
         });
       }
-      children.push({
-        children: itemChildren,
-      });
+      children.push(itemChildren);
     }
     return children;
   }
@@ -155,6 +294,9 @@ const recipeInfo = computed(() => {
           id: item.item_id,
           type: item.item_type,
           quantity: get_qauntity,
+          shadow_quantity: quantity,
+          recipe_quantity: recipe.quantity,
+          item_quantity: item.quantity,
           children: getConsumedChildren(
             item.item_id,
             item.item_type,
@@ -164,21 +306,81 @@ const recipeInfo = computed(() => {
         });
       }
       children.push({
-        recipe: true,
         children: itemChildren,
       });
     }
     return children;
   }
-  let children = getCraftedChildren();
-  let items = [
-    {
-      id: id,
-      type: type,
-      quantity: 1,
-      children: children,
-    },
-  ];
+  let items = getCraftedChildren();
+
+  const inventory = {
+      "Cargo": {},
+      "Item": {}
+  }
+  function combineInvs(inv: any){
+    for(const item of inv){
+      inventory[item.item_type][item.item_id] = (inventory[item.item_type][item.item_id] || 0) +  (item?.quantity || 0 )
+    }
+  }
+  function combineInvs2(inv: any){
+    for(const pockets of inv.pockets){
+      if(pockets?.contents?.item_id == undefined){
+        continue
+      }
+      inventory[pockets?.contents?.item_type][pockets?.contents?.item_id] = (inventory[pockets?.contents?.item_type][pockets?.contents?.item_id] || 0) +  (pockets?.contents?.quantity || 0 )
+    }
+  }
+  if(claimInventoryData.value !== undefined && claimInventoryData?.value?.inventorys?.buildings !== undefined){
+    combineInvs(claimInventoryData?.value?.inventorys?.buildings)
+  }
+  if(playerInventoryData.value !== undefined){
+    for(const item of playerInventoryData?.value?.inventorys){
+      combineInvs2(item)
+    }
+  }
+  if(Object.keys(inventory.Cargo).length !== 0 || Object.keys(inventory.Item).length !== 0){
+    function recalcQuantityDeep(item,quantity){
+      const quant = getQuantity(item.item_quantity,quantity,item.recipe_quantity)
+      item.quantity = quant
+      if(item?.children == undefined){
+        return
+      }
+      for(const recipe of item?.children){
+        if(recipe?.children == undefined){
+          return
+        }
+        for(const item of recipe?.children){
+          recalcQuantityDeep(item,quant)
+        }
+      }
+    }
+    function inventoryVSItemList(recipe: any, inventory: any, shadowInventory: any){
+      for(const itemIndex in recipe){
+        const quantity = (inventory[recipe[itemIndex].type][recipe[itemIndex].id] || 0) - (shadowInventory[recipe[itemIndex].type][recipe[itemIndex].id] || 0)
+          if(quantity >= recipe[itemIndex].quantity){
+            shadowInventory[recipe[itemIndex].type][recipe[itemIndex].id] = (shadowInventory[recipe[itemIndex].type][recipe[itemIndex].id] || 0) +  recipe[itemIndex].quantity
+            recipe[itemIndex].quantity = 0
+            recipe.splice(itemIndex, 1)
+            continue
+          }else{
+            shadowInventory[recipe[itemIndex].type][recipe[itemIndex].id] = (shadowInventory[recipe[itemIndex].type][recipe[itemIndex].id] || 0) +  recipe[itemIndex].quantity
+            recalcQuantityDeep(recipe[itemIndex],recipe[itemIndex].shadow_quantity - quantity)
+          }
+        if(recipe[itemIndex]?.children == undefined){
+          continue
+        }
+          for(const recipe2 of recipe[itemIndex].children){
+            inventoryVSItemList(recipe2.children,inventory,{...shadowInventory})
+        }
+      }
+    }
+    for(const recipe of items){
+        inventoryVSItemList(recipe,inventory,{
+      "Cargo": {},
+      "Item": {}
+    })
+    }
+  }
 
   return {
     items,
@@ -192,14 +394,54 @@ useSeoMeta({
 
 <template>
   <v-container fluid>
-     <v-card v-if="recipeInfo !== undefined">
+     <v-card>
       <v-card-text>
+         <v-row>
+          <v-col>
+            <v-autocomplete
+                v-model="claimId"
+                v-model:search="claim"
+                :items="claimData?.claims || []"
+                item-title="name"
+                item-value="entity_id"
+                label="claim"
+                outlined
+                dense
+                clearable
+            ></v-autocomplete>
+          </v-col>
+          <v-col>
+            <v-autocomplete
+                v-model="playerId"
+                 v-model:search="player"
+                :items="playerData?.players || []"
+                item-title="username"
+                item-value ="entity_id"
+                label="player"
+                outlined
+                dense
+                clearable
+            ></v-autocomplete>
+          </v-col>
+          <v-col>
+            <v-number-input
+            v-model="amount"
+            :reverse="false"
+            controlVariant="default"
+            label="Number of finalized item you want"
+            :hideInput="false"
+            :inset="false"
+          />
+          </v-col>
+        </v-row>
         <v-list>
-      <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined" v-for="item of recipeInfo.items"
-      :item="item"
-      :item_desc="allRecipiesFetch.item_desc"
-      :cargo_desc="allRecipiesFetch.cargo_desc"
-    />
+          <template v-for="special_items of recipeInfo.items">
+              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined" v-for="item of special_items"
+                    :item="item"
+                    :item_desc="allRecipiesFetch.item_desc"
+                    :cargo_desc="allRecipiesFetch.cargo_desc"
+                  />
+          </template>
     </v-list>
     </v-card-text>
     </v-card>

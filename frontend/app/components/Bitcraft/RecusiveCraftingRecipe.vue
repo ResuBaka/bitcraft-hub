@@ -34,6 +34,7 @@ const desc = computed(() => {
         <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
       </v-badge>
       <v-list-item-title>Name: {{ desc.name }}</v-list-item-title>
+      <v-list-item-title>id: {{ desc.id }}</v-list-item-title>
       <template  v-if="item?.children?.length === 1">
         <recusive-crafting-recipe v-for="recipe_item in item.children[0].children" :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" ></recusive-crafting-recipe>
       </template>
