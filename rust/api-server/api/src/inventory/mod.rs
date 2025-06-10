@@ -7,12 +7,14 @@ use entity::inventory::{
 };
 use entity::{cargo_desc, inventory, item_desc};
 use log::error;
+use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::ops::AddAssign;
 use std::sync::Arc;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -32,6 +34,10 @@ pub(crate) fn get_routes() -> AppRouter {
         .route(
             "/inventory/{id}",
             axum_codec::routing::get(find_inventory_by_id).into(),
+        )
+        .route(
+            "/inventory/all_inventory_stats",
+            axum_codec::routing::get(all_inventory_stats).into(),
         )
 }
 
@@ -209,6 +215,102 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         total: num_pages.number_of_items as i64,
         page: 1,
         per_page: 24,
+    }))
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct AllInventoryStatsResponse {
+    items: Vec<(i64, Option<::entity::item_desc::Model>)>,
+    cargo: Vec<(i64, Option<::entity::cargo_desc::Model>)>,
+}
+
+pub(crate) async fn all_inventory_stats(
+    state: State<std::sync::Arc<AppState>>,
+) -> Result<axum_codec::Codec<AllInventoryStatsResponse>, (StatusCode, &'static str)> {
+    if state.inventory_state.is_empty() {
+        let inventorys = ::entity::inventory::Entity::find()
+            .all(&state.conn)
+            .await
+            .map_err(|e| {
+                error!("Error: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+            })?;
+
+        for inventory in inventorys {
+            state.inventory_state.insert(inventory.entity_id, inventory);
+        }
+    }
+
+    let mut items: HashMap<i32, (i64, Option<::entity::item_desc::Model>)> = HashMap::new();
+    let mut cargo: HashMap<i32, (i64, Option<::entity::cargo_desc::Model>)> = HashMap::new();
+
+    for inventory in state.inventory_state.iter() {
+        for pocket in &inventory.pockets {
+            if let Some(contents) = pocket.contents.clone() {
+                if contents.item_type == ItemType::Item {
+                    items.entry(contents.item_id).and_modify(|(qty, _)| qty.add_assign(contents.quantity)).or_insert((
+                            contents.quantity,
+                            state.item_desc.get(&contents.item_id).map(|item_desc| item_desc.to_owned())
+                        ));
+                } else {
+                    cargo.entry(contents.item_id).and_modify(|(qty, _)| qty.add_assign(contents.quantity)).or_insert((
+                        contents.quantity,
+                        state.cargo_desc.get(&contents.item_id).map(|cargo_desc| cargo_desc.to_owned())
+                    ));
+                }
+            }
+        }
+    }
+
+    // let (items, cargo) = inventorys
+    //     .par_iter() // Parallel iterator for inventories
+    //     .flat_map(|inventory| &inventory.pockets) // Flatten to iterate over all pockets
+    //     .filter_map(|pocket| pocket.contents.clone()) // Only consider pockets with contents
+    //     .fold(
+    //         || (HashMap::<i32, (i64, Option<ExpendedRefrence>)>::new(), HashMap::<i32, (i64, Option<ExpendedRefrence>)>::new()), // Initial value for each thread
+    //         |mut acc, contents| {
+    //             // Accumulate results within each thread
+    //             if contents.item_type == ItemType::Item {
+    //                 acc.0.entry(contents.item_id).and_modify(|(qty, _): &mut (_, _)| qty.add_assign(contents.quantity)).or_insert((
+    //                     contents.quantity,
+    //                     resolve_contents(&Some(contents), &state.item_desc, &state.cargo_desc),
+    //                 ));
+    //             } else {
+    //                 acc.1.entry(contents.item_id).and_modify(|(qty, _): &mut (_, _)| qty.add_assign(contents.quantity)).or_insert((
+    //                     contents.quantity,
+    //                     resolve_contents(&Some(contents), &state.item_desc, &state.cargo_desc),
+    //                 ));
+    //             }
+    //             acc
+    //         },
+    //     )
+    //     .reduce(
+    //         || (HashMap::<i32, (i64, Option<ExpendedRefrence>)>::new(), HashMap::<i32, (i64, Option<ExpendedRefrence>)>::new()), // Initial value for the reduction
+    //         |mut acc1, acc2| {
+    //             // Merge results from different threads
+    //             for (item_id, (quantity, description)) in acc2.0 {
+    //                 acc1.0.entry(item_id).and_modify(|(qty, _)| qty.add_assign(quantity)).or_insert((quantity, description));
+    //             }
+    //             for (item_id, (quantity, description)) in acc2.1 {
+    //                 acc1.1.entry(item_id).and_modify(|(qty, _)| qty.add_assign(quantity)).or_insert((quantity, description));
+    //             }
+    //             acc1
+    //         },
+    //     );
+
+
+    let mut items = items.into_values().collect::<Vec<_>>();
+
+    items.sort_by(|a, b| b.0.cmp(&a.0));
+
+
+    let mut cargo = cargo.into_values().collect::<Vec<_>>();
+
+    cargo.sort_by(|a, b| b.0.cmp(&a.0));
+
+    Ok(axum_codec::Codec(AllInventoryStatsResponse {
+        items,
+        cargo,
     }))
 }
 

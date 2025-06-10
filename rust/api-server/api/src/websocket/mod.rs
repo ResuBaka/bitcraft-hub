@@ -1360,6 +1360,7 @@ fn start_worker_inventory_state(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::inventory::Model = new.into();
 
+                                global_app_state.inventory_state.insert(model.entity_id, model.clone());
                                 if currently_known_inventory.contains_key(&model.entity_id) {
                                     let value = currently_known_inventory.get(&model.entity_id).unwrap();
 
@@ -1378,6 +1379,7 @@ fn start_worker_inventory_state(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::inventory::Model = new.into();
+                                global_app_state.inventory_state.insert(model.entity_id, model.clone());
                                 if currently_known_inventory.contains_key(&model.entity_id) {
                                     let value = currently_known_inventory.get(&model.entity_id).unwrap();
 
@@ -1397,6 +1399,7 @@ fn start_worker_inventory_state(
                                 let model: ::entity::inventory::Model = delete.into();
                                 let id = model.entity_id;
 
+                                global_app_state.inventory_state.remove(&model.entity_id);
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }

@@ -498,6 +498,7 @@ struct AppState {
     cargo_tiers: Arc<dashmap::DashSet<i64>>,
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
     location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
+    inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,
 }
 
@@ -532,6 +533,7 @@ impl AppState {
             building_nickname_state: Arc::new(dashmap::DashMap::new()),
             action_state: Arc::new(dashmap::DashMap::new()),
             location_state: Arc::new(dashmap::DashMap::new()),
+            inventory_state: Arc::new(dashmap::DashMap::new()),
             connected_user_map: Arc::new(dashmap::DashMap::new()),
         }
     }
