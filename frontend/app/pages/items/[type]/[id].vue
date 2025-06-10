@@ -30,7 +30,7 @@ type objectWithChildren = {
   shadow_quantity?: number;
   recipe_quantity?: number;
   item_quantity?: number;
-  deleted?: boolean
+  deleted?: boolean;
   children?: objectWithChildren[];
 };
 const { data: playerData, refresh: refreshPlayer } =
@@ -492,7 +492,7 @@ const recipeInfo = computed(() => {
         ) {
           continue;
         }
-        item.shadow_quantity = 9999
+        item.shadow_quantity = 9999;
         const quantity =
           (inventory[type][id] || 0) - (shadowInventory[type][id] || 0);
         if (quantity >= itemQuantity) {
