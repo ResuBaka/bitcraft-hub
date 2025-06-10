@@ -196,8 +196,6 @@ const recipeInfo = computed(() => {
     Item: { [key: string]: number[] };
     Cargo: { [key: string]: number[] };
   } = {
-
-  const consumed = {
     Item: {},
     Cargo: {},
   };
@@ -477,7 +475,6 @@ const recipeInfo = computed(() => {
       for (const itemIndex in recipe) {
         const item = recipe[itemIndex];
         if (item === undefined) {
-          console.log("AAAAAA")
           continue;
         }
         const type = item.type;
@@ -485,7 +482,6 @@ const recipeInfo = computed(() => {
         const itemQuantity = item.quantity;
         const shadow_quantity = item.shadow_quantity;
         if (type !== "Cargo" && type !== "Item") {
-          console.log("AAAAAA")
           continue;
         }
         if (
@@ -494,7 +490,6 @@ const recipeInfo = computed(() => {
           itemQuantity === undefined ||
           shadow_quantity === undefined
         ) {
-          console.log("AAAAAA")
           continue;
         }
         item.shadow_quantity = 9999
@@ -514,7 +509,6 @@ const recipeInfo = computed(() => {
         }
         for (const recipe2 of item.children) {
           if (recipe2.children === undefined) {
-            console.log("AAAAAA")
             continue;
           }
           inventoryVSItemList(recipe2.children, inventory, {
