@@ -492,7 +492,6 @@ const recipeInfo = computed(() => {
         ) {
           continue;
         }
-        item.shadow_quantity = 9999;
         const quantity =
           (inventory[type][id] || 0) - (shadowInventory[type][id] || 0);
         if (quantity >= itemQuantity) {
