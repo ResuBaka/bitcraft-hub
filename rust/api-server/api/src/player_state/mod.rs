@@ -9,6 +9,7 @@ use log::error;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -79,8 +80,8 @@ pub async fn list_players(
     }))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct PlayersResponse {
     pub players: Vec<player_state::PlayerStateMerged>,
     #[serde(rename = "perPage")]

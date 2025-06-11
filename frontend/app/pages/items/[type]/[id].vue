@@ -1,18 +1,188 @@
 <script setup lang="ts">
 import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
+import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
 import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
+import { watchDebounced, watchThrottled } from "@vueuse/shared";
+import type { InventorysResponse } from "~/types/InventorysResponse";
+import type { PlayersResponse } from "~/types/PlayersResponse";
+import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
+import type { ClaimResponse } from "~/types/ClaimResponse";
+import type { ItemStack } from "~/types/ItemStack";
+import type { CraftingRecipe } from "~/types/CraftingRecipe";
+import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
+import type { ResolvedInventory } from "~/types/ResolvedInventory";
 
-const page = ref(1);
+export type PannelIndexs = {
+  pannels: number;
+  children: PannelEmptyIndexs[];
+};
+
+export type PannelEmptyIndexs = {
+  children: PannelIndexs[];
+};
+
+const player = ref<string | undefined>("");
+const playerId = ref<BigInt | null>(null);
+const claim = ref<string | undefined>("");
+const claimId = ref<BigInt | null>(null);
+const amount = ref<number>(1);
+const pannelIndexs: PannelIndexs[] = reactive([]);
 const route = useRoute();
+const router = useRouter();
 
-const tmpPage = (route.query.page as string) ?? null;
-
-if (tmpPage) {
-  page.value = parseInt(tmpPage);
-}
 const {
   public: { api },
 } = useRuntimeConfig();
+
+export type objectWithChildren = {
+  id: number;
+  type: "Cargo" | "Item";
+  quantity: number;
+  shadow_quantity: number;
+  recipe_quantity: number;
+  item_quantity: number;
+  deleted?: boolean;
+  looped?: boolean;
+  children: RecipeWithChildren[];
+};
+
+export type RecipeWithChildren = {
+  children: objectWithChildren[];
+};
+const { data: playerData, refresh: refreshPlayer } =
+  await useLazyFetchMsPack<PlayersResponse>(
+    () => {
+      return `${api.base}/api/bitcraft/players`;
+    },
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+
+        if (player.value) {
+          options.query.search = player.value;
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 2) {
+          const query = { player: player.value };
+          router.push({ query });
+        } else if (options.query.page <= 1) {
+          router.push({});
+        }
+      },
+    },
+  );
+
+const { data: claimInventoryData, refresh: refreshClaimInventory } =
+  await useLazyFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
+    () => {
+      return `${api.base}/api/bitcraft/claims/${claimId.value}`;
+    },
+    {
+      immediate: false,
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+        options;
+        if (player.value) {
+          options.query.search = player.value;
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 2) {
+          const query = { player: player.value };
+          router.push({ query });
+        } else if (options.query.page <= 1) {
+          router.push({});
+        }
+      },
+    },
+  );
+
+const { data: playerInventoryData, refresh: refreshPlayerInventory } =
+  await useLazyFetchMsPack<InventorysResponse>(
+    () => {
+      return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${playerId.value}`;
+    },
+    {
+      immediate: false,
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+        options;
+        if (player.value) {
+          options.query.search = player.value;
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 2) {
+          const query = { player: player.value };
+          router.push({ query });
+        } else if (options.query.page <= 1) {
+          router.push({});
+        }
+      },
+    },
+  );
+
+const { data: claimData, refresh: refreshClaim } =
+  await useLazyFetchMsPack<ClaimResponse>(
+    () => {
+      return `${api.base}/api/bitcraft/claims`;
+    },
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+
+        if (player.value) {
+          options.query.search = player.value;
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 2) {
+          const query = { player: player.value };
+          router.push({ query });
+        } else if (options.query.page <= 1) {
+          router.push({});
+        }
+      },
+    },
+  );
+
+watchThrottled(
+  () => [player.value],
+  (value, oldValue) => {
+    refreshPlayer();
+  },
+  { throttle: 50 },
+);
+
+watchThrottled(
+  () => [claim.value],
+  (value, oldValue) => {
+    refreshClaim();
+  },
+  { throttle: 50 },
+);
+watchThrottled(
+  () => [claimId.value],
+  (value, oldValue) => {
+    if (value[0] === null) {
+      return;
+    }
+    refreshClaimInventory();
+  },
+  { throttle: 50 },
+);
+
+watchThrottled(
+  () => [playerId.value],
+  (value, oldValue) => {
+    if (value[0] === null) {
+      return;
+    }
+    refreshPlayerInventory();
+  },
+  { throttle: 50 },
+);
 
 const { data: allRecipiesFetch, pending: allRecipiesPending } =
   useFetchMsPack<RecipesAllResponse>(() => {
@@ -28,98 +198,120 @@ const recipeInfo = computed(() => {
   let cargo_desc = allRecipiesFetch.value?.cargo_desc ?? {};
   let item_desc = allRecipiesFetch.value?.item_desc ?? {};
   let item_list_desc = allRecipiesFetch.value?.item_list_desc ?? {};
-
-  const consumed = {
+  let tempid = route.params.id;
+  if (typeof tempid !== "string") {
+    return;
+  }
+  const id: number = +tempid;
+  let temptype = route.params.type;
+  if (temptype !== "Cargo" && temptype !== "Item") {
+    return;
+  }
+  const type: "Cargo" | "Item" = temptype;
+  const consumed: {
+    Item: { [key: string]: number[] };
+    Cargo: { [key: string]: number[] };
+  } = {
     Item: {},
     Cargo: {},
   };
-  const crafted = {
+  const crafted: {
+    Item: { [key: string]: { id: number; quantity: number }[] };
+    Cargo: { [key: string]: { id: number; quantity: number }[] };
+  } = {
     Item: {},
     Cargo: {},
   };
-  function getCraftedItemStack(item_stack, recipie) {
+  if (hasValues) {
+    return 
+  }
+  function getCraftedItemStack(
+    item_stack: ItemStack,
+    recipie: CraftingRecipe | undefined,
+  ) {
     if (item_stack.item_type == "Item") {
-      if (crafted["Item"][item_stack.item_id] == undefined) {
+      if (item_stack.item_id === undefined || recipie === undefined) {
+        return;
+      }
+      if (crafted["Item"][item_stack.item_id] === undefined) {
         crafted["Item"][item_stack.item_id] = [];
       }
-      crafted["Item"][item_stack.item_id].push({
+      const itemSlot = crafted["Item"][item_stack.item_id];
+      if (itemSlot === undefined) {
+        return;
+      }
+      itemSlot.push({
         id: recipie.id,
         quantity: item_stack.quantity,
       });
-      if (
-        item_desc[item_stack.item_id].item_list_id !== 0 &&
-        item_list_desc[item_desc[item_stack.item_id].item_list_id] !== undefined
-      ) {
-        for (const possibility of item_list_desc[
-          item_desc[item_stack.item_id].item_list_id
-        ]?.possibilities) {
+      const itemDesc = item_desc[item_stack.item_id];
+      if (itemDesc !== undefined && itemDesc.item_list_id !== 0) {
+        const item_list = item_list_desc[itemDesc.item_list_id];
+        if (item_list == undefined) {
+          return;
+        }
+        for (const possibility of item_list.possibilities) {
           for (const item of possibility.items) {
             getCraftedItemStack(item, recipie);
           }
         }
       }
     } else {
-      if (crafted["Cargo"][item_stack.item_id] == undefined) {
+      if (recipie === undefined) {
+        return;
+      }
+      if (crafted["Cargo"][item_stack.item_id] === undefined) {
         crafted["Cargo"][item_stack.item_id] = [];
       }
-      crafted["Cargo"][item_stack.item_id].push({
+      let craftedSlot = crafted["Cargo"][item_stack.item_id];
+      if (craftedSlot == undefined) {
+        return;
+      }
+      craftedSlot.push({
         id: recipie.id,
         quantity: item_stack.quantity,
       });
     }
   }
   for (const recipie of Object.values(allRecipies)) {
+    if (recipie === undefined) {
+      continue;
+    }
     for (const item_stack of Object.values(recipie.consumed_item_stacks)) {
+      if (item_stack.item_id === undefined) {
+        continue;
+      }
       if (item_stack.item_type == "Item") {
-        if (consumed["Item"][item_stack.item_id] == undefined) {
-          consumed["Item"][item_stack.item_id] = [];
+        let consumedSlot = consumed["Item"];
+        if (consumedSlot[item_stack.item_id] == undefined) {
+          consumedSlot[item_stack.item_id] = [];
         }
-        consumed["Item"][item_stack.item_id].push(recipie.id);
+        const itemList = consumedSlot[item_stack.item_id];
+        if (itemList === undefined) {
+          continue;
+        }
+        itemList.push(recipie.id);
       } else {
-        if (consumed["Cargo"][item_stack.item_id] == undefined) {
-          consumed["Cargo"][item_stack.item_id] = [];
+        let consumedSlot = consumed["Cargo"];
+        if (consumedSlot[item_stack.item_id] == undefined) {
+          consumedSlot[item_stack.item_id] = [];
         }
-        consumed["Cargo"][item_stack.item_id].push(recipie.id);
+        const cargoList = consumedSlot[item_stack.item_id];
+        if (cargoList === undefined) {
+          continue;
+        }
+        cargoList.push(recipie.id);
       }
     }
     for (const item_stack of Object.values(recipie.crafted_item_stacks)) {
       getCraftedItemStack(item_stack, recipie);
     }
   }
-
-  if (hasValues) {
-    return {
-      items: [{}],
-      consumed,
-      crafted,
-    };
-  }
-
   let item;
   if (type == "Item") {
     item = item_desc[id];
   } else {
     item = cargo_desc[id];
-  }
-
-  function getCraftedChildren() {
-    const children = [];
-    for (const recipe of crafted[type][id]) {
-      let itemChildren = [];
-
-      for (const item of allRecipies[recipe.id]?.crafted_item_stacks) {
-        itemChildren.push({
-          id: item.item_id,
-          type: item.item_type,
-          quantity: 1,
-          children: getConsumedChildren(item.item_id, item.item_type, 1, []),
-        });
-      }
-      children.push({
-        children: itemChildren,
-      });
-    }
-    return children;
   }
 
   function getQuantity(
@@ -131,59 +323,330 @@ const recipeInfo = computed(() => {
   }
 
   function getConsumedChildren(
-    id: any,
+    id: number,
     type: "Item" | "Cargo",
     quantity: number,
     recipes: number[],
-  ) {
+  ): RecipeWithChildren[] | undefined | "Loop" {
     const children = [];
-    if (crafted[type][id] == undefined) {
+    let looped = false;
+    if (crafted[type][id] === undefined) {
       return;
     }
     for (const recipe of crafted[type][id]) {
       let itemChildren = [];
       const exists = recipes.findIndex((value) => value == recipe.id) !== -1;
       if (exists) {
+        looped = true;
         continue;
       }
       recipes.push(recipe.id);
-      for (const item of allRecipies[recipe.id].consumed_item_stacks) {
+      const realRecipe = allRecipies[recipe.id];
+      if (realRecipe === undefined) {
+        continue;
+      }
+      for (const item of realRecipe.consumed_item_stacks) {
         let get_qauntity = getQuantity(
           item.quantity,
           quantity,
           recipe.quantity,
         );
-        itemChildren.push({
-          id: item.item_id,
-          type: item.item_type,
-          quantity: get_qauntity,
-          children: getConsumedChildren(
-            item.item_id,
-            item.item_type,
-            get_qauntity,
-            [...recipes],
-          ),
+        let consumedChildren = getConsumedChildren(
+          item.item_id,
+          item.item_type,
+          get_qauntity,
+          [...recipes],
+        );
+        if (consumedChildren === "Loop" || consumedChildren === undefined) {
+          itemChildren.push({
+            id: item.item_id,
+            type: item.item_type,
+            looped: consumedChildren === "Loop",
+            quantity: get_qauntity,
+            shadow_quantity: quantity,
+            recipe_quantity: recipe.quantity,
+            item_quantity: item.quantity,
+            children: [],
+          });
+        } else {
+          itemChildren.push({
+            id: item.item_id,
+            type: item.item_type,
+            quantity: get_qauntity,
+            shadow_quantity: quantity,
+            recipe_quantity: recipe.quantity,
+            item_quantity: item.quantity,
+            children: consumedChildren,
+          });
+        }
+      }
+      if (itemChildren.filter((item) => !item.looped).length > 0) {
+        children.push({
+          children: itemChildren,
         });
       }
-      children.push({
-        recipe: true,
-        children: itemChildren,
-      });
+    }
+    if (looped == true && children.length === 0) {
+      return "Loop";
     }
     return children;
   }
-  let children = getCraftedChildren();
-  let items = [
-    {
-      id: id,
-      type: type,
-      quantity: 1,
-      children: children,
-    },
-  ];
+  const consumedChildren = getConsumedChildren(id, type, amount.value || 1, []);
+  if (consumedChildren === "Loop") {
+    return;
+  }
+  let items = {
+    id,
+    type,
+    shadow_quantity: 1,
+    recipe_quantity: 1,
+    item_quantity: 1,
+    quantity: amount.value,
+    children: consumedChildren || [],
+  };
+  const inventory: {
+    Cargo: { [key: number]: number };
+    Item: { [key: number]: number };
+  } = {
+    Cargo: {},
+    Item: {},
+  };
+  function combineInvs(inv: ExpendedRefrence[]) {
+    for (const item of inv) {
+      inventory[item.item_type][item.item_id] =
+        (inventory[item.item_type][item.item_id] || 0) + (item?.quantity || 0);
+    }
+  }
+  function combineInvs2(inv: ResolvedInventory) {
+    for (const pockets of inv.pockets) {
+      if (pockets?.contents?.item_id == undefined) {
+        continue;
+      }
+      inventory[pockets?.contents?.item_type][pockets?.contents?.item_id] =
+        (inventory[pockets?.contents?.item_type][pockets?.contents?.item_id] ||
+          0) + (pockets?.contents?.quantity || 0);
+    }
+  }
+  if (
+    claimInventoryData.value !== undefined &&
+    claimInventoryData?.value?.inventorys?.buildings !== undefined
+  ) {
+    combineInvs(claimInventoryData?.value?.inventorys?.buildings);
+  }
+  if (playerInventoryData.value !== undefined) {
+    for (const item of playerInventoryData?.value?.inventorys) {
+      combineInvs2(item);
+    }
+  }
+  if (
+    Object.keys(inventory.Cargo).length !== 0 ||
+    Object.keys(inventory.Item).length !== 0
+  ) {
+    function recalcQuantityDeep(item: objectWithChildren, quantity: number) {
+      const itemQuantity = item.item_quantity;
+      const itemRecipeQuantity = item.recipe_quantity;
+      if (itemQuantity == undefined || itemRecipeQuantity === undefined) {
+        return;
+      }
+      const quant = getQuantity(itemQuantity, quantity, itemRecipeQuantity);
+      item.quantity = quant;
+      if (item?.children == undefined) {
+        return;
+      }
+      for (const recipe of item?.children) {
+        if (recipe?.children == undefined) {
+          continue;
+        }
+        for (const item of recipe?.children) {
+          recalcQuantityDeep(item, quant);
+        }
+      }
+    }
+    function inventoryVSItemList(
+      recipe: objectWithChildren[],
+      inventory: {
+        Cargo: {
+          [key: number]: number;
+        };
+        Item: {
+          [key: number]: number;
+        };
+      },
+      shadowInventory: {
+        Cargo: {
+          [key: number]: number;
+        };
+        Item: {
+          [key: number]: number;
+        };
+      },
+    ) {
+      for (const itemIndex in recipe) {
+        const item = recipe[itemIndex];
+        if (item === undefined) {
+          continue;
+        }
+        const type = item.type;
+        const id = item.id;
+        const itemQuantity = item.quantity;
+        const shadow_quantity = item.shadow_quantity;
+        if (type !== "Cargo" && type !== "Item") {
+          continue;
+        }
+        if (
+          id === undefined ||
+          itemQuantity === null ||
+          itemQuantity === undefined ||
+          shadow_quantity === undefined
+        ) {
+          continue;
+        }
+        const quantity =
+          (inventory[type][id] || 0) - (shadowInventory[type][id] || 0);
+        if (quantity >= itemQuantity) {
+          shadowInventory[type][id] =
+            (shadowInventory[type][id] || 0) + itemQuantity;
+          item.deleted = true;
+        } else {
+          shadowInventory[type][id] =
+            (shadowInventory[type][id] || 0) + itemQuantity;
+          recalcQuantityDeep(item, shadow_quantity - quantity);
+        }
+        if (item?.children == undefined) {
+          continue;
+        }
+        for (const recipe2 of item.children) {
+          if (recipe2.children === undefined) {
+            continue;
+          }
+          inventoryVSItemList(recipe2.children, inventory, {
+            ...shadowInventory,
+          });
+        }
+      }
+    }
+    if (items !== undefined) {
+      inventoryVSItemList([items], inventory, {
+        Cargo: {},
+        Item: {},
+      });
+    }
+  }
 
+    function PannelsList(
+    recipes: objectWithChildren[],
+    pannelIndexs: PannelIndexs[],
+  ) {
+    if (recipes === undefined) {
+      return;
+    }
+    for (const recipe of recipes) {
+      const pannel: PannelIndexs = {
+        pannels: 0,
+        children: [],
+      };
+      pannelIndexs.push(pannel);
+      if (recipe.children === undefined){
+        continue
+      }
+      for (const item of recipe.children) {
+        const pannel2: PannelEmptyIndexs = {
+        children: [],
+      };
+      pannel.children.push(pannel2);
+        PannelsList(item.children, pannel2.children);
+      }
+    }
+  }
+  if (pannelIndexs.length === 0) {
+    PannelsList([items], pannelIndexs);
+  }
+
+  function ShoppingList(
+    recipe: objectWithChildren[],
+    list: {
+      Cargo: {
+        [key: number]: number;
+      };
+      Item: {
+        [key: number]: number;
+      };
+    },
+    pannelIndexs: PannelIndexs[],
+  ) {
+    for (const itemIndex in recipe) {
+      const item = recipe[itemIndex]
+      const pannels = pannelIndexs[itemIndex]
+      if (item === undefined) {
+        continue;
+      }
+      if (item.deleted === true) {
+        if (
+          item.id === undefined ||
+          item.type === undefined ||
+          item.quantity === undefined ||
+          item.quantity === null
+        ) {
+          continue;
+        }
+        list[item.type][item.id] =
+          (list[item.type][item.id] || 0) + item.quantity;
+        return;
+      }
+      if (item.children.length === 0) {
+        if (
+          item.id === undefined ||
+          item.type === undefined ||
+          item.quantity === undefined ||
+          item.quantity === null
+        ) {
+          return;
+        }
+        list[item.type][item.id] =
+          (list[item.type][item.id] || 0) + item.quantity;
+        continue;
+      }
+      if( item.type === "Item"){
+        const itemDesc = allRecipiesFetch.value.item_desc[item.id]
+        if(itemDesc === undefined){
+          continue
+        }
+        if(itemDesc.name.endsWith(" Animal Hair") || itemDesc.name.endsWith(" Amber Resin")){
+          list[item.type][item.id] =
+          (list[item.type][item.id] || 0) + item.quantity;
+          continue
+        }
+      }
+      if (pannels !== undefined ) {
+        const ItemIndexed = item.children[pannels.pannels]
+        const PannelIndexed = pannels.children[pannels.pannels]
+        if(ItemIndexed === undefined || PannelIndexed === undefined){
+          return
+        }
+        ShoppingList(ItemIndexed.children, list,PannelIndexed.children);
+      }
+    }
+  }
+  if (items === undefined) {
+    return { items };
+  }
+  const shoplist: {
+    Cargo: {
+      [key: number]: number;
+    };
+    Item: {
+      [key: number]: number;
+    };
+  } = {
+    Cargo: {},
+    Item: {},
+  };
+  if (items !== undefined) {
+    ShoppingList([items], shoplist, pannelIndexs);
+  }
   return {
     items,
+    shoplist,
   };
 });
 
@@ -194,16 +657,68 @@ useSeoMeta({
 
 <template>
   <v-container fluid>
-     <v-card v-if="recipeInfo !== undefined">
+     <v-card>
       <v-card-text>
+         <v-row>
+          <v-col>
+            <v-autocomplete
+                v-model="claimId"
+                v-model:search="claim"
+                :items="claimData?.claims || []"
+                item-title="name"
+                item-value="entity_id"
+                label="claim"
+                outlined
+                dense
+                clearable
+            ></v-autocomplete>
+          </v-col>
+          <v-col>
+            <v-autocomplete
+                v-model="playerId"
+                 v-model:search="player"
+                :items="playerData?.players || []"
+                item-title="username"
+                item-value ="entity_id"
+                label="player"
+                outlined
+                dense
+                clearable
+            ></v-autocomplete>
+          </v-col>
+          <v-col>
+            <v-number-input
+            v-model="amount"
+            :reverse="false"
+            controlVariant="default"
+            label="Number of finalized item you want"
+            :hideInput="false"
+            :inset="false"
+          />
+          </v-col>
+        </v-row>
         <v-list>
-      <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined" v-for="item of recipeInfo.items"
-      :item="item"
-      :item_desc="allRecipiesFetch.item_desc"
-      :cargo_desc="allRecipiesFetch.cargo_desc"
-    />
-    </v-list>
+          <v-row v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">
+            <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">
+              
+             <v-col v-if="type === 'Cargo' || type === 'Item'"  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">
+                <gethering-shop-list                     
+                      :type="type"
+                      :id="+id"
+                      :quantity="quantity"
+                      :item_desc="allRecipiesFetch.item_desc"
+                      :cargo_desc="allRecipiesFetch.cargo_desc" />
+              </v-col> 
+            </template>
+          </v-row>
+              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined && pannelIndexs[0] !== undefined" 
+                    :item="recipeInfo.items"
+                    :item_desc="allRecipiesFetch.item_desc"
+                    :cargo_desc="allRecipiesFetch.cargo_desc"
+                    :pannel_indexs="pannelIndexs[0]"
+                  />
+        </v-list>
     </v-card-text>
-    </v-card>
-  </v-container>
+  </v-card> 
+</v-container>  
 </template>

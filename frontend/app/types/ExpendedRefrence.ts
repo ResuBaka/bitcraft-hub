@@ -5,7 +5,7 @@ import type { ItemType } from "./ItemType";
 export type ExpendedRefrence = {
   item_id: number;
   item: ItemExpended;
-  quantity: bigint;
+  quantity: number;
   item_type: ItemType;
   durability: number | null;
 };

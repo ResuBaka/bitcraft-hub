@@ -11,7 +11,7 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult, TS)]
 pub struct ConsumedItemStack {
     pub item_id: i32,
-    pub quantity: i64,
+    pub quantity: i32,
     pub item_type: ItemType,
     pub discovery_score: i64,
     pub consumption_chance: f32,
@@ -117,7 +117,7 @@ impl From<module_bindings::ExperienceStackF32> for ExperienceStackF32 {
 impl From<module_bindings::InputItemStack> for ConsumedItemStack {
     fn from(value: module_bindings::InputItemStack) -> Self {
         ConsumedItemStack {
-            quantity: value.quantity as i64,
+            quantity: value.quantity,
             consumption_chance: value.consumption_chance,
             item_type: value.item_type.into(),
             discovery_score: value.discovery_score as i64,

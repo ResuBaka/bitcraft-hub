@@ -3,7 +3,7 @@ import type { ItemType } from "./ItemType";
 
 export type ConsumedItemStack = {
   item_id: number;
-  quantity: bigint;
+  quantity: number;
   item_type: ItemType;
   discovery_score: bigint;
   consumption_chance: number;
