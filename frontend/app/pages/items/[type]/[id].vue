@@ -12,17 +12,21 @@ import type { CraftingRecipe } from "~/types/CraftingRecipe";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
 import type { ResolvedInventory } from "~/types/ResolvedInventory";
 
-type PannelIndexs = {
-  pannels?: number;
-  children?: objectWithChildren[];
+export type PannelIndexs = {
+  pannels: number;
+  children: PannelEmptyIndexs[];
+};
+
+export type PannelEmptyIndexs = {
+  children: PannelIndexs[];
 };
 
 const player = ref<string | undefined>("");
 const playerId = ref<BigInt | null>(null);
 const claim = ref<string | undefined>("");
 const claimId = ref<BigInt | null>(null);
-const amount = ref<number | null>(1);
-const pannelIndexs = reactive<PannelIndexs>([]);
+const amount = ref<number>(1);
+const pannelIndexs: PannelIndexs[] = reactive([]);
 const route = useRoute();
 const router = useRouter();
 
@@ -30,16 +34,20 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-type objectWithChildren = {
-  id?: number;
-  type?: "Cargo" | "Item";
-  quantity?: number | null;
-  shadow_quantity?: number;
-  recipe_quantity?: number;
-  item_quantity?: number;
+export type objectWithChildren = {
+  id: number;
+  type: "Cargo" | "Item";
+  quantity: number;
+  shadow_quantity: number;
+  recipe_quantity: number;
+  item_quantity: number;
   deleted?: boolean;
   looped?: boolean;
-  children?: objectWithChildren[];
+  children: RecipeWithChildren[];
+};
+
+export type RecipeWithChildren = {
+  children: objectWithChildren[];
 };
 const { data: playerData, refresh: refreshPlayer } =
   await useLazyFetchMsPack<PlayersResponse>(
@@ -215,10 +223,7 @@ const recipeInfo = computed(() => {
     Cargo: {},
   };
   if (hasValues) {
-    return {
-      items: [],
-      shoplist: [],
-    };
+    return 
   }
   function getCraftedItemStack(
     item_stack: ItemStack,
@@ -322,7 +327,7 @@ const recipeInfo = computed(() => {
     type: "Item" | "Cargo",
     quantity: number,
     recipes: number[],
-  ): objectWithChildren[] | undefined | "Loop" {
+  ): RecipeWithChildren[] | undefined | "Loop" {
     const children = [];
     let looped = false;
     if (crafted[type][id] === undefined) {
@@ -352,11 +357,11 @@ const recipeInfo = computed(() => {
           get_qauntity,
           [...recipes],
         );
-        if (consumedChildren === "Loop") {
+        if (consumedChildren === "Loop" || consumedChildren === undefined) {
           itemChildren.push({
             id: item.item_id,
             type: item.item_type,
-            looped: true,
+            looped: consumedChildren === "Loop",
             quantity: get_qauntity,
             shadow_quantity: quantity,
             recipe_quantity: recipe.quantity,
@@ -397,7 +402,7 @@ const recipeInfo = computed(() => {
     recipe_quantity: 1,
     item_quantity: 1,
     quantity: amount.value,
-    children: consumedChildren,
+    children: consumedChildren || [],
   };
   const inventory: {
     Cargo: { [key: number]: number };
@@ -520,7 +525,7 @@ const recipeInfo = computed(() => {
         }
       }
     }
-    if (items.children !== undefined) {
+    if (items !== undefined) {
       inventoryVSItemList([items], inventory, {
         Cargo: {},
         Item: {},
@@ -536,7 +541,7 @@ const recipeInfo = computed(() => {
       return;
     }
     for (const recipe of recipes) {
-      const pannel = {
+      const pannel: PannelIndexs = {
         pannels: 0,
         children: [],
       };
@@ -545,7 +550,7 @@ const recipeInfo = computed(() => {
         continue
       }
       for (const item of recipe.children) {
-        const pannel2 = {
+        const pannel2: PannelEmptyIndexs = {
         children: [],
       };
       pannel.children.push(pannel2);
@@ -602,14 +607,23 @@ const recipeInfo = computed(() => {
         continue;
       }
       if( item.type === "Item"){
-        if(allRecipiesFetch.value.item_desc[item.id].name.endsWith(" Animal Hair") || allRecipiesFetch.value.item_desc[item.id].name.endsWith(" Amber Resin")){
+        const itemDesc = allRecipiesFetch.value.item_desc[item.id]
+        if(itemDesc === undefined){
+          return
+        }
+        if(itemDesc.name.endsWith(" Animal Hair") || itemDesc.name.endsWith(" Amber Resin")){
           list[item.type][item.id] =
           (list[item.type][item.id] || 0) + item.quantity;
           continue
         }
       }
-      if (item.children[pannels?.pannels]?.children !== undefined) {
-        ShoppingList(item.children[pannels?.pannels].children, list,pannels.children[pannels?.pannels].children);
+      if (pannels !== undefined ) {
+        const ItemIndexed = item.children[pannels.pannels]
+        const PannelIndexed = pannels.children[pannels.pannels]
+        if(ItemIndexed === undefined || PannelIndexed === undefined){
+          return
+        }
+        ShoppingList(ItemIndexed.children, list,PannelIndexed.children);
       }
     }
   }
@@ -686,18 +700,18 @@ useSeoMeta({
         <v-list>
           <v-row v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">
             <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">
-
-             <v-col  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">
+              
+             <v-col v-if="type === 'Cargo' || type === 'Item'"  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">
                 <gethering-shop-list                     
                       :type="type"
-                      :id="id"
+                      :id="+id"
                       :quantity="quantity"
                       :item_desc="allRecipiesFetch.item_desc"
                       :cargo_desc="allRecipiesFetch.cargo_desc" />
               </v-col> 
             </template>
           </v-row>
-              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined" 
+              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined && pannelIndexs[0] !== undefined" 
                     :item="recipeInfo.items"
                     :item_desc="allRecipiesFetch.item_desc"
                     :cargo_desc="allRecipiesFetch.cargo_desc"
