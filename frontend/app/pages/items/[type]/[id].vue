@@ -593,7 +593,7 @@ const recipeInfo = computed(() => {
           (list[item.type][item.id] || 0) + item.quantity;
         return;
       }
-      if (item?.children == undefined) {
+      if (item.children.length === 0) {
         if (
           item.id === undefined ||
           item.type === undefined ||
@@ -609,7 +609,7 @@ const recipeInfo = computed(() => {
       if( item.type === "Item"){
         const itemDesc = allRecipiesFetch.value.item_desc[item.id]
         if(itemDesc === undefined){
-          return
+          continue
         }
         if(itemDesc.name.endsWith(" Animal Hair") || itemDesc.name.endsWith(" Amber Resin")){
           list[item.type][item.id] =
