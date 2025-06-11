@@ -27,7 +27,7 @@ const desc = computed(() => {
 });
 </script>
 <template>
-    <v-list-item v-if="item.deleted === undefined && pannel_indexs?.pannels !== undefined">
+    <v-list-item v-if="item.deleted === undefined">
       <v-badge :content="Intl.NumberFormat().format(item.quantity)" location="right" class="align-start">
         <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
       </v-badge>

@@ -521,7 +521,7 @@ const recipeInfo = computed(() => {
       }
     }
     if (items.children !== undefined) {
-      inventoryVSItemList(items.children, inventory, {
+      inventoryVSItemList([items], inventory, {
         Cargo: {},
         Item: {},
       });
