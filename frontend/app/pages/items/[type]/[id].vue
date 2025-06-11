@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
+import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
 import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
 import { watchDebounced, watchThrottled } from "@vueuse/shared";
 import type { InventorysResponse } from "~/types/InventorysResponse";
@@ -11,11 +12,17 @@ import type { CraftingRecipe } from "~/types/CraftingRecipe";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
 import type { ResolvedInventory } from "~/types/ResolvedInventory";
 
+type PannelIndexs = {
+  pannels?: number;
+  children?: objectWithChildren[];
+};
+
 const player = ref<string | undefined>("");
 const playerId = ref<BigInt | null>(null);
 const claim = ref<string | undefined>("");
 const claimId = ref<BigInt | null>(null);
 const amount = ref<number | null>(1);
+const pannelIndexs = reactive<PannelIndexs>([]);
 const route = useRoute();
 const router = useRouter();
 
@@ -31,6 +38,7 @@ type objectWithChildren = {
   recipe_quantity?: number;
   item_quantity?: number;
   deleted?: boolean;
+  looped?: boolean;
   children?: objectWithChildren[];
 };
 const { data: playerData, refresh: refreshPlayer } =
@@ -208,9 +216,8 @@ const recipeInfo = computed(() => {
   };
   if (hasValues) {
     return {
-      items: [{}],
-      consumed,
-      crafted,
+      items: [],
+      shoplist: [],
     };
   }
   function getCraftedItemStack(
@@ -302,42 +309,6 @@ const recipeInfo = computed(() => {
     item = cargo_desc[id];
   }
 
-  function getCraftedChildren(): objectWithChildren[] | undefined {
-    const children: objectWithChildren[] = [];
-    if (crafted[type][id] === undefined) {
-      return;
-    }
-    for (const recipe of crafted[type][id]) {
-      let itemChildren = [];
-      const realRecipe = allRecipies[recipe.id];
-      if (realRecipe === undefined) {
-        continue;
-      }
-      for (const item of realRecipe.crafted_item_stacks) {
-        const amountValue = amount.value;
-        if (amountValue === null) {
-          continue;
-        }
-        itemChildren.push({
-          id: item.item_id,
-          type: item.item_type,
-          shadow_quantity: Math.max(amountValue / recipe.quantity),
-          recipe_quantity: recipe.quantity,
-          item_quantity: item.quantity,
-          quantity: amount.value,
-          children: getConsumedChildren(
-            item.item_id,
-            item.item_type,
-            amountValue,
-            [],
-          ),
-        });
-      }
-      children.push({ children: itemChildren });
-    }
-    return children;
-  }
-
   function getQuantity(
     item_quantity: number,
     quantity: number,
@@ -351,8 +322,9 @@ const recipeInfo = computed(() => {
     type: "Item" | "Cargo",
     quantity: number,
     recipes: number[],
-  ): objectWithChildren[] | undefined {
+  ): objectWithChildren[] | undefined | "Loop" {
     const children = [];
+    let looped = false;
     if (crafted[type][id] === undefined) {
       return;
     }
@@ -360,6 +332,7 @@ const recipeInfo = computed(() => {
       let itemChildren = [];
       const exists = recipes.findIndex((value) => value == recipe.id) !== -1;
       if (exists) {
+        looped = true;
         continue;
       }
       recipes.push(recipe.id);
@@ -373,28 +346,59 @@ const recipeInfo = computed(() => {
           quantity,
           recipe.quantity,
         );
-        itemChildren.push({
-          id: item.item_id,
-          type: item.item_type,
-          quantity: get_qauntity,
-          shadow_quantity: quantity,
-          recipe_quantity: recipe.quantity,
-          item_quantity: item.quantity,
-          children: getConsumedChildren(
-            item.item_id,
-            item.item_type,
-            get_qauntity,
-            [...recipes],
-          ),
+        let consumedChildren = getConsumedChildren(
+          item.item_id,
+          item.item_type,
+          get_qauntity,
+          [...recipes],
+        );
+        if (consumedChildren === "Loop") {
+          itemChildren.push({
+            id: item.item_id,
+            type: item.item_type,
+            looped: true,
+            quantity: get_qauntity,
+            shadow_quantity: quantity,
+            recipe_quantity: recipe.quantity,
+            item_quantity: item.quantity,
+            children: [],
+          });
+        } else {
+          itemChildren.push({
+            id: item.item_id,
+            type: item.item_type,
+            quantity: get_qauntity,
+            shadow_quantity: quantity,
+            recipe_quantity: recipe.quantity,
+            item_quantity: item.quantity,
+            children: consumedChildren,
+          });
+        }
+      }
+      if (itemChildren.filter((item) => !item.looped).length > 0) {
+        children.push({
+          children: itemChildren,
         });
       }
-      children.push({
-        children: itemChildren,
-      });
+    }
+    if (looped == true && children.length === 0) {
+      return "Loop";
     }
     return children;
   }
-  let items = getCraftedChildren();
+  const consumedChildren = getConsumedChildren(id, type, amount.value || 1, []);
+  if (consumedChildren === "Loop") {
+    return;
+  }
+  let items = {
+    id,
+    type,
+    shadow_quantity: 1,
+    recipe_quantity: 1,
+    item_quantity: 1,
+    quantity: amount.value,
+    children: consumedChildren,
+  };
   const inventory: {
     Cargo: { [key: number]: number };
     Item: { [key: number]: number };
@@ -516,22 +520,119 @@ const recipeInfo = computed(() => {
         }
       }
     }
-    if (items === undefined) {
-      return;
-    }
-    for (item of items) {
-      if (item.children == undefined) {
-        continue;
-      }
-      inventoryVSItemList(item.children, inventory, {
+    if (items.children !== undefined) {
+      inventoryVSItemList(items.children, inventory, {
         Cargo: {},
         Item: {},
       });
     }
   }
 
+    function PannelsList(
+    recipes: objectWithChildren[],
+    pannelIndexs: PannelIndexs[],
+  ) {
+    if (recipes === undefined) {
+      return;
+    }
+    for (const recipe of recipes) {
+      const pannel = {
+        pannels: 0,
+        children: [],
+      };
+      pannelIndexs.push(pannel);
+      if (recipe.children === undefined){
+        continue
+      }
+      for (const item of recipe.children) {
+        const pannel2 = {
+        children: [],
+      };
+      pannel.children.push(pannel2);
+        PannelsList(item.children, pannel2.children);
+      }
+    }
+  }
+  if (pannelIndexs.length === 0) {
+    PannelsList([items], pannelIndexs);
+  }
+
+  function ShoppingList(
+    recipe: objectWithChildren[],
+    list: {
+      Cargo: {
+        [key: number]: number;
+      };
+      Item: {
+        [key: number]: number;
+      };
+    },
+    pannelIndexs: PannelIndexs[],
+  ) {
+    for (const itemIndex in recipe) {
+      const item = recipe[itemIndex]
+      const pannels = pannelIndexs[itemIndex]
+      if (item === undefined) {
+        continue;
+      }
+      if (item.deleted === true) {
+        if (
+          item.id === undefined ||
+          item.type === undefined ||
+          item.quantity === undefined ||
+          item.quantity === null
+        ) {
+          continue;
+        }
+        list[item.type][item.id] =
+          (list[item.type][item.id] || 0) + item.quantity;
+        return;
+      }
+      if (item?.children == undefined) {
+        if (
+          item.id === undefined ||
+          item.type === undefined ||
+          item.quantity === undefined ||
+          item.quantity === null
+        ) {
+          return;
+        }
+        list[item.type][item.id] =
+          (list[item.type][item.id] || 0) + item.quantity;
+        continue;
+      }
+      if( item.type === "Item"){
+        if(allRecipiesFetch.value.item_desc[item.id].name.endsWith(" Animal Hair") || allRecipiesFetch.value.item_desc[item.id].name.endsWith(" Amber Resin")){
+          list[item.type][item.id] =
+          (list[item.type][item.id] || 0) + item.quantity;
+          continue
+        }
+      }
+      if (item.children[pannels?.pannels]?.children !== undefined) {
+        ShoppingList(item.children[pannels?.pannels].children, list,pannels.children[pannels?.pannels].children);
+      }
+    }
+  }
+  if (items === undefined) {
+    return { items };
+  }
+  const shoplist: {
+    Cargo: {
+      [key: number]: number;
+    };
+    Item: {
+      [key: number]: number;
+    };
+  } = {
+    Cargo: {},
+    Item: {},
+  };
+  if (items !== undefined) {
+    ShoppingList([items], shoplist, pannelIndexs);
+  }
   return {
     items,
+    shoplist,
   };
 });
 
@@ -583,13 +684,25 @@ useSeoMeta({
           </v-col>
         </v-row>
         <v-list>
-          <template v-if="recipeInfo !== undefined" v-for="special_items of recipeInfo.items">
-              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined && special_items !== undefined && special_items.children !== undefined" v-for="item of special_items.children"
-                    :item="item"
+          <v-row v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">
+            <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">
+
+             <v-col  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">
+                <gethering-shop-list                     
+                      :type="type"
+                      :id="id"
+                      :quantity="quantity"
+                      :item_desc="allRecipiesFetch.item_desc"
+                      :cargo_desc="allRecipiesFetch.cargo_desc" />
+              </v-col> 
+            </template>
+          </v-row>
+              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined" 
+                    :item="recipeInfo.items"
                     :item_desc="allRecipiesFetch.item_desc"
                     :cargo_desc="allRecipiesFetch.cargo_desc"
+                    :pannel_indexs="pannelIndexs[0]"
                   />
-          </template>
         </v-list>
     </v-card-text>
   </v-card> 
