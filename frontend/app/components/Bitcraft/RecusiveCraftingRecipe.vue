@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
-import type { objectWithChildren, PannelIndexs } from "~/pages/items/[type]/[id].vue";
+import type {
+  objectWithChildren,
+  PannelIndexs,
+} from "~/pages/items/[type]/[id].vue";
 import type { CargoDesc } from "~/types/CargoDesc";
 import type { ItemDesc } from "~/types/ItemDesc";
 

@@ -86,7 +86,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub building_states: Vec<building_state::Model>,
 }
 
-#[derive(Serialize, Deserialize,TS )]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export)]
 pub(crate) struct ClaimResponse {
     pub claims: Vec<ClaimDescriptionState>,

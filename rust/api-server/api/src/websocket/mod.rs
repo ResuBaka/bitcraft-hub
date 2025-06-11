@@ -1708,8 +1708,9 @@ fn start_worker_claim_local_state(
                     Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
-
+                                let org_id = new.entity_id;
                                 let model: ::entity::claim_local_state::Model = new.into();
+                                global_app_state.claim_local_state.insert(org_id, model.clone());
 
                                 if currently_known_claim_local_state.contains_key(&model.entity_id) {
                                     let value = currently_known_claim_local_state.get(&model.entity_id).unwrap();
@@ -1734,7 +1735,10 @@ fn start_worker_claim_local_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
+                                let org_id = new.entity_id;
                                 let model: ::entity::claim_local_state::Model = new.into();
+
+                                global_app_state.claim_local_state.insert(org_id, model.clone());
 
                                 if currently_known_claim_local_state.contains_key(&model.entity_id) {
                                     let value = currently_known_claim_local_state.get(&model.entity_id).unwrap();
@@ -1791,13 +1795,7 @@ fn start_worker_claim_local_state(
                 let _ = ::entity::claim_local_state::Entity::insert_many(
                     messages
                         .iter()
-                        .map(|value| {
-                            global_app_state.claim_local_state.insert(
-                                value.entity_id.as_ref().clone().to_owned() as u64,
-                                value.clone().try_into_model().unwrap(),
-                            );
-                            value.clone().into_active_model()
-                        })
+                        .map(|value| value.clone().into_active_model())
                         .collect::<Vec<_>>(),
                 )
                 .on_conflict(on_conflict.clone())
@@ -1851,8 +1849,10 @@ fn start_worker_claim_member_state(
                     Ok(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Insert { new, .. } => {
-
                                 let model: ::entity::claim_member_state::Model = new.into();
+
+                                global_app_state
+                                    .add_claim_member(model.clone());
 
                                 if currently_known_claim_member_state.contains_key(&model.entity_id) {
                                     let value = currently_known_claim_member_state.get(&model.entity_id).unwrap();
@@ -1871,6 +1871,10 @@ fn start_worker_claim_member_state(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_member_state::Model = new.into();
+
+                                global_app_state
+                                    .add_claim_member(model.clone());
+
                                 if currently_known_claim_member_state.contains_key(&model.entity_id) {
                                     let value = currently_known_claim_member_state.get(&model.entity_id).unwrap();
 

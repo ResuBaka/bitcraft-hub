@@ -48,7 +48,7 @@ const items = computed(() => {
   }
 
   return Object.values(data.value.items).filter((value) =>
-    value[1].item.name
+    value[1].name
       .toLocaleLowerCase()
       .includes(debouncedSearch.value?.toLocaleLowerCase()),
   );

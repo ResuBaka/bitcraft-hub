@@ -325,12 +325,10 @@ const claimOwner = computed(() => {
     return "";
   }
 
-  return (
-    claim.value.members.find(
-      (member) =>
-        member.entity_id.toString() ===
-        claim.value.owner_player_entity_id?.toString(),
-    )?.user_name ?? ""
+  return claim.value.members.find(
+    (member) =>
+      member.entity_id.toString() ===
+      claim.value.owner_player_entity_id?.toString(),
   );
 });
 
@@ -442,17 +440,24 @@ const membersForTable = computed(() => {
     })
     .map((member) => {
       let permissions = 0;
+      if (claimOwner.id === member.entity_id) {
+        permissions += 18;
+      }
+
       if (member.co_owner_permission) {
-        permissions += 8;
+        permissions += 14;
+      }
+      if (member.co_owner_permission) {
+        permissions += 12;
       }
       if (member.officer_permission) {
-        permissions += 4;
+        permissions += 10;
       }
       if (member.build_permission) {
-        permissions += 2;
+        permissions += 8;
       }
       if (member.inventory_permission) {
-        permissions += 1;
+        permissions += 6;
       }
 
       return {
@@ -541,7 +546,7 @@ const skillToToolIndex = {
               <v-col cols="6" md="2" lg="12">
                 <v-list-item>
                   <v-list-item-title>Owner</v-list-item-title>
-                  <v-list-item-subtitle>{{ claimOwner }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{ claimOwner?.user_name ?? '' }}</v-list-item-subtitle>
                 </v-list-item>
               </v-col>
               <v-col cols="6" md="2" lg="12">
@@ -639,7 +644,7 @@ const skillToToolIndex = {
             <v-data-table
                 hover
                 density="compact"
-                :sort-by="[{ key: 'permissions', order: 'desc' }]"
+                :sort-by="[{ key: 'permissions', order: 'desc' }, { key: 'online_state', order: 'desc' }]"
                 :headers="[
                 {
                   title: 'User',

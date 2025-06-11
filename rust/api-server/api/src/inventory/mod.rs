@@ -101,7 +101,7 @@ pub(crate) async fn find_inventory_by_id(
     }
 }
 
-#[derive(Serialize, Deserialize,TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export)]
 pub(crate) struct InventorysResponse {
     inventorys: Vec<ResolvedInventory>,
@@ -250,15 +250,27 @@ pub(crate) async fn all_inventory_stats(
         for pocket in &inventory.pockets {
             if let Some(contents) = pocket.contents.clone() {
                 if contents.item_type == ItemType::Item {
-                    items.entry(contents.item_id).and_modify(|(qty, _)| qty.add_assign(contents.quantity)).or_insert((
-                            contents.quantity,
-                            state.item_desc.get(&contents.item_id).map(|item_desc| item_desc.to_owned())
+                    items
+                        .entry(contents.item_id)
+                        .and_modify(|(qty, _)| qty.add_assign(contents.quantity as i64))
+                        .or_insert((
+                            contents.quantity as i64,
+                            state
+                                .item_desc
+                                .get(&contents.item_id)
+                                .map(|item_desc| item_desc.to_owned()),
                         ));
                 } else {
-                    cargo.entry(contents.item_id).and_modify(|(qty, _)| qty.add_assign(contents.quantity)).or_insert((
-                        contents.quantity,
-                        state.cargo_desc.get(&contents.item_id).map(|cargo_desc| cargo_desc.to_owned())
-                    ));
+                    cargo
+                        .entry(contents.item_id)
+                        .and_modify(|(qty, _)| qty.add_assign(contents.quantity as i64))
+                        .or_insert((
+                            contents.quantity as i64,
+                            state
+                                .cargo_desc
+                                .get(&contents.item_id)
+                                .map(|cargo_desc| cargo_desc.to_owned()),
+                        ));
                 }
             }
         }
@@ -300,11 +312,9 @@ pub(crate) async fn all_inventory_stats(
     //         },
     //     );
 
-
     let mut items = items.into_values().collect::<Vec<_>>();
 
     items.sort_by(|a, b| b.0.cmp(&a.0));
-
 
     let mut cargo = cargo.into_values().collect::<Vec<_>>();
 

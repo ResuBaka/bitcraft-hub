@@ -223,7 +223,7 @@ const recipeInfo = computed(() => {
     Cargo: {},
   };
   if (hasValues) {
-    return 
+    return;
   }
   function getCraftedItemStack(
     item_stack: ItemStack,
@@ -533,7 +533,7 @@ const recipeInfo = computed(() => {
     }
   }
 
-    function PannelsList(
+  function PannelsList(
     recipes: objectWithChildren[],
     pannelIndexs: PannelIndexs[],
   ) {
@@ -546,14 +546,14 @@ const recipeInfo = computed(() => {
         children: [],
       };
       pannelIndexs.push(pannel);
-      if (recipe.children === undefined){
-        continue
+      if (recipe.children === undefined) {
+        continue;
       }
       for (const item of recipe.children) {
         const pannel2: PannelEmptyIndexs = {
-        children: [],
-      };
-      pannel.children.push(pannel2);
+          children: [],
+        };
+        pannel.children.push(pannel2);
         PannelsList(item.children, pannel2.children);
       }
     }
@@ -575,8 +575,8 @@ const recipeInfo = computed(() => {
     pannelIndexs: PannelIndexs[],
   ) {
     for (const itemIndex in recipe) {
-      const item = recipe[itemIndex]
-      const pannels = pannelIndexs[itemIndex]
+      const item = recipe[itemIndex];
+      const pannels = pannelIndexs[itemIndex];
       if (item === undefined) {
         continue;
       }
@@ -606,24 +606,27 @@ const recipeInfo = computed(() => {
           (list[item.type][item.id] || 0) + item.quantity;
         continue;
       }
-      if( item.type === "Item"){
-        const itemDesc = allRecipiesFetch.value.item_desc[item.id]
-        if(itemDesc === undefined){
-          continue
+      if (item.type === "Item") {
+        const itemDesc = allRecipiesFetch.value.item_desc[item.id];
+        if (itemDesc === undefined) {
+          continue;
         }
-        if(itemDesc.name.endsWith(" Animal Hair") || itemDesc.name.endsWith(" Amber Resin")){
+        if (
+          itemDesc.name.endsWith(" Animal Hair") ||
+          itemDesc.name.endsWith(" Amber Resin")
+        ) {
           list[item.type][item.id] =
-          (list[item.type][item.id] || 0) + item.quantity;
-          continue
+            (list[item.type][item.id] || 0) + item.quantity;
+          continue;
         }
       }
-      if (pannels !== undefined ) {
-        const ItemIndexed = item.children[pannels.pannels]
-        const PannelIndexed = pannels.children[pannels.pannels]
-        if(ItemIndexed === undefined || PannelIndexed === undefined){
-          return
+      if (pannels !== undefined) {
+        const ItemIndexed = item.children[pannels.pannels];
+        const PannelIndexed = pannels.children[pannels.pannels];
+        if (ItemIndexed === undefined || PannelIndexed === undefined) {
+          return;
         }
-        ShoppingList(ItemIndexed.children, list,PannelIndexed.children);
+        ShoppingList(ItemIndexed.children, list, PannelIndexed.children);
       }
     }
   }
@@ -698,25 +701,33 @@ useSeoMeta({
           </v-col>
         </v-row>
         <v-list>
-          <v-row v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">
-            <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">
-              
-             <v-col v-if="type === 'Cargo' || type === 'Item'"  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">
-                <gethering-shop-list                     
+          <template v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">
+            <v-card-title>Items needed to finish the work</v-card-title>
+            <v-row>
+              <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">
+
+                <v-col v-if="type === 'Cargo' || type === 'Item'"  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">
+                  <gethering-shop-list
                       :type="type"
                       :id="+id"
                       :quantity="quantity"
                       :item_desc="allRecipiesFetch.item_desc"
                       :cargo_desc="allRecipiesFetch.cargo_desc" />
-              </v-col> 
-            </template>
-          </v-row>
-              <recusive-crafting-recipe v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined && pannelIndexs[0] !== undefined" 
-                    :item="recipeInfo.items"
-                    :item_desc="allRecipiesFetch.item_desc"
-                    :cargo_desc="allRecipiesFetch.cargo_desc"
-                    :pannel_indexs="pannelIndexs[0]"
-                  />
+                </v-col>
+              </template>
+            </v-row>
+            <v-divider class="pb-3 mt-3" thickness="5"/>
+          </template>
+          <template v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined && pannelIndexs[0] !== undefined">
+            <v-card-title>Recipe Tree</v-card-title>
+            <recusive-crafting-recipe
+              :item="recipeInfo.items"
+              :item_desc="allRecipiesFetch.item_desc"
+              :cargo_desc="allRecipiesFetch.cargo_desc"
+              :pannel_indexs="pannelIndexs[0]"
+            />
+          </template>
+
         </v-list>
     </v-card-text>
   </v-card> 
