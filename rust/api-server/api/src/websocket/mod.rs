@@ -10,7 +10,7 @@ use entity::{
 use entity::{raw_event_data, skill_desc};
 use game_module::module_bindings::*;
 use kanal::{AsyncReceiver, Sender};
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel, sea_query};
+use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel, sea_query, QueryFilter, ColumnTrait};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{Compression, DbContext, Error, Table, TableWithPrimaryKey, credentials};
 use std::borrow::Cow;
@@ -18,16 +18,41 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::time::Instant;
 use tokio::time::{Duration, sleep};
+use tokio_util::sync::CancellationToken;
+use futures::FutureExt;
 use ts_rs::TS;
 
-fn connect_to_db(db_name: &str, db_host: &str) -> DbConnection {
-    DbConnection::builder()
+fn connect_to_db(
+    global_app_state: Arc<AppState>,
+    db_name: &str,
+    db_host: &str
+) -> DbConnection {
+    let tmp_global_app_state = global_app_state.clone();
+    let tmp_disconnect_global_app_state = global_app_state.clone();
+    let tmp_db_name = db_name.to_owned();
+    let tmp_disconnect_db_name = tmp_db_name.clone();
+    let con = DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
-        .on_connect(on_connected)
+        .on_connect(move |_ctx, _identity, token| {
+            tracing::info!("Connected to server {tmp_db_name}");
+            tmp_global_app_state.connection_state.insert(tmp_db_name, true);
+            if let Err(e) = creds_store().save(token) {
+                tracing::warn!("Failed to save credentials: {:?}", e);
+            }
+        })
         // Register our `on_connect_error` callback, which will print a message, then exit the process.
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
-        .on_disconnect(on_disconnected)
+        .on_disconnect(move |_ctx, err| {
+            tmp_disconnect_global_app_state.connection_state.insert(tmp_disconnect_db_name.clone(), false);
+            if let Some(err) = err {
+                tracing::error!("Disconnected: {} : {}", err, tmp_disconnect_db_name);
+                // std::process::exit(1);
+            } else {
+                tracing::error!("Disconnected {}.", tmp_disconnect_db_name);
+                // std::process::exit(0);
+            }
+        })
         // If the user has previously connected, we'll have saved a token in the `on_connect` callback.
         // In that case, we'll load it and pass it to `with_token`,
         // so we can re-authenticate as the same `Identity`.
@@ -38,8 +63,13 @@ fn connect_to_db(db_name: &str, db_host: &str) -> DbConnection {
         .with_uri(db_host)
         // Finalize configuration and connect!
         .with_compression(Compression::Brotli)
-        .build()
-        .expect("Failed to connect")
+        .build();
+
+    if let Err(e) = con {
+        panic!("Error connecting to db: {:?}", e);
+    } else {
+        con.unwrap()
+    }
 }
 
 // /// Register subscriptions for all rows of both tables.
@@ -53,7 +83,7 @@ fn connect_to_db(db_name: &str, db_host: &str) -> DbConnection {
 /// Or `on_error` callback:
 /// print the error, then exit the process.
 fn on_sub_error(_ctx: &ErrorContext, err: Error) {
-    eprintln!("Subscription failed: {}", err);
+    tracing::warn!("Subscription failed: {}", err);
     // std::process::exit(1);
 }
 
@@ -61,29 +91,12 @@ fn creds_store() -> credentials::File {
     credentials::File::new("bitcraft-beta")
 }
 
-/// Our `on_connect` callback: save our credentials to a file.
-fn on_connected(_ctx: &DbConnection, _identity: spacetimedb_sdk::Identity, token: &str) {
-    if let Err(e) = creds_store().save(token) {
-        eprintln!("Failed to save credentials: {:?}", e);
-    }
-}
-
 /// Our `on_connect_error` callback: print the error, then exit the process.
 fn on_connect_error(_ctx: &ErrorContext, err: Error) {
-    eprintln!("Connection error: {:?}", err);
+    tracing::warn!("Connection error: {:?}", err);
     // std::process::exit(1);
 }
 
-/// Our `on_disconnect` callback: print a note, then exit the process.
-fn on_disconnected(_ctx: &ErrorContext, err: Option<Error>) {
-    if let Some(err) = err {
-        eprintln!("Disconnected: {}", err);
-        // std::process::exit(1);
-    } else {
-        println!("Disconnected.");
-        // std::process::exit(0);
-    }
-}
 
 macro_rules! setup_spacetime_db_listeners {
     ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
@@ -159,6 +172,7 @@ macro_rules! setup_spacetime_db_listeners {
 }
 
 fn connect_to_db_logic(
+    global_app_state: Arc<AppState>,
     config: &Config,
     database: &str,
     remove_desc: &bool,
@@ -184,7 +198,11 @@ fn connect_to_db_logic(
     crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     item_list_desc_tx: &Sender<SpacetimeUpdateMessages<ItemListDesc>>,
 ) {
-    let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
+    let ctx = connect_to_db(
+        global_app_state,
+        database,
+        config.spacetimedb_url().as_ref()
+    );
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -396,6 +414,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
 
         config.spacetimedb.databases.iter().for_each(|database| {
             connect_to_db_logic(
+                global_app_state.clone(),
                 &config,
                 database,
                 &remove_desc,
@@ -424,126 +443,176 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
 
             remove_desc = true;
         });
+
+        let cleanup_token = CancellationToken::new();
+
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(60*3)).await;
+            tracing::info!("\n--- Cleanup timer finished! Signaling cleanup! ---");
+            timer_cleanup_token.cancel(); // Signal all listeners
+        });
+
         start_worker_mobile_entity_state(global_app_state.clone(), mobile_entity_state_rx);
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_player_state(
             global_app_state.clone(),
             player_state_rx,
             1000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_player_username_state(
             global_app_state.clone(),
             player_username_state_rx,
             1000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_experience_state(
             global_app_state.clone(),
             experience_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_inventory_state(
             global_app_state.clone(),
             inventory_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_vault_state_collectibles(
             global_app_state.clone(),
             vault_state_collectibles_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_item_desc(
             global_app_state.clone(),
             item_desc_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_cargo_desc(
             global_app_state.clone(),
             cargo_desc_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_deployable_state(
             global_app_state.clone(),
             deployable_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_state(
             global_app_state.clone(),
             claim_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_local_state(
             global_app_state.clone(),
             claim_local_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_member_state(
             global_app_state.clone(),
             claim_member_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_skill_desc(
             global_app_state.clone(),
             skill_desc_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_tech_state(
             global_app_state.clone(),
             claim_tech_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_tech_desc(
             global_app_state.clone(),
             claim_tech_desc_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_building_state(
             global_app_state.clone(),
             building_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_building_desc(
             global_app_state.clone(),
             building_desc_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_location_state(
             global_app_state.clone(),
             location_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_building_nickname_state(
             global_app_state.clone(),
             building_nickname_state_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_crafting_recipe_desc(
             global_app_state.clone(),
             crafting_recipe_desc_desc_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_item_list_desc(
             global_app_state.clone(),
             item_list_desc_rx,
             2000,
             Duration::from_millis(50),
+            timer_cleanup_token,
         );
     });
 }
@@ -637,6 +706,7 @@ fn start_worker_item_desc(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ItemDesc>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(item_desc::Column::Id)
@@ -759,6 +829,7 @@ fn start_worker_cargo_desc(
     rx: AsyncReceiver<SpacetimeUpdateMessages<CargoDesc>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(cargo_desc::Column::Id)
@@ -890,6 +961,7 @@ fn start_worker_player_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(::entity::player_state::Column::EntityId)
@@ -912,6 +984,9 @@ fn start_worker_player_state(
             .map(|value| (value.entity_id, value))
             .collect::<HashMap<_, _>>();
 
+        let mut cleanup_signal_future = cancel_token.cancelled().fuse();
+        tokio::pin!(cleanup_signal_future);
+
         loop {
             let mut messages = Vec::new();
             let mut ids = vec![];
@@ -931,7 +1006,7 @@ fn start_worker_player_state(
                                 ]).increment(1);
 
                                 ids.push(model.entity_id);
-                                if currently_known_player_state.contains_key(&model.entity_id) {
+                                if !currently_known_player_state.is_empty() && currently_known_player_state.contains_key(&model.entity_id) {
                                     let value = currently_known_player_state.get(&model.entity_id).unwrap();
 
                                     if &model != value {
@@ -962,7 +1037,7 @@ fn start_worker_player_state(
                                 }
 
                                 ids.push(model.entity_id);
-                                if currently_known_player_state.contains_key(&model.entity_id) {
+                                if !currently_known_player_state.is_empty() && currently_known_player_state.contains_key(&model.entity_id) {
                                     let value = currently_known_player_state.get(&model.entity_id).unwrap();
 
                                     if &model != value {
@@ -1004,6 +1079,28 @@ fn start_worker_player_state(
                         // Time limit reached
                         break;
                     }
+                    _ = &mut cleanup_signal_future => {
+                        if global_app_state.connection_state.iter().filter(|a| a.eq(&true)).collect::<Vec<_>>().len() != global_app_state.connection_state.len() {
+                            tracing::warn!("Cleanup did not run as not all servers have an active connection");
+                            break;
+                        }
+
+                        let players_to_delete = currently_known_player_state.values().map(|ckps| ckps.entity_id).collect::<Vec<_>>();
+
+                        tracing::info!("players_to_delete {} {:?}", players_to_delete.len(), players_to_delete);
+
+                        let result = ::entity::player_state::Entity::delete_many()
+                            .filter(::entity::player_state::Column::EntityId.is_in(players_to_delete))
+                            .exec(&global_app_state.conn).await;
+
+                        if let Err(error) = result {
+                            tracing::error!("Error while cleanup of player_state {error}");
+                        }
+
+                        currently_known_player_state.clear();
+
+                        break;
+                    }
                     else => {
                         // Channel closed and no more messages
                         break;
@@ -1038,6 +1135,7 @@ fn start_worker_player_username_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict =
@@ -1154,6 +1252,7 @@ fn start_worker_experience_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ExperienceState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([
@@ -1328,6 +1427,7 @@ fn start_worker_inventory_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<InventoryState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(::entity::inventory::Column::EntityId)
@@ -1347,6 +1447,9 @@ fn start_worker_inventory_state(
             .into_iter()
             .map(|value| (value.entity_id, value))
             .collect::<HashMap<_, _>>();
+
+        let mut cleanup_signal_future = cancel_token.cancelled().fuse();
+        tokio::pin!(cleanup_signal_future);
 
         loop {
             let mut messages = Vec::new();
@@ -1416,6 +1519,32 @@ fn start_worker_inventory_state(
                         // Time limit reached
                         break;
                     }
+                    _ = &mut cleanup_signal_future => {
+                        if global_app_state.connection_state.iter().filter(|a| a.eq(&true)).collect::<Vec<_>>().len() != global_app_state.connection_state.len() {
+                            tracing::warn!("Cleanup did not run as not all servers have an active connection");
+                            break;
+                        }
+
+                        let inventory_to_delete = currently_known_inventory.values().map(|ckps| {
+                            global_app_state.inventory_state.remove(&ckps.entity_id);
+
+                            ckps.entity_id
+                        }).collect::<Vec<_>>();
+
+                        tracing::info!("inventory to delete {} {:?}", inventory_to_delete.len(), inventory_to_delete);
+
+                        let result = ::entity::inventory::Entity::delete_many()
+                            .filter(::entity::inventory::Column::EntityId.is_in(inventory_to_delete))
+                            .exec(&global_app_state.conn).await;
+
+                        if let Err(error) = result {
+                            tracing::error!("Error while cleanup of player_state {error}");
+                        }
+
+                        currently_known_inventory.clear();
+
+                        break;
+                    }
                     else => {
                         // Channel closed and no more messages
                         break;
@@ -1445,6 +1574,7 @@ fn start_worker_deployable_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<DeployableState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(deployable_state::Column::EntityId)
@@ -1465,6 +1595,9 @@ fn start_worker_deployable_state(
             .into_iter()
             .map(|value| (value.entity_id, value))
             .collect::<HashMap<_, _>>();
+
+        let mut cleanup_signal_future = cancel_token.cancelled().fuse();
+        tokio::pin!(cleanup_signal_future);
 
         loop {
             let mut messages = Vec::new();
@@ -1531,6 +1664,30 @@ fn start_worker_deployable_state(
                         // Time limit reached
                         break;
                     }
+                    _ = &mut cleanup_signal_future => {
+                        if global_app_state.connection_state.iter().filter(|a| a.eq(&true)).collect::<Vec<_>>().len() != global_app_state.connection_state.len() {
+                            tracing::warn!("Cleanup did not run as not all servers have an active connection");
+                            break;
+                        }
+
+                        let deployable_to_delete = currently_known_deployable_state.values().map(|ckds| {
+                            ckds.entity_id
+                        }).collect::<Vec<_>>();
+
+                        tracing::info!("deployable_state to delete {} {:?}", deployable_to_delete.len(), deployable_to_delete);
+
+                        let result = ::entity::deployable_state::Entity::delete_many()
+                            .filter(::entity::deployable_state::Column::EntityId.is_in(deployable_to_delete))
+                            .exec(&global_app_state.conn).await;
+
+                        if let Err(error) = result {
+                            tracing::error!("Error while cleanup of deployable_state {error}");
+                        }
+
+                        currently_known_deployable_state.clear();
+
+                        break;
+                    }
                     else => {
                         // Channel closed and no more messages
                         break;
@@ -1560,6 +1717,7 @@ fn start_worker_claim_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(claim_state::Column::EntityId)
@@ -1673,6 +1831,7 @@ fn start_worker_claim_local_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(claim_local_state::Column::EntityId)
@@ -1817,6 +1976,7 @@ fn start_worker_claim_member_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(claim_member_state::Column::EntityId)
@@ -1838,6 +1998,9 @@ fn start_worker_claim_member_state(
             .into_iter()
             .map(|value| (value.entity_id, value))
             .collect::<HashMap<_, _>>();
+
+        let mut cleanup_signal_future = cancel_token.cancelled().fuse();
+        tokio::pin!(cleanup_signal_future);
 
         loop {
             let mut messages = Vec::new();
@@ -1913,6 +2076,32 @@ fn start_worker_claim_member_state(
                         // Time limit reached
                         break;
                     }
+                    _ = &mut cleanup_signal_future => {
+                        if global_app_state.connection_state.iter().filter(|a| a.eq(&true)).collect::<Vec<_>>().len() != global_app_state.connection_state.len() {
+                            tracing::warn!("Cleanup did not run as not all servers have an active connection");
+                            break;
+                        }
+
+                        let claim_member_state_to_delete = currently_known_claim_member_state.values().map(|ckps| {
+                            global_app_state.remove_claim_member(ckps.clone());
+
+                            ckps.entity_id
+                        }).collect::<Vec<_>>();
+
+                        tracing::info!("claim_member_state to delete {} {:?}", claim_member_state_to_delete.len(), claim_member_state_to_delete);
+
+                        let result = ::entity::claim_member_state::Entity::delete_many()
+                            .filter(::entity::claim_member_state::Column::EntityId.is_in(claim_member_state_to_delete))
+                            .exec(&global_app_state.conn).await;
+
+                        if let Err(error) = result {
+                            tracing::error!("Error while cleanup of player_state {error}");
+                        }
+
+                        currently_known_claim_member_state.clear();
+
+                        break;
+                    }
                     else => {
                         // Channel closed and no more messages
                         break;
@@ -1951,6 +2140,7 @@ fn start_worker_skill_desc(
     rx: AsyncReceiver<SpacetimeUpdateMessages<SkillDesc>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(skill_desc::Column::Id)
@@ -2069,6 +2259,7 @@ fn start_worker_vault_state_collectibles(
     rx: AsyncReceiver<SpacetimeUpdateMessages<VaultState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([
@@ -2194,6 +2385,7 @@ fn start_worker_claim_tech_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([claim_tech_state::Column::EntityId])
@@ -2313,6 +2505,7 @@ fn start_worker_claim_tech_desc(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([::entity::claim_tech_desc::Column::Id])
@@ -2443,6 +2636,7 @@ fn start_worker_building_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict =
@@ -2569,6 +2763,7 @@ fn start_worker_building_desc(
     rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([::entity::building_desc::Column::Id])
@@ -2710,6 +2905,7 @@ fn start_worker_building_nickname_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict =
@@ -2835,6 +3031,7 @@ fn start_worker_crafting_recipe_desc(
     rx: AsyncReceiver<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(crafting_recipe::Column::Id)
@@ -2977,6 +3174,7 @@ fn start_worker_item_list_desc(
     rx: AsyncReceiver<SpacetimeUpdateMessages<ItemListDesc>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(item_list_desc::Column::Id)
@@ -3099,6 +3297,7 @@ fn start_worker_location_state(
     rx: AsyncReceiver<SpacetimeUpdateMessages<LocationState>>,
     batch_size: usize,
     time_limit: Duration,
+    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         // let on_conflict = sea_query::OnConflict::columns([::entity::building_desc::Column::Id])

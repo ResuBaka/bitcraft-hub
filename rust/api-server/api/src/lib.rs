@@ -88,12 +88,21 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
     };
 
     if config.live_updates_ws {
-        tracing::info!("Staring Bitcraft websocket connection");
+        if config.spacetimedb.databases.is_empty() {
+            tracing::warn!("You need to set spacetimedb databases");
+        } else {
+            tracing::info!("Staring Bitcraft websocket connection");
 
-        tokio::spawn(broadcast_message(state.clone(), rx));
+            tokio::spawn(broadcast_message(state.clone(), rx));
 
-        let tmp_config = config.clone();
-        websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
+            let tmp_config = config.clone();
+
+            config.spacetimedb.databases.iter().for_each(|connection_state| {
+                state.connection_state.insert(connection_state.clone(), false);
+            });
+
+            websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
+        }
     }
 
     let app = create_app(&config, state.clone(), prometheus);
@@ -475,6 +484,7 @@ async fn create_importer_default_db_connection(config: Config) -> DatabaseConnec
 struct AppState {
     conn: DatabaseConnection,
     tx: UnboundedSender<WebSocketMessages>,
+    connection_state: Arc<dashmap::DashMap<String, bool>>,
     storage_path: PathBuf,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
@@ -511,6 +521,7 @@ impl AppState {
         Self {
             conn,
             tx,
+            connection_state: Arc::new(dashmap::DashMap::new()),
             storage_path: PathBuf::from(config.storage_path.clone()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
@@ -1047,7 +1058,7 @@ fn setup_tracing(cfg: &Config) {
         };
 
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        format!("{}={},axum={}", CRATE_NAME, cfg.log_level, cfg.log_level)
+        format!("{}={},axum={},spacetimedb_sdk={},", CRATE_NAME, cfg.log_level, cfg.log_level, cfg.log_level)
     });
 
     match cfg.log_type {
