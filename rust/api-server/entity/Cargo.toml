@@ -13,9 +13,10 @@ path = "src/lib.rs"
 spacetimedb-sdk = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+ts-rs = { workspace = true, features = ["chrono-impl"]}
+chrono =  { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 axum-codec = { workspace = true }
 time = { workspace = true }
-ts-rs = { workspace = true }
 game_module = { path = "../game_module" }
