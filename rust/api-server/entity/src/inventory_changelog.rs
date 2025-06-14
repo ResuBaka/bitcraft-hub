@@ -1,8 +1,8 @@
+use chrono::{DateTime, Utc};
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use chrono::{DateTime, TimeZone, Utc};
 
 #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize, TS)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
@@ -22,7 +22,7 @@ impl From<game_module::module_bindings::ItemType> for ItemType {
 }
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, TS)]
 #[ts(export)]
-#[ts(rename= "InventoryChangelog")]
+#[ts(rename = "InventoryChangelog")]
 #[sea_orm(table_name = "inventory_changelog")]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -45,7 +45,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize, TS,)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize, TS)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum TypeOfChange {
     Add = 0,

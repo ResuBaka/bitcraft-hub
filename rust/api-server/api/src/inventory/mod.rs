@@ -1,6 +1,6 @@
 use crate::{AppRouter, AppState};
 use axum::Router;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::inventory::{
     ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
@@ -13,7 +13,6 @@ use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::ops::AddAssign;
 use std::sync::Arc;
 use ts_rs::TS;
@@ -42,15 +41,31 @@ pub(crate) fn get_routes() -> AppRouter {
         )
 }
 
+#[derive(Deserialize)]
+pub(crate) struct InventoryChangesParams {
+    item_id: Option<i32>,
+    item_type: Option<inventory_changelog::ItemType>,
+    user_id: Option<i64>,
+}
 pub(crate) async fn read_inventory_changes(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<i64>,
+    Query(params): Query<InventoryChangesParams>,
 ) -> Result<axum_codec::Codec<Vec<inventory_changelog::Model>>, (StatusCode, &'static str)> {
-    let (inventory_changes, _num_pages) = QueryCore::find_inventory_changes_by_entity_ids(&state.conn,vec!(id),10000,None,None).await.map_err(|e| {
-            error!("Error: {:?}", e);
+    let (inventory_changes, _num_pages) = QueryCore::find_inventory_changes_by_entity_ids(
+        &state.conn,
+        vec![id],
+        10000,
+        params.item_id,
+        params.item_type,
+        params.user_id,
+    )
+    .await
+    .map_err(|e| {
+        error!("Error: {:?}", e);
 
-            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-        })?;
+        (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+    })?;
     Ok(axum_codec::Codec(inventory_changes))
 }
 

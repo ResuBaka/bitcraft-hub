@@ -26,7 +26,7 @@ pub(crate) fn get_routes() -> AppRouter {
         )
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type")]
 enum ItemCargo {
     Item(item_desc::Model),
@@ -40,9 +40,11 @@ pub(crate) struct ItemsAndCargoParams {
     search: Option<String>,
     tier: Option<i32>,
     tag: Option<String>,
+    no_item_list: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct ItemsAndCargoResponse {
     items: Vec<ItemCargo>,
     tags: Vec<String>,
@@ -90,7 +92,7 @@ pub(crate) async fn list_items_and_cargo(
     let search = params.search.map(|search| search.to_lowercase());
     let tier = params.tier;
     let tag = params.tag;
-
+    let no_item_list = params.no_item_list;
     if state.cargo_tags.is_empty()
         || state.cargo_tiers.is_empty()
         || state.item_tags.is_empty()
@@ -127,7 +129,7 @@ pub(crate) async fn list_items_and_cargo(
 
     if state.item_desc.is_empty() || state.cargo_desc.is_empty() {
         let (items, cargos) = tokio::join!(
-            QueryCore::search_items_desc(&state.conn, &search, &tier, &tag),
+            QueryCore::search_items_desc(&state.conn, &search, &tier, &tag, &no_item_list),
             QueryCore::search_cargos_desc(&state.conn, &search, &tier, &tag),
         );
 

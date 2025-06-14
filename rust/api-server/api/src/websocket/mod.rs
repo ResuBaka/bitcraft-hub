@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::config::Config;
 use crate::leaderboard::experience_to_level;
-use chrono::{DateTime};
+use chrono::DateTime;
 use entity::inventory_changelog::TypeOfChange;
 use entity::{
     cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
@@ -12,7 +12,7 @@ use entity::{
 use entity::{raw_event_data, skill_desc};
 use game_module::module_bindings::*;
 use kanal::{AsyncReceiver, Sender};
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel, sea_query, Set,NotSet};
+use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set, TryIntoModel, sea_query};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Identity, Table, TableWithPrimaryKey, Timestamp,

@@ -7,7 +7,7 @@ use ts_rs::TS;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
 #[sea_orm(table_name = "player_username_state")]
-#[ts(rename= "PlayerUsernameState")]
+#[ts(rename = "PlayerUsernameState")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,

@@ -169,6 +169,7 @@ impl Query {
         search: &Option<String>,
         tier: &Option<i32>,
         tag: &Option<String>,
+        no_item_list: &Option<bool>,
     ) -> Result<Vec<item_desc::Model>, DbErr> {
         Item::find()
             .apply_if(search.clone(), |query, value| {
@@ -188,6 +189,12 @@ impl Query {
             })
             .apply_if(*tier, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Tier).eq(value)),
+                _ => unreachable!(),
+            })
+            .apply_if(*no_item_list, |query, _| match db.get_database_backend() {
+                DbBackend::Postgres => {
+                    query.filter(Expr::col(item_desc::Column::ItemListId).is_not(0))
+                }
                 _ => unreachable!(),
             })
             .all(db)
@@ -1950,6 +1957,7 @@ impl Query {
         page_size: u64,
         item_id: Option<i32>,
         item_type: Option<ItemType>,
+        user_id: Option<i64>,
     ) -> Result<(Vec<inventory_changelog::Model>, ItemsAndPagesNumber), DbErr> {
         let paginator = inventory_changelog::Entity::find()
             .filter(inventory_changelog::Column::EntityId.is_in(ids))
@@ -1966,6 +1974,9 @@ impl Query {
                         .add(inventory_changelog::Column::NewItemType.eq(value.clone()))
                         .add(inventory_changelog::Column::OldItemType.eq(value)),
                 )
+            })
+            .apply_if(user_id, |query, value| {
+                query.filter(inventory_changelog::Column::UserId.eq(value.clone()))
             })
             .order_by_desc(inventory_changelog::Column::Timestamp)
             .paginate(db, page_size);

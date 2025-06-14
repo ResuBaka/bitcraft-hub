@@ -1,14 +1,25 @@
 <script setup lang="ts">
+import { watchThrottled } from "@vueuse/shared";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
+import type { ItemCargo } from "~/types/ItemCargo";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
+import type { ItemsAndCargoResponse } from "~/types/ItemsAndCargoResponse";
 import type { ItemType } from "~/types/ItemType";
+import type { PlayersResponse } from "~/types/PlayersResponse";
 import type { PlayerUsernameStateResponse } from "~/types/PlayerUsernameStateResponse";
 
 const { inventory } = defineProps<{
   inventory: any;
 }>();
 
-const search = ref<string | undefined>("");
+const router = useRouter();
+
+const playerId = ref<Number | undefined>();
+const player = ref<string | undefined>("");
+
+const itemObject = ref<ItemCargo | undefined>();
+const item = ref<string | undefined>("");
+
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "2-digit",
@@ -73,17 +84,85 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: InventoryChangesFetch } = useFetchMsPack<InventoryChangelog[]>(
-  () => {
-    return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
-  },
-);
+const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } =
+  useFetchMsPack<InventoryChangelog[]>(
+    () => {
+      return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
+    },
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+
+        if (itemObject.value !== undefined) {
+          options.query.item_id = itemObject.value.id;
+          options.query.item_type = itemObject.value.type;
+        }
+        if (playerId.value !== undefined && playerId.value !== null) {
+          options.query.user_id = playerId.value.toString();
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 1) {
+          const query = { item: item.value };
+          router.push({ query });
+        } else if (options.query.page < 1) {
+          router.push({});
+        }
+      },
+    },
+  );
 
 const { data: ItemAndCargoFetch } = useFetchMsPack<ItemsAndCargollResponse>(
   () => {
     return `${api.base}/api/bitcraft/itemsAndCargo/all`;
   },
 );
+
+const { data: itemsAndCargoData, refresh: itemsAndCargoRefresh } =
+  await useLazyFetchMsPack<ItemsAndCargoResponse>(
+    () => {
+      return `${api.base}/api/bitcraft/itemsAndCargo`;
+    },
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+
+        options.query.search = item.value;
+        options.query.no_item_list = true;
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 1) {
+          const query = { item: item.value };
+          router.push({ query });
+        } else if (options.query.page < 1) {
+          router.push({});
+        }
+      },
+    },
+  );
+const { data: playerData, refresh: refreshPlayer } =
+  await useLazyFetchMsPack<PlayersResponse>(
+    () => {
+      return `${api.base}/api/bitcraft/players`;
+    },
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+
+        if (player.value) {
+          options.query.search = player.value;
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 2) {
+          const query = { player: player.value };
+          router.push({ query });
+        } else if (options.query.page <= 1) {
+          router.push({});
+        }
+      },
+    },
+  );
 
 const { data: PlayerUsernameStateFetch } =
   useFetchMsPack<PlayerUsernameStateResponse>(() => {
@@ -154,9 +233,6 @@ function getUsername(user_id: bigint) {
   ) {
     return;
   }
-  console.log(
-    PlayerUsernameStateFetch.value.username_state[user_id.toString()],
-  );
   return PlayerUsernameStateFetch.value.username_state[user_id.toString()];
 }
 
@@ -172,6 +248,30 @@ const isPlayer = computed(() => {
     inventory.value?.nickname === "Inventory"
   );
 });
+
+watchThrottled(
+  () => [item.value],
+  (value, oldValue) => {
+    itemsAndCargoRefresh();
+  },
+  { throttle: 50 },
+);
+
+watchThrottled(
+  () => [itemObject.value, playerId.value],
+  (value, oldValue) => {
+    InventoryChangesRefresh();
+  },
+  { throttle: 50 },
+);
+
+watchThrottled(
+  () => [player.value],
+  (value, oldValue) => {
+    refreshPlayer();
+  },
+  { throttle: 50 },
+);
 </script>
 
 <template>
@@ -196,13 +296,31 @@ const isPlayer = computed(() => {
         <v-card-text>
           <v-row>
             <v-col>
-              <v-text-field
-                  v-model="search"
-                  label="Search"
-                  outlined
-                  dense
-                  clearable
-              ></v-text-field>
+                <v-autocomplete
+                    v-model="playerId"
+                    v-model:search="player"
+                    :items="playerData?.players || []"
+                    item-title="username"
+                    item-value ="entity_id"
+                    label="player"
+                    outlined
+                    dense
+                    clearable
+                />
+          </v-col>
+            <v-col>
+              <v-autocomplete
+                v-model="itemObject"
+                v-model:search="item"
+                :items="itemsAndCargoData?.items || []"
+                :item-title="item=>`${item.name} - ${item.rarity}`"
+                item-value="name"
+                :return-object="true"
+                label="item"
+                outlined
+                dense
+                clearable
+            ></v-autocomplete>
             </v-col>
           </v-row>
           <v-data-table density="compact" :headers="headersChanges" :items="InventoryChangesFetch" :row-props="backgroundColorRow">

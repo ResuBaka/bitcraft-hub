@@ -42,7 +42,6 @@ pub struct ListPlayersParams {
     online: Option<bool>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub(crate) struct PlayerUsernameStateResponse {
@@ -51,16 +50,15 @@ pub(crate) struct PlayerUsernameStateResponse {
 pub(crate) async fn get_all(
     state: State<std::sync::Arc<AppState>>,
 ) -> Result<axum_codec::Codec<PlayerUsernameStateResponse>, (StatusCode, &'static str)> {
-    let currently_known_player_username_state =
-            ::entity::player_username_state::Entity::find()
-                .all(&state.conn)
-                .await
-                .map_or(vec![], |aa| aa)
-                .into_iter()
-                .map(|value| (value.entity_id.to_string(), value.username))
-                .collect::<HashMap<_, _>>();
+    let currently_known_player_username_state = ::entity::player_username_state::Entity::find()
+        .all(&state.conn)
+        .await
+        .map_or(vec![], |aa| aa)
+        .into_iter()
+        .map(|value| (value.entity_id.to_string(), value.username))
+        .collect::<HashMap<_, _>>();
     return Ok(axum_codec::Codec(PlayerUsernameStateResponse {
-        username_state: currently_known_player_username_state
+        username_state: currently_known_player_username_state,
     }));
 }
 

@@ -17,7 +17,7 @@ impl MigrationTrait for Migration {
             builder.build(&schema.create_table_from_entity(entity::inventory_changelog::Entity)),
         )
         .await?;
-manager
+        manager
             .create_index(
                 Index::create()
                     .name("InventoryChangelogEntityId")
