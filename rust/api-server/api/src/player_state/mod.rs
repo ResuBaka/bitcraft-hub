@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
@@ -26,6 +28,10 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/players/{id}",
             axum_codec::routing::get(find_player_by_id).into(),
         )
+        .route(
+            "/api/bitcraft/players/all",
+            axum_codec::routing::get(get_all).into(),
+        )
 }
 
 #[derive(Deserialize)]
@@ -34,6 +40,28 @@ pub struct ListPlayersParams {
     per_page: Option<u64>,
     search: Option<String>,
     online: Option<bool>,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct PlayerUsernameStateResponse {
+    username_state: HashMap<String, String>,
+}
+pub(crate) async fn get_all(
+    state: State<std::sync::Arc<AppState>>,
+) -> Result<axum_codec::Codec<PlayerUsernameStateResponse>, (StatusCode, &'static str)> {
+    let currently_known_player_username_state =
+            ::entity::player_username_state::Entity::find()
+                .all(&state.conn)
+                .await
+                .map_or(vec![], |aa| aa)
+                .into_iter()
+                .map(|value| (value.entity_id.to_string(), value.username))
+                .collect::<HashMap<_, _>>();
+    return Ok(axum_codec::Codec(PlayerUsernameStateResponse {
+        username_state: currently_known_player_username_state
+    }));
 }
 
 pub async fn list_players(

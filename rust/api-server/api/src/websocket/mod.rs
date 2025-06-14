@@ -1,6 +1,8 @@
 use crate::AppState;
 use crate::config::Config;
 use crate::leaderboard::experience_to_level;
+use chrono::{DateTime};
+use entity::inventory_changelog::TypeOfChange;
 use entity::{
     cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
     crafting_recipe, deployable_state, item_desc, item_list_desc, mobile_entity_state,
@@ -10,9 +12,12 @@ use entity::{
 use entity::{raw_event_data, skill_desc};
 use game_module::module_bindings::*;
 use kanal::{AsyncReceiver, Sender};
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel, sea_query};
+use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel, sea_query, Set,NotSet};
 use serde::{Deserialize, Serialize};
-use spacetimedb_sdk::{Compression, DbContext, Error, Table, TableWithPrimaryKey, credentials};
+use spacetimedb_sdk::{
+    Compression, DbContext, Error, Event, Identity, Table, TableWithPrimaryKey, Timestamp,
+    credentials,
+};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -102,13 +107,24 @@ macro_rules! setup_spacetime_db_listeners {
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
-            move |_ctx: &EventContext, old: &$state_type, new: &$state_type| {
+            move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_update).increment(1);
+                let mut caller_identity = None;
+                let mut reducer = None;
+                let mut timestamp = None;
+                if let Event::Reducer(event) = ctx.event.clone() {
+                    caller_identity = Some(event.caller_identity);
+                    reducer = Some(event.reducer);
+                    timestamp = Some(event.timestamp)
+                }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Update {
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
+                        caller_identity,
+                        reducer,
+                        timestamp,
                     })
                     .unwrap();
             },
@@ -124,12 +140,23 @@ macro_rules! setup_spacetime_db_listeners {
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_insert(
             // Use $state_type for the new parameter
-            move |_ctx: &EventContext, new: &$state_type| {
+            move |ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_insert).increment(1);
+                let mut caller_identity = None;
+                let mut reducer = None;
+                let mut timestamp = None;
+                if let Event::Reducer(event) = ctx.event.clone() {
+                    caller_identity = Some(event.caller_identity);
+                    reducer = Some(event.reducer);
+                    timestamp = Some(event.timestamp)
+                }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Insert {
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
+                        caller_identity,
+                        reducer,
+                        timestamp,
                     })
                     .unwrap();
             },
@@ -145,12 +172,23 @@ macro_rules! setup_spacetime_db_listeners {
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
-            move |_ctx: &EventContext, new: &$state_type| {
+            move |ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
+                let mut caller_identity = None;
+                let mut reducer = None;
+                let mut timestamp = None;
+                if let Event::Reducer(event) = ctx.event.clone() {
+                    caller_identity = Some(event.caller_identity);
+                    reducer = Some(event.reducer);
+                    timestamp = Some(event.timestamp)
+                }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Remove {
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
+                        caller_identity,
+                        reducer,
+                        timestamp,
                     })
                     .unwrap();
             },
@@ -183,6 +221,7 @@ fn connect_to_db_logic(
     building_nickname_state_tx: &Sender<SpacetimeUpdateMessages<BuildingNicknameState>>,
     crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     item_list_desc_tx: &Sender<SpacetimeUpdateMessages<ItemListDesc>>,
+    user_state_tx: &Sender<SpacetimeUpdateMessages<UserState>>,
 ) {
     let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
 
@@ -299,8 +338,10 @@ fn connect_to_db_logic(
         database
     );
 
+    setup_spacetime_db_listeners!(ctx, user_state, user_state_tx, UserState, database);
+
     let tables_to_subscribe = vec![
-        // "user_state",
+        "user_state",
         "mobile_entity_state",
         // "claim_tile_state",
         // "combat_action_desc",
@@ -357,6 +398,8 @@ fn connect_to_db_logic(
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppState>) {
     tokio::spawn(async move {
         let (mobile_entity_state_tx, mobile_entity_state_rx) = kanal::unbounded_async();
+
+        let (user_state_tx, user_state_rx) = kanal::unbounded_async();
 
         let (player_state_tx, player_state_rx) = kanal::unbounded_async();
 
@@ -420,6 +463,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &building_nickname_state_tx.clone_sync(),
                 &crafting_recipe_desc_tx.clone_sync(),
                 &item_list_desc_tx.clone_sync(),
+                &user_state_tx.clone_sync(),
             );
 
             remove_desc = true;
@@ -545,6 +589,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
             2000,
             Duration::from_millis(50),
         );
+        start_worker_user_state(global_app_state.clone(), user_state_rx)
     });
 }
 
@@ -575,19 +620,29 @@ async fn websocket_retry_helper(
     false
 }
 
+#[allow(dead_code)]
 enum SpacetimeUpdateMessages<T> {
     Insert {
         new: T,
         database_name: Arc<String>,
+        caller_identity: Option<Identity>,
+        reducer: Option<Reducer>,
+        timestamp: Option<Timestamp>,
     },
     Update {
         old: T,
         new: T,
         database_name: Arc<String>,
+        caller_identity: Option<Identity>,
+        reducer: Option<Reducer>,
+        timestamp: Option<Timestamp>,
     },
     Remove {
         delete: T,
         database_name: Arc<String>,
+        caller_identity: Option<Identity>,
+        reducer: Option<Reducer>,
+        timestamp: Option<Timestamp>,
     },
 }
 
@@ -626,6 +681,31 @@ fn start_worker_mobile_entity_state(
                     global_app_state
                         .mobile_entity_state
                         .remove(&delete.entity_id);
+                }
+            }
+        }
+    });
+}
+
+fn start_worker_user_state(
+    global_app_state: Arc<AppState>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<UserState>>,
+) {
+    tokio::spawn(async move {
+        while let Ok(update) = rx.recv().await {
+            match update {
+                SpacetimeUpdateMessages::Insert { new, .. } => {
+                    global_app_state
+                        .user_state
+                        .insert(new.identity, new.entity_id);
+                }
+                SpacetimeUpdateMessages::Update { new, .. } => {
+                    global_app_state
+                        .user_state
+                        .insert(new.identity, new.entity_id);
+                }
+                SpacetimeUpdateMessages::Remove { delete, .. } => {
+                    global_app_state.user_state.remove(&delete.identity);
                 }
             }
         }
@@ -1339,7 +1419,22 @@ fn start_worker_inventory_state(
                 ::entity::inventory::Column::PlayerOwnerEntityId,
             ])
             .to_owned();
-
+        let on_conflict_changelog =
+            sea_query::OnConflict::column(::entity::inventory_changelog::Column::Id)
+                .update_columns([
+                    ::entity::inventory_changelog::Column::EntityId,
+                    ::entity::inventory_changelog::Column::UserId,
+                    ::entity::inventory_changelog::Column::PocketNumber,
+                    ::entity::inventory_changelog::Column::OldItemId,
+                    ::entity::inventory_changelog::Column::OldItemType,
+                    ::entity::inventory_changelog::Column::OldItemQuantity,
+                    ::entity::inventory_changelog::Column::NewItemId,
+                    ::entity::inventory_changelog::Column::NewItemType,
+                    ::entity::inventory_changelog::Column::NewItemQuantity,
+                    ::entity::inventory_changelog::Column::TypeOfChange,
+                    ::entity::inventory_changelog::Column::Timestamp,
+                ])
+                .to_owned();
         let mut currently_known_inventory = ::entity::inventory::Entity::find()
             .all(&global_app_state.conn)
             .await
@@ -1350,6 +1445,7 @@ fn start_worker_inventory_state(
 
         loop {
             let mut messages = Vec::new();
+            let mut messages_changed = Vec::new();
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -1377,7 +1473,8 @@ fn start_worker_inventory_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, .. } => {
+                            SpacetimeUpdateMessages::Update { new, old, caller_identity, timestamp, .. } => {
+                                let new_model = new.clone();
                                 let model: ::entity::inventory::Model = new.into();
                                 global_app_state.inventory_state.insert(model.entity_id, model.clone());
                                 if currently_known_inventory.contains_key(&model.entity_id) {
@@ -1394,6 +1491,67 @@ fn start_worker_inventory_state(
                                 if messages.len() >= batch_size {
                                     break;
                                 }
+
+
+                                if let Some(caller_identity) = caller_identity {
+                                    let mut user_id = None;
+                                        if let Some(entity_id) = global_app_state.user_state.get(&caller_identity) {
+                                         user_id = Some(entity_id.clone() as i64)
+                                    };
+                                    for (pocket_index, new_pocket) in new_model.pockets.iter().enumerate() {
+                                        let old_pocket = &old.pockets[pocket_index];
+
+                                        let mut new_item_id = None;
+                                        let mut new_item_type = None;
+                                        let mut new_item_quantity = None;
+                                        if let Some(old_contents) = new_pocket.contents.clone() {
+                                            new_item_id = Some(old_contents.item_id);
+                                            new_item_type = Some(old_contents.item_type.into());
+                                            new_item_quantity = Some(old_contents.quantity);
+                                        }
+
+
+                                        let mut old_item_id = None;
+                                        let mut old_item_type = None;
+                                        let mut old_item_quantity = None;
+                                        if let Some(old_contents) = old_pocket.contents.clone() {
+                                            old_item_id = Some(old_contents.item_id);
+                                            old_item_type = Some(old_contents.item_type.into());
+                                            old_item_quantity = Some(old_contents.quantity);
+                                        }
+
+                                        if new_item_id == old_item_id  && new_item_type == old_item_type && new_item_quantity == old_item_quantity {
+                                            continue
+                                        }
+                                        let type_of_change: TypeOfChange;
+                                        if new_item_id == None && old_item_id != None {
+                                            type_of_change = TypeOfChange::Remove;
+                                        }else if new_item_id != None && old_item_id == None {
+                                            type_of_change = TypeOfChange::Add;
+                                        }else {
+                                            if old_item_id != new_item_id {
+                                                type_of_change = TypeOfChange::AddAndRemove;
+                                            }else {
+                                                type_of_change = TypeOfChange::Update;
+                                            }
+                                        }
+                                        messages_changed.push(::entity::inventory_changelog::ActiveModel {
+                                            id: NotSet,
+                                            entity_id: Set(new_model.entity_id as i64),
+                                            user_id: Set(user_id),
+                                            pocket_number: Set(pocket_index as i32),
+                                            old_item_id: Set(old_item_id),
+                                            old_item_type: Set(old_item_type),
+                                            old_item_quantity: Set(old_item_quantity),
+                                            new_item_id: Set(new_item_id),
+                                            new_item_type: Set(new_item_type),
+                                            new_item_quantity: Set(new_item_quantity),
+                                            type_of_change: Set(type_of_change),
+                                            timestamp: Set(DateTime::from_timestamp_micros(timestamp.unwrap().to_micros_since_unix_epoch()).unwrap())
+                                        })
+                                    }
+                                }
+
                             }
                             SpacetimeUpdateMessages::Remove { delete,.. } => {
                                 let model: ::entity::inventory::Model = delete.into();
@@ -1432,8 +1590,18 @@ fn start_worker_inventory_state(
                 // Your batch processing logic here
             }
 
+            if !messages_changed.is_empty() {
+                //tracing::info!("Processing {} messages in batch", messages.len());
+                let _ =
+                    ::entity::inventory_changelog::Entity::insert_many(messages_changed.clone())
+                        .on_conflict(on_conflict_changelog.clone())
+                        .exec(&global_app_state.conn)
+                        .await;
+                // Your batch processing logic here
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_changed.is_empty() && rx.is_closed() {
                 break;
             }
         }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Query, State};
@@ -6,6 +8,7 @@ use entity::cargo_desc;
 use entity::item_desc;
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -16,6 +19,10 @@ pub(crate) fn get_routes() -> AppRouter {
         .route(
             "/api/bitcraft/itemsAndCargo/meta",
             axum_codec::routing::get(meta).into(),
+        )
+        .route(
+            "/api/bitcraft/itemsAndCargo/all",
+            axum_codec::routing::get(get_all).into(),
         )
 }
 
@@ -50,6 +57,28 @@ pub(crate) struct ItemsAndCargoResponse {
 pub(crate) struct MetaResponse {
     tags: Vec<String>,
     tiers: Vec<i64>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct ItemsAndCargollResponse {
+    cargo_desc: HashMap<i32, cargo_desc::Model>,
+    item_desc: HashMap<i32, item_desc::Model>,
+}
+pub(crate) async fn get_all(
+    state: State<std::sync::Arc<AppState>>,
+) -> Result<axum_codec::Codec<ItemsAndCargollResponse>, (StatusCode, &'static str)> {
+    return Ok(axum_codec::Codec(ItemsAndCargollResponse {
+        cargo_desc: state
+            .cargo_desc
+            .iter()
+            .map(|value| (value.key().clone(), value.clone()))
+            .collect(),
+        item_desc: state
+            .item_desc
+            .iter()
+            .map(|value| (value.key().clone(), value.clone()))
+            .collect(),
+    }));
 }
 
 pub(crate) async fn list_items_and_cargo(

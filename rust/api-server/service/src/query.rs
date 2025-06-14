@@ -8,6 +8,8 @@ use ::entity::collectible_desc::CollectibleType;
 use ::entity::crafting_recipe;
 use ::entity::deployable_state;
 use ::entity::inventory;
+use ::entity::inventory_changelog;
+use ::entity::inventory_changelog::ItemType;
 use ::entity::trade_order;
 use ::entity::vault_state_collectibles;
 use ::entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
@@ -1940,6 +1942,37 @@ impl Query {
             .filter(inventory::Column::OwnerEntityId.eq(id))
             .all(db)
             .await
+    }
+
+    pub async fn find_inventory_changes_by_entity_ids(
+        db: &DbConn,
+        ids: Vec<i64>,
+        page_size: u64,
+        item_id: Option<i32>,
+        item_type: Option<ItemType>,
+    ) -> Result<(Vec<inventory_changelog::Model>, ItemsAndPagesNumber), DbErr> {
+        let paginator = inventory_changelog::Entity::find()
+            .filter(inventory_changelog::Column::EntityId.is_in(ids))
+            .apply_if(item_id, |query, value| {
+                query.filter(
+                    Condition::any()
+                        .add(inventory_changelog::Column::NewItemId.eq(value))
+                        .add(inventory_changelog::Column::OldItemId.eq(value)),
+                )
+            })
+            .apply_if(item_type, |query, value| {
+                query.filter(
+                    Condition::any()
+                        .add(inventory_changelog::Column::NewItemType.eq(value.clone()))
+                        .add(inventory_changelog::Column::OldItemType.eq(value)),
+                )
+            })
+            .order_by_desc(inventory_changelog::Column::Timestamp)
+            .paginate(db, page_size);
+
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        paginator.fetch_page(0).await.map(|p| (p, num_pages))
     }
 
     pub async fn get_inventorys_by_player_owner_entity_id(

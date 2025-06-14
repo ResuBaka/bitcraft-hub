@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import type { InventoryChangelog } from "~/types/InventoryChangelog";
+import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
+import type { ItemType } from "~/types/ItemType";
+import type { PlayerUsernameStateResponse } from "~/types/PlayerUsernameStateResponse";
+
 const { inventory } = defineProps<{
   inventory: any;
 }>();
@@ -25,8 +30,8 @@ const nUTCData = Intl.DateTimeFormat(undefined, {
   timeZone: "UTC",
 });
 
-function timeAgo(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
+function timeAgo(date: number) {
+  const seconds = Math.floor((Date.now() - date) / 1000);
   const interval = Math.floor(seconds / 31536000);
   if (interval > 1) {
     return interval + " years ago";
@@ -68,9 +73,21 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
-  useFetchMsPack(() => {
+const { data: InventoryChangesFetch } = useFetchMsPack<InventoryChangelog[]>(
+  () => {
     return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
+  },
+);
+
+const { data: ItemAndCargoFetch } = useFetchMsPack<ItemsAndCargollResponse>(
+  () => {
+    return `${api.base}/api/bitcraft/itemsAndCargo/all`;
+  },
+);
+
+const { data: PlayerUsernameStateFetch } =
+  useFetchMsPack<PlayerUsernameStateResponse>(() => {
+    return `${api.base}/api/bitcraft/players/all`;
   });
 
 const inventoryChanges = computed(() => {
@@ -83,92 +100,67 @@ const headersPockets = [
 ];
 
 const headersChanges = [
-  { title: "Player", key: "playerName", align: "start" },
+  { title: "Player", key: "user", align: "start" },
   { title: "Diff", key: "diff", align: "center" },
-  { title: "Old Amount", key: "diff.old", align: "end", maxWidth: "100px" },
-  { title: "New Amount", key: "diff.new", align: "end", maxWidth: "100px" },
+  {
+    title: "Old Amount",
+    key: "old_item_quantity",
+    align: "end",
+    maxWidth: "100px",
+  },
+  {
+    title: "New Amount",
+    key: "new_item_quantity",
+    align: "end",
+    maxWidth: "100px",
+  },
   {
     title: "Timestamp Since",
+    key: "timestamp",
+    align: "end",
+    maxWidth: "100px",
+  },
+  {
+    title: "Time Ago",
     key: "timestamp_diff",
     align: "end",
     maxWidth: "100px",
   },
 ];
 
-const basicChanges = computed(() => {
-  const changes = [];
-  for (const change of inventoryChanges.value) {
-    const data = new Date(change.timestamp / 1000);
-    if (change.diff) {
-      for (const diff in change.diff) {
-        let newDiff = undefined;
-        let oldDiff = undefined;
-        if (change.diff[diff].new !== undefined) {
-          newDiff = change.diff[diff].new;
-        }
-        if (change.diff[diff].old !== undefined) {
-          oldDiff = change.diff[diff].old;
-        }
-
-        let type = "";
-        let amountDiff = 0;
-
-        if (newDiff !== undefined && oldDiff !== undefined) {
-          amountDiff = newDiff.quantity - oldDiff.quantity;
-          if (newDiff.item_id !== oldDiff.item_id) {
-            type = "swap";
-          } else {
-            type = amountDiff > 0 ? "increase" : "decrease";
-          }
-        } else if (newDiff !== undefined) {
-          type = "create";
-          amountDiff = newDiff.quantity;
-        } else if (oldDiff !== undefined) {
-          type = "delete";
-          amountDiff = oldDiff.quantity;
-        }
-
-        changes.push({
-          playerName: change.playerName,
-          timestamp: data,
-          timestamp_utc: data,
-          timestamp_diff: data,
-          diff: {
-            type: type,
-            old: oldDiff,
-            new: newDiff,
-            amountDiff: amountDiff,
-            item: {
-              name: newDiff?.item?.name ?? oldDiff?.item?.name,
-              id: newDiff?.item?.id ?? oldDiff?.item?.id,
-            },
-          },
-        });
-      }
-    }
+function getItemOrCargoName(item_id: number, item_type: ItemType) {
+  if (ItemAndCargoFetch.value === undefined) {
+    return;
   }
+  if (item_type === "Item") {
+    const itemDesc = ItemAndCargoFetch.value.item_desc[item_id];
+    if (itemDesc == undefined) {
+      return `${item_id}`;
+    }
+    return `${itemDesc.name} ${Array.from(itemDesc.rarity)[0]}`;
+  } else {
+    const cargoDesc = ItemAndCargoFetch.value.cargo_desc[item_id];
+    if (cargoDesc == undefined) {
+      return `${item_id}`;
+    }
+    return `${cargoDesc.name} ${Array.from(cargoDesc.rarity)[0]}`;
+  }
+}
 
-  return changes;
-});
-
-const changes = computed(() => {
-  return (
-    basicChanges.value.filter((change) => {
-      return (
-        !search.value ||
-        change?.diff?.new?.item?.name
-          ?.toLowerCase()
-          .includes(search.value.toLowerCase()) ||
-        change?.diff?.old?.item?.name
-          ?.toLowerCase()
-          .includes(search.value.toLowerCase()) ||
-        change?.playerName?.toLowerCase().includes(search.value.toLowerCase())
-      );
-    }) ?? []
+function getUsername(user_id: bigint) {
+  if (
+    PlayerUsernameStateFetch.value === undefined ||
+    PlayerUsernameStateFetch.value === null
+  ) {
+    return;
+  }
+  console.log(
+    PlayerUsernameStateFetch.value.username_state[user_id.toString()],
   );
-});
+  return PlayerUsernameStateFetch.value.username_state[user_id.toString()];
+}
 
-const backgroundColorRow = ({ index }) => {
+const backgroundColorRow = ({ index }: { index: number }) => {
   return {
     class: index % 2 === 0 ? "" : "bg-surface-light",
   };
@@ -213,48 +205,48 @@ const isPlayer = computed(() => {
               ></v-text-field>
             </v-col>
           </v-row>
-          <v-data-table density="compact" :headers="headersChanges" :items="changes" :row-props="backgroundColorRow">
+          <v-data-table density="compact" :headers="headersChanges" :items="InventoryChangesFetch" :row-props="backgroundColorRow">
+            <template v-slot:item.user="{ item }">
+              {{ getUsername(item.user_id) }}
+            </template>
             <template v-slot:item.timestamp="{ item }">
-              {{ nDate.format(item.timestamp) }}
+              {{ nDate.format(Date.parse(item.timestamp)) }}
             </template>
-            <template v-slot:item.timestamp_utc="{ item }">
-              {{ nUTCData.format(item.timestamp) }}
-            </template>
-            <template v-slot:item.timestamp_diff="{ value }">
-              <v-tooltip :text="`${value}`" location="top">
+            <template v-slot:item.timestamp_diff="{ item }">
+              <v-tooltip :text="`UTC ${ nUTCData.format(Date.parse(item.timestamp)) }`" location="top">
                 <template v-slot:activator="{ props }">
-                  <div v-bind="props" >{{ timeAgo(value) }} </div>
+                  <div v-bind="props" >{{ timeAgo( Date.parse(item.timestamp)) }} </div>
                 </template>
               </v-tooltip>
             </template>
-            <template v-slot:item.diff="{ value }">
-              <template v-if="value.type === 'delete'">
+            <template v-slot:item.diff="{ item }">
+              <template v-if="item.type_of_change === 'Remove' && item.old_item_id !== null && item.old_item_type !== null">
                 <v-icon color="red">mdi-delete-empty</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+                <b>-{{ item.old_item_quantity }}</b> {{ getItemOrCargoName(item.old_item_id,item.old_item_type) }}
               </template>
-              <template v-if="value.type === 'create'">
+              <template v-if="item.type_of_change === 'Add' && item.new_item_id !== null && item.new_item_type !== null">
                 <v-icon color="green">mdi-plus</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+                <b>{{ item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type)  }}
               </template>
-              <template v-if="value.type === 'increase'">
+              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity > item.new_item_quantity">
                 <v-icon color="green">mdi-arrow-up-bold-outline</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}
               </template>
-              <template v-if="value.type === 'decrease'">
+              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity < item.new_item_quantity">
                 <v-icon color="red">mdi-arrow-down-bold-outline</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
+                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{  getItemOrCargoName(item.new_item_id,item.new_item_type)  }}
               </template>
-              <template v-if="value.type === 'swap'"><b class="text-red">{{ value.old.item.name }}</b>
+              <template v-if="item.type_of_change === 'AddAndRemove' && item.new_item_id !== null && item.new_item_type !== null"><b class="text-red">{{ getItemOrCargoName(item.old_item_id,item.old_item_type)  }}</b>
                 <v-icon color="pink">mdi-swap-horizontal</v-icon>
-                <b class="text-green">{{ value.new.item.name }}</b></template>
+                <b class="text-green">{{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}</b></template>
             </template>
-            <template v-slot:item.diff.old="{ value, item }">
-              <template v-if="value !== undefined">{{ value.quantity }}</template>
+            <template v-slot:item.diff.old="{item } ">
+              <template v-if="item.old_item_id !== null && item.old_item_quantity">{{ item.old_item_quantity }}</template>
             </template>
-            <template v-slot:item.diff.new="{ value, item }">
-              <template v-if="value !== undefined">
-                <div :class="{ 'text-red': item.diff.amountDiff < 0, 'text-green': item.diff.amountDiff > 0 }">
-                  {{ value.quantity }}
+            <template v-slot:item.diff.new="{item }">
+              <template v-if="item.old_item_quantity !== null && item.new_item_quantity !== null">
+                <div :class="{ 'text-red': item.old_item_quantity - item.new_item_quantity < 0, 'text-green': item.old_item_quantity - item.new_item_quantity > 0 }">
+                  {{ item.new_item_quantity }}
                 </div>
               </template>
             </template>
