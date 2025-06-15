@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
+import AutocompleteUser from "./autocomplete/AutocompleteUser.vue";
+import AutocompleteItem from "./autocomplete/AutocompleteItem.vue";
+import InventoryChanges from "./InventoryChanges.vue";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
@@ -14,11 +17,9 @@ const { inventory } = defineProps<{
 
 const router = useRouter();
 
-const playerId = ref<Number | undefined>();
-const player = ref<string | undefined>("");
+const playerId = ref<BigInt | null>();
 
 const itemObject = ref<ItemCargo | undefined>();
-const item = ref<string | undefined>("");
 
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -103,7 +104,8 @@ const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } =
         options.query.per_page = 20;
 
         if (Object.keys(options.query).length > 1) {
-          const query = { item: item.value };
+          const query = { ...options.query };
+          delete query.per_page;
           router.push({ query });
         } else if (options.query.page < 1) {
           router.push({});
@@ -111,63 +113,6 @@ const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } =
       },
     },
   );
-
-const { data: ItemAndCargoFetch } = useFetchMsPack<ItemsAndCargollResponse>(
-  () => {
-    return `${api.base}/api/bitcraft/itemsAndCargo/all`;
-  },
-);
-
-const { data: itemsAndCargoData, refresh: itemsAndCargoRefresh } =
-  await useLazyFetchMsPack<ItemsAndCargoResponse>(
-    () => {
-      return `${api.base}/api/bitcraft/itemsAndCargo`;
-    },
-    {
-      onRequest: ({ options }) => {
-        options.query = options.query || {};
-
-        options.query.search = item.value;
-        options.query.no_item_list = true;
-        options.query.per_page = 20;
-
-        if (Object.keys(options.query).length > 1) {
-          const query = { item: item.value };
-          router.push({ query });
-        } else if (options.query.page < 1) {
-          router.push({});
-        }
-      },
-    },
-  );
-const { data: playerData, refresh: refreshPlayer } =
-  await useLazyFetchMsPack<PlayersResponse>(
-    () => {
-      return `${api.base}/api/bitcraft/players`;
-    },
-    {
-      onRequest: ({ options }) => {
-        options.query = options.query || {};
-
-        if (player.value) {
-          options.query.search = player.value;
-        }
-        options.query.per_page = 20;
-
-        if (Object.keys(options.query).length > 2) {
-          const query = { player: player.value };
-          router.push({ query });
-        } else if (options.query.page <= 1) {
-          router.push({});
-        }
-      },
-    },
-  );
-
-const { data: PlayerUsernameStateFetch } =
-  useFetchMsPack<PlayerUsernameStateResponse>(() => {
-    return `${api.base}/api/bitcraft/players/all`;
-  });
 
 const inventoryChanges = computed(() => {
   return InventoryChangesFetch.value ?? [];
@@ -178,97 +123,16 @@ const headersPockets = [
   { title: "Quantity", key: "contents.quantity", align: "end" },
 ];
 
-const headersChanges = [
-  { title: "Player", key: "user", align: "start" },
-  { title: "Diff", key: "diff", align: "center" },
-  {
-    title: "Old Amount",
-    key: "old_item_quantity",
-    align: "end",
-    maxWidth: "100px",
-  },
-  {
-    title: "New Amount",
-    key: "new_item_quantity",
-    align: "end",
-    maxWidth: "100px",
-  },
-  {
-    title: "Timestamp Since",
-    key: "timestamp",
-    align: "end",
-    maxWidth: "100px",
-  },
-  {
-    title: "Time Ago",
-    key: "timestamp_diff",
-    align: "end",
-    maxWidth: "100px",
-  },
-];
-
-function getItemOrCargoName(item_id: number, item_type: ItemType) {
-  if (ItemAndCargoFetch.value === undefined) {
-    return;
-  }
-  if (item_type === "Item") {
-    const itemDesc = ItemAndCargoFetch.value.item_desc[item_id];
-    if (itemDesc == undefined) {
-      return `${item_id}`;
-    }
-    return `${itemDesc.name} ${Array.from(itemDesc.rarity)[0]}`;
-  } else {
-    const cargoDesc = ItemAndCargoFetch.value.cargo_desc[item_id];
-    if (cargoDesc == undefined) {
-      return `${item_id}`;
-    }
-    return `${cargoDesc.name} ${Array.from(cargoDesc.rarity)[0]}`;
-  }
-}
-
-function getUsername(user_id: bigint) {
-  if (
-    PlayerUsernameStateFetch.value === undefined ||
-    PlayerUsernameStateFetch.value === null
-  ) {
-    return;
-  }
-  return PlayerUsernameStateFetch.value.username_state[user_id.toString()];
-}
-
 const backgroundColorRow = ({ index }: { index: number }) => {
   return {
     class: index % 2 === 0 ? "" : "bg-surface-light",
   };
 };
 
-const isPlayer = computed(() => {
-  return (
-    inventory.value?.nickname === "Tool belt" ||
-    inventory.value?.nickname === "Inventory"
-  );
-});
-
-watchThrottled(
-  () => [item.value],
-  (value, oldValue) => {
-    itemsAndCargoRefresh();
-  },
-  { throttle: 50 },
-);
-
 watchThrottled(
   () => [itemObject.value, playerId.value],
   (value, oldValue) => {
     InventoryChangesRefresh();
-  },
-  { throttle: 50 },
-);
-
-watchThrottled(
-  () => [player.value],
-  (value, oldValue) => {
-    refreshPlayer();
   },
   { throttle: 50 },
 );
@@ -296,79 +160,15 @@ watchThrottled(
         <v-card-text>
           <v-row>
             <v-col>
-                <v-autocomplete
-                    v-model="playerId"
-                    v-model:search="player"
-                    :items="playerData?.players || []"
-                    item-title="username"
-                    item-value ="entity_id"
-                    label="player"
-                    outlined
-                    dense
-                    clearable
-                />
+                <autocomplete-user @model_changed="(item) => playerId=item" />
           </v-col>
             <v-col>
-              <v-autocomplete
-                v-model="itemObject"
-                v-model:search="item"
-                :items="itemsAndCargoData?.items || []"
-                :item-title="item=>`${item.name} - ${item.rarity}`"
-                item-value="name"
-                :return-object="true"
-                label="item"
-                outlined
-                dense
-                clearable
-            ></v-autocomplete>
+              <autocomplete-item
+                    @model_changed="(item) => itemObject=item"
+                />
             </v-col>
           </v-row>
-          <v-data-table density="compact" :headers="headersChanges" :items="InventoryChangesFetch" :row-props="backgroundColorRow">
-            <template v-slot:item.user="{ item }">
-              {{ getUsername(item.user_id) }}
-            </template>
-            <template v-slot:item.timestamp="{ item }">
-              {{ nDate.format(Date.parse(item.timestamp)) }}
-            </template>
-            <template v-slot:item.timestamp_diff="{ item }">
-              <v-tooltip :text="`UTC ${ nUTCData.format(Date.parse(item.timestamp)) }`" location="top">
-                <template v-slot:activator="{ props }">
-                  <div v-bind="props" >{{ timeAgo( Date.parse(item.timestamp)) }} </div>
-                </template>
-              </v-tooltip>
-            </template>
-            <template v-slot:item.diff="{ item }">
-              <template v-if="item.type_of_change === 'Remove' && item.old_item_id !== null && item.old_item_type !== null">
-                <v-icon color="red">mdi-delete-empty</v-icon>
-                <b>-{{ item.old_item_quantity }}</b> {{ getItemOrCargoName(item.old_item_id,item.old_item_type) }}
-              </template>
-              <template v-if="item.type_of_change === 'Add' && item.new_item_id !== null && item.new_item_type !== null">
-                <v-icon color="green">mdi-plus</v-icon>
-                <b>{{ item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type)  }}
-              </template>
-              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity > item.new_item_quantity">
-                <v-icon color="green">mdi-arrow-up-bold-outline</v-icon>
-                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}
-              </template>
-              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity < item.new_item_quantity">
-                <v-icon color="red">mdi-arrow-down-bold-outline</v-icon>
-                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{  getItemOrCargoName(item.new_item_id,item.new_item_type)  }}
-              </template>
-              <template v-if="item.type_of_change === 'AddAndRemove' && item.new_item_id !== null && item.new_item_type !== null"><b class="text-red">{{ getItemOrCargoName(item.old_item_id,item.old_item_type)  }}</b>
-                <v-icon color="pink">mdi-swap-horizontal</v-icon>
-                <b class="text-green">{{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}</b></template>
-            </template>
-            <template v-slot:item.diff.old="{item } ">
-              <template v-if="item.old_item_id !== null && item.old_item_quantity">{{ item.old_item_quantity }}</template>
-            </template>
-            <template v-slot:item.diff.new="{item }">
-              <template v-if="item.old_item_quantity !== null && item.new_item_quantity !== null">
-                <div :class="{ 'text-red': item.old_item_quantity - item.new_item_quantity < 0, 'text-green': item.old_item_quantity - item.new_item_quantity > 0 }">
-                  {{ item.new_item_quantity }}
-                </div>
-              </template>
-            </template>
-          </v-data-table>
+          <inventory-changes :items="InventoryChangesFetch"/>
         </v-card-text>
       </v-card>
     </div>

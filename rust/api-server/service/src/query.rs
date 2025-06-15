@@ -1927,6 +1927,20 @@ impl Query {
         paginator.fetch_page(0).await.map(|p| (p, num_pages))
     }
 
+    pub async fn find_inventory_entity_ids_by_owner_entity_ids(
+        db: &DbConn,
+        ids: Vec<i64>,
+    ) -> Result<Vec<i64>, DbErr> {
+        inventory::Entity::find()
+            .select_only()
+            .column(inventory::Column::EntityId)
+            .filter(inventory::Column::OwnerEntityId.is_in(ids))
+            .order_by_asc(inventory::Column::EntityId)
+            .into_tuple()
+            .all(db)
+            .await
+    }
+
     pub async fn find_inventory_by_player_owner_entity_id(
         db: &DbConn,
         id: i64,

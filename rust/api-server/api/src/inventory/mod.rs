@@ -43,9 +43,9 @@ pub(crate) fn get_routes() -> AppRouter {
 
 #[derive(Deserialize)]
 pub(crate) struct InventoryChangesParams {
-    item_id: Option<i32>,
-    item_type: Option<inventory_changelog::ItemType>,
-    user_id: Option<i64>,
+    pub item_id: Option<i32>,
+    pub item_type: Option<inventory_changelog::ItemType>,
+    pub user_id: Option<i64>,
 }
 pub(crate) async fn read_inventory_changes(
     state: State<std::sync::Arc<AppState>>,
