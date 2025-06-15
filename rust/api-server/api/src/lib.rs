@@ -48,6 +48,7 @@ use sea_orm::strum::Display;
 use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
 use service::sea_orm::{Database, DatabaseConnection};
+use spacetimedb_sdk::Identity;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt::Display;
@@ -500,6 +501,7 @@ struct AppState {
     location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
     inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,
+    user_state: Arc<dashmap::DashMap<Identity, u64>>,
 }
 
 impl AppState {
@@ -535,6 +537,7 @@ impl AppState {
             location_state: Arc::new(dashmap::DashMap::new()),
             inventory_state: Arc::new(dashmap::DashMap::new()),
             connected_user_map: Arc::new(dashmap::DashMap::new()),
+            user_state: Arc::new(dashmap::DashMap::new()),
         }
     }
 

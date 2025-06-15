@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
 import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
+
+import AutocompleteClaim from "~/components/Bitcraft/autocomplete/AutocompleteClaim.vue";
+import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
 import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
 import { watchDebounced, watchThrottled } from "@vueuse/shared";
 import type { InventorysResponse } from "~/types/InventorysResponse";
@@ -21,10 +24,8 @@ export type PannelEmptyIndexs = {
   children: PannelIndexs[];
 };
 
-const player = ref<string | undefined>("");
 const playerId = ref<BigInt | null>(null);
-const claim = ref<string | undefined>("");
-const claimId = ref<BigInt | null>(null);
+const claimId = ref<BigInt | null | undefined>(null);
 const amount = ref<number>(1);
 const pannelIndexs: PannelIndexs[] = reactive([]);
 const route = useRoute();
@@ -49,29 +50,6 @@ export type objectWithChildren = {
 export type RecipeWithChildren = {
   children: objectWithChildren[];
 };
-const { data: playerData, refresh: refreshPlayer } =
-  await useLazyFetchMsPack<PlayersResponse>(
-    () => {
-      return `${api.base}/api/bitcraft/players`;
-    },
-    {
-      onRequest: ({ options }) => {
-        options.query = options.query || {};
-
-        if (player.value) {
-          options.query.search = player.value;
-        }
-        options.query.per_page = 20;
-
-        if (Object.keys(options.query).length > 2) {
-          const query = { player: player.value };
-          router.push({ query });
-        } else if (options.query.page <= 1) {
-          router.push({});
-        }
-      },
-    },
-  );
 
 const { data: claimInventoryData, refresh: refreshClaimInventory } =
   await useLazyFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
@@ -80,21 +58,6 @@ const { data: claimInventoryData, refresh: refreshClaimInventory } =
     },
     {
       immediate: false,
-      onRequest: ({ options }) => {
-        options.query = options.query || {};
-        options;
-        if (player.value) {
-          options.query.search = player.value;
-        }
-        options.query.per_page = 20;
-
-        if (Object.keys(options.query).length > 2) {
-          const query = { player: player.value };
-          router.push({ query });
-        } else if (options.query.page <= 1) {
-          router.push({});
-        }
-      },
     },
   );
 
@@ -105,69 +68,12 @@ const { data: playerInventoryData, refresh: refreshPlayerInventory } =
     },
     {
       immediate: false,
-      onRequest: ({ options }) => {
-        options.query = options.query || {};
-        options;
-        if (player.value) {
-          options.query.search = player.value;
-        }
-        options.query.per_page = 20;
-
-        if (Object.keys(options.query).length > 2) {
-          const query = { player: player.value };
-          router.push({ query });
-        } else if (options.query.page <= 1) {
-          router.push({});
-        }
-      },
     },
   );
 
-const { data: claimData, refresh: refreshClaim } =
-  await useLazyFetchMsPack<ClaimResponse>(
-    () => {
-      return `${api.base}/api/bitcraft/claims`;
-    },
-    {
-      onRequest: ({ options }) => {
-        options.query = options.query || {};
-
-        if (player.value) {
-          options.query.search = player.value;
-        }
-        options.query.per_page = 20;
-
-        if (Object.keys(options.query).length > 2) {
-          const query = { player: player.value };
-          router.push({ query });
-        } else if (options.query.page <= 1) {
-          router.push({});
-        }
-      },
-    },
-  );
-
-watchThrottled(
-  () => [player.value],
-  (value, oldValue) => {
-    refreshPlayer();
-  },
-  { throttle: 50 },
-);
-
-watchThrottled(
-  () => [claim.value],
-  (value, oldValue) => {
-    refreshClaim();
-  },
-  { throttle: 50 },
-);
 watchThrottled(
   () => [claimId.value],
   (value, oldValue) => {
-    if (value[0] === null) {
-      return;
-    }
     refreshClaimInventory();
   },
   { throttle: 50 },
@@ -176,9 +82,6 @@ watchThrottled(
 watchThrottled(
   () => [playerId.value],
   (value, oldValue) => {
-    if (value[0] === null) {
-      return;
-    }
     refreshPlayerInventory();
   },
   { throttle: 50 },
@@ -664,30 +567,10 @@ useSeoMeta({
       <v-card-text>
          <v-row>
           <v-col>
-            <v-autocomplete
-                v-model="claimId"
-                v-model:search="claim"
-                :items="claimData?.claims || []"
-                item-title="name"
-                item-value="entity_id"
-                label="claim"
-                outlined
-                dense
-                clearable
-            ></v-autocomplete>
+            <autocomplete-claim @model_changed="(item) => claimId=item" />
           </v-col>
           <v-col>
-            <v-autocomplete
-                v-model="playerId"
-                 v-model:search="player"
-                :items="playerData?.players || []"
-                item-title="username"
-                item-value ="entity_id"
-                label="player"
-                outlined
-                dense
-                clearable
-            ></v-autocomplete>
+             <autocomplete-user @model_changed="(item) => playerId=item" />
           </v-col>
           <v-col>
             <v-number-input

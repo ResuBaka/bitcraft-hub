@@ -1,7 +1,7 @@
 pub(crate) mod claim_local_state;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
-use crate::inventory::{resolve_contents, resolve_pocket};
+use crate::inventory::{InventoryChangesParams, resolve_contents, resolve_pocket};
 use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
 use crate::{AppRouter, AppState};
 use axum::Router;
@@ -9,7 +9,10 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::inventory::{ExpendedRefrence, ItemExpended, ResolvedInventory};
 use entity::shared::location::Location;
-use entity::{building_state, cargo_desc, claim_tech_desc, inventory, item_desc, player_state};
+use entity::{
+    building_state, cargo_desc, claim_tech_desc, inventory, inventory_changelog, item_desc,
+    player_state,
+};
 use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
@@ -37,6 +40,10 @@ pub(crate) fn get_routes() -> AppRouter {
         .route(
             "/claims/tiles/{id}",
             axum_codec::routing::get(get_claim_tiles).into(),
+        )
+        .route(
+            "/claims/inventory_changelog/{id}",
+            axum_codec::routing::get(get_claim_inventory_change_log).into(),
         )
 }
 
@@ -147,6 +154,48 @@ type ClaimLeaderboardTasks =
 
 type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>)>>>;
 
+pub(crate) async fn get_claim_inventory_change_log(
+    state: State<std::sync::Arc<AppState>>,
+    Path(id): Path<i64>,
+    Query(params): Query<InventoryChangesParams>,
+) -> Result<axum_codec::Codec<Vec<inventory_changelog::Model>>, (StatusCode, &'static str)> {
+    let building_states = QueryCore::find_building_state_by_claim_id(&state.conn, id)
+        .await
+        .unwrap_or_else(|err| {
+            error!("Error loading building states: {err}");
+            vec![]
+        });
+
+    let building_inventories_ids = building_states
+        .iter()
+        .map(|building| building.entity_id)
+        .collect();
+
+    let inventory_ids = QueryCore::find_inventory_entity_ids_by_owner_entity_ids(
+        &state.conn,
+        building_inventories_ids,
+    )
+    .await
+    .unwrap_or_else(|err| {
+        error!("Error loading find_inventory_entity_ids_by_owner_entity_ids: {err}");
+        vec![]
+    });
+    let (inventory_changes, _num_pages) = QueryCore::find_inventory_changes_by_entity_ids(
+        &state.conn,
+        inventory_ids,
+        10000,
+        params.item_id,
+        params.item_type,
+        params.user_id,
+    )
+    .await
+    .map_err(|e| {
+        error!("Error: {:?}", e);
+
+        (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+    })?;
+    Ok(axum_codec::Codec(inventory_changes))
+}
 pub(crate) async fn get_claim(
     state: State<std::sync::Arc<AppState>>,
     Path(id): Path<u64>,

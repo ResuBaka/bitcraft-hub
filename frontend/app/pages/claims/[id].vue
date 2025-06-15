@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
+import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
+import AutocompleteItem from "~/components/Bitcraft/autocomplete/AutocompleteItem.vue";
+import InventoryChanges from "~/components/Bitcraft/InventoryChanges.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { useNow } from "@vueuse/core";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import { toast } from "vuetify-sonner";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
+import type { InventoryChangelog } from "~/types/InventoryChangelog";
+import type { ItemCargo } from "~/types/ItemCargo";
 
 const {
   public: { iconDomain },
@@ -18,11 +23,15 @@ const building_items_collapsible = ref([]);
 const player_items_collapsible = ref([]);
 const player_offline_items_collapsible = ref([]);
 const buildings_collapsible = ref([]);
+const inventory_changelog_collapsible = ref([]);
 
 const search = ref<string | null>("");
 
 const route = useRoute();
 const router = useRouter();
+
+const player_id = ref<BigInt | null>();
+const item_object = ref<ItemCargo | undefined>();
 
 const rarityBuildings = ref<string | null>(null);
 const tierBuildings = ref<number | null>(null);
@@ -46,6 +55,12 @@ const { data: claimFetch, pending: claimPnding } =
   useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(() => {
     return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
   });
+
+const { data: InventoryChangelogFetch } = useFetchMsPack<InventoryChangelog[]>(
+  () => {
+    return `${api.base}/claims/inventory_changelog/${route.params.id.toString()}`;
+  },
+);
 
 const { data: buidlingsFetch, pending: buildingsPending } =
   useFetchMsPack<BuildingStatesResponse>(() => {
@@ -1054,6 +1069,41 @@ const skillToToolIndex = {
                   ></v-pagination>
                 </v-col>
               </v-row>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12">
+        <v-expansion-panels v-model="inventory_changelog_collapsible">
+          <v-expansion-panel value="inventory_changelogs">
+            <v-expansion-panel-title>
+              <v-row>
+                <v-col class="d-flex justify-center">
+                  <h2 class="pl-md-3 pl-xl-0">Inventory Changes ({{ InventoryChangelogFetch?.length || 0 }})</h2>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+                <v-card>
+                  <v-card-title>Changes</v-card-title>
+                  <v-card-text>
+                    <v-row>
+                      <v-col>
+                          <autocomplete-user
+                              @model_changed="(item) => player_id=item"
+                          />
+                    </v-col>
+                      <v-col>
+                        <autocomplete-item
+                              @model_changed="(item) => item_object=item"
+                          />
+                      </v-col>
+                    </v-row>
+                    <inventory-changes :items="InventoryChangelogFetch"/>
+                  </v-card-text>
+                  </v-card>
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
