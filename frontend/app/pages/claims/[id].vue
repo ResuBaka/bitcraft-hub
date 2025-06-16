@@ -57,11 +57,13 @@ const { data: claimFetch, pending: claimPnding } =
     return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
   });
 
-const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = useFetchMsPack<InventoryChangelog[]>(
-  () => {
-    return `${api.base}/claims/inventory_changelog/${route.params.id.toString()}`
-  },{
-    onRequest: ({ options }) => {
+const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
+  useFetchMsPack<InventoryChangelog[]>(
+    () => {
+      return `${api.base}/claims/inventory_changelog/${route.params.id.toString()}`;
+    },
+    {
+      onRequest: ({ options }) => {
         options.query = options.query || {};
         if (item_object.value !== undefined && item_object.value !== null) {
           options.query.item_id = item_object.value.id;
@@ -79,9 +81,9 @@ const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = us
         } else if (options.query.page < 1) {
           router.push({});
         }
-      }
-  }
-);
+      },
+    },
+  );
 
 const { data: buidlingsFetch, pending: buildingsPending } =
   useFetchMsPack<BuildingStatesResponse>(() => {
@@ -566,7 +568,6 @@ const skillToToolIndex = {
   Tailoring: 7,
 };
 
-
 watchThrottled(
   () => [item_object.value, player_id.value],
   (value, oldValue) => {
@@ -574,7 +575,6 @@ watchThrottled(
   },
   { throttle: 50 },
 );
-
 </script>
 
 <template>
