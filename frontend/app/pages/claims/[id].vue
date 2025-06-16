@@ -63,8 +63,8 @@ const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = us
   },{
     onRequest: ({ options }) => {
         options.query = options.query || {};
-
-        if (item_object.value !== undefined) {
+        console.log(item_object.value)
+        if (item_object.value !== undefined && item_object.value !== null) {
           options.query.item_id = item_object.value.id;
           options.query.item_type = item_object.value.type;
         }

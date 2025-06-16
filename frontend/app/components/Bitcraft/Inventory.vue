@@ -94,7 +94,7 @@ const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } =
       onRequest: ({ options }) => {
         options.query = options.query || {};
 
-        if (itemObject.value !== undefined) {
+        if (itemObject.value !== undefined && itemObject.value !== null) {
           options.query.item_id = itemObject.value.id;
           options.query.item_type = itemObject.value.type;
         }
