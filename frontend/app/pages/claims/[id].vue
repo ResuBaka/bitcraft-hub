@@ -4,6 +4,7 @@ import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUse
 import AutocompleteItem from "~/components/Bitcraft/autocomplete/AutocompleteItem.vue";
 import InventoryChanges from "~/components/Bitcraft/InventoryChanges.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import { watchThrottled } from "@vueuse/shared";
 import { useNow } from "@vueuse/core";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import { toast } from "vuetify-sonner";
@@ -56,10 +57,31 @@ const { data: claimFetch, pending: claimPnding } =
     return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
   });
 
-const { data: InventoryChangelogFetch } = useFetchMsPack<InventoryChangelog[]>(
+const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = useFetchMsPack<InventoryChangelog[]>(
   () => {
-    return `${api.base}/claims/inventory_changelog/${route.params.id.toString()}`;
-  },
+    return `${api.base}/claims/inventory_changelog/${route.params.id.toString()}`
+  },{
+    onRequest: ({ options }) => {
+        options.query = options.query || {};
+
+        if (item_object.value !== undefined) {
+          options.query.item_id = item_object.value.id;
+          options.query.item_type = item_object.value.type;
+        }
+        if (player_id.value !== undefined && player_id.value !== null) {
+          options.query.user_id = player_id.value.toString();
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 1) {
+          const query = { ...options.query };
+          delete query.per_page;
+          router.push({ query });
+        } else if (options.query.page < 1) {
+          router.push({});
+        }
+      }
+  }
 );
 
 const { data: buidlingsFetch, pending: buildingsPending } =
@@ -544,6 +566,16 @@ const skillToToolIndex = {
   Smithing: 4,
   Tailoring: 7,
 };
+
+
+watchThrottled(
+  () => [item_object.value, player_id.value],
+  (value, oldValue) => {
+    InventoryChangelogRefresh();
+  },
+  { throttle: 50 },
+);
+
 </script>
 
 <template>
