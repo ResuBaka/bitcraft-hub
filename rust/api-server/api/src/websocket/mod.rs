@@ -183,6 +183,8 @@ fn connect_to_db_logic(
     building_nickname_state_tx: &Sender<SpacetimeUpdateMessages<BuildingNicknameState>>,
     crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     item_list_desc_tx: &Sender<SpacetimeUpdateMessages<ItemListDesc>>,
+    traveler_task_desc_tx: &Sender<SpacetimeUpdateMessages<TravelerTaskDesc>>,
+    traveler_task_state_tx: &Sender<SpacetimeUpdateMessages<TravelerTaskState>>,
 ) {
     let ctx = connect_to_db(database, config.spacetimedb_url().as_ref());
 
@@ -298,6 +300,20 @@ fn connect_to_db_logic(
         ItemListDesc,
         database
     );
+    setup_spacetime_db_listeners!(
+        ctx,
+        traveler_task_desc,
+        traveler_task_desc_tx,
+        TravelerTaskDesc,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        traveler_task_state,
+        traveler_task_state_tx,
+        TravelerTaskState,
+        database
+    );
 
     let tables_to_subscribe = vec![
         // "user_state",
@@ -330,7 +346,8 @@ fn connect_to_db_logic(
         // "select location_state.* from location_state JOIN player_state ps ON player_state.entity_id = location_state.entity_id", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN building_state ps ON building_state.entity_id = building_state.entity_id", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN deployable_state ps ON deployable_state.entity_id = deployable_state.entity_id", // This currently takes to much cpu to run
-        "inventory_state",
+        "traveler_task_desc",
+        "traveler_task_state"
     ];
 
     ctx.subscription_builder()
@@ -392,6 +409,9 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
 
         let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) = kanal::unbounded_async();
 
+        let (traveler_task_desc_tx, traveler_task_desc_rx) = kanal::unbounded_async();
+        let (traveler_task_state_tx, traveler_task_state_rx) = kanal::unbounded_async();
+
         let mut remove_desc = false;
 
         config.spacetimedb.databases.iter().for_each(|database| {
@@ -420,6 +440,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &building_nickname_state_tx.clone_sync(),
                 &crafting_recipe_desc_tx.clone_sync(),
                 &item_list_desc_tx.clone_sync(),
+                &traveler_task_desc_tx.clone_sync(),
+                &traveler_task_state_tx.clone_sync(),
             );
 
             remove_desc = true;
@@ -542,6 +564,18 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         start_worker_item_list_desc(
             global_app_state.clone(),
             item_list_desc_rx,
+            2000,
+            Duration::from_millis(50),
+        );
+        start_worker_traveler_task_desc(
+            global_app_state.clone(),
+            traveler_task_desc_rx,
+            2000,
+            Duration::from_millis(50),
+        );
+        start_worker_traveler_task_state(
+            global_app_state.clone(),
+            traveler_task_state_rx,
             2000,
             Duration::from_millis(50),
         );
@@ -3213,6 +3247,215 @@ fn start_worker_location_state(
         }
     });
 }
+
+fn start_worker_traveler_task_desc(
+    global_app_state: Arc<AppState>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<TravelerTaskDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(::entity::traveler_task_desc::Column::Id)
+            .update_columns([
+                ::entity::traveler_task_desc::Column::SkillId,
+                ::entity::traveler_task_desc::Column::MinLevel,
+                ::entity::traveler_task_desc::Column::MaxLevel,
+                ::entity::traveler_task_desc::Column::RequiredItems,
+                ::entity::traveler_task_desc::Column::RewardedItems,
+                ::entity::traveler_task_desc::Column::RewardedExperience,
+                ::entity::traveler_task_desc::Column::Description,
+            ])
+            .to_owned();
+
+        let mut currently_known_traveler_task_desc = ::entity::traveler_task_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Ok(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::traveler_task_desc::Model = new.into();
+                                global_app_state.traveler_task_desc.insert(model.id, model.clone());
+                                if currently_known_traveler_task_desc.contains_key(&model.id) {
+                                    let value = currently_known_traveler_task_desc.get(&model.id).unwrap();
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_traveler_task_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::traveler_task_desc::Model = new.into();
+                                global_app_state.traveler_task_desc.insert(model.id, model.clone());
+                                if currently_known_traveler_task_desc.contains_key(&model.id) {
+                                    let value = currently_known_traveler_task_desc.get(&model.id).unwrap();
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_traveler_task_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete, .. } => {
+                                let model: ::entity::traveler_task_desc::Model = delete.into();
+                                let id = model.id;
+                                global_app_state.traveler_task_desc.remove(&id);
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
+                                    messages.remove(index);
+                                }
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(TravelerTaskDesc = id, error = error.to_string(), "Could not delete TravelerTaskDesc");
+                                }
+                                tracing::debug!("TravelerTaskDesc::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        break;
+                    }
+                    else => {
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                let _ = ::entity::traveler_task_desc::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
+            }
+
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_traveler_task_state(
+    global_app_state: Arc<AppState>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<TravelerTaskState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(::entity::traveler_task_state::Column::EntityId)
+            .update_columns([
+                ::entity::traveler_task_state::Column::PlayerEntityId,
+                ::entity::traveler_task_state::Column::TravelerId,
+                ::entity::traveler_task_state::Column::TaskId,
+                ::entity::traveler_task_state::Column::Completed,
+            ])
+            .to_owned();
+
+        let mut currently_known_traveler_task_state = ::entity::traveler_task_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.entity_id, value))
+            .collect::<HashMap<_, _>>();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Ok(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::traveler_task_state::Model = new.into();
+                                if currently_known_traveler_task_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_traveler_task_state.get(&model.entity_id).unwrap();
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_traveler_task_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::traveler_task_state::Model = new.into();
+                                if currently_known_traveler_task_state.contains_key(&model.entity_id) {
+                                    let value = currently_known_traveler_task_state.get(&model.entity_id).unwrap();
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_traveler_task_state.remove(&model.entity_id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete, .. } => {
+                                let model: ::entity::traveler_task_state::Model = delete.into();
+                                let id = model.entity_id;
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(TravelerTaskState = id, error = error.to_string(), "Could not delete TravelerTaskState");
+                                }
+                                tracing::debug!("TravelerTaskState::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        break;
+                    }
+                    else => {
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                let _ = ::entity::traveler_task_state::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
+            }
+
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, TS)]
 #[ts(export)]

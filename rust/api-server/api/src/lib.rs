@@ -18,6 +18,7 @@ mod reducer_event_handler;
 mod skill_descriptions;
 mod trading_orders;
 mod vault_state;
+mod traveler_tasks;
 mod websocket;
 
 use crate::config::Config;
@@ -385,6 +386,7 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
         .merge(items_and_cargo::get_routes())
         .merge(leaderboard::get_routes())
         .merge(trading_orders::get_routes())
+        .merge(traveler_tasks::get_routes())
         .nest("/desc", desc_router)
         .nest_service(
             "/static",
@@ -500,6 +502,7 @@ struct AppState {
     location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
     inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,
+    traveler_task_desc: Arc<dashmap::DashMap<i32, entity::traveler_task_desc::Model>>,
 }
 
 impl AppState {
@@ -535,6 +538,7 @@ impl AppState {
             location_state: Arc::new(dashmap::DashMap::new()),
             inventory_state: Arc::new(dashmap::DashMap::new()),
             connected_user_map: Arc::new(dashmap::DashMap::new()),
+            traveler_task_desc: Arc::new(dashmap::DashMap::new()),
         }
     }
 

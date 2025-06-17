@@ -37,3 +37,5 @@ pub mod trade_order;
 pub mod user_state;
 pub mod vault_state;
 pub mod vault_state_collectibles;
+pub mod traveler_task_desc;
+pub mod traveler_task_state;
