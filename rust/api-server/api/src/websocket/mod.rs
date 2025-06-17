@@ -1494,31 +1494,17 @@ fn start_worker_inventory_state(
 
 
                                 if let Some(caller_identity) = caller_identity {
-                                    let mut user_id = None;
-                                        if let Some(entity_id) = global_app_state.user_state.get(&caller_identity) {
-                                         user_id = Some(entity_id.clone() as i64)
-                                    };
+                                    let user_id = global_app_state.user_state.get(&caller_identity).map(|entity_id| entity_id.to_owned() as i64);
                                     for (pocket_index, new_pocket) in new_model.pockets.iter().enumerate() {
                                         let old_pocket = &old.pockets[pocket_index];
 
-                                        let mut new_item_id = None;
-                                        let mut new_item_type = None;
-                                        let mut new_item_quantity = None;
-                                        if let Some(old_contents) = new_pocket.contents.clone() {
-                                            new_item_id = Some(old_contents.item_id);
-                                            new_item_type = Some(old_contents.item_type.into());
-                                            new_item_quantity = Some(old_contents.quantity);
-                                        }
+                                        let new_item_id = new_pocket.contents.as_ref().map(|c| c.item_id);
+                                        let new_item_type = new_pocket.contents.as_ref().map(|c| c.item_type.into());
+                                        let new_item_quantity = new_pocket.contents.as_ref().map(|c| c.quantity);
 
-
-                                        let mut old_item_id = None;
-                                        let mut old_item_type = None;
-                                        let mut old_item_quantity = None;
-                                        if let Some(old_contents) = old_pocket.contents.clone() {
-                                            old_item_id = Some(old_contents.item_id);
-                                            old_item_type = Some(old_contents.item_type.into());
-                                            old_item_quantity = Some(old_contents.quantity);
-                                        }
+                                        let old_item_id = old_pocket.contents.as_ref().map(|c| c.item_id);
+                                        let old_item_type = old_pocket.contents.as_ref().map(|c| c.item_type.into());
+                                        let old_item_quantity = old_pocket.contents.as_ref().map(|c| c.quantity);
 
                                         if new_item_id == old_item_id  && new_item_type == old_item_type && new_item_quantity == old_item_quantity {
                                             continue
