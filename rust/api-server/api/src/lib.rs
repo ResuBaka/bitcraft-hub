@@ -89,12 +89,21 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
     };
 
     if config.live_updates_ws {
-        tracing::info!("Staring Bitcraft websocket connection");
+        if config.spacetimedb.databases.is_empty() {
+            tracing::warn!("You need to set spacetimedb databases");
+        } else {
+            tracing::info!("Staring Bitcraft websocket connection");
 
-        tokio::spawn(broadcast_message(state.clone(), rx));
+            tokio::spawn(broadcast_message(state.clone(), rx));
 
-        let tmp_config = config.clone();
-        websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
+            let tmp_config = config.clone();
+
+            config.spacetimedb.databases.iter().for_each(|connection_state| {
+                state.connection_state.insert(connection_state.clone(), false);
+            });
+
+            websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
+        }
     }
 
     let app = create_app(&config, state.clone(), prometheus);
@@ -476,11 +485,12 @@ async fn create_importer_default_db_connection(config: Config) -> DatabaseConnec
 struct AppState {
     conn: DatabaseConnection,
     tx: UnboundedSender<WebSocketMessages>,
+    connection_state: Arc<dashmap::DashMap<String, bool>>,
     storage_path: PathBuf,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
     claim_member_state:
-        Arc<dashmap::DashMap<u64, dashmap::DashSet<entity::claim_member_state::Model>>>,
+        Arc<dashmap::DashMap<u64, dashmap::DashMap<i64, entity::claim_member_state::Model>>>,
     player_to_claim_id_cache: Arc<dashmap::DashMap<u64, dashmap::DashSet<u64>>>,
     claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
@@ -513,6 +523,7 @@ impl AppState {
         Self {
             conn,
             tx,
+            connection_state: Arc::new(dashmap::DashMap::new()),
             storage_path: PathBuf::from(config.storage_path.clone()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
@@ -548,10 +559,10 @@ impl AppState {
         let cms = self.claim_member_state.get(&(claim_entity_id as u64));
 
         if let Some(cms) = cms {
-            cms.insert(claim_member_state);
+            cms.insert(claim_member_state.entity_id,claim_member_state);
         } else {
-            let dashset = dashmap::DashSet::new();
-            dashset.insert(claim_member_state);
+            let dashset = dashmap::DashMap::new();
+            dashset.insert(claim_member_state.entity_id, claim_member_state);
 
             self.claim_member_state
                 .insert(claim_entity_id as u64, dashset);
@@ -575,7 +586,7 @@ impl AppState {
         let entity_id = claim_member_state.entity_id;
 
         self.claim_member_state.iter().for_each(|cms| {
-            cms.remove(&claim_member_state);
+            cms.remove(&claim_member_state.entity_id);
         });
 
         if let Some(claim_state_to_member_set) =
@@ -1050,7 +1061,7 @@ fn setup_tracing(cfg: &Config) {
         };
 
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        format!("{}={},axum={}", CRATE_NAME, cfg.log_level, cfg.log_level)
+        format!("{}={},axum={},spacetimedb_sdk={},", CRATE_NAME, cfg.log_level, cfg.log_level, cfg.log_level)
     });
 
     match cfg.log_type {
