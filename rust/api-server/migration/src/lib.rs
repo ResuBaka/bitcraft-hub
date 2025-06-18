@@ -20,6 +20,7 @@ mod m20250427_141500_small_changes_for_beta;
 mod m20250601_141123_fix_type_claim_tech_state_scheduled_id;
 mod m20250602_184227_building_nickname_state;
 mod m20250605_111309_fix_crafting_recipe;
+mod m20250612_121707_redo_inventory_changelog;
 
 pub struct Migrator;
 
@@ -47,6 +48,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250601_141123_fix_type_claim_tech_state_scheduled_id::Migration),
             Box::new(m20250602_184227_building_nickname_state::Migration),
             Box::new(m20250605_111309_fix_crafting_recipe::Migration),
+            Box::new(m20250612_121707_redo_inventory_changelog::Migration),
         ]
     }
 }

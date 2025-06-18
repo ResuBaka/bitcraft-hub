@@ -8,6 +8,8 @@ use ::entity::collectible_desc::CollectibleType;
 use ::entity::crafting_recipe;
 use ::entity::deployable_state;
 use ::entity::inventory;
+use ::entity::inventory_changelog;
+use ::entity::inventory_changelog::ItemType;
 use ::entity::trade_order;
 use ::entity::vault_state_collectibles;
 use ::entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
@@ -167,6 +169,7 @@ impl Query {
         search: &Option<String>,
         tier: &Option<i32>,
         tag: &Option<String>,
+        no_item_list: &Option<bool>,
     ) -> Result<Vec<item_desc::Model>, DbErr> {
         Item::find()
             .apply_if(search.clone(), |query, value| {
@@ -186,6 +189,12 @@ impl Query {
             })
             .apply_if(*tier, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => query.filter(Expr::col(item_desc::Column::Tier).eq(value)),
+                _ => unreachable!(),
+            })
+            .apply_if(*no_item_list, |query, _| match db.get_database_backend() {
+                DbBackend::Postgres => {
+                    query.filter(Expr::col(item_desc::Column::ItemListId).is_not(0))
+                }
                 _ => unreachable!(),
             })
             .all(db)
@@ -1918,6 +1927,20 @@ impl Query {
         paginator.fetch_page(0).await.map(|p| (p, num_pages))
     }
 
+    pub async fn find_inventory_entity_ids_by_owner_entity_ids(
+        db: &DbConn,
+        ids: Vec<i64>,
+    ) -> Result<Vec<i64>, DbErr> {
+        inventory::Entity::find()
+            .select_only()
+            .column(inventory::Column::EntityId)
+            .filter(inventory::Column::OwnerEntityId.is_in(ids))
+            .order_by_asc(inventory::Column::EntityId)
+            .into_tuple()
+            .all(db)
+            .await
+    }
+
     pub async fn find_inventory_by_player_owner_entity_id(
         db: &DbConn,
         id: i64,
@@ -1940,6 +1963,41 @@ impl Query {
             .filter(inventory::Column::OwnerEntityId.eq(id))
             .all(db)
             .await
+    }
+
+    pub async fn find_inventory_changes_by_entity_ids(
+        db: &DbConn,
+        ids: Vec<i64>,
+        page_size: u64,
+        item_id: Option<i32>,
+        item_type: Option<ItemType>,
+        user_id: Option<i64>,
+    ) -> Result<(Vec<inventory_changelog::Model>, ItemsAndPagesNumber), DbErr> {
+        let paginator = inventory_changelog::Entity::find()
+            .filter(inventory_changelog::Column::EntityId.is_in(ids))
+            .apply_if(item_id, |query, value| {
+                query.filter(
+                    Condition::any()
+                        .add(inventory_changelog::Column::NewItemId.eq(value))
+                        .add(inventory_changelog::Column::OldItemId.eq(value)),
+                )
+            })
+            .apply_if(item_type, |query, value| {
+                query.filter(
+                    Condition::any()
+                        .add(inventory_changelog::Column::NewItemType.eq(value.clone()))
+                        .add(inventory_changelog::Column::OldItemType.eq(value)),
+                )
+            })
+            .apply_if(user_id, |query, value| {
+                query.filter(inventory_changelog::Column::UserId.eq(value.clone()))
+            })
+            .order_by_desc(inventory_changelog::Column::Timestamp)
+            .paginate(db, page_size);
+
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        paginator.fetch_page(0).await.map(|p| (p, num_pages))
     }
 
     pub async fn get_inventorys_by_player_owner_entity_id(

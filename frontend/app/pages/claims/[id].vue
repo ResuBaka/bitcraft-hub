@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
+import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
+import AutocompleteItem from "~/components/Bitcraft/autocomplete/AutocompleteItem.vue";
+import InventoryChanges from "~/components/Bitcraft/InventoryChanges.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import { watchThrottled } from "@vueuse/shared";
 import { useNow } from "@vueuse/core";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import { toast } from "vuetify-sonner";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
+import type { InventoryChangelog } from "~/types/InventoryChangelog";
+import type { ItemCargo } from "~/types/ItemCargo";
 
 const {
   public: { iconDomain },
@@ -18,11 +24,15 @@ const building_items_collapsible = ref([]);
 const player_items_collapsible = ref([]);
 const player_offline_items_collapsible = ref([]);
 const buildings_collapsible = ref([]);
+const inventory_changelog_collapsible = ref([]);
 
 const search = ref<string | null>("");
 
 const route = useRoute();
 const router = useRouter();
+
+const player_id = ref<BigInt | null>();
+const item_object = ref<ItemCargo | undefined>();
 
 const rarityBuildings = ref<string | null>(null);
 const tierBuildings = ref<number | null>(null);
@@ -46,6 +56,34 @@ const { data: claimFetch, pending: claimPnding } =
   useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(() => {
     return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
   });
+
+const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
+  useFetchMsPack<InventoryChangelog[]>(
+    () => {
+      return `${api.base}/claims/inventory_changelog/${route.params.id.toString()}`;
+    },
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+        if (item_object.value !== undefined && item_object.value !== null) {
+          options.query.item_id = item_object.value.id;
+          options.query.item_type = item_object.value.type;
+        }
+        if (player_id.value !== undefined && player_id.value !== null) {
+          options.query.user_id = player_id.value.toString();
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 1) {
+          const query = { ...options.query };
+          delete query.per_page;
+          router.push({ query });
+        } else if (options.query.page < 1) {
+          router.push({});
+        }
+      },
+    },
+  );
 
 const { data: buidlingsFetch, pending: buildingsPending } =
   useFetchMsPack<BuildingStatesResponse>(() => {
@@ -529,6 +567,14 @@ const skillToToolIndex = {
   Smithing: 4,
   Tailoring: 7,
 };
+
+watchThrottled(
+  () => [item_object.value, player_id.value],
+  (value, oldValue) => {
+    InventoryChangelogRefresh();
+  },
+  { throttle: 50 },
+);
 </script>
 
 <template>
@@ -1054,6 +1100,41 @@ const skillToToolIndex = {
                   ></v-pagination>
                 </v-col>
               </v-row>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12">
+        <v-expansion-panels v-model="inventory_changelog_collapsible">
+          <v-expansion-panel value="inventory_changelogs">
+            <v-expansion-panel-title>
+              <v-row>
+                <v-col class="d-flex justify-center">
+                  <h2 class="pl-md-3 pl-xl-0">Inventory Changes ({{ InventoryChangelogFetch?.length || 0 }})</h2>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+                <v-card>
+                  <v-card-title>Changes</v-card-title>
+                  <v-card-text>
+                    <v-row>
+                      <v-col>
+                          <autocomplete-user
+                              @model_changed="(item) => player_id=item"
+                          />
+                    </v-col>
+                      <v-col>
+                        <autocomplete-item
+                              @model_changed="(item) => item_object=item"
+                          />
+                      </v-col>
+                    </v-row>
+                    <inventory-changes :items="InventoryChangelogFetch"/>
+                  </v-card-text>
+                  </v-card>
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>

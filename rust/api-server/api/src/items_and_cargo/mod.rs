@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Query, State};
@@ -6,6 +8,7 @@ use entity::cargo_desc;
 use entity::item_desc;
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
+use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -17,9 +20,13 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/itemsAndCargo/meta",
             axum_codec::routing::get(meta).into(),
         )
+        .route(
+            "/api/bitcraft/itemsAndCargo/all",
+            axum_codec::routing::get(get_all).into(),
+        )
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type")]
 enum ItemCargo {
     Item(item_desc::Model),
@@ -33,9 +40,11 @@ pub(crate) struct ItemsAndCargoParams {
     search: Option<String>,
     tier: Option<i32>,
     tag: Option<String>,
+    no_item_list: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct ItemsAndCargoResponse {
     items: Vec<ItemCargo>,
     tags: Vec<String>,
@@ -51,6 +60,28 @@ pub(crate) struct MetaResponse {
     tags: Vec<String>,
     tiers: Vec<i64>,
 }
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct ItemsAndCargollResponse {
+    cargo_desc: HashMap<i32, cargo_desc::Model>,
+    item_desc: HashMap<i32, item_desc::Model>,
+}
+pub(crate) async fn get_all(
+    state: State<std::sync::Arc<AppState>>,
+) -> Result<axum_codec::Codec<ItemsAndCargollResponse>, (StatusCode, &'static str)> {
+    return Ok(axum_codec::Codec(ItemsAndCargollResponse {
+        cargo_desc: state
+            .cargo_desc
+            .iter()
+            .map(|value| (value.key().clone(), value.clone()))
+            .collect(),
+        item_desc: state
+            .item_desc
+            .iter()
+            .map(|value| (value.key().clone(), value.clone()))
+            .collect(),
+    }));
+}
 
 pub(crate) async fn list_items_and_cargo(
     state: State<std::sync::Arc<AppState>>,
@@ -61,7 +92,7 @@ pub(crate) async fn list_items_and_cargo(
     let search = params.search.map(|search| search.to_lowercase());
     let tier = params.tier;
     let tag = params.tag;
-
+    let no_item_list = params.no_item_list;
     if state.cargo_tags.is_empty()
         || state.cargo_tiers.is_empty()
         || state.item_tags.is_empty()
@@ -98,7 +129,7 @@ pub(crate) async fn list_items_and_cargo(
 
     if state.item_desc.is_empty() || state.cargo_desc.is_empty() {
         let (items, cargos) = tokio::join!(
-            QueryCore::search_items_desc(&state.conn, &search, &tier, &tag),
+            QueryCore::search_items_desc(&state.conn, &search, &tier, &tag, &no_item_list),
             QueryCore::search_cargos_desc(&state.conn, &search, &tier, &tag),
         );
 
