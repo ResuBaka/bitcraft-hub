@@ -98,9 +98,15 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
             let tmp_config = config.clone();
 
-            config.spacetimedb.databases.iter().for_each(|connection_state| {
-                state.connection_state.insert(connection_state.clone(), false);
-            });
+            config
+                .spacetimedb
+                .databases
+                .iter()
+                .for_each(|connection_state| {
+                    state
+                        .connection_state
+                        .insert(connection_state.clone(), false);
+                });
 
             websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
         }
@@ -559,7 +565,7 @@ impl AppState {
         let cms = self.claim_member_state.get(&(claim_entity_id as u64));
 
         if let Some(cms) = cms {
-            cms.insert(claim_member_state.entity_id,claim_member_state);
+            cms.insert(claim_member_state.entity_id, claim_member_state);
         } else {
             let dashset = dashmap::DashMap::new();
             dashset.insert(claim_member_state.entity_id, claim_member_state);
@@ -1061,7 +1067,10 @@ fn setup_tracing(cfg: &Config) {
         };
 
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        format!("{}={},axum={},spacetimedb_sdk={},", CRATE_NAME, cfg.log_level, cfg.log_level, cfg.log_level)
+        format!(
+            "{}={},axum={},spacetimedb_sdk={},",
+            CRATE_NAME, cfg.log_level, cfg.log_level, cfg.log_level
+        )
     });
 
     match cfg.log_type {

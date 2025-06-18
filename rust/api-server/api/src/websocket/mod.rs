@@ -10,9 +10,13 @@ use entity::{
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
+use futures::FutureExt;
 use game_module::module_bindings::*;
 use kanal::{AsyncReceiver, Sender};
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set, TryIntoModel, sea_query, QueryFilter, ColumnTrait};
+use sea_orm::{
+    ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, NotSet, QueryFilter, Set, TryIntoModel,
+    sea_query,
+};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Identity, Table, TableWithPrimaryKey, Timestamp,
@@ -24,14 +28,9 @@ use std::sync::Arc;
 use tokio::time::Instant;
 use tokio::time::{Duration, sleep};
 use tokio_util::sync::CancellationToken;
-use futures::FutureExt;
 use ts_rs::TS;
 
-fn connect_to_db(
-    global_app_state: Arc<AppState>,
-    db_name: &str,
-    db_host: &str
-) -> DbConnection {
+fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) -> DbConnection {
     let tmp_global_app_state = global_app_state.clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
     let tmp_db_name = db_name.to_owned();
@@ -40,7 +39,9 @@ fn connect_to_db(
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, _identity, token| {
             tracing::info!("Connected to server {tmp_db_name}");
-            tmp_global_app_state.connection_state.insert(tmp_db_name, true);
+            tmp_global_app_state
+                .connection_state
+                .insert(tmp_db_name, true);
             if let Err(e) = creds_store().save(token) {
                 tracing::warn!("Failed to save credentials: {:?}", e);
             }
@@ -49,7 +50,9 @@ fn connect_to_db(
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
         .on_disconnect(move |_ctx, err| {
-            tmp_disconnect_global_app_state.connection_state.insert(tmp_disconnect_db_name.clone(), false);
+            tmp_disconnect_global_app_state
+                .connection_state
+                .insert(tmp_disconnect_db_name.clone(), false);
             if let Some(err) = err {
                 tracing::error!("Disconnected: {} : {}", err, tmp_disconnect_db_name);
                 // std::process::exit(1);
@@ -101,7 +104,6 @@ fn on_connect_error(_ctx: &ErrorContext, err: Error) {
     tracing::warn!("Connection error: {:?}", err);
     // std::process::exit(1);
 }
-
 
 macro_rules! setup_spacetime_db_listeners {
     ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
@@ -240,7 +242,7 @@ fn connect_to_db_logic(
     let ctx = connect_to_db(
         global_app_state,
         database,
-        config.spacetimedb_url().as_ref()
+        config.spacetimedb_url().as_ref(),
     );
 
     setup_spacetime_db_listeners!(
@@ -492,7 +494,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
 
         let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(60*3)).await;
+            tokio::time::sleep(Duration::from_secs(60 * 3)).await;
             tracing::info!("\n--- Cleanup timer finished! Signaling cleanup! ---");
             timer_cleanup_token.cancel(); // Signal all listeners
         });
@@ -1612,18 +1614,20 @@ fn start_worker_inventory_state(
                                         if new_item_id == old_item_id  && new_item_type == old_item_type && new_item_quantity == old_item_quantity {
                                             continue
                                         }
-                                        let type_of_change: TypeOfChange;
-                                        if new_item_id == None && old_item_id != None {
-                                            type_of_change = TypeOfChange::Remove;
-                                        }else if new_item_id != None && old_item_id == None {
-                                            type_of_change = TypeOfChange::Add;
-                                        }else {
-                                            if old_item_id != new_item_id {
-                                                type_of_change = TypeOfChange::AddAndRemove;
-                                            }else {
-                                                type_of_change = TypeOfChange::Update;
-                                            }
-                                        }
+
+                                        let type_of_change = match (old_item_id, new_item_id) {
+                                            (Some(_), None) => TypeOfChange::Remove,
+                                            (None, Some(_)) => TypeOfChange::Add,
+                                            (Some(old), Some(new)) => {
+                                                if old != new {
+                                                    TypeOfChange::AddAndRemove
+                                                } else {
+                                                    TypeOfChange::Update
+                                                }
+                                            },
+                                            _ => unreachable!("This type of change should never happen for an inventory")
+                                        };
+
                                         messages_changed.push(::entity::inventory_changelog::ActiveModel {
                                             id: NotSet,
                                             entity_id: Set(new_model.entity_id as i64),
