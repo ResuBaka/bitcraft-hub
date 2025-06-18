@@ -1,11 +1,11 @@
 use crate::{AppRouter, AppState};
 use axum::Router;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::inventory::{
     ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
-use entity::{cargo_desc, inventory, item_desc};
+use entity::{cargo_desc, inventory, inventory_changelog, item_desc};
 use log::error;
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,6 @@ use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::ops::AddAssign;
 use std::sync::Arc;
 use ts_rs::TS;
@@ -42,45 +41,32 @@ pub(crate) fn get_routes() -> AppRouter {
         )
 }
 
-#[derive(Serialize, Deserialize)]
-pub(crate) struct InventoryChanged {
-    inventory_id: i64,
-    identity: String,
-    player_name: Option<String>,
-    player_entity_id: Option<i64>,
-    timestamp: i64,
-    created: Option<Value>,
-    deleted: Option<Value>,
-    diff: Option<HashMap<i64, HashMap<String, Option<ExpendedRefrence>>>>,
+#[derive(Deserialize)]
+pub(crate) struct InventoryChangesParams {
+    pub item_id: Option<i32>,
+    pub item_type: Option<inventory_changelog::ItemType>,
+    pub user_id: Option<i64>,
 }
-
 pub(crate) async fn read_inventory_changes(
     state: State<std::sync::Arc<AppState>>,
-    Path(id): Path<u64>,
-) -> Result<axum_codec::Codec<Vec<InventoryChanged>>, (StatusCode, &'static str)> {
-    let mut inventory_changes = vec![];
+    Path(id): Path<i64>,
+    Query(params): Query<InventoryChangesParams>,
+) -> Result<axum_codec::Codec<Vec<inventory_changelog::Model>>, (StatusCode, &'static str)> {
+    let (inventory_changes, _num_pages) = QueryCore::find_inventory_changes_by_entity_ids(
+        &state.conn,
+        vec![id],
+        10000,
+        params.item_id,
+        params.item_type,
+        params.user_id,
+    )
+    .await
+    .map_err(|e| {
+        error!("Error: {:?}", e);
 
-    let inventory_chages_file =
-        File::open(state.storage_path.join(format!("Inventory/{}.json", id)));
-
-    match inventory_chages_file {
-        Ok(file) => {
-            for line in BufReader::new(file).lines() {
-                let line = line.unwrap();
-                match serde_json::from_str(&line) {
-                    Ok(data) => {
-                        inventory_changes.push(data);
-                    }
-                    Err(e) => {
-                        error!("Error: {e}, line: {line}");
-                    }
-                };
-            }
-
-            Ok(axum_codec::Codec(inventory_changes))
-        }
-        Err(_e) => Err((StatusCode::NOT_FOUND, "InventoryChanged not found")),
-    }
+        (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+    })?;
+    Ok(axum_codec::Codec(inventory_changes))
 }
 
 pub(crate) async fn find_inventory_by_id(

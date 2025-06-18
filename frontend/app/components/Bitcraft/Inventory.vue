@@ -1,9 +1,26 @@
 <script setup lang="ts">
+import { watchThrottled } from "@vueuse/shared";
+import AutocompleteUser from "./autocomplete/AutocompleteUser.vue";
+import AutocompleteItem from "./autocomplete/AutocompleteItem.vue";
+import InventoryChanges from "./InventoryChanges.vue";
+import type { InventoryChangelog } from "~/types/InventoryChangelog";
+import type { ItemCargo } from "~/types/ItemCargo";
+import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
+import type { ItemsAndCargoResponse } from "~/types/ItemsAndCargoResponse";
+import type { ItemType } from "~/types/ItemType";
+import type { PlayersResponse } from "~/types/PlayersResponse";
+import type { PlayerUsernameStateResponse } from "~/types/PlayerUsernameStateResponse";
+
 const { inventory } = defineProps<{
   inventory: any;
 }>();
 
-const search = ref<string | undefined>("");
+const router = useRouter();
+
+const playerId = ref<BigInt | null>();
+
+const itemObject = ref<ItemCargo | undefined>();
+
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "2-digit",
@@ -25,8 +42,8 @@ const nUTCData = Intl.DateTimeFormat(undefined, {
   timeZone: "UTC",
 });
 
-function timeAgo(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
+function timeAgo(date: number) {
+  const seconds = Math.floor((Date.now() - date) / 1000);
   const interval = Math.floor(seconds / 31536000);
   if (interval > 1) {
     return interval + " years ago";
@@ -68,10 +85,34 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: InventoryChangesFetch, pending: InventoryChangesPending } =
-  useFetchMsPack(() => {
-    return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
-  });
+const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } =
+  useFetchMsPack<InventoryChangelog[]>(
+    () => {
+      return `${api.base}/api/bitcraft/inventorys/changes/${inventory.entity_id}`;
+    },
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
+
+        if (itemObject.value !== undefined && itemObject.value !== null) {
+          options.query.item_id = itemObject.value.id;
+          options.query.item_type = itemObject.value.type;
+        }
+        if (playerId.value !== undefined && playerId.value !== null) {
+          options.query.user_id = playerId.value.toString();
+        }
+        options.query.per_page = 20;
+
+        if (Object.keys(options.query).length > 1) {
+          const query = { ...options.query };
+          delete query.per_page;
+          router.push({ query });
+        } else if (options.query.page < 1) {
+          router.push({});
+        }
+      },
+    },
+  );
 
 const inventoryChanges = computed(() => {
   return InventoryChangesFetch.value ?? [];
@@ -82,104 +123,19 @@ const headersPockets = [
   { title: "Quantity", key: "contents.quantity", align: "end" },
 ];
 
-const headersChanges = [
-  { title: "Player", key: "playerName", align: "start" },
-  { title: "Diff", key: "diff", align: "center" },
-  { title: "Old Amount", key: "diff.old", align: "end", maxWidth: "100px" },
-  { title: "New Amount", key: "diff.new", align: "end", maxWidth: "100px" },
-  {
-    title: "Timestamp Since",
-    key: "timestamp_diff",
-    align: "end",
-    maxWidth: "100px",
-  },
-];
-
-const basicChanges = computed(() => {
-  const changes = [];
-  for (const change of inventoryChanges.value) {
-    const data = new Date(change.timestamp / 1000);
-    if (change.diff) {
-      for (const diff in change.diff) {
-        let newDiff = undefined;
-        let oldDiff = undefined;
-        if (change.diff[diff].new !== undefined) {
-          newDiff = change.diff[diff].new;
-        }
-        if (change.diff[diff].old !== undefined) {
-          oldDiff = change.diff[diff].old;
-        }
-
-        let type = "";
-        let amountDiff = 0;
-
-        if (newDiff !== undefined && oldDiff !== undefined) {
-          amountDiff = newDiff.quantity - oldDiff.quantity;
-          if (newDiff.item_id !== oldDiff.item_id) {
-            type = "swap";
-          } else {
-            type = amountDiff > 0 ? "increase" : "decrease";
-          }
-        } else if (newDiff !== undefined) {
-          type = "create";
-          amountDiff = newDiff.quantity;
-        } else if (oldDiff !== undefined) {
-          type = "delete";
-          amountDiff = oldDiff.quantity;
-        }
-
-        changes.push({
-          playerName: change.playerName,
-          timestamp: data,
-          timestamp_utc: data,
-          timestamp_diff: data,
-          diff: {
-            type: type,
-            old: oldDiff,
-            new: newDiff,
-            amountDiff: amountDiff,
-            item: {
-              name: newDiff?.item?.name ?? oldDiff?.item?.name,
-              id: newDiff?.item?.id ?? oldDiff?.item?.id,
-            },
-          },
-        });
-      }
-    }
-  }
-
-  return changes;
-});
-
-const changes = computed(() => {
-  return (
-    basicChanges.value.filter((change) => {
-      return (
-        !search.value ||
-        change?.diff?.new?.item?.name
-          ?.toLowerCase()
-          .includes(search.value.toLowerCase()) ||
-        change?.diff?.old?.item?.name
-          ?.toLowerCase()
-          .includes(search.value.toLowerCase()) ||
-        change?.playerName?.toLowerCase().includes(search.value.toLowerCase())
-      );
-    }) ?? []
-  );
-});
-
-const backgroundColorRow = ({ index }) => {
+const backgroundColorRow = ({ index }: { index: number }) => {
   return {
     class: index % 2 === 0 ? "" : "bg-surface-light",
   };
 };
 
-const isPlayer = computed(() => {
-  return (
-    inventory.value?.nickname === "Tool belt" ||
-    inventory.value?.nickname === "Inventory"
-  );
-});
+watchThrottled(
+  () => [itemObject.value, playerId.value],
+  (value, oldValue) => {
+    InventoryChangesRefresh();
+  },
+  { throttle: 50 },
+);
 </script>
 
 <template>
@@ -204,61 +160,15 @@ const isPlayer = computed(() => {
         <v-card-text>
           <v-row>
             <v-col>
-              <v-text-field
-                  v-model="search"
-                  label="Search"
-                  outlined
-                  dense
-                  clearable
-              ></v-text-field>
+                <autocomplete-user @model_changed="(item) => playerId=item" />
+          </v-col>
+            <v-col>
+              <autocomplete-item
+                    @model_changed="(item) => itemObject=item"
+                />
             </v-col>
           </v-row>
-          <v-data-table density="compact" :headers="headersChanges" :items="changes" :row-props="backgroundColorRow">
-            <template v-slot:item.timestamp="{ item }">
-              {{ nDate.format(item.timestamp) }}
-            </template>
-            <template v-slot:item.timestamp_utc="{ item }">
-              {{ nUTCData.format(item.timestamp) }}
-            </template>
-            <template v-slot:item.timestamp_diff="{ value }">
-              <v-tooltip :text="`${value}`" location="top">
-                <template v-slot:activator="{ props }">
-                  <div v-bind="props" >{{ timeAgo(value) }} </div>
-                </template>
-              </v-tooltip>
-            </template>
-            <template v-slot:item.diff="{ value }">
-              <template v-if="value.type === 'delete'">
-                <v-icon color="red">mdi-delete-empty</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
-              </template>
-              <template v-if="value.type === 'create'">
-                <v-icon color="green">mdi-plus</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
-              </template>
-              <template v-if="value.type === 'increase'">
-                <v-icon color="green">mdi-arrow-up-bold-outline</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
-              </template>
-              <template v-if="value.type === 'decrease'">
-                <v-icon color="red">mdi-arrow-down-bold-outline</v-icon>
-                <b>{{ value.amountDiff }}</b> {{ value.item.name }}
-              </template>
-              <template v-if="value.type === 'swap'"><b class="text-red">{{ value.old.item.name }}</b>
-                <v-icon color="pink">mdi-swap-horizontal</v-icon>
-                <b class="text-green">{{ value.new.item.name }}</b></template>
-            </template>
-            <template v-slot:item.diff.old="{ value, item }">
-              <template v-if="value !== undefined">{{ value.quantity }}</template>
-            </template>
-            <template v-slot:item.diff.new="{ value, item }">
-              <template v-if="value !== undefined">
-                <div :class="{ 'text-red': item.diff.amountDiff < 0, 'text-green': item.diff.amountDiff > 0 }">
-                  {{ value.quantity }}
-                </div>
-              </template>
-            </template>
-          </v-data-table>
+          <inventory-changes :items="InventoryChangesFetch"/>
         </v-card-text>
       </v-card>
     </div>

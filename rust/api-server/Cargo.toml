@@ -28,7 +28,8 @@ anyhow = "1.0.98"
 clap = { version = "4.5.39", features = ["derive"] }
 axum-codec = { version = "0.0.19", features = ["serde", "json", "msgpack", "toml", "yaml"] }
 spacetimedb-sdk = "1.1.1"
-ts-rs = "11.0.0"
+ts-rs = "11.0.1"
+chrono = "0.4.41"
 
 [dependencies]
 api = { path = "api" }
