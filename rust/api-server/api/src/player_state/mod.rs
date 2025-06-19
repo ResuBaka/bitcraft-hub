@@ -125,6 +125,7 @@ pub(crate) struct FindPlayerByIdResponse {
     pub sign_in_timestamp: i32,
     pub signed_in: bool,
     pub traveler_tasks_expiration: i32,
+    pub traveler_tasks: HashMap<i32, Vec<entity::traveler_task_state::Model>>,
     pub username: String,
     pub deployables: Vec<VaultStateCollectibleWithDesc>,
     pub claim_id: Option<u64>,
@@ -207,6 +208,24 @@ pub async fn find_player_by_id(
         .get(&(player.entity_id as u64))
         .map_or(vec![], |ids| ids.iter().map(|id| *id).collect());
 
+    let traveler_tasks_db =
+        QueryCore::get_traveler_task_state_by_player_entity_ids(&state.conn, vec![id])
+            .await
+            .unwrap_or_else(|error| {
+                error!("find_player_by_id -> Error: {:?}", error);
+                vec![]
+            });
+
+    let mut traveler_tasks: HashMap<_, _> = HashMap::new();
+    for task in traveler_tasks_db {
+        if task.completed == false {
+            let traveler_task = traveler_tasks
+                .entry(task.traveler_id)
+                .or_insert_with(Vec::new);
+            traveler_task.push(task);
+        }
+    }
+
     Ok(axum_codec::Codec(FindPlayerByIdResponse {
         entity_id: player.entity_id,
         time_played: player.time_played,
@@ -216,6 +235,7 @@ pub async fn find_player_by_id(
         signed_in: player.signed_in,
         teleport_location: player.teleport_location,
         traveler_tasks_expiration: player.traveler_tasks_expiration,
+        traveler_tasks: traveler_tasks,
         username: player_username,
         deployables,
         player_location,

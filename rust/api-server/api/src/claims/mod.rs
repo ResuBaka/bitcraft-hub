@@ -77,7 +77,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub name: String,
     pub supplies: i32,
     pub building_maintenance: f32,
-    pub members: Vec<ClaimDescriptionStateMember>,
+    pub members: HashMap<i64, ClaimDescriptionStateMember>,
     pub num_tiles: i32,
     pub extensions: i32,
     pub neutral: bool,
@@ -89,6 +89,9 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
+    pub traveler_tasks: HashMap<String, HashMap<i32, Vec<i64>>>,
+    pub traveler_player_tasks:
+        HashMap<String, HashMap<i64, HashMap<i32, Vec<entity::traveler_task_state::Model>>>>,
     pub time_signed_in: u64,
     pub building_states: Vec<building_state::Model>,
 }
@@ -153,6 +156,7 @@ type ClaimLeaderboardTasks =
     Vec<JoinHandle<Result<(String, Vec<LeaderboardSkill>), (StatusCode, &'static str)>>>;
 
 type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>)>>>;
+type FlatTravelerTasks = Vec<JoinHandle<anyhow::Result<(String, HashMap<i32, Vec<i64>>)>>>;
 
 pub(crate) async fn get_claim_inventory_change_log(
     state: State<std::sync::Arc<AppState>>,
@@ -530,11 +534,11 @@ pub(crate) async fn get_claim(
         }
     }
 
-    let player_online_ids = online_players
+    let player_online_ids: Vec<i64> = online_players
         .iter()
         .map(|player| player.entity_id)
         .collect();
-    let player_offline_ids = offline_players
+    let player_offline_ids: Vec<i64> = offline_players
         .iter()
         .map(|player| player.entity_id)
         .collect();
@@ -546,7 +550,11 @@ pub(crate) async fn get_claim(
         name: claim.name,
         supplies: claim.supplies,
         building_maintenance: claim.building_maintenance,
-        members: claim.members,
+        members: claim
+            .members
+            .into_iter()
+            .map(|member| (member.entity_id, member))
+            .collect(),
         num_tiles: claim.num_tiles,
         extensions: claim.extensions,
         neutral: claim.neutral,
@@ -558,18 +566,21 @@ pub(crate) async fn get_claim(
         tier: claim.tier,
         upgrades: claim.upgrades,
         inventorys: HashMap::new(),
+        traveler_tasks: HashMap::new(),
+        traveler_player_tasks: HashMap::new(),
         time_signed_in: total_time_signed_in,
         building_states,
     };
 
     let mut jobs: FlatInventoryTasks = vec![];
-
-    let conn = state.conn.clone();
+    let mut traveler_task_jobs: FlatTravelerTasks = vec![];
+    let conn: sea_orm::DatabaseConnection = state.conn.clone();
     let tmp_item_desc = state.item_desc.clone();
     let tmp_cargo_desc = state.cargo_desc.clone();
+    let player_offline_ids_local = player_offline_ids.clone();
     jobs.push(tokio::spawn(async move {
         let offline_players_inventories =
-            QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_offline_ids).await?;
+            QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_offline_ids_local).await?;
         let mut merged_offline_players_inventories =
             get_merged_inventories(offline_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_offline_players_inventories.sort_by(inventory_sort_by);
@@ -578,6 +589,22 @@ pub(crate) async fn get_claim(
             "players_offline".to_string(),
             merged_offline_players_inventories,
         ))
+    }));
+
+    let conn: sea_orm::DatabaseConnection = state.conn.clone();
+    traveler_task_jobs.push(tokio::spawn(async move {
+        let offline_traveler_tasks =
+            QueryCore::get_traveler_task_state_by_player_entity_ids(&conn, player_offline_ids)
+                .await?;
+
+        let mut traveler_tasks = HashMap::new();
+        for task in offline_traveler_tasks {
+            let tasks = traveler_tasks.entry(task.task_id).or_insert_with(Vec::new);
+            if task.completed == false {
+                tasks.push(task.player_entity_id);
+            }
+        }
+        Ok(("players_offline".to_string(), traveler_tasks))
     }));
 
     let conn = state.conn.clone();
@@ -596,14 +623,31 @@ pub(crate) async fn get_claim(
     let conn = state.conn.clone();
     let tmp_item_desc = state.item_desc.clone();
     let tmp_cargo_desc = state.cargo_desc.clone();
+    let player_online_ids_local = player_online_ids.clone();
     jobs.push(tokio::spawn(async move {
         let online_players_inventories =
-            QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_online_ids).await?;
+            QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_online_ids_local).await?;
         let mut merged_online_players_inventories =
             get_merged_inventories(online_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_online_players_inventories.sort_by(inventory_sort_by);
 
         Ok(("players".to_string(), merged_online_players_inventories))
+    }));
+
+    let conn: sea_orm::DatabaseConnection = state.conn.clone();
+    traveler_task_jobs.push(tokio::spawn(async move {
+        let offline_traveler_tasks =
+            QueryCore::get_traveler_task_state_by_player_entity_ids(&conn, player_online_ids)
+                .await?;
+
+        let mut traveler_tasks = HashMap::new();
+        for task in offline_traveler_tasks {
+            let tasks = traveler_tasks.entry(task.task_id).or_insert_with(Vec::new);
+            if task.completed == false {
+                tasks.push(task.player_entity_id);
+            }
+        }
+        Ok(("players".to_string(), traveler_tasks))
     }));
 
     let finished_jobs = futures::future::join_all(jobs).await;
@@ -618,6 +662,21 @@ pub(crate) async fn get_claim(
 
         if let Ok((key, value)) = job {
             claim.inventorys.insert(key.parse().unwrap(), value);
+        }
+    }
+
+    let finished_jobs = futures::future::join_all(traveler_task_jobs).await;
+
+    for finished_job in finished_jobs {
+        if let Err(err) = finished_job {
+            error!("Error: {:?}", err);
+            continue;
+        }
+
+        let job = finished_job.unwrap();
+
+        if let Ok((key, value)) = job {
+            claim.traveler_tasks.insert(key.parse().unwrap(), value);
         }
     }
 

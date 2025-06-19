@@ -3,9 +3,11 @@
 use game_module::module_bindings::TravelerTaskState;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, TS)]
 #[sea_orm(table_name = "traveler_task_state")]
+#[ts(rename = "TravelerTaskState")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
@@ -31,7 +33,7 @@ impl From<TravelerTaskState> for Model {
             player_entity_id: value.player_entity_id as i64,
             traveler_id: value.traveler_id,
             task_id: value.task_id,
-            completed: value.completed
+            completed: value.completed,
         }
     }
 }

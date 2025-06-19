@@ -66,7 +66,7 @@ pub(crate) async fn get_all(
     state: State<std::sync::Arc<AppState>>,
 ) -> Result<axum_codec::Codec<RecipesAllResponse>, (StatusCode, &'static str)> {
     return Ok(axum_codec::Codec(RecipesAllResponse {
-        recipes: state 
+        recipes: state
             .crafting_recipe_desc
             .iter()
             .map(|value| (value.key().clone(), value.clone()))

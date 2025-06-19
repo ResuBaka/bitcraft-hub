@@ -17,8 +17,8 @@ mod recipes;
 mod reducer_event_handler;
 mod skill_descriptions;
 mod trading_orders;
-mod vault_state;
 mod traveler_tasks;
+mod vault_state;
 mod websocket;
 
 use crate::config::Config;
@@ -99,9 +99,15 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
             let tmp_config = config.clone();
 
-            config.spacetimedb.databases.iter().for_each(|connection_state| {
-                state.connection_state.insert(connection_state.clone(), false);
-            });
+            config
+                .spacetimedb
+                .databases
+                .iter()
+                .for_each(|connection_state| {
+                    state
+                        .connection_state
+                        .insert(connection_state.clone(), false);
+                });
 
             websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
         }
@@ -515,6 +521,7 @@ struct AppState {
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,
     traveler_task_desc: Arc<dashmap::DashMap<i32, entity::traveler_task_desc::Model>>,
     user_state: Arc<dashmap::DashMap<Identity, u64>>,
+    npc_desc: Arc<dashmap::DashMap<i32, entity::npc_desc::Model>>,
 }
 
 impl AppState {
@@ -553,6 +560,7 @@ impl AppState {
             connected_user_map: Arc::new(dashmap::DashMap::new()),
             traveler_task_desc: Arc::new(dashmap::DashMap::new()),
             user_state: Arc::new(dashmap::DashMap::new()),
+            npc_desc: Arc::new(dashmap::DashMap::new()),
         }
     }
 
@@ -563,7 +571,7 @@ impl AppState {
         let cms = self.claim_member_state.get(&(claim_entity_id as u64));
 
         if let Some(cms) = cms {
-            cms.insert(claim_member_state.entity_id,claim_member_state);
+            cms.insert(claim_member_state.entity_id, claim_member_state);
         } else {
             let dashset = dashmap::DashMap::new();
             dashset.insert(claim_member_state.entity_id, claim_member_state);
@@ -1065,7 +1073,10 @@ fn setup_tracing(cfg: &Config) {
         };
 
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        format!("{}={},axum={},spacetimedb_sdk={},", CRATE_NAME, cfg.log_level, cfg.log_level, cfg.log_level)
+        format!(
+            "{}={},axum={},spacetimedb_sdk={},",
+            CRATE_NAME, cfg.log_level, cfg.log_level, cfg.log_level
+        )
     });
 
     match cfg.log_type {

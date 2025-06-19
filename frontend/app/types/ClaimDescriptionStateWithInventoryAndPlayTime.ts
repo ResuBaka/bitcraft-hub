@@ -5,6 +5,7 @@ import type { ClaimTechDesc } from "./ClaimTechDesc";
 import type { ExpendedRefrence } from "./ExpendedRefrence";
 import type { Location } from "./Location";
 import type { Timestamp } from "./Timestamp";
+import type { TravelerTaskState } from "./TravelerTaskState";
 
 export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   entity_id: bigint;
@@ -13,7 +14,7 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   name: string;
   supplies: number;
   building_maintenance: number;
-  members: Array<ClaimDescriptionStateMember>;
+  members: { [key in bigint]?: ClaimDescriptionStateMember };
   num_tiles: number;
   extensions: number;
   neutral: boolean;
@@ -25,6 +26,12 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   tier: number | null;
   upgrades: Array<ClaimTechDesc>;
   inventorys: { [key in string]?: Array<ExpendedRefrence> };
+  traveler_tasks: { [key in string]?: { [key in number]?: Array<bigint> } };
+  traveler_player_tasks: {
+    [key in string]?: {
+      [key in bigint]?: { [key in number]?: Array<TravelerTaskState> };
+    };
+  };
   time_signed_in: bigint;
   building_states: Array<BuildingState>;
 };
