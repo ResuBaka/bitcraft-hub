@@ -108,7 +108,7 @@ fn on_sub_error(_ctx: &ErrorContext, err: Error) {
 }
 
 fn creds_store() -> credentials::File {
-    credentials::File::new("bitcraft-beta")
+    credentials::File::new("bitcraft-ea")
 }
 
 /// Our `on_connect_error` callback: print the error, then exit the process.
