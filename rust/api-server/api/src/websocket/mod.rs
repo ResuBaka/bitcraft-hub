@@ -39,6 +39,12 @@ fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) 
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, _identity, token| {
             tracing::info!("Connected to server {tmp_db_name}");
+            metrics::gauge!(
+                "bitcraft_database_connected",
+                &[("region", tmp_db_name.clone())]
+            )
+            .set(1);
+
             tmp_global_app_state
                 .connection_state
                 .insert(tmp_db_name, true);
@@ -50,6 +56,12 @@ fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) 
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
         .on_disconnect(move |_ctx, err| {
+            metrics::gauge!(
+                "bitcraft_database_connected",
+                &[("region", tmp_disconnect_db_name.clone())]
+            )
+            .set(0);
+
             tmp_disconnect_global_app_state
                 .connection_state
                 .insert(tmp_disconnect_db_name.clone(), false);
@@ -458,6 +470,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let mut remove_desc = false;
 
         config.spacetimedb.databases.iter().for_each(|database| {
+            metrics::gauge!(
+                "bitcraft_database_connected",
+                &[("region", database.clone())]
+            )
+            .set(0);
+
             connect_to_db_logic(
                 global_app_state.clone(),
                 &config,
