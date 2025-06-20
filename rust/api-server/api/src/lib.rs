@@ -5,7 +5,7 @@ mod claim_tech_state;
 mod claims;
 mod collectible_desc;
 mod config;
-mod deployable_state;
+mod deployable_desc;
 mod download;
 mod inventory;
 mod items;
@@ -394,6 +394,7 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
         // )
         .route("/items", axum_codec::routing::get(items::list_items).into())
         .merge(player_state::get_routes())
+        .merge(deployable_desc::get_routes())
         .merge(claims::get_routes())
         .merge(buildings::get_routes())
         .merge(inventory::get_routes())

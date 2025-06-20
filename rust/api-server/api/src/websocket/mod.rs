@@ -238,6 +238,7 @@ fn connect_to_db_logic(
     crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     item_list_desc_tx: &Sender<SpacetimeUpdateMessages<ItemListDesc>>,
     user_state_tx: &Sender<SpacetimeUpdateMessages<UserState>>,
+    deployable_desc_tx: &Sender<SpacetimeUpdateMessages<DeployableDesc>>,
 ) {
     let ctx = connect_to_db(
         global_app_state,
@@ -360,6 +361,14 @@ fn connect_to_db_logic(
 
     setup_spacetime_db_listeners!(ctx, user_state, user_state_tx, UserState, database);
 
+    setup_spacetime_db_listeners!(
+        ctx,
+        deployable_desc,
+        deployable_desc_tx,
+        DeployableDesc,
+        database
+    );
+
     let tables_to_subscribe = vec![
         "user_state",
         "mobile_entity_state",
@@ -392,6 +401,7 @@ fn connect_to_db_logic(
         // "select location_state.* from location_state JOIN building_state ps ON building_state.entity_id = building_state.entity_id", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN deployable_state ps ON deployable_state.entity_id = deployable_state.entity_id", // This currently takes to much cpu to run
         "inventory_state",
+        "deployable_desc",
     ];
 
     ctx.subscription_builder()
@@ -455,6 +465,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
 
         let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) = kanal::unbounded_async();
 
+        let (deployable_desc_tx, deployable_desc_rx) = kanal::unbounded_async();
+
         let mut remove_desc = false;
 
         config.spacetimedb.databases.iter().for_each(|database| {
@@ -485,6 +497,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &crafting_recipe_desc_tx.clone_sync(),
                 &item_list_desc_tx.clone_sync(),
                 &user_state_tx.clone_sync(),
+                &deployable_desc_tx.clone_sync(),
             );
 
             remove_desc = true;
@@ -660,7 +673,17 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
             Duration::from_millis(50),
             timer_cleanup_token,
         );
-        start_worker_user_state(global_app_state.clone(), user_state_rx)
+
+        start_worker_user_state(global_app_state.clone(), user_state_rx);
+
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
+        start_worker_deployable_desc(
+            global_app_state.clone(),
+            deployable_desc_rx,
+            2000,
+            Duration::from_millis(50),
+            timer_cleanup_token,
+        );
     });
 }
 
@@ -3564,6 +3587,131 @@ fn start_worker_location_state(
             }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
+fn start_worker_deployable_desc(
+    global_app_state: Arc<AppState>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<DeployableDesc>>,
+    batch_size: usize,
+    time_limit: Duration,
+    cancel_token: CancellationToken,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::column(::entity::deployable_desc::Column::Id)
+            .update_columns([
+                ::entity::deployable_desc::Column::Name,
+                ::entity::deployable_desc::Column::DeployFromCollectibleId,
+                ::entity::deployable_desc::Column::DeployTime,
+                ::entity::deployable_desc::Column::DeployableType,
+                ::entity::deployable_desc::Column::PathfindingId,
+                ::entity::deployable_desc::Column::MovementType,
+                ::entity::deployable_desc::Column::CanEnterPortals,
+                ::entity::deployable_desc::Column::Speed,
+                ::entity::deployable_desc::Column::UsePlayerSpeedModifier,
+                ::entity::deployable_desc::Column::PlaceableOnLand,
+                ::entity::deployable_desc::Column::PlaceableInWater,
+                ::entity::deployable_desc::Column::Capacity,
+                ::entity::deployable_desc::Column::Storage,
+                ::entity::deployable_desc::Column::Stockpile,
+                ::entity::deployable_desc::Column::Barter,
+                ::entity::deployable_desc::Column::ItemSlotSize,
+                ::entity::deployable_desc::Column::CargoSlotSize,
+                ::entity::deployable_desc::Column::ModelAddress,
+                ::entity::deployable_desc::Column::Stats,
+                ::entity::deployable_desc::Column::PlayerAnimationsInDeployableSlots,
+                ::entity::deployable_desc::Column::AllowDriverExtract,
+                ::entity::deployable_desc::Column::AllowPassengerExtract,
+                ::entity::deployable_desc::Column::ShowForSecsAfterOwnerLogout,
+                ::entity::deployable_desc::Column::AllowEmoteWhileDriver,
+                ::entity::deployable_desc::Column::AllowEmoteWhilePassenger,
+                ::entity::deployable_desc::Column::ExperiencePerProgress,
+                ::entity::deployable_desc::Column::MountingRadius,
+            ])
+            .to_owned();
+
+        let mut currently_known_deployable_desc = ::entity::deployable_desc::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.id, value))
+            .collect::<HashMap<_, _>>();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Ok(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::deployable_desc::Model = new.into();
+                                if currently_known_deployable_desc.contains_key(&model.id) {
+                                    let value = currently_known_deployable_desc.get(&model.id).unwrap();
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_deployable_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::deployable_desc::Model = new.into();
+                                if currently_known_deployable_desc.contains_key(&model.id) {
+                                    let value = currently_known_deployable_desc.get(&model.id).unwrap();
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_deployable_desc.remove(&model.id);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete, .. } => {
+                                let model: ::entity::deployable_desc::Model = delete.into();
+                                let id = model.id;
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
+                                    messages.remove(index);
+                                }
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(DeployableDesc = id, error = error.to_string(), "Could not delete DeployableDesc");
+                                }
+                                tracing::debug!("DeployableDesc::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        break;
+                    }
+                    else => {
+                        break;
+                    }
+                }
+            }
+
+            if !messages.is_empty() {
+                let _ = ::entity::deployable_desc::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
+            }
+
             if messages.is_empty() && rx.is_closed() {
                 break;
             }

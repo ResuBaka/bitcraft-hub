@@ -17,6 +17,7 @@ pub mod claim_tile_state;
 pub mod collectible_desc;
 pub mod crafting_recipe;
 pub mod crafting_recipe_desc;
+pub mod deployable_desc;
 pub mod deployable_state;
 pub mod equipment;
 pub mod experience_state;

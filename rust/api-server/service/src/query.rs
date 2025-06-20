@@ -6,6 +6,7 @@ use ::entity::claim_tech_state;
 use ::entity::collectible_desc;
 use ::entity::collectible_desc::CollectibleType;
 use ::entity::crafting_recipe;
+use ::entity::deployable_desc;
 use ::entity::deployable_state;
 use ::entity::inventory;
 use ::entity::inventory_changelog;
@@ -118,6 +119,33 @@ impl Query {
             .await?;
 
         Ok((player_states, player_usernames, num_pages))
+    }
+
+
+     pub async fn find_deployable_descs(
+        db: &DbConn,
+        page: u64,
+        per_page: u64,
+        search: Option<String>,
+    ) -> Result<(Vec<deployable_desc::Model>, ItemsAndPagesNumber),
+        DbErr,
+    > {
+        // Setup paginator
+        let paginator: Paginator<'_, DatabaseConnection, SelectModel<deployable_desc::Model>> = deployable_desc::Entity::find()
+            .order_by_asc(deployable_desc::Column::Name)
+            .apply_if(search, |query, value| match db.get_database_backend() {
+                DbBackend::Postgres => query.filter(
+                    Expr::col(deployable_desc::Column::Name)
+                        .ilike(format!("%{}%", value)),
+                ),
+                _ => unreachable!(),
+            })
+            .paginate(db, per_page);
+
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        // Fetch paginated posts
+        paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
     }
 
     // /// If ok, returns (post models, num pages).
