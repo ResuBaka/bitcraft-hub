@@ -95,7 +95,7 @@ impl MigrationTrait for Migration {
         let stmt = Statement::from_string(
             manager.get_database_backend(),
             format!(
-                "SELECT create_hypertable('{}', by_range('{}'));",
+                "SELECT create_hypertable('{}', '{}');",
                 match InventoryChangelog::Table.into_table_ref() {
                     TableRef::Table(table_ref) => table_ref.to_string(),
                     _ => panic!("Unexpected table ref type"),

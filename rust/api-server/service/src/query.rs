@@ -7,6 +7,7 @@ use ::entity::collectible_desc;
 use ::entity::collectible_desc::CollectibleType;
 use ::entity::crafting_recipe;
 use ::entity::deployable_state;
+use ::entity::terrain_chunk_state;
 use ::entity::inventory;
 use ::entity::inventory_changelog;
 use ::entity::inventory_changelog::ItemType;
@@ -51,6 +52,36 @@ impl Query {
             .all(db)
             .await
     }
+
+    pub async fn find_terrain_chunks(
+        db: &DbConn,
+        page: u64,
+        per_page: u64,
+    ) -> Result<(Vec<terrain_chunk_state::Model>, ItemsAndPagesNumber), DbErr> {
+        // Setup paginator
+        let paginator = terrain_chunk_state::Entity::find()
+            .order_by_asc(terrain_chunk_state::Column::ChunkIndex)
+            .paginate(db, per_page);
+
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        // Fetch paginated posts
+        paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
+    }
+
+    // pub async fn find_terrain_chunks(
+    //     conn: &DatabaseConnection,
+    //     page: u64,
+    //     per_page: u64,
+    // ) -> anyhow::Result<(Vec<terrain_chunk_state::Model>, PaginatorMetadata)> {
+    //     let paginator = terrain_chunk_state::Entity::find()
+    //         .paginate(conn, per_page);
+
+    //     let items = paginator.fetch_page(page - 1).await?;
+    //     let total = paginator.num_items().await?;
+
+    //     Ok((items, PaginatorMetadata { number_of_items: total }))
+    // }
 
     /// If ok, returns (post models, num pages).
     pub async fn find_players(
