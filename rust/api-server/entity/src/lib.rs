@@ -34,6 +34,7 @@ pub mod raw_event_data;
 pub mod shared;
 pub mod skill_desc;
 pub mod trade_order;
+pub mod terrain_chunk_state;
 pub mod user_state;
 pub mod vault_state;
 pub mod vault_state_collectibles;

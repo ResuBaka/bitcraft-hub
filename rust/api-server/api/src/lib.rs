@@ -19,6 +19,7 @@ mod skill_descriptions;
 mod trading_orders;
 mod vault_state;
 mod websocket;
+mod terrain_chunk_state;
 
 use crate::config::Config;
 use crate::websocket::WebSocketMessages;
@@ -394,6 +395,7 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
         // )
         .route("/items", axum_codec::routing::get(items::list_items).into())
         .merge(player_state::get_routes())
+        .merge(terrain_chunk_state::get_routes())
         .merge(claims::get_routes())
         .merge(buildings::get_routes())
         .merge(inventory::get_routes())

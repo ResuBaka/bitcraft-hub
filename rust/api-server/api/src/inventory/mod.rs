@@ -3,7 +3,7 @@ use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::inventory::{
-    ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
+    ExpendedRefrence, ItemExpended, ItemSlotResolved, ResolvedInventory,
 };
 use entity::{cargo_desc, inventory, inventory_changelog, item_desc};
 use log::error;
@@ -16,6 +16,8 @@ use std::fs::File;
 use std::ops::AddAssign;
 use std::sync::Arc;
 use ts_rs::TS;
+
+pub use entity::inventory::ItemType;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
