@@ -30,12 +30,17 @@ use tokio::time::{Duration, sleep};
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
-fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) -> DbConnection {
+fn connect_to_db(
+    global_app_state: Arc<AppState>,
+    db_name: &str,
+    db_host: &str,
+) -> spacetimedb_sdk::Result<DbConnection> {
     let tmp_global_app_state = global_app_state.clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
     let tmp_db_name = db_name.to_owned();
     let tmp_disconnect_db_name = tmp_db_name.clone();
-    let con = DbConnection::builder()
+
+    DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, _identity, token| {
             tracing::info!("Connected to server {tmp_db_name}");
@@ -83,13 +88,7 @@ fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) 
         .with_uri(db_host)
         // Finalize configuration and connect!
         .with_compression(Compression::Brotli)
-        .build();
-
-    if let Err(e) = con {
-        panic!("Error connecting to db: {:?}", e);
-    } else {
-        con.unwrap()
-    }
+        .build()
 }
 
 // /// Register subscriptions for all rows of both tables.
@@ -250,12 +249,20 @@ fn connect_to_db_logic(
     crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     item_list_desc_tx: &Sender<SpacetimeUpdateMessages<ItemListDesc>>,
     user_state_tx: &Sender<SpacetimeUpdateMessages<UserState>>,
-) {
+) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state,
         database,
         config.spacetimedb_url().as_ref(),
-    );
+    )?;
+
+    if ctx.is_active() {
+        tracing::error!(
+            "Could not connect to the bitcraft server {} with module {database}",
+            config.spacetimedb_url()
+        );
+        return Ok(());
+    }
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -425,6 +432,8 @@ fn connect_to_db_logic(
     tokio::spawn(async move {
         let _ = ctx.run_async().await;
     });
+
+    return Ok(());
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppState>) {
@@ -476,7 +485,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
             )
             .set(0);
 
-            connect_to_db_logic(
+            let result = connect_to_db_logic(
                 global_app_state.clone(),
                 &config,
                 database,
@@ -504,6 +513,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &item_list_desc_tx.clone_sync(),
                 &user_state_tx.clone_sync(),
             );
+
+            if let Err(error) = result {
+                tracing::error!(
+                    error = error.to_string(),
+                    "Error creating connection to {database} on {}",
+                    config.spacetimedb_url()
+                )
+            }
 
             remove_desc = true;
         });
