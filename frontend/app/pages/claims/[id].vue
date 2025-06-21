@@ -1208,7 +1208,7 @@ watchThrottled(
                   }
                 },
                 ]"
-                :items="Object.entries(claimFetch?.traveler_tasks?.players_offline) || {}"
+                :items="Object.entries(claimFetch?.traveler_tasks?.players) || {}"
                 :items-per-page="15"
                 class="elevation-1"
 
