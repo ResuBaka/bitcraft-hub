@@ -6,7 +6,7 @@ use entity::inventory_changelog::TypeOfChange;
 use entity::{
     cargo_desc, claim_local_state, claim_member_state, claim_state, claim_tech_state,
     crafting_recipe, deployable_state, item_desc, item_list_desc, mobile_entity_state,
-    vault_state_collectibles,
+    vault_state_collectibles,terrain_chunk_state,
 };
 #[allow(unused_imports)]
 use entity::{raw_event_data, skill_desc};
@@ -244,6 +244,7 @@ fn connect_to_db_logic(
     claim_tech_desc_tx: &Sender<SpacetimeUpdateMessages<ClaimTechDesc>>,
     building_state_tx: &Sender<SpacetimeUpdateMessages<BuildingState>>,
     building_desc_tx: &Sender<SpacetimeUpdateMessages<BuildingDesc>>,
+    terrain_chunk_state_tx: &Sender<SpacetimeUpdateMessages<TerrainChunkState>>,
     location_state_tx: &Sender<SpacetimeUpdateMessages<LocationState>>,
     building_nickname_state_tx: &Sender<SpacetimeUpdateMessages<BuildingNicknameState>>,
     crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
@@ -341,6 +342,13 @@ fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
+        terrain_chunk_state,
+        terrain_chunk_state_tx,
+        TerrainChunkState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
         building_state,
         building_state_tx,
         BuildingState,
@@ -396,6 +404,7 @@ fn connect_to_db_logic(
         "building_desc",
         "building_state",
         "building_nickname_state",
+        "terrain_chunk_state",
         "vault_state",
         "experience_state",
         "claim_tech_state",
@@ -473,6 +482,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let (building_desc_tx, building_desc_rx) = kanal::unbounded_async();
         let (location_state_tx, location_state_rx) = kanal::unbounded_async();
         let (building_nickname_state_tx, building_nickname_state_rx) = kanal::unbounded_async();
+        let (terrain_chunk_state_tx, terrain_chunk_state_rx) = kanal::unbounded_async();
 
         let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) = kanal::unbounded_async();
 
@@ -507,6 +517,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &claim_tech_desc_tx.clone_sync(),
                 &building_state_tx.clone_sync(),
                 &building_desc_tx.clone_sync(),
+                &terrain_chunk_state_tx.clone_sync(),
                 &location_state_tx.clone_sync(),
                 &building_nickname_state_tx.clone_sync(),
                 &crafting_recipe_desc_tx.clone_sync(),
@@ -659,6 +670,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         start_worker_building_desc(
             global_app_state.clone(),
             building_desc_rx,
+            2000,
+            Duration::from_millis(50),
+            timer_cleanup_token,
+        );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
+        start_worker_terrain_chunk_state(
+            global_app_state.clone(),
+            terrain_chunk_state_rx,
             2000,
             Duration::from_millis(50),
             timer_cleanup_token,
@@ -3092,6 +3111,132 @@ fn start_worker_building_desc(
         }
     });
 }
+
+fn start_worker_terrain_chunk_state(
+    global_app_state: Arc<AppState>,
+    rx: AsyncReceiver<SpacetimeUpdateMessages<TerrainChunkState>>,
+    batch_size: usize,
+    time_limit: Duration,
+    cancel_token: CancellationToken,
+) {
+    tokio::spawn(async move {
+        let on_conflict = sea_query::OnConflict::columns([::entity::terrain_chunk_state::Column::ChunkIndex])
+            .update_columns([
+                terrain_chunk_state::Column::ChunkX,
+                terrain_chunk_state::Column::ChunkZ,
+                terrain_chunk_state::Column::Dimension,
+                terrain_chunk_state::Column::Biomes,
+                terrain_chunk_state::Column::BiomeDensity,
+                terrain_chunk_state::Column::Elevations,
+                terrain_chunk_state::Column::WaterLevels,
+                terrain_chunk_state::Column::WaterBodyTypes,
+                terrain_chunk_state::Column::ZoningTypes,
+                terrain_chunk_state::Column::OriginalElevations,
+            ])
+            .to_owned();
+
+        let mut currently_known_terrain_chunk_state = ::entity::terrain_chunk_state::Entity::find()
+            .all(&global_app_state.conn)
+            .await
+            .map_or(vec![], |aa| aa)
+            .into_iter()
+            .map(|value| (value.chunk_index, value))
+            .collect::<HashMap<_, _>>();
+
+        loop {
+            let mut messages = Vec::new();
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Ok(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
+                                let model: ::entity::terrain_chunk_state::Model = new.into();
+
+                                if currently_known_terrain_chunk_state.contains_key(&model.chunk_index) {
+                                    let value = currently_known_terrain_chunk_state.get(&model.chunk_index).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_terrain_chunk_state.remove(&model.chunk_index);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, .. } => {
+                                let model: ::entity::terrain_chunk_state::Model = new.into();
+                                if currently_known_terrain_chunk_state.contains_key(&model.chunk_index) {
+                                    let value = currently_known_terrain_chunk_state.get(&model.chunk_index).unwrap();
+
+                                    if &model != value {
+                                        messages.push(model.into_active_model());
+                                    } else {
+                                        currently_known_terrain_chunk_state.remove(&model.chunk_index);
+                                    }
+                                } else {
+                                    messages.push(model.into_active_model());
+                                }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete,.. } => {
+                                let model: ::entity::terrain_chunk_state::Model = delete.into();
+                                let id = model.chunk_index;
+
+                                if let Some(index) = messages.iter().position(|value| value.chunk_index.as_ref() == &model.chunk_index) {
+                                    messages.remove(index);
+                                }
+
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(TerrainChunkState = id, error = error.to_string(), "Could not delete TerrainChunkState");
+                                }
+
+                                tracing::debug!("TerrainChunkState::Remove");
+                            }
+                        }
+                    }
+                    _ = &mut timer => {
+                        // Time limit reached
+                        break;
+                    }
+                    else => {
+                        // Channel closed and no more messages
+                        break;
+                    }
+                }
+            }
+            if !messages.is_empty() {
+                tracing::debug!(
+                    "TerrainChunkState ->>>> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = ::entity::terrain_chunk_state::Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .exec(&global_app_state.conn)
+                    .await;
+
+                if insert.is_err() {
+                    tracing::error!("Error inserting TerrainChunkState: {}", insert.unwrap_err())
+                }
+                // Your batch processing logic here
+            }
+
+            // If the channel is closed and we processed the last batch, exit the outer loop
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
+        }
+    });
+}
+
 
 fn start_worker_building_nickname_state(
     global_app_state: Arc<AppState>,
