@@ -30,15 +30,26 @@ use tokio::time::{Duration, sleep};
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
-fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) -> DbConnection {
+fn connect_to_db(
+    global_app_state: Arc<AppState>,
+    db_name: &str,
+    db_host: &str,
+) -> spacetimedb_sdk::Result<DbConnection> {
     let tmp_global_app_state = global_app_state.clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
     let tmp_db_name = db_name.to_owned();
     let tmp_disconnect_db_name = tmp_db_name.clone();
-    let con = DbConnection::builder()
+
+    DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, _identity, token| {
             tracing::info!("Connected to server {tmp_db_name}");
+            metrics::gauge!(
+                "bitcraft_database_connected",
+                &[("region", tmp_db_name.clone())]
+            )
+            .set(1);
+          
             tmp_global_app_state
                 .connection_state
                 .insert(tmp_db_name, true);
@@ -50,6 +61,12 @@ fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) 
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
         .on_disconnect(move |_ctx, err| {
+            metrics::gauge!(
+                "bitcraft_database_connected",
+                &[("region", tmp_disconnect_db_name.clone())]
+            )
+            .set(0);
+          
             tmp_disconnect_global_app_state
                 .connection_state
                 .insert(tmp_disconnect_db_name.clone(), false);
@@ -71,13 +88,7 @@ fn connect_to_db(global_app_state: Arc<AppState>, db_name: &str, db_host: &str) 
         .with_uri(db_host)
         // Finalize configuration and connect!
         .with_compression(Compression::Brotli)
-        .build();
-
-    if let Err(e) = con {
-        panic!("Error connecting to db: {:?}", e);
-    } else {
-        con.unwrap()
-    }
+        .build()
 }
 
 // /// Register subscriptions for all rows of both tables.
@@ -96,7 +107,7 @@ fn on_sub_error(_ctx: &ErrorContext, err: Error) {
 }
 
 fn creds_store() -> credentials::File {
-    credentials::File::new("bitcraft-beta")
+    credentials::File::new("bitcraft-ea")
 }
 
 /// Our `on_connect_error` callback: print the error, then exit the process.
@@ -241,12 +252,20 @@ fn connect_to_db_logic(
     traveler_task_state_tx: &Sender<SpacetimeUpdateMessages<TravelerTaskState>>,
     user_state_tx: &Sender<SpacetimeUpdateMessages<UserState>>,
     npc_desc_tx: &Sender<SpacetimeUpdateMessages<NpcDesc>>,
-) {
+) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state,
         database,
         config.spacetimedb_url().as_ref(),
-    );
+    )?;
+
+    if ctx.is_active() {
+        tracing::error!(
+            "Could not connect to the bitcraft server {} with module {database}",
+            config.spacetimedb_url()
+        );
+        return Ok(());
+    }
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -433,6 +452,8 @@ fn connect_to_db_logic(
     tokio::spawn(async move {
         let _ = ctx.run_async().await;
     });
+
+    return Ok(());
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppState>) {
@@ -483,7 +504,13 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let mut remove_desc = false;
 
         config.spacetimedb.databases.iter().for_each(|database| {
-            connect_to_db_logic(
+            metrics::gauge!(
+                "bitcraft_database_connected",
+                &[("region", database.clone())]
+            )
+            .set(0);
+
+            let result = connect_to_db_logic(
                 global_app_state.clone(),
                 &config,
                 database,
@@ -514,6 +541,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
                 &user_state_tx.clone_sync(),
                 &npc_desc_tx.clone_sync(),
             );
+
+            if let Err(error) = result {
+                tracing::error!(
+                    error = error.to_string(),
+                    "Error creating connection to {database} on {}",
+                    config.spacetimedb_url()
+                )
+            }
 
             remove_desc = true;
         });
@@ -1668,18 +1703,20 @@ fn start_worker_inventory_state(
                                         if new_item_id == old_item_id  && new_item_type == old_item_type && new_item_quantity == old_item_quantity {
                                             continue
                                         }
-                                        let type_of_change: TypeOfChange;
-                                        if new_item_id == None && old_item_id != None {
-                                            type_of_change = TypeOfChange::Remove;
-                                        }else if new_item_id != None && old_item_id == None {
-                                            type_of_change = TypeOfChange::Add;
-                                        }else {
-                                            if old_item_id != new_item_id {
-                                                type_of_change = TypeOfChange::AddAndRemove;
-                                            }else {
-                                                type_of_change = TypeOfChange::Update;
-                                            }
-                                        }
+
+                                        let type_of_change = match (old_item_id, new_item_id) {
+                                            (Some(_), None) => TypeOfChange::Remove,
+                                            (None, Some(_)) => TypeOfChange::Add,
+                                            (Some(old), Some(new)) => {
+                                                if old != new {
+                                                    TypeOfChange::AddAndRemove
+                                                } else {
+                                                    TypeOfChange::Update
+                                                }
+                                            },
+                                            _ => unreachable!("This type of change should never happen for an inventory")
+                                        };
+
                                         messages_changed.push(::entity::inventory_changelog::ActiveModel {
                                             id: NotSet,
                                             entity_id: Set(new_model.entity_id as i64),
