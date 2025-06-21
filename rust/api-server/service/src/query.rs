@@ -11,6 +11,7 @@ use ::entity::inventory;
 use ::entity::inventory_changelog;
 use ::entity::inventory_changelog::ItemType;
 use ::entity::trade_order;
+use ::entity::traveler_task_state;
 use ::entity::vault_state_collectibles;
 use ::entity::vault_state_collectibles::VaultStateCollectibleWithDesc;
 use ::entity::{
@@ -2026,6 +2027,16 @@ impl Query {
     ) -> Result<Vec<deployable_state::Model>, DbErr> {
         deployable_state::Entity::find()
             .filter(deployable_state::Column::OwnerId.eq(id))
+            .all(db)
+            .await
+    }
+
+    pub async fn get_traveler_task_state_by_player_entity_ids(
+        db: &DbConn,
+        id: Vec<i64>,
+    ) -> Result<Vec<traveler_task_state::Model>, DbErr> {
+        traveler_task_state::Entity::find()
+            .filter(traveler_task_state::Column::PlayerEntityId.is_in(id))
             .all(db)
             .await
     }

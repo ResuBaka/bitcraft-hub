@@ -9,6 +9,8 @@ const numberFormat = new Intl.NumberFormat(undefined);
 const tmpPage = (route.query.page as string) ?? null;
 
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
+import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
+import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 const useWebsocket = useWebsocketStore();
 
 type Message = {
@@ -232,6 +234,21 @@ const { data: playerFetch, pending: playerPnding } = useFetchMsPack(() => {
 const { data: inventoryFetch, pending: inventoryPending } = useFetchMsPack(
   () => {
     return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+  },
+);
+
+const { data: npcFetch } = useFetchMsPack(() => {
+  return `${api.base}/npc`;
+});
+const { data: trevelerTasksFetch } = useFetchMsPack<{
+  [key: number]: TravelerTaskDesc;
+}>(() => {
+  return `${api.base}/traveler_tasks`;
+});
+
+const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
+  () => {
+    return `${api.base}/api/bitcraft/itemsAndCargo/all`;
   },
 );
 
@@ -527,7 +544,35 @@ useSeoMeta({
           </v-row>
         </v-card-text>
       </v-card>
-
+      <v-expansion-panels>
+        <v-expansion-panel v-for="(traveler, index) of player.traveler_tasks">
+          <v-expansion-panel-title>
+            <v-row>
+              <v-col class="d-flex justify-center">
+                <h2 class="pl-md-3 pl-xl-0">Treveler: {{ npcFetch[index]?.name }}</h2>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <template v-for="task of traveler">
+              <v-row>
+              <v-col class="d-flex justify-center">
+              <template v-for="item of trevelerTasksFetch[task.task_id]?.required_items ">
+                <v-badge :content="Intl.NumberFormat().format(item.quantity)" location="right" class="align-start">
+                  <template v-if="item.item_type == 'Item'">
+                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.item_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
+                    </template>
+                  <template v-else-if="item.item_type == 'Cargo'">
+                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.cargo_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
+                  </template>
+                </v-badge>
+              </template>
+                </v-col>
+                </v-row>
+            </template>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
       <v-card variant="text" v-if="inventorys.length || playerTools || playerInventory">
         <v-card-title>Inventory's</v-card-title>
         <v-card-text>

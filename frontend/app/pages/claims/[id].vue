@@ -12,6 +12,9 @@ import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/Clai
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
+import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
+import type { NpcDesc } from "~/types/NpcDesc";
+import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 
 const {
   public: { iconDomain },
@@ -25,6 +28,7 @@ const player_items_collapsible = ref([]);
 const player_offline_items_collapsible = ref([]);
 const buildings_collapsible = ref([]);
 const inventory_changelog_collapsible = ref([]);
+const traveler_tasks_collapsible = ref([]);
 
 const search = ref<string | null>("");
 
@@ -56,6 +60,18 @@ const { data: claimFetch, pending: claimPnding } =
   useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(() => {
     return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
   });
+
+const { data: trevelerTasksFetch } = useFetchMsPack<{
+  [key: number]: TravelerTaskDesc;
+}>(() => {
+  return `${api.base}/traveler_tasks`;
+});
+
+const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
+  () => {
+    return `${api.base}/api/bitcraft/itemsAndCargo/all`;
+  },
+);
 
 const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
   useFetchMsPack<InventoryChangelog[]>(
@@ -91,9 +107,12 @@ const { data: buidlingsFetch, pending: buildingsPending } =
   });
 
 const topicsPlayer = computed<string[]>(() => {
+  if (claimFetch.value === undefined) {
+    return [];
+  }
   return (
-    claimFetch.value?.members.map((member) => {
-      return `player_state.${member.entity_id}`;
+    Object.keys(claimFetch.value?.members).map((entity_id) => {
+      return `player_state.${entity_id}`;
     }) ?? []
   );
 });
@@ -118,33 +137,38 @@ registerWebsocketMessageHandler(
 );
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
-  let index = claimFetch.value?.members.findIndex(
-    (member) => member.entity_id == message.c.entity_id,
-  );
-  if (index && index !== -1) {
-    let onlineState = message.c.signed_in ? "Online" : "Offline";
+  let onlineState = message.c.signed_in ? "Online" : "Offline";
 
-    if (claimFetch.value.members[index].online_state !== onlineState) {
-      if (message.c.signed_in) {
-        toast(`${claimFetch.value.members[index].user_name} signed in`, {
+  if (
+    claimFetch.value.members[message.c.entity_id].online_state !== onlineState
+  ) {
+    if (message.c.signed_in) {
+      toast(
+        `${claimFetch.value.members[message.c.entity_id].user_name} signed in`,
+        {
           progressBar: true,
           duration: 5000,
-        });
-      } else {
-        toast(`${claimFetch.value.members[index].user_name} signed out`, {
+        },
+      );
+    } else {
+      toast(
+        `${claimFetch.value.members[message.c.entity_id].user_name} signed out`,
+        {
           progressBar: true,
           duration: 5000,
-        });
-      }
+        },
+      );
     }
-
-    claimFetch.value.members[index].online_state = onlineState;
+    claimFetch.value.members[message.c.entity_id].online_state = onlineState;
   }
 });
 
 const topicsLevel = computed<string[]>(() => {
+  if (claimFetch.value === undefined) {
+    return [];
+  }
   return (
-    claimFetch.value?.members
+    Object.values(claimFetch.value?.members)
       .filter((member) => member.online_state === "Online")
       .map((member) => {
         return `level.${member.entity_id}`;
@@ -363,11 +387,7 @@ const claimOwner = computed(() => {
     return "";
   }
 
-  return claim.value.members.find(
-    (member) =>
-      member.entity_id.toString() ===
-      claim.value.owner_player_entity_id?.toString(),
-  );
+  return claim.value.members[claim.value.owner_player_entity_id];
 });
 
 const sortedUsersByPermissionLevel = computed(() => {
@@ -462,7 +482,7 @@ const membersForTable = computed(() => {
   if (!claim.value?.members) {
     return [];
   }
-  return claim.value.members
+  return Object.values(claim.value.members)
     .filter((member) => {
       if (showOnlyOnlineMembers.value && member.online_state !== "Online") {
         return false;
@@ -523,8 +543,11 @@ const upgradeWillFinishAt = computed(() => {
 });
 
 const onlinePlayersCount = computed(() => {
+  if (claimFetch.value === undefined) {
+    return 0;
+  }
   return (
-    claimFetch.value?.members.filter(
+    Object.values(claimFetch.value?.members).filter(
       (member) => member.online_state === "Online",
     ).length ?? 0
   );
@@ -1135,6 +1158,89 @@ watchThrottled(
                     <inventory-changes :items="InventoryChangelogFetch"/>
                   </v-card-text>
                   </v-card>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+      </v-col>
+    </v-row>
+     <v-row>
+      <v-col cols="12">
+        <v-expansion-panels v-model="traveler_tasks_collapsible">
+          <v-expansion-panel value="traveler_tasks">
+            <v-expansion-panel-title>
+              <v-row>
+                <v-col class="d-flex justify-center">
+                  <h2 class="pl-md-3 pl-xl-0">Traveler Tasks</h2>
+                </v-col>
+              </v-row>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+               <v-data-table
+                hover
+                density="compact"
+                :headers="[
+                {
+                  title: 'Items',
+                  key: 'items',
+                  cellProps: {
+                    class: 'font-weight-black'
+                  }
+                },
+                 {
+                  title: 'NPC Name',
+                  key: 'npc_name',
+                  cellProps: {
+                    class: 'font-weight-black'
+                  }
+                },
+                 {
+                  title: 'Player Count',
+                  key: 'player_count',
+                  cellProps: {
+                    class: 'font-weight-black'
+                  }
+                },
+                {
+                  title: 'User Names',
+                  key: 'users',
+                  cellProps: {
+                    class: 'font-weight-black'
+                  }
+                },
+                ]"
+                :items="Object.entries(claimFetch?.traveler_tasks?.players) || {}"
+                :items-per-page="15"
+                class="elevation-1"
+
+            >
+              <template #item.items="{ item }">
+                <template v-for="shownItem of trevelerTasksFetch[item[0]]?.required_items ">
+                                  <v-badge :content="Intl.NumberFormat().format(shownItem.quantity)" location="right" class="align-start">
+                                    <template v-if="shownItem.item_type == 'Item'">
+                                      <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.item_desc[shownItem.item_id].icon_asset_name).url" height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>
+                                      </template>
+                                    <template v-else-if="shownItem.item_type == 'Cargo'">
+                                      <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].icon_asset_name).url" height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>
+                                    </template>
+                                  </v-badge>
+                                </template>
+                </template>
+
+              <template #item.npc_name="{ value, item }">
+                  {{ trevelerTasksFetch[item[0]].description.split(" ")[0] }}
+              </template>
+              <template #item.player_count="{ value, item }">
+                  {{ item[1].length }}
+              </template>
+              <template #item.users="{ value, item }">
+                <template v-for="playerId of item[1]">
+                  <nuxt-link :class="`text-decoration-none`" :to="{ name: 'players-id', params: { id: playerId } }">
+                  {{ claimFetch.members[playerId]?.user_name }}
+                </nuxt-link>
+                ,
+                </template>
+              </template>
+            </v-data-table>
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
