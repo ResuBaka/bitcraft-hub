@@ -357,9 +357,9 @@ impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
             url: "".to_string(),
-            max_connections: 100,
-            min_connections: 5,
-            connect_timeout: 15,
+            max_connections: 200,
+            min_connections: 30,
+            connect_timeout: 10,
             idle_timeout: 60 * 5,
             max_lifetime: None,
         }
@@ -376,6 +376,7 @@ pub(crate) struct SpacetimeDbConfig {
     pub(crate) password: String,
     pub(crate) username: String,
     pub(crate) websocket_protocol: String,
+    pub(crate) cleanup: bool,
 }
 
 impl Default for SpacetimeDbConfig {
@@ -388,6 +389,7 @@ impl Default for SpacetimeDbConfig {
             password: "".to_string(),
             username: "token".to_string(),
             websocket_protocol: "wss://".to_string(),
+            cleanup: false,
         }
     }
 }

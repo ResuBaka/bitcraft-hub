@@ -22,6 +22,7 @@ mod m20250602_184227_building_nickname_state;
 mod m20250605_111309_fix_crafting_recipe;
 mod m20250612_121707_redo_inventory_changelog;
 mod m20250617_140552_treveler_tasks;
+mod m20250622_112143_correct_item_cargo_desc_id_type;
 
 pub struct Migrator;
 
@@ -51,6 +52,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250605_111309_fix_crafting_recipe::Migration),
             Box::new(m20250617_140552_treveler_tasks::Migration),
             Box::new(m20250612_121707_redo_inventory_changelog::Migration),
+            Box::new(m20250622_112143_correct_item_cargo_desc_id_type::Migration),
         ]
     }
 }

@@ -44,8 +44,8 @@ use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use reqwest::header::HeaderMap;
-use sea_orm::ConnectOptions;
 use sea_orm::strum::Display;
+use sea_orm::{ConnectOptions, EntityTrait};
 use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
 use service::sea_orm::{Database, DatabaseConnection};
@@ -79,6 +79,8 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
         &config,
         tx.clone(),
     ));
+
+    state.fill_state_from_db().await;
 
     let server_url = config.server_url();
 
@@ -123,7 +125,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
     Ok(())
 }
 
-async fn create_db_connection(config: &Config) -> DatabaseConnection {
+pub(crate) async fn create_db_connection(config: &Config) -> DatabaseConnection {
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
         .max_connections(config.database.max_connections)
@@ -562,6 +564,193 @@ impl AppState {
             user_state: Arc::new(dashmap::DashMap::new()),
             npc_desc: Arc::new(dashmap::DashMap::new()),
         }
+    }
+
+    async fn fill_state_from_db(&self) {
+        let _ = tokio::join!(
+            async move {
+                ::entity::item_desc::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading item_desc in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.item_desc.insert(value.id, value.clone());
+                    });
+            },
+            async move {
+                ::entity::cargo_desc::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading cargo_desc in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.cargo_desc.insert(value.id, value.clone());
+                    });
+            },
+            async move {
+                ::entity::inventory::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading inventory in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.inventory_state.insert(value.entity_id, value.clone());
+                    });
+            },
+            async move {
+                ::entity::claim_local_state::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading claim_local_state in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.claim_local_state
+                            .insert(value.entity_id as u64, value.clone());
+                    });
+            },
+            async move {
+                ::entity::skill_desc::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading skill_desc in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.skill_desc.insert(value.id, value.clone());
+                    });
+            },
+            async move {
+                ::entity::building_desc::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading building_desc in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.building_desc.insert(value.id, value.clone());
+                    });
+            },
+            async move {
+                ::entity::building_nickname_state::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading building_nickname_state in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.building_nickname_state
+                            .insert(value.entity_id, value.clone());
+                    });
+            },
+            async move {
+                ::entity::crafting_recipe::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading crafting_recipe in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.crafting_recipe_desc.insert(value.id, value.clone());
+                    });
+            },
+            async move {
+                ::entity::item_list_desc::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .map_or_else(
+                        |err| {
+                            tracing::error!(
+                                error = err.to_string(),
+                                "Error loading item_list_desc in fill_state_from_db"
+                            );
+
+                            vec![]
+                        },
+                        |aa| aa,
+                    )
+                    .into_iter()
+                    .for_each(|value| {
+                        self.item_list_desc.insert(value.id, value.clone());
+                    });
+            },
+        );
     }
 
     fn add_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {

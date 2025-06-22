@@ -32,6 +32,7 @@ use ts_rs::TS;
 
 fn connect_to_db(
     global_app_state: Arc<AppState>,
+    token: String,
     db_name: &str,
     db_host: &str,
 ) -> spacetimedb_sdk::Result<DbConnection> {
@@ -81,7 +82,8 @@ fn connect_to_db(
         // If the user has previously connected, we'll have saved a token in the `on_connect` callback.
         // In that case, we'll load it and pass it to `with_token`,
         // so we can re-authenticate as the same `Identity`.
-        .with_token(creds_store().load().expect("Error loading credentials"))
+        // .with_token(creds_store().load().expect("Error loading credentials"))
+        .with_token(Some(token))
         // Set the database name we chose when we called `spacetime publish`.
         .with_module_name(db_name)
         // Set the URI of the SpacetimeDB host that's running our database.
@@ -255,6 +257,7 @@ fn connect_to_db_logic(
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state,
+        config.spacetimedb.password.clone(),
         database,
         config.spacetimedb_url().as_ref(),
     )?;
@@ -556,11 +559,15 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let cleanup_token = CancellationToken::new();
 
         let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
-        tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(60 * 3)).await;
-            tracing::info!("\n--- Cleanup timer finished! Signaling cleanup! ---");
-            timer_cleanup_token.cancel(); // Signal all listeners
-        });
+        if config.spacetimedb.cleanup {
+            tokio::spawn(async move {
+                tokio::time::sleep(Duration::from_secs(60 * 3)).await;
+                tracing::info!("--- Cleanup timer finished! Signaling cleanup! ---");
+                timer_cleanup_token.cancel(); // Signal all listeners
+            });
+        } else {
+            tracing::info!("--- Cleanup timer disabled! ---");
+        }
 
         start_worker_mobile_entity_state(global_app_state.clone(), mobile_entity_state_rx);
         let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
