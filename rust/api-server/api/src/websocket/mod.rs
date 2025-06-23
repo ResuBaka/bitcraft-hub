@@ -50,7 +50,7 @@ fn connect_to_db(
                 &[("region", tmp_db_name.clone())]
             )
             .set(1);
-          
+
             tmp_global_app_state
                 .connection_state
                 .insert(tmp_db_name, true);
@@ -67,7 +67,7 @@ fn connect_to_db(
                 &[("region", tmp_disconnect_db_name.clone())]
             )
             .set(0);
-          
+
             tmp_disconnect_global_app_state
                 .connection_state
                 .insert(tmp_disconnect_db_name.clone(), false);
@@ -507,51 +507,83 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppS
         let mut remove_desc = false;
 
         config.spacetimedb.databases.iter().for_each(|database| {
-            metrics::gauge!(
-                "bitcraft_database_connected",
-                &[("region", database.clone())]
-            )
-            .set(0);
+            let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone_sync();
+            let tmp_player_state_tx = player_state_tx.clone_sync();
+            let tmp_player_username_state_tx = player_username_state_tx.clone_sync();
+            let tmp_experience_state_tx = experience_state_tx.clone_sync();
+            let tmp_inventory_state_tx = inventory_state_tx.clone_sync();
+            let tmp_item_desc_tx = item_desc_tx.clone_sync();
+            let tmp_cargo_desc_tx = cargo_desc_tx.clone_sync();
+            let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone_sync();
+            let tmp_deployable_state_tx = deployable_state_tx.clone_sync();
+            let tmp_claim_state_tx = claim_state_tx.clone_sync();
+            let tmp_claim_local_state_tx = claim_local_state_tx.clone_sync();
+            let tmp_claim_member_state_tx = claim_member_state_tx.clone_sync();
+            let tmp_skill_desc_tx = skill_desc_tx.clone_sync();
+            let tmp_claim_tech_state_tx = claim_tech_state_tx.clone_sync();
+            let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone_sync();
+            let tmp_building_state_tx = building_state_tx.clone_sync();
+            let tmp_building_desc_tx = building_desc_tx.clone_sync();
+            let tmp_location_state_tx = location_state_tx.clone_sync();
+            let tmp_building_nickname_state_tx = building_nickname_state_tx.clone_sync();
+            let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone_sync();
+            let tmp_item_list_desc_tx = item_list_desc_tx.clone_sync();
+            let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone_sync();
+            let tmp_traveler_task_state_tx = traveler_task_state_tx.clone_sync();
+            let tmp_user_state_tx = user_state_tx.clone_sync();
+            let tmp_npc_desc_tx = npc_desc_tx.clone_sync();
+            let tmp_conf = config.clone();
+            let tmp_global_app_state = global_app_state.clone();
+            let tmp_remove_desc = remove_desc;
+            let tmp_database = database.clone();
 
-            let result = connect_to_db_logic(
-                global_app_state.clone(),
-                &config,
-                database,
-                &remove_desc,
-                &mobile_entity_state_tx.clone_sync(),
-                &player_state_tx.clone_sync(),
-                &player_username_state_tx.clone_sync(),
-                &experience_state_tx.clone_sync(),
-                &inventory_state_tx.clone_sync(),
-                &item_desc_tx.clone_sync(),
-                &cargo_desc_tx.clone_sync(),
-                &vault_state_collectibles_tx.clone_sync(),
-                &deployable_state_tx.clone_sync(),
-                &claim_state_tx.clone_sync(),
-                &claim_local_state_tx.clone_sync(),
-                &claim_member_state_tx.clone_sync(),
-                &skill_desc_tx.clone_sync(),
-                &claim_tech_state_tx.clone_sync(),
-                &claim_tech_desc_tx.clone_sync(),
-                &building_state_tx.clone_sync(),
-                &building_desc_tx.clone_sync(),
-                &location_state_tx.clone_sync(),
-                &building_nickname_state_tx.clone_sync(),
-                &crafting_recipe_desc_tx.clone_sync(),
-                &item_list_desc_tx.clone_sync(),
-                &traveler_task_desc_tx.clone_sync(),
-                &traveler_task_state_tx.clone_sync(),
-                &user_state_tx.clone_sync(),
-                &npc_desc_tx.clone_sync(),
-            );
-
-            if let Err(error) = result {
-                tracing::error!(
-                    error = error.to_string(),
-                    "Error creating connection to {database} on {}",
-                    config.spacetimedb_url()
+            tokio::spawn(async move {
+                metrics::gauge!(
+                    "bitcraft_database_connected",
+                    &[("region", tmp_database.clone())]
                 )
-            }
+                .set(0);
+
+                let result = connect_to_db_logic(
+                    tmp_global_app_state,
+                    &tmp_conf,
+                    &tmp_database,
+                    &tmp_remove_desc,
+                    &tmp_mobile_entity_state_tx,
+                    &tmp_player_state_tx,
+                    &tmp_player_username_state_tx,
+                    &tmp_experience_state_tx,
+                    &tmp_inventory_state_tx,
+                    &tmp_item_desc_tx,
+                    &tmp_cargo_desc_tx,
+                    &tmp_vault_state_collectibles_tx,
+                    &tmp_deployable_state_tx,
+                    &tmp_claim_state_tx,
+                    &tmp_claim_local_state_tx,
+                    &tmp_claim_member_state_tx,
+                    &tmp_skill_desc_tx,
+                    &tmp_claim_tech_state_tx,
+                    &tmp_claim_tech_desc_tx,
+                    &tmp_building_state_tx,
+                    &tmp_building_desc_tx,
+                    &tmp_location_state_tx,
+                    &tmp_building_nickname_state_tx,
+                    &tmp_crafting_recipe_desc_tx,
+                    &tmp_item_list_desc_tx,
+                    &tmp_traveler_task_desc_tx,
+                    &tmp_traveler_task_state_tx,
+                    &tmp_user_state_tx,
+                    &tmp_npc_desc_tx,
+                );
+
+                if let Err(error) = result {
+                    tracing::error!(
+                        error = error.to_string(),
+                        "Error creating connection to {tmp_database} on {}",
+                        tmp_conf.spacetimedb_url()
+                    )
+                };
+            });
 
             remove_desc = true;
         });
@@ -1119,11 +1151,14 @@ fn start_worker_cargo_desc(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::cargo_desc::Entity::insert_many(messages.clone())
+                let result = ::entity::cargo_desc::Entity::insert_many(messages.clone())
                     .on_conflict(on_conflict.clone())
                     .exec(&global_app_state.conn)
                     .await;
-                // Your batch processing logic here
+
+                if let Err(error) = result {
+                    tracing::error!(error = error.to_string(), "Error while saving cargo_desc");
+                }
             }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
