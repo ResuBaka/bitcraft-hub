@@ -1,6 +1,8 @@
+pub(crate) mod bitcraft;
 pub(crate) mod claim_local_state;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
+
 use crate::inventory::{InventoryChangesParams, resolve_contents, resolve_pocket};
 use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
 use crate::{AppRouter, AppState};

@@ -14,7 +14,7 @@ impl MigrationTrait for Migration {
                     .modify_column(integer(CargoDesc::Id))
                     .to_owned(),
             )
-        .await;
+        .await?;
 
         manager
             .alter_table(
@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                     .modify_column(integer(CraftingRecipe::Id))
                     .to_owned(),
             )
-        .await;
+        .await?;
 
 
         manager
@@ -44,7 +44,7 @@ impl MigrationTrait for Migration {
                     .modify_column(big_integer(CargoDesc::Id))
                     .to_owned(),
             )
-            .await;
+            .await?;
         manager
             .alter_table(
                 Table::alter()
@@ -52,7 +52,7 @@ impl MigrationTrait for Migration {
                     .modify_column(big_integer(CraftingRecipe::Id))
                     .to_owned(),
             )
-            .await;
+            .await?;
 
 
         manager

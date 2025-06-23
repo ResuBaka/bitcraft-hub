@@ -94,7 +94,7 @@ mod tests {
   "supplies_purchase_price": 1.0,
   "building_description_id": 292245080
 }"#;
-        let parsed_event_data: Model = serde_json::from_str(raw_event_data).unwrap();
+        let _parsed_event_data: Model = serde_json::from_str(raw_event_data).unwrap();
     }
 }
 

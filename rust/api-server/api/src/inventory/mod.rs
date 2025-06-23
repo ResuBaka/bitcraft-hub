@@ -1,3 +1,5 @@
+pub(crate) mod bitcraft;
+
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};

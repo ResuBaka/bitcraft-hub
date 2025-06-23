@@ -5,19 +5,27 @@ mod claim_tech_state;
 mod claims;
 mod collectible_desc;
 mod config;
+mod crafting_recipe_desc;
 mod deployable_state;
 mod download;
 mod inventory;
+mod item_list_desc;
 mod items;
 mod items_and_cargo;
 mod leaderboard;
+mod location_state;
 mod locations;
+mod mobile_entity_state;
+mod npc_desc;
 mod player_state;
 mod recipes;
 mod reducer_event_handler;
 mod skill_descriptions;
 mod trading_orders;
+mod traveler_task_desc;
+mod traveler_task_state;
 mod traveler_tasks;
+mod user_state;
 mod vault_state;
 mod websocket;
 
@@ -521,6 +529,7 @@ struct AppState {
     conn: DatabaseConnection,
     tx: UnboundedSender<WebSocketMessages>,
     connection_state: Arc<dashmap::DashMap<String, bool>>,
+    #[allow(dead_code)]
     storage_path: PathBuf,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
@@ -545,6 +554,7 @@ struct AppState {
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
     location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
     inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
+    #[allow(dead_code)]
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,
     traveler_task_desc: Arc<dashmap::DashMap<i32, entity::traveler_task_desc::Model>>,
     user_state: Arc<dashmap::DashMap<Identity, u64>>,

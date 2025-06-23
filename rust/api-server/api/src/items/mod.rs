@@ -1,3 +1,5 @@
+pub(crate) mod bitcraft;
+
 use crate::{AppState, Params};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
