@@ -69,6 +69,7 @@ use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt;
 
 async fn start(database_connection: DatabaseConnection, config: Config) -> anyhow::Result<()> {
+    tracing::info!("Starting up server");
     let prometheus = setup_metrics_recorder();
 
     Migrator::up(&database_connection, None).await?;
@@ -118,7 +119,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     let app = create_app(&config, state.clone(), prometheus);
 
-    tracing::info!("Starting server on http://{}", server_url);
+    tracing::info!("Server started on http://{}", server_url);
 
     let listener = tokio::net::TcpListener::bind(&server_url).await?;
     axum::serve(listener, app).await?;
