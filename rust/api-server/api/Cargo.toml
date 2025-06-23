@@ -42,6 +42,8 @@ tracing = "0.1.41"
 nanoid = "0.4.0"
 config = "0.15.11"
 kanal = "0.1.1"
+prometheus = "0.14.0"
+metrics-process = "2.4.0"
 chrono =  { workspace = true }
 
 

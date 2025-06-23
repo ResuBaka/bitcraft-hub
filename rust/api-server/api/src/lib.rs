@@ -39,8 +39,8 @@ use axum::{
 };
 use clap::{Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
-use log::error;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
+use metrics_process::Collector;
 use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use reqwest::header::HeaderMap;
@@ -64,6 +64,7 @@ use tower_cookies::CookieManagerLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
+use tracing::error;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -389,6 +390,10 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
             axum_codec::routing::get(buildings::find_building_descriptions).into(),
         );
 
+    let collector = Collector::default();
+    // Call `describe()` method to register help string.
+    collector.describe();
+
     Router::new()
         .route("/websocket", any(websocket_handler))
         // .route(
@@ -419,7 +424,26 @@ fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandl
                 )
             }),
         )
-        .route("/metrics", get(|| async move { prometheus.render() }))
+        .route(
+            "/metrics",
+            get(|| async move {
+                let encoder = prometheus::TextEncoder::new();
+                let metric_families = prometheus::gather();
+                let prometheus_body = encoder.encode_to_string(&metric_families);
+                let metrics_body = prometheus.render();
+                collector.collect();
+
+                if prometheus_body.is_err() {
+                    let err = prometheus_body.err().unwrap();
+                    error!("Error: {:?}", err);
+
+                    Err((StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"))
+                } else {
+                    let prometheus_body = prometheus_body.unwrap();
+                    Ok(format!("{metrics_body}\n{prometheus_body}"))
+                }
+            }),
+        )
         .layer(CookieManagerLayer::new())
         .layer(
             CorsLayer::new()
