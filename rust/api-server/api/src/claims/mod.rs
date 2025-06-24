@@ -602,7 +602,7 @@ pub(crate) async fn get_claim(
         let mut traveler_tasks = HashMap::new();
         for task in offline_traveler_tasks {
             let tasks = traveler_tasks.entry(task.task_id).or_insert_with(Vec::new);
-            if task.completed == false {
+            if !task.completed {
                 tasks.push(task.player_entity_id);
             }
         }
@@ -645,7 +645,7 @@ pub(crate) async fn get_claim(
         let mut traveler_tasks = HashMap::new();
         for task in offline_traveler_tasks {
             let tasks = traveler_tasks.entry(task.task_id).or_insert_with(Vec::new);
-            if task.completed == false {
+            if !task.completed {
                 tasks.push(task.player_entity_id);
             }
         }

@@ -1,17 +1,17 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use entity::deployable_state;
+use futures::FutureExt;
 use game_module::module_bindings::DeployableState;
 use kanal::AsyncReceiver;
 use migration::sea_query;
+use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-use sea_orm::QueryFilter;
-use futures::FutureExt;
 
 pub(crate) fn start_worker_deployable_state(
     global_app_state: Arc<AppState>,

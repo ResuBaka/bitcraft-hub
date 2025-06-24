@@ -1,15 +1,15 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
+use futures::FutureExt;
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use kanal::AsyncReceiver;
+use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, sea_query};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-use futures::FutureExt;
-use sea_orm::QueryFilter;
 
 pub(crate) fn start_worker_player_state(
     global_app_state: Arc<AppState>,

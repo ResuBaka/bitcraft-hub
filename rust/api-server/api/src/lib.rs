@@ -607,17 +607,14 @@ impl AppState {
                 ::entity::item_desc::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading item_desc in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading item_desc in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.item_desc.insert(value.id, value.clone());
@@ -627,17 +624,14 @@ impl AppState {
                 ::entity::cargo_desc::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading cargo_desc in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading cargo_desc in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.cargo_desc.insert(value.id, value.clone());
@@ -647,17 +641,14 @@ impl AppState {
                 ::entity::inventory::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading inventory in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading inventory in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.inventory_state.insert(value.entity_id, value.clone());
@@ -667,17 +658,14 @@ impl AppState {
                 ::entity::claim_local_state::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading claim_local_state in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading claim_local_state in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.claim_local_state
@@ -688,17 +676,14 @@ impl AppState {
                 ::entity::skill_desc::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading skill_desc in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading skill_desc in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.skill_desc.insert(value.id, value.clone());
@@ -708,17 +693,14 @@ impl AppState {
                 ::entity::building_desc::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading building_desc in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading building_desc in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.building_desc.insert(value.id, value.clone());
@@ -728,17 +710,14 @@ impl AppState {
                 ::entity::building_nickname_state::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading building_nickname_state in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading building_nickname_state in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.building_nickname_state
@@ -749,17 +728,14 @@ impl AppState {
                 ::entity::crafting_recipe::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading crafting_recipe in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading crafting_recipe in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.crafting_recipe_desc.insert(value.id, value.clone());
@@ -769,17 +745,14 @@ impl AppState {
                 ::entity::item_list_desc::Entity::find()
                     .all(&self.conn)
                     .await
-                    .map_or_else(
-                        |err| {
-                            tracing::error!(
-                                error = err.to_string(),
-                                "Error loading item_list_desc in fill_state_from_db"
-                            );
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading item_list_desc in fill_state_from_db"
+                        );
 
-                            vec![]
-                        },
-                        |aa| aa,
-                    )
+                        vec![]
+                    })
                     .into_iter()
                     .for_each(|value| {
                         self.item_list_desc.insert(value.id, value.clone());

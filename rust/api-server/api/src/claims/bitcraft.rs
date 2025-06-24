@@ -1,19 +1,19 @@
 use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use entity::{claim_local_state, claim_member_state, claim_state, claim_tech_state};
+use futures::FutureExt;
 use game_module::module_bindings::{
     ClaimLocalState, ClaimMemberState, ClaimState, ClaimTechDesc, ClaimTechState,
 };
 use kanal::AsyncReceiver;
 use migration::sea_query;
+use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-use futures::FutureExt;
-use sea_orm::QueryFilter;
 
 pub(crate) fn start_worker_claim_state(
     global_app_state: Arc<AppState>,

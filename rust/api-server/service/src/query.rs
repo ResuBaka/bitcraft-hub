@@ -1991,7 +1991,7 @@ impl Query {
                 )
             })
             .apply_if(user_id, |query, value| {
-                query.filter(inventory_changelog::Column::UserId.eq(value.clone()))
+                query.filter(inventory_changelog::Column::UserId.eq(value))
             })
             .order_by_desc(inventory_changelog::Column::Timestamp)
             .paginate(db, page_size);

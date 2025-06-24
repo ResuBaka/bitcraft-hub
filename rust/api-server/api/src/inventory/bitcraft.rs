@@ -2,17 +2,17 @@ use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use chrono::DateTime;
 use entity::inventory_changelog::TypeOfChange;
+use futures::FutureExt;
 use game_module::module_bindings::InventoryState;
 use kanal::AsyncReceiver;
 use migration::sea_query;
+use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-use sea_orm::QueryFilter;
-use futures::FutureExt;
 
 pub(crate) fn start_worker_inventory_state(
     global_app_state: Arc<AppState>,

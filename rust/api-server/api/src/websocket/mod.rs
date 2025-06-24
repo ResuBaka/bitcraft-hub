@@ -26,7 +26,7 @@ use crate::traveler_task_state::bitcraft::start_worker_traveler_task_state;
 use crate::user_state::bitcraft::start_worker_user_state;
 use crate::vault_state::bitcraft::start_worker_vault_state_collectibles;
 use game_module::module_bindings::*;
-use kanal::{Sender};
+use kanal::Sender;
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Identity, Table, TableWithPrimaryKey, Timestamp,
@@ -34,8 +34,8 @@ use spacetimedb_sdk::{
 };
 use std::borrow::Cow;
 use std::sync::Arc;
+use tokio::time::Duration;
 use tokio::time::Instant;
-use tokio::time::{Duration};
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
@@ -233,6 +233,7 @@ macro_rules! setup_spacetime_db_listeners {
     };
 }
 
+#[allow(clippy::too_many_arguments)]
 fn connect_to_db_logic(
     global_app_state: Arc<AppState>,
     config: &Config,
@@ -465,7 +466,7 @@ fn connect_to_db_logic(
         let _ = ctx.run_async().await;
     });
 
-    return Ok(());
+    Ok(())
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppState>) {

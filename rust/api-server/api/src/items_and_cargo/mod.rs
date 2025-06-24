@@ -69,18 +69,18 @@ pub(crate) struct ItemsAndCargollResponse {
 pub(crate) async fn get_all(
     state: State<std::sync::Arc<AppState>>,
 ) -> Result<axum_codec::Codec<ItemsAndCargollResponse>, (StatusCode, &'static str)> {
-    return Ok(axum_codec::Codec(ItemsAndCargollResponse {
+    Ok(axum_codec::Codec(ItemsAndCargollResponse {
         cargo_desc: state
             .cargo_desc
             .iter()
-            .map(|value| (value.key().clone(), value.clone()))
+            .map(|value| (*value.key(), value.clone()))
             .collect(),
         item_desc: state
             .item_desc
             .iter()
-            .map(|value| (value.key().clone(), value.clone()))
+            .map(|value| (*value.key(), value.clone()))
             .collect(),
-    }));
+    }))
 }
 
 pub(crate) async fn list_items_and_cargo(

@@ -59,9 +59,9 @@ pub(crate) async fn get_all(
         .into_iter()
         .map(|value| (value.entity_id.to_string(), value.username))
         .collect::<HashMap<_, _>>();
-    return Ok(axum_codec::Codec(PlayerUsernameStateResponse {
+    Ok(axum_codec::Codec(PlayerUsernameStateResponse {
         username_state: currently_known_player_username_state,
-    }));
+    }))
 }
 
 pub async fn list_players(
@@ -200,6 +200,7 @@ pub async fn find_player_by_id(
         .map(|player_action_state| player_action_state.action_type.get_action_name());
 
     //TODO FIX IT SO that it works with the correct type
+    #[allow(clippy::unnecessary_lazy_evaluations)]
     let current_action_state = state.action_state.get(&(id as u64)).and_then(|_value| {
         // @todo implement it correctly
         None
@@ -220,7 +221,7 @@ pub async fn find_player_by_id(
 
     let mut traveler_tasks: HashMap<_, _> = HashMap::new();
     for task in traveler_tasks_db {
-        if task.completed == false {
+        if !task.completed {
             let traveler_task = traveler_tasks
                 .entry(task.traveler_id)
                 .or_insert_with(Vec::new);
@@ -237,7 +238,7 @@ pub async fn find_player_by_id(
         signed_in: player.signed_in,
         teleport_location: player.teleport_location,
         traveler_tasks_expiration: player.traveler_tasks_expiration,
-        traveler_tasks: traveler_tasks,
+        traveler_tasks,
         username: player_username,
         deployables,
         player_location,

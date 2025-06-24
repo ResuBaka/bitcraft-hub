@@ -16,23 +16,23 @@ pub(crate) async fn get_all(
     state: State<std::sync::Arc<AppState>>,
 ) -> Result<axum_codec::Codec<HashMap<i32, traveler_task_desc::Model>>, (StatusCode, &'static str)>
 {
-    return Ok(axum_codec::Codec(
+    Ok(axum_codec::Codec(
         state
             .traveler_task_desc
             .iter()
-            .map(|value| (value.key().clone(), value.clone()))
+            .map(|value| (*value.key(), value.clone()))
             .collect(),
-    ));
+    ))
 }
 
 pub(crate) async fn get_npc_all(
     state: State<std::sync::Arc<AppState>>,
 ) -> Result<axum_codec::Codec<HashMap<i32, npc_desc::Model>>, (StatusCode, &'static str)> {
-    return Ok(axum_codec::Codec(
+    Ok(axum_codec::Codec(
         state
             .npc_desc
             .iter()
-            .map(|value| (value.key().clone(), value.clone()))
+            .map(|value| (*value.key(), value.clone()))
             .collect(),
-    ));
+    ))
 }
