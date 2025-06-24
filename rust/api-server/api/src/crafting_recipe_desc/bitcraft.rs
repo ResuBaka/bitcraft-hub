@@ -4,13 +4,12 @@ use entity::crafting_recipe;
 use kanal::AsyncReceiver;
 use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, sea_query};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_crafting_recipe_desc(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<game_module::module_bindings::CraftingRecipeDesc>>,
     batch_size: usize,
     time_limit: Duration,

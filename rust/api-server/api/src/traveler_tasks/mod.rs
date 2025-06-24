@@ -13,7 +13,7 @@ pub(crate) fn get_routes() -> AppRouter {
 }
 
 pub(crate) async fn get_all(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<HashMap<i32, traveler_task_desc::Model>>, (StatusCode, &'static str)>
 {
     Ok(axum_codec::Codec(
@@ -26,7 +26,7 @@ pub(crate) async fn get_all(
 }
 
 pub(crate) async fn get_npc_all(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<HashMap<i32, npc_desc::Model>>, (StatusCode, &'static str)> {
     Ok(axum_codec::Codec(
         state

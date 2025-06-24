@@ -5,13 +5,12 @@ use kanal::AsyncReceiver;
 use migration::sea_query;
 use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_building_state(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingState>>,
     batch_size: usize,
     time_limit: Duration,
@@ -138,7 +137,7 @@ pub(crate) fn start_worker_building_state(
 }
 
 pub(crate) fn start_worker_building_desc(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
     batch_size: usize,
     time_limit: Duration,
@@ -280,7 +279,7 @@ pub(crate) fn start_worker_building_desc(
 }
 
 pub(crate) fn start_worker_building_nickname_state(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
     batch_size: usize,
     time_limit: Duration,

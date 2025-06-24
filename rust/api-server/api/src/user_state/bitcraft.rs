@@ -2,10 +2,9 @@ use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::UserState;
 use kanal::AsyncReceiver;
-use std::sync::Arc;
 
 pub(crate) fn start_worker_user_state(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<UserState>>,
 ) {
     tokio::spawn(async move {

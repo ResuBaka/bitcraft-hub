@@ -84,11 +84,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let state = Arc::new(AppState::new(
-        database_connection.clone(),
-        &config,
-        tx.clone(),
-    ));
+    let state = AppState::new(database_connection.clone(), &config, tx.clone());
 
     state.fill_state_from_db().await;
 
@@ -213,7 +209,7 @@ struct QueryWebsocketOptions {
 async fn websocket_handler(
     ws: WebSocketUpgrade,
     version: Version,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
     Query(websocket_options): Query<QueryWebsocketOptions>,
 ) -> impl IntoResponse {
     tracing::debug!("Websocket upgraded with version: {version:?}");
@@ -230,11 +226,7 @@ struct ServerInstance {
 // This function deals with a single websocket connection, i.e., a single
 // connected client / user, for which we will spawn two independent tasks (for
 // receiving / sending chat messages).
-async fn websocket(
-    stream: WebSocket,
-    state: Arc<AppState>,
-    websocket_options: QueryWebsocketOptions,
-) {
+async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryWebsocketOptions) {
     // By splitting, we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 
@@ -362,7 +354,7 @@ async fn websocket(
     state.clients_state.remove_client(&id).await;
 }
 
-async fn broadcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSocketMessages>) {
+async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<WebSocketMessages>) {
     while let Some(message) = rx.recv().await {
         if message.topics().is_none() {
             continue;
@@ -386,9 +378,9 @@ async fn broadcast_message(state: Arc<AppState>, mut rx: UnboundedReceiver<WebSo
     }
 }
 
-pub(crate) type AppRouter = Router<Arc<AppState>>;
+pub(crate) type AppRouter = Router<AppState>;
 
-fn create_app(config: &Config, state: Arc<AppState>, prometheus: PrometheusHandle) -> Router {
+fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) -> Router {
     let desc_router = Router::new()
         .route(
             "/buildings/{id}",

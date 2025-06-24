@@ -34,7 +34,7 @@ struct TradeOrdersQuery {
 }
 
 async fn get_trade_orders(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Query(query): Query<TradeOrdersQuery>,
 ) -> Result<axum_codec::Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
     let page = query.page.unwrap_or(1);

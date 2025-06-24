@@ -6,13 +6,12 @@ use kanal::AsyncReceiver;
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, sea_query};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_player_state(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerState>>,
     batch_size: usize,
     time_limit: Duration,
@@ -186,7 +185,7 @@ pub(crate) fn start_worker_player_state(
 }
 
 pub(crate) fn start_worker_player_username_state(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
     batch_size: usize,
     time_limit: Duration,

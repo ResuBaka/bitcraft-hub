@@ -206,7 +206,7 @@ type LeaderboardRankTypeTasks =
     Vec<tokio::task::JoinHandle<Result<(String, Vec<RankType>), (StatusCode, &'static str)>>>;
 
 pub(crate) async fn get_top_100(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<GetTop100Response>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
@@ -461,7 +461,7 @@ type PlayerLeaderboardTasks =
     Vec<tokio::task::JoinHandle<Result<(String, RankType), (StatusCode, &'static str)>>>;
 
 pub(crate) async fn player_leaderboard(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(player_id): Path<i64>,
 ) -> Result<axum_codec::Codec<BTreeMap<String, RankType>>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
@@ -631,7 +631,7 @@ pub(crate) async fn player_leaderboard(
 }
 
 pub(crate) async fn get_claim_leaderboard(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(claim_id): Path<i64>,
 ) -> Result<axum_codec::Codec<GetTop100Response>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)

@@ -2,13 +2,12 @@ use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::LocationState;
 use kanal::AsyncReceiver;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_location_state(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<SpacetimeUpdateMessages<LocationState>>,
     batch_size: usize,
     time_limit: Duration,

@@ -3,10 +3,9 @@ use crate::websocket::WebSocketMessages;
 use entity::mobile_entity_state;
 use game_module::module_bindings::MobileEntityState;
 use kanal::AsyncReceiver;
-use std::sync::Arc;
 
 pub(crate) fn start_worker_mobile_entity_state(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     rx: AsyncReceiver<crate::websocket::SpacetimeUpdateMessages<MobileEntityState>>,
 ) {
     tokio::spawn(async move {

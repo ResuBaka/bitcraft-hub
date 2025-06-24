@@ -50,7 +50,7 @@ pub(crate) struct InventoryChangesParams {
     pub user_id: Option<i64>,
 }
 pub(crate) async fn read_inventory_changes(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<i64>,
     Query(params): Query<InventoryChangesParams>,
 ) -> Result<axum_codec::Codec<Vec<inventory_changelog::Model>>, (StatusCode, &'static str)> {
@@ -72,7 +72,7 @@ pub(crate) async fn read_inventory_changes(
 }
 
 pub(crate) async fn find_inventory_by_id(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<axum_codec::Codec<inventory::Model>, (StatusCode, &'static str)> {
     let inventory = QueryCore::find_inventory_by_id(&state.conn, id)
@@ -100,7 +100,7 @@ pub(crate) struct InventorysResponse {
 }
 
 pub(crate) async fn find_inventory_by_owner_entity_id(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<axum_codec::Codec<InventorysResponse>, (StatusCode, &'static str)> {
     let mut inventory_ids = vec![id];
@@ -215,7 +215,7 @@ pub(crate) struct AllInventoryStatsResponse {
 }
 
 pub(crate) async fn all_inventory_stats(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<AllInventoryStatsResponse>, (StatusCode, &'static str)> {
     if state.inventory_state.is_empty() {
         let inventorys = ::entity::inventory::Entity::find()

@@ -42,7 +42,7 @@ pub(crate) struct BuildingDescriptionsResponse {
 }
 
 pub(crate) async fn find_building_descriptions(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Query(params): Query<Params>,
 ) -> Result<axum_codec::Codec<BuildingDescriptionsResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
@@ -95,7 +95,7 @@ pub(crate) async fn find_building_descriptions(
 }
 
 pub(crate) async fn find_claim_description(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<building_desc::Model>, (StatusCode, &'static str)> {
     let posts = QueryCore::find_building_desc_by_id(&state.conn, id as i64)
@@ -139,7 +139,7 @@ pub(crate) struct BuildingStatesParams {
 }
 
 pub(crate) async fn find_building_states(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Query(params): Query<BuildingStatesParams>,
 ) -> Result<axum_codec::Codec<BuildingStatesResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
@@ -206,7 +206,7 @@ pub(crate) async fn find_building_states(
 }
 
 pub(crate) async fn find_building_state(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<building_state::Model>, (StatusCode, &'static str)> {
     let posts = QueryCore::find_building_state_by_id(&state.conn, id as i64)

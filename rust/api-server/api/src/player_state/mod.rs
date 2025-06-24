@@ -50,7 +50,7 @@ pub(crate) struct PlayerUsernameStateResponse {
     username_state: HashMap<String, String>,
 }
 pub(crate) async fn get_all(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<PlayerUsernameStateResponse>, (StatusCode, &'static str)> {
     let currently_known_player_username_state = ::entity::player_username_state::Entity::find()
         .all(&state.conn)
@@ -65,7 +65,7 @@ pub(crate) async fn get_all(
 }
 
 pub async fn list_players(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Query(params): Query<ListPlayersParams>,
 ) -> Result<axum_codec::Codec<PlayersResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
@@ -139,7 +139,7 @@ pub(crate) struct FindPlayerByIdResponse {
 }
 
 pub async fn find_player_by_id(
-    State(state): State<std::sync::Arc<AppState>>,
+    State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<axum_codec::Codec<FindPlayerByIdResponse>, (StatusCode, &'static str)> {
     let player = player_state::Entity::find_by_id(id)

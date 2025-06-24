@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use service::Query as QueryCore;
 
 pub async fn list_items(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Query(params): Query<Params>,
 ) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);

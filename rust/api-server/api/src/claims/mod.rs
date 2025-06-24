@@ -140,7 +140,7 @@ pub(crate) enum OnlineState {
 }
 
 pub(crate) async fn get_claim_tiles(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<Vec<entity::claim_tile_state::Model>>, (StatusCode, &'static str)> {
     let claim_tiles = state
@@ -161,7 +161,7 @@ type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRef
 type FlatTravelerTasks = Vec<JoinHandle<anyhow::Result<(String, HashMap<i32, Vec<i64>>)>>>;
 
 pub(crate) async fn get_claim_inventory_change_log(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<i64>,
     Query(params): Query<InventoryChangesParams>,
 ) -> Result<axum_codec::Codec<Vec<inventory_changelog::Model>>, (StatusCode, &'static str)> {
@@ -203,7 +203,7 @@ pub(crate) async fn get_claim_inventory_change_log(
     Ok(axum_codec::Codec(inventory_changes))
 }
 pub(crate) async fn get_claim(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<
     axum_codec::Codec<ClaimDescriptionStateWithInventoryAndPlayTime>,
@@ -712,7 +712,7 @@ pub(crate) struct ListClaimsParams {
 }
 
 pub(crate) async fn list_claims(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Query(params): Query<ListClaimsParams>,
 ) -> Result<axum_codec::Codec<ClaimResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);

@@ -63,7 +63,7 @@ pub(crate) struct RecipesAllResponse {
     item_list_desc: HashMap<i32, item_list_desc::Model>,
 }
 pub(crate) async fn get_all(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<RecipesAllResponse>, (StatusCode, &'static str)> {
     return Ok(axum_codec::Codec(RecipesAllResponse {
         recipes: state
@@ -90,7 +90,7 @@ pub(crate) async fn get_all(
 }
 
 pub(crate) async fn get_needed_in_crafting(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<axum_codec::Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
     return Ok(axum_codec::Codec(vec![]));
@@ -113,7 +113,7 @@ pub(crate) async fn get_needed_in_crafting(
 }
 
 pub(crate) async fn get_produced_in_crafting(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<axum_codec::Codec<Vec<crafting_recipe::Model>>, (StatusCode, &'static str)> {
     return Ok(axum_codec::Codec(vec![]));
@@ -135,7 +135,7 @@ pub(crate) async fn get_produced_in_crafting(
 }
 
 /*pub(crate) async fn get_needed_to_craft(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<Vec<Vec<ConsumedItemStackWithInner>>>, (StatusCode, &'static str)> {
     if state.crafting_recipe_desc.is_empty() {

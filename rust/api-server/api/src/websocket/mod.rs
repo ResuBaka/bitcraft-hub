@@ -40,7 +40,7 @@ use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
 fn connect_to_db(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     token: String,
     db_name: &str,
     db_host: &str,
@@ -235,7 +235,7 @@ macro_rules! setup_spacetime_db_listeners {
 
 #[allow(clippy::too_many_arguments)]
 fn connect_to_db_logic(
-    global_app_state: Arc<AppState>,
+    global_app_state: AppState,
     config: &Config,
     database: &str,
     remove_desc: &bool,
@@ -469,7 +469,7 @@ fn connect_to_db_logic(
     Ok(())
 }
 
-pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: Arc<AppState>) {
+pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
     tokio::spawn(async move {
         let (mobile_entity_state_tx, mobile_entity_state_rx) = kanal::unbounded_async();
 

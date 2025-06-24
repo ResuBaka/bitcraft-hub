@@ -5,7 +5,7 @@
 // use service::Query as QueryCore;
 
 // pub(crate) async fn list_locations(
-//     state: State<std::sync::Arc<AppState>>,
+//     state: State<AppState>,
 //     Query(params): Query<Params>,
 // ) -> Result<axum_codec::Codec<Value>, (StatusCode, &'static str)> {
 //     let page = params.page.unwrap_or(1);

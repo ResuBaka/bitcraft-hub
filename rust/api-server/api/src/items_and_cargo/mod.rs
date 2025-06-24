@@ -67,7 +67,7 @@ pub(crate) struct ItemsAndCargollResponse {
     item_desc: HashMap<i32, item_desc::Model>,
 }
 pub(crate) async fn get_all(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<ItemsAndCargollResponse>, (StatusCode, &'static str)> {
     Ok(axum_codec::Codec(ItemsAndCargollResponse {
         cargo_desc: state
@@ -84,7 +84,7 @@ pub(crate) async fn get_all(
 }
 
 pub(crate) async fn list_items_and_cargo(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
     Query(params): Query<ItemsAndCargoParams>,
 ) -> Result<axum_codec::Codec<ItemsAndCargoResponse>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
@@ -274,7 +274,7 @@ pub(crate) async fn list_items_and_cargo(
 }
 
 pub(crate) async fn meta(
-    state: State<std::sync::Arc<AppState>>,
+    state: State<AppState>,
 ) -> Result<axum_codec::Codec<MetaResponse>, (StatusCode, &'static str)> {
     if state.cargo_tags.is_empty()
         || state.cargo_tiers.is_empty()
