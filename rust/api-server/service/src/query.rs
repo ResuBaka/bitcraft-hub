@@ -80,8 +80,7 @@ impl Query {
             .order_by_asc(player_username_state::Column::Username)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => query.filter(
-                    Expr::col(player_username_state::Column::Username)
-                        .ilike(format!("%{}%", value)),
+                    Expr::col(player_username_state::Column::Username).ilike(format!("%{value}%")),
                 ),
                 _ => unreachable!(),
             })
@@ -149,7 +148,7 @@ impl Query {
             .order_by_asc(item_desc::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => {
-                    query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value)))
+                    query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{value}%")))
                 }
                 _ => unreachable!(),
             })
@@ -175,8 +174,9 @@ impl Query {
         Item::find()
             .apply_if(search.clone(), |query, value| {
                 match db.get_database_backend() {
-                    DbBackend::Postgres => query
-                        .filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
+                    DbBackend::Postgres => {
+                        query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{value}%")))
+                    }
                     _ => unreachable!(),
                 }
             })
@@ -221,8 +221,9 @@ impl Query {
             .column(item_desc::Column::Id)
             .apply_if(search.clone(), |query, value| {
                 match db.get_database_backend() {
-                    DbBackend::Postgres => query
-                        .filter(Expr::col(item_desc::Column::Name).ilike(format!("%{}%", value))),
+                    DbBackend::Postgres => {
+                        query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{value}%")))
+                    }
                     _ => unreachable!(),
                 }
             })
@@ -270,7 +271,7 @@ impl Query {
             .apply_if(search.clone(), |query, value| {
                 match db.get_database_backend() {
                     DbBackend::Postgres => query
-                        .filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
+                        .filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{value}%"))),
                     _ => unreachable!(),
                 }
             })
@@ -300,7 +301,7 @@ impl Query {
             .apply_if(search.clone(), |query, value| {
                 match db.get_database_backend() {
                     DbBackend::Postgres => query
-                        .filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{}%", value))),
+                        .filter(Expr::col(cargo_desc::Column::Name).ilike(format!("%{value}%"))),
                     _ => unreachable!(),
                 }
             })
@@ -1110,7 +1111,7 @@ impl Query {
             // .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => {
-                    query.filter(Expr::col(claim_state::Column::Name).ilike(format!("%{}%", value)))
+                    query.filter(Expr::col(claim_state::Column::Name).ilike(format!("%{value}%")))
                 }
                 _ => unreachable!(),
             })
@@ -1809,8 +1810,9 @@ impl Query {
         let paginator = building_desc::Entity::find()
             .order_by_asc(building_desc::Column::Id)
             .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query
-                    .filter(Expr::col(building_desc::Column::Name).ilike(format!("%{}%", value))),
+                DbBackend::Postgres => {
+                    query.filter(Expr::col(building_desc::Column::Name).ilike(format!("%{value}%")))
+                }
                 _ => unreachable!(),
             })
             .paginate(db, per_page);

@@ -866,7 +866,7 @@ impl ClientsState {
                     .iter()
                     .flat_map(|(topic, ids)| {
                         ids.iter()
-                            .map(|id| format!("{}.{:?}", topic, id))
+                            .map(|id| format!("{topic}.{id:?}"))
                             .collect::<Vec<String>>()
                     })
                     .collect::<Vec<String>>(),

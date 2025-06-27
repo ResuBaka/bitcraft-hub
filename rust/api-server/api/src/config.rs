@@ -518,6 +518,6 @@ impl Config {
 }
 
 fn resolve_socket_addrs(addr: &str, port: u16) -> Result<Vec<SocketAddr>, std::io::Error> {
-    let addr_with_port = format!("{}:{}", addr, port);
+    let addr_with_port = format!("{addr}:{port}");
     addr_with_port.to_socket_addrs().map(|iter| iter.collect())
 }

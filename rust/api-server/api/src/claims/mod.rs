@@ -196,7 +196,7 @@ pub(crate) async fn get_claim_inventory_change_log(
     )
     .await
     .map_err(|e| {
-        error!("Error: {:?}", e);
+        error!("Error: {e:?}");
 
         (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
     })?;
@@ -436,7 +436,7 @@ pub(crate) async fn get_claim(
             QueryCore::find_inventory_by_owner_entity_ids(&state.conn, vec![member.entity_id])
                 .await
                 .map_err(|e| {
-                    error!("Error: {:?}", e);
+                    error!("Error: {e:?}");
                     (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
                 })?;
         let mut pockets = vec![];
@@ -460,14 +460,14 @@ pub(crate) async fn get_claim(
 
     for result in results {
         if let Err(err) = result {
-            error!("Error: {:?}", err);
+            error!("Error: {err:?}");
             continue;
         }
 
         let result = result.unwrap();
 
         if let Err(err) = result {
-            error!("Error: {:?}", err);
+            error!("Error: {err:?}");
             continue;
         }
 
@@ -656,7 +656,7 @@ pub(crate) async fn get_claim(
 
     for finished_job in finished_jobs {
         if let Err(err) = finished_job {
-            error!("Error: {:?}", err);
+            error!("Error: {err:?}");
             continue;
         }
 
@@ -671,7 +671,7 @@ pub(crate) async fn get_claim(
 
     for finished_job in finished_jobs {
         if let Err(err) = finished_job {
-            error!("Error: {:?}", err);
+            error!("Error: {err:?}");
             continue;
         }
 

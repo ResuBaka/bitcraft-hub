@@ -922,7 +922,7 @@ impl WebSocketMessages {
                 user_id,
                 ..
             } => Some(vec![
-                (format!("experience:{}", skill_name), *user_id),
+                (format!("experience:{skill_name}"), *user_id),
                 ("experience".to_string(), *user_id),
             ]),
             WebSocketMessages::ClaimLocalState(claim_local_state) => Some(vec![(
@@ -934,7 +934,7 @@ impl WebSocketMessages {
                 skill_name,
                 ..
             } => Some(vec![
-                (format!("level:{}", skill_name), *user_id),
+                (format!("level:{skill_name}"), *user_id),
                 ("level".to_string(), *user_id),
             ]),
             WebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => {

@@ -167,7 +167,7 @@ pub async fn find_player_by_id(
     let deployables = QueryCore::find_vault_deployable_by_player_with_desc(&state.conn, id)
         .await
         .unwrap_or_else(|error| {
-            error!("find_player_by_id -> Error: {:?}", error);
+            error!("find_player_by_id -> Error: {error:?}");
             vec![]
         });
 
@@ -215,7 +215,7 @@ pub async fn find_player_by_id(
         QueryCore::get_traveler_task_state_by_player_entity_ids(&state.conn, vec![id])
             .await
             .unwrap_or_else(|error| {
-                error!("find_player_by_id -> Error: {:?}", error);
+                error!("find_player_by_id -> Error: {error:?}");
                 vec![]
             });
 

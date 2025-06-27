@@ -64,7 +64,7 @@ pub(crate) async fn read_inventory_changes(
     )
     .await
     .map_err(|e| {
-        error!("Error: {:?}", e);
+        error!("Error: {e:?}");
 
         (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
     })?;
@@ -78,7 +78,7 @@ pub(crate) async fn find_inventory_by_id(
     let inventory = QueryCore::find_inventory_by_id(&state.conn, id)
         .await
         .map_err(|e| {
-            error!("Error: {:?}", e);
+            error!("Error: {e:?}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
@@ -107,7 +107,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     let player = QueryCore::find_player_by_id(&state.conn, id)
         .await
         .map_err(|e| {
-            error!("Error: {:?}", e);
+            error!("Error: {e:?}");
 
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
@@ -119,7 +119,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
             QueryCore::find_deployable_entity_by_owner_entity_id(&state.conn, player.entity_id)
                 .await
                 .map_err(|e| {
-                    error!("Error: {:?}", e);
+                    error!("Error: {e:?}");
 
                     (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
                 })?;
@@ -134,7 +134,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         QueryCore::find_inventory_by_owner_entity_ids(&state.conn, inventory_ids)
             .await
             .map_err(|e| {
-                error!("Error: {:?}", e);
+                error!("Error: {e:?}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             })?;
 
@@ -222,7 +222,7 @@ pub(crate) async fn all_inventory_stats(
             .all(&state.conn)
             .await
             .map_err(|e| {
-                error!("Error: {:?}", e);
+                error!("Error: {e:?}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             })?;
 
