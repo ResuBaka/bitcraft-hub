@@ -23,7 +23,6 @@ axum = { version = "0.8.4", features = ["ws"]}
 reqwest = { version = "0.12.15", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
 hyper = { version = "1.6.0", features = ["full"] }
 rayon = "1.10.0"
-time = { version = "0.3.41", features = ["serde", "parsing"] }
 anyhow = "1.0.98"
 clap = { version = "4.5.39", features = ["derive"] }
 axum-codec = { version = "0.0.19", features = ["serde", "json", "msgpack", "toml", "yaml"] }

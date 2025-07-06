@@ -187,7 +187,6 @@ dependencies = [
  "service",
  "spacetimedb-sdk",
  "struson",
- "time",
  "tokio",
  "tokio-util",
  "toml",
@@ -1331,7 +1330,6 @@ dependencies = [
  "serde",
  "serde_json",
  "spacetimedb-sdk",
- "time",
  "ts-rs",
 ]
 
