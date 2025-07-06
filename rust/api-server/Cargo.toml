@@ -20,7 +20,6 @@ serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.46.1", features = [ "full" ] }
 log = "0.4.27"
 axum = { version = "0.8.4", features = ["ws"]}
-reqwest = { version = "0.12.15", features = ["json", "default" , "zstd", "brotli", "deflate", "gzip", "stream"] }
 hyper = { version = "1.6.0", features = ["full"] }
 rayon = "1.10.0"
 anyhow = "1.0.98"

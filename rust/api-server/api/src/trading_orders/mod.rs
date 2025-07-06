@@ -1,23 +1,14 @@
-#![allow(warnings)]
-
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use entity::trade_order;
 use futures::StreamExt;
-use log::{debug, error, info};
-use migration::sea_query;
+use log::error;
 use rayon::prelude::*;
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
-};
+use sea_orm::{EntityTrait, QueryOrder};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
-use std::collections::HashMap;
-use struson::json_path;
-use struson::reader::{JsonReader, JsonStreamReader};
-use tokio::time::Instant;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new().route(
@@ -84,7 +75,7 @@ async fn get_trade_orders(
         }));
     }
 
-    let mut total = 0;
+    let total;
 
     let filtered_trade_orders = if items_ids.is_some() || cargo_ids.is_some() {
         let trade_orders = trade_order::Entity::find()
@@ -179,229 +170,4 @@ pub(crate) struct TradeOrdersResponse {
     page: u64,
     #[serde(rename = "perPage")]
     per_page: u64,
-}
-
-pub(crate) async fn load_trade_order_from_file(
-    storage_path: &std::path::PathBuf,
-) -> anyhow::Result<String> {
-    Ok(std::fs::read_to_string(
-        storage_path.join("State/TradeOrderState.json"),
-    )?)
-}
-
-pub(crate) async fn load_trade_order_from_spacetimedb(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-) -> anyhow::Result<String> {
-    let response = client
-        .post(format!("{protocol}{domain}/v1/database/{database}/sql"))
-        .body("SELECT * FROM trade_order_state")
-        .send()
-        .await;
-    let json = match response {
-        Ok(response) => response.text().await?,
-        Err(error) => {
-            error!("Error: {error}");
-            return Ok("".into());
-        }
-    };
-
-    Ok(json)
-}
-
-pub(crate) async fn load_trade_order(
-    client: &reqwest::Client,
-    domain: &str,
-    protocol: &str,
-    database: &str,
-    conn: &DatabaseConnection,
-    config: &crate::config::Config,
-) -> anyhow::Result<()> {
-    let trade_orders = match &config.import_type {
-        crate::config::ImportType::File => {
-            load_trade_order_from_file(&std::path::PathBuf::from(&config.storage_path)).await?
-        }
-        crate::config::ImportType::Game => {
-            load_trade_order_from_spacetimedb(client, domain, protocol, database).await?
-        }
-    };
-    import_trade_order(&conn, trade_orders, None).await?;
-    Ok(())
-}
-
-pub(crate) async fn import_trade_order(
-    conn: &DatabaseConnection,
-    trade_orders: String,
-    chunk_size: Option<usize>,
-) -> anyhow::Result<()> {
-    let start = Instant::now();
-
-    let mut buffer_before_insert: Vec<trade_order::Model> =
-        Vec::with_capacity(chunk_size.unwrap_or(5000));
-
-    let mut json_stream_reader = JsonStreamReader::new(trade_orders.as_bytes());
-
-    json_stream_reader.begin_array()?;
-    json_stream_reader.seek_to(&json_path!["rows"])?;
-    json_stream_reader.begin_array()?;
-
-    let on_conflict = sea_query::OnConflict::column(trade_order::Column::EntityId)
-        .update_columns([
-            trade_order::Column::BuildingEntityId,
-            trade_order::Column::RemainingStock,
-            trade_order::Column::OfferItems,
-            trade_order::Column::OfferCargoId,
-            trade_order::Column::RequiredItems,
-            trade_order::Column::RequiredCargoId,
-        ])
-        .to_owned();
-
-    let mut trade_order_to_delete = Vec::new();
-
-    while let Ok(value) = json_stream_reader.deserialize_next::<trade_order::Model>() {
-        buffer_before_insert.push(value);
-
-        if buffer_before_insert.len() == chunk_size.unwrap_or(5000) {
-            let trade_order_from_db = trade_order::Entity::find()
-                .filter(
-                    trade_order::Column::EntityId.is_in(
-                        buffer_before_insert
-                            .iter()
-                            .map(|trade_order| trade_order.entity_id)
-                            .collect::<Vec<i64>>(),
-                    ),
-                )
-                .all(conn)
-                .await?;
-
-            if trade_order_from_db.len() != buffer_before_insert.len() {
-                trade_order_to_delete.extend(
-                    buffer_before_insert
-                        .iter()
-                        .filter(|trade_order| {
-                            !trade_order_from_db.iter().any(|trade_order_from_db| {
-                                trade_order_from_db.entity_id == trade_order.entity_id
-                            })
-                        })
-                        .map(|trade_order| trade_order.entity_id),
-                );
-            }
-
-            let trade_order_from_db_map = trade_order_from_db
-                .into_iter()
-                .map(|trade_order| (trade_order.entity_id, trade_order))
-                .collect::<HashMap<i64, trade_order::Model>>();
-
-            let things_to_insert = buffer_before_insert
-                .iter()
-                .filter(|trade_order| {
-                    match trade_order_from_db_map.get(&trade_order.entity_id) {
-                        Some(trade_order_from_db) => {
-                            if trade_order_from_db != *trade_order {
-                                return true;
-                            }
-                        }
-                        None => {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                })
-                .map(|trade_order| trade_order.clone().into_active_model())
-                .collect::<Vec<trade_order::ActiveModel>>();
-
-            if things_to_insert.is_empty() {
-                debug!("Nothing to insert");
-                buffer_before_insert.clear();
-                continue;
-            } else {
-                debug!("Inserting {} trade_order", things_to_insert.len());
-            }
-
-            for trade_order in &things_to_insert {
-                let trade_order_in = trade_order_to_delete
-                    .iter()
-                    .position(|id| id == trade_order.entity_id.as_ref());
-                if trade_order_in.is_some() {
-                    trade_order_to_delete.remove(trade_order_in.unwrap());
-                }
-            }
-
-            let _ = trade_order::Entity::insert_many(things_to_insert)
-                .on_conflict(on_conflict.clone())
-                .exec(conn)
-                .await?;
-
-            buffer_before_insert.clear();
-        }
-    }
-
-    if !buffer_before_insert.is_empty() {
-        let trade_order_from_db = trade_order::Entity::find()
-            .filter(
-                trade_order::Column::EntityId.is_in(
-                    buffer_before_insert
-                        .iter()
-                        .map(|trade_order| trade_order.entity_id)
-                        .collect::<Vec<i64>>(),
-                ),
-            )
-            .all(conn)
-            .await?;
-
-        let trade_order_from_db_map = trade_order_from_db
-            .into_iter()
-            .map(|trade_order| (trade_order.entity_id, trade_order))
-            .collect::<HashMap<i64, trade_order::Model>>();
-
-        let things_to_insert = buffer_before_insert
-            .iter()
-            .filter(|trade_order| {
-                match trade_order_from_db_map.get(&trade_order.entity_id) {
-                    Some(trade_order_from_db) => {
-                        if trade_order_from_db != *trade_order {
-                            return true;
-                        }
-                    }
-                    None => {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
-            .map(|trade_order| trade_order.clone().into_active_model())
-            .collect::<Vec<trade_order::ActiveModel>>();
-
-        if things_to_insert.is_empty() {
-            debug!("Nothing to insert");
-            buffer_before_insert.clear();
-        } else {
-            debug!("Inserting {} trade_order", things_to_insert.len());
-            trade_order::Entity::insert_many(things_to_insert)
-                .on_conflict(on_conflict)
-                .exec(conn)
-                .await?;
-        }
-
-        buffer_before_insert.clear();
-        info!("trade_order last batch imported");
-    }
-    info!(
-        "Importing trade_order finished in {}s",
-        start.elapsed().as_secs()
-    );
-
-    if !trade_order_to_delete.is_empty() {
-        info!("trade_order's to delete: {:?}", trade_order_to_delete);
-        trade_order::Entity::delete_many()
-            .filter(trade_order::Column::EntityId.is_in(trade_order_to_delete))
-            .exec(conn)
-            .await?;
-    }
-
-    Ok(())
 }

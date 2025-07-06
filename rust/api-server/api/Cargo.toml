@@ -9,7 +9,6 @@ sea-orm = { workspace = true }
 tokio = { workspace = true }
 log = { workspace = true }
 axum = { workspace = true }
-reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yml = { workspace = true }
@@ -35,7 +34,6 @@ tower-cookies = "0.11.0"
 dotenvy = "0.15.7"
 metrics = { version = "0.24.2", default-features = false }
 metrics-exporter-prometheus = { version = "0.17.0", default-features = false }
-struson = { version = "0.6.0", features = ["serde"] }
 tracing = "0.1.41"
 nanoid = "0.4.0"
 config = "0.15.11"

@@ -7,7 +7,6 @@ mod collectible_desc;
 mod config;
 mod crafting_recipe_desc;
 mod deployable_state;
-mod download;
 mod inventory;
 mod item_list_desc;
 mod items;
@@ -50,9 +49,6 @@ use futures::{SinkExt, StreamExt};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
 use migration::{Migrator, MigratorTrait};
-use reqwest::Client;
-use reqwest::header::HeaderMap;
-use sea_orm::strum::Display;
 use sea_orm::{ConnectOptions, EntityTrait};
 use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
@@ -62,7 +58,6 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt::Display;
 use std::ops::{AddAssign, SubAssign};
-use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -84,7 +79,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let state = AppState::new(database_connection.clone(), &config, tx.clone());
+    let state = AppState::new(database_connection.clone(), tx.clone());
 
     state.fill_state_from_db().await;
 
@@ -463,66 +458,11 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         .with_state(state)
 }
 
-fn create_default_client(config: Config) -> Client {
-    let mut default_header = HeaderMap::new();
-    default_header.insert(
-        "Authorization",
-        format!("Bearer {}", config.spacetimedb.password)
-            .parse()
-            .unwrap(),
-    );
-    default_header.insert(
-        "User-Agent",
-        format!("Bitcraft-Hub-Api/{}", env!("CARGO_PKG_VERSION"))
-            .parse()
-            .unwrap(),
-    );
-
-    Client::builder()
-        .timeout(Duration::from_secs(60))
-        .gzip(true)
-        .deflate(true)
-        .brotli(true)
-        .pool_idle_timeout(Duration::from_secs(20))
-        .default_headers(default_header)
-        .build()
-        .unwrap()
-}
-
-async fn create_importer_default_db_connection(config: Config) -> DatabaseConnection {
-    let mut connection_options = ConnectOptions::new(config.database.url.clone());
-    connection_options
-        .max_connections(20)
-        .min_connections(5)
-        .connect_timeout(Duration::from_secs(8))
-        .idle_timeout(Duration::from_secs(8))
-        .connect_lazy(true)
-        .max_lifetime(Duration::from_secs(60))
-        .sqlx_logging(env::var("SQLX_LOG").is_ok());
-
-    let mut connection = Database::connect(connection_options)
-        .await
-        .expect("Database connection failed");
-
-    connection.set_metric_callback(|arg| {
-        tracing::warn!(
-            "Query {}, Elapsed {}, Failed {}",
-            arg.statement.sql,
-            arg.elapsed.as_millis(),
-            arg.failed
-        );
-    });
-
-    connection
-}
-
 #[derive(Clone)]
 struct AppState {
     conn: DatabaseConnection,
     tx: UnboundedSender<WebSocketMessages>,
     connection_state: Arc<dashmap::DashMap<String, bool>>,
-    #[allow(dead_code)]
-    storage_path: PathBuf,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
     claim_member_state:
@@ -554,16 +494,11 @@ struct AppState {
 }
 
 impl AppState {
-    fn new(
-        conn: DatabaseConnection,
-        config: &Config,
-        tx: UnboundedSender<WebSocketMessages>,
-    ) -> Self {
+    fn new(conn: DatabaseConnection, tx: UnboundedSender<WebSocketMessages>) -> Self {
         Self {
             conn,
             tx,
             connection_state: Arc::new(dashmap::DashMap::new()),
-            storage_path: PathBuf::from(config.storage_path.clone()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
             claim_member_state: Arc::new(dashmap::DashMap::new()),
@@ -798,12 +733,31 @@ impl AppState {
     }
 }
 
-#[derive(Deserialize, Display, Copy, Clone, Eq, PartialEq)]
+#[derive(Deserialize, Copy, Clone, Eq, PartialEq)]
 enum WebsocketEncoding {
     Json,
     Toml,
     Yaml,
     MessagePack,
+}
+
+impl Display for WebsocketEncoding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WebsocketEncoding::Json => {
+                write!(f, "json")
+            }
+            WebsocketEncoding::Toml => {
+                write!(f, "toml")
+            }
+            WebsocketEncoding::Yaml => {
+                write!(f, "yaml")
+            }
+            WebsocketEncoding::MessagePack => {
+                write!(f, "messagepack")
+            }
+        }
+    }
 }
 
 type WebsocketClient = (
@@ -1102,13 +1056,6 @@ you should provide the directory of that submodule.",
         #[arg(long, help = "Live updates")]
         live_updates_ws: Option<bool>,
     },
-    Download {
-        #[arg(long, help = "Use remote schema to get tables", default_value_t = true)]
-        remote_schema: bool,
-
-        #[command(subcommand)]
-        command: crate::download::DownloadSubcommand,
-    },
     PrintConfig {
         #[arg(long, help = "Format to print the config", default_value = "json", value_parser = ["yml","yaml","json","toml"])]
         format: String,
@@ -1133,7 +1080,6 @@ pub async fn main() -> anyhow::Result<()> {
 
     match &cli.command {
         Commands::Migrate { .. } => {}
-        Commands::Download { .. } => {}
         Commands::PrintConfig { .. } => {}
         Commands::Serve {
             port,
@@ -1206,21 +1152,6 @@ pub async fn main() -> anyhow::Result<()> {
                 error!("Error: {err}");
             }
         }
-        Commands::Download {
-            command,
-            remote_schema,
-        } => {
-            let client = create_default_client(config.clone());
-
-            crate::download::download_all_tables(
-                command,
-                &client,
-                Path::new(&config.storage_path.clone()),
-                &config,
-                remote_schema,
-            )
-            .await;
-        }
         Commands::PrintConfig {
             format,
             show_default,
@@ -1261,11 +1192,10 @@ fn setup_tracing(cfg: &Config) {
             eprintln!("RUST_LOG is not unicode");
         };
 
+        let log_level = &cfg.log_level;
+
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        format!(
-            "{}={},axum={},spacetimedb_sdk={},",
-            CRATE_NAME, cfg.log_level, cfg.log_level, cfg.log_level
-        )
+        format!("{CRATE_NAME}={log_level},axum={log_level},spacetimedb_sdk={log_level}",)
     });
 
     match cfg.log_type {
