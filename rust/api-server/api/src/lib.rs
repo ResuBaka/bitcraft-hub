@@ -126,7 +126,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
     Ok(())
 }
 
-pub(crate) async fn create_db_connection(config: &Config) -> DatabaseConnection {
+pub(crate) async fn create_db_connection(config: &Config) -> anyhow::Result<DatabaseConnection> {
     let mut connection_options = ConnectOptions::new(config.database.url.clone());
     connection_options
         .max_connections(config.database.max_connections)
@@ -193,7 +193,9 @@ pub(crate) async fn create_db_connection(config: &Config) -> DatabaseConnection 
         metrics::histogram!("database_query_duration_seconds", &labels).record(latency);
     });
 
-    connection
+    connection.ping().await?;
+
+    Ok(connection)
 }
 
 #[derive(Deserialize)]
@@ -1104,7 +1106,7 @@ pub async fn main() -> anyhow::Result<()> {
             command,
             migration_dir,
         } => {
-            let database_connection = create_db_connection(&config).await;
+            let database_connection = create_db_connection(&config).await?;
 
             match command {
                 Some(MigrateSubcommands::Fresh) => Migrator::fresh(&database_connection)
@@ -1144,7 +1146,7 @@ pub async fn main() -> anyhow::Result<()> {
             };
         }
         Commands::Serve { .. } => {
-            let database_connection = create_db_connection(&config).await;
+            let database_connection = create_db_connection(&config).await?;
 
             let result = start(database_connection, config).await;
 

@@ -631,7 +631,9 @@ pub(crate) async fn player_leaderboard(
         };
     }
 
-    Ok(axum_codec::Codec(PlayerLeaderboardResponse(leaderboard_result)))
+    Ok(axum_codec::Codec(PlayerLeaderboardResponse(
+        leaderboard_result,
+    )))
 }
 
 pub(crate) async fn get_claim_leaderboard(
