@@ -1,7 +1,12 @@
-export function registerWebsocketMessageHandler<T = Record<string, any>>(
-  eventType: string,
+import type { WebSocketMessages } from "~/types/WebSocketMessages";
+import type { RefinedMessageContentType } from "~/types";
+
+export function registerWebsocketMessageHandler<
+  T extends WebSocketMessages["t"],
+>(
+  eventType: T,
   topics: MaybeRefOrGetter<string | string[]>,
-  handler: (message: T) => void,
+  handler: (message: RefinedMessageContentType<T>) => void,
 ) {
   const store = useWebsocketStore();
   const instanceId = getCurrentInstance()?.uid.toString() || "0";

@@ -121,30 +121,30 @@ registerWebsocketMessageHandler(
   "ClaimLocalState",
   [`claim_local_state.${route.params.id}`],
   (message) => {
-    if (message.c.entity_id == route.params.id) {
+    if (message.entity_id == route.params.id) {
       if (claimFetch.value) {
-        claimFetch.value.name = message.c.name;
-        claimFetch.value.num_tiles = message.c.num_tiles;
+        claimFetch.value.name = message.name;
+        claimFetch.value.num_tiles = message.num_tiles;
         claimFetch.value.owner_player_entity_id =
-          message.c.owner_player_entity_id;
-        claimFetch.value.supplies = message.c.supplies;
-        claimFetch.value.treasury = message.c.treasury;
+          message.owner_player_entity_id;
+        claimFetch.value.supplies = message.supplies;
+        claimFetch.value.treasury = message.treasury;
         claimFetch.value.xp_gained_since_last_coin_minting =
-          message.c.xp_gained_since_last_coin_minting;
+          message.xp_gained_since_last_coin_minting;
       }
     }
   },
 );
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
-  let onlineState = message.c.signed_in ? "Online" : "Offline";
+  let onlineState = message.signed_in ? "Online" : "Offline";
 
   if (
-    claimFetch.value.members[message.c.entity_id].online_state !== onlineState
+    claimFetch.value.members[message.entity_id].online_state !== onlineState
   ) {
-    if (message.c.signed_in) {
+    if (message.signed_in) {
       toast(
-        `${claimFetch.value.members[message.c.entity_id].user_name} signed in`,
+        `${claimFetch.value.members[message.entity_id].user_name} signed in`,
         {
           progressBar: true,
           duration: 5000,
@@ -152,14 +152,14 @@ registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
       );
     } else {
       toast(
-        `${claimFetch.value.members[message.c.entity_id].user_name} signed out`,
+        `${claimFetch.value.members[message.entity_id].user_name} signed out`,
         {
           progressBar: true,
           duration: 5000,
         },
       );
     }
-    claimFetch.value.members[message.c.entity_id].online_state = onlineState;
+    claimFetch.value.members[message.entity_id].online_state = onlineState;
   }
 });
 
@@ -178,16 +178,16 @@ const topicsLevel = computed<string[]>(() => {
 
 registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
   let index = claimFetch.value?.members.findIndex(
-    (member) => member.entity_id == message.c.user_id,
+    (member) => member.entity_id == message.user_id,
   );
   if (index && index !== -1) {
     toast(
-      `Player ${claimFetch.value.members[index].user_name} Level ${message.c.level} reached for Skill ${message.c.skill_name}`,
+      `Player ${claimFetch.value.members[index].user_name} Level ${message.level} reached for Skill ${message.skill_name}`,
       { progressBar: true, duration: 5000 },
     );
 
-    claimFetch.value.members[index].skills_ranks[message.c.skill_name].level =
-      message.c.level;
+    claimFetch.value.members[index].skills_ranks[message.skill_name].level =
+      message.level;
   }
 });
 

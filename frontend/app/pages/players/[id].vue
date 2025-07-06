@@ -141,7 +141,7 @@ registerWebsocketMessageHandler(
   mobileEntityStateTopics,
   (message) => {
     if (playerFetch.value) {
-      playerFetch.value.player_location = message.c;
+      playerFetch.value.player_location = message;
     }
   },
 );
@@ -155,33 +155,33 @@ registerWebsocketMessageHandler(
   playerActionStateTopics,
   (message) => {
     if (playerFetch.value) {
-      playerFetch.value.player_action_state = message.c[0];
+      playerFetch.value.player_action_state = message[0];
     }
   },
 );
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
-  if (experienceFetch.value && experienceFetch.value[message.c.skill_name]) {
+  if (experienceFetch.value && experienceFetch.value[message.skill_name]) {
     let currentExperience =
-      experienceFetch.value[message.c.skill_name].experience;
-    let currentLevel = experienceFetch.value[message.c.skill_name].level;
-    experienceFetch.value[message.c.skill_name] = {
-      ...experienceFetch.value[message.c.skill_name],
-      experience: message.c.experience,
-      level: message.c.level,
+      experienceFetch.value[message.skill_name].experience;
+    let currentLevel = experienceFetch.value[message.skill_name].level;
+    experienceFetch.value[message.skill_name] = {
+      ...experienceFetch.value[message.skill_name],
+      experience: message.experience,
+      level: message.level,
     };
 
-    if (currentLevel !== message.c.level && currentLevel <= message.c.level) {
-      toast(
-        `Level ${message.c.level} reached for Skill ${message.c.skill_name}`,
-        { progressBar: true, duration: 5000 },
-      );
+    if (currentLevel !== message.level && currentLevel <= message.level) {
+      toast(`Level ${message.level} reached for Skill ${message.skill_name}`, {
+        progressBar: true,
+        duration: 5000,
+      });
 
       experienceFetch.value["Level"].level += 1;
     }
 
     if (experienceFetch.value["Experience"]) {
-      let newExperience = message.c.experience;
+      let newExperience = message.experience;
       let increase = newExperience - currentExperience;
 
       experienceFetch.value["Experience"] = {
@@ -196,8 +196,8 @@ const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
   if (playerFetch.value && playerFetch.value) {
-    if (playerFetch.value.signed_in !== message.c.signed_in) {
-      if (message.c.signed_in) {
+    if (playerFetch.value.signed_in !== message.signed_in) {
+      if (message.signed_in) {
         toast(`${player.value?.username} signed in`, {
           progressBar: true,
           duration: 5000,
@@ -212,9 +212,9 @@ registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
 
     playerFetch.value = {
       ...playerFetch.value,
-      signed_in: message.c.signed_in,
-      time_signed_in: message.c.time_signed_in,
-      time_played: message.c.time_played,
+      signed_in: message.signed_in,
+      time_signed_in: message.time_signed_in,
+      time_played: message.time_played,
     };
   }
 });

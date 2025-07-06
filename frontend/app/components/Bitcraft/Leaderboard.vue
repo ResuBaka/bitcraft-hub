@@ -62,11 +62,11 @@ const topics = computed(() => {
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
   const skill = leaderboard.value?.leaderboard[message.c.skill_name].find(
-    (item) => item.player_id === message.c.user_id,
+    (item) => item.player_id === message.user_id,
   );
 
   if (skill) {
-    skill.experience = message.c.experience;
+    skill.experience = message.experience;
   }
 });
 
@@ -92,12 +92,12 @@ registerWebsocketMessageHandler(
   totalExperienceTopics,
   (message) => {
     const skill = leaderboard.value?.leaderboard["Experience"].find(
-      (item) => item.player_id === message.c.user_id,
+      (item) => item.player_id === message.user_id,
     );
 
     if (skill) {
-      skill.experience = message.c.experience;
-      skill.experience_per_hour = message.c.experience_per_hour;
+      skill.experience = message.experience;
+      skill.experience_per_hour = message.experience_per_hour;
     }
   },
 );

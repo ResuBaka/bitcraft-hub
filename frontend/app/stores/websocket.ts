@@ -1,12 +1,14 @@
 import { useWebSocket } from "@vueuse/core";
 import { unpack } from "msgpackr/unpack";
+import type { WebSocketMessages } from "~/types/WebSocketMessages";
+import type {
+  RefinedMessageContentType,
+  WebSocketMessageHandlers,
+} from "~/types";
 
 export const useWebsocketStore = defineStore("websocket", () => {
   const configStore = useConfigStore();
-  const websocket_message_event_handler: Record<
-    string,
-    Map<string, (message: Record<string, any>) => void>
-  > = {};
+  const websocket_message_event_handler: WebSocketMessageHandlers = {};
   const topics_currently_subscribed: Ref<string[]> = ref([]);
 
   const readOnlyTopicsCurrentlySubscribed = computed(
@@ -44,7 +46,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
   }
 
   async function handleMessage(_ws: WebSocket, event: MessageEvent) {
-    let message;
+    let message: WebSocketMessages;
     if (typeof event.data === "string") {
       if (event.data.startsWith("{")) {
         message = JSON.parse(event.data);
@@ -65,15 +67,20 @@ export const useWebsocketStore = defineStore("websocket", () => {
       return;
     }
 
-    const messageHandler = websocket_message_event_handler[message.t];
+    const eventType = message.t;
+    const messageHandler = websocket_message_event_handler[eventType];
 
     if (messageHandler) {
       for (const handler of messageHandler.values()) {
-        handler(message);
+        if ("c" in message) {
+          handler(message.c as RefinedMessageContentType<typeof eventType>);
+        } else {
+          handler(undefined as RefinedMessageContentType<typeof eventType>);
+        }
       }
     } else {
       if (import.meta.env.DEV) {
-        console.warn(`No handler found for message type ${message.t}`);
+        console.warn(`No handler found for message type ${eventType}`);
       }
     }
   }
@@ -90,10 +97,10 @@ export const useWebsocketStore = defineStore("websocket", () => {
     }
   }
 
-  function subscribe<T extends Record<string, any>>(
-    eventType: string,
+  function subscribe<T extends WebSocketMessages["t"]>(
+    eventType: T,
     topic: MaybeRefOrGetter<string | string[]>,
-    handler: (message: T) => void,
+    handler: (message: RefinedMessageContentType<T>) => void,
     instanceId: string,
     lazy: boolean = false,
   ) {
@@ -154,8 +161,8 @@ export const useWebsocketStore = defineStore("websocket", () => {
     }
   }
 
-  function unsubscribe(
-    eventType: string,
+  function unsubscribe<T extends WebSocketMessages["t"]>(
+    eventType: T,
     topic: MaybeRefOrGetter<string | string[]>,
     instanceId: string,
   ) {
