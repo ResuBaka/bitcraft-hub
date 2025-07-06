@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced, watchThrottled } from "@vueuse/shared";
+import type { PlayersResponse } from "~/types/PlayersResponse";
 
 const page = ref(1);
 const perPage = 6 * 5;
@@ -12,12 +13,12 @@ const route = useRoute();
 const router = useRouter();
 
 if (route.query.search) {
-  debouncedSearch.value = route.query.search;
+  debouncedSearch.value = route.query.search as string;
   search.value = debouncedSearch.value;
 }
 
 if (route.query.page) {
-  page.value = parseInt(route.query.page);
+  page.value = parseInt(route.query.page as string);
 }
 const {
   public: { api },
@@ -27,7 +28,7 @@ const {
   data: players,
   pending,
   refresh,
-} = await useLazyFetchMsPack(
+} = await useLazyFetchMsPack<PlayersResponse>(
   () => {
     return `${api.base}/api/bitcraft/players`;
   },
@@ -104,6 +105,10 @@ const currentplayers = computed(() => {
 
 const length = computed(() => {
   if (players.value?.total) {
+    if (players.value?.total instanceof BigInt) {
+      return Math.ceil(players.value?.total / BigInt(perPage));
+    }
+
     return Math.ceil(players.value?.total / perPage);
   }
 
