@@ -178,7 +178,6 @@ dependencies = [
  "prometheus 0.14.0",
  "rayon",
  "reqwest",
- "reqwest-websocket",
  "sea-orm",
  "sea-orm-cli",
  "serde",
@@ -426,22 +425,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.89",
-]
-
-[[package]]
-name = "async-tungstenite"
-version = "0.28.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c348fb0b6d132c596eca3dcd941df48fb597aafcb07a738ec41c004b087dc99"
-dependencies = [
- "atomic-waker",
- "futures-core",
- "futures-io",
- "futures-task",
- "futures-util",
- "log",
- "pin-project-lite",
- "tungstenite 0.24.0",
 ]
 
 [[package]]
@@ -3342,23 +3325,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reqwest-websocket"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f477f800f86d8f5c320e19d8b2b1ef0b1e773ea7c75eec6c7f442e7ec3f06d7e"
-dependencies = [
- "async-tungstenite",
- "futures-util",
- "reqwest",
- "thiserror 2.0.7",
- "tokio",
- "tokio-util",
- "tracing",
- "tungstenite 0.24.0",
- "web-sys",
-]
-
-[[package]]
 name = "ring"
 version = "0.17.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4876,7 +4842,7 @@ dependencies = [
  "native-tls",
  "tokio",
  "tokio-native-tls",
- "tungstenite 0.26.2",
+ "tungstenite",
 ]
 
 [[package]]
@@ -4887,7 +4853,6 @@ checksum = "66a539a9ad6d5d281510d5bd368c973d636c02dbf8a67300bfb6b950696ad7df"
 dependencies = [
  "bytes",
  "futures-core",
- "futures-io",
  "futures-sink",
  "pin-project-lite",
  "tokio",
@@ -5124,24 +5089,6 @@ dependencies = [
  "quote",
  "syn 2.0.89",
  "termcolor",
-]
-
-[[package]]
-name = "tungstenite"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18e5b8366ee7a95b16d32197d0b2604b43a0be89dc5fac9f8e96ccafbaedda8a"
-dependencies = [
- "byteorder",
- "bytes",
- "data-encoding",
- "http",
- "httparse",
- "log",
- "rand 0.8.5",
- "sha1",
- "thiserror 1.0.69",
- "utf-8",
 ]
 
 [[package]]
