@@ -2,6 +2,7 @@ use crate::collectible_desc;
 use game_module::module_bindings::{VaultCollectible, VaultState, vault_state_type};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "vault_state_collectibles")]
@@ -36,7 +37,7 @@ impl RawVaultStateCollectibles {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct VaultStateCollectibleWithDesc {
     pub entity_id: i64,
     pub id: i32,

@@ -149,7 +149,7 @@ pub(crate) fn get_routes() -> AppRouter {
         )
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 #[serde(untagged)]
 pub(crate) enum RankType {
     Experience(LeaderboardExperience),
@@ -169,7 +169,7 @@ pub(crate) struct LeaderboardSkill {
     pub(crate) rank: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub(crate) struct LeaderboardLevel {
     pub(crate) player_id: i64,
     pub(crate) player_name: Option<String>,
@@ -177,7 +177,7 @@ pub(crate) struct LeaderboardLevel {
     pub(crate) rank: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub(crate) struct LeaderboardExperiencePerHour {
     pub(crate) player_id: i64,
     pub(crate) player_name: Option<String>,
@@ -185,7 +185,7 @@ pub(crate) struct LeaderboardExperiencePerHour {
     pub(crate) rank: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub(crate) struct LeaderboardExperience {
     pub(crate) player_id: i64,
     pub(crate) player_name: Option<String>,
@@ -194,7 +194,7 @@ pub(crate) struct LeaderboardExperience {
     pub(crate) rank: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub(crate) struct LeaderboardTime {
     pub(crate) player_id: i64,
     pub(crate) player_name: Option<String>,
@@ -457,13 +457,17 @@ pub(crate) fn experience_to_level(experience: i64) -> i32 {
     100i32
 }
 
+#[derive(Serialize, TS)]
+#[ts(export)]
+pub(crate) struct PlayerLeaderboardResponse(BTreeMap<String, RankType>);
+
 type PlayerLeaderboardTasks =
     Vec<tokio::task::JoinHandle<Result<(String, RankType), (StatusCode, &'static str)>>>;
 
 pub(crate) async fn player_leaderboard(
     state: State<AppState>,
     Path(player_id): Path<i64>,
-) -> Result<axum_codec::Codec<BTreeMap<String, RankType>>, (StatusCode, &'static str)> {
+) -> Result<axum_codec::Codec<PlayerLeaderboardResponse>, (StatusCode, &'static str)> {
     let skills = Query::skill_descriptions(&state.conn)
         .await
         .map_err(|error| {
@@ -627,7 +631,7 @@ pub(crate) async fn player_leaderboard(
         };
     }
 
-    Ok(axum_codec::Codec(leaderboard_result))
+    Ok(axum_codec::Codec(PlayerLeaderboardResponse(leaderboard_result)))
 }
 
 pub(crate) async fn get_claim_leaderboard(

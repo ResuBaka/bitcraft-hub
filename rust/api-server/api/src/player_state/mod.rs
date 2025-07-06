@@ -117,7 +117,8 @@ pub struct PlayersResponse {
     pub total: u64,
     pub page: u64,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct FindPlayerByIdResponse {
     pub teleport_location: TeleportLocation,
     pub entity_id: i64,

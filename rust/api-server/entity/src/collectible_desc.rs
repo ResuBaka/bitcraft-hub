@@ -2,8 +2,10 @@ use sea_orm::entity::prelude::*;
 use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, TS)]
+#[ts(rename = "CollectibleDesc")]
 #[sea_orm(table_name = "collectible_desc")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -33,7 +35,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, TS)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum InvalidatesType {
     Default = 0,
@@ -144,7 +146,7 @@ impl<'de> Deserialize<'de> for InvalidatesType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, TS)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum CollectibleType {
     Default = 0,
@@ -256,7 +258,7 @@ impl<'de> Deserialize<'de> for CollectibleType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, TS)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum CollectibleRarity {
     Default = 0,

@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { toast } from "vuetify-sonner";
+import { registerWebsocketMessageHandler } from "~/composables/websocket";
+import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
+import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
+import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardResponse";
+import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
+import type { InventorysResponse } from "~/types/InventorysResponse";
+import type { RankType } from "~/types/RankType";
+
 const theme = useTheme();
 const page = ref(1);
 const route = useRoute();
@@ -8,119 +16,109 @@ const numberFormat = new Intl.NumberFormat(undefined);
 
 const tmpPage = (route.query.page as string) ?? null;
 
-import { registerWebsocketMessageHandler } from "~/composables/websocket";
-import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
-import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
-const useWebsocket = useWebsocketStore();
-
-type Message = {
-  t: string;
-  c: undefined | Record<string, any>;
-};
-
 const topics = reactive<string[]>([`experience.${route.params.id}`]);
 
 let levelMap = {
   1: 0,
   2: 640,
-  3: 1_330,
-  4: 2_090,
-  5: 2_920,
-  6: 3_830,
-  7: 4_820,
-  8: 5_890,
-  9: 7_070,
-  10: 8_350,
-  11: 9_740,
-  12: 11_260,
-  13: 12_920,
-  14: 14_730,
-  15: 16_710,
-  16: 18_860,
-  17: 21_210,
-  18: 23_770,
-  19: 26_560,
-  20: 29_600,
-  21: 32_920,
-  22: 36_550,
-  23: 40_490,
-  24: 44_800,
-  25: 49_490,
-  26: 54_610,
-  27: 60_200,
-  28: 66_290,
-  29: 72_930,
-  30: 80_170,
-  31: 88_060,
-  32: 96_670,
-  33: 106_060,
-  34: 116_300,
-  35: 127_470,
-  36: 139_650,
-  37: 152_930,
-  38: 167_410,
-  39: 183_200,
-  40: 200_420,
-  41: 219_200,
-  42: 239_680,
-  43: 262_020,
-  44: 286_370,
-  45: 312_930,
-  46: 341_890,
-  47: 373_480,
-  48: 407_920,
-  49: 445_480,
-  50: 486_440,
-  51: 531_110,
-  52: 579_820,
-  53: 632_940,
-  54: 690_860,
-  55: 754_030,
-  56: 822_920,
-  57: 898_040,
-  58: 979_960,
-  59: 1_069_290,
-  60: 1_166_710,
-  61: 1_272_950,
-  62: 1_388_800,
-  63: 1_515_140,
-  64: 1_652_910,
-  65: 1_803_160,
-  66: 1_967_000,
-  67: 2_145_660,
-  68: 2_340_500,
-  69: 2_552_980,
-  70: 2_784_680,
-  71: 3_037_360,
-  72: 3_312_900,
-  73: 3_613_390,
-  74: 3_941_070,
-  75: 4_298_410,
-  76: 4_688_090,
-  77: 5_113_030,
-  78: 5_576_440,
-  79: 6_081_800,
-  80: 6_632_890,
-  81: 7_233_850,
-  82: 7_889_210,
-  83: 8_603_890,
-  84: 9_383_250,
-  85: 10_233_150,
-  86: 11_159_970,
-  87: 12_170_670,
-  88: 13_272_850,
-  89: 14_474_790,
-  90: 15_785_510,
-  91: 17_214_860,
-  92: 18_773_580,
-  93: 20_473_370,
-  94: 22_327_010,
-  95: 24_348_420,
-  96: 26_552_780,
-  97: 28_956_650,
-  98: 31_578_090,
-  99: 34_436_800,
-  100: 37_554_230,
+  3: 1_340,
+  4: 2_130,
+  5: 2_990,
+  6: 3_950,
+  7: 5_000,
+  8: 6_170,
+  9: 7_470,
+  10: 8_900,
+  11: 10_480,
+  12: 12_230,
+  13: 14_160,
+  14: 16_300,
+  15: 18_660,
+  16: 21_280,
+  17: 24_170,
+  18: 27_360,
+  19: 30_900,
+  20: 34_800,
+  21: 39_120,
+  22: 43_900,
+  23: 49_180,
+  24: 55_020,
+  25: 61_480,
+  26: 68_620,
+  27: 76_520,
+  28: 85_250,
+  29: 94_900,
+  30: 105_580,
+  31: 117_380,
+  32: 130_430,
+  33: 144_870,
+  34: 160_820,
+  35: 178_470,
+  36: 197_980,
+  37: 219_550,
+  38: 243_400,
+  39: 269_780,
+  40: 298_940,
+  41: 331_190,
+  42: 366_850,
+  43: 406_280,
+  44: 449_870,
+  45: 498_080,
+  46: 551_380,
+  47: 610_320,
+  48: 675_490,
+  49: 747_550,
+  50: 827_230,
+  51: 915_340,
+  52: 1_012_760,
+  53: 1_120_480,
+  54: 1_239_590,
+  55: 1_371_290,
+  56: 1_516_920,
+  57: 1_677_940,
+  58: 1_855_990,
+  59: 2_052_870,
+  60: 2_270_560,
+  61: 2_511_270,
+  62: 2_777_430,
+  63: 3_071_730,
+  64: 3_397_150,
+  65: 3_756_970,
+  66: 4_154_840,
+  67: 4_594_770,
+  68: 5_081_220,
+  69: 5_619_100,
+  70: 6_213_850,
+  71: 6_871_490,
+  72: 7_596_660,
+  73: 8_394_710,
+  74: 9_268_520,
+  75: 10_223_770,
+  76: 11_361_840,
+  77: 12_563_780,
+  78: 13_892_800,
+  79: 15_362_330,
+  80: 16_987_240,
+  81: 18_783_950,
+  82: 20_770_630,
+  83: 22_967_360,
+  84: 25_396_360,
+  85: 28_082_170,
+  86: 31_051_960,
+  87: 34_335_740,
+  88: 37_966_720,
+  89: 41_981_610,
+  90: 46_421_000,
+  91: 51_329_760,
+  92: 56_757_530,
+  93: 62_759_190,
+  94: 69_394_400,
+  95: 76_729_260,
+  96: 84_836_300,
+  97: 93_794_960,
+  98: 103_692_650,
+  99: 114_626_640,
+  100: 126_704_730,
 };
 
 let expUntilNextLevel = (skill) => {
@@ -227,15 +225,15 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: playerFetch, pending: playerPnding } = useFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/players/${route.params.id}`;
-});
+const { data: playerFetch, pending: playerPnding } =
+  useFetchMsPack<FindPlayerByIdResponse>(() => {
+    return `${api.base}/api/bitcraft/players/${route.params.id}`;
+  });
 
-const { data: inventoryFetch, pending: inventoryPending } = useFetchMsPack(
-  () => {
+const { data: inventoryFetch, pending: inventoryPending } =
+  useFetchMsPack<InventorysResponse>(() => {
     return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
-  },
-);
+  });
 
 const { data: npcFetch } = useFetchMsPack(() => {
   return `${api.base}/npc`;
@@ -252,16 +250,18 @@ const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
   },
 );
 
-const { data: experienceFetch } = useFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/experience/${route.params.id}`;
-});
+const { data: experienceFetch } = useFetchMsPack<PlayerLeaderboardResponse>(
+  () => {
+    return `${api.base}/api/bitcraft/experience/${route.params.id}`;
+  },
+);
 
 const expeirence = computed(() => {
   if (!experienceFetch.value) {
     return undefined;
   }
 
-  let newExperience: Record<string, any> = {};
+  let newExperience: Record<string, RankType> = {};
 
   for (const [skill, xp_info] of Object.entries(experienceFetch.value)) {
     let shouldAddClass = true;
