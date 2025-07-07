@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { watchDebounced, watchThrottled } from "@vueuse/shared";
-
 const page = ref(1);
-const perPage = 16;
 
 const tag = ref<string | null>(null);
 const tier = ref<number | null>(null);
@@ -10,7 +7,6 @@ const search = ref<string | null>("");
 const debouncedSearch = ref<string | null>("");
 
 const route = useRoute();
-const router = useRouter();
 
 debouncedSearch.value = (route.query.search as string) ?? "";
 search.value = debouncedSearch.value;
@@ -20,23 +16,15 @@ if (route.query.tier) {
   tier.value = parseInt(route.query.tier);
 }
 
-const {
-  public: { api },
-} = useRuntimeConfig();
-
-const { data, pending, refresh } = await useLazyFetchMsPack<{
+const { data, pending } = await useLazyFetchMsPack<{
   items: any[];
   cargo: any[];
 }>(() => {
-  return `${api.base}/inventory/all_inventory_stats`;
+  return `/inventory/all_inventory_stats`;
 });
 
-const {
-  data: metaData,
-  pending: metaPending,
-  refresh: metaRefresh,
-} = await useLazyFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/itemsAndCargo/meta`;
+const { data: metaData } = await useLazyFetchMsPack(() => {
+  return `/api/bitcraft/itemsAndCargo/meta`;
 });
 
 const items = computed(() => {

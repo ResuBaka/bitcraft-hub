@@ -10,12 +10,8 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-const {
-  public: { api },
-} = useRuntimeConfig();
-
-const { data: claimFetch, pending: claimPnding } = useFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/claims/${route.params.id}?per_Page=${perPage.value}`;
+const { data: claimFetch } = useFetchMsPack(() => {
+  return `/api/bitcraft/claims/${route.params.id}?per_Page=${perPage.value}`;
 });
 
 const claim = computed(() => {

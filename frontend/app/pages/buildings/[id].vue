@@ -1,29 +1,14 @@
 <script setup lang="ts">
-const page = ref(1);
 const route = useRoute();
 
-const tmpPage = (route.query.page as string) ?? null;
-
-if (tmpPage) {
-  page.value = parseInt(tmpPage);
-}
-const {
-  public: { api },
-} = useRuntimeConfig();
-
 const { data: buildingsFetch } = useFetchMsPack(() => {
-  return `${api.base}/buildings/${route.params.id}`;
+  return `/buildings/${route.params.id}`;
 });
 
-const { data: inventoryFetch, pending: inventoryPending } = useFetchMsPack(
-  () => {
-    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
-  },
-);
-
-const building = computed(() => {
-  return buildingsFetch.value ?? undefined;
+const { data: inventoryFetch } = useFetchMsPack(() => {
+  return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
 });
+
 const inventorys = computed(() => {
   return inventoryFetch.value?.inventorys ?? [];
 });
@@ -35,10 +20,10 @@ useSeoMeta({
 
 <template>
   <v-container fluid>
-    <v-card v-if="building !== undefined">
+    <v-card v-if="buildingsFetch">
       <v-toolbar color="transparent">
-        <v-toolbar-title v-if="building.nickname !== ''">{{ building.nickname }}</v-toolbar-title>
-        <v-toolbar-title v-else>{{ building.entity_id }}</v-toolbar-title>
+        <v-toolbar-title v-if="buildingsFetch.nickname !== ''">{{ buildingsFetch.nickname }}</v-toolbar-title>
+        <v-toolbar-title v-else>{{ buildingsFetch.entity_id }}</v-toolbar-title>
       </v-toolbar>
       <v-card-text>
         <v-list>

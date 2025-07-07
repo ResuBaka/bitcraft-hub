@@ -10,16 +10,12 @@ const { item } = defineProps<{
 }>();
 
 const {
-  public: { iconDomain, api },
-} = useRuntimeConfig();
-
-const {
   data: neededInCrafting,
   execute: neededInCraftingExecute,
   status: neededInCraftingStatus,
 } = await useLazyFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
+    return `/api/bitcraft/recipes/needed_in_crafting/${item.id}`;
   },
   {
     immediate: false,
@@ -32,7 +28,7 @@ const {
   status: producedInCraftingStatus,
 } = await useLazyFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
+    return `/api/bitcraft/recipes/produced_in_crafting/${item.id}`;
   },
   {
     immediate: false,
@@ -45,7 +41,7 @@ const {
   status: neededToCraftStatus,
 } = await useLazyFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/recipes/needed_to_craft/${item.id}`;
+    return `/api/bitcraft/recipes/needed_to_craft/${item.id}`;
   },
   {
     immediate: false,

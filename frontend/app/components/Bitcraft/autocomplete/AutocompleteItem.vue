@@ -18,14 +18,10 @@ const emit = defineEmits({
   },
 });
 
-const {
-  public: { api },
-} = useRuntimeConfig();
-
 const { data: itemsAndCargoData, refresh } =
   await useLazyFetchMsPack<ItemsAndCargoResponse>(
     () => {
-      return `${api.base}/api/bitcraft/itemsAndCargo`;
+      return `/api/bitcraft/itemsAndCargo`;
     },
     {
       onRequest: ({ options }) => {

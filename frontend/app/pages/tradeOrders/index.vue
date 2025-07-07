@@ -18,16 +18,12 @@ if (route.query.page) {
 }
 
 const {
-  public: { api },
-} = useRuntimeConfig();
-
-const {
   data: tradeOrders,
   pending,
   refresh,
 } = await useLazyFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/tradeOrders`;
+    return `/api/bitcraft/tradeOrders`;
   },
   {
     onRequest: ({ options }) => {

@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
 import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
-
 import AutocompleteClaim from "~/components/Bitcraft/autocomplete/AutocompleteClaim.vue";
 import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
 import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
-import { watchDebounced, watchThrottled } from "@vueuse/shared";
+import { watchThrottled } from "@vueuse/shared";
 import type { InventorysResponse } from "~/types/InventorysResponse";
-import type { PlayersResponse } from "~/types/PlayersResponse";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
-import type { ClaimResponse } from "~/types/ClaimResponse";
 import type { ItemStack } from "~/types/ItemStack";
 import type { CraftingRecipe } from "~/types/CraftingRecipe";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
@@ -24,16 +21,11 @@ export type PannelEmptyIndexs = {
   children: PannelIndexs[];
 };
 
-const playerId = ref<BigInt | null>(null);
-const claimId = ref<BigInt | null | undefined>(null);
+const playerId = ref<bigint | null>(null);
+const claimId = ref<bigint | null | undefined>(null);
 const amount = ref<number>(1);
 const pannelIndexs: PannelIndexs[] = reactive([]);
 const route = useRoute();
-const router = useRouter();
-
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 export type objectWithChildren = {
   id: number;
@@ -54,7 +46,7 @@ export type RecipeWithChildren = {
 const { data: claimInventoryData, refresh: refreshClaimInventory } =
   await useLazyFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
     () => {
-      return `${api.base}/api/bitcraft/claims/${claimId.value}`;
+      return `/api/bitcraft/claims/${claimId.value}`;
     },
     {
       immediate: false,
@@ -64,7 +56,7 @@ const { data: claimInventoryData, refresh: refreshClaimInventory } =
 const { data: playerInventoryData, refresh: refreshPlayerInventory } =
   await useLazyFetchMsPack<InventorysResponse>(
     () => {
-      return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${playerId.value}`;
+      return `/api/bitcraft/inventorys/owner_entity_id/${playerId.value}`;
     },
     {
       immediate: false,
@@ -87,10 +79,9 @@ watchThrottled(
   { throttle: 50 },
 );
 
-const { data: allRecipiesFetch, pending: allRecipiesPending } =
-  useFetchMsPack<RecipesAllResponse>(() => {
-    return `${api.base}/recipes/get_all`;
-  });
+const { data: allRecipiesFetch } = useFetchMsPack<RecipesAllResponse>(() => {
+  return `/recipes/get_all`;
+});
 
 let id = route.params.id;
 let type = route.params.type;
@@ -337,7 +328,7 @@ const recipeInfo = computed(() => {
     combineInvs(claimInventoryData?.value?.inventorys?.buildings);
   }
   if (playerInventoryData.value !== undefined) {
-    for (const item of playerInventoryData?.value?.inventorys) {
+    for (const item of playerInventoryData.value.inventorys) {
       combineInvs2(item);
     }
   }
@@ -356,11 +347,11 @@ const recipeInfo = computed(() => {
       if (item?.children == undefined) {
         return;
       }
-      for (const recipe of item?.children) {
+      for (const recipe of item.children) {
         if (recipe?.children == undefined) {
           continue;
         }
-        for (const item of recipe?.children) {
+        for (const item of recipe.children) {
           recalcQuantityDeep(item, quant);
         }
       }

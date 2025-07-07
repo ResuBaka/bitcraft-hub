@@ -18,9 +18,6 @@ if (route.query.search) {
 if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 const {
   data: claims,
@@ -28,7 +25,7 @@ const {
   refresh,
 } = await useLazyFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/claims`;
+    return `/api/bitcraft/claims`;
   },
   {
     onRequest: ({ options }) => {

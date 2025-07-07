@@ -7,23 +7,19 @@ const emit = defineEmits({
     // return `true` or `false` to indicate
     // validation pass / fail
   },
-  model_changed(payload: BigInt) {
+  model_changed(payload: bigint) {
     // return `true` or `false` to indicate
     // validation pass / fail
   },
 });
 const claim = ref<string | undefined>("");
-const claim_id = ref<BigInt | null | undefined>();
+const claim_id = ref<bigint | null | undefined>();
 const router = useRouter();
-
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 const { data: claimData, refresh: refreshClaim } =
   await useLazyFetchMsPack<ClaimResponse>(
     () => {
-      return `${api.base}/api/bitcraft/claims`;
+      return `/api/bitcraft/claims`;
     },
     {
       onRequest: ({ options }) => {

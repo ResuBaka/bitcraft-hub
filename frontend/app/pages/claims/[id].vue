@@ -13,7 +13,6 @@ import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
-import type { NpcDesc } from "~/types/NpcDesc";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 
 const {
@@ -35,7 +34,7 @@ const search = ref<string | null>("");
 const route = useRoute();
 const router = useRouter();
 
-const player_id = ref<BigInt | null>();
+const player_id = ref<bigint | null>();
 const item_object = ref<ItemCargo | undefined>();
 
 const rarityBuildings = ref<string | null>(null);
@@ -52,31 +51,28 @@ const tmpPage = (route.query.page as string) ?? null;
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
-const {
-  public: { api },
-} = useRuntimeConfig();
 
-const { data: claimFetch, pending: claimPnding } =
+const { data: claimFetch } =
   useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(() => {
-    return `${api.base}/api/bitcraft/claims/${route.params.id.toString()}`;
+    return `/api/bitcraft/claims/${route.params.id.toString()}`;
   });
 
 const { data: trevelerTasksFetch } = useFetchMsPack<{
   [key: number]: TravelerTaskDesc;
 }>(() => {
-  return `${api.base}/traveler_tasks`;
+  return `/traveler_tasks`;
 });
 
 const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
   () => {
-    return `${api.base}/api/bitcraft/itemsAndCargo/all`;
+    return `/api/bitcraft/itemsAndCargo/all`;
   },
 );
 
 const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
   useFetchMsPack<InventoryChangelog[]>(
     () => {
-      return `${api.base}/claims/inventory_changelog/${route.params.id.toString()}`;
+      return `/claims/inventory_changelog/${route.params.id.toString()}`;
     },
     {
       onRequest: ({ options }) => {
@@ -103,7 +99,7 @@ const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
 
 const { data: buidlingsFetch, pending: buildingsPending } =
   useFetchMsPack<BuildingStatesResponse>(() => {
-    return `${api.base}/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
+    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
   });
 
 const topicsPlayer = computed<string[]>(() => {

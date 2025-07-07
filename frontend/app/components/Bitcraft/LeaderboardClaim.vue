@@ -1,16 +1,13 @@
 <script setup lang="ts">
 const numberFormat = new Intl.NumberFormat(undefined);
 const props = defineProps<{
-  claimId: number | BigInt;
+  claimId: number | bigint;
 }>();
 const leaderboard_collapsible = ref([]);
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 const { data: leaderboard, pending } = await useFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/leaderboard/claims/${props["claimId"]}`;
+    return `/api/bitcraft/leaderboard/claims/${props["claimId"]}`;
   },
   {
     lazy: true,

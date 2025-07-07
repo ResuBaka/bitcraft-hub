@@ -20,9 +20,6 @@ if (route.query.search) {
 if (route.query.page) {
   page.value = parseInt(route.query.page as string);
 }
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 const {
   data: players,
@@ -30,7 +27,7 @@ const {
   refresh,
 } = await useLazyFetchMsPack<PlayersResponse>(
   () => {
-    return `${api.base}/api/bitcraft/players`;
+    return `/api/bitcraft/players`;
   },
   {
     onRequest: ({ options }) => {
@@ -106,7 +103,7 @@ const currentPlayers = computed(() => {
 const length = computed(() => {
   if (players.value?.total) {
     if (typeof players.value.total == "bigint") {
-      return Math.ceil(players.value.total / BigInt(perPage));
+      return Math.ceil(players.value.total / bigint(perPage));
     }
 
     return Math.ceil(players.value?.total / perPage);

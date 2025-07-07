@@ -3,7 +3,7 @@ import { watchThrottled } from "@vueuse/shared";
 import type { PlayersResponse } from "~/types/PlayersResponse";
 
 const player = ref<string | undefined>("");
-const player_id = ref<BigInt | null | undefined>();
+const player_id = ref<bigint | null | undefined>();
 const router = useRouter();
 
 const emit = defineEmits({
@@ -11,20 +11,16 @@ const emit = defineEmits({
     // return `true` or `false` to indicate
     // validation pass / fail
   },
-  model_changed(payload: BigInt) {
+  model_changed(payload: bigint) {
     // return `true` or `false` to indicate
     // validation pass / fail
   },
 });
 
-const {
-  public: { api },
-} = useRuntimeConfig();
-
 const { data: playerData, refresh: refreshPlayer } =
   await useLazyFetchMsPack<PlayersResponse>(
     () => {
-      return `${api.base}/api/bitcraft/players`;
+      return `/api/bitcraft/players`;
     },
     {
       onRequest: ({ options }) => {

@@ -68,19 +68,16 @@ function timeAgo(date: number) {
   }
   return "just now";
 }
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 const { data: ItemAndCargoFetch } = useFetchMsPack<ItemsAndCargollResponse>(
   () => {
-    return `${api.base}/api/bitcraft/itemsAndCargo/all`;
+    return `/api/bitcraft/itemsAndCargo/all`;
   },
 );
 
 const { data: PlayerUsernameStateFetch } =
   useFetchMsPack<PlayerUsernameStateResponse>(() => {
-    return `${api.base}/api/bitcraft/players/all`;
+    return `/api/bitcraft/players/all`;
   });
 
 const headersChanges = [

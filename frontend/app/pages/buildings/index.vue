@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
-const {
-  public: { iconDomain },
-} = useRuntimeConfig();
 
 const page = ref(1);
 const perPage = 30;
@@ -22,13 +19,10 @@ const tmpSearch = (route.query.search as string) ?? null;
 if (tmpSearch) {
   search.value = tmpSearch;
 }
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 const { data, pending, refresh } = await useLazyFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/desc/buildings`;
+    return `/api/bitcraft/desc/buildings`;
   },
   {
     onRequest: ({ options }) => {

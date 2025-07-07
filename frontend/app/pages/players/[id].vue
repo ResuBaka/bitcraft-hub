@@ -192,7 +192,7 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
 const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
-  if (playerData.value && playerData.value) {
+  if (playerData.value) {
     if (playerData.value.signed_in !== message.signed_in) {
       if (message.signed_in) {
         toast(`${playerData.value?.username} signed in`, {
@@ -220,38 +220,34 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-const {
-  public: { api },
-} = useRuntimeConfig();
-
 const { data: playerData, pending: playerPending } =
   useFetchMsPack<FindPlayerByIdResponse>(() => {
-    return `${api.base}/api/bitcraft/players/${route.params.id}`;
+    return `/api/bitcraft/players/${route.params.id}`;
   });
 
 const { data: inventoryData, pending: inventoryPending } =
   useFetchMsPack<InventorysResponse>(() => {
-    return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+    return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
   });
 
 const { data: npcData } = useFetchMsPack(() => {
-  return `${api.base}/npc`;
+  return `/npc`;
 });
 const { data: trevelerTasksData } = useFetchMsPack<{
   [key: number]: TravelerTaskDesc;
 }>(() => {
-  return `${api.base}/traveler_tasks`;
+  return `/traveler_tasks`;
 });
 
 const { data: itemsAndCargoAllData } = useFetchMsPack<ItemsAndCargollResponse>(
   () => {
-    return `${api.base}/api/bitcraft/itemsAndCargo/all`;
+    return `/api/bitcraft/itemsAndCargo/all`;
   },
 );
 
 const { data: experienceData } = useFetchMsPack<PlayerLeaderboardResponse>(
   () => {
-    return `${api.base}/api/bitcraft/experience/${route.params.id}`;
+    return `/api/bitcraft/experience/${route.params.id}`;
   },
 );
 

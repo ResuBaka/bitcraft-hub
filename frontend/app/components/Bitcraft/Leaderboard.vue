@@ -1,8 +1,5 @@
 <script setup lang="ts">
 const numberFormat = new Intl.NumberFormat(undefined);
-const {
-  public: { api },
-} = useRuntimeConfig();
 
 const {
   data: leaderboard,
@@ -10,7 +7,7 @@ const {
   refresh,
 } = await useFetchMsPack(
   () => {
-    return `${api.base}/leaderboard`;
+    return `/leaderboard`;
   },
   {
     lazy: true,
@@ -51,7 +48,11 @@ const topics = computed(() => {
     return [];
   }
 
-  for (const player of leaderboard.value?.leaderboard[selectedSkills.value]) {
+  if (!leaderboard.value?.leaderboard[selectedSkills.value]) {
+    return [];
+  }
+
+  for (const player of leaderboard.value.leaderboard[selectedSkills.value]) {
     topicsSet.add(
       `experience:${selectedSkills.value}.${player.player_id.toString()}`,
     );
@@ -80,7 +81,7 @@ const totalExperienceTopics = computed(() => {
 
   let topicsSet = new Set<string>();
 
-  for (const player of leaderboard.value?.leaderboard["Experience"]) {
+  for (const player of leaderboard.value.leaderboard["Experience"]) {
     topicsSet.add(`total_experience.${player.player_id.toString()}`);
   }
 

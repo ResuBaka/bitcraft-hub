@@ -23,13 +23,9 @@ if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
 
-const {
-  public: { api },
-} = useRuntimeConfig();
-
 const { data, pending, refresh } = await useLazyFetchMsPack(
   () => {
-    return `${api.base}/api/bitcraft/itemsAndCargo`;
+    return `/api/bitcraft/itemsAndCargo`;
   },
   {
     onRequest: ({ options }) => {
@@ -66,12 +62,8 @@ const { data, pending, refresh } = await useLazyFetchMsPack(
   },
 );
 
-const {
-  data: metaData,
-  pending: metaPending,
-  refresh: metaRefresh,
-} = await useLazyFetchMsPack(() => {
-  return `${api.base}/api/bitcraft/itemsAndCargo/meta`;
+const { data: metaData } = await useLazyFetchMsPack(() => {
+  return `/api/bitcraft/itemsAndCargo/meta`;
 });
 
 const changePage = (value: number) => {
