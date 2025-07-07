@@ -138,8 +138,8 @@ registerWebsocketMessageHandler(
   "MobileEntityState",
   mobileEntityStateTopics,
   (message) => {
-    if (playerFetch.value) {
-      playerFetch.value.player_location = message;
+    if (playerData.value) {
+      playerData.value.player_location = message;
     }
   },
 );
@@ -152,19 +152,18 @@ registerWebsocketMessageHandler(
   "PlayerActionStateChangeName",
   playerActionStateTopics,
   (message) => {
-    if (playerFetch.value) {
-      playerFetch.value.player_action_state = message[0];
+    if (playerData.value) {
+      playerData.value.player_action_state = message[0];
     }
   },
 );
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
-  if (experienceFetch.value && experienceFetch.value[message.skill_name]) {
-    let currentExperience =
-      experienceFetch.value[message.skill_name].experience;
-    let currentLevel = experienceFetch.value[message.skill_name].level;
-    experienceFetch.value[message.skill_name] = {
-      ...experienceFetch.value[message.skill_name],
+  if (experienceData.value && experienceData.value[message.skill_name]) {
+    let currentExperience = experienceData.value[message.skill_name].experience;
+    let currentLevel = experienceData.value[message.skill_name].level;
+    experienceData.value[message.skill_name] = {
+      ...experienceData.value[message.skill_name],
       experience: message.experience,
       level: message.level,
     };
@@ -175,16 +174,16 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
         duration: 5000,
       });
 
-      experienceFetch.value["Level"].level += 1;
+      experienceData.value["Level"].level += 1;
     }
 
-    if (experienceFetch.value["Experience"]) {
+    if (experienceData.value["Experience"]) {
       let newExperience = message.experience;
       let increase = newExperience - currentExperience;
 
-      experienceFetch.value["Experience"] = {
-        ...experienceFetch.value["Experience"],
-        experience: experienceFetch.value["Experience"].experience + increase,
+      experienceData.value["Experience"] = {
+        ...experienceData.value["Experience"],
+        experience: experienceData.value["Experience"].experience + increase,
       };
     }
   }
@@ -193,23 +192,23 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
 const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
-  if (playerFetch.value && playerFetch.value) {
-    if (playerFetch.value.signed_in !== message.signed_in) {
+  if (playerData.value && playerData.value) {
+    if (playerData.value.signed_in !== message.signed_in) {
       if (message.signed_in) {
-        toast(`${player.value?.username} signed in`, {
+        toast(`${playerData.value?.username} signed in`, {
           progressBar: true,
           duration: 5000,
         });
       } else {
-        toast(`${player.value?.username} signed out`, {
+        toast(`${playerData.value?.username} signed out`, {
           progressBar: true,
           duration: 5000,
         });
       }
     }
 
-    playerFetch.value = {
-      ...playerFetch.value,
+    playerData.value = {
+      ...playerData.value,
       signed_in: message.signed_in,
       time_signed_in: message.time_signed_in,
       time_played: message.time_played,
@@ -225,45 +224,50 @@ const {
   public: { api },
 } = useRuntimeConfig();
 
-const { data: playerFetch, pending: playerPnding } =
+const { data: playerData, pending: playerPending } =
   useFetchMsPack<FindPlayerByIdResponse>(() => {
     return `${api.base}/api/bitcraft/players/${route.params.id}`;
   });
 
-const { data: inventoryFetch, pending: inventoryPending } =
+const { data: inventoryData, pending: inventoryPending } =
   useFetchMsPack<InventorysResponse>(() => {
     return `${api.base}/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
   });
 
-const { data: npcFetch } = useFetchMsPack(() => {
+const { data: npcData } = useFetchMsPack(() => {
   return `${api.base}/npc`;
 });
-const { data: trevelerTasksFetch } = useFetchMsPack<{
+const { data: trevelerTasksData } = useFetchMsPack<{
   [key: number]: TravelerTaskDesc;
 }>(() => {
   return `${api.base}/traveler_tasks`;
 });
 
-const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
+const { data: itemsAndCargoAllData } = useFetchMsPack<ItemsAndCargollResponse>(
   () => {
     return `${api.base}/api/bitcraft/itemsAndCargo/all`;
   },
 );
 
-const { data: experienceFetch } = useFetchMsPack<PlayerLeaderboardResponse>(
+const { data: experienceData } = useFetchMsPack<PlayerLeaderboardResponse>(
   () => {
     return `${api.base}/api/bitcraft/experience/${route.params.id}`;
   },
 );
 
 const expeirence = computed(() => {
-  if (!experienceFetch.value) {
+  if (!experienceData.value) {
     return undefined;
   }
 
-  let newExperience: Record<string, RankType> = {};
+  let newExperience: Record<
+    string,
+    RankType & {
+      classes: Record<string, string>;
+    }
+  > = {};
 
-  for (const [skill, xp_info] of Object.entries(experienceFetch.value)) {
+  for (const [skill, xp_info] of Object.entries(experienceData.value)) {
     let shouldAddClass = true;
 
     if (skill === "Experience" || skill === "Level") {
@@ -286,9 +290,9 @@ const expeirence = computed(() => {
 
   return newExperience;
 });
-const inventorys = computed(() => {
+const playerInventory = computed(() => {
   return (
-    inventoryFetch.value?.inventorys.filter(
+    inventoryData.value?.inventorys.filter(
       (inventory) =>
         inventory.nickname !== "Tool belt" &&
         inventory.nickname !== "Wallet" &&
@@ -297,36 +301,32 @@ const inventorys = computed(() => {
   );
 });
 
-const playerTools = computed(() => {
+const tools = computed(() => {
   return (
-    inventoryFetch.value?.inventorys.find(
+    inventoryData.value?.inventorys.find(
       (inventory) => inventory.nickname === "Tool belt",
     ) ?? undefined
   );
 });
 
-const playerWallet = computed(() => {
+const wallet = computed(() => {
   return (
-    inventoryFetch.value?.inventorys.find(
+    inventoryData.value?.inventorys.find(
       (inventory) => inventory.nickname === "Wallet",
     ) ?? undefined
   );
 });
 
-const playerInventory = computed(() => {
+const mainInventory = computed(() => {
   return (
-    inventoryFetch.value?.inventorys.find(
+    inventoryData.value?.inventorys.find(
       (inventory) => inventory.nickname === "Inventory",
     ) ?? undefined
   );
 });
 
-const player = computed(() => {
-  return playerFetch.value ?? undefined;
-});
-
 const deployables = computed(() => {
-  return playerFetch.value?.deployables ?? undefined;
+  return playerData.value?.deployables ?? undefined;
 });
 
 const levelToTier = (level: number) => {
@@ -348,8 +348,17 @@ const levelToTier = (level: number) => {
   if (60 <= level && level <= 69) {
     return 6;
   }
-  if (70 <= level) {
+  if (70 <= level && level <= 79) {
     return 7;
+  }
+  if (80 <= level && level <= 89) {
+    return 8;
+  }
+  if (90 <= level && level <= 99) {
+    return 9;
+  }
+  if (100 === level) {
+    return 10;
   }
 };
 
@@ -439,50 +448,50 @@ const iconUrl = (item: any) => {
 };
 
 useSeoMeta({
-  title: () => `Player ${playerFetch.value?.username ?? route.params.id}`,
-  description: () => `Player ${playerFetch.value?.username ?? route.params.id}`,
+  title: () => `Player ${playerData.value?.username ?? route.params.id}`,
+  description: () => `Player ${playerData.value?.username ?? route.params.id}`,
 });
 </script>
 
 <template>
   <v-container fluid>
-    <v-layout class="justify-center" v-if="playerPnding">
+    <v-layout class="justify-center" v-if="playerPending">
       <v-progress-circular indeterminate>
       </v-progress-circular>
     </v-layout>
-    <template v-else-if="player">
-      <v-banner :class="`text-decoration-none font-weight-black ${player.signed_in ? 'text-green' : 'text-high-emphasis'}`">Player: {{ player?.username }}</v-banner>
+    <template v-else-if="playerData">
+      <v-banner :class="`text-decoration-none font-weight-black ${playerData.signed_in ? 'text-green' : 'text-high-emphasis'}`">Player: {{ playerData?.username }}</v-banner>
       <v-card>
         <v-card-text :class="computedClass">
           <v-table :class="computedClass" density="compact">
             <tbody>
             <tr style='text-align: right'>
               <th>Played:</th>
-              <td>{{ secondsToDaysMinutesSecondsFormat(player.time_played) }}</td>
+              <td>{{ secondsToDaysMinutesSecondsFormat(playerData.time_played) }}</td>
             </tr>
             <tr style='text-align: right'>
               <th>Signed in:</th>
-              <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>
+              <td>{{ secondsToDaysMinutesSecondsFormat(playerData.time_signed_in) }}</td>
             </tr>
-            <tr v-if="player.player_location" style='text-align: right'>
+            <tr v-if="playerData.player_location" style='text-align: right'>
               <th>Location:</th>
-              <td>N: {{ Math.floor(player.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(player.player_location?.location_x / 3 / 1000) }}</td>
+              <td>N: {{ Math.floor(playerData.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(playerData.player_location?.location_x / 3 / 1000) }}</td>
             </tr>
             <tr style='text-align: right'>
               <th>Current Action:</th>
-              <td>{{ player.player_action_state ?? "" }}</td>
+              <td>{{ playerData.player_action_state ?? "" }}</td>
             </tr>
             <tr style='text-align: right'>
               <th>Hex Coins:</th>
-              <td>{{ playerWallet?.pockets[0].contents?.quantity ?? 0 }}</td>
+              <td>{{ wallet?.pockets[0]?.contents?.quantity ?? 0 }}</td>
             </tr>
-            <tr style='text-align: right' v-if="player?.claim_ids?.length">
+            <tr style='text-align: right' v-if="playerData?.claim_ids?.length">
               <th>Claims:</th>
               <td>
                 <nuxt-link class="text-decoration-none font-weight-black text-high-emphasis"
-                           :to="{ name: 'claims-id', params: { id: claim_id[0] } }"
-                           v-for="(claim_id, index) in player?.claim_ids"
-                >{{ claim_id[1] }}{{ index === (player?.claim_ids?.length - 1) ? '' : ', ' }}
+                           :to="{ name: 'claims-id', params: { id: claim_id.toString() } }"
+                           v-for="(claim_id, index) in playerData?.claim_ids"
+                >{{ claim_id.toString() }}{{ index === (playerData?.claim_ids?.length - 1) ? '' : ', ' }}
                 </nuxt-link>
               </td>
             </tr>
@@ -491,7 +500,7 @@ useSeoMeta({
           <v-row>
             <v-col cols="12">
               <v-card variant="text" v-if="deployables !== undefined && deployables.length">
-                <v-card-title>Deployables</v-card-title>
+                <v-card-title>Deployable</v-card-title>
                 <v-card-text>
                   <v-row>
                     <v-col cols="12" md="4" lg="2" v-for="deployable in deployables" :key="deployable.id">
@@ -530,9 +539,9 @@ useSeoMeta({
                             <v-list-item-subtitle>Rank: #<bitcraft-animated-number :value="xp_info.rank" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
                           </v-list-item>
                           </v-col>
-                          <v-col cols="4" md="4" xs="4" v-if="skillToToolIndex[skill] >= 0 && playerTools?.pockets[skillToToolIndex[skill]].contents" :class="`text-${tierColor[playerTools?.pockets[skillToToolIndex[skill]].contents.item.tier]}`">
-                            {{ playerTools.pockets[skillToToolIndex[skill]].contents.item.name ?? "No tool" }}
-                            <v-img :src="iconUrl(playerTools.pockets[skillToToolIndex[skill]].contents.item).url" height="50" width="50"></v-img>
+                          <v-col cols="4" md="4" xs="4" v-if="skillToToolIndex[skill] >= 0 && tools?.pockets[skillToToolIndex[skill]].contents" :class="`text-${tierColor[tools?.pockets[skillToToolIndex[skill]].contents.item.tier]}`">
+                            {{ tools.pockets[skillToToolIndex[skill]].contents.item.name ?? "No tool" }}
+                            <v-img :src="iconUrl(tools.pockets[skillToToolIndex[skill]].contents.item).url" height="50" width="50"></v-img>
                           </v-col>
                         </v-row>
                       </v-list>
@@ -545,11 +554,11 @@ useSeoMeta({
         </v-card-text>
       </v-card>
       <v-expansion-panels>
-        <v-expansion-panel v-for="(traveler, index) of player.traveler_tasks">
+        <v-expansion-panel v-for="(traveler, index) of playerData.traveler_tasks">
           <v-expansion-panel-title>
             <v-row>
               <v-col class="d-flex justify-center">
-                <h2 class="pl-md-3 pl-xl-0">Treveler: {{ npcFetch[index]?.name }}</h2>
+                <h2 class="pl-md-3 pl-xl-0">Treveler: {{ npcData[index]?.name }}</h2>
               </v-col>
             </v-row>
           </v-expansion-panel-title>
@@ -557,13 +566,13 @@ useSeoMeta({
             <template v-for="task of traveler">
               <v-row>
               <v-col class="d-flex justify-center">
-              <template v-for="item of trevelerTasksFetch[task.task_id]?.required_items ">
+              <template v-for="item of trevelerTasksData[task.task_id]?.required_items ">
                 <v-badge :content="Intl.NumberFormat().format(item.quantity)" location="right" class="align-start">
                   <template v-if="item.item_type == 'Item'">
-                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.item_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
+                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.item_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
                     </template>
                   <template v-else-if="item.item_type == 'Cargo'">
-                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.cargo_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
+                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.cargo_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
                   </template>
                 </v-badge>
               </template>
@@ -573,18 +582,18 @@ useSeoMeta({
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
-      <v-card variant="text" v-if="inventorys.length || playerTools || playerInventory">
+      <v-card variant="text" v-if="playerInventory.length || tools || mainInventory">
         <v-card-title>Inventory's</v-card-title>
         <v-card-text>
           <v-row>
 <!--            <v-col cols="12" md="6" v-if="playerTools">-->
-<!--              <bitcraft-player-tool-belt :inventory="playerTools"></bitcraft-player-tool-belt>-->
+<!--              <bitcraft-playerData-tool-belt :inventory="playerTools"></bitcraft-playerData-tool-belt>-->
 <!--            </v-col>-->
-            <v-col cols="12" md="6" v-if="playerInventory">
-              <bitcraft-inventory :inventory="playerInventory"></bitcraft-inventory>
+            <v-col cols="12" md="6" v-if="mainInventory">
+              <bitcraft-inventory :inventory="mainInventory"></bitcraft-inventory>
             </v-col>
 
-            <template v-if="!inventoryPending" v-for="(inventory, index) in inventorys">
+            <template v-if="!inventoryPending" v-for="(inventory, index) in playerInventory">
               <v-col cols="12" md="6">
                 <bitcraft-inventory :inventory="inventory"></bitcraft-inventory>
               </v-col>

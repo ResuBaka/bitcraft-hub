@@ -99,14 +99,14 @@ watchDebounced(
   { debounce: 100, maxWait: 200 },
 );
 
-const currentplayers = computed(() => {
+const currentPlayers = computed(() => {
   return players.value?.players ?? [];
 });
 
 const length = computed(() => {
   if (players.value?.total) {
-    if (players.value?.total instanceof BigInt) {
-      return Math.ceil(players.value?.total / BigInt(perPage));
+    if (typeof players.value.total == "bigint") {
+      return Math.ceil(players.value.total / BigInt(perPage));
     }
 
     return Math.ceil(players.value?.total / perPage);
@@ -199,11 +199,11 @@ useSeoMeta({
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="12" md="6" lg="3" xl="2" v-for="player in currentplayers" :key="player.entity_id">
+      <v-col cols="12" md="6" lg="3" xl="2" v-for="player in currentPlayers" :key="player.entity_id.toString()">
         <v-card>
           <template v-slot:title>
             <nuxt-link :class="`text-decoration-none font-weight-black ${player.signed_in ? 'text-green' : 'text-high-emphasis'}`"
-                       :to="{ name: 'players-id', params: { id: player.entity_id } }"
+                       :to="{ name: 'players-id', params: { id: player.entity_id.toString() } }"
             >{{ player.username }}
             </nuxt-link>
           </template>
