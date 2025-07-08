@@ -3,10 +3,14 @@ import { unpack } from "msgpackr/unpack";
 export function useFetchMsPack<DataT, ErrorT = undefined>(
   ...args: Parameters<typeof useFetch<DataT, ErrorT>>
 ): ReturnType<typeof useFetch<DataT, ErrorT>> {
+  const {
+    public: { api },
+  } = useRuntimeConfig();
   const [request, options] = args;
 
   // @ts-ignore
   return useFetch<DataT, ErrorT>(request, {
+    baseURL: api.base,
     ...options,
     headers: {
       Accept: "application/vnd.msgpack",
