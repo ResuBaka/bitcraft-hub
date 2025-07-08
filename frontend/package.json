@@ -20,12 +20,12 @@
     "vuetify-sonner": "^0.3.21"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.6",
+    "@biomejs/biome": "^2.1.1",
     "@nuxt/devtools": "^2.6.2",
     "sass": "^1.89.2",
     "@vueuse/core": "^13.5.0",
     "@vueuse/shared": "^13.5.0",
-    "vuetify": "^3.8.12",
+    "vuetify": "^3.9.0",
     "vuetify-nuxt-module": "^0.18.7"
   }
 }
