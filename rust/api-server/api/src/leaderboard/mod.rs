@@ -23,7 +23,7 @@ macro_rules! generate_mysql_sum_level_sql_statement {
     }};
 }
 
-pub(crate) const EXCLUDED_USERS_FROM_LEADERBOARD: [i64; 1] = [18695126];
+pub(crate) const EXCLUDED_USERS_FROM_LEADERBOARD: [i64; 1] = [360287970201941063];
 pub(crate) const EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 2];
 
 pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [

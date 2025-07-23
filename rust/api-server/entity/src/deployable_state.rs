@@ -15,6 +15,7 @@ pub struct Model {
     pub deployable_description_id: i32,
     pub nickname: String,
     pub hidden: bool,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -22,9 +23,20 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<DeployableState> for crate::deployable_state::Model {
-    fn from(value: DeployableState) -> Self {
-        crate::deployable_state::Model {
+pub struct ModelBuilder {
+    entity_id: i64,
+    owner_id: i64,
+    claim_entity_id: i64,
+    direction: i32,
+    deployable_description_id: i32,
+    nickname: String,
+    hidden: bool,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(value: DeployableState) -> Self {
+        Self {
             entity_id: value.entity_id as i64,
             owner_id: value.owner_id as i64,
             claim_entity_id: value.claim_entity_id as i64,
@@ -32,6 +44,25 @@ impl From<DeployableState> for crate::deployable_state::Model {
             deployable_description_id: value.deployable_description_id,
             nickname: value.nickname,
             hidden: value.hidden,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            owner_id: self.owner_id,
+            claim_entity_id: self.claim_entity_id,
+            direction: self.direction,
+            deployable_description_id: self.deployable_description_id,
+            nickname: self.nickname,
+            hidden: self.hidden,
+            region: self.region,
         }
     }
 }

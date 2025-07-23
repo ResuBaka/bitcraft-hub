@@ -15,6 +15,7 @@ pub struct Model {
     #[sea_orm(column_type = "Json")]
     pub start_timestamp: timestamp::Timestamp,
     pub scheduled_id: Option<i64>,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -22,14 +23,40 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<ClaimTechState> for Model {
-    fn from(claim_tech_state: ClaimTechState) -> Self {
+pub struct ModelBuilder {
+    entity_id: i64,
+    learned: Vec<i32>,
+    researching: i32,
+    start_timestamp: timestamp::Timestamp,
+    scheduled_id: Option<i64>,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(claim_tech_state: ClaimTechState) -> Self {
         Self {
             entity_id: claim_tech_state.entity_id as i64,
             learned: claim_tech_state.learned,
             researching: claim_tech_state.researching,
             start_timestamp: claim_tech_state.start_timestamp.into(),
             scheduled_id: claim_tech_state.scheduled_id.map(|s| s as i64),
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            learned: self.learned,
+            researching: self.researching,
+            start_timestamp: self.start_timestamp,
+            scheduled_id: self.scheduled_id,
+            region: self.region,
         }
     }
 }

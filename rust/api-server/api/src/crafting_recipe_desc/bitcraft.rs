@@ -1,16 +1,19 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use entity::crafting_recipe;
-use kanal::AsyncReceiver;
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, sea_query};
+use migration::OnConflict;
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, sea_query};
 use std::collections::HashMap;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_crafting_recipe_desc(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<game_module::module_bindings::CraftingRecipeDesc>>,
+    mut rx: UnboundedReceiver<
+        SpacetimeUpdateMessages<game_module::module_bindings::CraftingRecipeDesc>,
+    >,
     batch_size: usize,
     time_limit: Duration,
     _cancel_token: CancellationToken,
@@ -40,14 +43,6 @@ pub(crate) fn start_worker_crafting_recipe_desc(
             ])
             .to_owned();
 
-        let mut currently_known_crafting_recipe = ::entity::crafting_recipe::Entity::find()
-            .all(&global_app_state.conn)
-            .await
-            .map_or(vec![], |aa| aa)
-            .into_iter()
-            .map(|value| (value.id, value))
-            .collect::<HashMap<_, _>>();
-
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -55,23 +50,58 @@ pub(crate) fn start_worker_crafting_recipe_desc(
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
+                            SpacetimeUpdateMessages::Initial { data, .. } => {
+                                let mut local_messages = vec![];
+                                let mut currently_known_crafting_recipe = ::entity::crafting_recipe::Entity::find()
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or(vec![], |aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.id, value))
+                                    .collect::<HashMap<_, _>>();
+
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::crafting_recipe::Model = value.into();
+
+                                    model
+                                }) {
+                                    global_app_state.crafting_recipe_desc.insert(model.id, model.clone());
+                                    use std::collections::hash_map::Entry;
+                                    match currently_known_crafting_recipe.entry(model.id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
+                                                local_messages.push(model.into_active_model());
+                                            }
+                                            entry.remove();
+                                        }
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
+                                        }
+                                    }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_crafting_recipe(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_crafting_recipe(&global_app_state, &on_conflict, &mut local_messages).await;
+                                }
+
+                                for chunk_ids in currently_known_crafting_recipe.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::crafting_recipe::Entity::delete_many().filter(::entity::crafting_recipe::Column::Id.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(CraftingRecipeDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete CraftingRecipeDesc");
+                                    }
+                                }
+                            }
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::crafting_recipe::Model = new.into();
 
                                 global_app_state.crafting_recipe_desc.insert(model.id, model.clone());
-                                if currently_known_crafting_recipe.contains_key(&model.id) {
-                                    let value = currently_known_crafting_recipe.get(&model.id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_crafting_recipe.remove(&model.id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -79,17 +109,7 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::crafting_recipe::Model = new.into();
                                 global_app_state.crafting_recipe_desc.insert(model.id, model.clone());
-                                if currently_known_crafting_recipe.contains_key(&model.id) {
-                                    let value = currently_known_crafting_recipe.get(&model.id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_crafting_recipe.remove(&model.id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -129,17 +149,9 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                     "CraftingRecipeDesc ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::crafting_recipe::Entity::insert_many(messages.clone())
-                    .on_conflict(on_conflict.clone())
-                    .exec(&global_app_state.conn)
-                    .await;
 
-                if insert.is_err() {
-                    tracing::error!(
-                        "Error inserting CraftingRecipeDesc: {}",
-                        insert.unwrap_err()
-                    )
-                }
+                insert_multiple_crafting_recipe(&global_app_state, &on_conflict, &mut messages)
+                    .await;
                 // Your batch processing logic here
             }
 
@@ -149,4 +161,24 @@ pub(crate) fn start_worker_crafting_recipe_desc(
             }
         }
     });
+}
+
+async fn insert_multiple_crafting_recipe(
+    global_app_state: &AppState,
+    on_conflict: &OnConflict,
+    messages: &mut Vec<::entity::crafting_recipe::ActiveModel>,
+) {
+    let insert = ::entity::crafting_recipe::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!(
+            "Error inserting CraftingRecipeDesc: {}",
+            insert.unwrap_err()
+        )
+    }
+
+    messages.clear();
 }

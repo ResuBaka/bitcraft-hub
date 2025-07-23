@@ -2,17 +2,17 @@ use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use futures::FutureExt;
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
-use kanal::AsyncReceiver;
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, sea_query};
 use std::collections::HashMap;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_player_state(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerState>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerState>>,
     batch_size: usize,
     time_limit: Duration,
     cancel_token: CancellationToken,
@@ -30,14 +30,6 @@ pub(crate) fn start_worker_player_state(
             ])
             .to_owned();
 
-        let mut currently_known_player_state = ::entity::player_state::Entity::find()
-            .all(&global_app_state.conn)
-            .await
-            .map_or(vec![], |aa| aa)
-            .into_iter()
-            .map(|value| (value.entity_id, value))
-            .collect::<HashMap<_, _>>();
-
         let cleanup_signal_future = cancel_token.cancelled().fuse();
         tokio::pin!(cleanup_signal_future);
 
@@ -49,34 +41,75 @@ pub(crate) fn start_worker_player_state(
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                let mut local_messages = vec![];
+                                let mut currently_known_player_state = ::entity::player_state::Entity::find()
+                                    .filter(::entity::player_state::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or(vec![], |aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
+
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+                                    match currently_known_player_state.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
+                                                local_messages.push(model.into_active_model());
+                                            }
+                                            entry.remove();
+                                        }
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
+                                        }
+                                    }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_player_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_player_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                }
+
+                                for chunk_ids in currently_known_player_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::player_state::Entity::delete_many().filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(PlayerState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerState");
+                                    }
+                                }
+                            }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::player_state::Model = new.into();
+                                let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                 metrics::gauge!("players_current_state", &[
                                     ("online", model.signed_in.to_string()),
                                     ("region", database_name.to_string())
                                 ]).increment(1);
 
-                                ids.push(model.entity_id);
-                                if !currently_known_player_state.is_empty() && currently_known_player_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_player_state.get(&model.entity_id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_player_state.remove(&model.entity_id);
+                                if ids.contains(&model.entity_id) {
+                                    if let Some(index) = messages.iter().position(|value: &::entity::player_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                        messages.remove(index);
                                     }
-                                } else {
-                                    messages.push(model.into_active_model());
                                 }
+
+                                ids.push(model.entity_id);
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, old, .. } => {
-                                let model: ::entity::player_state::Model = new.into();
+                                let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
 
                                 if model.signed_in != old.signed_in {
@@ -90,24 +123,21 @@ pub(crate) fn start_worker_player_state(
                                     ]).decrement(1);
                                 }
 
-                                ids.push(model.entity_id);
-                                if !currently_known_player_state.is_empty() && currently_known_player_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_player_state.get(&model.entity_id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_player_state.remove(&model.entity_id);
+                                if ids.contains(&model.entity_id) {
+                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                        messages.remove(index);
                                     }
-                                } else {
-                                    messages.push(model.into_active_model());
                                 }
+
+                                ids.push(model.entity_id);
+
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model: ::entity::player_state::Model = delete.into();
+                                let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
                                 if ids.contains(&id) {
@@ -134,24 +164,6 @@ pub(crate) fn start_worker_player_state(
                         break;
                     }
                     _ = &mut cleanup_signal_future => {
-                        if global_app_state.connection_state.iter().filter(|a| a.eq(&true)).collect::<Vec<_>>().len() != global_app_state.connection_state.len() {
-                            tracing::warn!("Cleanup did not run as not all servers have an active connection");
-                            break;
-                        }
-
-                        let players_to_delete = currently_known_player_state.values().map(|ckps| ckps.entity_id).collect::<Vec<_>>();
-
-                        tracing::info!("players_to_delete {} {:?}", players_to_delete.len(), players_to_delete);
-
-                        let result = ::entity::player_state::Entity::delete_many()
-                            .filter(::entity::player_state::Column::EntityId.is_in(players_to_delete))
-                            .exec(&global_app_state.conn).await;
-
-                        if let Err(error) = result {
-                            tracing::error!("Error while cleanup of player_state {error}");
-                        }
-
-                        currently_known_player_state.clear();
 
                         break;
                     }
@@ -164,15 +176,8 @@ pub(crate) fn start_worker_player_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::player_state::Entity::insert_many(
-                    messages
-                        .iter()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+
+                insert_multiple_player_state(&global_app_state, &on_conflict, &mut messages).await;
                 // Your batch processing logic here
             }
 
@@ -184,9 +189,26 @@ pub(crate) fn start_worker_player_state(
     });
 }
 
+async fn insert_multiple_player_state(
+    global_app_state: &AppState,
+    on_conflict: &sea_query::OnConflict,
+    messages: &mut Vec<::entity::player_state::ActiveModel>,
+) {
+    let insert = ::entity::player_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!("Error inserting PlayerState: {}", insert.unwrap_err())
+    }
+
+    messages.clear();
+}
+
 pub(crate) fn start_worker_player_username_state(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
     batch_size: usize,
     time_limit: Duration,
     _cancel_token: CancellationToken,
@@ -197,15 +219,6 @@ pub(crate) fn start_worker_player_username_state(
                 .update_columns([::entity::player_username_state::Column::Username])
                 .to_owned();
 
-        let mut currently_known_player_username_state =
-            ::entity::player_username_state::Entity::find()
-                .all(&global_app_state.conn)
-                .await
-                .map_or(vec![], |aa| aa)
-                .into_iter()
-                .map(|value| (value.entity_id, value))
-                .collect::<HashMap<_, _>>();
-
         loop {
             let mut messages = Vec::new();
             let mut ids = vec![];
@@ -214,49 +227,73 @@ pub(crate) fn start_worker_player_username_state(
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
-                            SpacetimeUpdateMessages::Insert { new, .. } => {
-                                let model: ::entity::player_username_state::Model = new.into();
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                let mut local_messages = vec![];
+                                let mut currently_known_player_username_state = ::entity::player_username_state::Entity::find()
+                                    .filter(::entity::player_username_state::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or(vec![], |aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
+
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+                                    match currently_known_player_username_state.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
+                                                local_messages.push(model.into_active_model());
+                                            }
+                                            entry.remove();
+                                        }
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
+                                        }
+                                    }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_player_username_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_player_username_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                }
+
+                                for chunk_ids in currently_known_player_username_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::player_username_state::Entity::delete_many().filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(PlayerUsernameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerUsernameState");
+                                    }
+                                }
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                 ids.push(model.entity_id);
-
-                                if currently_known_player_username_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_player_username_state.get(&model.entity_id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_player_username_state.remove(&model.entity_id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, .. } => {
-                                let model: ::entity::player_username_state::Model = new.into();
+                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 ids.push(model.entity_id);
-                                if currently_known_player_username_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_player_username_state.get(&model.entity_id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_player_username_state.remove(&model.entity_id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete,.. } => {
-                                let model: ::entity::player_username_state::Model = delete.into();
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
                                 if ids.contains(&id) {
@@ -286,10 +323,13 @@ pub(crate) fn start_worker_player_username_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::player_username_state::Entity::insert_many(messages.clone())
-                    .on_conflict(on_conflict.clone())
-                    .exec(&global_app_state.conn)
-                    .await;
+                insert_multiple_player_username_state(
+                    &global_app_state,
+                    &on_conflict,
+                    &mut messages,
+                )
+                .await;
+
                 // Your batch processing logic here
             }
 
@@ -299,4 +339,24 @@ pub(crate) fn start_worker_player_username_state(
             }
         }
     });
+}
+
+async fn insert_multiple_player_username_state(
+    global_app_state: &AppState,
+    on_conflict: &sea_query::OnConflict,
+    messages: &mut Vec<::entity::player_username_state::ActiveModel>,
+) {
+    let insert = ::entity::player_username_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!(
+            "Error inserting PlayerUsernameState: {}",
+            insert.unwrap_err()
+        )
+    }
+
+    messages.clear();
 }

@@ -8,6 +8,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     pub shards: i32,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -20,20 +21,4 @@ pub struct RawVaultState {
     pub entity_id: i64,
     pub collectibles: Vec<RawVaultStateCollectibles>,
     pub shards: i32,
-}
-
-impl RawVaultState {
-    pub fn to_model(&self) -> Model {
-        Model {
-            entity_id: self.entity_id,
-            shards: self.shards,
-        }
-    }
-
-    pub fn to_model_collectibles(&self) -> Vec<crate::vault_state_collectibles::Model> {
-        self.collectibles
-            .iter()
-            .map(|collectible| collectible.to_model(self.entity_id))
-            .collect()
-    }
 }

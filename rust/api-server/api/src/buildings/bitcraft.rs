@@ -1,17 +1,17 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::{BuildingDesc, BuildingNicknameState, BuildingState};
-use kanal::AsyncReceiver;
-use migration::sea_query;
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait};
+use migration::{OnConflict, sea_query};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
 use std::collections::HashMap;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_building_state(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingState>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingState>>,
     batch_size: usize,
     time_limit: Duration,
     _cancel_token: CancellationToken,
@@ -27,66 +27,87 @@ pub(crate) fn start_worker_building_state(
                 ])
                 .to_owned();
 
-        let mut currently_known_building_state = ::entity::building_state::Entity::find()
-            .all(&global_app_state.conn)
-            .await
-            .map_or(vec![], |aa| aa)
-            .into_iter()
-            .map(|value| (value.entity_id, value))
-            .collect::<HashMap<_, _>>();
-
         loop {
-            let mut messages = HashMap::new();
+            let mut messages = vec![];
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
-                            SpacetimeUpdateMessages::Insert { new, .. } => {
-                                let model: ::entity::building_state::Model = new.into();
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                let mut local_messages = vec![];
+                                let mut currently_known_building_state = ::entity::building_state::Entity::find()
+                                    .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or(vec![], |aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
 
-                                if currently_known_building_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_building_state.get(&model.entity_id).unwrap();
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
-                                    if &model != value {
-                                        messages.insert(model.entity_id, model);
-                                    } else {
-                                        currently_known_building_state.remove(&model.entity_id);
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+
+                                    match currently_known_building_state.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
+                                                local_messages.push(model.into_active_model());
+                                            }
+                                            entry.remove();
+                                        }
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
+                                        }
                                     }
-                                } else {
-                                    messages.insert(model.entity_id, model);
+
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                 }
+
+                                for chunk_ids in currently_known_building_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::building_state::Entity::delete_many().filter(::entity::building_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(BuildingState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingState");
+                                    }
+                                }
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+
+                                messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, .. } => {
-                                let model: ::entity::building_state::Model = new.into();
+                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
-                                if currently_known_building_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_building_state.get(&model.entity_id).unwrap();
-
-                                    if &model != value {
-                                        messages.insert(model.entity_id, model);
-                                    } else {
-                                        currently_known_building_state.remove(&model.entity_id);
-                                    }
-                                } else {
-                                    messages.insert(model.entity_id, model);
-                                }
+                                messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete,.. } => {
-                                let model: ::entity::building_state::Model = delete.into();
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
-                                messages.remove(&id);
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
 
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
                                     tracing::error!(BuildingState = id, error = error.to_string(), "Could not delete BuildingState");
@@ -112,19 +133,9 @@ pub(crate) fn start_worker_building_state(
                     "BuildingState ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::building_state::Entity::insert_many(
-                    messages
-                        .values()
-                        .map(|value| value.clone().into_active_model())
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(on_conflict.clone())
-                .exec(&global_app_state.conn)
-                .await;
+                insert_multiple_building_state(&global_app_state, &on_conflict, &mut messages)
+                    .await;
 
-                if insert.is_err() {
-                    tracing::error!("Error inserting BuildingState: {}", insert.unwrap_err())
-                }
                 // Your batch processing logic here
             }
 
@@ -136,9 +147,26 @@ pub(crate) fn start_worker_building_state(
     });
 }
 
+async fn insert_multiple_building_state(
+    global_app_state: &AppState,
+    on_conflict: &OnConflict,
+    messages: &mut Vec<::entity::building_state::ActiveModel>,
+) {
+    let insert = ::entity::building_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
+    }
+
+    messages.clear();
+}
+
 pub(crate) fn start_worker_building_desc(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
     batch_size: usize,
     time_limit: Duration,
     _cancel_token: CancellationToken,
@@ -170,14 +198,6 @@ pub(crate) fn start_worker_building_desc(
             ])
             .to_owned();
 
-        let mut currently_known_building_desc = ::entity::building_desc::Entity::find()
-            .all(&global_app_state.conn)
-            .await
-            .map_or(vec![], |aa| aa)
-            .into_iter()
-            .map(|value| (value.id, value))
-            .collect::<HashMap<_, _>>();
-
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -185,41 +205,66 @@ pub(crate) fn start_worker_building_desc(
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
+                            SpacetimeUpdateMessages::Initial { data, .. } => {
+                                let mut local_messages = vec![];
+                                let mut currently_known_building_desc = ::entity::building_desc::Entity::find()
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or(vec![], |aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.id, value))
+                                    .collect::<HashMap<_, _>>();
+
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::building_desc::Model = value.into();
+
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+                                    global_app_state.building_desc.insert(model.id, model.clone());
+                                    match currently_known_building_desc.entry(model.id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
+                                                local_messages.push(model.into_active_model());
+                                            }
+                                            entry.remove();
+                                        }
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
+                                        }
+                                    }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_build_desc(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_build_desc(&global_app_state, &on_conflict, &mut local_messages).await;
+                                }
+
+                                for chunk_ids in currently_known_building_desc.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::building_desc::Entity::delete_many().filter(::entity::building_desc::Column::Id.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(BuildingDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingDesc");
+                                    }
+                                }
+                            }
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::building_desc::Model = new.into();
 
                                 global_app_state.building_desc.insert(model.id, model.clone());
-                                if currently_known_building_desc.contains_key(&model.id) {
-                                    let value = currently_known_building_desc.get(&model.id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_building_desc.remove(&model.id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::building_desc::Model = new.into();
-                               global_app_state.building_desc.insert(model.id, model.clone());
-                                if currently_known_building_desc.contains_key(&model.id) {
-                                    let value = currently_known_building_desc.get(&model.id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_building_desc.remove(&model.id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                global_app_state.building_desc.insert(model.id, model.clone());
+                                messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
                                     break;
@@ -259,14 +304,8 @@ pub(crate) fn start_worker_building_desc(
                     "BuildingDesc ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert = ::entity::building_desc::Entity::insert_many(messages.clone())
-                    .on_conflict(on_conflict.clone())
-                    .exec(&global_app_state.conn)
-                    .await;
 
-                if insert.is_err() {
-                    tracing::error!("Error inserting BuildingDesc: {}", insert.unwrap_err())
-                }
+                insert_multiple_build_desc(&global_app_state, &on_conflict, &mut messages).await;
                 // Your batch processing logic here
             }
 
@@ -278,9 +317,26 @@ pub(crate) fn start_worker_building_desc(
     });
 }
 
+async fn insert_multiple_build_desc(
+    global_app_state: &AppState,
+    on_conflict: &OnConflict,
+    messages: &mut Vec<::entity::building_desc::ActiveModel>,
+) {
+    let insert = ::entity::building_desc::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!("Error inserting BuildingDesc: {}", insert.unwrap_err())
+    }
+
+    messages.clear();
+}
+
 pub(crate) fn start_worker_building_nickname_state(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
     batch_size: usize,
     time_limit: Duration,
     _cancel_token: CancellationToken,
@@ -291,15 +347,6 @@ pub(crate) fn start_worker_building_nickname_state(
                 .update_columns([::entity::building_nickname_state::Column::Nickname])
                 .to_owned();
 
-        let mut currently_known_building_nickname_state =
-            ::entity::building_nickname_state::Entity::find()
-                .all(&global_app_state.conn)
-                .await
-                .map_or(vec![], |aa| aa)
-                .into_iter()
-                .map(|value| (value.entity_id, value))
-                .collect::<HashMap<_, _>>();
-
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -307,48 +354,75 @@ pub(crate) fn start_worker_building_nickname_state(
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
-                            SpacetimeUpdateMessages::Insert { new, .. } => {
-                                let model: ::entity::building_nickname_state::Model = new.into();
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                let mut local_messages = vec![];
+                                let mut currently_known_building_nickname_state = ::entity::building_nickname_state::Entity::find()
+                                    .filter(::entity::building_nickname_state::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or(vec![], |aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
+
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::building_nickname_state::Model = ::entity::building_nickname_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+                                    global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
+                                    match currently_known_building_nickname_state.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
+                                                local_messages.push(model.into_active_model());
+                                            }
+                                            entry.remove();
+                                        }
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
+                                        }
+                                    }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_building_nickname_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_building_nickname_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                }
+
+                                for chunk_ids in currently_known_building_nickname_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::building_nickname_state::Entity::delete_many().filter(::entity::building_nickname_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(BuildingNicknameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingNicknameState");
+                                    }
+                                }
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model: ::entity::building_nickname_state::Model = ::entity::building_nickname_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                 global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
-                                if currently_known_building_nickname_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_building_nickname_state.get(&model.entity_id).unwrap();
 
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_building_nickname_state.remove(&model.entity_id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, .. } => {
-                                let model: ::entity::building_nickname_state::Model = new.into();
+                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                let model: ::entity::building_nickname_state::Model = ::entity::building_nickname_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
-                                if currently_known_building_nickname_state.contains_key(&model.entity_id) {
-                                    let value = currently_known_building_nickname_state.get(&model.entity_id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_building_nickname_state.remove(&model.entity_id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
-                                }
+                                messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete,.. } => {
-                                let model: ::entity::building_nickname_state::Model = delete.into();
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model: ::entity::building_nickname_state::Model = ::entity::building_nickname_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
@@ -381,18 +455,12 @@ pub(crate) fn start_worker_building_nickname_state(
                     "BuildingNicknameState ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                let insert =
-                    ::entity::building_nickname_state::Entity::insert_many(messages.clone())
-                        .on_conflict(on_conflict.clone())
-                        .exec(&global_app_state.conn)
-                        .await;
-
-                if insert.is_err() {
-                    tracing::error!(
-                        "Error inserting BuildingNicknameState: {}",
-                        insert.unwrap_err()
-                    )
-                }
+                insert_multiple_building_nickname_state(
+                    &global_app_state,
+                    &on_conflict,
+                    &mut messages,
+                )
+                .await;
                 // Your batch processing logic here
             }
 
@@ -402,4 +470,24 @@ pub(crate) fn start_worker_building_nickname_state(
             }
         }
     });
+}
+
+async fn insert_multiple_building_nickname_state(
+    global_app_state: &AppState,
+    on_conflict: &OnConflict,
+    messages: &mut Vec<::entity::building_nickname_state::ActiveModel>,
+) {
+    let insert = ::entity::building_nickname_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!(
+            "Error inserting BuildingNicknameState: {}",
+            insert.unwrap_err()
+        )
+    }
+
+    messages.clear();
 }

@@ -13,6 +13,7 @@ pub struct Model {
     pub build_permission: bool,
     pub officer_permission: bool,
     pub co_owner_permission: bool,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

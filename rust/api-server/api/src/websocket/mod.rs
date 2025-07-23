@@ -26,14 +26,15 @@ use crate::traveler_task_state::bitcraft::start_worker_traveler_task_state;
 use crate::user_state::bitcraft::start_worker_user_state;
 use crate::vault_state::bitcraft::start_worker_vault_state_collectibles;
 use game_module::module_bindings::*;
-use kanal::Sender;
 use serde::{Deserialize, Serialize};
+use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Identity, Table, TableWithPrimaryKey, Timestamp,
     credentials,
 };
 use std::borrow::Cow;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -52,8 +53,8 @@ fn connect_to_db(
 
     DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
-        .on_connect(move |_ctx, _identity, token| {
-            tracing::info!("Connected to server {tmp_db_name}");
+        .on_connect(move |_ctx, identity, token| {
+            tracing::info!("Connected to server {tmp_db_name} with {identity}");
             metrics::gauge!(
                 "bitcraft_database_connected",
                 &[("region", tmp_db_name.clone())]
@@ -92,7 +93,7 @@ fn connect_to_db(
         // In that case, we'll load it and pass it to `with_token`,
         // so we can re-authenticate as the same `Identity`.
         // .with_token(creds_store().load().expect("Error loading credentials"))
-        .with_token(Some(token))
+        .with_token(Some(token.trim()))
         // Set the database name we chose when we called `spacetime publish`.
         .with_module_name(db_name)
         // Set the URI of the SpacetimeDB host that's running our database.
@@ -128,10 +129,13 @@ fn on_connect_error(_ctx: &ErrorContext, err: Error) {
 }
 
 macro_rules! setup_spacetime_db_listeners {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr $(, skipp_subscribe_applied => $skipp_subscribe_applied:expr)?) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
         let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
+        let skipp_subscribe_applied = true;
+
+        $( skipp_subscribe_applied = $skipp_subscribe_applied; )?
 
         let temp_tx = $tx_channel.clone();
         let labels_update: [(&'static str, Cow<'static, str>); 3] = [
@@ -156,6 +160,7 @@ macro_rules! setup_spacetime_db_listeners {
                 }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Update {
+                        event: ctx.event.clone(),
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
@@ -179,6 +184,11 @@ macro_rules! setup_spacetime_db_listeners {
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_insert).increment(1);
+
+                if skipp_subscribe_applied && let Event::SubscribeApplied = ctx.event {
+                    return;
+                }
+
                 let mut caller_identity = None;
                 let mut reducer = None;
                 let mut timestamp = None;
@@ -189,6 +199,7 @@ macro_rules! setup_spacetime_db_listeners {
                 }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Insert {
+                        event: ctx.event.clone(),
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
                         caller_identity,
@@ -221,6 +232,7 @@ macro_rules! setup_spacetime_db_listeners {
                 }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Remove {
+                        event: ctx.event.clone(),
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
                         caller_identity,
@@ -233,37 +245,10 @@ macro_rules! setup_spacetime_db_listeners {
     };
 }
 
-#[allow(clippy::too_many_arguments)]
-fn connect_to_db_logic(
+fn connect_to_db_global(
     global_app_state: AppState,
     config: &Config,
     database: &str,
-    remove_desc: &bool,
-    mobile_entity_state_tx: &Sender<SpacetimeUpdateMessages<MobileEntityState>>,
-    player_state_tx: &Sender<SpacetimeUpdateMessages<PlayerState>>,
-    player_username_state_tx: &Sender<SpacetimeUpdateMessages<PlayerUsernameState>>,
-    experience_state_tx: &Sender<SpacetimeUpdateMessages<ExperienceState>>,
-    inventory_state_tx: &Sender<SpacetimeUpdateMessages<InventoryState>>,
-    item_desc_tx: &Sender<SpacetimeUpdateMessages<ItemDesc>>,
-    cargo_desc_tx: &Sender<SpacetimeUpdateMessages<CargoDesc>>,
-    vault_state_collectibles_tx: &Sender<SpacetimeUpdateMessages<VaultState>>,
-    deployable_state_tx: &Sender<SpacetimeUpdateMessages<DeployableState>>,
-    claim_state_tx: &Sender<SpacetimeUpdateMessages<ClaimState>>,
-    claim_local_state_tx: &Sender<SpacetimeUpdateMessages<ClaimLocalState>>,
-    claim_member_state_tx: &Sender<SpacetimeUpdateMessages<ClaimMemberState>>,
-    skill_desc_tx: &Sender<SpacetimeUpdateMessages<SkillDesc>>,
-    claim_tech_state_tx: &Sender<SpacetimeUpdateMessages<ClaimTechState>>,
-    claim_tech_desc_tx: &Sender<SpacetimeUpdateMessages<ClaimTechDesc>>,
-    building_state_tx: &Sender<SpacetimeUpdateMessages<BuildingState>>,
-    building_desc_tx: &Sender<SpacetimeUpdateMessages<BuildingDesc>>,
-    location_state_tx: &Sender<SpacetimeUpdateMessages<LocationState>>,
-    building_nickname_state_tx: &Sender<SpacetimeUpdateMessages<BuildingNicknameState>>,
-    crafting_recipe_desc_tx: &Sender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
-    item_list_desc_tx: &Sender<SpacetimeUpdateMessages<ItemListDesc>>,
-    traveler_task_desc_tx: &Sender<SpacetimeUpdateMessages<TravelerTaskDesc>>,
-    traveler_task_state_tx: &Sender<SpacetimeUpdateMessages<TravelerTaskState>>,
-    user_state_tx: &Sender<SpacetimeUpdateMessages<UserState>>,
-    npc_desc_tx: &Sender<SpacetimeUpdateMessages<NpcDesc>>,
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state,
@@ -272,7 +257,61 @@ fn connect_to_db_logic(
         config.spacetimedb_url().as_ref(),
     )?;
 
-    if ctx.is_active() {
+    if !ctx.is_active() {
+        tracing::error!(
+            "Could not connect to the bitcraft server {} with module {database}",
+            config.spacetimedb_url()
+        );
+        return Ok(());
+    }
+
+    tokio::spawn(async move {
+        let _ = ctx.run_async().await;
+    });
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn connect_to_db_logic(
+    global_app_state: AppState,
+    config: &Config,
+    database: &str,
+    remove_desc: &bool,
+    mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
+    player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
+    player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
+    experience_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ExperienceState>>,
+    inventory_state_tx: &UnboundedSender<SpacetimeUpdateMessages<InventoryState>>,
+    item_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemDesc>>,
+    cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
+    vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,
+    deployable_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DeployableState>>,
+    claim_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimState>>,
+    claim_local_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimLocalState>>,
+    claim_member_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimMemberState>>,
+    skill_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<SkillDesc>>,
+    claim_tech_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechState>>,
+    claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
+    building_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingState>>,
+    building_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingDesc>>,
+    location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
+    building_nickname_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingNicknameState>>,
+    crafting_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
+    item_list_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemListDesc>>,
+    traveler_task_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<TravelerTaskDesc>>,
+    traveler_task_state_tx: &UnboundedSender<SpacetimeUpdateMessages<TravelerTaskState>>,
+    user_state_tx: &UnboundedSender<SpacetimeUpdateMessages<UserState>>,
+    npc_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<NpcDesc>>,
+) -> anyhow::Result<()> {
+    let ctx = connect_to_db(
+        global_app_state,
+        config.spacetimedb.password.clone(),
+        database,
+        config.spacetimedb_url().as_ref(),
+    )?;
+
+    if !ctx.is_active() {
         tracing::error!(
             "Could not connect to the bitcraft server {} with module {database}",
             config.spacetimedb_url()
@@ -434,6 +473,7 @@ fn connect_to_db_logic(
         "claim_member_state",
         "claim_local_state",
         "deployable_state",
+        "inventory_state",
         // "collectible_desc",
         "claim_tech_desc",
         // "claim_description_state", -> claim_state
@@ -446,8 +486,264 @@ fn connect_to_db_logic(
         "npc_desc",
     ];
 
+    let tmp_database = database.to_string().clone();
+    let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
+    let tmp_player_state_tx = player_state_tx.clone();
+    let tmp_player_username_state_tx = player_username_state_tx.clone();
+    let tmp_experience_state_tx = experience_state_tx.clone();
+    let tmp_inventory_state_tx = inventory_state_tx.clone();
+    let tmp_item_desc_tx = item_desc_tx.clone();
+    let tmp_cargo_desc_tx = cargo_desc_tx.clone();
+    let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
+    let tmp_deployable_state_tx = deployable_state_tx.clone();
+    let tmp_claim_state_tx = claim_state_tx.clone();
+    let tmp_claim_local_state_tx = claim_local_state_tx.clone();
+    let tmp_claim_member_state_tx = claim_member_state_tx.clone();
+    let tmp_skill_desc_tx = skill_desc_tx.clone();
+    let tmp_claim_tech_state_tx = claim_tech_state_tx.clone();
+    let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
+    let tmp_building_state_tx = building_state_tx.clone();
+    let tmp_building_desc_tx = building_desc_tx.clone();
+    let tmp_location_state_tx = location_state_tx.clone();
+    let tmp_building_nickname_state_tx = building_nickname_state_tx.clone();
+    let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone();
+    let tmp_item_list_desc_tx = item_list_desc_tx.clone();
+    let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone();
+    let tmp_traveler_task_state_tx = traveler_task_state_tx.clone();
+    let tmp_user_state_tx = user_state_tx.clone();
+    let tmp_npc_desc_tx = npc_desc_tx.clone();
     ctx.subscription_builder()
-        .on_applied(move |_ctx: &SubscriptionEventContext| {})
+        .on_applied(move |ctx: &SubscriptionEventContext| {
+            tracing::info!("Handle Subscription response");
+            let database_name_arc: Arc<String> = Arc::new(tmp_database);
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let cargo_desc = ctx.db.cargo_desc().iter().collect::<Vec<_>>();
+            if !cargo_desc.is_empty() {
+                let _ = tmp_cargo_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: cargo_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let player_username_state = ctx.db.player_username_state().iter().collect::<Vec<_>>();
+            if !player_username_state.is_empty() {
+                let _ = tmp_player_username_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: player_username_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let claim_local_state = ctx.db.claim_local_state().iter().collect::<Vec<_>>();
+            if !claim_local_state.is_empty() {
+                let _ = tmp_claim_local_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: claim_local_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let claim_state = ctx.db.claim_state().iter().collect::<Vec<_>>();
+            if !claim_state.is_empty() {
+                let _ = tmp_claim_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: claim_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let deployable_state = ctx.db.deployable_state().iter().collect::<Vec<_>>();
+            if !deployable_state.is_empty() {
+                let _ = tmp_deployable_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: deployable_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let item_desc = ctx.db.item_desc().iter().collect::<Vec<_>>();
+            if !item_desc.is_empty() {
+                let _ = tmp_item_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: item_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let skill_desc = ctx.db.skill_desc().iter().collect::<Vec<_>>();
+            if !skill_desc.is_empty() {
+                let _ = tmp_skill_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: skill_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let building_desc = ctx.db.building_desc().iter().collect::<Vec<_>>();
+            if !building_desc.is_empty() {
+                let _ = tmp_building_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: building_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let claim_tech_desc = ctx.db.claim_tech_desc().iter().collect::<Vec<_>>();
+            if !claim_tech_desc.is_empty() {
+                let _ = tmp_claim_tech_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: claim_tech_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let crafting_recipe_desc = ctx.db.crafting_recipe_desc().iter().collect::<Vec<_>>();
+            if !crafting_recipe_desc.is_empty() {
+                let _ = tmp_crafting_recipe_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: crafting_recipe_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let item_list_desc = ctx.db.item_list_desc().iter().collect::<Vec<_>>();
+            if !item_list_desc.is_empty() {
+                let _ = tmp_item_list_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: item_list_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let traveler_task_desc = ctx.db.traveler_task_desc().iter().collect::<Vec<_>>();
+            if !traveler_task_desc.is_empty() {
+                let _ = tmp_traveler_task_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: traveler_task_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let npc_desc = ctx.db.npc_desc().iter().collect::<Vec<_>>();
+            if !npc_desc.is_empty() {
+                let _ = tmp_npc_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: npc_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let inventory_state = ctx.db.inventory_state().iter().collect::<Vec<_>>();
+            if !inventory_state.is_empty() {
+                let _ = tmp_inventory_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: inventory_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let claim_member_state = ctx.db.claim_member_state().iter().collect::<Vec<_>>();
+            if !claim_member_state.is_empty() {
+                let _ = tmp_claim_member_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: claim_member_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let experience_state = ctx.db.experience_state().iter().collect::<Vec<_>>();
+            if !experience_state.is_empty() {
+                let _ = tmp_experience_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: experience_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let mobile_entity_state = ctx.db.mobile_entity_state().iter().collect::<Vec<_>>();
+            if !mobile_entity_state.is_empty() {
+                let _ = tmp_mobile_entity_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: mobile_entity_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let player_state = ctx.db.player_state().iter().collect::<Vec<_>>();
+            if !player_state.is_empty() {
+                let _ = tmp_player_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: player_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let vault_state = ctx.db.vault_state().iter().collect::<Vec<_>>();
+            if !vault_state.is_empty() {
+                let _ = tmp_vault_state_collectibles_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: vault_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let claim_tech_state = ctx.db.claim_tech_state().iter().collect::<Vec<_>>();
+            if !claim_tech_state.is_empty() {
+                let _ = tmp_claim_tech_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: claim_tech_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let building_state = ctx.db.building_state().iter().collect::<Vec<_>>();
+            if !building_state.is_empty() {
+                let _ = tmp_building_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: building_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let location_state = ctx.db.location_state().iter().collect::<Vec<_>>();
+            if !location_state.is_empty() {
+                let _ = tmp_location_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: location_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let building_nickname_state =
+                ctx.db.building_nickname_state().iter().collect::<Vec<_>>();
+            if !building_nickname_state.is_empty() {
+                let _ = tmp_building_nickname_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: building_nickname_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let traveler_task_state = ctx.db.traveler_task_state().iter().collect::<Vec<_>>();
+            if !traveler_task_state.is_empty() {
+                let _ = tmp_traveler_task_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: traveler_task_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let user_state = ctx.db.user_state().iter().collect::<Vec<_>>();
+            if !user_state.is_empty() {
+                let _ = tmp_user_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: user_state,
+                });
+            }
+            tracing::info!("Handled Subscription response");
+        })
         .on_error(on_sub_error)
         .subscribe(
             tables_to_subscribe
@@ -471,138 +767,164 @@ fn connect_to_db_logic(
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
     tokio::spawn(async move {
-        let (mobile_entity_state_tx, mobile_entity_state_rx) = kanal::unbounded_async();
+        let (mobile_entity_state_tx, mobile_entity_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
-        let (user_state_tx, user_state_rx) = kanal::unbounded_async();
+        let (user_state_tx, user_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (player_state_tx, player_state_rx) = kanal::unbounded_async();
+        let (player_state_tx, player_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (player_username_state_tx, player_username_state_rx) = kanal::unbounded_async();
+        let (player_username_state_tx, player_username_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
-        let (experience_state_tx, experience_state_rx) = kanal::unbounded_async();
+        let (experience_state_tx, experience_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (inventory_state_tx, inventory_state_rx) = kanal::unbounded_async();
+        let (inventory_state_tx, inventory_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (item_desc_tx, item_desc_rx) = kanal::unbounded_async();
-        let (item_list_desc_tx, item_list_desc_rx) = kanal::unbounded_async();
+        let (item_desc_tx, item_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (item_list_desc_tx, item_list_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (cargo_desc_tx, cargo_desc_rx) = kanal::unbounded_async();
+        let (cargo_desc_tx, cargo_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (vault_state_collectibles_tx, vault_state_collectibles_rx) = kanal::unbounded_async();
+        let (vault_state_collectibles_tx, vault_state_collectibles_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
-        let (deployable_state_tx, deployable_state_rx) = kanal::unbounded_async();
+        let (deployable_state_tx, deployable_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (claim_state_tx, claim_state_rx) = kanal::unbounded_async();
+        let (claim_state_tx, claim_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (claim_local_state_tx, claim_local_state_rx) = kanal::unbounded_async();
+        let (claim_local_state_tx, claim_local_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (claim_member_state_tx, claim_member_state_rx) = kanal::unbounded_async();
+        let (claim_member_state_tx, claim_member_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (skill_desc_tx, skill_desc_rx) = kanal::unbounded_async();
+        let (skill_desc_tx, skill_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (claim_tech_state_tx, claim_tech_state_rx) = kanal::unbounded_async();
-        let (claim_tech_desc_tx, claim_tech_desc_rx) = kanal::unbounded_async();
-        let (building_state_tx, building_state_rx) = kanal::unbounded_async();
-        let (building_desc_tx, building_desc_rx) = kanal::unbounded_async();
-        let (location_state_tx, location_state_rx) = kanal::unbounded_async();
-        let (building_nickname_state_tx, building_nickname_state_rx) = kanal::unbounded_async();
+        let (claim_tech_state_tx, claim_tech_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (building_state_tx, building_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (building_desc_tx, building_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (location_state_tx, location_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (building_nickname_state_tx, building_nickname_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
-        let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) = kanal::unbounded_async();
+        let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
-        let (traveler_task_desc_tx, traveler_task_desc_rx) = kanal::unbounded_async();
-        let (traveler_task_state_tx, traveler_task_state_rx) = kanal::unbounded_async();
+        let (traveler_task_desc_tx, traveler_task_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (traveler_task_state_tx, traveler_task_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
-        let (npc_desc_tx, npc_desc_rx) = kanal::unbounded_async();
+        let (npc_desc_tx, npc_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let mut remove_desc = false;
 
-        config.spacetimedb.databases.iter().for_each(|database| {
-            let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone_sync();
-            let tmp_player_state_tx = player_state_tx.clone_sync();
-            let tmp_player_username_state_tx = player_username_state_tx.clone_sync();
-            let tmp_experience_state_tx = experience_state_tx.clone_sync();
-            let tmp_inventory_state_tx = inventory_state_tx.clone_sync();
-            let tmp_item_desc_tx = item_desc_tx.clone_sync();
-            let tmp_cargo_desc_tx = cargo_desc_tx.clone_sync();
-            let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone_sync();
-            let tmp_deployable_state_tx = deployable_state_tx.clone_sync();
-            let tmp_claim_state_tx = claim_state_tx.clone_sync();
-            let tmp_claim_local_state_tx = claim_local_state_tx.clone_sync();
-            let tmp_claim_member_state_tx = claim_member_state_tx.clone_sync();
-            let tmp_skill_desc_tx = skill_desc_tx.clone_sync();
-            let tmp_claim_tech_state_tx = claim_tech_state_tx.clone_sync();
-            let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone_sync();
-            let tmp_building_state_tx = building_state_tx.clone_sync();
-            let tmp_building_desc_tx = building_desc_tx.clone_sync();
-            let tmp_location_state_tx = location_state_tx.clone_sync();
-            let tmp_building_nickname_state_tx = building_nickname_state_tx.clone_sync();
-            let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone_sync();
-            let tmp_item_list_desc_tx = item_list_desc_tx.clone_sync();
-            let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone_sync();
-            let tmp_traveler_task_state_tx = traveler_task_state_tx.clone_sync();
-            let tmp_user_state_tx = user_state_tx.clone_sync();
-            let tmp_npc_desc_tx = npc_desc_tx.clone_sync();
-            let tmp_conf = config.clone();
-            let tmp_global_app_state = global_app_state.clone();
-            let tmp_remove_desc = remove_desc;
-            let tmp_database = database.clone();
+        let tmp_conf = config.clone();
+        let tmp_global_app_state = global_app_state.clone();
+        let tmp_database = config.spacetimedb.database.clone();
 
-            tokio::spawn(async move {
-                metrics::gauge!(
-                    "bitcraft_database_connected",
-                    &[("region", tmp_database.clone())]
-                )
-                .set(0);
+        let result = connect_to_db_global(tmp_global_app_state, &tmp_conf, &tmp_database);
 
-                let result = connect_to_db_logic(
-                    tmp_global_app_state,
-                    &tmp_conf,
-                    &tmp_database,
-                    &tmp_remove_desc,
-                    &tmp_mobile_entity_state_tx,
-                    &tmp_player_state_tx,
-                    &tmp_player_username_state_tx,
-                    &tmp_experience_state_tx,
-                    &tmp_inventory_state_tx,
-                    &tmp_item_desc_tx,
-                    &tmp_cargo_desc_tx,
-                    &tmp_vault_state_collectibles_tx,
-                    &tmp_deployable_state_tx,
-                    &tmp_claim_state_tx,
-                    &tmp_claim_local_state_tx,
-                    &tmp_claim_member_state_tx,
-                    &tmp_skill_desc_tx,
-                    &tmp_claim_tech_state_tx,
-                    &tmp_claim_tech_desc_tx,
-                    &tmp_building_state_tx,
-                    &tmp_building_desc_tx,
-                    &tmp_location_state_tx,
-                    &tmp_building_nickname_state_tx,
-                    &tmp_crafting_recipe_desc_tx,
-                    &tmp_item_list_desc_tx,
-                    &tmp_traveler_task_desc_tx,
-                    &tmp_traveler_task_state_tx,
-                    &tmp_user_state_tx,
-                    &tmp_npc_desc_tx,
-                );
+        if let Err(error) = result {
+            tracing::error!(
+                error = error.to_string(),
+                "Error creating connection to {tmp_database} on {}",
+                tmp_conf.spacetimedb_url()
+            )
+        };
 
-                if let Err(error) = result {
-                    tracing::error!(
-                        error = error.to_string(),
-                        "Error creating connection to {tmp_database} on {}",
-                        tmp_conf.spacetimedb_url()
+        config
+            .spacetimedb
+            .databases
+            .iter()
+            .filter(|value| !value.trim().is_empty())
+            .for_each(|database| {
+                let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
+                let tmp_player_state_tx = player_state_tx.clone();
+                let tmp_player_username_state_tx = player_username_state_tx.clone();
+                let tmp_experience_state_tx = experience_state_tx.clone();
+                let tmp_inventory_state_tx = inventory_state_tx.clone();
+                let tmp_item_desc_tx = item_desc_tx.clone();
+                let tmp_cargo_desc_tx = cargo_desc_tx.clone();
+                let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
+                let tmp_deployable_state_tx = deployable_state_tx.clone();
+                let tmp_claim_state_tx = claim_state_tx.clone();
+                let tmp_claim_local_state_tx = claim_local_state_tx.clone();
+                let tmp_claim_member_state_tx = claim_member_state_tx.clone();
+                let tmp_skill_desc_tx = skill_desc_tx.clone();
+                let tmp_claim_tech_state_tx = claim_tech_state_tx.clone();
+                let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
+                let tmp_building_state_tx = building_state_tx.clone();
+                let tmp_building_desc_tx = building_desc_tx.clone();
+                let tmp_location_state_tx = location_state_tx.clone();
+                let tmp_building_nickname_state_tx = building_nickname_state_tx.clone();
+                let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone();
+                let tmp_item_list_desc_tx = item_list_desc_tx.clone();
+                let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone();
+                let tmp_traveler_task_state_tx = traveler_task_state_tx.clone();
+                let tmp_user_state_tx = user_state_tx.clone();
+                let tmp_npc_desc_tx = npc_desc_tx.clone();
+                let tmp_conf = config.clone();
+                let tmp_global_app_state = global_app_state.clone();
+                let tmp_remove_desc = remove_desc;
+                let tmp_database = database.clone();
+
+                tokio::spawn(async move {
+                    metrics::gauge!(
+                        "bitcraft_database_connected",
+                        &[("region", tmp_database.clone())]
                     )
-                };
-            });
+                    .set(0);
 
-            remove_desc = true;
-        });
+                    let result = connect_to_db_logic(
+                        tmp_global_app_state,
+                        &tmp_conf,
+                        &tmp_database,
+                        &tmp_remove_desc,
+                        &tmp_mobile_entity_state_tx,
+                        &tmp_player_state_tx,
+                        &tmp_player_username_state_tx,
+                        &tmp_experience_state_tx,
+                        &tmp_inventory_state_tx,
+                        &tmp_item_desc_tx,
+                        &tmp_cargo_desc_tx,
+                        &tmp_vault_state_collectibles_tx,
+                        &tmp_deployable_state_tx,
+                        &tmp_claim_state_tx,
+                        &tmp_claim_local_state_tx,
+                        &tmp_claim_member_state_tx,
+                        &tmp_skill_desc_tx,
+                        &tmp_claim_tech_state_tx,
+                        &tmp_claim_tech_desc_tx,
+                        &tmp_building_state_tx,
+                        &tmp_building_desc_tx,
+                        &tmp_location_state_tx,
+                        &tmp_building_nickname_state_tx,
+                        &tmp_crafting_recipe_desc_tx,
+                        &tmp_item_list_desc_tx,
+                        &tmp_traveler_task_desc_tx,
+                        &tmp_traveler_task_state_tx,
+                        &tmp_user_state_tx,
+                        &tmp_npc_desc_tx,
+                    );
+
+                    if let Err(error) = result {
+                        tracing::error!(
+                            error = error.to_string(),
+                            "Error creating connection to {tmp_database} on {}",
+                            tmp_conf.spacetimedb_url()
+                        )
+                    };
+                });
+
+                remove_desc = true;
+            });
 
         let cleanup_token = CancellationToken::new();
 
         let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         if config.spacetimedb.cleanup {
             tokio::spawn(async move {
+                // tokio::time::sleep(Duration::from_secs(60 * 3)).await;
                 tokio::time::sleep(Duration::from_secs(60 * 3)).await;
                 tracing::info!("--- Cleanup timer finished! Signaling cleanup! ---");
                 timer_cleanup_token.cancel(); // Signal all listeners
@@ -831,7 +1153,12 @@ async fn websocket_retry_helper(
 
 #[allow(dead_code)]
 pub(crate) enum SpacetimeUpdateMessages<T> {
+    Initial {
+        data: Vec<T>,
+        database_name: Arc<String>,
+    },
     Insert {
+        event: __sdk::Event<Reducer>,
         new: T,
         database_name: Arc<String>,
         caller_identity: Option<Identity>,
@@ -839,6 +1166,7 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         timestamp: Option<Timestamp>,
     },
     Update {
+        event: __sdk::Event<Reducer>,
         old: T,
         new: T,
         database_name: Arc<String>,
@@ -847,6 +1175,7 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         timestamp: Option<Timestamp>,
     },
     Remove {
+        event: __sdk::Event<Reducer>,
         delete: T,
         database_name: Arc<String>,
         caller_identity: Option<Identity>,

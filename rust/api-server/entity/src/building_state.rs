@@ -15,6 +15,7 @@ pub struct Model {
     pub direction_index: i32,
     pub building_description_id: i32,
     pub constructed_by_player_entity_id: i64,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -22,14 +23,40 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<BuildingState> for Model {
-    fn from(value: BuildingState) -> Self {
-        Self {
+pub struct ModelBuilder {
+    entity_id: i64,
+    claim_entity_id: i64,
+    direction_index: i32,
+    building_description_id: i32,
+    constructed_by_player_entity_id: i64,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(value: BuildingState) -> Self {
+        ModelBuilder {
             entity_id: value.entity_id as i64,
             claim_entity_id: value.claim_entity_id as i64,
             direction_index: value.direction_index,
             building_description_id: value.building_description_id,
             constructed_by_player_entity_id: value.constructed_by_player_entity_id as i64,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            claim_entity_id: self.claim_entity_id,
+            direction_index: self.direction_index,
+            building_description_id: self.building_description_id,
+            constructed_by_player_entity_id: self.constructed_by_player_entity_id,
+            region: self.region,
         }
     }
 }

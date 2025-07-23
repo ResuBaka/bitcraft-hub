@@ -4,18 +4,18 @@ use chrono::DateTime;
 use entity::inventory_changelog::TypeOfChange;
 use futures::FutureExt;
 use game_module::module_bindings::InventoryState;
-use kanal::AsyncReceiver;
-use migration::sea_query;
+use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set};
 use std::collections::HashMap;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_inventory_state(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<InventoryState>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<InventoryState>>,
     batch_size: usize,
     time_limit: Duration,
     cancel_token: CancellationToken,
@@ -46,13 +46,6 @@ pub(crate) fn start_worker_inventory_state(
                     ::entity::inventory_changelog::Column::Timestamp,
                 ])
                 .to_owned();
-        let mut currently_known_inventory = ::entity::inventory::Entity::find()
-            .all(&global_app_state.conn)
-            .await
-            .map_or(vec![], |aa| aa)
-            .into_iter()
-            .map(|value| (value.entity_id, value))
-            .collect::<HashMap<_, _>>();
 
         let cleanup_signal_future = cancel_token.cancelled().fuse();
         tokio::pin!(cleanup_signal_future);
@@ -65,43 +58,76 @@ pub(crate) fn start_worker_inventory_state(
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
-                            SpacetimeUpdateMessages::Insert { new, .. } => {
-                                let model: ::entity::inventory::Model = new.into();
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                tracing::info!("Count of inventory amount to work on {}", data.len());
+                                let mut local_messages = vec![];
+                                let mut currently_known_inventory = ::entity::inventory::Entity::find()
+                                    .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or(vec![], |aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
 
-                                global_app_state.inventory_state.insert(model.entity_id, model.clone());
-                                if currently_known_inventory.contains_key(&model.entity_id) {
-                                    let value = currently_known_inventory.get(&model.entity_id).unwrap();
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_inventory.remove(&model.entity_id);
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+                                    match currently_known_inventory.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
+                                                local_messages.push(model.into_active_model());
+                                            }
+                                            entry.remove();
+                                        }
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
+                                        }
                                     }
-                                } else {
-                                    messages.push(model.into_active_model());
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_inventory(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_inventory(&global_app_state, &on_conflict, &mut local_messages).await;
                                 }
 
+                                tracing::info!("Count of inventory amount to delete {}", currently_known_inventory.len());
+
+                                for chunk_ids in currently_known_inventory.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::inventory::Entity::delete_many().filter(::entity::inventory::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(Inventory = chunk_ids_str.join(","), error = error.to_string(), "Could not delete Inventory");
+                                    }
+                                }
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+
+                                // global_app_state.inventory_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages.iter().position(|value: &::entity::inventory::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, old, caller_identity, timestamp, .. } => {
+                            SpacetimeUpdateMessages::Update { new, old, caller_identity, timestamp, database_name, .. } => {
                                 let new_model = new.clone();
-                                let model: ::entity::inventory::Model = new.into();
-                                global_app_state.inventory_state.insert(model.entity_id, model.clone());
-                                if currently_known_inventory.contains_key(&model.entity_id) {
-                                    let value = currently_known_inventory.get(&model.entity_id).unwrap();
-
-                                    if &model != value {
-                                        messages.push(model.into_active_model());
-                                    } else {
-                                        currently_known_inventory.remove(&model.entity_id);
-                                    }
-                                } else {
-                                    messages.push(model.into_active_model());
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                // global_app_state.inventory_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
                                 }
+                                messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
@@ -155,11 +181,11 @@ pub(crate) fn start_worker_inventory_state(
                                 }
 
                             }
-                            SpacetimeUpdateMessages::Remove { delete,.. } => {
-                                let model: ::entity::inventory::Model = delete.into();
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
-                                global_app_state.inventory_state.remove(&model.entity_id);
+                                // global_app_state.inventory_state.remove(&model.entity_id);
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -177,28 +203,6 @@ pub(crate) fn start_worker_inventory_state(
                         break;
                     }
                     _ = &mut cleanup_signal_future => {
-                        if global_app_state.connection_state.iter().filter(|a| a.eq(&true)).collect::<Vec<_>>().len() != global_app_state.connection_state.len() {
-                            tracing::warn!("Cleanup did not run as not all servers have an active connection");
-                            break;
-                        }
-
-                        let inventory_to_delete = currently_known_inventory.values().map(|ckps| {
-                            global_app_state.inventory_state.remove(&ckps.entity_id);
-
-                            ckps.entity_id
-                        }).collect::<Vec<_>>();
-
-                        tracing::info!("inventory to delete {} {:?}", inventory_to_delete.len(), inventory_to_delete);
-
-                        let result = ::entity::inventory::Entity::delete_many()
-                            .filter(::entity::inventory::Column::EntityId.is_in(inventory_to_delete))
-                            .exec(&global_app_state.conn).await;
-
-                        if let Err(error) = result {
-                            tracing::error!("Error while cleanup of player_state {error}");
-                        }
-
-                        currently_known_inventory.clear();
 
                         break;
                     }
@@ -211,20 +215,18 @@ pub(crate) fn start_worker_inventory_state(
 
             if !messages.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ = ::entity::inventory::Entity::insert_many(messages.clone())
-                    .on_conflict(on_conflict.clone())
-                    .exec(&global_app_state.conn)
-                    .await;
+                insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
                 // Your batch processing logic here
             }
 
             if !messages_changed.is_empty() {
                 //tracing::info!("Processing {} messages in batch", messages.len());
-                let _ =
-                    ::entity::inventory_changelog::Entity::insert_many(messages_changed.clone())
-                        .on_conflict(on_conflict_changelog.clone())
-                        .exec(&global_app_state.conn)
-                        .await;
+                insert_multiple_inventory_changelog(
+                    &global_app_state,
+                    &on_conflict_changelog,
+                    &mut messages_changed,
+                )
+                .await;
                 // Your batch processing logic here
             }
 
@@ -234,4 +236,41 @@ pub(crate) fn start_worker_inventory_state(
             }
         }
     });
+}
+
+async fn insert_multiple_inventory(
+    global_app_state: &AppState,
+    on_conflict: &OnConflict,
+    messages: &mut Vec<::entity::inventory::ActiveModel>,
+) {
+    let insert = ::entity::inventory::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!("Error inserting InventoryState: {}", insert.unwrap_err())
+    }
+
+    messages.clear();
+}
+
+async fn insert_multiple_inventory_changelog(
+    global_app_state: &AppState,
+    on_conflict: &OnConflict,
+    messages: &mut Vec<::entity::inventory_changelog::ActiveModel>,
+) {
+    let insert = ::entity::inventory_changelog::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
+
+    if insert.is_err() {
+        tracing::error!(
+            "Error inserting InventoryChangelog: {}",
+            insert.unwrap_err()
+        )
+    }
+
+    messages.clear();
 }

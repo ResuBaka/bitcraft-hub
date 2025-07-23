@@ -43,29 +43,29 @@ export default defineNuxtConfig({
           light: {
             variables: {
               'color-tier-1': colors.grey.darken4,
-              'color-tier-2': colors.green.darken4,
-              'color-tier-3': colors.blue.darken4,
-              'color-tier-4': colors.purple.darken4,
-              'color-tier-5': colors.yellow.darken4,
-              'color-tier-6': colors.orange.darken4,
-              'color-tier-7': colors.red.darken4,
-              'color-tier-8': colors.red.darken4,
-              'color-tier-9': colors.red.darken4,
-              'color-tier-10': colors.red.darken4,
+              'color-tier-2': colors.orange.darken4,
+              'color-tier-3': colors.green.darken4,
+              'color-tier-4': colors.blue.darken4,
+              'color-tier-5': colors.purple.darken4,
+              'color-tier-6': colors.red.darken4,
+              'color-tier-7': colors.yellow.darken4,
+              'color-tier-8': colors.teal.darken4,
+              'color-tier-9': colors.deepPurple.darken4,
+              'color-tier-10': colors.deepPurple.darken4,
             }
           },
           dark: {
             variables: {
               'color-tier-1': colors.grey.lighten1,
-              'color-tier-2': colors.green.base,
-              'color-tier-3': colors.blue.base,
-              'color-tier-4': colors.purple.base,
-              'color-tier-5': colors.yellow.base,
-              'color-tier-6': colors.orange.base,
-              'color-tier-7': colors.red.base,
-              'color-tier-8': colors.red.base,
-              'color-tier-9': colors.red.base,
-              'color-tier-10': colors.red.base,
+              'color-tier-2': colors.orange.base,
+              'color-tier-3': colors.green.base,
+              'color-tier-4': colors.blue.base,
+              'color-tier-5': colors.purple.base,
+              'color-tier-6': colors.red.base,
+              'color-tier-7': colors.yellow.base,
+              'color-tier-8': colors.teal.base,
+              'color-tier-9': colors.deepPurple.base,
+              'color-tier-10': colors.deepPurple.base,
             }
           }
         }
@@ -74,9 +74,6 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    experimental: {
-      enableNativePlugin: true,
-    },
     $server: {
       build: {
         target: 'esnext',

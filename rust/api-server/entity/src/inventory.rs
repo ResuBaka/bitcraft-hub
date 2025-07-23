@@ -18,6 +18,7 @@ pub struct Model {
     pub cargo_index: i32,
     pub owner_entity_id: i64,
     pub player_owner_entity_id: i64,
+    pub region: String,
 }
 
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
@@ -162,9 +163,19 @@ impl From<game_module::module_bindings::ItemType> for crate::inventory::ItemType
     }
 }
 
-impl From<InventoryState> for crate::inventory::Model {
-    fn from(value: InventoryState) -> Self {
-        crate::inventory::Model {
+pub struct ModelBuilder {
+    entity_id: i64,
+    pockets: Vec<Pocket>,
+    inventory_index: i32,
+    cargo_index: i32,
+    owner_entity_id: i64,
+    player_owner_entity_id: i64,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(value: InventoryState) -> Self {
+        Self {
             entity_id: value.entity_id as i64,
             pockets: value
                 .pockets
@@ -175,6 +186,24 @@ impl From<InventoryState> for crate::inventory::Model {
             cargo_index: value.cargo_index,
             owner_entity_id: value.owner_entity_id as i64,
             player_owner_entity_id: value.player_owner_entity_id as i64,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            pockets: self.pockets,
+            inventory_index: self.inventory_index,
+            cargo_index: self.cargo_index,
+            owner_entity_id: self.owner_entity_id,
+            player_owner_entity_id: self.player_owner_entity_id,
+            region: self.region,
         }
     }
 }

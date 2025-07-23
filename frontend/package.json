@@ -12,20 +12,20 @@
     "format:check": "biome format ./app"
   },
   "dependencies": {
-    "@pinia/nuxt": "^0.11.1",
-    "msgpackr": "^1.11.4",
-    "nuxt": "^4.0.0",
-    "vue": "^3.6.0-alpha.1",
+    "@pinia/nuxt": "^0.11.2",
+    "msgpackr": "^1.11.5",
+    "nuxt": "^4.0.1",
+    "vue": "^3.6.0-alpha.2",
     "vue-router": "^4.5.1",
     "vuetify-sonner": "^0.3.21"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.1",
+    "@biomejs/biome": "^2.1.2",
     "@nuxt/devtools": "^2.6.2",
     "sass": "^1.89.2",
     "@vueuse/core": "^13.5.0",
     "@vueuse/shared": "^13.5.0",
-    "vuetify": "^3.9.0",
+    "vuetify": "^3.9.2",
     "vuetify-nuxt-module": "^0.18.7"
   },
   "overrides": {

@@ -298,11 +298,15 @@ const tierColor = function (tier: number) {
 
   const colors = {
     1: `grey${colorEffect}`,
-    2: `green${colorEffect}`,
-    3: `blue${colorEffect}`,
-    4: `purple${colorEffect}`,
-    5: `yellow${colorEffect}`,
-    6: `pink${colorEffect}`,
+    2: `orange${colorEffect}`,
+    3: `green${colorEffect}`,
+    4: `blue${colorEffect}`,
+    5: `purple${colorEffect}`,
+    6: `red${colorEffect}`,
+    7: `yellow${colorEffect}`,
+    8: `teal${colorEffect}`,
+    9: `deepPurple${colorEffect}`,
+    10: `deepPurple${colorEffect}`,
   };
 
   return colors[tier] ?? "";
@@ -326,22 +330,31 @@ const levelToColor = (level: number) => {
     return `grey${colorEffect}`;
   }
   if (20 <= level && level <= 29) {
-    return `green${colorEffect}`;
-  }
-  if (30 <= level && level <= 39) {
-    return `blue${colorEffect}`;
-  }
-  if (40 <= level && level <= 49) {
-    return `purple${colorEffect}`;
-  }
-  if (50 <= level && level <= 59) {
-    return `yellow${colorEffect}`;
-  }
-  if (60 <= level && level <= 69) {
     return `orange${colorEffect}`;
   }
-  if (70 <= level) {
+  if (30 <= level && level <= 39) {
+    return `green${colorEffect}`;
+  }
+  if (40 <= level && level <= 49) {
+    return `blue${colorEffect}`;
+  }
+  if (50 <= level && level <= 59) {
+    return `purple${colorEffect}`;
+  }
+  if (60 <= level && level <= 69) {
     return `red${colorEffect}`;
+  }
+  if (70 <= level && level <= 79) {
+    return `yellow${colorEffect}`;
+  }
+  if (80 <= level && level <= 89) {
+    return `teal${colorEffect}`;
+  }
+  if (90 <= level && level <= 99) {
+    return `deepPurple${colorEffect}`;
+  }
+  if (100 <= level) {
+    return `deepPurple${colorEffect}`;
   }
 };
 
@@ -352,26 +365,21 @@ const tierToColor = (tier: number) => {
   } else {
     colorEffect = "-darken-4";
   }
-  if (tier == 2) {
-    return `green${colorEffect}`;
-  }
-  if (tier == 3) {
-    return `blue${colorEffect}`;
-  }
-  if (tier == 4) {
-    return `purple${colorEffect}`;
-  }
-  if (tier == 5) {
-    return `yellow${colorEffect}`;
-  }
-  if (tier == 6) {
-    return `orange${colorEffect}`;
-  }
-  if (tier == 7) {
-    return `red${colorEffect}`;
-  } else {
-    return `grey${colorEffect}`;
-  }
+
+  const colors = {
+    1: `grey${colorEffect}`,
+    2: `orange${colorEffect}`,
+    3: `green${colorEffect}`,
+    4: `blue${colorEffect}`,
+    5: `purple${colorEffect}`,
+    6: `red${colorEffect}`,
+    7: `yellow${colorEffect}`,
+    8: `teal${colorEffect}`,
+    9: `deepPurple${colorEffect}`,
+    10: `deepPurple${colorEffect}`,
+  };
+
+  return colors[tier];
 };
 
 const length = computed(() => {
@@ -686,7 +694,7 @@ watchThrottled(
       <v-col cols="12" lg="10">
         <v-card height="100%">
           <v-card-title class="d-flex align-center pe-2">
-            Members (<div :class="`text-decoration-none ${onlinePlayersCount > 0 ? 'text-green' : 'text-high-emphasis'}`">{{ onlinePlayersCount }}</div>/{{ claim?.members?.length || 0 }})
+            Members (<div :class="`text-decoration-none ${onlinePlayersCount > 0 ? 'text-green' : 'text-high-emphasis'}`">{{ onlinePlayersCount }}</div>/{{ claimFetch ? Object.values(claimFetch.members).length : 0 }})
 
             <v-spacer></v-spacer>
             <v-checkbox
@@ -801,73 +809,73 @@ watchThrottled(
               </template>
               <template #item.skills_ranks.Carpentry="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Farming="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Fishing="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Foraging="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Forestry="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Hunting="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Leatherworking="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
-                  <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.rarity)[0] }} </div></v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Masonry="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Mining="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Scholar="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Smithing="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
               <template #item.skills_ranks.Tailoring="{ value, item }">
                 <div style="white-space: nowrap;">
-                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value.level)">{{ value.level}}</v-chip>
+                  <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;" :color="levelToColor(value?.level)">{{ value?.level}}</v-chip>
                   <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;" :color="tierToColor(item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.tier)"><div v-if="item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.tier">T{{item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.tier}} {{ Array.from(item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.rarity)[0] }} </div></v-chip>
                 </div>
               </template>
@@ -1182,6 +1190,13 @@ watchThrottled(
                     class: 'font-weight-black'
                   }
                 },
+                {
+                  title: 'Name',
+                  key: 'name',
+                  cellProps: {
+                    class: 'font-weight-black'
+                  }
+                },
                  {
                   title: 'NPC Name',
                   key: 'npc_name',
@@ -1211,16 +1226,28 @@ watchThrottled(
             >
               <template #item.items="{ item }">
                 <template v-for="shownItem of trevelerTasksFetch[item[0]]?.required_items ">
-                                  <v-badge :content="Intl.NumberFormat().format(shownItem.quantity)" location="right" class="align-start">
-                                    <template v-if="shownItem.item_type == 'Item'">
-                                      <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.item_desc[shownItem.item_id].icon_asset_name).url" height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>
-                                      </template>
-                                    <template v-else-if="shownItem.item_type == 'Cargo'">
-                                      <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].icon_asset_name).url" height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>
-                                    </template>
-                                  </v-badge>
-                                </template>
+                  <v-badge :content="Intl.NumberFormat().format(shownItem.quantity)" location="right" class="align-start">
+                    <template v-if="shownItem.item_type == 'Item'">
+                      <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.item_desc[shownItem.item_id].icon_asset_name).url" height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>
+                      </template>
+                    <template v-else-if="shownItem.item_type == 'Cargo'">
+                      <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].icon_asset_name).url" height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>
+                    </template>
+                  </v-badge>
                 </template>
+                </template>
+              <template #item.name="{ item }">
+                <template v-for="shownItem of trevelerTasksFetch[item[0]]?.required_items ">
+                  <div class="align-center" :class="`text-${tierColor(shownItem.item_type == 'Item' ? itemsAndCargoAllFetch.item_desc[shownItem.item_id].tier : itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].tier)}`">
+                    <template v-if="shownItem.item_type == 'Item'">
+                      {{ itemsAndCargoAllFetch.item_desc[shownItem.item_id].name }}
+                    </template>
+                    <template v-else-if="shownItem.item_type == 'Cargo'">
+                      {{ itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].name }}
+                    </template>
+                  </div>
+                </template>
+              </template>
 
               <template #item.npc_name="{ value, item }">
                   {{ trevelerTasksFetch[item[0]].description.split(" ")[0] }}

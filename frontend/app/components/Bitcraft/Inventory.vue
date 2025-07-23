@@ -10,6 +10,32 @@ const { inventory } = defineProps<{
   inventory: any;
 }>();
 
+const theme = useTheme();
+
+const tierColor = computed(() => {
+  let colorEffect = "";
+
+  if (theme.global.current.value.dark) {
+  } else {
+    colorEffect = "-darken-4";
+  }
+
+  const colors = {
+    1: `grey${colorEffect}`,
+    2: `orange${colorEffect}`,
+    3: `green${colorEffect}`,
+    4: `blue${colorEffect}`,
+    5: `purple${colorEffect}`,
+    6: `red${colorEffect}`,
+    7: `yellow${colorEffect}`,
+    8: `teal${colorEffect}`,
+    9: `deepPurple${colorEffect}`,
+    10: `deepPurple${colorEffect}`,
+  };
+
+  return colors;
+});
+
 const router = useRouter();
 
 const playerId = ref<bigint | null>();
@@ -82,6 +108,11 @@ watchThrottled(
           <v-card-title>Current Items</v-card-title>
           <v-data-table density="compact" :headers="headersPockets"
                         :items="inventory.pockets" :row-props="backgroundColorRow">
+            <template #item.contents.item.name="{ item }">
+              <div :class="`text-${tierColor[item?.contents?.item?.tier]}`">
+                {{ item?.contents?.item?.name ?? '' }} | {{ item?.contents?.item?.rarity ?? '' }}
+              </div>
+            </template>
           </v-data-table>
         </v-card-text>
       </v-card>

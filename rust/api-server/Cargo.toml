@@ -8,6 +8,14 @@ rust-version = "1.85.0"
 #opt-level = 3
 #lto = true
 
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3
+
 [workspace]
 members = [".", "api", "service", "entity", "migration", "game_module"]
 
@@ -25,7 +33,8 @@ rayon = "1.10.0"
 anyhow = "1.0.98"
 clap = { version = "4.5.39", features = ["derive"] }
 axum-codec = { version = "0.0.19", features = ["serde", "json", "msgpack", "toml", "yaml"] }
-spacetimedb-sdk = "1.2.0"
+#spacetimedb-sdk = "1.2.0"
+spacetimedb-sdk = { git = "https://github.com/ResuBaka/SpacetimeDB.git", branch = "update-tokio-tungstenite-for-performance" }
 ts-rs = "11.0.1"
 chrono = "0.4.41"
 

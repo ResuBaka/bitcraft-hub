@@ -16,6 +16,7 @@ pub struct Model {
     pub x: i32,
     pub z: i32,
     pub dimension: i32,
+    pub region: String,
 }
 
 // #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -23,14 +24,40 @@ pub struct Model {
 
 // impl ActiveModelBehavior for ActiveModel {}
 
-impl From<LocationState> for Model {
-    fn from(state: LocationState) -> Self {
+pub struct ModelBuilder {
+    entity_id: i64,
+    chunk_index: i64,
+    x: i32,
+    z: i32,
+    dimension: i32,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(value: LocationState) -> Self {
         Self {
-            entity_id: state.entity_id as i64,
-            chunk_index: state.chunk_index as i64,
-            x: state.x,
-            z: state.z,
-            dimension: state.dimension as i32,
+            entity_id: value.entity_id as i64,
+            chunk_index: value.chunk_index as i64,
+            x: value.x,
+            z: value.z,
+            dimension: value.dimension as i32,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            chunk_index: self.chunk_index,
+            x: self.x,
+            z: self.z,
+            dimension: self.dimension,
+            region: self.region,
         }
     }
 }

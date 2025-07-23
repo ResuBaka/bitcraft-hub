@@ -46,6 +46,7 @@ use axum::{
 };
 use clap::{Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
+use kanal::AsyncSender;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
 use migration::{Migrator, MigratorTrait};
@@ -54,6 +55,7 @@ use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
 use service::sea_orm::{Database, DatabaseConnection};
 use spacetimedb_sdk::Identity;
+use spacetimedb_sdk::unstable::CLIENT_METRICS;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt::Display;
@@ -77,7 +79,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     Migrator::up(&database_connection, None).await?;
 
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessages>();
 
     let state = AppState::new(database_connection.clone(), tx.clone());
 
@@ -229,7 +231,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
     let id = nanoid::nanoid!();
 
-    let (tx, mut rx) = tokio::sync::broadcast::channel::<WebSocketMessages>(20);
+    let (tx, rx) = kanal::bounded_async::<WebSocketMessages>(20);
 
     state
         .clients_state
@@ -244,7 +246,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
     // Now send the "joined" message to all subscribers.
     let msg = format!("{id} joined.");
-    let _ = tx.send(WebSocketMessages::Message(msg));
+    let _ = tx.send(WebSocketMessages::Message(msg)).await;
 
     let internal_id = id.clone();
     let inner_state = state.clone();
@@ -330,7 +332,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                         }
 
                         let topics = topics.unwrap();
-                        let _ = tx.send(WebSocketMessages::SubscribedTopics(topics));
+                        let _ = tx.send(WebSocketMessages::SubscribedTopics(topics)).await;
                     }
                     _ => {}
                 },
@@ -358,7 +360,7 @@ async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<WebSocketM
         }
 
         let topics = message.topics().unwrap();
-        let mut senders = vec![];
+        let mut senders: Vec<AsyncSender<WebSocketMessages>> = vec![];
 
         for (topic_name, topic_id) in topics {
             senders.extend(
@@ -370,7 +372,7 @@ async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<WebSocketM
         }
 
         for sender in senders {
-            sender.send(message.clone()).unwrap();
+            let _ = sender.send(message.clone()).await;
         }
     }
 }
@@ -424,9 +426,9 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         )
         .route(
             "/metrics",
-            get(|| async move {
+            get(|State(app_state): State<AppState>| async move {
                 let encoder = prometheus::TextEncoder::new();
-                let metric_families = prometheus::gather();
+                let metric_families = app_state.metrics_registry.gather();
                 let prometheus_body = encoder.encode_to_string(&metric_families);
                 let metrics_body = prometheus.render();
                 collector.collect();
@@ -471,6 +473,7 @@ struct AppState {
         Arc<dashmap::DashMap<u64, dashmap::DashMap<i64, entity::claim_member_state::Model>>>,
     player_to_claim_id_cache: Arc<dashmap::DashMap<u64, dashmap::DashSet<u64>>>,
     claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
+    claim_state: Arc<dashmap::DashMap<i64, entity::claim_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
     player_action_state: Arc<dashmap::DashMap<u64, entity::player_action_state::Model>>,
     crafting_recipe_desc: Arc<dashmap::DashMap<i32, entity::crafting_recipe::Model>>,
@@ -487,19 +490,27 @@ struct AppState {
     cargo_tiers: Arc<dashmap::DashSet<i64>>,
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
     location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
-    inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
+    // inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
     #[allow(dead_code)]
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,
     traveler_task_desc: Arc<dashmap::DashMap<i32, entity::traveler_task_desc::Model>>,
     user_state: Arc<dashmap::DashMap<Identity, u64>>,
     npc_desc: Arc<dashmap::DashMap<i32, entity::npc_desc::Model>>,
+    metrics_registry: prometheus::Registry,
 }
 
 impl AppState {
     fn new(conn: DatabaseConnection, tx: UnboundedSender<WebSocketMessages>) -> Self {
+        let metrics_registry = prometheus::Registry::new();
+
+        metrics_registry
+            .register(Box::new(&*CLIENT_METRICS))
+            .unwrap();
+
         Self {
             conn,
             tx,
+            metrics_registry,
             connection_state: Arc::new(dashmap::DashMap::new()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
@@ -507,6 +518,7 @@ impl AppState {
             player_to_claim_id_cache: Arc::new(dashmap::DashMap::new()),
             claim_local_state: Arc::new(dashmap::DashMap::new()),
             claim_tile_state: Arc::new(dashmap::DashMap::new()),
+            claim_state: Arc::new(dashmap::DashMap::new()),
             player_action_state: Arc::new(dashmap::DashMap::new()),
             crafting_recipe_desc: Arc::new(dashmap::DashMap::new()),
             claim_tech_desc: Arc::new(dashmap::DashMap::new()),
@@ -522,7 +534,7 @@ impl AppState {
             building_nickname_state: Arc::new(dashmap::DashMap::new()),
             action_state: Arc::new(dashmap::DashMap::new()),
             location_state: Arc::new(dashmap::DashMap::new()),
-            inventory_state: Arc::new(dashmap::DashMap::new()),
+            // inventory_state: Arc::new(dashmap::DashMap::new()),
             connected_user_map: Arc::new(dashmap::DashMap::new()),
             traveler_task_desc: Arc::new(dashmap::DashMap::new()),
             user_state: Arc::new(dashmap::DashMap::new()),
@@ -566,23 +578,23 @@ impl AppState {
                         self.cargo_desc.insert(value.id, value.clone());
                     });
             },
-            async move {
-                ::entity::inventory::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading inventory in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.inventory_state.insert(value.entity_id, value.clone());
-                    });
-            },
+            // async move {
+            //     ::entity::inventory::Entity::find()
+            //         .all(&self.conn)
+            //         .await
+            //         .unwrap_or_else(|err| {
+            //             tracing::error!(
+            //                 error = err.to_string(),
+            //                 "Error loading inventory in fill_state_from_db"
+            //             );
+            //
+            //             vec![]
+            //         })
+            //         .into_iter()
+            //         .for_each(|value| {
+            //             self.inventory_state.insert(value.entity_id, value.clone());
+            //         });
+            // },
             async move {
                 ::entity::claim_local_state::Entity::find()
                     .all(&self.conn)
@@ -692,7 +704,7 @@ impl AppState {
 
     fn add_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
         let claim_entity_id = claim_member_state.claim_entity_id;
-        let entity_id = claim_member_state.entity_id;
+        let entity_id = claim_member_state.player_entity_id;
 
         let cms = self.claim_member_state.get(&(claim_entity_id as u64));
 
@@ -763,7 +775,7 @@ impl Display for WebsocketEncoding {
 }
 
 type WebsocketClient = (
-    tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
+    AsyncSender<crate::websocket::WebSocketMessages>,
     HashMap<String, HashSet<i64>>,
     WebsocketEncoding,
 );
@@ -784,7 +796,7 @@ impl ClientsState {
     pub(crate) async fn add_client(
         &self,
         id: String,
-        tx: tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>,
+        tx: AsyncSender<WebSocketMessages>,
         encoding: WebsocketEncoding,
     ) {
         self.clients
@@ -888,7 +900,7 @@ impl ClientsState {
         &self,
         topic: &String,
         topic_id: i64,
-    ) -> Vec<tokio::sync::broadcast::Sender<crate::websocket::WebSocketMessages>> {
+    ) -> Vec<AsyncSender<crate::websocket::WebSocketMessages>> {
         let mut senders = vec![];
         let clients = self.clients.read().await;
 
@@ -1197,7 +1209,8 @@ fn setup_tracing(cfg: &Config) {
         let log_level = &cfg.log_level;
 
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        format!("{CRATE_NAME}={log_level},axum={log_level},spacetimedb_sdk={log_level}",)
+        // format!("{CRATE_NAME}={log_level},axum={log_level},spacetimedb_sdk={log_level}",)
+        format!("{CRATE_NAME}={log_level},axum={log_level}",)
     });
 
     match cfg.log_type {

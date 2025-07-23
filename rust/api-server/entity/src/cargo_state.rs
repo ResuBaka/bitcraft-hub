@@ -11,6 +11,7 @@ pub struct Model {
     pub spawn_timestamp: i32,
     pub description_id: i32,
     pub direction: i32,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

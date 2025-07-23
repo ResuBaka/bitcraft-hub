@@ -1,7 +1,5 @@
 pub(crate) mod bitcraft;
 
-use std::collections::HashMap;
-
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
@@ -13,6 +11,8 @@ use log::error;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
+use std::collections::HashMap;
+use std::ops::Deref;
 use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -132,7 +132,7 @@ pub(crate) struct FindPlayerByIdResponse {
     pub username: String,
     pub deployables: Vec<VaultStateCollectibleWithDesc>,
     pub claim_id: Option<u64>,
-    pub claim_ids: Vec<u64>,
+    pub claims: Vec<entity::claim_state::Model>,
     pub player_location: Option<mobile_entity_state::Model>,
     pub player_action_state: Option<String>,
     pub player_action_state2: Option<entity::player_action_state::Model>,
@@ -207,10 +207,19 @@ pub async fn find_player_by_id(
         None
     });
 
-    let claim_ids = state
+    let claims = state
         .player_to_claim_id_cache
         .get(&(player.entity_id as u64))
-        .map_or(vec![], |ids| ids.iter().map(|id| *id).collect());
+        .map_or(vec![], |ids| {
+            ids.iter()
+                .filter_map(|id| {
+                    state
+                        .claim_state
+                        .get(&(*id.deref() as i64))
+                        .map(|cs| cs.clone())
+                })
+                .collect()
+        });
 
     let traveler_tasks_db =
         QueryCore::get_traveler_task_state_by_player_entity_ids(&state.conn, vec![id])
@@ -244,7 +253,7 @@ pub async fn find_player_by_id(
         deployables,
         player_location,
         claim_id,
-        claim_ids,
+        claims,
         player_action_state,
         player_action_state2,
         current_action_state,

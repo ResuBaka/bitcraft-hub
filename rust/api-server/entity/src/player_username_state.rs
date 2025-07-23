@@ -12,6 +12,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     pub username: String,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -19,11 +20,31 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<PlayerUsernameState> for crate::player_username_state::Model {
-    fn from(value: PlayerUsernameState) -> Self {
-        crate::player_username_state::Model {
+pub struct ModelBuilder {
+    entity_id: i64,
+    username: String,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(value: PlayerUsernameState) -> Self {
+        Self {
             entity_id: value.entity_id as i64,
             username: value.username,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            username: self.username,
+            region: self.region,
         }
     }
 }

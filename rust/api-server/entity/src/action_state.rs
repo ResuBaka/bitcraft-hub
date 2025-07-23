@@ -10,6 +10,7 @@ pub struct Model {
     pub action_id: i32,
     #[ts(type = "any")]
     pub cooldown: serde_json::Value,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

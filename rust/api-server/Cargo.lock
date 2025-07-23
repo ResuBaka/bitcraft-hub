@@ -176,7 +176,7 @@ dependencies = [
  "metrics-process",
  "migration",
  "nanoid",
- "prometheus 0.14.0",
+ "prometheus",
  "rayon",
  "sea-orm",
  "sea-orm-cli",
@@ -478,7 +478,7 @@ dependencies = [
  "sha1",
  "sync_wrapper",
  "tokio",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.26.2",
  "tower",
  "tower-layer",
  "tower-service",
@@ -2939,23 +2939,8 @@ dependencies = [
  "lazy_static",
  "memchr",
  "parking_lot",
- "protobuf 2.28.0",
+ "protobuf",
  "thiserror 1.0.69",
-]
-
-[[package]]
-name = "prometheus"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ca5326d8d0b950a9acd87e6a3f94745394f62e4dae1b1ee22b2bc0c394af43a"
-dependencies = [
- "cfg-if",
- "fnv",
- "lazy_static",
- "memchr",
- "parking_lot",
- "protobuf 3.7.2",
- "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2963,26 +2948,6 @@ name = "protobuf"
 version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
-
-[[package]]
-name = "protobuf"
-version = "3.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d65a1d4ddae7d8b5de68153b48f6aa3bba8cb002b243dbdbc55a5afbc98f99f4"
-dependencies = [
- "once_cell",
- "protobuf-support",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "protobuf-support"
-version = "3.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e36c2f31e0a47f9280fb347ef5e461ffcd2c52dd520d8e216b52f93b0b0d7d6"
-dependencies = [
- "thiserror 1.0.69",
-]
 
 [[package]]
 name = "ptr_meta"
@@ -3998,8 +3963,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-bindings-macro"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "135f9af56c58a5ed97a7d1b9bee60104c866a46e705ab79f57e5f918ad276bdc"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "heck 0.4.1",
  "humantime",
@@ -4012,8 +3976,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-client-api-messages"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a113aa7b243b7461904301e37f86dfa9e4ea803e4fb0b11f1eac057f052d0cb3"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "brotli 3.5.0",
  "bytes",
@@ -4036,10 +3999,10 @@ dependencies = [
 [[package]]
 name = "spacetimedb-data-structures"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f61fac3c0d82a0558824abfd6bcb5dc5e6fac934e002cac55e2e224a94b59c5"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "ahash 0.8.12",
+ "crossbeam-queue",
  "hashbrown 0.15.4",
  "nohash-hasher",
  "smallvec",
@@ -4049,8 +4012,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-lib"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b4416b57d422452d1e06273b2ff5ceedb90020f74a06d88f39ce1c979b5be7e"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "anyhow",
  "bitflags 2.9.1",
@@ -4062,7 +4024,6 @@ dependencies = [
  "itertools 0.12.1",
  "serde",
  "spacetimedb-bindings-macro",
- "spacetimedb-data-structures",
  "spacetimedb-metrics",
  "spacetimedb-primitives",
  "spacetimedb-sats",
@@ -4072,20 +4033,18 @@ dependencies = [
 [[package]]
 name = "spacetimedb-metrics"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b10e593a9b44d660e1d1dacde1ac2977bf08b51e970ad11043689a2d8c3bf46"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "arrayvec",
  "itertools 0.12.1",
  "paste",
- "prometheus 0.13.4",
+ "prometheus",
 ]
 
 [[package]]
 name = "spacetimedb-primitives"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5a3d9c671b8d54371dd40f146c82cc8ae7039533ce034cbcc7dd618dfe35fc7"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "bitflags 2.9.1",
  "either",
@@ -4096,8 +4055,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-sats"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0dd6d73cae3213342a9144266e486e27a23b317b9601ca5cb4735f8407bcdd1"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -4125,8 +4083,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-sdk"
 version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4438023af69b8b95e2e12779456ba4f7e507d3027bd4df3b156b6d5bab6903f0"
+source = "git+https://github.com/ResuBaka/SpacetimeDB.git?branch=update-tokio-tungstenite-for-performance#e7fcf7ed8561640e28c269120dc5b516fd353b9f"
 dependencies = [
  "anymap",
  "base64 0.21.7",
@@ -4138,7 +4095,7 @@ dependencies = [
  "http",
  "log",
  "once_cell",
- "prometheus 0.13.4",
+ "prometheus",
  "rand 0.9.1",
  "spacetimedb-client-api-messages",
  "spacetimedb-data-structures",
@@ -4147,7 +4104,7 @@ dependencies = [
  "spacetimedb-sats",
  "thiserror 1.0.69",
  "tokio",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.27.0",
 ]
 
 [[package]]
@@ -4686,10 +4643,22 @@ checksum = "7a9daff607c6d2bf6c16fd681ccb7eecc83e4e2cdc1ca067ffaadfca5de7f084"
 dependencies = [
  "futures-util",
  "log",
+ "tokio",
+ "tungstenite 0.26.2",
+]
+
+[[package]]
+name = "tokio-tungstenite"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "489a59b6730eda1b0171fcfda8b121f4bee2b35cba8645ca35c5f7ba3eb736c1"
+dependencies = [
+ "futures-util",
+ "log",
  "native-tls",
  "tokio",
  "tokio-native-tls",
- "tungstenite",
+ "tungstenite 0.27.0",
 ]
 
 [[package]]
@@ -4926,6 +4895,23 @@ name = "tungstenite"
 version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4793cb5e56680ecbb1d843515b23b6de9a75eb04b66643e256a396d43be33c13"
+dependencies = [
+ "bytes",
+ "data-encoding",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.9.1",
+ "sha1",
+ "thiserror 2.0.12",
+ "utf-8",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eadc29d668c91fcc564941132e17b28a7ceb2f3ebf0b9dae3e03fd7a6748eb0d"
 dependencies = [
  "bytes",
  "data-encoding",

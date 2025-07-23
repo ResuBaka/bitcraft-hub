@@ -15,11 +15,15 @@ const tierColor = computed(() => {
 
   const colors = {
     1: `grey${colorEffect}`,
-    2: `green${colorEffect}`,
-    3: `blue${colorEffect}`,
-    4: `purple${colorEffect}`,
-    5: `yellow${colorEffect}`,
-    6: `pink${colorEffect}`,
+    2: `orange${colorEffect}`,
+    3: `green${colorEffect}`,
+    4: `blue${colorEffect}`,
+    5: `purple${colorEffect}`,
+    6: `red${colorEffect}`,
+    7: `yellow${colorEffect}`,
+    8: `teal${colorEffect}`,
+    9: `deepPurple${colorEffect}`,
+    10: `deepPurple${colorEffect}`,
   };
 
   return colors;

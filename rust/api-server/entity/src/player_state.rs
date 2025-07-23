@@ -20,6 +20,7 @@ pub struct Model {
     pub sign_in_timestamp: i32,
     pub signed_in: bool,
     pub traveler_tasks_expiration: i32,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -75,8 +76,20 @@ pub struct PlayerStateMerged {
     pub username: String,
 }
 
-impl From<PlayerState> for crate::player_state::Model {
-    fn from(value: PlayerState) -> Self {
+pub struct ModelBuilder {
+    teleport_location: TeleportLocation,
+    entity_id: i64,
+    time_played: i32,
+    session_start_timestamp: i32,
+    time_signed_in: i32,
+    sign_in_timestamp: i32,
+    signed_in: bool,
+    traveler_tasks_expiration: i32,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(value: PlayerState) -> Self {
         let teleport_location = crate::player_state::TeleportLocation {
             location: crate::player_state::OffsetCoordinatesSmallMessage {
                 x: value.teleport_location.location.x,
@@ -102,7 +115,7 @@ impl From<PlayerState> for crate::player_state::Model {
             },
         };
 
-        crate::player_state::Model {
+        Self {
             teleport_location,
             entity_id: value.entity_id as i64,
             time_played: value.time_played,
@@ -111,6 +124,26 @@ impl From<PlayerState> for crate::player_state::Model {
             sign_in_timestamp: value.sign_in_timestamp,
             signed_in: value.signed_in,
             traveler_tasks_expiration: value.traveler_tasks_expiration,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            teleport_location: self.teleport_location,
+            entity_id: self.entity_id,
+            time_played: self.time_played,
+            session_start_timestamp: self.session_start_timestamp,
+            time_signed_in: self.time_signed_in,
+            sign_in_timestamp: self.sign_in_timestamp,
+            signed_in: self.signed_in,
+            traveler_tasks_expiration: self.traveler_tasks_expiration,
+            region: self.region,
         }
     }
 }

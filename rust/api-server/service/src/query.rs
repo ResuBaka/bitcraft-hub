@@ -1613,6 +1613,7 @@ impl Query {
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column((Alias::new("es"), experience_state::Column::EntityId))
+            .column((Alias::new("es"), experience_state::Column::Region))
             .expr_as(
                 Expr::cust(
                     "case when any_value(ps.time_signed_in) <= 3600 then 0
@@ -1646,6 +1647,7 @@ impl Query {
                     .equals((Alias::new("ps"), player_state::Column::EntityId)),
             )
             .group_by_col((Alias::new("es"), experience_state::Column::EntityId))
+            .group_by_col((Alias::new("es"), experience_state::Column::Region))
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)
             .limit(100)
             .to_owned();
@@ -1662,11 +1664,13 @@ impl Query {
             .map(|row| {
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
                 let total_experience: i64 = row.try_get("", "total_experience").unwrap();
+                let region = row.try_get("", "region").unwrap();
 
                 experience_state::Model {
                     entity_id,
                     experience: total_experience.try_into().unwrap(),
                     skill_id: 1,
+                    region,
                 }
             })
             .collect())
@@ -1680,6 +1684,7 @@ impl Query {
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
+            .column(experience_state::Column::Region)
             .expr_as(
                 Expr::cust("sum(experience)"),
                 Alias::new("total_experience"),
@@ -1698,6 +1703,7 @@ impl Query {
                 );
             })
             .group_by_col(experience_state::Column::EntityId)
+            .group_by_col(experience_state::Column::Region)
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)
             .to_owned();
 
@@ -1713,11 +1719,13 @@ impl Query {
             .map(|row| {
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
                 let total_experience: i64 = row.try_get("", "total_experience").unwrap();
+                let region = row.try_get("", "region").unwrap();
 
                 experience_state::Model {
                     entity_id,
                     experience: total_experience.try_into().unwrap(),
                     skill_id: 1,
+                    region,
                 }
             })
             .collect())

@@ -1,14 +1,14 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::LocationState;
-use kanal::AsyncReceiver;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_location_state(
     global_app_state: AppState,
-    rx: AsyncReceiver<SpacetimeUpdateMessages<LocationState>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<LocationState>>,
     batch_size: usize,
     time_limit: Duration,
     _cancel_token: CancellationToken,
@@ -47,10 +47,17 @@ pub(crate) fn start_worker_location_state(
 
             loop {
                 tokio::select! {
-                    Ok(msg) = rx.recv() => {
+                    Some(msg) = rx.recv() => {
                         match msg {
-                            SpacetimeUpdateMessages::Insert { new, .. } => {
-                                let model: ::entity::location::Model = new.into();
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                for entry in data {
+                                    let model: ::entity::location::Model = ::entity::location::ModelBuilder::new(entry).with_region(database_name.to_string()).build();
+
+                                    global_app_state.location_state.insert(model.entity_id, model);
+                                }
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model: ::entity::location::Model = ::entity::location::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                 messages.push(model.clone());
                                 global_app_state.location_state.insert(model.entity_id, model);
@@ -58,8 +65,8 @@ pub(crate) fn start_worker_location_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, .. } => {
-                                let model: ::entity::location::Model = new.into();
+                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                let model: ::entity::location::Model = ::entity::location::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 // messages.push(model.clone());
                                global_app_state.location_state.insert(model.entity_id, model);
 
@@ -67,8 +74,8 @@ pub(crate) fn start_worker_location_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete,.. } => {
-                                let model: ::entity::location::Model = delete.into();
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model: ::entity::location::Model = ::entity::location::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {

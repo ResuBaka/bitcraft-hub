@@ -9,6 +9,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     pub nickname: String,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -16,11 +17,33 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<game_module::module_bindings::BuildingNicknameState> for Model {
-    fn from(building_nickname_state: game_module::module_bindings::BuildingNicknameState) -> Self {
-        Self {
+pub struct ModelBuilder {
+    entity_id: i64,
+    nickname: String,
+    region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(
+        building_nickname_state: game_module::module_bindings::BuildingNicknameState,
+    ) -> Self {
+        ModelBuilder {
             entity_id: building_nickname_state.entity_id as i64,
             nickname: building_nickname_state.nickname,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            nickname: self.nickname,
+            region: self.region,
         }
     }
 }

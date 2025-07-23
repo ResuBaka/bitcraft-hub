@@ -8,6 +8,7 @@ use entity::inventory::{
     ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
 use entity::{cargo_desc, inventory, inventory_changelog, item_desc};
+use futures::TryStreamExt;
 use log::error;
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
@@ -217,24 +218,35 @@ pub(crate) struct AllInventoryStatsResponse {
 pub(crate) async fn all_inventory_stats(
     state: State<AppState>,
 ) -> Result<axum_codec::Codec<AllInventoryStatsResponse>, (StatusCode, &'static str)> {
-    if state.inventory_state.is_empty() {
-        let inventorys = ::entity::inventory::Entity::find()
-            .all(&state.conn)
-            .await
-            .map_err(|e| {
-                error!("Error: {e:?}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-            })?;
-
-        for inventory in inventorys {
-            state.inventory_state.insert(inventory.entity_id, inventory);
-        }
-    }
+    // if state.inventory_state.is_empty() {
+    //     let inventorys = ::entity::inventory::Entity::find()
+    //         .all(&state.conn)
+    //         .await
+    //         .map_err(|e| {
+    //             error!("Error: {e:?}");
+    //             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+    //         })?;
+    //
+    //     for inventory in inventorys {
+    //         state.inventory_state.insert(inventory.entity_id, inventory);
+    //     }
+    // }
 
     let mut items: HashMap<i32, (i64, Option<::entity::item_desc::Model>)> = HashMap::new();
     let mut cargo: HashMap<i32, (i64, Option<::entity::cargo_desc::Model>)> = HashMap::new();
 
-    for inventory in state.inventory_state.iter() {
+    let mut inventorys = ::entity::inventory::Entity::find()
+        .stream(&state.conn)
+        .await
+        .map_err(|e| {
+            error!("Error: {e:?}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+        })?;
+
+    while let Some(inventory) = inventorys.try_next().await.map_err(|e| {
+        error!("Error: {e:?}");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+    })? {
         for pocket in &inventory.pockets {
             if let Some(contents) = pocket.contents.clone() {
                 if contents.item_type == ItemType::Item {

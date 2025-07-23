@@ -31,6 +31,7 @@ pub struct Model {
     #[sea_orm(column_type = "Float")]
     pub movement_modifier: f32,
     pub blocks_path: bool,
+    #[sea_orm(column_type = "JsonBinary")]
     pub on_destroy_yield_cargos: Vec<i32>,
     #[sea_orm(column_type = "Float")]
     pub despawn_time: f32,

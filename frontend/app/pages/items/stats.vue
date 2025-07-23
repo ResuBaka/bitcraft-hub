@@ -51,7 +51,9 @@ const cargo = computed(() => {
   }
 
   return Object.values(data.value.cargo).filter((value) =>
-    value[1].name.includes(debouncedSearch.value),
+    value[1].name
+      .toLocaleLowerCase()
+      .includes(debouncedSearch.value?.toLocaleLowerCase()),
   );
 });
 

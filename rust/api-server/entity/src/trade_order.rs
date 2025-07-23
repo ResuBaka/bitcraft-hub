@@ -17,6 +17,7 @@ pub struct Model {
     #[sea_orm(column_type = "Json")]
     pub required_items: Vec<TradeOrderOfferItem>,
     pub required_cargo_id: JsonValue,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

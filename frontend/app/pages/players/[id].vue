@@ -162,11 +162,9 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
   if (experienceData.value && experienceData.value[message.skill_name]) {
     let currentExperience = experienceData.value[message.skill_name].experience;
     let currentLevel = experienceData.value[message.skill_name].level;
-    experienceData.value[message.skill_name] = {
-      ...experienceData.value[message.skill_name],
-      experience: message.experience,
-      level: message.level,
-    };
+
+    experienceData.value[message.skill_name].experience = message.experience;
+    experienceData.value[message.skill_name].level = message.level;
 
     if (currentLevel !== message.level && currentLevel <= message.level) {
       toast(`Level ${message.level} reached for Skill ${message.skill_name}`, {
@@ -249,6 +247,7 @@ const { data: experienceData } = useFetchMsPack<PlayerLeaderboardResponse>(
   () => {
     return `/api/bitcraft/experience/${route.params.id}`;
   },
+  { deep: true },
 );
 
 const expeirence = computed(() => {
@@ -395,11 +394,15 @@ const tierColor = computed(() => {
 
   const colors = {
     1: `grey${colorEffect}`,
-    2: `green${colorEffect}`,
-    3: `blue${colorEffect}`,
-    4: `purple${colorEffect}`,
-    5: `yellow${colorEffect}`,
-    6: `pink${colorEffect}`,
+    2: `orange${colorEffect}`,
+    3: `green${colorEffect}`,
+    4: `blue${colorEffect}`,
+    5: `purple${colorEffect}`,
+    6: `red${colorEffect}`,
+    7: `yellow${colorEffect}`,
+    8: `teal${colorEffect}`,
+    9: `deepPurple${colorEffect}`,
+    10: `deepPurple${colorEffect}`,
   };
 
   return colors;
@@ -481,13 +484,13 @@ useSeoMeta({
               <th>Hex Coins:</th>
               <td>{{ wallet?.pockets[0]?.contents?.quantity ?? 0 }}</td>
             </tr>
-            <tr style='text-align: right' v-if="playerData?.claim_ids?.length">
+            <tr style='text-align: right' v-if="playerData?.claims?.length">
               <th>Claims:</th>
               <td>
                 <nuxt-link class="text-decoration-none font-weight-black text-high-emphasis"
-                           :to="{ name: 'claims-id', params: { id: claim_id.toString() } }"
-                           v-for="(claim_id, index) in playerData?.claim_ids"
-                >{{ claim_id.toString() }}{{ index === (playerData?.claim_ids?.length - 1) ? '' : ', ' }}
+                           :to="{ name: 'claims-id', params: { id: claim.entity_id.toString() } }"
+                           v-for="(claim, index) in playerData?.claims"
+                >{{ claim.name.toString() }}{{ index === (playerData?.claims?.length - 1) ? '' : ', ' }}
                 </nuxt-link>
               </td>
             </tr>
@@ -536,7 +539,7 @@ useSeoMeta({
                           </v-list-item>
                           </v-col>
                           <v-col cols="4" md="4" xs="4" v-if="skillToToolIndex[skill] >= 0 && tools?.pockets[skillToToolIndex[skill]].contents" :class="`text-${tierColor[tools?.pockets[skillToToolIndex[skill]].contents.item.tier]}`">
-                            {{ tools.pockets[skillToToolIndex[skill]].contents.item.name ?? "No tool" }}
+                            {{ tools.pockets[skillToToolIndex[skill]].contents.item.name ?? "No tool" }} {{ tools.pockets[skillToToolIndex[skill]].contents.item.rarity ?? "" }}
                             <v-img :src="iconUrl(tools.pockets[skillToToolIndex[skill]].contents.item).url" height="50" width="50"></v-img>
                           </v-col>
                         </v-row>
