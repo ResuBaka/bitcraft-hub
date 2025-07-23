@@ -91,6 +91,11 @@ pub(crate) fn start_worker_item_list_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::item_list_desc::Model = new.into();
                                 global_app_state.item_list_desc.insert(model.id, model.clone());
+
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
+                                    messages.remove(index);
+                                }
+
                                 messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
