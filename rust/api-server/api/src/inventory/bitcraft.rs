@@ -136,6 +136,20 @@ pub(crate) fn start_worker_inventory_state(
                                 if let Some(caller_identity) = caller_identity {
                                     let user_id = global_app_state.user_state.get(&caller_identity).map(|entity_id| entity_id.to_owned() as i64);
                                     for (pocket_index, new_pocket) in new_model.pockets.iter().enumerate() {
+                                        if pocket_index >= old.pockets.len() {
+                                            tracing::warn!(
+                                                "Inventory new pocket amount is less then before ?!? Player {}, EntityId {}, OwnerEntityId {}, Pockets New {}, Pockets Old {} :: {} {}",
+                                                new_model.player_owner_entity_id,
+                                                new_model.entity_id,
+                                                new_model.owner_entity_id,
+                                                new_model.pockets.len(),
+                                                old.pockets.len(),
+                                                old.pockets.len(),
+                                                pocket_index
+                                            );
+                                            break;
+                                        }
+
                                         let old_pocket = &old.pockets[pocket_index];
 
                                         let new_item_id = new_pocket.contents.as_ref().map(|c| c.item_id);
