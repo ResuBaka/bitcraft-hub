@@ -13,6 +13,16 @@ const theme = useTheme();
 const page = ref(1);
 const route = useRoute();
 const numberFormat = new Intl.NumberFormat(undefined);
+const nDate = Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
 
 const tmpPage = (route.query.page as string) ?? null;
 
@@ -471,6 +481,10 @@ useSeoMeta({
             <tr style='text-align: right'>
               <th>Signed in:</th>
               <td>{{ secondsToDaysMinutesSecondsFormat(playerData.time_signed_in) }}</td>
+            </tr>
+            <tr style='text-align: right'>
+              <th>Signed in:</th>
+              <td>{{ nDate.format(new Date(playerData.sign_in_timestamp * 1000)) }}</td>
             </tr>
             <tr v-if="playerData.player_location" style='text-align: right'>
               <th>Location:</th>
