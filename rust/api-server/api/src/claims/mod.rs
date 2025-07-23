@@ -68,6 +68,7 @@ pub struct ClaimDescriptionState {
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub xp_gained_since_last_coin_minting: i32,
+    pub region: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -77,6 +78,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub owner_player_entity_id: i64,
     pub owner_building_entity_id: i64,
     pub name: String,
+    pub region: String,
     pub supplies: i32,
     pub building_maintenance: f32,
     pub members: HashMap<i64, ClaimDescriptionStateMember>,
@@ -292,6 +294,7 @@ pub(crate) async fn get_claim(
             neutral: false,
             location: Default::default(),
             treasury: 0,
+            region: claim.region,
             running_upgrade: None,
             running_upgrade_started: None,
             tier: None,
@@ -550,6 +553,7 @@ pub(crate) async fn get_claim(
         owner_player_entity_id: claim.owner_player_entity_id,
         owner_building_entity_id: claim.owner_building_entity_id,
         name: claim.name,
+        region: claim.region,
         supplies: claim.supplies,
         building_maintenance: claim.building_maintenance,
         members: claim
@@ -785,6 +789,7 @@ pub(crate) async fn list_claims(
                 owner_player_entity_id: claim_description.owner_player_entity_id,
                 owner_building_entity_id: claim_description.owner_building_entity_id,
                 name: claim_description.name,
+                region: claim_description.region,
                 supplies: 0,
                 building_maintenance: 0.0,
                 members: claim_member_state,

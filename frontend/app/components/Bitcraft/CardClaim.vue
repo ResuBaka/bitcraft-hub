@@ -80,7 +80,7 @@ const claimOwner = computed(() => {
         <tr style='text-align: right' v-if="claim.location">
           <th>Location:</th>
           <td>
-            N: {{ Math.ceil(claim.location.z / 3)  }}, E: {{ Math.ceil(claim.location.x / 3) }}
+            R: {{ claim.region.replace("bitcraft-", "") }} N: {{ Math.ceil(claim.location.z / 3)  }}, E: {{ Math.ceil(claim.location.x / 3) }}
           </td>
         </tr>
         <tr v-if="claim.running_upgrade" style='text-align: right'>
