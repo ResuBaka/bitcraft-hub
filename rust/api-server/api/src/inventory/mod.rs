@@ -131,13 +131,29 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         }
     };
 
-    let (inventorys, num_pages) =
+    let (mut inventorys, num_pages) =
         QueryCore::find_inventory_by_owner_entity_ids(&state.conn, inventory_ids)
             .await
             .map_err(|e| {
                 error!("Error: {e:?}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             })?;
+
+
+    if let Some(player) = &player {
+        let mobile_entiety_from_player =
+            QueryCore::find_inventory_by_player_owner_entity_id(&state.conn, player.entity_id)
+                .await
+                .map_err(|e| {
+                    error!("Error: {e:?}");
+
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+                })?;
+
+        for mobile_entiety in mobile_entiety_from_player.0 {
+            inventorys.push(mobile_entiety);
+        }
+    };
 
     let mut item_ids = vec![];
     let mut cargo_ids = vec![];
