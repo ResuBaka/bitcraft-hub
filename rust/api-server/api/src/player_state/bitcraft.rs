@@ -57,6 +57,11 @@ pub(crate) fn start_worker_player_state(
                                 for model in data.into_iter().map(|value| {
                                     let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
+                                    metrics::gauge!("players_current_state", &[
+                                        ("online", model.signed_in.to_string()),
+                                        ("region", database_name.to_string())
+                                    ]).increment(1);
+
                                     model
                                 }) {
                                     use std::collections::hash_map::Entry;
