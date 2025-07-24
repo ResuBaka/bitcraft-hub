@@ -2,12 +2,13 @@ use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::{BuildingDesc, BuildingNicknameState, BuildingState};
 use migration::{OnConflict, sea_query};
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, InsertResult, IntoActiveModel, ModelTrait, QueryFilter};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
+use entity::building_state::ActiveModel;
 
 pub(crate) fn start_worker_building_state(
     global_app_state: AppState,
@@ -68,11 +69,19 @@ pub(crate) fn start_worker_building_state(
                                     }
 
                                     if local_messages.len() >= batch_size {
-                                       insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                       let insert = insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
+
+                                        if insert.is_err() {
+                                            tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
+                                        }
                                     }
                                 };
                                 if !local_messages.is_empty() {
-                                    insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    let insert = insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
+
+                                    if insert.is_err() {
+                                        tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
+                                    }
                                 }
 
                                 for chunk_ids in currently_known_building_state.into_keys().collect::<Vec<_>>().chunks(1000) {
@@ -86,6 +95,10 @@ pub(crate) fn start_worker_building_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages.iter().position(|value: &::entity::building_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+
                                 messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
@@ -94,6 +107,10 @@ pub(crate) fn start_worker_building_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
 
                                 messages.push(model.into_active_model());
 
@@ -133,8 +150,12 @@ pub(crate) fn start_worker_building_state(
                     "BuildingState ->>>> Processing {} messages in batch",
                     messages.len()
                 );
-                insert_multiple_building_state(&global_app_state, &on_conflict, &mut messages)
+                let insert = insert_multiple_building_state(&global_app_state, &on_conflict, &mut messages)
                     .await;
+
+                if insert.is_err() {
+                    tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
+                }
 
                 // Your batch processing logic here
             }
@@ -151,17 +172,15 @@ async fn insert_multiple_building_state(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::building_state::ActiveModel>,
-) {
+) -> Result<InsertResult<ActiveModel>, DbErr> {
     let insert = ::entity::building_state::Entity::insert_many(messages.clone())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
-    }
-
     messages.clear();
+
+    insert
 }
 
 pub(crate) fn start_worker_building_desc(
