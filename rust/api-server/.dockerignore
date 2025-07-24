@@ -5,3 +5,5 @@ target
 migration/.env
 storage
 tmp
+perf.data*
+flamegraph*.svg
