@@ -1310,6 +1310,66 @@ impl Query {
             .collect::<Vec<(u64, i32)>>())
     }
 
+    pub async fn get_experience_state_top_100_time_played(
+        db: &DbConn,
+        exclude: Option<[i64; 1]>,
+    ) -> Result<Vec<(u64, i32)>, DbErr> {
+        let query = sea_orm::sea_query::Query::select()
+            .column(player_state::Column::EntityId)
+            .expr_as(Expr::col(player_state::Column::TimePlayed), Alias::new("time_played"))
+            .and_where(player_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .from(player_state::Entity)
+            .order_by_expr(Expr::cust("time_played"), Order::Desc)
+            .limit(100)
+            .to_owned();
+
+        let query = match db.get_database_backend() {
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            _ => unreachable!(),
+        };
+
+        Ok(db
+            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .await?
+            .into_iter()
+            .map(|row| {
+                let time_played: i32 = row.try_get("", "time_played").unwrap();
+                let entity_id: i64 = row.try_get("", "entity_id").unwrap();
+                (entity_id.try_into().unwrap(), time_played.try_into().unwrap())
+            })
+            .collect::<Vec<(u64, i32)>>())
+    }
+
+    pub async fn get_experience_state_top_100_time_online(
+        db: &DbConn,
+        exclude: Option<[i64; 1]>,
+    ) -> Result<Vec<(u64, i32)>, DbErr> {
+        let query = sea_orm::sea_query::Query::select()
+            .column(player_state::Column::EntityId)
+            .expr_as(Expr::col(player_state::Column::TimeSignedIn), Alias::new("time_online"))
+            .and_where(player_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .from(player_state::Entity)
+            .order_by_expr(Expr::cust("time_online"), Order::Desc)
+            .limit(100)
+            .to_owned();
+
+        let query = match db.get_database_backend() {
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            _ => unreachable!(),
+        };
+
+        Ok(db
+            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .await?
+            .into_iter()
+            .map(|row| {
+                let time_online: i32 = row.try_get("", "time_online").unwrap();
+                let entity_id: i64 = row.try_get("", "entity_id").unwrap();
+                (entity_id.try_into().unwrap(), time_online.try_into().unwrap())
+            })
+            .collect::<Vec<(u64, i32)>>())
+    }
+
     pub async fn get_experience_state_player_ids_total_level(
         db: &DbConn,
         level_case_sql: String,
@@ -1349,6 +1409,68 @@ impl Query {
             .into_iter()
             .map(|row| {
                 let level: i64 = row.try_get("", "level").unwrap();
+                let entity_id: i64 = row.try_get("", "entity_id").unwrap();
+                (entity_id as u64, level.try_into().unwrap())
+            })
+            .collect::<Vec<(u64, i32)>>())
+    }
+
+    pub async fn get_experience_state_player_ids_time_played(
+        db: &DbConn,
+        player_ids: Vec<i64>,
+        exclude: Option<[i64; 1]>,
+    ) -> Result<Vec<(u64, i32)>, DbErr> {
+        let query = sea_orm::sea_query::Query::select()
+            .column(player_state::Column::EntityId)
+            .expr_as(Expr::col(player_state::Column::TimePlayed), Alias::new("time_played"))
+            .from(player_state::Entity)
+            .order_by_expr(Expr::cust("time_played"), Order::Desc)
+            .and_where(player_state::Column::EntityId.is_in(player_ids))
+            .and_where(player_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .to_owned();
+
+        let query = match db.get_database_backend() {
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            _ => unreachable!(),
+        };
+
+        Ok(db
+            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .await?
+            .into_iter()
+            .map(|row| {
+                let level: i32 = row.try_get("", "time_played").unwrap();
+                let entity_id: i64 = row.try_get("", "entity_id").unwrap();
+                (entity_id as u64, level.try_into().unwrap())
+            })
+            .collect::<Vec<(u64, i32)>>())
+    }
+
+    pub async fn get_experience_state_player_ids_time_online(
+        db: &DbConn,
+        player_ids: Vec<i64>,
+        exclude: Option<[i64; 1]>,
+    ) -> Result<Vec<(u64, i32)>, DbErr> {
+        let query = sea_orm::sea_query::Query::select()
+            .column(player_state::Column::EntityId)
+            .expr_as(Expr::col(player_state::Column::TimeSignedIn), Alias::new("time_played"))
+            .from(player_state::Entity)
+            .order_by_expr(Expr::cust("time_played"), Order::Desc)
+            .and_where(player_state::Column::EntityId.is_in(player_ids))
+            .and_where(player_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
+            .to_owned();
+
+        let query = match db.get_database_backend() {
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            _ => unreachable!(),
+        };
+
+        Ok(db
+            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .await?
+            .into_iter()
+            .map(|row| {
+                let level: i32 = row.try_get("", "time_played").unwrap();
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
                 (entity_id as u64, level.try_into().unwrap())
             })

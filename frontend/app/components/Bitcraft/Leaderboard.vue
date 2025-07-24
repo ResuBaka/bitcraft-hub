@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import {useNow} from "@vueuse/core";
+
 const numberFormat = new Intl.NumberFormat(undefined);
 
 const {
@@ -209,6 +211,48 @@ const experiencePerHourAverage = computed(() => {
       leaderboard.value.leaderboard["Experience Per Hour"].length,
   );
 });
+
+
+const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
+  const days = Math.floor(seconds / (60 * 60 * 24));
+  const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
+  const minutes = Math.floor((seconds % (60 * 60)) / 60);
+  const secondsLeft = seconds % 60;
+
+  let result = "";
+
+  if (days > 0) {
+    result += `${days}d `;
+  }
+
+  if (hours > 0) {
+    result += `${hours}h `;
+  }
+
+  if (minutes > 0) {
+    result += `${minutes}m `;
+  }
+
+  if (secondsLeft > 0) {
+    result += `${secondsLeft}s`;
+  }
+
+  return result;
+};
+
+const now = useNow({ interval: 1000, controls: true });
+const game_start = new Date('2025-06-21T13:00:05Z');
+
+const countDownUntilResearchIsFinished = computed(() => {
+  const diff = now.now.value.getTime() - game_start.getTime();
+
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / 1000 / 60) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+  };
+});
 </script>
 
 <template>
@@ -356,7 +400,32 @@ const experiencePerHourAverage = computed(() => {
         </v-table>
       </v-col>
     </v-row>
-    <v-row v-if="selectedSkills !== 'Experience Per Hour' && selectedSkills !== 'Experience' && selectedSkills !== 'Level'">
+    <v-row v-if="selectedSkills === 'Time Played' || selectedSkills === 'Time Online'">
+      <v-col lass="v-col-12 pa-0">
+        <v-table hover>
+          <thead>
+          <tr>
+            <th>Rank</th>
+            <th class="text-center">Player</th>
+            <th class="text-end">Time (Game is online since <strong v-if="countDownUntilResearchIsFinished.days">{{ countDownUntilResearchIsFinished.days }}d </strong><strong v-if="countDownUntilResearchIsFinished.hours">{{ countDownUntilResearchIsFinished.hours }}h </strong><strong v-if="countDownUntilResearchIsFinished.minutes">{{ countDownUntilResearchIsFinished.minutes }}m </strong><strong v-if="countDownUntilResearchIsFinished.seconds">{{ countDownUntilResearchIsFinished.seconds }}s</strong>)</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
+            <td>{{ index + 1 }}</td>
+            <td class="text-center">
+              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+                        :to="{ path: 'players/' + item.player_id }">
+                {{ item.player_name }}
+              </NuxtLink>
+            </td>
+            <td class="text-end">{{ secondsToDaysMinutesSecondsFormat(item.time_played) }}</td>
+          </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="selectedSkills !== 'Experience Per Hour' && selectedSkills !== 'Experience' && selectedSkills !== 'Level' && selectedSkills !== 'Time Played' && selectedSkills !== 'Time Online'">
       <v-col lass="v-col-12 pa-0">
         <v-table density="compact" hover>
           <thead>

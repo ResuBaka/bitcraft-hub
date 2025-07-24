@@ -223,7 +223,7 @@ pub(crate) async fn get_top_100(
     let mut tasks: LeaderboardRankTypeTasks = vec![];
 
     for skill in skills {
-        if skill.skill_category == 2 || skill.skill_category == 0 {
+        if skill.skill_category == 0 {
             continue;
         }
 
@@ -340,6 +340,58 @@ pub(crate) async fn get_top_100(
         }
 
         Ok(("Level".to_string(), leaderboard))
+    }));
+
+    let db = state.conn.clone();
+    tasks.push(tokio::spawn(async move {
+        let mut leaderboard: Vec<RankType> = Vec::new();
+        let entries = Query::get_experience_state_top_100_time_played(
+            &db,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
+
+        for (i, entry) in entries.into_iter().enumerate() {
+            let rank = i + 1;
+            leaderboard.push(RankType::Time(LeaderboardTime {
+                player_id: entry.0 as i64,
+                player_name: None,
+                time_played: entry.1 as u64,
+                rank: rank as u64,
+            }));
+        }
+
+        Ok(("Time Played".to_string(), leaderboard))
+    }));
+
+    let db = state.conn.clone();
+    tasks.push(tokio::spawn(async move {
+        let mut leaderboard: Vec<RankType> = Vec::new();
+        let entries = Query::get_experience_state_top_100_time_online(
+            &db,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
+
+        for (i, entry) in entries.into_iter().enumerate() {
+            let rank = i + 1;
+            leaderboard.push(RankType::Time(LeaderboardTime {
+                player_id: entry.0 as i64,
+                player_name: None,
+                time_played: entry.1 as u64,
+                rank: rank as u64,
+            }));
+        }
+
+        Ok(("Time Online".to_string(), leaderboard))
     }));
 
     let results = futures::future::join_all(tasks).await;
@@ -481,7 +533,7 @@ pub(crate) async fn player_leaderboard(
     let mut tasks: PlayerLeaderboardTasks = vec![];
 
     for skill in skills {
-        if skill.skill_category == 2 || skill.skill_category == 0 {
+        if skill.skill_category == 0 {
             continue;
         }
 
@@ -672,7 +724,7 @@ pub(crate) async fn get_claim_leaderboard(
     let mut tasks: LeaderboardRankTypeTasks = vec![];
 
     for skill in skills {
-        if skill.skill_category == 2 || skill.skill_category == 0 {
+        if skill.skill_category == 0 {
             continue;
         }
 
@@ -768,6 +820,62 @@ pub(crate) async fn get_claim_leaderboard(
         }
 
         Ok(("Level".to_string(), leaderboard))
+    }));
+
+    let tmp_player_ids = player_ids.clone();
+    let db = state.conn.clone();
+    tasks.push(tokio::spawn(async move {
+        let mut leaderboard: Vec<RankType> = Vec::new();
+        let entries = Query::get_experience_state_player_ids_time_played(
+            &db,
+            tmp_player_ids,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?;
+
+        for (i, entry) in entries.into_iter().enumerate() {
+            let rank = i + 1;
+            leaderboard.push(RankType::Time(LeaderboardTime {
+                player_id: entry.0 as i64,
+                player_name: None,
+                time_played: entry.1 as u64,
+                rank: rank as u64,
+            }));
+        }
+
+        Ok(("Time Played".to_string(), leaderboard))
+    }));
+
+    let tmp_player_ids = player_ids.clone();
+    let db = state.conn.clone();
+    tasks.push(tokio::spawn(async move {
+        let mut leaderboard: Vec<RankType> = Vec::new();
+        let entries = Query::get_experience_state_player_ids_time_online(
+            &db,
+            tmp_player_ids,
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+        )
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?;
+
+        for (i, entry) in entries.into_iter().enumerate() {
+            let rank = i + 1;
+            leaderboard.push(RankType::Time(LeaderboardTime {
+                player_id: entry.0 as i64,
+                player_name: None,
+                time_played: entry.1 as u64,
+                rank: rank as u64,
+            }));
+        }
+
+        Ok(("Time Online".to_string(), leaderboard))
     }));
 
     let results = futures::future::join_all(tasks).await;
