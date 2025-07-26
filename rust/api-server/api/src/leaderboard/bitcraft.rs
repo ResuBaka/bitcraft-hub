@@ -37,9 +37,12 @@ pub(crate) fn start_worker_experience_state(
 
             loop {
                 let mut buffer = vec![];
+                let fill_buffer_with = batch_size
+                    .saturating_sub(buffer.len())
+                    .saturating_sub(messages.len());
 
                 tokio::select! {
-                    _count = rx.recv_many(&mut buffer, batch_size) => {
+                    _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {

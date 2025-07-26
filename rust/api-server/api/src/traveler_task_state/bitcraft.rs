@@ -36,8 +36,18 @@ pub(crate) fn start_worker_traveler_task_state(
             loop {
                 let mut buffer = vec![];
 
+                let fill_buffer_with = if messages.len() > messages_delete.len() {
+                    batch_size
+                        .saturating_sub(buffer.len())
+                        .saturating_sub(messages.len())
+                } else {
+                    batch_size
+                        .saturating_sub(buffer.len())
+                        .saturating_sub(messages_delete.len())
+                };
+
                 tokio::select! {
-                    _count = rx.recv_many(&mut buffer, batch_size) => {
+                    _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, .. } => {
