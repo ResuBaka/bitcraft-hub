@@ -435,15 +435,18 @@ pub(crate) async fn get_claim(
         }));
     }
     for member in &mut claim.members {
-        let (inventorys, _num_pages) =
-            QueryCore::find_inventory_by_owner_entity_ids(&state.conn, vec![member.entity_id])
-                .await
-                .map_err(|e| {
-                    error!("Error: {e:?}");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-                })?;
+        let (inventorys, _num_pages) = QueryCore::find_inventory_by_owner_entity_ids_and_index(
+            &state.conn,
+            vec![member.entity_id],
+            1,
+        )
+        .await
+        .map_err(|e| {
+            error!("Error: {e:?}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+        })?;
         let mut pockets = vec![];
-        if let Some(inventory) = inventorys.iter().find(|inv| inv.inventory_index == 1) {
+        if let Some(inventory) = inventorys.first() {
             for pocket in &inventory.pockets {
                 pockets.push(resolve_pocket(pocket, &state.item_desc, &state.cargo_desc));
             }

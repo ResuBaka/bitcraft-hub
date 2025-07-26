@@ -139,7 +139,6 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             })?;
 
-
     if let Some(player) = &player {
         let mobile_entiety_from_player =
             QueryCore::find_inventory_by_player_owner_entity_id(&state.conn, player.entity_id)

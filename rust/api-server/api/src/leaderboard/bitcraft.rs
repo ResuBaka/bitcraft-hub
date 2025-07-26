@@ -36,170 +36,174 @@ pub(crate) fn start_worker_experience_state(
             tokio::pin!(timer);
 
             loop {
+                let mut buffer = vec![];
+
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
-                        match msg {
-                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                tracing::warn!("Processed Initial ExperienceState {}", data.len());
-                                let mut local_messages = vec![];
-                                let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
-                                    .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .map_or(vec![], |aa| aa)
-                                    .into_iter()
-                                    .map(|value| {
-                                        let entity_id = value.entity_id;
-                                        let skill_id = value.skill_id;
-                                        (format!("{entity_id}:{skill_id}"), value)
-                                    })
-                                    .collect::<HashMap<_, _>>();
+                    _count = rx.recv_many(&mut buffer, batch_size) => {
+                        for msg in buffer {
+                            match msg {
+                                SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                    tracing::warn!("Processed Initial ExperienceState {}", data.len());
+                                    let mut local_messages = vec![];
+                                    let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
+                                        .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
+                                        .all(&global_app_state.conn)
+                                        .await
+                                        .map_or(vec![], |aa| aa)
+                                        .into_iter()
+                                        .map(|value| {
+                                            let entity_id = value.entity_id;
+                                            let skill_id = value.skill_id;
+                                            (format!("{entity_id}:{skill_id}"), value)
+                                        })
+                                        .collect::<HashMap<_, _>>();
 
-                                for model in data.into_iter().flat_map(|value| {
-                                    let id = value.entity_id;
-                                    let model: Vec<::entity::experience_state::Model> = value.experience_stacks.iter().map(|exp_stack| {
-                                            ::entity::experience_state::Model {
-                                                entity_id: id as i64,
-                                                skill_id: exp_stack.skill_id,
-                                                experience: exp_stack.quantity,
-                                                region: database_name.to_string()
+                                    for model in data.into_iter().flat_map(|value| {
+                                        let id = value.entity_id;
+                                        let model: Vec<::entity::experience_state::Model> = value.experience_stacks.iter().map(|exp_stack| {
+                                                ::entity::experience_state::Model {
+                                                    entity_id: id as i64,
+                                                    skill_id: exp_stack.skill_id,
+                                                    experience: exp_stack.quantity,
+                                                    region: database_name.to_string()
+                                                }
+                                            }).collect();
+
+                                        model
+                                    }) {
+                                        let key = format!("{}:{}", model.entity_id, model.skill_id);
+                                        use std::collections::hash_map::Entry;
+                                        match currently_known_experience_state.entry(key) {
+                                            Entry::Occupied(entry) => {
+                                                let existing_model = entry.get();
+                                                if &model != existing_model {
+                                                    local_messages.push(model.into_active_model());
+                                                }
+                                                entry.remove();
                                             }
-                                        }).collect();
-
-                                    model
-                                }) {
-                                    let key = format!("{}:{}", model.entity_id, model.skill_id);
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known_experience_state.entry(key) {
-                                        Entry::Occupied(entry) => {
-                                            let existing_model = entry.get();
-                                            if &model != existing_model {
+                                            Entry::Vacant(_entry) => {
                                                 local_messages.push(model.into_active_model());
                                             }
-                                            entry.remove();
                                         }
-                                        Entry::Vacant(_entry) => {
-                                            local_messages.push(model.into_active_model());
+                                        if local_messages.len() >= batch_size {
+                                           tracing::warn!("Initial Processing {} messages in batch", local_messages.len());
+                                           insert_multiple_experience_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                         }
-                                    }
-                                    if local_messages.len() >= batch_size {
-                                       tracing::warn!("Initial Processing {} messages in batch", local_messages.len());
-                                       insert_multiple_experience_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    }
-                                };
-                                if !local_messages.is_empty() {
-                                    tracing::warn!("Last Initial Processing {} messages in batch", local_messages.len());
-                                    insert_multiple_experience_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                }
-
-                                for chunk_ids in currently_known_experience_state.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::experience_state::Entity::delete_many().filter(::entity::experience_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
-                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                        tracing::error!(ExperienceState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ExperienceState");
-                                    }
-                                }
-                                tracing::warn!("Processed Initial ExperienceState");
-                                break;
-                            }
-                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let id = new.entity_id as i64;
-                                new.experience_stacks.iter().for_each(|es| {
-                                    let model = ::entity::experience_state::Model {
-                                        entity_id: id,
-                                        skill_id: es.skill_id,
-                                        experience: es.quantity,
-                                        region: database_name.to_string()
                                     };
-
-                                    if let Some(index) = messages.iter().position(|value: &::entity::experience_state::ActiveModel| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
-                                        messages.remove(index);
+                                    if !local_messages.is_empty() {
+                                        tracing::warn!("Last Initial Processing {} messages in batch", local_messages.len());
+                                        insert_multiple_experience_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                     }
-                                    messages.push(model.into_active_model());
-                                });
 
-                                if messages.len() >= batch_size {
+                                    for chunk_ids in currently_known_experience_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                        let chunk_ids = chunk_ids.to_vec();
+                                        if let Err(error) = ::entity::experience_state::Entity::delete_many().filter(::entity::experience_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                            tracing::error!(ExperienceState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ExperienceState");
+                                        }
+                                    }
+                                    tracing::warn!("Processed Initial ExperienceState");
                                     break;
                                 }
-                            }
-                            SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
-                                let id = new.entity_id as i64;
+                                SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                    let id = new.entity_id as i64;
+                                    new.experience_stacks.iter().for_each(|es| {
+                                        let model = ::entity::experience_state::Model {
+                                            entity_id: id,
+                                            skill_id: es.skill_id,
+                                            experience: es.quantity,
+                                            region: database_name.to_string()
+                                        };
 
-                                let mut new_level_vec = vec![];
+                                        if let Some(index) = messages.iter().position(|value: &::entity::experience_state::ActiveModel| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
+                                            messages.remove(index);
+                                        }
+                                        messages.push(model.into_active_model());
+                                    });
 
-                                new.experience_stacks.iter().for_each(|es| {
-                                    new_level_vec.push((
-                                        es.clone(),
-                                        experience_to_level(es.quantity as i64),
-                                    ));
-
-                                    let model = ::entity::experience_state::Model {
-                                        entity_id: id,
-                                        skill_id: es.skill_id,
-                                        experience: es.quantity,
-                                        region: database_name.to_string()
-                                    };
-
-                                    if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
-                                        messages.remove(index);
+                                    if messages.len() >= batch_size {
+                                        break;
                                     }
-                                    messages.push(model.into_active_model());
-                                });
-                                for es in old.experience_stacks.iter() {
-                                    let old_level =
-                                        experience_to_level(es.quantity as i64);
+                                }
+                                SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
+                                    let id = new.entity_id as i64;
 
-                                    let new_level = new_level_vec.iter().find(|new_level| new_level.0.skill_id.eq(&es.skill_id));
-                                    let skill_name = global_app_state.skill_desc.get(&(es.skill_id as i64));
+                                    let mut new_level_vec = vec![];
 
-                                    if let Some(skill_name) = skill_name {
-                                        if let Some(new_level) = new_level {
-                                            if old_level != new_level.1 {
-                                                let _ = global_app_state.tx.send(WebSocketMessages::Level {
-                                                    level: new_level.1 as u64,
-                                                    skill_name: skill_name.to_owned().name,
-                                                    user_id: id,
-                                                });
-                                            }
+                                    new.experience_stacks.iter().for_each(|es| {
+                                        new_level_vec.push((
+                                            es.clone(),
+                                            experience_to_level(es.quantity as i64),
+                                        ));
 
-                                            if new_level.0.quantity > es.quantity {
-                                                let _ = global_app_state.tx.send(WebSocketMessages::Experience {
-                                                    level: new_level.1 as u64,
-                                                    experience: new_level.0.quantity as u64,
-                                                    rank: 0,
-                                                    skill_name: skill_name.to_owned().name,
-                                                    user_id: id,
-                                                });
+                                        let model = ::entity::experience_state::Model {
+                                            entity_id: id,
+                                            skill_id: es.skill_id,
+                                            experience: es.quantity,
+                                            region: database_name.to_string()
+                                        };
+
+                                        if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
+                                            messages.remove(index);
+                                        }
+                                        messages.push(model.into_active_model());
+                                    });
+                                    for es in old.experience_stacks.iter() {
+                                        let old_level =
+                                            experience_to_level(es.quantity as i64);
+
+                                        let new_level = new_level_vec.iter().find(|new_level| new_level.0.skill_id.eq(&es.skill_id));
+                                        let skill_name = global_app_state.skill_desc.get(&(es.skill_id as i64));
+
+                                        if let Some(skill_name) = skill_name {
+                                            if let Some(new_level) = new_level {
+                                                if old_level != new_level.1 {
+                                                    let _ = global_app_state.tx.send(WebSocketMessages::Level {
+                                                        level: new_level.1 as u64,
+                                                        skill_name: skill_name.to_owned().name,
+                                                        user_id: id,
+                                                    });
+                                                }
+
+                                                if new_level.0.quantity > es.quantity {
+                                                    let _ = global_app_state.tx.send(WebSocketMessages::Experience {
+                                                        level: new_level.1 as u64,
+                                                        experience: new_level.0.quantity as u64,
+                                                        rank: 0,
+                                                        skill_name: skill_name.to_owned().name,
+                                                        user_id: id,
+                                                    });
+                                                }
                                             }
                                         }
-                                    }
-                                };
+                                    };
 
-                                if messages.len() >= batch_size {
-                                    break;
-                                }
-                            }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let id = delete.entity_id as i64;
-                                let vec_es = delete.experience_stacks.iter().map(|es| {
-                                    if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
-                                        messages.remove(index);
-                                    }
-
-                                    ::entity::experience_state::Model {
-                                        entity_id: id,
-                                        skill_id: es.skill_id,
-                                        experience: es.quantity,
-                                        region: database_name.to_string()
-                                    }
-                                }).collect::<Vec<_>>();
-
-                                for es in vec_es {
-                                    if let Err(error) = es.delete(&global_app_state.conn).await {
-                                        tracing::error!(ExperienceState = id, error = error.to_string(), "Could not delete ExperienceState");
+                                    if messages.len() >= batch_size {
+                                        break;
                                     }
                                 }
-                                tracing::debug!("ExperienceState::Remove");
+                                SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                    let id = delete.entity_id as i64;
+                                    let vec_es = delete.experience_stacks.iter().map(|es| {
+                                        if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
+                                            messages.remove(index);
+                                        }
+
+                                        ::entity::experience_state::Model {
+                                            entity_id: id,
+                                            skill_id: es.skill_id,
+                                            experience: es.quantity,
+                                            region: database_name.to_string()
+                                        }
+                                    }).collect::<Vec<_>>();
+
+                                    for es in vec_es {
+                                        if let Err(error) = es.delete(&global_app_state.conn).await {
+                                            tracing::error!(ExperienceState = id, error = error.to_string(), "Could not delete ExperienceState");
+                                        }
+                                    }
+                                    tracing::debug!("ExperienceState::Remove");
+                                }
                             }
                         }
                     }

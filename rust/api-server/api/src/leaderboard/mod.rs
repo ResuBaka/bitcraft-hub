@@ -831,11 +831,11 @@ pub(crate) async fn get_claim_leaderboard(
             tmp_player_ids,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
         )
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
 
         for (i, entry) in entries.into_iter().enumerate() {
             let rank = i + 1;
@@ -859,11 +859,11 @@ pub(crate) async fn get_claim_leaderboard(
             tmp_player_ids,
             Some(EXCLUDED_USERS_FROM_LEADERBOARD),
         )
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
+        .await
+        .map_err(|error| {
+            error!("Error: {error}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "")
+        })?;
 
         for (i, entry) in entries.into_iter().enumerate() {
             let rank = i + 1;

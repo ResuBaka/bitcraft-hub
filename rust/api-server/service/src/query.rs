@@ -1316,7 +1316,10 @@ impl Query {
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(player_state::Column::EntityId)
-            .expr_as(Expr::col(player_state::Column::TimePlayed), Alias::new("time_played"))
+            .expr_as(
+                Expr::col(player_state::Column::TimePlayed),
+                Alias::new("time_played"),
+            )
             .and_where(player_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .from(player_state::Entity)
             .order_by_expr(Expr::cust("time_played"), Order::Desc)
@@ -1335,7 +1338,7 @@ impl Query {
             .map(|row| {
                 let time_played: i32 = row.try_get("", "time_played").unwrap();
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
-                (entity_id.try_into().unwrap(), time_played.try_into().unwrap())
+                (entity_id.try_into().unwrap(), time_played)
             })
             .collect::<Vec<(u64, i32)>>())
     }
@@ -1346,7 +1349,10 @@ impl Query {
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(player_state::Column::EntityId)
-            .expr_as(Expr::col(player_state::Column::TimeSignedIn), Alias::new("time_online"))
+            .expr_as(
+                Expr::col(player_state::Column::TimeSignedIn),
+                Alias::new("time_online"),
+            )
             .and_where(player_state::Column::EntityId.is_not_in(exclude.unwrap_or([0])))
             .from(player_state::Entity)
             .order_by_expr(Expr::cust("time_online"), Order::Desc)
@@ -1365,7 +1371,7 @@ impl Query {
             .map(|row| {
                 let time_online: i32 = row.try_get("", "time_online").unwrap();
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
-                (entity_id.try_into().unwrap(), time_online.try_into().unwrap())
+                (entity_id.try_into().unwrap(), time_online)
             })
             .collect::<Vec<(u64, i32)>>())
     }
@@ -1422,7 +1428,10 @@ impl Query {
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(player_state::Column::EntityId)
-            .expr_as(Expr::col(player_state::Column::TimePlayed), Alias::new("time_played"))
+            .expr_as(
+                Expr::col(player_state::Column::TimePlayed),
+                Alias::new("time_played"),
+            )
             .from(player_state::Entity)
             .order_by_expr(Expr::cust("time_played"), Order::Desc)
             .and_where(player_state::Column::EntityId.is_in(player_ids))
@@ -1441,7 +1450,7 @@ impl Query {
             .map(|row| {
                 let level: i32 = row.try_get("", "time_played").unwrap();
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
-                (entity_id as u64, level.try_into().unwrap())
+                (entity_id as u64, level)
             })
             .collect::<Vec<(u64, i32)>>())
     }
@@ -1453,7 +1462,10 @@ impl Query {
     ) -> Result<Vec<(u64, i32)>, DbErr> {
         let query = sea_orm::sea_query::Query::select()
             .column(player_state::Column::EntityId)
-            .expr_as(Expr::col(player_state::Column::TimeSignedIn), Alias::new("time_played"))
+            .expr_as(
+                Expr::col(player_state::Column::TimeSignedIn),
+                Alias::new("time_played"),
+            )
             .from(player_state::Entity)
             .order_by_expr(Expr::cust("time_played"), Order::Desc)
             .and_where(player_state::Column::EntityId.is_in(player_ids))
@@ -1472,7 +1484,7 @@ impl Query {
             .map(|row| {
                 let level: i32 = row.try_get("", "time_played").unwrap();
                 let entity_id: i64 = row.try_get("", "entity_id").unwrap();
-                (entity_id as u64, level.try_into().unwrap())
+                (entity_id as u64, level)
             })
             .collect::<Vec<(u64, i32)>>())
     }
@@ -2052,6 +2064,22 @@ impl Query {
     ) -> Result<(Vec<inventory::Model>, ItemsAndPagesNumber), DbErr> {
         let paginator = inventory::Entity::find()
             .filter(inventory::Column::OwnerEntityId.is_in(ids))
+            .order_by_asc(inventory::Column::EntityId)
+            .paginate(db, 24);
+
+        let num_pages = paginator.num_items_and_pages().await?;
+
+        paginator.fetch_page(0).await.map(|p| (p, num_pages))
+    }
+
+    pub async fn find_inventory_by_owner_entity_ids_and_index(
+        db: &DbConn,
+        ids: Vec<i64>,
+        index: i64,
+    ) -> Result<(Vec<inventory::Model>, ItemsAndPagesNumber), DbErr> {
+        let paginator = inventory::Entity::find()
+            .filter(inventory::Column::OwnerEntityId.is_in(ids))
+            .filter(inventory::Column::InventoryIndex.eq(index))
             .order_by_asc(inventory::Column::EntityId)
             .paginate(db, 24);
 
