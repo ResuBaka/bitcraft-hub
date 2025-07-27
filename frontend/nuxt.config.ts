@@ -74,6 +74,9 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    experimental: {
+      enableNativePlugin: true,
+    },
     $server: {
       build: {
         target: 'esnext',
