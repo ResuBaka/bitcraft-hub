@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {useNow} from "@vueuse/core";
+import { useNow } from "@vueuse/core";
 
 const numberFormat = new Intl.NumberFormat(undefined);
 const props = defineProps<{
@@ -116,7 +116,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 };
 
 const now = useNow({ interval: 1000, controls: true });
-const game_start = new Date('2025-06-21T13:00:05Z');
+const game_start = new Date("2025-06-21T13:00:05Z");
 
 const countDownUntilResearchIsFinished = computed(() => {
   const diff = now.now.value.getTime() - game_start.getTime();

@@ -22,4 +22,5 @@ export type ClaimDescriptionState = {
   tier: number | null;
   upgrades: Array<ClaimTechDesc>;
   xp_gained_since_last_coin_minting: number;
+  region: string;
 };

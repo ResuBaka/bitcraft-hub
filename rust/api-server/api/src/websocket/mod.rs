@@ -1237,6 +1237,8 @@ pub(crate) enum WebSocketMessages {
         skill_name: String,
     },
     PlayerState(entity::player_state::Model),
+    TravelerTaskState(entity::traveler_task_state::Model),
+    TravelerTaskStateDelete(entity::traveler_task_state::Model),
     // ClaimDescriptionState(entity::claim_description_state::Model),
     ClaimLocalState(entity::claim_local_state::Model),
     Message(String),
@@ -1302,6 +1304,20 @@ impl WebSocketMessages {
             WebSocketMessages::ActionState(action_state) => Some(vec![(
                 "action_state".to_string(),
                 action_state.owner_entity_id as i64,
+            )]),
+            WebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![(
+                "traveler_task_state".to_string(),
+                traveler_task_state.entity_id as i64,
+            ), (
+                "traveler_task_state:player".to_string(),
+                traveler_task_state.player_entity_id as i64,
+            )]),
+            WebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![(
+                "traveler_task_state".to_string(),
+                traveler_task_state.entity_id as i64,
+            ), (
+                "traveler_task_state:player".to_string(),
+                traveler_task_state.player_entity_id as i64,
             )]),
             WebSocketMessages::ListSubscribedTopics => None,
             WebSocketMessages::Subscribe { .. } => None,

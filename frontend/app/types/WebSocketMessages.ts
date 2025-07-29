@@ -4,6 +4,7 @@ import type { ClaimLocalState } from "./ClaimLocalState";
 import type { MobileEntityState } from "./MobileEntityState";
 import type { PlayerActionState } from "./PlayerActionState";
 import type { PlayerState } from "./PlayerState";
+import type { TravelerTaskState } from "./TravelerTaskState";
 
 export type WebSocketMessages =
   | { t: "Subscribe"; c: { topics: Array<string> } }
@@ -45,6 +46,8 @@ export type WebSocketMessages =
   | { t: "PlayerActionStateChangeName"; c: [string, bigint] }
   | { t: "Level"; c: { level: bigint; user_id: bigint; skill_name: string } }
   | { t: "PlayerState"; c: PlayerState }
+  | { t: "TravelerTaskState"; c: TravelerTaskState }
+  | { t: "TravelerTaskStateDelete"; c: TravelerTaskState }
   | { t: "ClaimLocalState"; c: ClaimLocalState }
   | { t: "Message"; c: string }
   | { t: "ActionState"; c: ActionState };

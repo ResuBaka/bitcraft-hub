@@ -10,4 +10,5 @@ export type PlayerState = {
   sign_in_timestamp: number;
   signed_in: boolean;
   traveler_tasks_expiration: number;
+  region: string;
 };

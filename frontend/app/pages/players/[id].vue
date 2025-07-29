@@ -23,7 +23,6 @@ const nDate = Intl.DateTimeFormat(undefined, {
   hour12: false,
 });
 
-
 const tmpPage = (route.query.page as string) ?? null;
 
 const topics = reactive<string[]>([`experience.${route.params.id}`]);

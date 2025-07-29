@@ -6,4 +6,5 @@ export type BuildingState = {
   direction_index: number;
   building_description_id: number;
   constructed_by_player_entity_id: bigint;
+  region: string;
 };

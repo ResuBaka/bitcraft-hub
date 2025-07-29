@@ -10,4 +10,5 @@ export type MobileEntityState = {
   destination_z: number;
   dimension: number;
   is_running: boolean;
+  region: string;
 };
