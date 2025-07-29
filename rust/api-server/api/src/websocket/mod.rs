@@ -1305,20 +1305,26 @@ impl WebSocketMessages {
                 "action_state".to_string(),
                 action_state.owner_entity_id as i64,
             )]),
-            WebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![(
-                "traveler_task_state".to_string(),
-                traveler_task_state.entity_id as i64,
-            ), (
-                "traveler_task_state:player".to_string(),
-                traveler_task_state.player_entity_id as i64,
-            )]),
-            WebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![(
-                "traveler_task_state".to_string(),
-                traveler_task_state.entity_id as i64,
-            ), (
-                "traveler_task_state:player".to_string(),
-                traveler_task_state.player_entity_id as i64,
-            )]),
+            WebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![
+                (
+                    "traveler_task_state".to_string(),
+                    traveler_task_state.entity_id as i64,
+                ),
+                (
+                    "traveler_task_state:player".to_string(),
+                    traveler_task_state.player_entity_id as i64,
+                ),
+            ]),
+            WebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![
+                (
+                    "traveler_task_state".to_string(),
+                    traveler_task_state.entity_id as i64,
+                ),
+                (
+                    "traveler_task_state:player".to_string(),
+                    traveler_task_state.player_entity_id as i64,
+                ),
+            ]),
             WebSocketMessages::ListSubscribedTopics => None,
             WebSocketMessages::Subscribe { .. } => None,
             WebSocketMessages::SubscribedTopics(_) => None,
