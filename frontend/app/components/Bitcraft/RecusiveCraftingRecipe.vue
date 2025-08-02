@@ -34,10 +34,10 @@ const desc = computed(() => {
 </script>
 <template>
     <v-list-item v-if="item.deleted === undefined && desc !== undefined">
-      <v-badge :content="Intl.NumberFormat().format(item.quantity)" location="right" class="align-start">
-        <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
-      </v-badge>
-      <v-list-item-title>Name: {{ desc.name }}</v-list-item-title>
+        <v-badge :content="Intl.NumberFormat().format(item.quantity)" location="right" class="align-start" offset-x="-10">
+          <v-list-item-title class="align-content-center">Name: {{ desc.name }}</v-list-item-title>
+          <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
+        </v-badge>
       <template  v-if="item?.children?.length === 1">
         <recusive-crafting-recipe v-if="item.children[0] !== undefined" v-for="(recipe_item, index) in item.children[0].children" :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" :pannel_indexs="pannel_indexs.children[0].children[index]" ></recusive-crafting-recipe>
       </template>

@@ -23,7 +23,7 @@ members = [".", "api", "service", "entity", "migration", "game_module"]
 sea-orm = { version = "=1.1.13", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
 serde_json = "1.0.141"
 serde_yml = "0.0.12"
-toml = "0.9.2"
+toml = "0.9.4"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.47.0", features = [ "full" ] }
 log = "0.4.27"

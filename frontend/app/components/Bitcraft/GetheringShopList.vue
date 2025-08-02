@@ -24,9 +24,9 @@ const desc = computed(() => {
 </script>
 <template>
     <v-list-item v-if="desc !== undefined" >
-      <v-badge :content="Intl.NumberFormat().format(quantity)" location="right" class="align-start">
+      <v-badge :content="Intl.NumberFormat().format(quantity)" location="right" class="align-start" offset-x="-10">
+        <v-list-item-title class="align-content-center">{{ desc.name }}</v-list-item-title>
         <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="type == 'Item' ? 75 : 128"></v-img>
       </v-badge>
-      <v-list-item-title>{{ desc.name }}</v-list-item-title>
     </v-list-item>
 </template>
