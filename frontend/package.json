@@ -14,7 +14,7 @@
   "dependencies": {
     "@pinia/nuxt": "^0.11.2",
     "msgpackr": "^1.11.5",
-    "nuxt": "^4.0.2",
+    "nuxt": "^4.0.3",
     "vue": "^3.6.0-alpha.2",
     "vue-router": "^4.5.1",
     "vuetify-sonner": "^0.3.21"
@@ -25,7 +25,7 @@
     "sass": "^1.89.2",
     "@vueuse/core": "^13.6.0",
     "@vueuse/shared": "^13.6.0",
-    "vuetify": "^3.9.3",
+    "vuetify": "^3.9.4",
     "vuetify-nuxt-module": "^0.18.7"
   },
   "overrides": {
