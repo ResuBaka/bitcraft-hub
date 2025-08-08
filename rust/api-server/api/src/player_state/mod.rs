@@ -181,8 +181,8 @@ pub async fn find_player_by_id(
         .as_ref()
         .map(|player_location| player_location.chunk_index);
 
-    let claim_id = if chunk_index.is_some() {
-        if let Some(claim_id) = state.claim_tile_state.get(&(chunk_index.unwrap())) {
+    let claim_id = if let Some(chunk_index) = chunk_index {
+        if let Some(claim_id) = state.claim_tile_state.get(&(chunk_index)) {
             Some(claim_id.claim_id)
         } else {
             None

@@ -1964,22 +1964,6 @@ impl Query {
         paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
     }
 
-    pub async fn find_building_descs_with_inventory(
-        db: &DbConn,
-    ) -> Result<Vec<building_desc::Model>, DbErr> {
-        Ok(building_desc::Entity::find()
-            .all(db)
-            .await?
-            .into_iter()
-            .filter(|building_desc| {
-                building_desc
-                    .functions
-                    .iter()
-                    .any(|function| function.cargo_slots > 0 || function.storage_slots > 0)
-            })
-            .collect())
-    }
-
     pub async fn find_building_state_by_id(
         db: &DbConn,
         id: i64,

@@ -134,9 +134,7 @@ pub(crate) fn start_worker_inventory_state(
                                         messages.remove(index);
                                     }
                                     messages.push(model.into_active_model());
-                                    if messages.len() >= batch_size {
-                                        break;
-                                    }
+
 
 
                                     if let Some(caller_identity) = caller_identity {
@@ -198,6 +196,14 @@ pub(crate) fn start_worker_inventory_state(
                                                 timestamp: Set(DateTime::from_timestamp_micros(timestamp.unwrap().to_micros_since_unix_epoch()).unwrap())
                                             })
                                         }
+                                    }
+
+                                    if messages.len() >= batch_size {
+                                        break;
+                                    }
+
+                                    if messages_changed.len() >= batch_size {
+                                        break;
                                     }
 
                                 }

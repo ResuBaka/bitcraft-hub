@@ -20,7 +20,8 @@ const {
 } = useRuntimeConfig();
 
 const page = ref(1);
-const perPage = 500;
+const buildingItemsPage = ref(1);
+const perPage = 1500;
 
 const building_items_collapsible = ref([]);
 const player_items_collapsible = ref([]);
@@ -99,7 +100,7 @@ const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
 
 const { data: buidlingsFetch, pending: buildingsPending } =
   useFetchMsPack<BuildingStatesResponse>(() => {
-    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&with_inventory=true&page=${page.value}&per_page=${perPage}`;
+    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&page=${page.value}&per_page=${perPage}&skip_static_buildings=true&with_inventory=true`;
   });
 
 const topicsPlayer = computed<string[]>(() => {
@@ -928,19 +929,30 @@ watchThrottled(
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorysBuildings" :key="`buildings-${inventory.item_id}-${inventory.quantity}`">
-                  <v-list-item>
-                    <template #prepend v-if="iconDomain">
-                      <v-avatar :rounded="false" size="50" style="width: 90px;">
-                        <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
-                      </v-avatar>
-                    </template>
-                    <div :class="`text-${tierColor(inventory.item.tier)}`">
-                      {{ inventory.item.name }}:
-                      <strong>{{ inventory.quantity }}</strong>
-                    </div>
-                  </v-list-item>
-                </v-col>
+                <v-data-iterator :items="inventorysBuildings" :items-per-page="50">
+                  <template v-slot:default="{ items }">
+                    <v-row>
+                      <template
+                          v-for="(inventory, i) in items"
+                          :key="i"
+                      >
+                        <v-col cols="12" md="4" lg="3" xl="2" >
+                          <v-list-item>
+                            <template #prepend v-if="iconDomain">
+                              <v-avatar :rounded="false" size="50" style="width: 90px;">
+                                <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.raw.item.icon_asset_name).url"></v-img>
+                              </v-avatar>
+                            </template>
+                            <div :class="`text-${tierColor(inventory.raw.item.tier)}`">
+                              {{ inventory.raw.item.name }}:
+                              <strong>{{ inventory.raw.quantity }}</strong>
+                            </div>
+                          </v-list-item>
+                        </v-col>
+                      </template>
+                    </v-row>
+                  </template>
+                </v-data-iterator>
               </v-row>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -991,19 +1003,30 @@ watchThrottled(
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorysPlayers" :key="`players-${inventory.item_id}-${inventory.quantity}`">
-                  <v-list-item>
-                    <template #prepend v-if="iconDomain">
-                      <v-avatar :rounded="false" size="50" style="width: 90px;">
-                        <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
-                      </v-avatar>
-                    </template>
-                    <div :class="`text-${tierColor(inventory.item.tier)}`">
-                      {{ inventory.item.name }}:
-                      <strong>{{ inventory.quantity }}</strong>
-                    </div>
-                  </v-list-item>
-                </v-col>
+                <v-data-iterator :items="inventorysPlayers" :items-per-page="50">
+                  <template v-slot:default="{ items }">
+                    <v-row>
+                      <template
+                          v-for="(inventory, i) in items"
+                          :key="i"
+                      >
+                        <v-col cols="12" md="4" lg="3" xl="2">
+                          <v-list-item>
+                            <template #prepend v-if="iconDomain">
+                              <v-avatar :rounded="false" size="50" style="width: 90px;">
+                                <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.raw.item.icon_asset_name).url"></v-img>
+                              </v-avatar>
+                            </template>
+                            <div :class="`text-${tierColor(inventory.raw.item.tier)}`">
+                              {{ inventory.raw.item.name }}:
+                              <strong>{{ inventory.raw.quantity }}</strong>
+                            </div>
+                          </v-list-item>
+                        </v-col>
+                      </template>
+                    </v-row>
+                  </template>
+                </v-data-iterator>
               </v-row>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -1054,19 +1077,30 @@ watchThrottled(
                 </v-col>
               </v-row>
               <v-row>
-                <v-col cols="12" md="4" lg="3" xl="2" v-for="inventory in inventorysPlayersOffline" :key="`players-${inventory.item_id}-${inventory.quantity}`">
-                  <v-list-item>
-                    <template #prepend v-if="iconDomain">
-                      <v-avatar :rounded="false" size="50" style="width: 90px;">
-                        <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.item.icon_asset_name).url"></v-img>
-                      </v-avatar>
-                    </template>
-                    <div :class="`text-${tierColor(inventory.item.tier)}`">
-                      {{ inventory.item.name }}:
-                      <strong>{{ inventory.quantity }}</strong>
-                    </div>
-                  </v-list-item>
-                </v-col>
+                <v-data-iterator :items="inventorysPlayersOffline" :items-per-page="50">
+                  <template v-slot:default="{ items }">
+                    <v-row>
+                      <template
+                          v-for="(inventory, i) in items"
+                          :key="i"
+                      >
+                        <v-col cols="12" md="4" lg="3" xl="2">
+                          <v-list-item>
+                            <template #prepend v-if="iconDomain">
+                              <v-avatar :rounded="false" size="50" style="width: 90px;">
+                                <v-img :cover="false" :src="iconAssetUrlNameRandom(inventory.raw.item.icon_asset_name).url"></v-img>
+                              </v-avatar>
+                            </template>
+                            <div :class="`text-${tierColor(inventory.raw.item.tier)}`">
+                              {{ inventory.raw.item.name }}:
+                              <strong>{{ inventory.raw.quantity }}</strong>
+                            </div>
+                          </v-list-item>
+                        </v-col>
+                      </template>
+                    </v-row>
+                  </template>
+                </v-data-iterator>
               </v-row>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -1108,7 +1142,7 @@ watchThrottled(
               </v-row>
               <v-row>
                 <v-col cols="12" md="4" lg="3" xl="2" v-for="building in buildings" :key="building.entity_id">
-                  <nuxt-link :to="{ name: 'buildings-id', params: { id: building.entity_id } }"
+                  <nuxt-link :to="{ name: 'buildings-id', params: { id: building.entity_id.toString() } }"
                              class="text-high-emphasis font-weight-black">
                     <v-list-item>
                       <template #prepend v-if="iconDomain">

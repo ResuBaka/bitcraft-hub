@@ -136,6 +136,7 @@ pub(crate) struct BuildingStatesParams {
     per_page: Option<u64>,
     claim_entity_id: Option<i64>,
     with_inventory: Option<bool>,
+    skip_static_buildings: Option<bool>,
 }
 
 pub(crate) async fn find_building_states(
@@ -146,19 +147,71 @@ pub(crate) async fn find_building_states(
     let per_page = params.per_page.unwrap_or(30);
     let search = params.claim_entity_id;
     let with_inventory = params.with_inventory.unwrap_or(false);
+    let skip_static_buildings = params.skip_static_buildings.unwrap_or(false);
     let mut buildings_with_inventory_ids = None;
+    let mut buildings_without_static_buildings_ids: Option<Vec<_>> = None;
+
+    if skip_static_buildings {
+        buildings_without_static_buildings_ids = Some(
+            state.building_desc
+                .iter()
+                .filter(|building_desc| {
+
+                    if building_desc.name.contains("Wall") {
+                        return false;
+                    }
+
+                    if building_desc.name.contains("Fence") {
+                        return false;
+                    }
+
+                    if building_desc.name.contains("Farming Field") {
+                        return false;
+                    }
+
+                    if building_desc.name.contains("Outdoor Garden Plot") {
+                        return false;
+                    }
+
+                    if building_desc.name.contains("Outdoor Planterbox") {
+                        return false;
+                    }
+
+                    if building_desc.name.contains("Outdoor Planter Boxes") {
+                        return false;
+                    }
+
+                    if building_desc.name.contains(" Gate") {
+                        return false;
+                    }
+
+                    true
+                })
+                .map(|building_desc| building_desc.clone().id)
+                .collect::<Vec<_>>()
+        );
+    }
 
     if with_inventory {
-        let buildings_with_inventory = QueryCore::find_building_descs_with_inventory(&state.conn)
-            .await
-            .expect("Cannot find posts in page");
+        let buildings_with_inventory = state.building_desc
+            .iter()
+            .filter(|building_desc| {
+                building_desc
+                    .functions
+                    .iter()
+                    .any(|function| function.cargo_slots > 0 || function.storage_slots > 0)
+            })
+            .map(|building_desc| building_desc.clone().id)
+            .collect::<Vec<_>>();
 
-        buildings_with_inventory_ids = Some(
+        buildings_with_inventory_ids = Some(if let Some(local_buildings_without_static_buildings_ids) = &buildings_without_static_buildings_ids {
             buildings_with_inventory
-                .iter()
-                .map(|building| building.id)
-                .collect(),
-        );
+                .into_iter()
+                .filter(|id| local_buildings_without_static_buildings_ids.contains(id))
+                .collect()
+        } else {
+            buildings_with_inventory
+        });
     }
 
     let posts = QueryCore::find_building_states(
@@ -166,7 +219,12 @@ pub(crate) async fn find_building_states(
         page,
         per_page,
         search,
-        buildings_with_inventory_ids,
+        match (with_inventory, skip_static_buildings) {
+            (true, true) => buildings_with_inventory_ids,
+            (true, false) => buildings_with_inventory_ids,
+            (false, true) => buildings_without_static_buildings_ids,
+            (false, false) => None,
+        },
     )
     .await
     .expect("Cannot find posts in page");

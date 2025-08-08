@@ -1308,21 +1308,21 @@ impl WebSocketMessages {
             WebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![
                 (
                     "traveler_task_state".to_string(),
-                    traveler_task_state.entity_id as i64,
+                    traveler_task_state.entity_id,
                 ),
                 (
                     "traveler_task_state:player".to_string(),
-                    traveler_task_state.player_entity_id as i64,
+                    traveler_task_state.player_entity_id,
                 ),
             ]),
             WebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![
                 (
                     "traveler_task_state".to_string(),
-                    traveler_task_state.entity_id as i64,
+                    traveler_task_state.entity_id,
                 ),
                 (
                     "traveler_task_state:player".to_string(),
-                    traveler_task_state.player_entity_id as i64,
+                    traveler_task_state.player_entity_id,
                 ),
             ]),
             WebSocketMessages::ListSubscribedTopics => None,

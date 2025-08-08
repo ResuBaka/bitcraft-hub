@@ -433,8 +433,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
                 let metrics_body = prometheus.render();
                 collector.collect();
 
-                if prometheus_body.is_err() {
-                    let err = prometheus_body.err().unwrap();
+                if let Err(err) = prometheus_body {
                     error!("Error: {:?}", err);
 
                     Err((StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"))
