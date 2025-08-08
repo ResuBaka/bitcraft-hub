@@ -153,10 +153,10 @@ pub(crate) async fn find_building_states(
 
     if skip_static_buildings {
         buildings_without_static_buildings_ids = Some(
-            state.building_desc
+            state
+                .building_desc
                 .iter()
                 .filter(|building_desc| {
-
                     if building_desc.name.contains("Wall") {
                         return false;
                     }
@@ -188,12 +188,13 @@ pub(crate) async fn find_building_states(
                     true
                 })
                 .map(|building_desc| building_desc.clone().id)
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
         );
     }
 
     if with_inventory {
-        let buildings_with_inventory = state.building_desc
+        let buildings_with_inventory = state
+            .building_desc
             .iter()
             .filter(|building_desc| {
                 building_desc
@@ -204,14 +205,18 @@ pub(crate) async fn find_building_states(
             .map(|building_desc| building_desc.clone().id)
             .collect::<Vec<_>>();
 
-        buildings_with_inventory_ids = Some(if let Some(local_buildings_without_static_buildings_ids) = &buildings_without_static_buildings_ids {
-            buildings_with_inventory
-                .into_iter()
-                .filter(|id| local_buildings_without_static_buildings_ids.contains(id))
-                .collect()
-        } else {
-            buildings_with_inventory
-        });
+        buildings_with_inventory_ids = Some(
+            if let Some(local_buildings_without_static_buildings_ids) =
+                &buildings_without_static_buildings_ids
+            {
+                buildings_with_inventory
+                    .into_iter()
+                    .filter(|id| local_buildings_without_static_buildings_ids.contains(id))
+                    .collect()
+            } else {
+                buildings_with_inventory
+            },
+        );
     }
 
     let posts = QueryCore::find_building_states(
