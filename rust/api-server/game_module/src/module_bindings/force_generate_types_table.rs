@@ -4,7 +4,6 @@
 #![allow(unused, clippy::all)]
 use super::chunk_coordinates_message_type::ChunkCoordinatesMessage;
 use super::claim_permission_type::ClaimPermission;
-use super::empire_permission_type::EmpirePermission;
 use super::float_hex_tile_message_type::FloatHexTileMessage;
 use super::force_generate_types_type::ForceGenerateTypes;
 use super::hex_direction_type::HexDirection;

@@ -6,7 +6,6 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 use super::chunk_coordinates_message_type::ChunkCoordinatesMessage;
 use super::claim_permission_type::ClaimPermission;
-use super::empire_permission_type::EmpirePermission;
 use super::float_hex_tile_message_type::FloatHexTileMessage;
 use super::hex_direction_type::HexDirection;
 use super::item_conversion_location_context_type::ItemConversionLocationContext;
@@ -20,7 +19,6 @@ pub struct ForceGenerateTypes {
     pub float_hex_tile: FloatHexTileMessage,
     pub chunk_coordinates_message: ChunkCoordinatesMessage,
     pub claim_permission: ClaimPermission,
-    pub empire_permission: EmpirePermission,
     pub large_hex_tile_message: LargeHexTileMessage,
     pub terrain_cell: TerrainCell,
     pub item_conversion_locatin_context: ItemConversionLocationContext,

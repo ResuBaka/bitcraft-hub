@@ -8,9 +8,7 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 #[sats(crate = __lib)]
 #[derive(Copy, Eq, Hash)]
 pub enum PlayerVoteType {
-    JoinEmpire,
-
-    SubmitEmpire,
+    Duel,
 }
 
 impl __sdk::InModule for PlayerVoteType {
