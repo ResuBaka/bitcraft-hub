@@ -231,12 +231,10 @@ pub async fn find_player_by_id(
 
     let mut traveler_tasks: HashMap<_, _> = HashMap::new();
     for task in traveler_tasks_db {
-        if !task.completed {
-            let traveler_task = traveler_tasks
-                .entry(task.traveler_id)
-                .or_insert_with(Vec::new);
-            traveler_task.push(task);
-        }
+        let traveler_task = traveler_tasks
+            .entry(task.traveler_id)
+            .or_insert_with(Vec::new);
+        traveler_task.push(task);
     }
 
     Ok(axum_codec::Codec(FindPlayerByIdResponse {

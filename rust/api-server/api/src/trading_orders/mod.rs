@@ -104,23 +104,23 @@ async fn get_trade_orders(
                             .offer_items
                             .par_iter()
                             .map(|item| item.item_id)
-                            .collect::<Vec<i64>>();
+                            .collect::<Vec<i32>>();
 
                         if items_ids
                             .par_iter()
-                            .any(|item_id| trade_order_items.contains(item_id))
+                            .any(|item_id| trade_order_items.contains(&(*item_id as i32)))
                         {
                             return true;
                         }
                     }
 
                     if let Some(cargo_ids) = &cargo_ids {
-                        let trade_order_cargo_ids: Vec<i64> =
+                        let trade_order_cargo_ids: Vec<i32> =
                             serde_json::from_value(trade_order.offer_cargo_id.clone()).unwrap();
 
                         if cargo_ids
                             .par_iter()
-                            .any(|cargo_id| trade_order_cargo_ids.contains(cargo_id))
+                            .any(|cargo_id| trade_order_cargo_ids.contains(&(*cargo_id as i32)))
                         {
                             return true;
                         }

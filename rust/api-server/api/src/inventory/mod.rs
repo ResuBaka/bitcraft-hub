@@ -172,13 +172,15 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     let mut resolved_inventory = vec![];
 
     for inventory in inventorys.into_iter() {
+        let mut claim = None;
+
         let mut pockets = vec![];
 
         for pocket in &inventory.pockets {
             pockets.push(resolve_pocket(pocket, &state.item_desc, &state.cargo_desc));
         }
 
-        let nickname = match mobile_entiety_map.get(&inventory.owner_entity_id) {
+        let mut nickname = match mobile_entiety_map.get(&inventory.owner_entity_id) {
             Some(nickname) => Some(nickname.clone()),
             None => match player.is_some() {
                 true => {
@@ -203,6 +205,38 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
             },
         };
 
+        if nickname.is_none() {
+            let building_state =
+                QueryCore::find_building_state_by_id(&state.conn, inventory.owner_entity_id)
+                    .await
+                    .map_err(|e| {
+                        error!("Error: {e:?}");
+
+                        (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+                    })?;
+
+            if let Some(building_state) = building_state {
+                if building_state.claim_entity_id != 0 {
+                    claim = state
+                        .claim_state
+                        .get(&building_state.claim_entity_id)
+                        .map_or(None, |m| Some(m.clone()));
+                }
+
+                if let Some(name) = state.building_nickname_state.get(&building_state.entity_id) {
+                    nickname = Some(name.nickname.clone());
+                }
+
+                if nickname.is_none()
+                    && let Some(name) = state
+                        .building_desc
+                        .get(&(building_state.building_description_id as i64))
+                {
+                    nickname = Some(name.name.clone());
+                }
+            }
+        }
+
         resolved_inventory.push(ResolvedInventory {
             entity_id: inventory.entity_id,
             pockets,
@@ -211,6 +245,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
             owner_entity_id: inventory.owner_entity_id,
             player_owner_entity_id: inventory.player_owner_entity_id,
             nickname,
+            claim,
         });
     }
 

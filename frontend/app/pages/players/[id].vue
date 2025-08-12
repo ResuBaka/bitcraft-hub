@@ -300,7 +300,9 @@ const playerInventory = computed(() => {
       (inventory) =>
         inventory.nickname !== "Tool belt" &&
         inventory.nickname !== "Wallet" &&
-        inventory.nickname !== "Inventory",
+        inventory.nickname !== "Inventory" &&
+        !!inventory.pockets.filter((pocket) => !!pocket.contents?.quantity)
+          .length,
     ) ?? []
   );
 });
@@ -566,30 +568,46 @@ useSeoMeta({
         </v-card-text>
       </v-card>
       <v-expansion-panels>
-        <v-expansion-panel v-for="(traveler, index) of playerData.traveler_tasks">
+        <v-expansion-panel>
           <v-expansion-panel-title>
             <v-row>
               <v-col class="d-flex justify-center">
-                <h2 class="pl-md-3 pl-xl-0">Treveler: {{ npcData[index]?.name }}</h2>
+                <h2 class="pl-md-3 pl-xl-0">Treveler tasks</h2>
               </v-col>
             </v-row>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <template v-for="task of traveler">
+            <template v-for="(traveler, index) of playerData.traveler_tasks" >
               <v-row>
-              <v-col class="d-flex justify-center">
-              <template v-for="item of trevelerTasksData[task.task_id]?.required_items ">
-                <v-badge :content="Intl.NumberFormat().format(item.quantity)" location="right" class="align-start">
-                  <template v-if="item.item_type == 'Item'">
-                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.item_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
-                    </template>
-                  <template v-else-if="item.item_type == 'Cargo'">
-                    <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.cargo_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
-                  </template>
-                </v-badge>
-              </template>
+                <v-col class="d-flex justify-center font-weight-bold">
+                {{ npcData[index]?.name }}
                 </v-col>
-                </v-row>
+              </v-row>
+              <v-row>
+              <template v-for="task of traveler">
+                  <v-col class="d-flex justify-center">
+                    <template v-for="item of trevelerTasksData[task.task_id]?.required_items">
+                      <div class="align-content-center">{{  }}</div>
+                      <div class="align-content-center" :class="`text-${tierColor[item.item_type == 'Item' ? itemsAndCargoAllData.item_desc[item.item_id].tier : itemsAndCargoAllData.cargo_desc[item.item_id].tier]}`">
+                        <template v-if="item.item_type == 'Item'">
+                          {{ itemsAndCargoAllData.item_desc[item.item_id].name }}
+                        </template>
+                        <template v-else-if="item.item_type == 'Cargo'">
+                          {{ itemsAndCargoAllData.cargo_desc[item.item_id].name }}
+                        </template>
+                      </div>
+                      <v-badge :content="Intl.NumberFormat().format(item.quantity)" :color="task.completed ? 'green' : 'red'" location="right" class="align-start">
+                        <template v-if="item.item_type == 'Item'">
+                          <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.item_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
+                        </template>
+                        <template v-else-if="item.item_type == 'Cargo'">
+                          <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.cargo_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
+                        </template>
+                      </v-badge>
+                    </template>
+                  </v-col>
+              </template>
+              </v-row>
             </template>
           </v-expansion-panel-text>
         </v-expansion-panel>

@@ -100,7 +100,12 @@ watchThrottled(
     <div v-bind="$attrs">
       <v-card class="mb-5">
         <v-toolbar color="transparent">
-          <v-toolbar-title>Inventory: <strong>{{ inventory.nickname ? inventory.nickname : inventory.entity_id }}</strong></v-toolbar-title>
+          <v-toolbar-title>Inventory: <strong>{{ inventory.nickname ? inventory.nickname : inventory.entity_id }}</strong><template v-if="inventory.claim"> at Claim <nuxt-link
+              class="text-decoration-none text-high-emphasis font-weight-black"
+              :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id.toString() } }"
+          >
+            {{ inventory.claim.name }}
+          </nuxt-link></template></v-toolbar-title>
 
         </v-toolbar>
 

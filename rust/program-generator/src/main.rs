@@ -154,6 +154,7 @@ async fn start_websocket_bitcraft_logic_old(config: Config) {
                         match &message {
                             WebSocketMessage::TransactionUpdate(_transaction_update) => {}
                             WebSocketMessage::InitialSubscription(subscription_update) => {
+                                let mut found_hash = false;
                                 let inserts = &subscription_update.database_update.tables[0]
                                     .updates[0]
                                     .inserts;
@@ -178,14 +179,19 @@ async fn start_websocket_bitcraft_logic_old(config: Config) {
                                             .unwrap()
                                             .to_string();
                                         file.write_all(&hex::decode(&text).unwrap()).unwrap();
+                                        found_hash = true;
 
-                                        tracing::info!("Saved the program.wasm file");
-                                        std::process::exit(0);
                                     }
                                 }
 
-                                tracing::info!("Could not find the program you are looking for");
-                                std::process::exit(1);
+                                if found_hash {
+                                    tracing::info!("Saved the program.wasm file");
+                                    std::process::exit(0);
+                                } else {
+                                    tracing::info!("Could not find the program you are looking for");
+                                    std::process::exit(1);
+                                }
+
                             }
                             WebSocketMessage::IdentityToken(identity_token) => {
                                 debug!("Received identity token: {identity_token:?}");

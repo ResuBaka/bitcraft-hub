@@ -458,6 +458,7 @@ pub(crate) async fn get_claim(
                 owner_entity_id: inventory.owner_entity_id,
                 player_owner_entity_id: inventory.player_owner_entity_id,
                 nickname: None,
+                claim: None,
             });
         }
     }

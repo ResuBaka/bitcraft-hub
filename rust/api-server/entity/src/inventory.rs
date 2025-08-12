@@ -28,7 +28,7 @@ pub struct Pocket {
     pub locked: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Eq, Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
 pub struct ItemStack {
     pub item_id: i32,
     pub quantity: i32,
@@ -50,6 +50,7 @@ pub struct ResolvedInventory {
     pub owner_entity_id: i64,
     pub player_owner_entity_id: i64,
     pub nickname: Option<String>,
+    pub claim: Option<super::claim_state::Model>,
 }
 
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
