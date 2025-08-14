@@ -560,13 +560,19 @@ const onlinePlayersCount = computed(() => {
 
 const now = useNow({ interval: 1000, controls: true });
 
+const researchEnded = computed(() => {
+  return new Date(
+    new Date(
+      claimFetch.value?.running_upgrade_started
+        ?.__timestamp_micros_since_unix_epoch__,
+    ).getTime() +
+      claimFetch.value?.running_upgrade?.research_time * 1000,
+  );
+});
+
 // Show Days Hours Minutes Seconds
 const countDownUntilResearchIsFinished = computed(() => {
-  const researchEnded = new Date(
-    claimFetch.value?.running_upgrade?.research_time * 1000 +
-      claimFetch.value?.running_upgrade_started / 1000,
-  );
-  const diff = researchEnded.getTime() - now.now.value.getTime();
+  const diff = researchEnded.value.getTime() - now.now.value.getTime();
 
   return {
     days: Math.floor(diff / (1000 * 60 * 60 * 24)),

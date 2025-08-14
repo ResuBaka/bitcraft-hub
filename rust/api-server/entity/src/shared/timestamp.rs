@@ -11,7 +11,7 @@ pub struct Timestamp {
 impl From<spacetimedb_sdk::Timestamp> for Timestamp {
     fn from(value: spacetimedb_sdk::Timestamp) -> Self {
         Self {
-            __timestamp_micros_since_unix_epoch__: DateTime::from_timestamp_millis(
+            __timestamp_micros_since_unix_epoch__: DateTime::from_timestamp_micros(
                 value.to_micros_since_unix_epoch(),
             )
             .expect("invalid Unix timestamp"),
