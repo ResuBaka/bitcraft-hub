@@ -31,7 +31,7 @@ pub(crate) fn start_worker_inventory_state(
             ])
             .to_owned();
         let on_conflict_changelog =
-            sea_query::OnConflict::column(::entity::inventory_changelog::Column::Id)
+            sea_query::OnConflict::columns([::entity::inventory_changelog::Column::Id, ::entity::inventory_changelog::Column::Timestamp])
                 .update_columns([
                     ::entity::inventory_changelog::Column::EntityId,
                     ::entity::inventory_changelog::Column::UserId,

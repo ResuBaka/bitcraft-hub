@@ -25,6 +25,8 @@ mod m20250617_140552_treveler_tasks;
 mod m20250622_112143_correct_item_cargo_desc_id_type;
 mod m20250718_234013_set_correct_cargo_desc_type;
 mod m20250721_155813_add_region_to_state_data;
+mod m20250816_092123_inventory_changelog_hypetable;
+mod m20250816_105212_inventory_changelog_hypetable_compression;
 
 pub struct Migrator;
 
@@ -57,6 +59,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20250622_112143_correct_item_cargo_desc_id_type::Migration),
             Box::new(m20250718_234013_set_correct_cargo_desc_type::Migration),
             Box::new(m20250721_155813_add_region_to_state_data::Migration),
+            Box::new(m20250816_092123_inventory_changelog_hypetable::Migration),
+            Box::new(m20250816_105212_inventory_changelog_hypetable_compression::Migration),
         ]
     }
 }

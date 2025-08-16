@@ -37,6 +37,7 @@ pub struct Model {
     pub new_item_id: Option<i32>,
     pub new_item_quantity: Option<i32>,
     pub type_of_change: TypeOfChange,
+    #[sea_orm(primary_key)]
     pub timestamp: DateTime<Utc>,
 }
 
