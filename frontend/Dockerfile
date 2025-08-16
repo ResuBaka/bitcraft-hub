@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7-labs
+
 # use the official Bun image
 # see all versions at https://hub.docker.com/r/oven/bun/tags
 FROM oven/bun:1-alpine as base-alpine
@@ -28,11 +30,11 @@ RUN ls -la /usr/src/app
 # [optional] tests & build
 ENV NODE_ENV=production
 RUN bun run build
-RUN rm -rf node_modules
+#RUN rm -rf node_modules
 
 # copy production dependencies and source code into final image
 FROM base-alpine AS release
-COPY --from=prerelease --chown=bun:bun /usr/src/app/ .
+COPY --from=prerelease --exclude=node_modules --chown=bun:bun /usr/src/app/ .
 
 # run the app
 USER bun
