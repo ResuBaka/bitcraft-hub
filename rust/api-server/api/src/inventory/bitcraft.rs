@@ -69,7 +69,7 @@ pub(crate) fn start_worker_inventory_state(
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                    tracing::info!("Count of inventory amount to work on {}", data.len());
+                                    tracing::debug!("Count of inventory amount to work on {}", data.len());
                                     let mut local_messages = vec![];
                                     let mut currently_known_inventory = ::entity::inventory::Entity::find()
                                         .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
@@ -106,7 +106,7 @@ pub(crate) fn start_worker_inventory_state(
                                         insert_multiple_inventory(&global_app_state, &on_conflict, &mut local_messages).await;
                                     }
 
-                                    tracing::info!("Count of inventory amount to delete {}", currently_known_inventory.len());
+                                    tracing::debug!("Count of inventory amount to delete {}", currently_known_inventory.len());
 
                                     for chunk_ids in currently_known_inventory.into_keys().collect::<Vec<_>>().chunks(1000) {
                                         let chunk_ids = chunk_ids.to_vec();

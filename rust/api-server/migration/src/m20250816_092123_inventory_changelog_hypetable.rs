@@ -1,5 +1,5 @@
 use crate::sea_orm::Statement;
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::{prelude::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -11,23 +11,21 @@ impl MigrationTrait for Migration {
 
         let stmt = Statement::from_string(
             manager.get_database_backend(),
-            format!("ALTER TABLE inventory_changelog DROP CONSTRAINT inventory_changelog_pkey;"),
+            "ALTER TABLE inventory_changelog DROP CONSTRAINT inventory_changelog_pkey;".to_string(),
         );
 
         db.execute(stmt).await?;
 
         let stmt = Statement::from_string(
             manager.get_database_backend(),
-            format!("ALTER TABLE inventory_changelog ADD PRIMARY KEY (id, timestamp);"),
+            "ALTER TABLE inventory_changelog ADD PRIMARY KEY (id, timestamp);".to_string(),
         );
 
         db.execute(stmt).await?;
 
         let stmt = Statement::from_string(
             manager.get_database_backend(),
-            format!(
-                "SELECT create_hypertable('inventory_changelog', by_range('timestamp', INTERVAL '1 day'), migrate_data => true);"
-            ),
+            "SELECT create_hypertable('inventory_changelog', by_range('timestamp', INTERVAL '1 day'), migrate_data => true);".to_string(),
         );
 
         db.execute(stmt).await?;
@@ -35,7 +33,7 @@ impl MigrationTrait for Migration {
         Ok(())
     }
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
         Ok(())
     }
 }

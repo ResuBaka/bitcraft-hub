@@ -219,8 +219,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                 if building_state.claim_entity_id != 0 {
                     claim = state
                         .claim_state
-                        .get(&building_state.claim_entity_id)
-                        .map_or(None, |m| Some(m.clone()));
+                        .get(&building_state.claim_entity_id).map(|m| m.clone());
                 }
 
                 if let Some(name) = state.building_nickname_state.get(&building_state.entity_id) {

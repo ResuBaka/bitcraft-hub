@@ -1,5 +1,5 @@
 use crate::sea_orm::Statement;
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::{prelude::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -11,18 +11,14 @@ impl MigrationTrait for Migration {
 
         let stmt = Statement::from_string(
             manager.get_database_backend(),
-            format!(
-                "ALTER TABLE inventory_changelog SET(timescaledb.enable_columnstore, timescaledb.orderby = 'timestamp DESC', timescaledb.segmentby = 'entity_id');"
-            ),
+            "ALTER TABLE inventory_changelog SET(timescaledb.enable_columnstore, timescaledb.orderby = 'timestamp DESC', timescaledb.segmentby = 'entity_id');".to_string(),
         );
 
         db.execute(stmt).await?;
 
         let stmt = Statement::from_string(
             manager.get_database_backend(),
-            format!(
-                "ALTER TABLE inventory_changelog SET (timescaledb.compress_chunk_time_interval = '24 hours');"
-            ),
+            "ALTER TABLE inventory_changelog SET (timescaledb.compress_chunk_time_interval = '24 hours');".to_string(),
         );
 
         db.execute(stmt).await?;
@@ -30,7 +26,7 @@ impl MigrationTrait for Migration {
         Ok(())
     }
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
         Ok(())
     }
 }

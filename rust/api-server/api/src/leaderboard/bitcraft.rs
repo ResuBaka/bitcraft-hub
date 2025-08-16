@@ -26,11 +26,6 @@ pub(crate) fn start_worker_experience_state(
         .update_columns([::entity::experience_state::Column::Experience])
         .to_owned();
 
-        tracing::warn!(
-            "Start ExperienceState worker with amount \"{}\" of messages queued",
-            rx.len()
-        );
-
         loop {
             let mut messages = Vec::new();
             let timer = sleep(time_limit);
@@ -47,7 +42,7 @@ pub(crate) fn start_worker_experience_state(
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                    tracing::warn!("Processed Initial ExperienceState {}", data.len());
+                                    tracing::debug!("Processed Initial ExperienceState {}", data.len());
                                     let mut local_messages = vec![];
                                     let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
                                         .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
@@ -90,12 +85,12 @@ pub(crate) fn start_worker_experience_state(
                                             }
                                         }
                                         if local_messages.len() >= batch_size {
-                                           tracing::warn!("Initial Processing {} messages in batch", local_messages.len());
+                                           tracing::debug!("Initial Processing {} messages in batch", local_messages.len());
                                            insert_multiple_experience_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                         }
                                     };
                                     if !local_messages.is_empty() {
-                                        tracing::warn!("Last Initial Processing {} messages in batch", local_messages.len());
+                                        tracing::debug!("Last Initial Processing {} messages in batch", local_messages.len());
                                         insert_multiple_experience_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                     }
 
@@ -106,7 +101,7 @@ pub(crate) fn start_worker_experience_state(
                                             tracing::error!(ExperienceState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ExperienceState");
                                         }
                                     }
-                                    tracing::warn!("Processed Initial ExperienceState");
+                                    tracing::debug!("Processed Initial ExperienceState");
                                     break;
                                 }
                                 SpacetimeUpdateMessages::Insert { new, database_name, .. } => {

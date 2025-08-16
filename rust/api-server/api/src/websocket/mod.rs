@@ -514,7 +514,7 @@ fn connect_to_db_logic(
     let tmp_npc_desc_tx = npc_desc_tx.clone();
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
-            tracing::info!("Handle Subscription response");
+            tracing::debug!("Handle Subscription response");
             let database_name_arc: Arc<String> = Arc::new(tmp_database);
 
             let tmp_database_name_arc = database_name_arc.clone();
@@ -742,7 +742,7 @@ fn connect_to_db_logic(
                     data: user_state,
                 });
             }
-            tracing::info!("Handled Subscription response");
+            tracing::debug!("Handled Subscription response");
         })
         .on_error(on_sub_error)
         .subscribe(
