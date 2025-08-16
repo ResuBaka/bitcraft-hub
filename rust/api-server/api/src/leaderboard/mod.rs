@@ -24,7 +24,7 @@ macro_rules! generate_mysql_sum_level_sql_statement {
 }
 
 pub(crate) const EXCLUDED_USERS_FROM_LEADERBOARD: [i64; 1] = [360287970201941063];
-pub(crate) const EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 2];
+pub(crate) const EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 0];
 
 pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
     (1, 0),
@@ -480,8 +480,8 @@ pub(crate) async fn get_top_100(
             vec![]
         })
         .iter()
-        .map(|player| (player.entity_id, player.time_signed_in))
-        .collect::<HashMap<i64, i32>>();
+        .map(|player| (player.entity_id, player.clone()))
+        .collect::<HashMap<i64, entity::player_state::Model>>();
 
     Ok(axum_codec::Codec(GetTop100Response {
         player_map: players,
@@ -489,9 +489,10 @@ pub(crate) async fn get_top_100(
     }))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct GetTop100Response {
-    pub player_map: HashMap<i64, i32>,
+    pub player_map: HashMap<i64, entity::player_state::Model>,
     pub leaderboard: BTreeMap<String, Vec<RankType>>,
 }
 
@@ -964,8 +965,8 @@ pub(crate) async fn get_claim_leaderboard(
             vec![]
         })
         .iter()
-        .map(|player| (player.entity_id, player.time_signed_in))
-        .collect::<HashMap<i64, i32>>();
+        .map(|player| (player.entity_id, player.clone()))
+        .collect::<HashMap<i64, entity::player_state::Model>>();
 
     Ok(axum_codec::Codec(GetTop100Response {
         player_map: players,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useNow } from "@vueuse/core";
+import type { GetTop100Response } from "~/types/GetTop100Response";
 
 const numberFormat = new Intl.NumberFormat(undefined);
 
@@ -7,12 +8,13 @@ const {
   data: leaderboard,
   pending,
   refresh,
-} = await useFetchMsPack(
+} = await useFetchMsPack<GetTop100Response>(
   () => {
     return `/leaderboard`;
   },
   {
     lazy: true,
+    deep: true,
   },
 );
 
@@ -64,7 +66,7 @@ const topics = computed(() => {
 });
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
-  const skill = leaderboard.value?.leaderboard[message.c.skill_name].find(
+  const skill = leaderboard.value?.leaderboard[message.skill_name].find(
     (item) => item.player_id === message.user_id,
   );
 
@@ -100,10 +102,31 @@ registerWebsocketMessageHandler(
 
     if (skill) {
       skill.experience = message.experience;
-      skill.experience_per_hour = message.experience_per_hour;
+      skill.experience_per_hour = Math.round(
+        message.experience /
+          (leaderboard.value.player_map[message.user_id].time_signed_in / 3600),
+      );
     }
   },
 );
+
+const playerStateTopics = computed(() => {
+  if (!leaderboard.value?.leaderboard) {
+    return [];
+  }
+
+  let topicsSet = new Set<string>();
+
+  for (const player of Object.values(leaderboard.value.player_map)) {
+    topicsSet.add(`player_state.${player.entity_id.toString()}`);
+  }
+
+  return Array.from(topicsSet);
+});
+
+registerWebsocketMessageHandler("PlayerState", playerStateTopics, (message) => {
+  leaderboard.value.player_map[message.entity_id] = message;
+});
 
 let skillMenu = computed(() => {
   const skillMenu = [
@@ -337,7 +360,7 @@ const countDownUntilResearchIsFinished = computed(() => {
           <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
-              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"
                         :to="{ path: 'players/' + item.player_id }">
                 {{ item.player_name }}
               </NuxtLink>
@@ -363,7 +386,7 @@ const countDownUntilResearchIsFinished = computed(() => {
           <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
-              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"
                         :to="{ path: 'players/' + item.player_id }">
                 {{ item.player_name }}
               </NuxtLink>
@@ -388,7 +411,7 @@ const countDownUntilResearchIsFinished = computed(() => {
           <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
-              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"
                         :to="{ path: 'players/' + item.player_id }">
                 {{ item.player_name }}
               </NuxtLink>
@@ -413,7 +436,7 @@ const countDownUntilResearchIsFinished = computed(() => {
           <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
-              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"
                         :to="{ path: 'players/' + item.player_id }">
                 {{ item.player_name }}
               </NuxtLink>
@@ -439,7 +462,7 @@ const countDownUntilResearchIsFinished = computed(() => {
           <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="`${item.player_id}-${selectedSkills}`">
             <td>{{ index + 1 }}</td>
             <td class="text-center">
-              <NuxtLink class="text-decoration-none text-high-emphasis font-weight-black"
+              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"
                         :to="{ path: 'players/' + item.player_id }">
                 {{ item.player_name }}
               </NuxtLink>

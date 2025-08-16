@@ -5,6 +5,7 @@ use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
 use std::collections::HashMap;
+use std::ops::AddAssign;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -133,7 +134,9 @@ pub(crate) fn start_worker_experience_state(
 
                                     let mut new_level_vec = vec![];
 
+                                    let mut new_total_exp = 0;
                                     new.experience_stacks.iter().for_each(|es| {
+                                        new_total_exp.add_assign(es.quantity);
                                         new_level_vec.push((
                                             es.clone(),
                                             experience_to_level(es.quantity as i64),
@@ -151,7 +154,10 @@ pub(crate) fn start_worker_experience_state(
                                         }
                                         messages.push(model.into_active_model());
                                     });
+
+                                    let mut old_total_exp = 0;
                                     for es in old.experience_stacks.iter() {
+                                        old_total_exp.add_assign(es.quantity);
                                         let old_level =
                                             experience_to_level(es.quantity as i64);
 
@@ -180,6 +186,14 @@ pub(crate) fn start_worker_experience_state(
                                             }
                                         }
                                     };
+
+                                    if old_total_exp != new_total_exp {
+                                        let _ = global_app_state.tx.send(WebSocketMessages::TotalExperience {
+                                            experience: new_total_exp as u64,
+                                            user_id: id,
+                                            experience_per_hour: 0,
+                                        });
+                                    }
 
                                     if messages.len() >= batch_size {
                                         break;

@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use futures::FutureExt;
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
@@ -133,6 +133,8 @@ pub(crate) fn start_worker_player_state(
                                         messages.remove(index);
                                     }
                                 }
+
+                                let _ = global_app_state.tx.send(WebSocketMessages::PlayerState(model.clone()));
 
                                 ids.push(model.entity_id);
 
