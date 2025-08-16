@@ -30,22 +30,24 @@ pub(crate) fn start_worker_inventory_state(
                 ::entity::inventory::Column::PlayerOwnerEntityId,
             ])
             .to_owned();
-        let on_conflict_changelog =
-            sea_query::OnConflict::columns([::entity::inventory_changelog::Column::Id, ::entity::inventory_changelog::Column::Timestamp])
-                .update_columns([
-                    ::entity::inventory_changelog::Column::EntityId,
-                    ::entity::inventory_changelog::Column::UserId,
-                    ::entity::inventory_changelog::Column::PocketNumber,
-                    ::entity::inventory_changelog::Column::OldItemId,
-                    ::entity::inventory_changelog::Column::OldItemType,
-                    ::entity::inventory_changelog::Column::OldItemQuantity,
-                    ::entity::inventory_changelog::Column::NewItemId,
-                    ::entity::inventory_changelog::Column::NewItemType,
-                    ::entity::inventory_changelog::Column::NewItemQuantity,
-                    ::entity::inventory_changelog::Column::TypeOfChange,
-                    ::entity::inventory_changelog::Column::Timestamp,
-                ])
-                .to_owned();
+        let on_conflict_changelog = sea_query::OnConflict::columns([
+            ::entity::inventory_changelog::Column::Id,
+            ::entity::inventory_changelog::Column::Timestamp,
+        ])
+        .update_columns([
+            ::entity::inventory_changelog::Column::EntityId,
+            ::entity::inventory_changelog::Column::UserId,
+            ::entity::inventory_changelog::Column::PocketNumber,
+            ::entity::inventory_changelog::Column::OldItemId,
+            ::entity::inventory_changelog::Column::OldItemType,
+            ::entity::inventory_changelog::Column::OldItemQuantity,
+            ::entity::inventory_changelog::Column::NewItemId,
+            ::entity::inventory_changelog::Column::NewItemType,
+            ::entity::inventory_changelog::Column::NewItemQuantity,
+            ::entity::inventory_changelog::Column::TypeOfChange,
+            ::entity::inventory_changelog::Column::Timestamp,
+        ])
+        .to_owned();
 
         let cleanup_signal_future = cancel_token.cancelled().fuse();
         tokio::pin!(cleanup_signal_future);

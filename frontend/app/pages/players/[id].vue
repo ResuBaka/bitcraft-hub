@@ -411,7 +411,7 @@ const tierColor = computed(() => {
     5: `purple${colorEffect}`,
     6: `red${colorEffect}`,
     7: `yellow${colorEffect}`,
-    8: `teal${colorEffect}`,
+    8: `cyan${colorEffect}`,
     9: `deepPurple${colorEffect}`,
     10: `deepPurple${colorEffect}`,
   };

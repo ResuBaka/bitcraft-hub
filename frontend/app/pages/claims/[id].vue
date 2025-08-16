@@ -323,7 +323,7 @@ const levelToColor = (level: number) => {
     return `yellow${colorEffect}`;
   }
   if (80 <= level && level <= 89) {
-    return `teal${colorEffect}`;
+    return `cyan${colorEffect}`;
   }
   if (90 <= level && level <= 99) {
     return `deepPurple${colorEffect}`;
@@ -338,7 +338,7 @@ const tierToColor = computed(() => {
 
   if (theme.global.current.value.dark) {
   } else {
-    colorEffect = "-darken-4";
+    colorEffect = "-darken-1";
   }
 
   const colors = {
@@ -349,7 +349,7 @@ const tierToColor = computed(() => {
     5: `purple${colorEffect}`,
     6: `red${colorEffect}`,
     7: `yellow${colorEffect}`,
-    8: `teal${colorEffect}`,
+    8: `cyan${colorEffect}`,
     9: `deepPurple${colorEffect}`,
     10: `deepPurple${colorEffect}`,
   };
@@ -536,7 +536,7 @@ watchThrottled(
       <v-col cols="12">
         <v-card height="100%" v-if="claim !== undefined">
           <v-card-item>
-            <v-card-title class="text-center">
+            <v-card-title class="text-center" :class="`color-tier-${claim.tier}`">
               {{ claim.name }}
             </v-card-title>
           </v-card-item>
@@ -992,16 +992,16 @@ watchThrottled(
                     ></v-select>
                   </v-col>
                 </v-row>
-                <v-row>
-                  <v-data-iterator :items="inventorysBuildings" :items-per-page="50">
+                <v-row class="ma-0">
+                  <v-data-iterator :items="inventorysBuildings" :items-per-page="50" page="1" class="w-100">
                     <template v-slot:default="{ items }">
-                      <v-row>
+                      <v-row class="ma-0">
                         <template
                             v-for="(inventory, i) in items"
                             :key="i"
                         >
-                          <v-col cols="12" md="4" lg="3" xl="2">
-                            <v-list-item>
+                          <v-col cols="12" md="4" lg="3" xl="2" class="pa-1">
+                            <v-list-item border="thin" :class="`border-color-tier-${inventory.raw.item.tier} rounded-sm pa-0 ma-0`" >
                               <template #prepend v-if="iconDomain">
                                 <v-avatar :rounded="false" size="50" style="width: 90px;">
                                   <v-img :cover="false"
@@ -1016,6 +1016,31 @@ watchThrottled(
                           </v-col>
                         </template>
                       </v-row>
+                    </template>
+                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">
+                      <div class="d-flex align-center justify-center pa-4">
+                        <v-btn
+                            :disabled="page === 1"
+                            density="comfortable"
+                            icon="mdi-arrow-left"
+                            variant="tonal"
+                            rounded
+                            @click="prevPage"
+                        ></v-btn>
+
+                        <div class="mx-2 text-caption">
+                          Page {{ page }} of {{ pageCount }}
+                        </div>
+
+                        <v-btn
+                            :disabled="page >= pageCount"
+                            density="comfortable"
+                            icon="mdi-arrow-right"
+                            variant="tonal"
+                            rounded
+                            @click="nextPage"
+                        ></v-btn>
+                      </div>
                     </template>
                   </v-data-iterator>
                 </v-row>
@@ -1053,16 +1078,16 @@ watchThrottled(
                     ></v-select>
                   </v-col>
                 </v-row>
-                <v-row>
-                  <v-data-iterator :items="inventorysPlayers" :items-per-page="50">
+                <v-row class="ma-0">
+                  <v-data-iterator :items="inventorysPlayers" :items-per-page="50" class="w-100">
                     <template v-slot:default="{ items }">
-                      <v-row>
+                      <v-row class="ma-0">
                         <template
                             v-for="(inventory, i) in items"
                             :key="i"
                         >
-                          <v-col cols="12" md="4" lg="3" xl="2">
-                            <v-list-item>
+                          <v-col cols="12" md="4" lg="3" xl="2" class="pa-1">
+                            <v-list-item border="thin" :class="`border-color-tier-${inventory.raw.item.tier} rounded-sm pa-0 ma-0`" >
                               <template #prepend v-if="iconDomain">
                                 <v-avatar :rounded="false" size="50" style="width: 90px;">
                                   <v-img :cover="false"
@@ -1077,6 +1102,31 @@ watchThrottled(
                           </v-col>
                         </template>
                       </v-row>
+                    </template>
+                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">
+                      <div class="d-flex align-center justify-center pa-4">
+                        <v-btn
+                            :disabled="page === 1"
+                            density="comfortable"
+                            icon="mdi-arrow-left"
+                            variant="tonal"
+                            rounded
+                            @click="prevPage"
+                        ></v-btn>
+
+                        <div class="mx-2 text-caption">
+                          Page {{ page }} of {{ pageCount }}
+                        </div>
+
+                        <v-btn
+                            :disabled="page >= pageCount"
+                            density="comfortable"
+                            icon="mdi-arrow-right"
+                            variant="tonal"
+                            rounded
+                            @click="nextPage"
+                        ></v-btn>
+                      </div>
                     </template>
                   </v-data-iterator>
                 </v-row>
@@ -1114,16 +1164,16 @@ watchThrottled(
                     ></v-select>
                   </v-col>
                 </v-row>
-                <v-row>
-                  <v-data-iterator :items="inventorysPlayersOffline" :items-per-page="50">
+                <v-row class="ma-0">
+                  <v-data-iterator :items="inventorysPlayersOffline" :items-per-page="50" class="w-100">
                     <template v-slot:default="{ items }">
-                      <v-row>
+                      <v-row class="ma-0 min-w-max">
                         <template
                             v-for="(inventory, i) in items"
                             :key="i"
                         >
-                          <v-col cols="12" md="4" lg="3" xl="2">
-                            <v-list-item>
+                          <v-col cols="12" md="4" lg="3" xl="2" class="pa-1">
+                            <v-list-item border="thin" :class="`border-color-tier-${inventory.raw.item.tier} rounded-sm pa-0 ma-0`" >
                               <template #prepend v-if="iconDomain">
                                 <v-avatar :rounded="false" size="50" style="width: 90px;">
                                   <v-img :cover="false"
@@ -1138,6 +1188,31 @@ watchThrottled(
                           </v-col>
                         </template>
                       </v-row>
+                    </template>
+                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">
+                      <div class="d-flex align-center justify-center pa-4">
+                        <v-btn
+                            :disabled="page === 1"
+                            density="comfortable"
+                            icon="mdi-arrow-left"
+                            variant="tonal"
+                            rounded
+                            @click="prevPage"
+                        ></v-btn>
+
+                        <div class="mx-2 text-caption">
+                          Page {{ page }} of {{ pageCount }}
+                        </div>
+
+                        <v-btn
+                            :disabled="page >= pageCount"
+                            density="comfortable"
+                            icon="mdi-arrow-right"
+                            variant="tonal"
+                            rounded
+                            @click="nextPage"
+                        ></v-btn>
+                      </div>
                     </template>
                   </v-data-iterator>
                 </v-row>

@@ -41,6 +41,10 @@ export default defineNuxtConfig({
       theme: {
         themes: {
           light: {
+            colors: {
+              background: colors.grey.lighten4,
+              surface: colors.grey.lighten3,
+            },
             variables: {
               'color-tier-1': colors.grey.darken4,
               'color-tier-2': colors.orange.darken4,
@@ -49,7 +53,7 @@ export default defineNuxtConfig({
               'color-tier-5': colors.purple.darken4,
               'color-tier-6': colors.red.darken4,
               'color-tier-7': colors.yellow.darken4,
-              'color-tier-8': colors.teal.darken4,
+              'color-tier-8': colors.cyan.darken4,
               'color-tier-9': colors.deepPurple.darken4,
               'color-tier-10': colors.deepPurple.darken4,
             }
@@ -63,7 +67,7 @@ export default defineNuxtConfig({
               'color-tier-5': colors.purple.base,
               'color-tier-6': colors.red.base,
               'color-tier-7': colors.yellow.base,
-              'color-tier-8': colors.teal.base,
+              'color-tier-8': colors.cyan.base,
               'color-tier-9': colors.deepPurple.base,
               'color-tier-10': colors.deepPurple.base,
             }
