@@ -600,7 +600,7 @@ watchThrottled(
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
-              <v-col v-if="claimFetch?.running_upgrade" cols="6" md="2" lg="1">
+              <v-col v-if="claimFetch?.running_upgrade" cols="6" md="2" lg="2">
                 <v-list-item>
                   <v-list-item-title>Current Research</v-list-item-title>
                   <v-list-item-subtitle>
@@ -617,7 +617,7 @@ watchThrottled(
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
-              <v-col cols="6" md="2" lg="1">
+              <v-col cols="6" md="2" lg="2">
                 <v-list-item>
                   <v-list-item-title>Total time signed in</v-list-item-title>
                   <v-list-item-subtitle>
