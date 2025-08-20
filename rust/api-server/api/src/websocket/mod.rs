@@ -1,4 +1,7 @@
 use crate::AppState;
+use crate::auction_listing_state::bitcraft::{
+    start_worker_buy_order_state, start_worker_sell_order_state,
+};
 use crate::buildings::bitcraft::{
     start_worker_building_desc, start_worker_building_nickname_state, start_worker_building_state,
 };
@@ -7,6 +10,7 @@ use crate::claims::bitcraft::{
     start_worker_claim_local_state, start_worker_claim_member_state, start_worker_claim_state,
     start_worker_claim_tech_desc, start_worker_claim_tech_state,
 };
+use crate::collectible_desc::bitcraft::start_worker_collectible_desc;
 use crate::config::Config;
 use crate::crafting_recipe_desc::bitcraft::start_worker_crafting_recipe_desc;
 use crate::deployable_state::bitcraft::start_worker_deployable_state;
@@ -21,6 +25,7 @@ use crate::player_state::bitcraft::{
     start_worker_player_state, start_worker_player_username_state,
 };
 use crate::skill_descriptions::bitcraft::start_worker_skill_desc;
+use crate::trading_orders::bitcraft::start_worker_trade_order_state;
 use crate::traveler_task_desc::bitcraft::start_worker_traveler_task_desc;
 use crate::traveler_task_state::bitcraft::start_worker_traveler_task_state;
 use crate::user_state::bitcraft::start_worker_user_state;
@@ -301,8 +306,12 @@ fn connect_to_db_logic(
     item_list_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemListDesc>>,
     traveler_task_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<TravelerTaskDesc>>,
     traveler_task_state_tx: &UnboundedSender<SpacetimeUpdateMessages<TravelerTaskState>>,
+    trade_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<TradeOrderState>>,
     user_state_tx: &UnboundedSender<SpacetimeUpdateMessages<UserState>>,
     npc_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<NpcDesc>>,
+    buy_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
+    sell_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
+    collectible_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CollectibleDesc>>,
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state,
@@ -445,9 +454,37 @@ fn connect_to_db_logic(
         TravelerTaskState,
         database
     );
+    setup_spacetime_db_listeners!(
+        ctx,
+        trade_order_state,
+        trade_order_state_tx,
+        TradeOrderState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        sell_order_state,
+        sell_order_state_tx,
+        AuctionListingState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        buy_order_state,
+        buy_order_state_tx,
+        AuctionListingState,
+        database
+    );
     setup_spacetime_db_listeners!(ctx, npc_desc, npc_desc_tx, NpcDesc, database);
 
     setup_spacetime_db_listeners!(ctx, user_state, user_state_tx, UserState, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        collectible_desc,
+        collectible_desc_tx,
+        CollectibleDesc,
+        database
+    );
 
     let tables_to_subscribe = vec![
         "user_state",
@@ -474,7 +511,7 @@ fn connect_to_db_logic(
         "claim_local_state",
         "deployable_state",
         "inventory_state",
-        // "collectible_desc",
+        "collectible_desc",
         "claim_tech_desc",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
@@ -483,6 +520,9 @@ fn connect_to_db_logic(
         // "select location_state.* from location_state JOIN deployable_state ps ON deployable_state.entity_id = deployable_state.entity_id", // This currently takes to much cpu to run
         "traveler_task_desc",
         "traveler_task_state",
+        // "trade_order_state",
+        "buy_order_state",
+        "sell_order_state",
         "npc_desc",
     ];
 
@@ -510,8 +550,12 @@ fn connect_to_db_logic(
     let tmp_item_list_desc_tx = item_list_desc_tx.clone();
     let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone();
     let tmp_traveler_task_state_tx = traveler_task_state_tx.clone();
+    let tmp_trade_order_state_tx = trade_order_state_tx.clone();
+    let tmp_buy_order_state_tx = buy_order_state_tx.clone();
+    let tmp_sell_order_state_tx = sell_order_state_tx.clone();
     let tmp_user_state_tx = user_state_tx.clone();
     let tmp_npc_desc_tx = npc_desc_tx.clone();
+    let tmp_collectible_desc_tx = collectible_desc_tx.clone();
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
             tracing::debug!("Handle Subscription response");
@@ -735,6 +779,15 @@ fn connect_to_db_logic(
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            let trade_order_state = ctx.db.trade_order_state().iter().collect::<Vec<_>>();
+            if !trade_order_state.is_empty() {
+                let _ = tmp_trade_order_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: trade_order_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
             let user_state = ctx.db.user_state().iter().collect::<Vec<_>>();
             if !user_state.is_empty() {
                 let _ = tmp_user_state_tx.send(SpacetimeUpdateMessages::Initial {
@@ -742,6 +795,34 @@ fn connect_to_db_logic(
                     data: user_state,
                 });
             }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let sell_order_state = ctx.db.sell_order_state().iter().collect::<Vec<_>>();
+            if !sell_order_state.is_empty() {
+                let _ = tmp_sell_order_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: sell_order_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let buy_order_state = ctx.db.buy_order_state().iter().collect::<Vec<_>>();
+            if !buy_order_state.is_empty() {
+                let _ = tmp_buy_order_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: buy_order_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let collectible_desc = ctx.db.collectible_desc().iter().collect::<Vec<_>>();
+            if !collectible_desc.is_empty() {
+                let _ = tmp_collectible_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: collectible_desc,
+                });
+            }
+
             tracing::debug!("Handled Subscription response");
         })
         .on_error(on_sub_error)
@@ -813,8 +894,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (traveler_task_desc_tx, traveler_task_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (traveler_task_state_tx, traveler_task_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
+        let (trade_order_state_tx, trade_order_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (buy_order_state_tx, buy_order_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (sell_order_state_tx, sell_order_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let (npc_desc_tx, npc_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (collectible_desc_tx, collectible_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let mut remove_desc = false;
 
@@ -861,8 +946,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_item_list_desc_tx = item_list_desc_tx.clone();
                 let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone();
                 let tmp_traveler_task_state_tx = traveler_task_state_tx.clone();
+                let tmp_trade_order_state_tx = trade_order_state_tx.clone();
                 let tmp_user_state_tx = user_state_tx.clone();
                 let tmp_npc_desc_tx = npc_desc_tx.clone();
+                let tmp_buy_order_state_tx = buy_order_state_tx.clone();
+                let tmp_sell_order_state_tx = sell_order_state_tx.clone();
+                let tmp_collectible_desc_tx = collectible_desc_tx.clone();
                 let tmp_conf = config.clone();
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
@@ -903,8 +992,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         &tmp_item_list_desc_tx,
                         &tmp_traveler_task_desc_tx,
                         &tmp_traveler_task_state_tx,
+                        &tmp_trade_order_state_tx,
                         &tmp_user_state_tx,
                         &tmp_npc_desc_tx,
+                        &tmp_buy_order_state_tx,
+                        &tmp_sell_order_state_tx,
+                        &tmp_collectible_desc_tx,
                     );
 
                     if let Err(error) = result {
@@ -1110,6 +1203,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             Duration::from_millis(50),
             timer_cleanup_token,
         );
+        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
+        start_worker_trade_order_state(
+            global_app_state.clone(),
+            trade_order_state_rx,
+            6000,
+            Duration::from_millis(50),
+            timer_cleanup_token,
+        );
 
         let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_npc_desc(
@@ -1118,6 +1219,27 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             3000,
             Duration::from_millis(50),
             timer_cleanup_token,
+        );
+
+        start_worker_buy_order_state(
+            global_app_state.clone(),
+            buy_order_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+
+        start_worker_sell_order_state(
+            global_app_state.clone(),
+            sell_order_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+
+        start_worker_collectible_desc(
+            global_app_state.clone(),
+            collectible_desc_rx,
+            3000,
+            Duration::from_millis(50),
         );
 
         start_worker_user_state(global_app_state.clone(), user_state_rx);
@@ -1243,86 +1365,96 @@ pub(crate) enum WebSocketMessages {
     ClaimLocalState(entity::claim_local_state::Model),
     Message(String),
     ActionState(entity::action_state::Model),
+    InsertSellOrder(entity::auction_listing_state::AuctionListingState),
+    UpdateSellOrder(entity::auction_listing_state::AuctionListingState),
+    RemoveSellOrder(entity::auction_listing_state::AuctionListingState),
+    InsertBuyOrder(entity::auction_listing_state::AuctionListingState),
+    UpdateBuyOrder(entity::auction_listing_state::AuctionListingState),
+    RemoveBuyOrder(entity::auction_listing_state::AuctionListingState),
 }
 
 impl WebSocketMessages {
-    pub fn topics(&self) -> Option<Vec<(String, i64)>> {
+    pub fn topics(&self) -> Option<Vec<(String, Option<i64>)>> {
         match self {
             WebSocketMessages::Experience {
                 skill_name,
                 user_id,
                 ..
             } => Some(vec![
-                (format!("experience:{skill_name}"), *user_id),
-                ("experience".to_string(), *user_id),
+                (format!("experience:{skill_name}"), Some(*user_id)),
+                ("experience".to_string(), Some(*user_id)),
             ]),
             WebSocketMessages::ClaimLocalState(claim_local_state) => Some(vec![(
                 "claim_local_state".to_string(),
-                claim_local_state.entity_id,
+                Some(claim_local_state.entity_id),
             )]),
             WebSocketMessages::Level {
                 user_id,
                 skill_name,
                 ..
             } => Some(vec![
-                (format!("level:{skill_name}"), *user_id),
-                ("level".to_string(), *user_id),
+                (format!("level:{skill_name}"), Some(*user_id)),
+                ("level".to_string(), Some(*user_id)),
             ]),
-            WebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => {
-                Some(vec![("player_moved_into_claim".to_string(), *user_id)])
-            }
-            WebSocketMessages::PlayerMovedOutOfClaim { user_id, .. } => {
-                Some(vec![("player_moved_out_of_claim".to_string(), *user_id)])
-            }
-            WebSocketMessages::MovedOutOfClaim { claim_id, .. } => {
-                Some(vec![("moved_out_of_claim".to_string(), *claim_id as i64)])
-            }
-            WebSocketMessages::MovedIntoClaim { claim_id, .. } => {
-                Some(vec![("moved_into_claim".to_string(), *claim_id as i64)])
-            }
+            WebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => Some(vec![(
+                "player_moved_into_claim".to_string(),
+                Some(*user_id),
+            )]),
+            WebSocketMessages::PlayerMovedOutOfClaim { user_id, .. } => Some(vec![(
+                "player_moved_out_of_claim".to_string(),
+                Some(*user_id),
+            )]),
+            WebSocketMessages::MovedOutOfClaim { claim_id, .. } => Some(vec![(
+                "moved_out_of_claim".to_string(),
+                Some(*claim_id as i64),
+            )]),
+            WebSocketMessages::MovedIntoClaim { claim_id, .. } => Some(vec![(
+                "moved_into_claim".to_string(),
+                Some(*claim_id as i64),
+            )]),
             WebSocketMessages::PlayerState(player) => {
-                Some(vec![("player_state".to_string(), player.entity_id)])
+                Some(vec![("player_state".to_string(), Some(player.entity_id))])
             }
             WebSocketMessages::MobileEntityState(mobile_entity_state) => Some(vec![(
                 "mobile_entity_state".to_string(),
-                mobile_entity_state.entity_id as i64,
+                Some(mobile_entity_state.entity_id as i64),
             )]),
             // WebSocketMessages::ClaimDescriptionState(claim) => {
             //     Some(vec![("claim".to_string(), claim.entity_id)])
             // }
             WebSocketMessages::TotalExperience { user_id, .. } => {
-                Some(vec![("total_experience".to_string(), *user_id)])
+                Some(vec![("total_experience".to_string(), Some(*user_id))])
             }
             WebSocketMessages::PlayerActionState(player_action_state) => Some(vec![(
                 "player_action_state".to_string(),
-                player_action_state.entity_id as i64,
+                Some(player_action_state.entity_id as i64),
             )]),
             WebSocketMessages::PlayerActionStateChangeName(_, id) => Some(vec![(
                 "player_action_state_change_name".to_string(),
-                *id as i64,
+                Some(*id as i64),
             )]),
             WebSocketMessages::ActionState(action_state) => Some(vec![(
                 "action_state".to_string(),
-                action_state.owner_entity_id as i64,
+                Some(action_state.owner_entity_id as i64),
             )]),
             WebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![
                 (
                     "traveler_task_state".to_string(),
-                    traveler_task_state.entity_id,
+                    Some(traveler_task_state.entity_id),
                 ),
                 (
                     "traveler_task_state:player".to_string(),
-                    traveler_task_state.player_entity_id,
+                    Some(traveler_task_state.player_entity_id),
                 ),
             ]),
             WebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![
                 (
                     "traveler_task_state".to_string(),
-                    traveler_task_state.entity_id,
+                    Some(traveler_task_state.entity_id),
                 ),
                 (
                     "traveler_task_state:player".to_string(),
-                    traveler_task_state.player_entity_id,
+                    Some(traveler_task_state.player_entity_id),
                 ),
             ]),
             WebSocketMessages::ListSubscribedTopics => None,
@@ -1330,6 +1462,72 @@ impl WebSocketMessages {
             WebSocketMessages::SubscribedTopics(_) => None,
             WebSocketMessages::Unsubscribe { .. } => None,
             WebSocketMessages::Message(_) => None,
+            WebSocketMessages::InsertSellOrder(auction_listing_state) => Some(vec![
+                (
+                    "insert_sell_order".to_string(),
+                    Some(auction_listing_state.entity_id as i64),
+                ),
+                (
+                    "insert_sell_order:item_id".to_string(),
+                    Some(auction_listing_state.item_id as i64),
+                ),
+                ("insert_sell_order".to_string(), None),
+            ]),
+            WebSocketMessages::UpdateSellOrder(auction_listing_state) => Some(vec![
+                (
+                    "update_sell_order".to_string(),
+                    Some(auction_listing_state.entity_id as i64),
+                ),
+                (
+                    "update_sell_order:item_id".to_string(),
+                    Some(auction_listing_state.item_id as i64),
+                ),
+                ("update_sell_order".to_string(), None),
+            ]),
+            WebSocketMessages::RemoveSellOrder(auction_listing_state) => Some(vec![
+                (
+                    "remove_sell_order".to_string(),
+                    Some(auction_listing_state.entity_id as i64),
+                ),
+                (
+                    "remove_sell_order:item_id".to_string(),
+                    Some(auction_listing_state.item_id as i64),
+                ),
+                ("remove_sell_order".to_string(), None),
+            ]),
+            WebSocketMessages::InsertBuyOrder(auction_listing_state) => Some(vec![
+                (
+                    "update_buy_order".to_string(),
+                    Some(auction_listing_state.entity_id as i64),
+                ),
+                (
+                    "update_buy_order:item_id".to_string(),
+                    Some(auction_listing_state.item_id as i64),
+                ),
+                ("update_buy_order".to_string(), None),
+            ]),
+            WebSocketMessages::UpdateBuyOrder(auction_listing_state) => Some(vec![
+                (
+                    "update_buy_order".to_string(),
+                    Some(auction_listing_state.entity_id as i64),
+                ),
+                (
+                    "update_buy_order:item_id".to_string(),
+                    Some(auction_listing_state.item_id as i64),
+                ),
+                ("update_buy_order".to_string(), None),
+            ]),
+            WebSocketMessages::RemoveBuyOrder(auction_listing_state) => Some(vec![
+                (
+                    "remove_buy_order".to_string(),
+                    Some(auction_listing_state.entity_id as i64),
+                ),
+                (
+                    "remove_buy_order:item_id".to_string(),
+                    Some(auction_listing_state.item_id as i64),
+                ),
+                ("remove_buy_order".to_string(), None),
+            ]),
         }
     }
 }

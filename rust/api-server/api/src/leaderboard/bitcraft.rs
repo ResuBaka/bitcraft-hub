@@ -3,6 +3,8 @@ use crate::leaderboard::experience_to_level;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
 use std::collections::HashMap;
 use std::ops::AddAssign;
@@ -49,7 +51,7 @@ pub(crate) fn start_worker_experience_state(
                                         .all(&global_app_state.conn)
                                         .await
                                         .map_or(vec![], |aa| aa)
-                                        .into_iter()
+                                        .into_par_iter()
                                         .map(|value| {
                                             let entity_id = value.entity_id;
                                             let skill_id = value.skill_id;
@@ -57,7 +59,7 @@ pub(crate) fn start_worker_experience_state(
                                         })
                                         .collect::<HashMap<_, _>>();
 
-                                    for model in data.into_iter().flat_map(|value| {
+                                    for model in data.into_par_iter().flat_map(|value| {
                                         let id = value.entity_id;
                                         let model: Vec<::entity::experience_state::Model> = value.experience_stacks.iter().map(|exp_stack| {
                                                 ::entity::experience_state::Model {
@@ -69,7 +71,7 @@ pub(crate) fn start_worker_experience_state(
                                             }).collect();
 
                                         model
-                                    }) {
+                                    }).collect::<Vec<_>>() {
                                         let key = format!("{}:{}", model.entity_id, model.skill_id);
                                         use std::collections::hash_map::Entry;
                                         match currently_known_experience_state.entry(key) {
@@ -101,8 +103,7 @@ pub(crate) fn start_worker_experience_state(
                                             tracing::error!(ExperienceState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ExperienceState");
                                         }
                                     }
-                                    tracing::debug!("Processed Initial ExperienceState");
-                                    break;
+                                    tracing::debug!("Processed Initial ExperienceState {}", database_name.to_string());
                                 }
                                 SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                     let id = new.entity_id as i64;
@@ -121,7 +122,8 @@ pub(crate) fn start_worker_experience_state(
                                     });
 
                                     if messages.len() >= batch_size {
-                                        break;
+                                        insert_multiple_experience_state(&global_app_state, &on_conflict, &mut messages)
+                                            .await;
                                     }
                                 }
                                 SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
@@ -191,7 +193,8 @@ pub(crate) fn start_worker_experience_state(
                                     }
 
                                     if messages.len() >= batch_size {
-                                        break;
+                                        insert_multiple_experience_state(&global_app_state, &on_conflict, &mut messages)
+                                            .await;
                                     }
                                 }
                                 SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {

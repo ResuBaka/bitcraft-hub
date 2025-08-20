@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
+import type { TradeOrdersResponse } from "~/types/TradeOrdersResponse";
 
 const page = ref(1);
 const perPage = 24;
@@ -21,9 +22,9 @@ const {
   data: tradeOrders,
   pending,
   refresh,
-} = await useLazyFetchMsPack(
+} = await useLazyFetchMsPack<TradeOrdersResponse>(
   () => {
-    return `/api/bitcraft/tradeOrders`;
+    return `/api/bitcraft/trade_orders/get_trade_orders`;
   },
   {
     onRequest: ({ options }) => {
@@ -63,20 +64,48 @@ const changePage = (value: number) => {
   refresh();
 };
 
-watchThrottled(
-  () => [search.value],
-  (value, oldValue) => {
-    if (value[0] !== oldValue[0]) {
-      page.value = 1;
-    }
-
-    refresh();
-  },
-  { throttle: 50 },
-);
+// watchThrottled(
+//   () => [search.value],
+//   (value, oldValue) => {
+//     if (value[0] !== oldValue[0]) {
+//       page.value = 1;
+//     }
+//
+//     refresh();
+//   },
+//   { throttle: 50 },
+// );
 
 const currentTradeOrders = computed(() => {
-  return tradeOrders.value?.trade_orders ?? [];
+  if (!tradeOrders.value) {
+    return [];
+  }
+
+  if (!search.value) {
+    return tradeOrders.value.trade_orders;
+  }
+
+  let internalSearch = Number(search.value);
+
+  return tradeOrders.value.trade_orders.filter((tradeOrder) => {
+    if (tradeOrder.required_items.find((ri) => ri.item_id == internalSearch)) {
+      return true;
+    }
+
+    if (tradeOrder.offer_items.find((ri) => ri.item_id == internalSearch)) {
+      return true;
+    }
+
+    if (tradeOrder.offer_cargo_id.includes(internalSearch)) {
+      return true;
+    }
+
+    if (tradeOrder.required_cargo_id.includes(internalSearch)) {
+      return true;
+    }
+
+    return false;
+  });
 });
 
 const length = computed(() => {
@@ -125,76 +154,113 @@ const computedClass = computed(() => {
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="tradeOrder in currentTradeOrders"
-             :key="tradeOrder.entity_id">
-        <v-card height="100%">
-          <v-card-item>
-            <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
-                       :to="{ name: 'buildings-id', params: { id: tradeOrder.shop_entity_id } }"
-            >{{ tradeOrder.shop_name }} ({{ tradeOrder.shop_entity_id }})
-            </nuxt-link>
-          </v-card-item>
-          <v-card-text class="h-100" :class="computedClass">
-            <v-table :class="computedClass" density="compact">
-              <tbody>
-              <tr style='text-align: right'>
-                <th>Remaining stock:</th>
-                <td>{{ tradeOrder.remaining_stock }}</td>
-              </tr>
-              </tbody>
-            </v-table>
-            <v-toolbar density="compact" class="mt-2" color="secondary-darken-1" title="Offer Item/Cargo"></v-toolbar>
-            <v-table density="compact">
-              <thead>
-              <tr>
-                <th>Icon</th>
-                <th>Name</th>
-                <th>Quantity</th>
-                <th>Type</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr v-for="offer_item of tradeOrder.offer_items">
-                <bitcraft-item :item="offer_item"></bitcraft-item>
-              </tr>
-              <tr v-for="offer_item of tradeOrder.offer_cargo">
-                <td>
-                  <v-img :src="iconAssetUrlName(offer_item.icon_asset_name).url" height="50" width="50"></v-img>
-                </td>
-                <td>{{ offer_item.name }}</td>
-                <td>1</td>
-                <td>Cargo</td>
-              </tr>
-              </tbody>
-            </v-table>
+      <v-data-iterator :items="currentTradeOrders" :items-per-page="50" class="w-100">
+        <template v-slot:default="{ items }">
+          <v-container class="ma-0" fluid>
+          <v-row >
+            <template
+                v-for="(tradeOrder, i) in items"
+                :key="i"
+            >
+              <v-col>
+              <v-card>
+                <v-card-item>
+                  <nuxt-link class="text-decoration-none text-high-emphasis font-weight-black"
+                             :to="{ name: 'buildings-id', params: { id: tradeOrder.raw.shop_entity_id } }"
+                  >{{ tradeOrder.raw.shop_name }} ({{ tradeOrder.raw.shop_entity_id }})
+                  </nuxt-link>
+                </v-card-item>
+                <v-card-text class="h-100" :class="computedClass">
+                  <v-table :class="computedClass" density="compact">
+                    <tbody>
+                    <tr style='text-align: right'>
+                      <th>Remaining stock:</th>
+                      <td>{{ tradeOrder.raw.remaining_stock }}</td>
+                    </tr>
+                    </tbody>
+                  </v-table>
+                  <v-toolbar density="compact" class="mt-2" color="secondary-darken-1" title="Offer Item/Cargo"></v-toolbar>
+                  <v-table density="compact">
+                    <thead>
+                    <tr>
+                      <th>Icon</th>
+                      <th>Name</th>
+                      <th>Quantity</th>
+                      <th>Type</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="offer_item of tradeOrder.raw.offer_items">
+                      <bitcraft-item :item="offer_item"></bitcraft-item>
+                    </tr>
+                    <tr v-for="offer_item of tradeOrder.raw.offer_cargo">
+                      <td>
+                        <v-img :src="iconAssetUrlName(offer_item.item.icon_asset_name).url" height="50" width="50"></v-img>
+                      </td>
+                      <td>{{ offer_item.name }}</td>
+                      <td>1</td>
+                      <td>Cargo</td>
+                    </tr>
+                    </tbody>
+                  </v-table>
 
-            <v-toolbar density="compact" class="mt-2" color="secondary-darken-1" title="Require Item/Cargo"></v-toolbar>
-            <v-table density="compact">
-              <thead>
-              <tr>
-                <th>Icon</th>
-                <th>Name</th>
-                <th>Quantity</th>
-                <th>Type</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr v-for="requiredItem of tradeOrder.required_items">
-                <bitcraft-item :item="requiredItem"></bitcraft-item>
-              </tr>
-              <tr v-for="requiredCargo of tradeOrder.required_cargo">
-                <td>
-                  <v-img :src="iconAssetUrlName(requiredCargo.icon_asset_name).url" height="50" width="50"></v-img>
-                </td>
-                <td>{{ requiredCargo.name }}</td>
-                <td>1</td>
-                <td>Cargo</td>
-              </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
+                  <v-toolbar density="compact" class="mt-2" color="secondary-darken-1" title="Require Item/Cargo"></v-toolbar>
+                  <v-table density="compact">
+                    <thead>
+                    <tr>
+                      <th>Icon</th>
+                      <th>Name</th>
+                      <th>Quantity</th>
+                      <th>Type</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="requiredItem of tradeOrder.raw.required_items">
+                      <bitcraft-item :item="requiredItem"></bitcraft-item>
+                    </tr>
+                    <tr v-for="requiredCargo of tradeOrder.raw.required_cargo">
+                      <td>
+                        <v-img :src="iconAssetUrlName(requiredCargo.item.icon_asset_name).url" height="50" width="50"></v-img>
+                      </td>
+                      <td>{{ requiredCargo.name }}</td>
+                      <td>1</td>
+                      <td>Cargo</td>
+                    </tr>
+                    </tbody>
+                  </v-table>
+                </v-card-text>
+              </v-card>
+              </v-col>
+            </template>
+          </v-row>
+          </v-container>
+        </template>
+        <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">
+          <div class="d-flex align-center justify-center pa-4">
+            <v-btn
+                :disabled="page === 1"
+                density="comfortable"
+                icon="mdi-arrow-left"
+                variant="tonal"
+                rounded
+                @click="prevPage"
+            ></v-btn>
+
+            <div class="mx-2 text-caption">
+              Page {{ page }} of {{ pageCount }}
+            </div>
+
+            <v-btn
+                :disabled="page >= pageCount"
+                density="comfortable"
+                icon="mdi-arrow-right"
+                variant="tonal"
+                rounded
+                @click="nextPage"
+            ></v-btn>
+          </div>
+        </template>
+      </v-data-iterator>
     </v-row>
   </v-container>
 </template>

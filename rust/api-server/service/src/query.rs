@@ -20,7 +20,7 @@ use ::entity::{
     player_username_state::Entity as PlayerUsernameState, skill_desc,
 };
 use sea_orm::sea_query::extension::postgres::PgExpr;
-use sea_orm::sea_query::{Alias, Expr, ExprTrait, PgFunc, PostgresQueryBuilder};
+use sea_orm::sea_query::{Alias, CaseStatement, Expr, ExprTrait, PgFunc, PostgresQueryBuilder};
 use sea_orm::*;
 
 pub struct Query;

@@ -14,7 +14,7 @@ const router = useRouter();
 
 if (route.query.search) {
   debouncedSearch.value = route.query.search as string;
-  search.value = debouncedSearch.value;
+  search.value = route.query.search as string;
 }
 
 if (route.query.page) {
@@ -27,36 +27,55 @@ const {
   refresh,
 } = await useLazyFetchMsPack<PlayersResponse>(
   () => {
-    return `/api/bitcraft/players`;
+    const url = `/api/bitcraft/players?`;
+    let paramter = new URLSearchParams();
+
+    if (search.value) {
+      paramter.set("search", search.value);
+    }
+
+    if (page.value) {
+      paramter.set("page", page.value.toString());
+    }
+
+    if (showOnlyOnlinePlayers.value) {
+      paramter.set("online", "true");
+    }
+
+    paramter.set("per_page", perPage.toString());
+
+    return url + paramter;
   },
   {
-    onRequest: ({ options }) => {
-      options.query = options.query || {};
-
-      if (search.value) {
-        options.query.search = search.value;
-      }
-
-      if (page.value) {
-        options.query.page = page.value;
-      }
-
-      if (perPage) {
-        options.query.per_page = perPage;
-      }
-
-      if (showOnlyOnlinePlayers.value) {
-        options.query.online = true;
-      }
-
-      if (Object.keys(options.query).length > 2) {
-        const query = { ...options.query };
-        delete query.per_page;
-        router.push({ query });
-      } else if (options.query.page <= 1) {
-        router.push({});
-      }
-    },
+    // onRequest: ({ options }) => {
+    //   options.query = options.query || {};
+    //
+    //   if (search.value) {
+    //     options.query.search = search.value;
+    //   }
+    //
+    //   if (page.value) {
+    //     options.query.page = page.value;
+    //   }
+    //
+    //   if (perPage) {
+    //     options.query.per_page = perPage;
+    //   }
+    //
+    //   if (showOnlyOnlinePlayers.value) {
+    //     options.query.online = true;
+    //   }
+    //
+    //   console.log(options.query);
+    //
+    //   if (Object.keys(options.query).length > 2) {
+    //     const query = { ...options.query };
+    //     delete query.per_page;
+    //     router.push({ query });
+    //   } else if (options.query.page <= 1) {
+    //     router.push({});
+    //   }
+    // },
   },
 );
 
@@ -77,8 +96,6 @@ watchThrottled(
     if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
       page.value = 1;
     }
-
-    refresh();
   },
   { throttle: 50 },
 );
@@ -91,7 +108,6 @@ watchDebounced(
     }
 
     search.value = debouncedSearch.value;
-    refresh();
   },
   { debounce: 100, maxWait: 200 },
 );
@@ -172,7 +188,7 @@ useSeoMeta({
     <v-row>
       <v-col cols="10">
         <v-text-field
-            v-model="debouncedSearch"
+            v-model="search"
             label="Search"
             outlined
             dense

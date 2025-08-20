@@ -5,6 +5,8 @@ use entity::inventory_changelog::TypeOfChange;
 use futures::FutureExt;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set};
 use std::collections::HashMap;
@@ -76,15 +78,15 @@ pub(crate) fn start_worker_inventory_state(
                                         .all(&global_app_state.conn)
                                         .await
                                         .map_or(vec![], |aa| aa)
-                                        .into_iter()
+                                        .into_par_iter()
                                         .map(|value| (value.entity_id, value))
                                         .collect::<HashMap<_, _>>();
 
-                                    for model in data.into_iter().map(|value| {
+                                    for model in data.into_par_iter().map(|value| {
                                         let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
                                         model
-                                    }) {
+                                    }).collect::<Vec<_>>() {
                                         use std::collections::hash_map::Entry;
                                         match currently_known_inventory.entry(model.entity_id) {
                                             Entry::Occupied(entry) => {
@@ -125,7 +127,7 @@ pub(crate) fn start_worker_inventory_state(
                                     }
                                     messages.push(model.into_active_model());
                                     if messages.len() >= batch_size {
-                                        break;
+                                        insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
                                     }
                                 }
                                 SpacetimeUpdateMessages::Update { new, old, caller_identity, timestamp, database_name, .. } => {
@@ -201,11 +203,16 @@ pub(crate) fn start_worker_inventory_state(
                                     }
 
                                     if messages.len() >= batch_size {
-                                        break;
+                                        insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
                                     }
 
                                     if messages_changed.len() >= batch_size {
-                                        break;
+                                        insert_multiple_inventory_changelog(
+                                            &global_app_state,
+                                            &on_conflict_changelog,
+                                            &mut messages_changed,
+                                        )
+                                        .await;
                                     }
 
                                 }

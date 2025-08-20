@@ -288,7 +288,7 @@ const inventorysPlayersOffline = computed(() => {
 });
 
 const sortMembersLevelRaw = (a: any, b: any) => {
-  return b.level - a.level;
+  return (b?.level || 0) - (a?.level || 0);
 };
 
 const theme = useTheme();
@@ -685,6 +685,7 @@ watchThrottled(
                 {
                   title: 'User',
                   key: 'user_name',
+                  fixed: 'start',
                   cellProps: {
                     class: 'font-weight-black'
                   }

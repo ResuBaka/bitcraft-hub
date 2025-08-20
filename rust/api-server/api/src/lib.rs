@@ -1,3 +1,4 @@
+mod auction_listing_state;
 mod buildings;
 mod cargo_desc;
 mod claim_tech_desc;
@@ -303,23 +304,39 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                 Ok(message) => match message {
                     WebSocketMessages::Subscribe { topics } => {
                         for topic in topics {
-                            let (topic, id) = topic.split_once(".").unwrap();
-                            let id = id.parse::<i64>().unwrap();
+                            let possible_topic = topic.split_once(".");
 
-                            inner_state
-                                .clients_state
-                                .add_topic_to_client(&inner_id, &topic.to_string(), id)
-                                .await;
+                            if possible_topic.is_none() {
+                                inner_state
+                                    .clients_state
+                                    .add_topic_to_client(&inner_id, &topic.to_string(), None)
+                                    .await;
+                            } else {
+                                let (topic, id) = possible_topic.unwrap();
+                                let id = id.parse::<i64>().unwrap();
+                                inner_state
+                                    .clients_state
+                                    .add_topic_to_client(&inner_id, &topic.to_string(), Some(id))
+                                    .await;
+                            }
                         }
                     }
                     WebSocketMessages::Unsubscribe { topic } => {
-                        let (topic, id) = topic.split_once(".").unwrap();
-                        let id = id.parse::<i64>().unwrap();
+                        let possible_topic = topic.split_once(".");
 
-                        inner_state
-                            .clients_state
-                            .remove_topic_from_client(&inner_id, &topic.to_string(), id)
-                            .await;
+                        if possible_topic.is_none() {
+                            inner_state
+                                .clients_state
+                                .remove_topic_from_client(&inner_id, &topic.to_string(), None)
+                                .await;
+                        } else {
+                            let (topic, id) = possible_topic.unwrap();
+                            let id = id.parse::<i64>().unwrap();
+                            inner_state
+                                .clients_state
+                                .remove_topic_from_client(&inner_id, &topic.to_string(), Some(id))
+                                .await;
+                        }
                     }
                     WebSocketMessages::ListSubscribedTopics => {
                         let topics = inner_state
@@ -410,6 +427,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         .merge(leaderboard::get_routes())
         .merge(trading_orders::get_routes())
         .merge(traveler_tasks::get_routes())
+        .merge(auction_listing_state::get_routes())
         .nest("/desc", desc_router)
         .nest_service(
             "/static",
@@ -494,6 +512,10 @@ struct AppState {
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,
     traveler_task_desc: Arc<dashmap::DashMap<i32, entity::traveler_task_desc::Model>>,
     user_state: Arc<dashmap::DashMap<Identity, u64>>,
+    trade_order_state: Arc<dashmap::DashMap<i64, entity::trade_order::Model>>,
+    buy_order_state: Arc<dashmap::DashMap<i64, entity::auction_listing_state::AuctionListingState>>,
+    sell_order_state:
+        Arc<dashmap::DashMap<i64, entity::auction_listing_state::AuctionListingState>>,
     npc_desc: Arc<dashmap::DashMap<i32, entity::npc_desc::Model>>,
     metrics_registry: prometheus::Registry,
 }
@@ -536,6 +558,9 @@ impl AppState {
             // inventory_state: Arc::new(dashmap::DashMap::new()),
             connected_user_map: Arc::new(dashmap::DashMap::new()),
             traveler_task_desc: Arc::new(dashmap::DashMap::new()),
+            trade_order_state: Arc::new(dashmap::DashMap::new()),
+            buy_order_state: Arc::new(dashmap::DashMap::new()),
+            sell_order_state: Arc::new(dashmap::DashMap::new()),
             user_state: Arc::new(dashmap::DashMap::new()),
             npc_desc: Arc::new(dashmap::DashMap::new()),
         }
@@ -777,6 +802,7 @@ type WebsocketClient = (
     AsyncSender<crate::websocket::WebSocketMessages>,
     HashMap<String, HashSet<i64>>,
     WebsocketEncoding,
+    HashSet<String>,
 );
 
 struct ClientsState {
@@ -801,7 +827,7 @@ impl ClientsState {
         self.clients
             .write()
             .await
-            .insert(id, (tx, HashMap::new(), encoding));
+            .insert(id, (tx, HashMap::new(), encoding, HashSet::new()));
         metrics::gauge!("websocket_clients_connected_total").increment(1);
     }
 
@@ -809,7 +835,8 @@ impl ClientsState {
         let current_topics = self.clients.read().await.get(id).unwrap().1.clone();
         for (topic, topic_ids) in current_topics {
             for topic_id in topic_ids {
-                self.remove_topic_from_client(id, &topic, topic_id).await;
+                self.remove_topic_from_client(id, &topic, Some(topic_id))
+                    .await;
             }
         }
 
@@ -843,7 +870,12 @@ impl ClientsState {
         None
     }
 
-    pub(crate) async fn add_topic_to_client(&self, id: &String, topic: &String, topic_id: i64) {
+    pub(crate) async fn add_topic_to_client(
+        &self,
+        id: &String,
+        topic: &String,
+        topic_id: Option<i64>,
+    ) {
         if self
             .client_listen_to_topics(id, vec![(topic.clone(), topic_id)])
             .await
@@ -853,22 +885,30 @@ impl ClientsState {
 
         let mut clients = self.clients.write().await;
         if let Some(client) = clients.get_mut(id) {
-            if let Some(topics) = client.1.get_mut(topic) {
-                topics.insert(topic_id);
+            if topic_id.is_none() {
+                client.3.insert(topic.clone());
+            } else if let Some(topics) = client.1.get_mut(topic) {
+                topics.insert(topic_id.unwrap());
             } else {
-                client.1.insert(topic.clone(), HashSet::from([topic_id]));
+                client
+                    .1
+                    .insert(topic.clone(), HashSet::from([topic_id.unwrap()]));
             }
+        }
+
+        if topic_id.is_none() {
+            return;
         }
 
         let mut topics_listen_to = self.topics_listen_to.write().await;
         if let Some(found_topic) = topics_listen_to.get_mut(topic) {
-            if let Some(current_topic) = found_topic.get_mut(&topic_id) {
+            if let Some(current_topic) = found_topic.get_mut(&topic_id.unwrap()) {
                 current_topic.add_assign(1);
             } else {
-                found_topic.insert(topic_id, 1);
+                found_topic.insert(topic_id.unwrap(), 1);
             }
         } else {
-            topics_listen_to.insert(topic.clone(), HashMap::from([(topic_id, 1)]));
+            topics_listen_to.insert(topic.clone(), HashMap::from([(topic_id.unwrap(), 1)]));
         }
     }
 
@@ -876,18 +916,24 @@ impl ClientsState {
         &self,
         id: &String,
         topic: &String,
-        topic_id: i64,
+        topic_id: Option<i64>,
     ) {
         let mut clients = self.clients.write().await;
         if let Some(client) = clients.get_mut(id) {
-            if let Some(topics) = client.1.get_mut(topic) {
-                topics.remove(&topic_id);
+            if topic_id.is_none() && client.3.contains(topic) {
+                client.3.remove(topic);
+            } else if let Some(topics) = client.1.get_mut(topic) {
+                topics.remove(&topic_id.unwrap());
             }
+        }
+
+        if topic_id.is_none() {
+            return;
         }
 
         let mut topics_listen_to = self.topics_listen_to.write().await;
         if let Some(found_topic) = topics_listen_to.get_mut(topic) {
-            if let Some(current_topic) = found_topic.get_mut(&topic_id) {
+            if let Some(current_topic) = found_topic.get_mut(&topic_id.unwrap()) {
                 if current_topic > &mut 0u64 {
                     current_topic.sub_assign(1);
                 }
@@ -898,14 +944,16 @@ impl ClientsState {
     pub(crate) async fn clients_listen_to_topic(
         &self,
         topic: &String,
-        topic_id: i64,
+        topic_id: Option<i64>,
     ) -> Vec<AsyncSender<crate::websocket::WebSocketMessages>> {
         let mut senders = vec![];
         let clients = self.clients.read().await;
 
-        for (_, (tx, topics, _)) in clients.iter() {
-            if let Some(found_topic) = topics.get(topic) {
-                if found_topic.contains(&topic_id) {
+        for (_, (tx, topics, _, topic_with_out_id)) in clients.iter() {
+            if topic_id.is_none() && topic_with_out_id.contains(topic) {
+                senders.push(tx.clone());
+            } else if let Some(found_topic) = topics.get(topic) {
+                if found_topic.contains(&topic_id.unwrap()) {
                     senders.push(tx.clone());
                 }
             }
@@ -917,14 +965,14 @@ impl ClientsState {
     pub(crate) async fn client_listen_to_topics(
         &self,
         id: &String,
-        topics: Vec<(String, i64)>,
+        topics: Vec<(String, Option<i64>)>,
     ) -> bool {
         if let Some(client) = self.clients.read().await.get(id) {
             for (topic, id) in topics {
-                if let Some(found_topic) = client.1.get(&topic) {
-                    if found_topic.contains(&id) {
-                        return true;
-                    }
+                if id.is_none() {
+                    return client.3.contains(&topic);
+                } else if let Some(found_topic) = client.1.get(&topic) {
+                    return found_topic.contains(&id.unwrap());
                 }
             }
         }
@@ -1208,8 +1256,8 @@ fn setup_tracing(cfg: &Config) {
         let log_level = &cfg.log_level;
 
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        // format!("{CRATE_NAME}={log_level},axum={log_level},spacetimedb_sdk={log_level}",)
-        format!("{CRATE_NAME}={log_level},axum={log_level}",)
+        format!("{CRATE_NAME}={log_level},axum={log_level},spacetimedb_sdk={log_level}",)
+        // format!("{CRATE_NAME}={log_level},axum={log_level}",)
     });
 
     match cfg.log_type {

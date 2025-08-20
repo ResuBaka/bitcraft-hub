@@ -35,11 +35,25 @@ const items = computed(() => {
     return Object.values(data.value.items).splice(0, 19);
   }
 
-  return Object.values(data.value.items).filter((value) =>
-    value[1].name
-      .toLocaleLowerCase()
-      .includes(debouncedSearch.value?.toLocaleLowerCase()),
-  );
+  return Object.values(data.value.items).filter((value) => {
+    if (
+      value[1].name
+        .toLocaleLowerCase()
+        .includes(debouncedSearch.value?.toLocaleLowerCase())
+    ) {
+      return true;
+    }
+
+    if (
+      value[1].rarity
+        .toLocaleLowerCase()
+        .includes(debouncedSearch.value?.toLocaleLowerCase())
+    ) {
+      return true;
+    }
+
+    return false;
+  });
 });
 
 const cargo = computed(() => {
@@ -50,11 +64,25 @@ const cargo = computed(() => {
     return Object.values(data.value.cargo).splice(0, 19);
   }
 
-  return Object.values(data.value.cargo).filter((value) =>
-    value[1].name
-      .toLocaleLowerCase()
-      .includes(debouncedSearch.value?.toLocaleLowerCase()),
-  );
+  return Object.values(data.value.cargo).filter((value) => {
+    if (
+      value[1].name
+        .toLocaleLowerCase()
+        .includes(debouncedSearch.value?.toLocaleLowerCase())
+    ) {
+      return true;
+    }
+
+    if (
+      value[1].rarity
+        .toLocaleLowerCase()
+        .includes(debouncedSearch.value?.toLocaleLowerCase())
+    ) {
+      return true;
+    }
+
+    return false;
+  });
 });
 
 const numberFormat = new Intl.NumberFormat();

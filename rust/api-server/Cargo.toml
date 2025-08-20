@@ -20,7 +20,9 @@ opt-level = 3
 members = [".", "api", "service", "entity", "migration", "game_module"]
 
 [workspace.dependencies]
-sea-orm = { version = "=1.1.13", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
+sea-orm = { version = "=1.1.14", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-time" ] }
+sea-orm-cli = "1.1.14"
+sea-orm-migration = "1.1.14"
 serde_json = "1.0.142"
 serde_yml = "0.0.12"
 toml = "0.9.5"
@@ -34,9 +36,9 @@ anyhow = "1.0.98"
 clap = { version = "4.5.43", features = ["derive"] }
 axum-codec = { version = "0.0.19", features = ["serde", "json", "msgpack", "toml", "yaml"] }
 spacetimedb-sdk = "1.3.0"
-#spacetimedb-sdk = { git = "https://github.com/ResuBaka/SpacetimeDB.git", branch = "update-tokio-tungstenite-for-performance" }
 ts-rs = "11.0.1"
 chrono = "0.4.41"
+
 
 [dependencies]
 api = { path = "api" }

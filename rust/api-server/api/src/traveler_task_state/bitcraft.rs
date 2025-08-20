@@ -104,7 +104,8 @@ pub(crate) fn start_worker_traveler_task_state(
                                     }
                                     messages.push(model);
                                     if messages.len() >= batch_size {
-                                        break;
+                                        insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
+                                            .await;
                                     }
                                 }
                                 SpacetimeUpdateMessages::Update { new, .. } => {
@@ -121,7 +122,8 @@ pub(crate) fn start_worker_traveler_task_state(
                                     }
                                     messages.push(model);
                                     if messages.len() >= batch_size {
-                                        break;
+                                        insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
+                                            .await;
                                     }
                                 }
                                 SpacetimeUpdateMessages::Remove { delete, .. } => {

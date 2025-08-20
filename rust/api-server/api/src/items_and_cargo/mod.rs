@@ -78,7 +78,13 @@ pub(crate) async fn get_all(
         item_desc: state
             .item_desc
             .iter()
-            .map(|value| (*value.key(), value.clone()))
+            .filter_map(|value| {
+                if value.item_list_id > 0 {
+                    return None;
+                }
+
+                Some((*value.key(), value.clone()))
+            })
             .collect(),
     }))
 }
@@ -170,6 +176,10 @@ pub(crate) async fn list_items_and_cargo(
             .item_desc
             .iter()
             .filter_map(|item| {
+                if item.item_list_id > 0 {
+                    return None;
+                }
+
                 if let Some(tier) = &tier {
                     if &item.tier != tier {
                         return None;

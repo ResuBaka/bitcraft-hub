@@ -28,7 +28,7 @@ pub struct Pocket {
     pub locked: bool,
 }
 
-#[derive(Eq, Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Eq, Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 pub struct ItemStack {
     pub item_id: i32,
     pub quantity: i32,

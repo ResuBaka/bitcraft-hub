@@ -172,6 +172,19 @@ pub async fn find_player_by_id(
             vec![]
         });
 
+    // let deasdasd = QueryCore::find_deployable_entity_by_owner_entity_id(&state.conn, id)
+    //     .await
+    //     .unwrap_or_else(|error| {
+    //         error!("find_player_by_id -> Error: {error:?}");
+    //         vec![]
+    //     });
+    //
+    // for deployable in &deasdasd {
+    //     if let Some(asd) = state.mobile_entity_state.get(&(deployable.entity_id as u64)) {
+    //         tracing::info!("Aas N: {} E: {} R: {} D: {} deployable {}", asd.value().location_z / 3 / 1000, asd.value().location_x / 3 / 1000, asd.value().region, asd.value().dimension, deployable.nickname);
+    //     }
+    // }
+
     let player_location = state
         .mobile_entity_state
         .get(&(id as u64))

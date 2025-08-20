@@ -134,6 +134,7 @@ const iconUrl = computed(() => {
         </template>
          Tier: {{ item.tier }}
          Tag: {{ item.tag }}
+         Rarity: {{ item.rarity }}
       </v-card-subtitle>
       <template v-slot:append>
         <v-tooltip

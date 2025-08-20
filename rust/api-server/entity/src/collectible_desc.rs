@@ -1,7 +1,8 @@
+use crate::shared;
+use game_module::module_bindings::{CollectibleDesc, Rarity};
 use sea_orm::entity::prelude::*;
 use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::fmt;
 use ts_rs::TS;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, TS)]
@@ -13,9 +14,9 @@ pub struct Model {
     pub name: String,
     pub description: String,
     pub collectible_type: CollectibleType,
-    pub invalidates_type: InvalidatesType,
+    pub invalidates_type: CollectibleType,
     pub auto_collect: bool,
-    pub collectible_rarity: CollectibleRarity,
+    pub collectible_rarity: shared::Rarity,
     pub starting_loadout: bool,
     pub locked: bool,
     pub variant: i32,
@@ -28,6 +29,8 @@ pub struct Model {
     pub tag: String,
     pub display_string: String,
     pub item_deed_id: i32,
+    pub required_knowledges_to_use: Vec<i32>,
+    pub required_knowledges_to_convert: Vec<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -35,118 +38,35 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, TS)]
-#[sea_orm(rs_type = "i32", db_type = "Integer")]
-pub enum InvalidatesType {
-    Default = 0,
-    Hair = 1,
-    Mask = 2,
-    MaskPattern = 3,
-    HairColor = 4,
-    Nameplate = 5,
-    BodyColor = 6,
-    Emblem = 7,
-    ClothesHead = 8,
-    ClothesBelt = 9,
-    ClothesTorso = 10,
-    ClothesArms = 11,
-    ClothesLegs = 12,
-    ClothesFeet = 13,
-    Deployable = 14,
-    Title = 15,
-    Crown = 16,
-    Pet = 17,
-    ClothesCape = 18,
-}
-
-impl<'de> Deserialize<'de> for InvalidatesType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct InvalidatesTypeVisitor;
-
-        impl<'de> Visitor<'de> for InvalidatesTypeVisitor {
-            type Value = InvalidatesType;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter
-                    .write_str("a map with a single key representing the enum variant or an array")
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                if let Some((key, _)) = map.next_entry::<i32, serde_json::Value>()? {
-                    match key {
-                        0 => Ok(InvalidatesType::Default),
-                        1 => Ok(InvalidatesType::Hair),
-                        2 => Ok(InvalidatesType::Mask),
-                        3 => Ok(InvalidatesType::MaskPattern),
-                        4 => Ok(InvalidatesType::HairColor),
-                        5 => Ok(InvalidatesType::Nameplate),
-                        6 => Ok(InvalidatesType::BodyColor),
-                        7 => Ok(InvalidatesType::Emblem),
-                        8 => Ok(InvalidatesType::ClothesHead),
-                        9 => Ok(InvalidatesType::ClothesBelt),
-                        10 => Ok(InvalidatesType::ClothesTorso),
-                        11 => Ok(InvalidatesType::ClothesArms),
-                        12 => Ok(InvalidatesType::ClothesLegs),
-                        13 => Ok(InvalidatesType::ClothesFeet),
-                        14 => Ok(InvalidatesType::Deployable),
-                        15 => Ok(InvalidatesType::Title),
-                        16 => Ok(InvalidatesType::Crown),
-                        17 => Ok(InvalidatesType::Pet),
-                        18 => Ok(InvalidatesType::ClothesCape),
-                        _ => Err(de::Error::custom("invalid enum variant invalidates_type")),
-                    }
-                } else {
-                    Err(de::Error::custom("expected a map with a single key"))
-                }
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                if let Some(key) = seq.next_element::<i32>()? {
-                    let _ = seq.next_element::<serde_json::Value>()?;
-                    match key {
-                        0 => Ok(InvalidatesType::Default),
-                        1 => Ok(InvalidatesType::Hair),
-                        2 => Ok(InvalidatesType::Mask),
-                        3 => Ok(InvalidatesType::MaskPattern),
-                        4 => Ok(InvalidatesType::HairColor),
-                        5 => Ok(InvalidatesType::Nameplate),
-                        6 => Ok(InvalidatesType::BodyColor),
-                        7 => Ok(InvalidatesType::Emblem),
-                        8 => Ok(InvalidatesType::ClothesHead),
-                        9 => Ok(InvalidatesType::ClothesBelt),
-                        10 => Ok(InvalidatesType::ClothesTorso),
-                        11 => Ok(InvalidatesType::ClothesArms),
-                        12 => Ok(InvalidatesType::ClothesLegs),
-                        13 => Ok(InvalidatesType::ClothesFeet),
-                        14 => Ok(InvalidatesType::Deployable),
-                        15 => Ok(InvalidatesType::Title),
-                        16 => Ok(InvalidatesType::Crown),
-                        17 => Ok(InvalidatesType::Pet),
-                        18 => Ok(InvalidatesType::ClothesCape),
-                        _ => Err(de::Error::custom("invalid enum variant invalidates_type")),
-                    }
-                } else {
-                    Err(de::Error::custom(
-                        "expected a sequence with a single element",
-                    ))
-                }
-            }
+impl From<game_module::module_bindings::CollectibleDesc> for Model {
+    fn from(value: game_module::module_bindings::CollectibleDesc) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            description: value.description,
+            collectible_type: value.collectible_type.into(),
+            invalidates_type: value.invalidates_type.into(),
+            auto_collect: value.auto_collect,
+            collectible_rarity: value.collectible_rarity.into(),
+            starting_loadout: value.starting_loadout,
+            locked: value.locked,
+            variant: value.variant,
+            color: value.color,
+            emission: value.emission,
+            max_equip_count: value.max_equip_count,
+            model_asset_name: value.model_asset_name,
+            variant_material: value.variant_material,
+            icon_asset_name: value.icon_asset_name,
+            tag: value.tag,
+            display_string: value.display_string,
+            item_deed_id: value.item_deed_id,
+            required_knowledges_to_use: value.required_knowledges_to_use,
+            required_knowledges_to_convert: value.required_knowledges_to_convert,
         }
-
-        deserializer.deserialize_any(InvalidatesTypeVisitor)
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize, TS)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum CollectibleType {
     Default = 0,
@@ -170,165 +90,124 @@ pub enum CollectibleType {
     ClothesCape = 18,
 }
 
-impl<'de> Deserialize<'de> for CollectibleType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CollectibleTypeVisitor;
-
-        impl<'de> Visitor<'de> for CollectibleTypeVisitor {
-            type Value = CollectibleType;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter
-                    .write_str("a map with a single key representing the enum variant or an array")
+impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
+    fn from(value: game_module::module_bindings::CollectibleType) -> Self {
+        match value {
+            game_module::module_bindings::CollectibleType::Default => CollectibleType::Default,
+            game_module::module_bindings::CollectibleType::Hair => CollectibleType::Hair,
+            game_module::module_bindings::CollectibleType::Mask => CollectibleType::Mask,
+            game_module::module_bindings::CollectibleType::MaskPattern => {
+                CollectibleType::MaskPattern
             }
-
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                if let Some((key, _)) = map.next_entry::<i32, serde_json::Value>()? {
-                    match key {
-                        0 => Ok(CollectibleType::Default),
-                        1 => Ok(CollectibleType::Hair),
-                        2 => Ok(CollectibleType::Mask),
-                        3 => Ok(CollectibleType::MaskPattern),
-                        4 => Ok(CollectibleType::HairColor),
-                        5 => Ok(CollectibleType::Nameplate),
-                        6 => Ok(CollectibleType::BodyColor),
-                        7 => Ok(CollectibleType::Emblem),
-                        8 => Ok(CollectibleType::ClothesHead),
-                        9 => Ok(CollectibleType::ClothesBelt),
-                        10 => Ok(CollectibleType::ClothesTorso),
-                        11 => Ok(CollectibleType::ClothesArms),
-                        12 => Ok(CollectibleType::ClothesLegs),
-                        13 => Ok(CollectibleType::ClothesFeet),
-                        14 => Ok(CollectibleType::Deployable),
-                        15 => Ok(CollectibleType::Title),
-                        16 => Ok(CollectibleType::Crown),
-                        17 => Ok(CollectibleType::Pet),
-                        18 => Ok(CollectibleType::ClothesCape),
-                        _ => Err(de::Error::custom("invalid enum variant collectible_type")),
-                    }
-                } else {
-                    Err(de::Error::custom("expected a map with a single key"))
-                }
+            game_module::module_bindings::CollectibleType::HairColor => CollectibleType::HairColor,
+            game_module::module_bindings::CollectibleType::Nameplate => CollectibleType::Nameplate,
+            game_module::module_bindings::CollectibleType::BodyColor => CollectibleType::BodyColor,
+            game_module::module_bindings::CollectibleType::Emblem => CollectibleType::Emblem,
+            game_module::module_bindings::CollectibleType::ClothesHead => {
+                CollectibleType::ClothesHead
             }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                if let Some(key) = seq.next_element::<i32>()? {
-                    let _ = seq.next_element::<serde_json::Value>()?;
-
-                    match key {
-                        0 => Ok(CollectibleType::Default),
-                        1 => Ok(CollectibleType::Hair),
-                        2 => Ok(CollectibleType::Mask),
-                        3 => Ok(CollectibleType::MaskPattern),
-                        4 => Ok(CollectibleType::HairColor),
-                        5 => Ok(CollectibleType::Nameplate),
-                        6 => Ok(CollectibleType::BodyColor),
-                        7 => Ok(CollectibleType::Emblem),
-                        8 => Ok(CollectibleType::ClothesHead),
-                        9 => Ok(CollectibleType::ClothesBelt),
-                        10 => Ok(CollectibleType::ClothesTorso),
-                        11 => Ok(CollectibleType::ClothesArms),
-                        12 => Ok(CollectibleType::ClothesLegs),
-                        13 => Ok(CollectibleType::ClothesFeet),
-                        14 => Ok(CollectibleType::Deployable),
-                        15 => Ok(CollectibleType::Title),
-                        16 => Ok(CollectibleType::Crown),
-                        17 => Ok(CollectibleType::Pet),
-                        18 => Ok(CollectibleType::ClothesCape),
-                        _ => Err(de::Error::custom("invalid enum variant collectible_type")),
-                    }
-                } else {
-                    Err(de::Error::custom(
-                        "expected a sequence with a single element",
-                    ))
-                }
+            game_module::module_bindings::CollectibleType::ClothesBelt => {
+                CollectibleType::ClothesBelt
+            }
+            game_module::module_bindings::CollectibleType::ClothesTorso => {
+                CollectibleType::ClothesTorso
+            }
+            game_module::module_bindings::CollectibleType::ClothesArms => {
+                CollectibleType::ClothesArms
+            }
+            game_module::module_bindings::CollectibleType::ClothesLegs => {
+                CollectibleType::ClothesLegs
+            }
+            game_module::module_bindings::CollectibleType::ClothesFeet => {
+                CollectibleType::ClothesFeet
+            }
+            game_module::module_bindings::CollectibleType::Deployable => {
+                CollectibleType::Deployable
+            }
+            game_module::module_bindings::CollectibleType::Title => CollectibleType::Title,
+            game_module::module_bindings::CollectibleType::Crown => CollectibleType::Crown,
+            game_module::module_bindings::CollectibleType::Pet => CollectibleType::Pet,
+            game_module::module_bindings::CollectibleType::ClothesCape => {
+                CollectibleType::ClothesCape
             }
         }
-
-        deserializer.deserialize_any(CollectibleTypeVisitor)
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, TS)]
-#[sea_orm(rs_type = "i32", db_type = "Integer")]
-pub enum CollectibleRarity {
-    Default = 0,
-    Common = 1,
-    Uncommon = 2,
-    Rare = 3,
-    Epic = 4,
-    Legendary = 5,
-    Mythic = 6,
+pub struct ModelBuilder {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub collectible_type: game_module::module_bindings::CollectibleType,
+    pub invalidates_type: game_module::module_bindings::CollectibleType,
+    pub auto_collect: bool,
+    pub collectible_rarity: Rarity,
+    pub starting_loadout: bool,
+    pub locked: bool,
+    pub variant: i32,
+    pub color: String,
+    pub emission: String,
+    pub max_equip_count: i32,
+    pub model_asset_name: String,
+    pub variant_material: String,
+    pub icon_asset_name: String,
+    pub tag: String,
+    pub display_string: String,
+    pub item_deed_id: i32,
+    pub required_knowledges_to_use: Vec<i32>,
+    pub required_knowledges_to_convert: Vec<i32>,
 }
 
-impl<'de> Deserialize<'de> for CollectibleRarity {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CollectibleRarityVisitor;
-
-        impl<'de> Visitor<'de> for CollectibleRarityVisitor {
-            type Value = CollectibleRarity;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter
-                    .write_str("a map with a single key representing the enum variant or an array")
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                if let Some((key, _)) = map.next_entry::<i32, serde_json::Value>()? {
-                    match key {
-                        0 => Ok(CollectibleRarity::Default),
-                        1 => Ok(CollectibleRarity::Common),
-                        2 => Ok(CollectibleRarity::Uncommon),
-                        3 => Ok(CollectibleRarity::Rare),
-                        4 => Ok(CollectibleRarity::Epic),
-                        5 => Ok(CollectibleRarity::Legendary),
-                        6 => Ok(CollectibleRarity::Mythic),
-                        _ => Err(de::Error::custom("invalid enum variant collectible_rarity")),
-                    }
-                } else {
-                    Err(de::Error::custom("expected a map with a single key"))
-                }
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                if let Some(key) = seq.next_element::<i32>()? {
-                    let _ = seq.next_element::<serde_json::Value>()?;
-                    match key {
-                        0 => Ok(CollectibleRarity::Default),
-                        1 => Ok(CollectibleRarity::Common),
-                        2 => Ok(CollectibleRarity::Uncommon),
-                        3 => Ok(CollectibleRarity::Rare),
-                        4 => Ok(CollectibleRarity::Epic),
-                        5 => Ok(CollectibleRarity::Legendary),
-                        6 => Ok(CollectibleRarity::Mythic),
-                        _ => Err(de::Error::custom("invalid enum variant collectible_rarity")),
-                    }
-                } else {
-                    Err(de::Error::custom(
-                        "expected a sequence with a single element",
-                    ))
-                }
-            }
+impl ModelBuilder {
+    pub fn new(value: CollectibleDesc) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            description: value.description,
+            collectible_type: value.collectible_type,
+            invalidates_type: value.invalidates_type,
+            auto_collect: value.auto_collect,
+            collectible_rarity: value.collectible_rarity,
+            starting_loadout: value.starting_loadout,
+            locked: value.locked,
+            variant: value.variant,
+            color: value.color,
+            emission: value.emission,
+            max_equip_count: value.max_equip_count,
+            model_asset_name: value.model_asset_name,
+            variant_material: value.variant_material,
+            icon_asset_name: value.icon_asset_name,
+            tag: value.tag,
+            display_string: value.display_string,
+            item_deed_id: value.item_deed_id,
+            required_knowledges_to_use: value.required_knowledges_to_use,
+            required_knowledges_to_convert: value.required_knowledges_to_convert,
         }
+    }
 
-        deserializer.deserialize_any(CollectibleRarityVisitor)
+    pub fn build(self) -> Model {
+        Model {
+            id: self.id,
+            name: self.name,
+            description: self.description,
+            collectible_type: self.collectible_type.into(),
+            invalidates_type: self.invalidates_type.into(),
+            auto_collect: self.auto_collect,
+            collectible_rarity: self.collectible_rarity.into(),
+            starting_loadout: self.starting_loadout,
+            locked: self.locked,
+            variant: self.variant,
+            color: self.color,
+            emission: self.emission,
+            max_equip_count: self.max_equip_count,
+            model_asset_name: self.model_asset_name,
+            variant_material: self.variant_material,
+            icon_asset_name: self.icon_asset_name,
+            tag: self.tag,
+            display_string: self.display_string,
+            item_deed_id: self.item_deed_id,
+            required_knowledges_to_use: self.required_knowledges_to_use,
+            required_knowledges_to_convert: self.required_knowledges_to_convert,
+        }
     }
 }
