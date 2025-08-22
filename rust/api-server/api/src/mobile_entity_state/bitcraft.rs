@@ -12,7 +12,7 @@ pub(crate) fn start_worker_mobile_entity_state(
         loop {
             let mut buffer = vec![];
 
-            let _count = rx.recv_many(&mut buffer, 2000).await;
+            let _count = rx.recv_many(&mut buffer, 4000).await;
             for msg in buffer {
                 match msg {
                     crate::websocket::SpacetimeUpdateMessages::Initial {
