@@ -5,6 +5,7 @@ edition = "2024"
 rust-version = "1.85.0"
 
 [dependencies]
+chrono =  { workspace = true }
 entity = { path = "../entity" }
 
 [dependencies.sea-orm]

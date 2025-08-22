@@ -3875,6 +3875,7 @@ dependencies = [
 name = "service"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "entity",
  "sea-orm",
 ]

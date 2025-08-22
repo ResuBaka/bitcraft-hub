@@ -22,6 +22,7 @@ use ::entity::{
 use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::sea_query::{Alias, CaseStatement, Expr, ExprTrait, PgFunc, PostgresQueryBuilder};
 use sea_orm::*;
+use sea_orm::sqlx::types::chrono::{DateTime, Utc};
 
 pub struct Query;
 
@@ -2118,6 +2119,9 @@ impl Query {
         item_type: Option<ItemType>,
         user_id: Option<i64>,
     ) -> Result<(Vec<inventory_changelog::Model>, ItemsAndPagesNumber), DbErr> {
+        let start_time: DateTime<Utc> = Utc::now() - chrono::Duration::hours(24);
+        let end_time: DateTime<Utc> = Utc::now();
+
         let paginator = inventory_changelog::Entity::find()
             .filter(inventory_changelog::Column::EntityId.is_in(ids))
             .apply_if(item_id, |query, value| {
@@ -2137,6 +2141,10 @@ impl Query {
             .apply_if(user_id, |query, value| {
                 query.filter(inventory_changelog::Column::UserId.eq(value))
             })
+            .filter(inventory_changelog::Column::Timestamp.between(
+                start_time,
+                end_time
+            ))
             .order_by_desc(inventory_changelog::Column::Timestamp)
             .paginate(db, page_size);
 
