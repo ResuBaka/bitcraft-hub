@@ -15,7 +15,6 @@ pub(crate) fn start_worker_player_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerState>>,
     batch_size: usize,
     time_limit: Duration,
-    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(::entity::player_state::Column::EntityId)
@@ -29,9 +28,6 @@ pub(crate) fn start_worker_player_state(
                 ::entity::player_state::Column::TravelerTasksExpiration,
             ])
             .to_owned();
-
-        let cleanup_signal_future = cancel_token.cancelled().fuse();
-        tokio::pin!(cleanup_signal_future);
 
         loop {
             let mut messages = Vec::new();
@@ -170,10 +166,6 @@ pub(crate) fn start_worker_player_state(
                         // Time limit reached
                         break;
                     }
-                    _ = &mut cleanup_signal_future => {
-
-                        break;
-                    }
                     else => {
                         // Channel closed and no more messages
                         break;
@@ -218,7 +210,6 @@ pub(crate) fn start_worker_player_username_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict =

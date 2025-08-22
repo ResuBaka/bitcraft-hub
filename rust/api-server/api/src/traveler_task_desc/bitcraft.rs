@@ -14,7 +14,6 @@ pub(crate) fn start_worker_traveler_task_desc(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<TravelerTaskDesc>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(::entity::traveler_task_desc::Column::Id)

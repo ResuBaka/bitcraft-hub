@@ -18,7 +18,6 @@ pub(crate) fn start_worker_experience_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ExperienceState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([

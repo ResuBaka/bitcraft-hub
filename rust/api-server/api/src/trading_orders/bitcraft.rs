@@ -14,7 +14,6 @@ pub(crate) fn start_worker_trade_order_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<TradeOrderState>>,
     batch_size: usize,
     time_limit: Duration,
-    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         // let on_conflict = sea_query::OnConflict::column(::entity::trade_order::Column::EntityId)

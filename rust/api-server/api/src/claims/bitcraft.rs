@@ -19,7 +19,6 @@ pub(crate) fn start_worker_claim_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(claim_state::Column::EntityId)
@@ -172,7 +171,6 @@ pub(crate) fn start_worker_claim_local_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimLocalState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(claim_local_state::Column::EntityId)
@@ -356,7 +354,6 @@ pub(crate) fn start_worker_claim_member_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimMemberState>>,
     batch_size: usize,
     time_limit: Duration,
-    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(claim_member_state::Column::EntityId)
@@ -371,9 +368,6 @@ pub(crate) fn start_worker_claim_member_state(
                 claim_member_state::Column::Region,
             ])
             .to_owned();
-
-        let cleanup_signal_future = cancel_token.cancelled().fuse();
-        tokio::pin!(cleanup_signal_future);
 
         loop {
             let mut messages = Vec::new();
@@ -476,10 +470,6 @@ pub(crate) fn start_worker_claim_member_state(
                         // Time limit reached
                         break;
                     }
-                    _ = &mut cleanup_signal_future => {
-
-                        break;
-                    }
                     else => {
                         // Channel closed and no more messages
                         break;
@@ -532,7 +522,6 @@ pub(crate) fn start_worker_claim_tech_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([claim_tech_state::Column::EntityId])
@@ -682,7 +671,6 @@ pub(crate) fn start_worker_claim_tech_desc(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ClaimTechDesc>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([::entity::claim_tech_desc::Column::Id])

@@ -15,7 +15,6 @@ pub(crate) fn start_worker_vault_state_collectibles(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<VaultState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([

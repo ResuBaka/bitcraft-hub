@@ -12,7 +12,7 @@ pub(crate) fn start_worker_mobile_entity_state(
         loop {
             let mut buffer = vec![];
 
-            let _count = rx.recv_many(&mut buffer, 500).await;
+            let _count = rx.recv_many(&mut buffer, 2000).await;
             for msg in buffer {
                 match msg {
                     crate::websocket::SpacetimeUpdateMessages::Initial {
@@ -77,6 +77,8 @@ pub(crate) fn start_worker_mobile_entity_state(
                     }
                 }
             }
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
         }
     });
 }

@@ -95,7 +95,6 @@ pub(crate) struct SpacetimeDbConfig {
     pub(crate) password: String,
     pub(crate) username: String,
     pub(crate) websocket_protocol: String,
-    pub(crate) cleanup: bool,
 }
 
 impl Default for SpacetimeDbConfig {
@@ -108,7 +107,6 @@ impl Default for SpacetimeDbConfig {
             password: "".to_string(),
             username: "token".to_string(),
             websocket_protocol: "wss://".to_string(),
-            cleanup: false,
         }
     }
 }

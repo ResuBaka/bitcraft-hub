@@ -14,7 +14,6 @@ pub(crate) fn start_worker_npc_desc(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<NpcDesc>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(::entity::npc_desc::Column::NpcType)

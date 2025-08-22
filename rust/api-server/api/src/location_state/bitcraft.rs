@@ -11,7 +11,6 @@ pub(crate) fn start_worker_location_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<LocationState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         // let on_conflict = sea_query::OnConflict::columns([::entity::building_desc::Column::Id])

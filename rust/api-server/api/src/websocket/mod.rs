@@ -1012,213 +1012,151 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 remove_desc = true;
             });
 
-        let cleanup_token = CancellationToken::new();
-
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
-        if config.spacetimedb.cleanup {
-            tokio::spawn(async move {
-                // tokio::time::sleep(Duration::from_secs(60 * 3)).await;
-                tokio::time::sleep(Duration::from_secs(60 * 3)).await;
-                tracing::info!("--- Cleanup timer finished! Signaling cleanup! ---");
-                timer_cleanup_token.cancel(); // Signal all listeners
-            });
-        } else {
-            tracing::info!("--- Cleanup timer disabled! ---");
-        }
-
         start_worker_mobile_entity_state(global_app_state.clone(), mobile_entity_state_rx);
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_player_state(
             global_app_state.clone(),
             player_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_player_username_state(
             global_app_state.clone(),
             player_username_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_experience_state(
             global_app_state.clone(),
             experience_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_inventory_state(
             global_app_state.clone(),
             inventory_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_vault_state_collectibles(
             global_app_state.clone(),
             vault_state_collectibles_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_item_desc(
             global_app_state.clone(),
             item_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_cargo_desc(
             global_app_state.clone(),
             cargo_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_deployable_state(
             global_app_state.clone(),
             deployable_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_state(
             global_app_state.clone(),
             claim_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_local_state(
             global_app_state.clone(),
             claim_local_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_member_state(
             global_app_state.clone(),
             claim_member_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_skill_desc(
             global_app_state.clone(),
             skill_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_tech_state(
             global_app_state.clone(),
             claim_tech_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_claim_tech_desc(
             global_app_state.clone(),
             claim_tech_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_building_state(
             global_app_state.clone(),
             building_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_building_desc(
             global_app_state.clone(),
             building_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_location_state(
             global_app_state.clone(),
             location_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_building_nickname_state(
             global_app_state.clone(),
             building_nickname_state_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_crafting_recipe_desc(
             global_app_state.clone(),
             crafting_recipe_desc_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_item_list_desc(
             global_app_state.clone(),
             item_list_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_traveler_task_desc(
             global_app_state.clone(),
             traveler_task_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_traveler_task_state(
             global_app_state.clone(),
             traveler_task_state_rx,
             6000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_trade_order_state(
             global_app_state.clone(),
             trade_order_state_rx,
             6000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
 
-        let timer_cleanup_token = cleanup_token.clone(); // Clone for the timer task
         start_worker_npc_desc(
             global_app_state.clone(),
             npc_desc_rx,
             3000,
             Duration::from_millis(50),
-            timer_cleanup_token,
         );
 
         start_worker_buy_order_state(

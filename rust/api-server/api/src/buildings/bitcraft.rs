@@ -17,7 +17,6 @@ pub(crate) fn start_worker_building_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict =
@@ -191,7 +190,6 @@ pub(crate) fn start_worker_building_desc(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingDesc>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::columns([::entity::building_desc::Column::Id])
@@ -361,7 +359,6 @@ pub(crate) fn start_worker_building_nickname_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<BuildingNicknameState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict =

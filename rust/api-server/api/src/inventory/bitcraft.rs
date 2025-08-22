@@ -20,7 +20,6 @@ pub(crate) fn start_worker_inventory_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<InventoryState>>,
     batch_size: usize,
     time_limit: Duration,
-    cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(::entity::inventory::Column::EntityId)
@@ -50,9 +49,6 @@ pub(crate) fn start_worker_inventory_state(
             ::entity::inventory_changelog::Column::Timestamp,
         ])
         .to_owned();
-
-        let cleanup_signal_future = cancel_token.cancelled().fuse();
-        tokio::pin!(cleanup_signal_future);
 
         loop {
             let mut messages = Vec::new();
@@ -236,10 +232,6 @@ pub(crate) fn start_worker_inventory_state(
                     }
                     _ = &mut timer => {
                         // Time limit reached
-                        break;
-                    }
-                    _ = &mut cleanup_signal_future => {
-
                         break;
                     }
                     else => {

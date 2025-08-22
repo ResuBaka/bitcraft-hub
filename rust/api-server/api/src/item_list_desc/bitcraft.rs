@@ -15,7 +15,6 @@ pub(crate) fn start_worker_item_list_desc(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ItemListDesc>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(item_list_desc::Column::Id)

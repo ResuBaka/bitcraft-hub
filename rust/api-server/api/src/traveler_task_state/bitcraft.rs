@@ -14,7 +14,6 @@ pub(crate) fn start_worker_traveler_task_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<TravelerTaskState>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict =

@@ -15,7 +15,6 @@ pub(crate) fn start_worker_skill_desc(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<SkillDesc>>,
     batch_size: usize,
     time_limit: Duration,
-    _cancel_token: CancellationToken,
 ) {
     tokio::spawn(async move {
         let on_conflict = sea_query::OnConflict::column(skill_desc::Column::Id)
