@@ -27,7 +27,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
         .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -36,7 +36,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = vec![];
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_vault_state_collectibles = ::entity::vault_state_collectibles::Entity::find()
                                     .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)

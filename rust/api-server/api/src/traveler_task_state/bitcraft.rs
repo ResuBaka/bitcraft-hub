@@ -26,8 +26,8 @@ pub(crate) fn start_worker_traveler_task_state(
                 .to_owned();
 
         loop {
-            let mut messages = Vec::new();
-            let mut messages_delete = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -49,7 +49,7 @@ pub(crate) fn start_worker_traveler_task_state(
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, .. } => {
-                                    let mut local_messages = vec![];
+                                    let mut local_messages = Vec::with_capacity(batch_size + 10);
                                     let mut currently_known_traveler_task_state = ::entity::traveler_task_state::Entity::find()
                                         .all(&global_app_state.conn)
                                         .await

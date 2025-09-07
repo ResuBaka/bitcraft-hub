@@ -149,11 +149,11 @@ macro_rules! setup_spacetime_db_listeners {
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
-            move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
+            move |_ctx: &EventContext, old: &$state_type, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_update).increment(1);
                 temp_tx
                     .send(SpacetimeUpdateMessages::Update {
-                        event: ctx.event.clone(),
+                        event: None,
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
@@ -181,7 +181,88 @@ macro_rules! setup_spacetime_db_listeners {
 
                 temp_tx
                     .send(SpacetimeUpdateMessages::Insert {
-                        event: ctx.event.clone(),
+                        event: None,
+                        database_name: tmp_database_name_arc.clone(),
+                        new: new.clone(),
+                    })
+                    .unwrap();
+            },
+        );
+
+        let temp_tx = $tx_channel.clone();
+        let labels_delete: [(&'static str, Cow<'static, str>); 3] = [
+            ("table", Cow::Borrowed(table_name_str)),
+            // Clone for the final label set
+            ("database", Cow::Owned(database_name_runtime_string.clone())),
+            ("type", Cow::Borrowed("delete")),
+        ];
+        let tmp_database_name_arc = database_name_arc.clone();
+        $ctx.db.$db_table_method().on_delete(
+            // Use $state_type for the new parameter
+            move |_ctx: &EventContext, new: &$state_type| {
+                metrics::counter!("game_message_events", &labels_delete).increment(1);
+                temp_tx
+                    .send(SpacetimeUpdateMessages::Remove {
+                        event: None,
+                        database_name: tmp_database_name_arc.clone(),
+                        delete: new.clone(),
+                    })
+                    .unwrap();
+            },
+        );
+    };
+}
+
+macro_rules! setup_spacetime_db_listeners_event {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
+        let table_name_str = stringify!($db_table_method);
+        let database_name_runtime_string = $database_name_expr.to_string();
+        let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
+
+        let temp_tx = $tx_channel.clone();
+        let labels_update: [(&'static str, Cow<'static, str>); 3] = [
+            ("table", Cow::Borrowed(table_name_str)),
+            // Clone the runtime string for this specific label set
+            ("database", Cow::Owned(database_name_runtime_string.clone())),
+            ("type", Cow::Borrowed("update")),
+        ];
+
+        let tmp_database_name_arc = database_name_arc.clone();
+        $ctx.db.$db_table_method().on_update(
+            // Use $state_type for the old and new parameters
+            move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
+                metrics::counter!("game_message_events", &labels_update).increment(1);
+                temp_tx
+                    .send(SpacetimeUpdateMessages::Update {
+                        event: Some(ctx.event.clone()),
+                        database_name: tmp_database_name_arc.clone(),
+                        old: old.clone(),
+                        new: new.clone(),
+                    })
+                    .unwrap();
+            },
+        );
+
+        let temp_tx = $tx_channel.clone();
+        let labels_insert: [(&'static str, Cow<'static, str>); 3] = [
+            ("table", Cow::Borrowed(table_name_str)),
+            // Clone again for this label set
+            ("database", Cow::Owned(database_name_runtime_string.clone())),
+            ("type", Cow::Borrowed("insert")),
+        ];
+        let tmp_database_name_arc = database_name_arc.clone();
+        $ctx.db.$db_table_method().on_insert(
+            // Use $state_type for the new parameter
+            move |ctx: &EventContext, new: &$state_type| {
+                metrics::counter!("game_message_events", &labels_insert).increment(1);
+
+                if let Event::SubscribeApplied = ctx.event {
+                    return;
+                }
+
+                temp_tx
+                    .send(SpacetimeUpdateMessages::Insert {
+                        event: Some(ctx.event.clone()),
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
                     })
@@ -203,7 +284,7 @@ macro_rules! setup_spacetime_db_listeners {
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
                 temp_tx
                     .send(SpacetimeUpdateMessages::Remove {
-                        event: ctx.event.clone(),
+                        event: Some(ctx.event.clone()),
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
                     })
@@ -313,7 +394,7 @@ async fn connect_to_db_logic(
         ExperienceState,
         database
     );
-    setup_spacetime_db_listeners!(
+    setup_spacetime_db_listeners_event!(
         ctx,
         inventory_state,
         inventory_state_tx,
@@ -895,8 +976,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             .databases
             .iter()
             .filter(|value| !value.trim().is_empty())
-            .enumerate()
-            .for_each(|(index, database)| {
+            .for_each(|database| {
                 let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
                 let tmp_player_state_tx = player_state_tx.clone();
                 let tmp_player_username_state_tx = player_username_state_tx.clone();
@@ -932,10 +1012,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_database = database.clone();
 
                 tokio::spawn(async move {
-                    // if index != 0 {
-                    //     tokio::time::sleep(tokio::time::Duration::from_secs((15 * index) as u64)).await;
-                    // }
-
                     metrics::gauge!(
                         "bitcraft_database_connected",
                         &[("region", tmp_database.clone())]
@@ -976,7 +1052,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         &tmp_buy_order_state_tx,
                         &tmp_sell_order_state_tx,
                         &tmp_collectible_desc_tx,
-                    ).await;
+                    )
+                    .await;
 
                     if let Err(error) = result {
                         tracing::error!(
@@ -1196,18 +1273,18 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         database_name: Arc<String>,
     },
     Insert {
-        event: __sdk::Event<Reducer>,
+        event: Option<__sdk::Event<Reducer>>,
         new: T,
         database_name: Arc<String>,
     },
     Update {
-        event: __sdk::Event<Reducer>,
+        event: Option<__sdk::Event<Reducer>>,
         old: T,
         new: T,
         database_name: Arc<String>,
     },
     Remove {
-        event: __sdk::Event<Reducer>,
+        event: Option<__sdk::Event<Reducer>>,
         delete: T,
         database_name: Arc<String>,
     },

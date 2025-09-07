@@ -2,7 +2,7 @@ pub(crate) mod bitcraft;
 
 use crate::{AppRouter, AppState};
 use axum::Router;
-use axum::extract::{Query, State};
+use axum::extract::State;
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,17 +22,8 @@ pub(crate) struct MarketOrdersResponse {
     sell_orders: HashMap<String, Vec<entity::auction_listing_state::AuctionListingState>>,
 }
 
-#[derive(Deserialize)]
-pub(crate) struct BuildingStatesParams {
-    page: Option<u64>,
-    per_page: Option<u64>,
-    item_id: Option<i64>,
-    item_type: Option<String>,
-}
-
 pub(crate) async fn find_market_place_order(
     state: State<AppState>,
-    Query(_params): Query<BuildingStatesParams>,
 ) -> Result<axum_codec::Codec<MarketOrdersResponse>, (StatusCode, &'static str)> {
     Ok(axum_codec::Codec(MarketOrdersResponse {
         buy_orders: state

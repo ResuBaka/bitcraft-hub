@@ -42,7 +42,7 @@ pub(crate) fn start_worker_collectible_desc(
             .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -51,7 +51,7 @@ pub(crate) fn start_worker_collectible_desc(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
-                                let mut local_messages = vec![];
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_collectible_desc = ::entity::collectible_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await

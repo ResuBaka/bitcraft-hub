@@ -177,6 +177,7 @@ pub(crate) fn start_worker_sell_order_state(
     });
 }
 
+#[allow(dead_code)]
 async fn insert_multiple_trade_order(
     global_app_state: &AppState,
     on_conflict: &sea_query::OnConflict,

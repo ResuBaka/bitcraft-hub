@@ -3,7 +3,7 @@ pub(crate) mod bitcraft;
 use crate::inventory::resolve_contents;
 use crate::{AppRouter, AppState};
 use axum::Router;
-use axum::extract::{Query, State};
+use axum::extract::State;
 use axum::http::StatusCode;
 use entity::inventory::ExpendedRefrence;
 use serde::{Deserialize, Serialize};
@@ -16,16 +16,8 @@ pub(crate) fn get_routes() -> AppRouter {
     )
 }
 
-#[derive(Deserialize, Debug)]
-struct TradeOrdersQuery {
-    search: Option<String>,
-    page: Option<u64>,
-    per_page: Option<u64>,
-}
-
 async fn get_trade_orders(
     state: State<AppState>,
-    Query(_query): Query<TradeOrdersQuery>,
 ) -> Result<axum_codec::Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
     Ok(axum_codec::Codec(TradeOrdersResponse {
         trade_orders: state

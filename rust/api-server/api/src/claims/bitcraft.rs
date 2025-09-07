@@ -29,7 +29,7 @@ pub(crate) fn start_worker_claim_state(
             .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -38,7 +38,7 @@ pub(crate) fn start_worker_claim_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = vec![];
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_state = ::entity::claim_state::Entity::find()
                                     .filter(::entity::claim_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
@@ -187,7 +187,7 @@ pub(crate) fn start_worker_claim_local_state(
             .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -202,7 +202,7 @@ pub(crate) fn start_worker_claim_local_state(
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                    let mut local_messages = vec![];
+                                    let mut local_messages = Vec::with_capacity(batch_size + 10);
                                     let mut currently_known_claim_local_state = ::entity::claim_local_state::Entity::find()
                                         .filter(::entity::claim_local_state::Column::Region.eq(database_name.to_string()))
                                         .all(&global_app_state.conn)
@@ -382,7 +382,7 @@ pub(crate) fn start_worker_claim_member_state(
             .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
             loop {
@@ -390,7 +390,7 @@ pub(crate) fn start_worker_claim_member_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = vec![];
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_member_state = ::entity::claim_member_state::Entity::find()
                                     .filter(::entity::claim_member_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
@@ -546,7 +546,7 @@ pub(crate) fn start_worker_claim_tech_state(
             .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -555,7 +555,7 @@ pub(crate) fn start_worker_claim_tech_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = vec![];
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_tech_state = ::entity::claim_tech_state::Entity::find()
                                     .filter(::entity::claim_tech_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
@@ -701,7 +701,7 @@ pub(crate) fn start_worker_claim_tech_desc(
             .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -710,7 +710,7 @@ pub(crate) fn start_worker_claim_tech_desc(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
-                                let mut local_messages = vec![];
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_tech_desc = ::entity::claim_tech_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await

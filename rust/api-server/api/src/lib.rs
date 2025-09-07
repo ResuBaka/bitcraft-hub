@@ -969,7 +969,9 @@ impl ClientsState {
             for (topic, id) in topics {
                 if id.is_none() {
                     return client.3.contains(&topic);
-                } else if let Some(found_topic) = client.1.get(&topic) {
+                }
+
+                if let Some(found_topic) = client.1.get(&topic) {
                     return found_topic.contains(&id.unwrap());
                 }
             }

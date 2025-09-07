@@ -39,7 +39,7 @@ pub(crate) fn start_worker_location_state(
         //     .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 

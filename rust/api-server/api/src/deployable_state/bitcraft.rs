@@ -29,7 +29,7 @@ pub(crate) fn start_worker_deployable_state(
             .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -38,7 +38,7 @@ pub(crate) fn start_worker_deployable_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = vec![];
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_deployable_state = ::entity::deployable_state::Entity::find()
                                     .filter(::entity::deployable_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)

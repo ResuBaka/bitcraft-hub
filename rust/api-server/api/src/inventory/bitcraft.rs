@@ -4,8 +4,6 @@ use chrono::DateTime;
 use entity::inventory_changelog::TypeOfChange;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set};
 use spacetimedb_sdk::Event;
@@ -50,7 +48,7 @@ pub(crate) fn start_worker_inventory_state(
         .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let mut messages_changed = Vec::new();
             let timer = sleep(time_limit);
             tokio::pin!(timer);
@@ -67,21 +65,21 @@ pub(crate) fn start_worker_inventory_state(
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                     tracing::debug!("Count of inventory amount to work on {}", data.len());
-                                    let mut local_messages = vec![];
+                                    let mut local_messages = Vec::with_capacity(batch_size + 10);
                                     let mut currently_known_inventory = ::entity::inventory::Entity::find()
                                         .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
                                         .all(&global_app_state.conn)
                                         .await
                                         .map_or(vec![], |aa| aa)
-                                        .into_par_iter()
+                                        .into_iter()
                                         .map(|value| (value.entity_id, value))
                                         .collect::<HashMap<_, _>>();
 
-                                    for model in data.into_par_iter().map(|value| {
+                                    for model in data.into_iter().map(|value| {
                                         let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
                                         model
-                                    }).collect::<Vec<_>>() {
+                                    }) {
                                         use std::collections::hash_map::Entry;
                                         match currently_known_inventory.entry(model.entity_id) {
                                             Entry::Occupied(entry) => {
@@ -128,7 +126,7 @@ pub(crate) fn start_worker_inventory_state(
                                 SpacetimeUpdateMessages::Update { new, old, event, database_name, .. } => {
                                     let mut caller_identity = None;
                                     let mut timestamp = None;
-                                    if let Event::Reducer(event) = &event {
+                                    if let Some(Event::Reducer(event)) = &event {
                                         caller_identity = Some(event.caller_identity);
                                         timestamp = Some(event.timestamp);
                                     }

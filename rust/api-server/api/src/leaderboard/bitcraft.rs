@@ -27,7 +27,7 @@ pub(crate) fn start_worker_experience_state(
         .to_owned();
 
         loop {
-            let mut messages = Vec::new();
+            let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -43,7 +43,7 @@ pub(crate) fn start_worker_experience_state(
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                     tracing::debug!("Processed Initial ExperienceState {}", data.len());
-                                    let mut local_messages = vec![];
+                                    let mut local_messages = Vec::with_capacity(batch_size + 10);
                                     let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
                                         .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
                                         .all(&global_app_state.conn)
