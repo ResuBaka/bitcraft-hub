@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/usr/src/api-server/target/ \
     mv target/release/bitcraft-hub-api .
 
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 WORKDIR /usr/src/api-server
 

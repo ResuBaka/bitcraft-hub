@@ -20,9 +20,9 @@ use ::entity::{
     player_username_state::Entity as PlayerUsernameState, skill_desc,
 };
 use sea_orm::sea_query::extension::postgres::PgExpr;
-use sea_orm::sea_query::{Alias, CaseStatement, Expr, ExprTrait, PgFunc, PostgresQueryBuilder};
-use sea_orm::*;
+use sea_orm::sea_query::{Alias, Expr, ExprTrait, PgFunc, PostgresQueryBuilder};
 use sea_orm::sqlx::types::chrono::{DateTime, Utc};
+use sea_orm::*;
 
 pub struct Query;
 
@@ -2141,10 +2141,7 @@ impl Query {
             .apply_if(user_id, |query, value| {
                 query.filter(inventory_changelog::Column::UserId.eq(value))
             })
-            .filter(inventory_changelog::Column::Timestamp.between(
-                start_time,
-                end_time
-            ))
+            .filter(inventory_changelog::Column::Timestamp.between(start_time, end_time))
             .order_by_desc(inventory_changelog::Column::Timestamp)
             .paginate(db, page_size);
 

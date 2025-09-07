@@ -34,15 +34,14 @@ use game_module::module_bindings::*;
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{
-    Compression, DbContext, Error, Event, Identity, Table, TableWithPrimaryKey, Timestamp,
-    credentials,
+    Compression, DbContext, Error, Event, Table, TableWithPrimaryKey, credentials,
 };
 use std::borrow::Cow;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
-use tokio_util::sync::CancellationToken;
+
 use ts_rs::TS;
 
 fn connect_to_db(
@@ -134,13 +133,10 @@ fn on_connect_error(_ctx: &ErrorContext, err: Error) {
 }
 
 macro_rules! setup_spacetime_db_listeners {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr $(, skipp_subscribe_applied => $skipp_subscribe_applied:expr)?) => {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
         let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
-        let skipp_subscribe_applied = true;
-
-        $( skipp_subscribe_applied = $skipp_subscribe_applied; )?
 
         let temp_tx = $tx_channel.clone();
         let labels_update: [(&'static str, Cow<'static, str>); 3] = [
@@ -155,23 +151,12 @@ macro_rules! setup_spacetime_db_listeners {
             // Use $state_type for the old and new parameters
             move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_update).increment(1);
-                let mut caller_identity = None;
-                let mut reducer = None;
-                let mut timestamp = None;
-                if let Event::Reducer(event) = ctx.event.clone() {
-                    caller_identity = Some(event.caller_identity);
-                    reducer = Some(event.reducer);
-                    timestamp = Some(event.timestamp)
-                }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Update {
                         event: ctx.event.clone(),
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
-                        caller_identity,
-                        reducer,
-                        timestamp,
                     })
                     .unwrap();
             },
@@ -190,26 +175,15 @@ macro_rules! setup_spacetime_db_listeners {
             move |ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_insert).increment(1);
 
-                if skipp_subscribe_applied && let Event::SubscribeApplied = ctx.event {
+                if let Event::SubscribeApplied = ctx.event {
                     return;
                 }
 
-                let mut caller_identity = None;
-                let mut reducer = None;
-                let mut timestamp = None;
-                if let Event::Reducer(event) = ctx.event.clone() {
-                    caller_identity = Some(event.caller_identity);
-                    reducer = Some(event.reducer);
-                    timestamp = Some(event.timestamp)
-                }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Insert {
                         event: ctx.event.clone(),
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
-                        caller_identity,
-                        reducer,
-                        timestamp,
                     })
                     .unwrap();
             },
@@ -227,22 +201,11 @@ macro_rules! setup_spacetime_db_listeners {
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
-                let mut caller_identity = None;
-                let mut reducer = None;
-                let mut timestamp = None;
-                if let Event::Reducer(event) = ctx.event.clone() {
-                    caller_identity = Some(event.caller_identity);
-                    reducer = Some(event.reducer);
-                    timestamp = Some(event.timestamp)
-                }
                 temp_tx
                     .send(SpacetimeUpdateMessages::Remove {
                         event: ctx.event.clone(),
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
-                        caller_identity,
-                        reducer,
-                        timestamp,
                     })
                     .unwrap();
             },
@@ -278,7 +241,7 @@ fn connect_to_db_global(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn connect_to_db_logic(
+async fn connect_to_db_logic(
     global_app_state: AppState,
     config: &Config,
     database: &str,
@@ -314,7 +277,7 @@ fn connect_to_db_logic(
     collectible_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CollectibleDesc>>,
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
-        global_app_state,
+        global_app_state.clone(),
         config.spacetimedb.password.clone(),
         database,
         config.spacetimedb_url().as_ref(),
@@ -839,9 +802,19 @@ fn connect_to_db_logic(
                 .collect::<Vec<_>>(),
         );
 
-    tokio::spawn(async move {
-        let _ = ctx.run_async().await;
-    });
+    let tmp_disconnect_db_name = database.to_string().clone();
+    let tmp_disconnect_global_app_state = global_app_state.clone();
+    let _ = ctx.run_async().await;
+
+    metrics::gauge!(
+        "bitcraft_database_connected",
+        &[("region", tmp_disconnect_db_name.clone())]
+    )
+    .set(0);
+
+    tmp_disconnect_global_app_state
+        .connection_state
+        .insert(tmp_disconnect_db_name.clone(), false);
 
     Ok(())
 }
@@ -922,7 +895,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             .databases
             .iter()
             .filter(|value| !value.trim().is_empty())
-            .for_each(|database| {
+            .enumerate()
+            .for_each(|(index, database)| {
                 let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
                 let tmp_player_state_tx = player_state_tx.clone();
                 let tmp_player_username_state_tx = player_username_state_tx.clone();
@@ -958,6 +932,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_database = database.clone();
 
                 tokio::spawn(async move {
+                    // if index != 0 {
+                    //     tokio::time::sleep(tokio::time::Duration::from_secs((15 * index) as u64)).await;
+                    // }
+
                     metrics::gauge!(
                         "bitcraft_database_connected",
                         &[("region", tmp_database.clone())]
@@ -998,7 +976,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         &tmp_buy_order_state_tx,
                         &tmp_sell_order_state_tx,
                         &tmp_collectible_desc_tx,
-                    );
+                    ).await;
 
                     if let Err(error) = result {
                         tracing::error!(
@@ -1221,26 +1199,17 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         event: __sdk::Event<Reducer>,
         new: T,
         database_name: Arc<String>,
-        caller_identity: Option<Identity>,
-        reducer: Option<Reducer>,
-        timestamp: Option<Timestamp>,
     },
     Update {
         event: __sdk::Event<Reducer>,
         old: T,
         new: T,
         database_name: Arc<String>,
-        caller_identity: Option<Identity>,
-        reducer: Option<Reducer>,
-        timestamp: Option<Timestamp>,
     },
     Remove {
         event: __sdk::Event<Reducer>,
         delete: T,
         database_name: Arc<String>,
-        caller_identity: Option<Identity>,
-        reducer: Option<Reducer>,
-        timestamp: Option<Timestamp>,
     },
 }
 

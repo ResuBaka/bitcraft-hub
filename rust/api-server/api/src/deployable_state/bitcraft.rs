@@ -1,7 +1,6 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use entity::deployable_state;
-use futures::FutureExt;
 use game_module::module_bindings::DeployableState;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
@@ -10,7 +9,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_deployable_state(
     global_app_state: AppState,

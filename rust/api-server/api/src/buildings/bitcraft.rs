@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_building_state(
     global_app_state: AppState,

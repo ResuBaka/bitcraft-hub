@@ -306,17 +306,16 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                         for topic in topics {
                             let possible_topic = topic.split_once(".");
 
-                            if possible_topic.is_none() {
-                                inner_state
-                                    .clients_state
-                                    .add_topic_to_client(&inner_id, &topic.to_string(), None)
-                                    .await;
-                            } else {
-                                let (topic, id) = possible_topic.unwrap();
+                            if let Some((topic, id)) = possible_topic {
                                 let id = id.parse::<i64>().unwrap();
                                 inner_state
                                     .clients_state
                                     .add_topic_to_client(&inner_id, &topic.to_string(), Some(id))
+                                    .await;
+                            } else {
+                                inner_state
+                                    .clients_state
+                                    .add_topic_to_client(&inner_id, &topic.to_string(), None)
                                     .await;
                             }
                         }
@@ -324,17 +323,16 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                     WebSocketMessages::Unsubscribe { topic } => {
                         let possible_topic = topic.split_once(".");
 
-                        if possible_topic.is_none() {
-                            inner_state
-                                .clients_state
-                                .remove_topic_from_client(&inner_id, &topic.to_string(), None)
-                                .await;
-                        } else {
-                            let (topic, id) = possible_topic.unwrap();
+                        if let Some((topic, id)) = possible_topic {
                             let id = id.parse::<i64>().unwrap();
                             inner_state
                                 .clients_state
                                 .remove_topic_from_client(&inner_id, &topic.to_string(), Some(id))
+                                .await;
+                        } else {
+                            inner_state
+                                .clients_state
+                                .remove_topic_from_client(&inner_id, &topic.to_string(), None)
                                 .await;
                         }
                     }
@@ -885,14 +883,14 @@ impl ClientsState {
 
         let mut clients = self.clients.write().await;
         if let Some(client) = clients.get_mut(id) {
-            if topic_id.is_none() {
-                client.3.insert(topic.clone());
-            } else if let Some(topics) = client.1.get_mut(topic) {
-                topics.insert(topic_id.unwrap());
+            if let Some(topic_id) = topic_id {
+                if let Some(topics) = client.1.get_mut(topic) {
+                    topics.insert(topic_id);
+                } else {
+                    client.1.insert(topic.clone(), HashSet::from([topic_id]));
+                }
             } else {
-                client
-                    .1
-                    .insert(topic.clone(), HashSet::from([topic_id.unwrap()]));
+                client.3.insert(topic.clone());
             }
         }
 

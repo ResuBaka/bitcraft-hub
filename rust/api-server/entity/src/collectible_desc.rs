@@ -1,8 +1,7 @@
 use crate::shared;
 use game_module::module_bindings::{CollectibleDesc, Rarity};
 use sea_orm::entity::prelude::*;
-use serde::de::{self, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, TS)]

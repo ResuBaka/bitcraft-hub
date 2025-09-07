@@ -2,18 +2,17 @@ use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use chrono::DateTime;
 use entity::inventory_changelog::TypeOfChange;
-use futures::FutureExt;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set};
+use spacetimedb_sdk::Event;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_inventory_state(
     global_app_state: AppState,
@@ -126,7 +125,14 @@ pub(crate) fn start_worker_inventory_state(
                                         insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
                                     }
                                 }
-                                SpacetimeUpdateMessages::Update { new, old, caller_identity, timestamp, database_name, .. } => {
+                                SpacetimeUpdateMessages::Update { new, old, event, database_name, .. } => {
+                                    let mut caller_identity = None;
+                                    let mut timestamp = None;
+                                    if let Event::Reducer(event) = &event {
+                                        caller_identity = Some(event.caller_identity);
+                                        timestamp = Some(event.timestamp);
+                                    }
+
                                     let new_model = new.clone();
                                     let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                     // global_app_state.inventory_state.insert(model.entity_id, model.clone());

@@ -6,9 +6,6 @@ use axum::Router;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use entity::inventory::ExpendedRefrence;
-use futures::StreamExt;
-use rayon::iter::ParallelIterator;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -28,7 +25,7 @@ struct TradeOrdersQuery {
 
 async fn get_trade_orders(
     state: State<AppState>,
-    Query(query): Query<TradeOrdersQuery>,
+    Query(_query): Query<TradeOrdersQuery>,
 ) -> Result<axum_codec::Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
     Ok(axum_codec::Codec(TradeOrdersResponse {
         trade_orders: state

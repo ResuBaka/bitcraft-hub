@@ -1,7 +1,6 @@
 use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use entity::{claim_local_state, claim_member_state, claim_state, claim_tech_state};
-use futures::FutureExt;
 use game_module::module_bindings::{
     ClaimLocalState, ClaimMemberState, ClaimState, ClaimTechDesc, ClaimTechState,
 };
@@ -12,7 +11,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
 
 pub(crate) fn start_worker_claim_state(
     global_app_state: AppState,
@@ -275,8 +273,13 @@ pub(crate) fn start_worker_claim_local_state(
                                             .await;
                                     }
                                 }
-                                SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
                                     let org_id = new.entity_id;
+
+                                    if (old.treasury + 1) == new.treasury {
+                                        metrics::counter!("claim_treasury_hex_production_count", &[("region", database_name.to_string()), ("claim_id", org_id.to_string())]).increment(1);
+                                    }
+
                                     let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                     global_app_state.claim_local_state.insert(org_id, model.clone());

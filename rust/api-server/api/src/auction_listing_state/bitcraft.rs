@@ -11,7 +11,7 @@ use tokio::time::sleep;
 pub(crate) fn start_worker_sell_order_state(
     global_app_state: AppState,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<AuctionListingState>>,
-    batch_size: usize,
+    _batch_size: usize,
     time_limit: Duration,
 ) {
     tokio::spawn(async move {
@@ -197,7 +197,7 @@ async fn insert_multiple_trade_order(
 pub(crate) fn start_worker_buy_order_state(
     global_app_state: AppState,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<AuctionListingState>>,
-    batch_size: usize,
+    _batch_size: usize,
     time_limit: Duration,
 ) {
     tokio::spawn(async move {

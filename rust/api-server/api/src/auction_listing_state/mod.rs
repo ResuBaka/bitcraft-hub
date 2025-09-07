@@ -2,11 +2,9 @@ pub(crate) mod bitcraft;
 
 use crate::{AppRouter, AppState};
 use axum::Router;
-use axum::extract::{Path, Query, State};
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use entity::building_state;
 use serde::{Deserialize, Serialize};
-use service::Query as QueryCore;
 use std::collections::HashMap;
 use ts_rs::TS;
 
@@ -34,13 +32,8 @@ pub(crate) struct BuildingStatesParams {
 
 pub(crate) async fn find_market_place_order(
     state: State<AppState>,
-    Query(params): Query<BuildingStatesParams>,
+    Query(_params): Query<BuildingStatesParams>,
 ) -> Result<axum_codec::Codec<MarketOrdersResponse>, (StatusCode, &'static str)> {
-    let page = params.page.unwrap_or(1);
-    let per_page = params.per_page.unwrap_or(30);
-    let search = params.item_id;
-    let item_type = params.item_type;
-
     Ok(axum_codec::Codec(MarketOrdersResponse {
         buy_orders: state
             .buy_order_state
@@ -59,19 +52,4 @@ pub(crate) async fn find_market_place_order(
                 acc
             }),
     }))
-}
-
-pub(crate) async fn find_building_state(
-    state: State<AppState>,
-    Path(id): Path<u64>,
-) -> Result<axum_codec::Codec<building_state::Model>, (StatusCode, &'static str)> {
-    let posts = QueryCore::find_building_state_by_id(&state.conn, id as i64)
-        .await
-        .expect("Cannot find posts in page");
-
-    if posts.is_none() {
-        return Err((StatusCode::NOT_FOUND, "BuildingState not found"));
-    }
-
-    Ok(axum_codec::Codec(posts.unwrap()))
 }
