@@ -1012,56 +1012,91 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_database = database.clone();
 
                 tokio::spawn(async move {
-                    metrics::gauge!(
-                        "bitcraft_database_connected",
-                        &[("region", tmp_database.clone())]
-                    )
-                    .set(0);
+                    let mut last_connected = Instant::now();
+                    let mut tries = 0;
 
-                    let result = connect_to_db_logic(
-                        tmp_global_app_state,
-                        &tmp_conf,
-                        &tmp_database,
-                        &tmp_remove_desc,
-                        &tmp_mobile_entity_state_tx,
-                        &tmp_player_state_tx,
-                        &tmp_player_username_state_tx,
-                        &tmp_experience_state_tx,
-                        &tmp_inventory_state_tx,
-                        &tmp_item_desc_tx,
-                        &tmp_cargo_desc_tx,
-                        &tmp_vault_state_collectibles_tx,
-                        &tmp_deployable_state_tx,
-                        &tmp_claim_state_tx,
-                        &tmp_claim_local_state_tx,
-                        &tmp_claim_member_state_tx,
-                        &tmp_skill_desc_tx,
-                        &tmp_claim_tech_state_tx,
-                        &tmp_claim_tech_desc_tx,
-                        &tmp_building_state_tx,
-                        &tmp_building_desc_tx,
-                        &tmp_location_state_tx,
-                        &tmp_building_nickname_state_tx,
-                        &tmp_crafting_recipe_desc_tx,
-                        &tmp_item_list_desc_tx,
-                        &tmp_traveler_task_desc_tx,
-                        &tmp_traveler_task_state_tx,
-                        &tmp_trade_order_state_tx,
-                        &tmp_user_state_tx,
-                        &tmp_npc_desc_tx,
-                        &tmp_buy_order_state_tx,
-                        &tmp_sell_order_state_tx,
-                        &tmp_collectible_desc_tx,
-                    )
-                    .await;
-
-                    if let Err(error) = result {
-                        tracing::error!(
-                            error = error.to_string(),
-                            "Error creating connection to {tmp_database} on {}",
-                            tmp_conf.spacetimedb_url()
+                    loop {
+                        metrics::gauge!(
+                            "bitcraft_database_connected",
+                            &[("region", tmp_database.clone())]
                         )
-                    };
+                            .set(0);
+
+                        last_connected = Instant::now();
+
+                        let result = connect_to_db_logic(
+                            tmp_global_app_state.clone(),
+                            &tmp_conf,
+                            &tmp_database,
+                            &tmp_remove_desc,
+                            &tmp_mobile_entity_state_tx,
+                            &tmp_player_state_tx,
+                            &tmp_player_username_state_tx,
+                            &tmp_experience_state_tx,
+                            &tmp_inventory_state_tx,
+                            &tmp_item_desc_tx,
+                            &tmp_cargo_desc_tx,
+                            &tmp_vault_state_collectibles_tx,
+                            &tmp_deployable_state_tx,
+                            &tmp_claim_state_tx,
+                            &tmp_claim_local_state_tx,
+                            &tmp_claim_member_state_tx,
+                            &tmp_skill_desc_tx,
+                            &tmp_claim_tech_state_tx,
+                            &tmp_claim_tech_desc_tx,
+                            &tmp_building_state_tx,
+                            &tmp_building_desc_tx,
+                            &tmp_location_state_tx,
+                            &tmp_building_nickname_state_tx,
+                            &tmp_crafting_recipe_desc_tx,
+                            &tmp_item_list_desc_tx,
+                            &tmp_traveler_task_desc_tx,
+                            &tmp_traveler_task_state_tx,
+                            &tmp_trade_order_state_tx,
+                            &tmp_user_state_tx,
+                            &tmp_npc_desc_tx,
+                            &tmp_buy_order_state_tx,
+                            &tmp_sell_order_state_tx,
+                            &tmp_collectible_desc_tx,
+                        )
+                            .await;
+
+
+
+                        if let Err(error) = result {
+                            tracing::error!(
+                                error = error.to_string(),
+                                "Error creating connection to {tmp_database} on {}",
+                                tmp_conf.spacetimedb_url()
+                            );
+
+                            if tries > 10 {
+                              tracing::error!("We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                              break;
+                            }
+                        } else {
+                            if last_connected.elapsed().as_secs() > 120 {
+                                last_connected = Instant::now();
+                                tries = 0;
+                            } else {
+                                last_connected = Instant::now();
+                                tries += 1;
+                            }
+                        };
+
+                        if tries > 15 {
+                            tracing::error!("We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                            break;
+                        }
+
+                        if tries > 0 {
+                            tracing::info!("We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                            tokio::time::sleep(Duration::from_secs(15)).await;
+                        } else {
+                            tracing::info!("We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                            tokio::time::sleep(Duration::from_secs(tries * 20)).await;
+                        }
+                    }
                 });
 
                 remove_desc = true;

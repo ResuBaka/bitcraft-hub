@@ -48,13 +48,19 @@ pub(crate) fn start_worker_player_state(
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
 
+                                let mut online = 0;
+                                let mut offline = 0;
+
+
+
                                 for model in data.into_iter().map(|value| {
                                     let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
-                                    metrics::gauge!("players_current_state", &[
-                                        ("online", model.signed_in.to_string()),
-                                        ("region", database_name.to_string())
-                                    ]).increment(1);
+                                    if model.signed_in {
+                                        online += 1;
+                                    } else {
+                                        offline += 1;
+                                    }
 
                                     model
                                 }) {
@@ -78,6 +84,16 @@ pub(crate) fn start_worker_player_state(
                                 if !local_messages.is_empty() {
                                     insert_multiple_player_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                 }
+
+                                metrics::gauge!("players_current_state", &[
+                                    ("online", "false".to_string()),
+                                    ("region", database_name.to_string())
+                                ]).set(offline);
+
+                                metrics::gauge!("players_current_state", &[
+                                    ("online", "true".to_string()),
+                                    ("region", database_name.to_string())
+                                ]).set(online);
 
                                 for chunk_ids in currently_known_player_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();

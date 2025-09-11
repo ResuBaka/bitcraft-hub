@@ -10,7 +10,7 @@ pub(crate) fn start_worker_mobile_entity_state(
 ) {
     tokio::spawn(async move {
         loop {
-            let mut buffer = vec![];
+            let mut buffer = Vec::with_capacity(4000);
 
             let _count = rx.recv_many(&mut buffer, 4000).await;
             for msg in buffer {
