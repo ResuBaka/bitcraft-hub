@@ -6,6 +6,8 @@ import InventoryChanges from "./InventoryChanges.vue";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
 
+const showChangelog = ref(false);
+
 const { inventory } = defineProps<{
   inventory: any;
 }>();
@@ -99,20 +101,24 @@ watchThrottled(
   <template v-if="inventory !== undefined">
     <div v-bind="$attrs">
       <v-card class="mb-5">
-        <v-toolbar color="transparent">
-          <v-toolbar-title>Inventory: <strong>{{ inventory.nickname ? inventory.nickname : inventory.entity_id }}</strong><template v-if="inventory.claim"> at Claim <nuxt-link
-              class="text-decoration-none text-high-emphasis font-weight-black"
-              :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id.toString() } }"
-          >
-            {{ inventory.claim.name }}
-          </nuxt-link></template></v-toolbar-title>
-
-        </v-toolbar>
-
+        <v-list-item class="pa-4" >
+          <template #title>
+              Inventory: <strong>{{ inventory.nickname ? inventory.nickname : inventory.entity_id }}</strong><template v-if="inventory.claim"> at Claim <nuxt-link
+                class="text-decoration-none text-high-emphasis font-weight-black"
+                :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id.toString() } }"
+            >
+              {{ inventory.claim.name }}
+            </nuxt-link></template>
+          </template>
+          <template #append>
+            <v-checkbox v-model="showChangelog" label="Show Changelog"></v-checkbox>
+          </template>
+        </v-list-item>
+        <v-divider></v-divider>
         <v-card-text>
-          <v-card-title>Current Items</v-card-title>
+          <v-card-title>Current Items ({{ inventory.pockets.filter((pocket) => !!pocket.contents).length }}/{{inventory.pockets.length}})</v-card-title>
           <v-data-table density="compact" :headers="headersPockets"
-                        :items="inventory.pockets" :row-props="backgroundColorRow">
+                        :items="inventory.pockets.filter((pocket) => !!pocket.contents)" :row-props="backgroundColorRow">
             <template #item.contents.item.name="{ item }">
               <div :class="`text-${tierColor[item?.contents?.item?.tier]}`">
                 {{ item?.contents?.item?.name ?? '' }} | {{ item?.contents?.item?.rarity ?? '' }}
@@ -122,7 +128,7 @@ watchThrottled(
         </v-card-text>
       </v-card>
       <v-spacer></v-spacer>
-      <v-card>
+      <v-card v-if="showChangelog">
         <v-card-title>Changes</v-card-title>
         <v-card-text>
           <v-row>
