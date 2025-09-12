@@ -43,4 +43,6 @@ chrono = "0.4.41"
 [dependencies]
 api = { path = "api" }
 tokio = { version = "1.47.1", features = [ "full" ] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = "0.6.0"
