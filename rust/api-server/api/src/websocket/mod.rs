@@ -1073,12 +1073,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                               tracing::error!("We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
                               break;
                             }
+                        } else if last_connected.elapsed().as_secs() > 120 {
+                            tries = 0;
                         } else {
-                            if last_connected.elapsed().as_secs() > 120 {
-                                tries = 0;
-                            } else {
-                                tries += 1;
-                            }
+                            tries += 1;
                         };
 
                         if tries > 15 {

@@ -69,5 +69,4 @@ enum CollectibleDesc {
     Table,
     RequiredKnowledgesToUse,
     RequiredKnowledgesToConvert,
-    Rarity,
 }
