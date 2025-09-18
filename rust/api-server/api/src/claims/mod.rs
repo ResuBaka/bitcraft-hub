@@ -111,16 +111,6 @@ pub(crate) struct ClaimResponse {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-pub struct ClaimDescriptionStateMemberTmp {
-    pub entity_id: i64,
-    pub user_name: String,
-    pub inventory_permission: bool,
-    pub build_permission: bool,
-    pub officer_permission: bool,
-    pub co_owner_permission: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub(crate) struct ClaimDescriptionStateMember {
     pub entity_id: i64,

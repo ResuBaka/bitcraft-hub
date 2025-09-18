@@ -1012,7 +1012,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_database = database.clone();
 
                 tokio::spawn(async move {
-                    let mut last_connected = Instant::now();
                     let mut tries = 0;
 
                     loop {
@@ -1022,7 +1021,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         )
                             .set(0);
 
-                        last_connected = Instant::now();
+                        let last_connected = Instant::now();
 
                         let result = connect_to_db_logic(
                             tmp_global_app_state.clone(),
@@ -1076,10 +1075,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             }
                         } else {
                             if last_connected.elapsed().as_secs() > 120 {
-                                last_connected = Instant::now();
                                 tries = 0;
                             } else {
-                                last_connected = Instant::now();
                                 tries += 1;
                             }
                         };
