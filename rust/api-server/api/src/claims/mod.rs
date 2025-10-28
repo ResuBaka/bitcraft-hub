@@ -399,7 +399,7 @@ pub(crate) async fn get_claim(
                 &db,
                 skill_id,
                 player_ids,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             )
             .await
             .map_err(|error| {

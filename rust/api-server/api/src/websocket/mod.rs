@@ -557,6 +557,8 @@ async fn connect_to_db_logic(
         "inventory_state",
         "collectible_desc",
         "claim_tech_desc",
+        "resource_desc",
+        "identity_role",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN player_state ps ON player_state.entity_id = location_state.entity_id", // This currently takes to much cpu to run
@@ -865,6 +867,16 @@ async fn connect_to_db_logic(
                     database_name: tmp_database_name_arc.clone(),
                     data: collectible_desc,
                 });
+            }
+
+            for resource_desc in ctx.db.user_state().iter() {
+                if resource_desc.entity_id == 504403158285774600 {
+                    println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
+                }
+            }
+
+            for resource_desc in ctx.db.identity_role().iter() {
+                println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.role);
             }
 
             tracing::debug!("Handled Subscription response");

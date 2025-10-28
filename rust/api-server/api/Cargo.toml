@@ -36,9 +36,9 @@ metrics = { version = "0.24.2", default-features = false }
 metrics-exporter-prometheus = { version = "0.17.2", default-features = false }
 tracing = "0.1.41"
 nanoid = "0.4.0"
-config = "0.15.15"
+config = "0.15.18"
 kanal = "0.1.1"
 prometheus = "0.13.0"
-metrics-process = "2.4.0"
+metrics-process = "2.4.2"
 chrono =  { workspace = true }
 sea-orm-cli =  { workspace = true }

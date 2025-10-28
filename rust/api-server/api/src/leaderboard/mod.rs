@@ -8,6 +8,7 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
+use std::sync::LazyLock;
 use ts_rs::TS;
 
 #[macro_export]
@@ -23,8 +24,8 @@ macro_rules! generate_mysql_sum_level_sql_statement {
     }};
 }
 
-pub(crate) const EXCLUDED_USERS_FROM_LEADERBOARD: [i64; 1] = [360287970201941063];
-pub(crate) const EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 0];
+pub(crate) static EXCLUDED_USERS_FROM_LEADERBOARD: LazyLock<Vec<i64>> = LazyLock::new(|| vec![360287970201941063, 504403158285774600]);
+pub(crate) static EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 0];
 
 pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
     (1, 0),
@@ -233,7 +234,7 @@ pub(crate) async fn get_top_100(
             let entries = Query::get_experience_state_top_100_by_skill_id(
                 &db,
                 skill.id,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             )
             .await
             .map_err(|error| {
@@ -264,7 +265,7 @@ pub(crate) async fn get_top_100(
         let mut leaderboard: Vec<RankType> = Vec::new();
         let entries = Query::get_experience_state_top_100_total_experience(
             &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
@@ -292,7 +293,7 @@ pub(crate) async fn get_top_100(
         let mut leaderboard: Vec<RankType> = Vec::new();
         let entries = Query::get_experience_state_top_100_experience_per_hour(
             &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
@@ -320,7 +321,7 @@ pub(crate) async fn get_top_100(
         let entries = Query::get_experience_state_top_100_total_level(
             &db,
             generated_level_sql,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
@@ -347,7 +348,7 @@ pub(crate) async fn get_top_100(
         let mut leaderboard: Vec<RankType> = Vec::new();
         let entries = Query::get_experience_state_top_100_time_played(
             &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
         )
         .await
         .map_err(|error| {
@@ -373,7 +374,7 @@ pub(crate) async fn get_top_100(
         let mut leaderboard: Vec<RankType> = Vec::new();
         let entries = Query::get_experience_state_top_100_time_online(
             &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
         )
         .await
         .map_err(|error| {
@@ -544,7 +545,7 @@ pub(crate) async fn player_leaderboard(
                 &db,
                 skill.id,
                 player_id,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             )
             .await
             .map_err(|error| {
@@ -579,7 +580,7 @@ pub(crate) async fn player_leaderboard(
         let (total_experience, rank) = Query::get_experience_state_player_rank_total_experience(
             &db,
             player_id,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
@@ -608,7 +609,7 @@ pub(crate) async fn player_leaderboard(
             &db,
             generated_level_sql,
             player_id,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
@@ -737,7 +738,7 @@ pub(crate) async fn get_claim_leaderboard(
                 &db,
                 skill.id,
                 player_ids,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             )
             .await
             .map_err(|error| {
@@ -770,7 +771,7 @@ pub(crate) async fn get_claim_leaderboard(
         let entries = Query::get_experience_state_player_ids_total_experience(
             &db,
             tmp_player_ids,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
@@ -801,7 +802,7 @@ pub(crate) async fn get_claim_leaderboard(
             &db,
             generated_level_sql,
             tmp_player_ids,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
         )
         .await
@@ -830,7 +831,7 @@ pub(crate) async fn get_claim_leaderboard(
         let entries = Query::get_experience_state_player_ids_time_played(
             &db,
             tmp_player_ids,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
         )
         .await
         .map_err(|error| {
@@ -858,7 +859,7 @@ pub(crate) async fn get_claim_leaderboard(
         let entries = Query::get_experience_state_player_ids_time_online(
             &db,
             tmp_player_ids,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD),
+            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
         )
         .await
         .map_err(|error| {
