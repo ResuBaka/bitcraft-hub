@@ -80,6 +80,7 @@ impl cheat_compendium_place_resource for super::RemoteReducers {
         CheatCompendiumPlaceResourceCallbackId(self.imp.on_reducer(
             "cheat_compendium_place_resource",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

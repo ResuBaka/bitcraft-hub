@@ -65,6 +65,7 @@ impl import_location_cache for super::RemoteReducers {
         ImportLocationCacheCallbackId(self.imp.on_reducer(
             "import_location_cache",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

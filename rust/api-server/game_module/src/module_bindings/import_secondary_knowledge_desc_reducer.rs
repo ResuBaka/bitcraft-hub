@@ -78,6 +78,7 @@ impl import_secondary_knowledge_desc for super::RemoteReducers {
         ImportSecondaryKnowledgeDescCallbackId(self.imp.on_reducer(
             "import_secondary_knowledge_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -12,9 +12,10 @@ pub struct PlayerPostOrderRequest {
     pub building_entity_id: u64,
     pub item_id: i32,
     pub item_type: ItemType,
-    pub coins: i32,
+    pub max_unit_price: i32,
     pub quantity: i32,
     pub persist_order: bool,
+    pub coins_spent: i32,
 }
 
 impl __sdk::InModule for PlayerPostOrderRequest {

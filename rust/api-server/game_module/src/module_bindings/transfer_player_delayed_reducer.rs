@@ -65,6 +65,7 @@ impl transfer_player_delayed for super::RemoteReducers {
         TransferPlayerDelayedCallbackId(self.imp.on_reducer(
             "transfer_player_delayed",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

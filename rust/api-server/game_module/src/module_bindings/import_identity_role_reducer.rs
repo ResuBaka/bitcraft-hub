@@ -65,6 +65,7 @@ impl import_identity_role for super::RemoteReducers {
         ImportIdentityRoleCallbackId(self.imp.on_reducer(
             "import_identity_role",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

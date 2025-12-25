@@ -69,6 +69,7 @@ impl chat_post_message for super::RemoteReducers {
         ChatPostMessageCallbackId(self.imp.on_reducer(
             "chat_post_message",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

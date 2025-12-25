@@ -64,6 +64,7 @@ impl admin_despawn_overworld_enemies for super::RemoteReducers {
         AdminDespawnOverworldEnemiesCallbackId(self.imp.on_reducer(
             "admin_despawn_overworld_enemies",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

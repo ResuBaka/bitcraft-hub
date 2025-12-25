@@ -111,6 +111,7 @@ impl blueprint_place for super::RemoteReducers {
         BlueprintPlaceCallbackId(self.imp.on_reducer(
             "blueprint_place",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

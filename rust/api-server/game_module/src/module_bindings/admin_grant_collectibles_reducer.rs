@@ -78,6 +78,7 @@ impl admin_grant_collectibles for super::RemoteReducers {
         AdminGrantCollectiblesCallbackId(self.imp.on_reducer(
             "admin_grant_collectibles",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

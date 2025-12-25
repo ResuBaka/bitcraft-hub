@@ -76,6 +76,7 @@ impl interior_set_collapsed_scheduled for super::RemoteReducers {
         InteriorSetCollapsedScheduledCallbackId(self.imp.on_reducer(
             "interior_set_collapsed_scheduled",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

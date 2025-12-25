@@ -67,6 +67,7 @@ impl respawn_resource_in_chunk for super::RemoteReducers {
         RespawnResourceInChunkCallbackId(self.imp.on_reducer(
             "respawn_resource_in_chunk",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -63,6 +63,7 @@ impl duel_agent_timer_loop for super::RemoteReducers {
         DuelAgentTimerLoopCallbackId(self.imp.on_reducer(
             "duel_agent_timer_loop",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

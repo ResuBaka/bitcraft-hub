@@ -67,6 +67,7 @@ impl import_achievement_desc for super::RemoteReducers {
         ImportAchievementDescCallbackId(self.imp.on_reducer(
             "import_achievement_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

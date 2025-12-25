@@ -80,6 +80,7 @@ impl claim_set_purchase_supply_price for super::RemoteReducers {
         ClaimSetPurchaseSupplyPriceCallbackId(self.imp.on_reducer(
             "claim_set_purchase_supply_price",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

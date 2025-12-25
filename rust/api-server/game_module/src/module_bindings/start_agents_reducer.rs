@@ -58,6 +58,7 @@ impl start_agents for super::RemoteReducers {
         StartAgentsCallbackId(self.imp.on_reducer(
             "start_agents",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

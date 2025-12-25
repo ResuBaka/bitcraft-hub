@@ -72,6 +72,7 @@ impl enemy_despawn_from_mob_monitor_batch for super::RemoteReducers {
         EnemyDespawnFromMobMonitorBatchCallbackId(self.imp.on_reducer(
             "enemy_despawn_from_mob_monitor_batch",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event: __sdk::ReducerEvent {
                         reducer: super::Reducer::EnemyDespawnFromMobMonitorBatch {

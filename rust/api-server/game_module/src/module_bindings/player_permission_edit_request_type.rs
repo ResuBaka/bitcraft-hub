@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::permission_group_type::PermissionGroup;
 use super::permission_type::Permission;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
@@ -12,6 +13,7 @@ pub struct PlayerPermissionEditRequest {
     pub ordained_entity_id: u64,
     pub allowed_entity_id: u64,
     pub permission: Option<Permission>,
+    pub group: PermissionGroup,
 }
 
 impl __sdk::InModule for PlayerPermissionEditRequest {

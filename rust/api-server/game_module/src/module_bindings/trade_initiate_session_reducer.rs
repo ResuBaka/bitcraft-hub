@@ -77,6 +77,7 @@ impl trade_initiate_session for super::RemoteReducers {
         TradeInitiateSessionCallbackId(self.imp.on_reducer(
             "trade_initiate_session",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

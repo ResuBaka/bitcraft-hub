@@ -67,6 +67,7 @@ impl stage_character_stat_desc for super::RemoteReducers {
         StageCharacterStatDescCallbackId(self.imp.on_reducer(
             "stage_character_stat_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

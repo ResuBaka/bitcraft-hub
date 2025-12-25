@@ -78,6 +78,7 @@ impl import_dropped_inventory_state for super::RemoteReducers {
         ImportDroppedInventoryStateCallbackId(self.imp.on_reducer(
             "import_dropped_inventory_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -64,6 +64,7 @@ impl emote for super::RemoteReducers {
         EmoteCallbackId(self.imp.on_reducer(
             "emote",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

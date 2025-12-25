@@ -80,6 +80,7 @@ impl import_resource_growth_recipe_desc for super::RemoteReducers {
         ImportResourceGrowthRecipeDescCallbackId(self.imp.on_reducer(
             "import_resource_growth_recipe_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

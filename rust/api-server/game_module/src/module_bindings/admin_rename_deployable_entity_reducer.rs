@@ -78,6 +78,7 @@ impl admin_rename_deployable_entity for super::RemoteReducers {
         AdminRenameDeployableEntityCallbackId(self.imp.on_reducer(
             "admin_rename_deployable_entity",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

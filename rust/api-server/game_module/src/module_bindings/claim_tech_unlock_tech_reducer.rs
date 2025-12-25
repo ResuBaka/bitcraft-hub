@@ -63,6 +63,7 @@ impl claim_tech_unlock_tech for super::RemoteReducers {
         ClaimTechUnlockTechCallbackId(self.imp.on_reducer(
             "claim_tech_unlock_tech",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

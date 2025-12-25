@@ -65,6 +65,7 @@ impl enemy_set_health for super::RemoteReducers {
         EnemySetHealthCallbackId(self.imp.on_reducer(
             "enemy_set_health",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

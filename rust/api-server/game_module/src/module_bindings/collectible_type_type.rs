@@ -45,6 +45,8 @@ pub enum CollectibleType {
     Pet,
 
     ClothesCape,
+
+    PremiumItem,
 }
 
 impl __sdk::InModule for CollectibleType {

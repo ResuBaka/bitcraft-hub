@@ -68,6 +68,7 @@ impl admin_reset_onboarding_completely for super::RemoteReducers {
         AdminResetOnboardingCompletelyCallbackId(self.imp.on_reducer(
             "admin_reset_onboarding_completely",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -77,6 +77,7 @@ impl claim_remove_recruitment for super::RemoteReducers {
         ClaimRemoveRecruitmentCallbackId(self.imp.on_reducer(
             "claim_remove_recruitment",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

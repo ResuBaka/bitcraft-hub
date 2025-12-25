@@ -78,6 +78,7 @@ impl player_housing_income_agent_loop for super::RemoteReducers {
         PlayerHousingIncomeAgentLoopCallbackId(self.imp.on_reducer(
             "player_housing_income_agent_loop",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

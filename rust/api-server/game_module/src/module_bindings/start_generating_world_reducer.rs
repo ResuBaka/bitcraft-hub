@@ -88,6 +88,7 @@ impl start_generating_world for super::RemoteReducers {
         StartGeneratingWorldCallbackId(self.imp.on_reducer(
             "start_generating_world",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

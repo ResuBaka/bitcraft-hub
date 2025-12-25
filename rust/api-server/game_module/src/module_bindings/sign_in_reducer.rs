@@ -64,6 +64,7 @@ impl sign_in for super::RemoteReducers {
         SignInCallbackId(self.imp.on_reducer(
             "sign_in",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -65,6 +65,7 @@ impl order_edit_buy_order for super::RemoteReducers {
         OrderEditBuyOrderCallbackId(self.imp.on_reducer(
             "order_edit_buy_order",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

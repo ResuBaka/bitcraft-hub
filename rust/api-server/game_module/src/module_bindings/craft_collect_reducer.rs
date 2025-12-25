@@ -67,6 +67,7 @@ impl craft_collect for super::RemoteReducers {
         CraftCollectCallbackId(self.imp.on_reducer(
             "craft_collect",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

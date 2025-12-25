@@ -73,6 +73,7 @@ impl stage_extraction_recipe_desc for super::RemoteReducers {
         StageExtractionRecipeDescCallbackId(self.imp.on_reducer(
             "stage_extraction_recipe_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

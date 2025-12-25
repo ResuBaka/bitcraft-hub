@@ -69,6 +69,7 @@ impl trade_swap_pockets for super::RemoteReducers {
         TradeSwapPocketsCallbackId(self.imp.on_reducer(
             "trade_swap_pockets",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

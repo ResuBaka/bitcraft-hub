@@ -65,6 +65,7 @@ impl reset_mobile_entity_position for super::RemoteReducers {
         ResetMobileEntityPositionCallbackId(self.imp.on_reducer(
             "reset_mobile_entity_position",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

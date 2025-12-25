@@ -59,6 +59,7 @@ impl generate_flat_world for super::RemoteReducers {
         GenerateFlatWorldCallbackId(self.imp.on_reducer(
             "generate_flat_world",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

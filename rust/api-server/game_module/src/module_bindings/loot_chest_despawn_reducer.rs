@@ -63,6 +63,7 @@ impl loot_chest_despawn for super::RemoteReducers {
         LootChestDespawnCallbackId(self.imp.on_reducer(
             "loot_chest_despawn",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

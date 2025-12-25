@@ -77,6 +77,7 @@ impl claim_transfer_ownership for super::RemoteReducers {
         ClaimTransferOwnershipCallbackId(self.imp.on_reducer(
             "claim_transfer_ownership",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

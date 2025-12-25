@@ -77,6 +77,7 @@ impl terraform_set_final_target for super::RemoteReducers {
         TerraformSetFinalTargetCallbackId(self.imp.on_reducer(
             "terraform_set_final_target",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

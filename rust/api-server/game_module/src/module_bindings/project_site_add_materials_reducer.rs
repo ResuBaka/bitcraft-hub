@@ -77,6 +77,7 @@ impl project_site_add_materials for super::RemoteReducers {
         ProjectSiteAddMaterialsCallbackId(self.imp.on_reducer(
             "project_site_add_materials",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

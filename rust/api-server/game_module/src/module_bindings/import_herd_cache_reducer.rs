@@ -65,6 +65,7 @@ impl import_herd_cache for super::RemoteReducers {
         ImportHerdCacheCallbackId(self.imp.on_reducer(
             "import_herd_cache",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

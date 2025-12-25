@@ -63,6 +63,7 @@ impl enemy_despawn for super::RemoteReducers {
         EnemyDespawnCallbackId(self.imp.on_reducer(
             "enemy_despawn",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -70,6 +70,7 @@ impl admin_set_sign_text_entity for super::RemoteReducers {
         AdminSetSignTextEntityCallbackId(self.imp.on_reducer(
             "admin_set_sign_text_entity",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

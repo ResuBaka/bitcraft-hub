@@ -65,6 +65,7 @@ impl cheat_remove_entity_building for super::RemoteReducers {
         CheatRemoveEntityBuildingCallbackId(self.imp.on_reducer(
             "cheat_remove_entity_building",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -63,6 +63,7 @@ impl server_teleport_player for super::RemoteReducers {
         ServerTeleportPlayerCallbackId(self.imp.on_reducer(
             "server_teleport_player",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

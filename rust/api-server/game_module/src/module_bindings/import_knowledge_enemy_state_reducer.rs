@@ -69,6 +69,7 @@ impl import_knowledge_enemy_state for super::RemoteReducers {
         ImportKnowledgeEnemyStateCallbackId(self.imp.on_reducer(
             "import_knowledge_enemy_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

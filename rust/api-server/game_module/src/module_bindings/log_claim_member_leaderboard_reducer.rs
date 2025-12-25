@@ -61,6 +61,7 @@ impl log_claim_member_leaderboard for super::RemoteReducers {
         LogClaimMemberLeaderboardCallbackId(self.imp.on_reducer(
             "log_claim_member_leaderboard",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

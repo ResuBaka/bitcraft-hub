@@ -65,6 +65,7 @@ impl import_npc_state for super::RemoteReducers {
         ImportNpcStateCallbackId(self.imp.on_reducer(
             "import_npc_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

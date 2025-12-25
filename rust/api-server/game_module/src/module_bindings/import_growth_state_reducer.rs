@@ -65,6 +65,7 @@ impl import_growth_state for super::RemoteReducers {
         ImportGrowthStateCallbackId(self.imp.on_reducer(
             "import_growth_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

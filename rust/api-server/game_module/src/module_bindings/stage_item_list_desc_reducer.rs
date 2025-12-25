@@ -65,6 +65,7 @@ impl stage_item_list_desc for super::RemoteReducers {
         StageItemListDescCallbackId(self.imp.on_reducer(
             "stage_item_list_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

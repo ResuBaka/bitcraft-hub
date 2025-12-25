@@ -63,6 +63,7 @@ impl loot_chest_spawn for super::RemoteReducers {
         LootChestSpawnCallbackId(self.imp.on_reducer(
             "loot_chest_spawn",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

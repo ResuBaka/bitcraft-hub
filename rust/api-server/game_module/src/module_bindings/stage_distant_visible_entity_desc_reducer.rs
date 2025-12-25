@@ -80,6 +80,7 @@ impl stage_distant_visible_entity_desc for super::RemoteReducers {
         StageDistantVisibleEntityDescCallbackId(self.imp.on_reducer(
             "stage_distant_visible_entity_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

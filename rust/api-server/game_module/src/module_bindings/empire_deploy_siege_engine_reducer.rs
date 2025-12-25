@@ -67,6 +67,7 @@ impl empire_deploy_siege_engine for super::RemoteReducers {
         EmpireDeploySiegeEngineCallbackId(self.imp.on_reducer(
             "empire_deploy_siege_engine",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

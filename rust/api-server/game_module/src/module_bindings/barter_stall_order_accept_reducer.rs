@@ -75,6 +75,7 @@ impl barter_stall_order_accept for super::RemoteReducers {
         BarterStallOrderAcceptCallbackId(self.imp.on_reducer(
             "barter_stall_order_accept",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

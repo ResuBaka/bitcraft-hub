@@ -76,6 +76,7 @@ impl import_signed_in_player_state for super::RemoteReducers {
         ImportSignedInPlayerStateCallbackId(self.imp.on_reducer(
             "import_signed_in_player_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

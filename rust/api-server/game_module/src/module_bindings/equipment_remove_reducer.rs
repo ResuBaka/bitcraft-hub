@@ -69,6 +69,7 @@ impl equipment_remove for super::RemoteReducers {
         EquipmentRemoveCallbackId(self.imp.on_reducer(
             "equipment_remove",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

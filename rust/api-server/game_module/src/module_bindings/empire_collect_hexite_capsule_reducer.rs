@@ -80,6 +80,7 @@ impl empire_collect_hexite_capsule for super::RemoteReducers {
         EmpireCollectHexiteCapsuleCallbackId(self.imp.on_reducer(
             "empire_collect_hexite_capsule",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -63,6 +63,7 @@ impl end_grace_period for super::RemoteReducers {
         EndGracePeriodCallbackId(self.imp.on_reducer(
             "end_grace_period",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

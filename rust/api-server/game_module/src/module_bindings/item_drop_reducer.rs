@@ -64,6 +64,7 @@ impl item_drop for super::RemoteReducers {
         ItemDropCallbackId(self.imp.on_reducer(
             "item_drop",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

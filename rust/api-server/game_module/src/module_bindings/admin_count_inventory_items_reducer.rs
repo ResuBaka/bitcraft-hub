@@ -67,6 +67,7 @@ impl admin_count_inventory_items for super::RemoteReducers {
         AdminCountInventoryItemsCallbackId(self.imp.on_reducer(
             "admin_count_inventory_items",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -69,6 +69,7 @@ impl cheat_set_ai_debug_state for super::RemoteReducers {
         CheatSetAiDebugStateCallbackId(self.imp.on_reducer(
             "cheat_set_ai_debug_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

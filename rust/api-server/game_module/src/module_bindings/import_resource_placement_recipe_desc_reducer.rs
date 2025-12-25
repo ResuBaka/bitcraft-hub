@@ -4,12 +4,12 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::resource_placement_recipe_desc_type::ResourcePlacementRecipeDesc;
+use super::resource_placement_recipe_desc_v_2_type::ResourcePlacementRecipeDescV2;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct ImportResourcePlacementRecipeDescArgs {
-    pub records: Vec<ResourcePlacementRecipeDesc>,
+    pub records: Vec<ResourcePlacementRecipeDescV2>,
 }
 
 impl From<ImportResourcePlacementRecipeDescArgs> for super::Reducer {
@@ -38,7 +38,7 @@ pub trait import_resource_placement_recipe_desc {
     ///  and its status can be observed by listening for [`Self::on_import_resource_placement_recipe_desc`] callbacks.
     fn import_resource_placement_recipe_desc(
         &self,
-        records: Vec<ResourcePlacementRecipeDesc>,
+        records: Vec<ResourcePlacementRecipeDescV2>,
     ) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `import_resource_placement_recipe_desc`.
     ///
@@ -49,7 +49,7 @@ pub trait import_resource_placement_recipe_desc {
     /// to cancel the callback.
     fn on_import_resource_placement_recipe_desc(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourcePlacementRecipeDesc>)
+        callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourcePlacementRecipeDescV2>)
             + Send
             + 'static,
     ) -> ImportResourcePlacementRecipeDescCallbackId;
@@ -64,7 +64,7 @@ pub trait import_resource_placement_recipe_desc {
 impl import_resource_placement_recipe_desc for super::RemoteReducers {
     fn import_resource_placement_recipe_desc(
         &self,
-        records: Vec<ResourcePlacementRecipeDesc>,
+        records: Vec<ResourcePlacementRecipeDescV2>,
     ) -> __sdk::Result<()> {
         self.imp.call_reducer(
             "import_resource_placement_recipe_desc",
@@ -73,13 +73,14 @@ impl import_resource_placement_recipe_desc for super::RemoteReducers {
     }
     fn on_import_resource_placement_recipe_desc(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourcePlacementRecipeDesc>)
+        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourcePlacementRecipeDescV2>)
             + Send
             + 'static,
     ) -> ImportResourcePlacementRecipeDescCallbackId {
         ImportResourcePlacementRecipeDescCallbackId(self.imp.on_reducer(
             "import_resource_placement_recipe_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

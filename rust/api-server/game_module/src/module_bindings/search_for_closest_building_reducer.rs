@@ -67,6 +67,7 @@ impl search_for_closest_building for super::RemoteReducers {
         SearchForClosestBuildingCallbackId(self.imp.on_reducer(
             "search_for_closest_building",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

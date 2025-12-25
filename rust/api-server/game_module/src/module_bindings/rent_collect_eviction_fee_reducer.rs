@@ -65,6 +65,7 @@ impl rent_collect_eviction_fee for super::RemoteReducers {
         RentCollectEvictionFeeCallbackId(self.imp.on_reducer(
             "rent_collect_eviction_fee",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

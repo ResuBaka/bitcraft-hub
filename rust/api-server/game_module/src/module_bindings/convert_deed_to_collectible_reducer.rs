@@ -77,6 +77,7 @@ impl convert_deed_to_collectible for super::RemoteReducers {
         ConvertDeedToCollectibleCallbackId(self.imp.on_reducer(
             "convert_deed_to_collectible",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -91,6 +91,7 @@ impl cheat_item_stack_grant_and_equip for super::RemoteReducers {
         CheatItemStackGrantAndEquipCallbackId(self.imp.on_reducer(
             "cheat_item_stack_grant_and_equip",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

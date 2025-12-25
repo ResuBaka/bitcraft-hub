@@ -67,6 +67,7 @@ impl deployable_deploy_start for super::RemoteReducers {
         DeployableDeployStartCallbackId(self.imp.on_reducer(
             "deployable_deploy_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -69,6 +69,7 @@ impl discover_entities for super::RemoteReducers {
         DiscoverEntitiesCallbackId(self.imp.on_reducer(
             "discover_entities",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

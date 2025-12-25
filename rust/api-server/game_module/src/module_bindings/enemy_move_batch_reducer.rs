@@ -65,6 +65,7 @@ impl enemy_move_batch for super::RemoteReducers {
         EnemyMoveBatchCallbackId(self.imp.on_reducer(
             "enemy_move_batch",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -67,6 +67,7 @@ impl player_complete_task for super::RemoteReducers {
         PlayerCompleteTaskCallbackId(self.imp.on_reducer(
             "player_complete_task",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

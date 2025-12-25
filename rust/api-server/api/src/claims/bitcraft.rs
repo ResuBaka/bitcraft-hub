@@ -602,6 +602,10 @@ pub(crate) fn start_worker_claim_tech_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages.iter().position(|value: &::entity::claim_tech_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -609,6 +613,10 @@ pub(crate) fn start_worker_claim_tech_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+
+                                if let Some(index) = messages.iter().position(|value: &::entity::claim_tech_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
 
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {

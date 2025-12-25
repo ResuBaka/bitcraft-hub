@@ -69,6 +69,7 @@ impl stage_building_repairs_desc for super::RemoteReducers {
         StageBuildingRepairsDescCallbackId(self.imp.on_reducer(
             "stage_building_repairs_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

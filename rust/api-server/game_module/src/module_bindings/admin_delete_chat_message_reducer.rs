@@ -65,6 +65,7 @@ impl admin_delete_chat_message for super::RemoteReducers {
         AdminDeleteChatMessageCallbackId(self.imp.on_reducer(
             "admin_delete_chat_message",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

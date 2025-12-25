@@ -63,6 +63,7 @@ impl player_death_start for super::RemoteReducers {
         PlayerDeathStartCallbackId(self.imp.on_reducer(
             "player_death_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

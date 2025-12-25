@@ -64,6 +64,7 @@ impl extract for super::RemoteReducers {
         ExtractCallbackId(self.imp.on_reducer(
             "extract",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

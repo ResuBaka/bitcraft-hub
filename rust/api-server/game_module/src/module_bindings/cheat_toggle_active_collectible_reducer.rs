@@ -80,6 +80,7 @@ impl cheat_toggle_active_collectible for super::RemoteReducers {
         CheatToggleActiveCollectibleCallbackId(self.imp.on_reducer(
             "cheat_toggle_active_collectible",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -65,6 +65,7 @@ impl enemy_clear_aggro for super::RemoteReducers {
         EnemyClearAggroCallbackId(self.imp.on_reducer(
             "enemy_clear_aggro",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

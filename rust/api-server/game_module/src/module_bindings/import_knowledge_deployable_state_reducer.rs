@@ -80,6 +80,7 @@ impl import_knowledge_deployable_state for super::RemoteReducers {
         ImportKnowledgeDeployableStateCallbackId(self.imp.on_reducer(
             "import_knowledge_deployable_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

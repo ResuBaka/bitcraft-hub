@@ -77,6 +77,7 @@ impl pillar_shaping_place_pillar for super::RemoteReducers {
         PillarShapingPlacePillarCallbackId(self.imp.on_reducer(
             "pillar_shaping_place_pillar",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

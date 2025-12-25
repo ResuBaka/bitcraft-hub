@@ -69,6 +69,7 @@ impl terraform_cancel for super::RemoteReducers {
         TerraformCancelCallbackId(self.imp.on_reducer(
             "terraform_cancel",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

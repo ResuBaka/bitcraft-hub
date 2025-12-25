@@ -64,6 +64,7 @@ impl admin_complete_all_passive_crafts for super::RemoteReducers {
         AdminCompleteAllPassiveCraftsCallbackId(self.imp.on_reducer(
             "admin_complete_all_passive_crafts",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

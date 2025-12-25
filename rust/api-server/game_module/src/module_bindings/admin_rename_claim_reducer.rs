@@ -70,6 +70,7 @@ impl admin_rename_claim for super::RemoteReducers {
         AdminRenameClaimCallbackId(self.imp.on_reducer(
             "admin_rename_claim",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

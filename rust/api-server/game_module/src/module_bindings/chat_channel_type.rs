@@ -21,6 +21,10 @@ pub enum ChatChannel {
     EmpirePublic,
 
     EmpireInternal,
+
+    LookingForGroup,
+
+    Trade,
 }
 
 impl __sdk::InModule for ChatChannel {

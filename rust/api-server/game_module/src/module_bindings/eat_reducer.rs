@@ -64,6 +64,7 @@ impl eat for super::RemoteReducers {
         EatCallbackId(self.imp.on_reducer(
             "eat",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

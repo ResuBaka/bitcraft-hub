@@ -81,6 +81,7 @@ impl admin_rename_building_coord for super::RemoteReducers {
         AdminRenameBuildingCoordCallbackId(self.imp.on_reducer(
             "admin_rename_building_coord",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

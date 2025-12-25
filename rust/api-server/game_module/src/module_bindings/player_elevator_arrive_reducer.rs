@@ -63,6 +63,7 @@ impl player_elevator_arrive for super::RemoteReducers {
         PlayerElevatorArriveCallbackId(self.imp.on_reducer(
             "player_elevator_arrive",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

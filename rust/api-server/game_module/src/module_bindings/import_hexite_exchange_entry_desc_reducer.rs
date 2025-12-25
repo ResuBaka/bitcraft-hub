@@ -80,6 +80,7 @@ impl import_hexite_exchange_entry_desc for super::RemoteReducers {
         ImportHexiteExchangeEntryDescCallbackId(self.imp.on_reducer(
             "import_hexite_exchange_entry_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

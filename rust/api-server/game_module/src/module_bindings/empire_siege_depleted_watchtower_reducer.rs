@@ -76,6 +76,7 @@ impl empire_siege_depleted_watchtower for super::RemoteReducers {
         EmpireSiegeDepletedWatchtowerCallbackId(self.imp.on_reducer(
             "empire_siege_depleted_watchtower",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -59,6 +59,7 @@ impl admin_collapse_ruins for super::RemoteReducers {
         AdminCollapseRuinsCallbackId(self.imp.on_reducer(
             "admin_collapse_ruins",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

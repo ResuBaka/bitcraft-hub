@@ -65,6 +65,7 @@ impl import_resources_log for super::RemoteReducers {
         ImportResourcesLogCallbackId(self.imp.on_reducer(
             "import_resources_log",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

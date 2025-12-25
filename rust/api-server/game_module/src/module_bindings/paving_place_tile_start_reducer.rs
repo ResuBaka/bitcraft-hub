@@ -71,6 +71,7 @@ impl paving_place_tile_start for super::RemoteReducers {
         PavingPlaceTileStartCallbackId(self.imp.on_reducer(
             "paving_place_tile_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

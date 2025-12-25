@@ -65,6 +65,7 @@ impl stage_tool_type_desc for super::RemoteReducers {
         StageToolTypeDescCallbackId(self.imp.on_reducer(
             "stage_tool_type_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

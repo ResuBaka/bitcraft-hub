@@ -69,6 +69,7 @@ impl project_site_place for super::RemoteReducers {
         ProjectSitePlaceCallbackId(self.imp.on_reducer(
             "project_site_place",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

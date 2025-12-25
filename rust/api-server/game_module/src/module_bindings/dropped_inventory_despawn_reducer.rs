@@ -69,6 +69,7 @@ impl dropped_inventory_despawn for super::RemoteReducers {
         DroppedInventoryDespawnCallbackId(self.imp.on_reducer(
             "dropped_inventory_despawn",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

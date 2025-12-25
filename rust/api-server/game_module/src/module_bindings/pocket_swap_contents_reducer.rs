@@ -69,6 +69,7 @@ impl pocket_swap_contents for super::RemoteReducers {
         PocketSwapContentsCallbackId(self.imp.on_reducer(
             "pocket_swap_contents",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

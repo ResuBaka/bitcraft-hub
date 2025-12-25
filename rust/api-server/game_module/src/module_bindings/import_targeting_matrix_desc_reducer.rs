@@ -69,6 +69,7 @@ impl import_targeting_matrix_desc for super::RemoteReducers {
         ImportTargetingMatrixDescCallbackId(self.imp.on_reducer(
             "import_targeting_matrix_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

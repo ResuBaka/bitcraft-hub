@@ -67,6 +67,7 @@ impl cheat_building_move for super::RemoteReducers {
         CheatBuildingMoveCallbackId(self.imp.on_reducer(
             "cheat_building_move",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

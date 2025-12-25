@@ -76,6 +76,7 @@ impl player_region_transfer_event_reducer for super::RemoteReducers {
         PlayerRegionTransferEventReducerCallbackId(self.imp.on_reducer(
             "player_region_transfer_event_reducer",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

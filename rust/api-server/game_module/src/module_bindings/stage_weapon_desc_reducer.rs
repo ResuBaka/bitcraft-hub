@@ -65,6 +65,7 @@ impl stage_weapon_desc for super::RemoteReducers {
         StageWeaponDescCallbackId(self.imp.on_reducer(
             "stage_weapon_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

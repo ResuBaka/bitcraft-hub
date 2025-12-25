@@ -65,6 +65,7 @@ impl claim_resupply for super::RemoteReducers {
         ClaimResupplyCallbackId(self.imp.on_reducer(
             "claim_resupply",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

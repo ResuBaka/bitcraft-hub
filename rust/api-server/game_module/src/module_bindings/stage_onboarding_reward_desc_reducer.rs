@@ -73,6 +73,7 @@ impl stage_onboarding_reward_desc for super::RemoteReducers {
         StageOnboardingRewardDescCallbackId(self.imp.on_reducer(
             "stage_onboarding_reward_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -67,6 +67,7 @@ impl item_stack_split for super::RemoteReducers {
         ItemStackSplitCallbackId(self.imp.on_reducer(
             "item_stack_split",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

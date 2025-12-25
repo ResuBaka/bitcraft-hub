@@ -63,6 +63,7 @@ impl hide_deployable for super::RemoteReducers {
         HideDeployableCallbackId(self.imp.on_reducer(
             "hide_deployable",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

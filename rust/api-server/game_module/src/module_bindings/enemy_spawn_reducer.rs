@@ -65,6 +65,7 @@ impl enemy_spawn for super::RemoteReducers {
         EnemySpawnCallbackId(self.imp.on_reducer(
             "enemy_spawn",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

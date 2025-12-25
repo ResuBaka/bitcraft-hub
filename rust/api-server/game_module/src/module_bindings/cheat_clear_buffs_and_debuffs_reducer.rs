@@ -68,6 +68,7 @@ impl cheat_clear_buffs_and_debuffs for super::RemoteReducers {
         CheatClearBuffsAndDebuffsCallbackId(self.imp.on_reducer(
             "cheat_clear_buffs_and_debuffs",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

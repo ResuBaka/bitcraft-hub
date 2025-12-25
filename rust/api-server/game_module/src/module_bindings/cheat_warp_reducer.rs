@@ -65,6 +65,7 @@ impl cheat_warp for super::RemoteReducers {
         CheatWarpCallbackId(self.imp.on_reducer(
             "cheat_warp",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

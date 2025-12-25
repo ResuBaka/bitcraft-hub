@@ -63,6 +63,7 @@ impl player_vote_conclude for super::RemoteReducers {
         PlayerVoteConcludeCallbackId(self.imp.on_reducer(
             "player_vote_conclude",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

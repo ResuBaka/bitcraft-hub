@@ -78,6 +78,7 @@ impl on_inter_module_message_processed for super::RemoteReducers {
         OnInterModuleMessageProcessedCallbackId(self.imp.on_reducer(
             "on_inter_module_message_processed",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

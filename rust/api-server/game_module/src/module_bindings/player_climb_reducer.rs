@@ -65,6 +65,7 @@ impl player_climb for super::RemoteReducers {
         PlayerClimbCallbackId(self.imp.on_reducer(
             "player_climb",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -59,6 +59,7 @@ impl player_region_crossover for super::RemoteReducers {
         PlayerRegionCrossoverCallbackId(self.imp.on_reducer(
             "player_region_crossover",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

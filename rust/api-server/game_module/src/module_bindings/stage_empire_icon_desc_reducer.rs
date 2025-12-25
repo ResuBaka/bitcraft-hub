@@ -67,6 +67,7 @@ impl stage_empire_icon_desc for super::RemoteReducers {
         StageEmpireIconDescCallbackId(self.imp.on_reducer(
             "stage_empire_icon_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

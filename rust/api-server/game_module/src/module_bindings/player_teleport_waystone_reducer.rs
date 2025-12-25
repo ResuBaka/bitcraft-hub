@@ -75,6 +75,7 @@ impl player_teleport_waystone for super::RemoteReducers {
         PlayerTeleportWaystoneCallbackId(self.imp.on_reducer(
             "player_teleport_waystone",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

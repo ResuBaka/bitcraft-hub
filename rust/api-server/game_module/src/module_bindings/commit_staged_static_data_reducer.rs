@@ -59,6 +59,7 @@ impl commit_staged_static_data for super::RemoteReducers {
         CommitStagedStaticDataCallbackId(self.imp.on_reducer(
             "commit_staged_static_data",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

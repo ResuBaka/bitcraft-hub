@@ -11,6 +11,7 @@ pub struct PlayerCraftInitiateRequest {
     pub building_entity_id: u64,
     pub count: i32,
     pub timestamp: u64,
+    pub is_public: bool,
 }
 
 impl __sdk::InModule for PlayerCraftInitiateRequest {

@@ -67,6 +67,7 @@ impl import_project_site_state for super::RemoteReducers {
         ImportProjectSiteStateCallbackId(self.imp.on_reducer(
             "import_project_site_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

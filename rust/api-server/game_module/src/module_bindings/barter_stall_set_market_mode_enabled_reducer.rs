@@ -80,6 +80,7 @@ impl barter_stall_set_market_mode_enabled for super::RemoteReducers {
         BarterStallSetMarketModeEnabledCallbackId(self.imp.on_reducer(
             "barter_stall_set_market_mode_enabled",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

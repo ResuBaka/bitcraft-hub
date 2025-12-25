@@ -67,6 +67,7 @@ impl stage_chest_rarity_desc for super::RemoteReducers {
         StageChestRarityDescCallbackId(self.imp.on_reducer(
             "stage_chest_rarity_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

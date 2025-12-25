@@ -69,6 +69,7 @@ impl claim_remove_tile for super::RemoteReducers {
         ClaimRemoveTileCallbackId(self.imp.on_reducer(
             "claim_remove_tile",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

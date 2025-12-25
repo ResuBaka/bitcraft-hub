@@ -63,6 +63,7 @@ impl on_durability_zero for super::RemoteReducers {
         OnDurabilityZeroCallbackId(self.imp.on_reducer(
             "on_durability_zero",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

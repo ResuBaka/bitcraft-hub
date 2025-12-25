@@ -69,6 +69,7 @@ impl cheat_paving_destroy for super::RemoteReducers {
         CheatPavingDestroyCallbackId(self.imp.on_reducer(
             "cheat_paving_destroy",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

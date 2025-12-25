@@ -77,6 +77,7 @@ impl claim_withdraw_from_treasury for super::RemoteReducers {
         ClaimWithdrawFromTreasuryCallbackId(self.imp.on_reducer(
             "claim_withdraw_from_treasury",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

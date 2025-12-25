@@ -70,6 +70,7 @@ impl admin_rename_building for super::RemoteReducers {
         AdminRenameBuildingCallbackId(self.imp.on_reducer(
             "admin_rename_building",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

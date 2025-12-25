@@ -4,12 +4,12 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::deployable_desc_type::DeployableDesc;
+use super::deployable_desc_v_4_type::DeployableDescV4;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct StageDeployableDescArgs {
-    pub records: Vec<DeployableDesc>,
+    pub records: Vec<DeployableDescV4>,
 }
 
 impl From<StageDeployableDescArgs> for super::Reducer {
@@ -36,7 +36,7 @@ pub trait stage_deployable_desc {
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_stage_deployable_desc`] callbacks.
-    fn stage_deployable_desc(&self, records: Vec<DeployableDesc>) -> __sdk::Result<()>;
+    fn stage_deployable_desc(&self, records: Vec<DeployableDescV4>) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_deployable_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -46,7 +46,7 @@ pub trait stage_deployable_desc {
     /// to cancel the callback.
     fn on_stage_deployable_desc(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<DeployableDesc>) + Send + 'static,
+        callback: impl FnMut(&super::ReducerEventContext, &Vec<DeployableDescV4>) + Send + 'static,
     ) -> StageDeployableDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_deployable_desc`],
     /// causing it not to run in the future.
@@ -54,17 +54,18 @@ pub trait stage_deployable_desc {
 }
 
 impl stage_deployable_desc for super::RemoteReducers {
-    fn stage_deployable_desc(&self, records: Vec<DeployableDesc>) -> __sdk::Result<()> {
+    fn stage_deployable_desc(&self, records: Vec<DeployableDescV4>) -> __sdk::Result<()> {
         self.imp
             .call_reducer("stage_deployable_desc", StageDeployableDescArgs { records })
     }
     fn on_stage_deployable_desc(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DeployableDesc>) + Send + 'static,
+        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DeployableDescV4>) + Send + 'static,
     ) -> StageDeployableDescCallbackId {
         StageDeployableDescCallbackId(self.imp.on_reducer(
             "stage_deployable_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -69,6 +69,7 @@ impl player_teleport_home_start for super::RemoteReducers {
         PlayerTeleportHomeStartCallbackId(self.imp.on_reducer(
             "player_teleport_home_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

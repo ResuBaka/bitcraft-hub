@@ -65,6 +65,7 @@ impl rent_add_tenant for super::RemoteReducers {
         RentAddTenantCallbackId(self.imp.on_reducer(
             "rent_add_tenant",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

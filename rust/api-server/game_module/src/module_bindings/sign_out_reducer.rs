@@ -58,6 +58,7 @@ impl sign_out for super::RemoteReducers {
         SignOutCallbackId(self.imp.on_reducer(
             "sign_out",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

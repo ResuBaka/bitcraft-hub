@@ -69,6 +69,7 @@ impl stage_interior_network_desc for super::RemoteReducers {
         StageInteriorNetworkDescCallbackId(self.imp.on_reducer(
             "stage_interior_network_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

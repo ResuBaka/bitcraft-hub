@@ -65,6 +65,7 @@ impl player_vote_answer for super::RemoteReducers {
         PlayerVoteAnswerCallbackId(self.imp.on_reducer(
             "player_vote_answer",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -67,6 +67,7 @@ impl import_player_action_state for super::RemoteReducers {
         ImportPlayerActionStateCallbackId(self.imp.on_reducer(
             "import_player_action_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

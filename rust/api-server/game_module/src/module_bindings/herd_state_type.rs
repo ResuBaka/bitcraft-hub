@@ -12,6 +12,7 @@ pub struct HerdState {
     pub current_population: i32,
     pub ignore_eagerness: bool,
     pub population_variance: Vec<f32>,
+    pub crumb_trail_entity_id: u64,
 }
 
 impl __sdk::InModule for HerdState {

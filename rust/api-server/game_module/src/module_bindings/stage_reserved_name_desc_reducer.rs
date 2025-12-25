@@ -67,6 +67,7 @@ impl stage_reserved_name_desc for super::RemoteReducers {
         StageReservedNameDescCallbackId(self.imp.on_reducer(
             "stage_reserved_name_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

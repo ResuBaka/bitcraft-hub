@@ -71,6 +71,24 @@ pub enum EnemyType {
     Soldier,
 
     Queen,
+
+    Sentinel,
+
+    SentinelDungeonJakyl,
+
+    SentinelDungeonSkitch,
+
+    SentinelDungeonLargeJakyl,
+
+    CrabDungeonCrabBoss,
+
+    CrabDungeonCrabTrash,
+
+    SpiderDungeonEliteSpider,
+
+    SpiderDungeonSmallSpider,
+
+    SpiderDungeonSpiderNest,
 }
 
 impl __sdk::InModule for EnemyType {

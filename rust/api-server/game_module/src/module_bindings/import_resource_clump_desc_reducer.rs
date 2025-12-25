@@ -67,6 +67,7 @@ impl import_resource_clump_desc for super::RemoteReducers {
         ImportResourceClumpDescCallbackId(self.imp.on_reducer(
             "import_resource_clump_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

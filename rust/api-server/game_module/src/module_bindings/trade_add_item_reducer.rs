@@ -67,6 +67,7 @@ impl trade_add_item for super::RemoteReducers {
         TradeAddItemCallbackId(self.imp.on_reducer(
             "trade_add_item",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

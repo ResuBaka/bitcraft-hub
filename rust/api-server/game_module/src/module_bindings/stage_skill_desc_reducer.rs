@@ -65,6 +65,7 @@ impl stage_skill_desc for super::RemoteReducers {
         StageSkillDescCallbackId(self.imp.on_reducer(
             "stage_skill_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

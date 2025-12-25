@@ -67,6 +67,7 @@ impl import_admin_broadcast for super::RemoteReducers {
         ImportAdminBroadcastCallbackId(self.imp.on_reducer(
             "import_admin_broadcast",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

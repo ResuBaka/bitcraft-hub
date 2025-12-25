@@ -65,6 +65,7 @@ impl rent_set_daily_rate for super::RemoteReducers {
         RentSetDailyRateCallbackId(self.imp.on_reducer(
             "rent_set_daily_rate",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

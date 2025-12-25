@@ -86,6 +86,7 @@ impl admin_delete_all_items_of_type for super::RemoteReducers {
         AdminDeleteAllItemsOfTypeCallbackId(self.imp.on_reducer(
             "admin_delete_all_items_of_type",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

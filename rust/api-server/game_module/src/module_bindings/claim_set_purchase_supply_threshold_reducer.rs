@@ -80,6 +80,7 @@ impl claim_set_purchase_supply_threshold for super::RemoteReducers {
         ClaimSetPurchaseSupplyThresholdCallbackId(self.imp.on_reducer(
             "claim_set_purchase_supply_threshold",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -77,6 +77,7 @@ impl building_deconstruct_start for super::RemoteReducers {
         BuildingDeconstructStartCallbackId(self.imp.on_reducer(
             "building_deconstruct_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

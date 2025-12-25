@@ -81,6 +81,7 @@ impl admin_set_sign_text_coord for super::RemoteReducers {
         AdminSetSignTextCoordCallbackId(self.imp.on_reducer(
             "admin_set_sign_text_coord",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

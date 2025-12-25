@@ -80,6 +80,7 @@ impl acquire_knowledge_from_entities for super::RemoteReducers {
         AcquireKnowledgeFromEntitiesCallbackId(self.imp.on_reducer(
             "acquire_knowledge_from_entities",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

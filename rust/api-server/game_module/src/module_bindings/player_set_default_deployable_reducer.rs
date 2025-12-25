@@ -80,6 +80,7 @@ impl player_set_default_deployable for super::RemoteReducers {
         PlayerSetDefaultDeployableCallbackId(self.imp.on_reducer(
             "player_set_default_deployable",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

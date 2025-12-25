@@ -63,6 +63,7 @@ impl synchronize_time for super::RemoteReducers {
         SynchronizeTimeCallbackId(self.imp.on_reducer(
             "synchronize_time",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

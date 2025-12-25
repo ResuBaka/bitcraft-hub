@@ -67,6 +67,7 @@ impl equipment_add for super::RemoteReducers {
         EquipmentAddCallbackId(self.imp.on_reducer(
             "equipment_add",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

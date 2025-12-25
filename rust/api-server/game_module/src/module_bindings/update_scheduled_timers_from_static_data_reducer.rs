@@ -64,6 +64,7 @@ impl update_scheduled_timers_from_static_data for super::RemoteReducers {
         UpdateScheduledTimersFromStaticDataCallbackId(self.imp.on_reducer(
             "update_scheduled_timers_from_static_data",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

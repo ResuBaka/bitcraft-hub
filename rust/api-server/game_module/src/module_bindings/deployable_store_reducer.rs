@@ -65,6 +65,7 @@ impl deployable_store for super::RemoteReducers {
         DeployableStoreCallbackId(self.imp.on_reducer(
             "deployable_store",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

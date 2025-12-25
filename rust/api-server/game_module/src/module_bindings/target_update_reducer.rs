@@ -65,6 +65,7 @@ impl target_update for super::RemoteReducers {
         TargetUpdateCallbackId(self.imp.on_reducer(
             "target_update",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

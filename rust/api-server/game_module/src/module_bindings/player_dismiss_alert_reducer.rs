@@ -67,6 +67,7 @@ impl player_dismiss_alert for super::RemoteReducers {
         PlayerDismissAlertCallbackId(self.imp.on_reducer(
             "player_dismiss_alert",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

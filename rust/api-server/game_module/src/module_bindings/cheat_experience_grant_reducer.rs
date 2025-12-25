@@ -69,6 +69,7 @@ impl cheat_experience_grant for super::RemoteReducers {
         CheatExperienceGrantCallbackId(self.imp.on_reducer(
             "cheat_experience_grant",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -80,6 +80,7 @@ impl project_site_advance_project_start for super::RemoteReducers {
         ProjectSiteAdvanceProjectStartCallbackId(self.imp.on_reducer(
             "project_site_advance_project_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

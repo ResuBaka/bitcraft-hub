@@ -67,6 +67,7 @@ impl stage_building_type_desc for super::RemoteReducers {
         StageBuildingTypeDescCallbackId(self.imp.on_reducer(
             "stage_building_type_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

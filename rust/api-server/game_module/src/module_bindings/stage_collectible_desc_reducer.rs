@@ -67,6 +67,7 @@ impl stage_collectible_desc for super::RemoteReducers {
         StageCollectibleDescCallbackId(self.imp.on_reducer(
             "stage_collectible_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

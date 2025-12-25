@@ -67,6 +67,7 @@ impl admin_broadcast_msg_region for super::RemoteReducers {
         AdminBroadcastMsgRegionCallbackId(self.imp.on_reducer(
             "admin_broadcast_msg_region",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

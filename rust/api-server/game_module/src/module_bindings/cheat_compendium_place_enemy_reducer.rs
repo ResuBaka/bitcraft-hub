@@ -77,6 +77,7 @@ impl cheat_compendium_place_enemy for super::RemoteReducers {
         CheatCompendiumPlaceEnemyCallbackId(self.imp.on_reducer(
             "cheat_compendium_place_enemy",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

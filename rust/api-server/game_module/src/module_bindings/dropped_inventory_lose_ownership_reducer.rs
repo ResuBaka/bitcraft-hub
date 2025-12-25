@@ -78,6 +78,7 @@ impl dropped_inventory_lose_ownership for super::RemoteReducers {
         DroppedInventoryLoseOwnershipCallbackId(self.imp.on_reducer(
             "dropped_inventory_lose_ownership",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

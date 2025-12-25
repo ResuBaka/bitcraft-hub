@@ -67,6 +67,7 @@ impl item_convert_start for super::RemoteReducers {
         ItemConvertStartCallbackId(self.imp.on_reducer(
             "item_convert_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

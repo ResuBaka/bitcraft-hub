@@ -65,6 +65,7 @@ impl enemy_move for super::RemoteReducers {
         EnemyMoveCallbackId(self.imp.on_reducer(
             "enemy_move",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

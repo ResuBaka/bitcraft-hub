@@ -65,6 +65,7 @@ impl player_action_cancel for super::RemoteReducers {
         PlayerActionCancelCallbackId(self.imp.on_reducer(
             "player_action_cancel",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

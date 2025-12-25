@@ -69,6 +69,7 @@ impl stage_knowledge_scroll_desc for super::RemoteReducers {
         StageKnowledgeScrollDescCallbackId(self.imp.on_reducer(
             "stage_knowledge_scroll_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

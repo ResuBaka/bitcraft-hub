@@ -78,6 +78,7 @@ impl import_traveler_trade_order_desc for super::RemoteReducers {
         ImportTravelerTradeOrderDescCallbackId(self.imp.on_reducer(
             "import_traveler_trade_order_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

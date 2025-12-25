@@ -80,6 +80,7 @@ impl player_housing_request_access for super::RemoteReducers {
         PlayerHousingRequestAccessCallbackId(self.imp.on_reducer(
             "player_housing_request_access",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

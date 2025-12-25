@@ -69,6 +69,7 @@ impl import_character_stats_state for super::RemoteReducers {
         ImportCharacterStatsStateCallbackId(self.imp.on_reducer(
             "import_character_stats_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

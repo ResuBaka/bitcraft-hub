@@ -74,6 +74,7 @@ impl cheat_claim_totem_complete_current_research for super::RemoteReducers {
         CheatClaimTotemCompleteCurrentResearchCallbackId(self.imp.on_reducer(
             "cheat_claim_totem_complete_current_research",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

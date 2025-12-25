@@ -67,6 +67,7 @@ impl deployable_move for super::RemoteReducers {
         DeployableMoveCallbackId(self.imp.on_reducer(
             "deployable_move",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

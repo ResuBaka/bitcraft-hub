@@ -67,6 +67,7 @@ impl player_duel_initiate for super::RemoteReducers {
         PlayerDuelInitiateCallbackId(self.imp.on_reducer(
             "player_duel_initiate",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

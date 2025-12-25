@@ -64,6 +64,7 @@ impl admin_reset_all_herd_locations for super::RemoteReducers {
         AdminResetAllHerdLocationsCallbackId(self.imp.on_reducer(
             "admin_reset_all_herd_locations",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -69,6 +69,7 @@ impl cheat_paving_add_tile for super::RemoteReducers {
         CheatPavingAddTileCallbackId(self.imp.on_reducer(
             "cheat_paving_add_tile",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

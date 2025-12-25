@@ -65,6 +65,7 @@ impl player_regen_agent_loop for super::RemoteReducers {
         PlayerRegenAgentLoopCallbackId(self.imp.on_reducer(
             "player_regen_agent_loop",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

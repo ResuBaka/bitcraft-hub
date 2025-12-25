@@ -59,6 +59,7 @@ impl force_start_agents for super::RemoteReducers {
         ForceStartAgentsCallbackId(self.imp.on_reducer(
             "force_start_agents",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

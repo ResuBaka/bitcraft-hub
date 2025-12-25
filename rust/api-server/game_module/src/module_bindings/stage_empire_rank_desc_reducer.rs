@@ -67,6 +67,7 @@ impl stage_empire_rank_desc for super::RemoteReducers {
         StageEmpireRankDescCallbackId(self.imp.on_reducer(
             "stage_empire_rank_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -63,6 +63,7 @@ impl attack_scheduled for super::RemoteReducers {
         AttackScheduledCallbackId(self.imp.on_reducer(
             "attack_scheduled",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

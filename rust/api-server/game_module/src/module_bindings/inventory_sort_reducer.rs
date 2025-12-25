@@ -63,6 +63,7 @@ impl inventory_sort for super::RemoteReducers {
         InventorySortCallbackId(self.imp.on_reducer(
             "inventory_sort",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

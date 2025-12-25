@@ -65,6 +65,7 @@ impl trade_sessions_agent_loop for super::RemoteReducers {
         TradeSessionsAgentLoopCallbackId(self.imp.on_reducer(
             "trade_sessions_agent_loop",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

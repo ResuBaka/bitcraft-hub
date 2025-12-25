@@ -81,6 +81,7 @@ impl import_interior_portal_connections_desc for super::RemoteReducers {
             self.imp.on_reducer(
                 "import_interior_portal_connections_desc",
                 Box::new(move |ctx: &super::ReducerEventContext| {
+                    #[allow(irrefutable_let_patterns)]
                     let super::ReducerEventContext {
                         event:
                             __sdk::ReducerEvent {

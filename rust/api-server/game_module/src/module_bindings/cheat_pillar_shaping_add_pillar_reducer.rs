@@ -80,6 +80,7 @@ impl cheat_pillar_shaping_add_pillar for super::RemoteReducers {
         CheatPillarShapingAddPillarCallbackId(self.imp.on_reducer(
             "cheat_pillar_shaping_add_pillar",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

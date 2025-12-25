@@ -78,6 +78,7 @@ impl trade_cancel_server for super::RemoteReducers {
         TradeCancelServerCallbackId(self.imp.on_reducer(
             "trade_cancel_server",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

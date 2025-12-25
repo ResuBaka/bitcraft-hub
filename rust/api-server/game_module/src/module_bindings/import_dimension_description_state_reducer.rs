@@ -80,6 +80,7 @@ impl import_dimension_description_state for super::RemoteReducers {
         ImportDimensionDescriptionStateCallbackId(self.imp.on_reducer(
             "import_dimension_description_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

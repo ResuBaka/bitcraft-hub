@@ -67,6 +67,7 @@ impl cheat_grant_knowledge for super::RemoteReducers {
         CheatGrantKnowledgeCallbackId(self.imp.on_reducer(
             "cheat_grant_knowledge",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

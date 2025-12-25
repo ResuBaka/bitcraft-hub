@@ -67,6 +67,7 @@ impl stage_traveler_task_desc for super::RemoteReducers {
         StageTravelerTaskDescCallbackId(self.imp.on_reducer(
             "stage_traveler_task_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

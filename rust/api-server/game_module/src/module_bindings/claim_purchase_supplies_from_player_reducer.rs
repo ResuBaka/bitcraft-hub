@@ -80,6 +80,7 @@ impl claim_purchase_supplies_from_player for super::RemoteReducers {
         ClaimPurchaseSuppliesFromPlayerCallbackId(self.imp.on_reducer(
             "claim_purchase_supplies_from_player",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -10,6 +10,7 @@ pub struct PlayerExtractRequest {
     pub recipe_id: i32,
     pub target_entity_id: u64,
     pub timestamp: u64,
+    pub clear_from_claim: bool,
 }
 
 impl __sdk::InModule for PlayerExtractRequest {

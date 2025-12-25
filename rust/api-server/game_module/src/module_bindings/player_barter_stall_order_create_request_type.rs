@@ -11,10 +11,8 @@ use super::item_stack_type::ItemStack;
 pub struct PlayerBarterStallOrderCreateRequest {
     pub shop_entity_id: u64,
     pub remaining_stock: i32,
-    pub offer_items: Option<ItemStack>,
-    pub offer_cargo_id: i32,
+    pub offer_items: Vec<ItemStack>,
     pub required_items: Vec<ItemStack>,
-    pub required_cargos: Vec<i32>,
 }
 
 impl __sdk::InModule for PlayerBarterStallOrderCreateRequest {

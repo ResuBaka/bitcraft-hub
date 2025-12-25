@@ -63,6 +63,7 @@ impl rent_evict_term for super::RemoteReducers {
         RentEvictTermCallbackId(self.imp.on_reducer(
             "rent_evict_term",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

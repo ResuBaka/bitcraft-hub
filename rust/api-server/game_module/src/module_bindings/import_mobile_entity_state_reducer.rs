@@ -67,6 +67,7 @@ impl import_mobile_entity_state for super::RemoteReducers {
         ImportMobileEntityStateCallbackId(self.imp.on_reducer(
             "import_mobile_entity_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

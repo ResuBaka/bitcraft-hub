@@ -67,6 +67,7 @@ impl import_building_spawn_desc for super::RemoteReducers {
         ImportBuildingSpawnDescCallbackId(self.imp.on_reducer(
             "import_building_spawn_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

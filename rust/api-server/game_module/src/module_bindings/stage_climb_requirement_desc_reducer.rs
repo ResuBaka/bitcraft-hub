@@ -73,6 +73,7 @@ impl stage_climb_requirement_desc for super::RemoteReducers {
         StageClimbRequirementDescCallbackId(self.imp.on_reducer(
             "stage_climb_requirement_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

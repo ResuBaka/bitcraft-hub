@@ -65,6 +65,7 @@ impl cheat_claim_take_ownership for super::RemoteReducers {
         CheatClaimTakeOwnershipCallbackId(self.imp.on_reducer(
             "cheat_claim_take_ownership",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -77,6 +77,7 @@ impl pillar_shaping_destroy_start for super::RemoteReducers {
         PillarShapingDestroyStartCallbackId(self.imp.on_reducer(
             "pillar_shaping_destroy_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -74,6 +74,7 @@ impl environment_debuff_agent_loop for super::RemoteReducers {
         EnvironmentDebuffAgentLoopCallbackId(self.imp.on_reducer(
             "environment_debuff_agent_loop",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

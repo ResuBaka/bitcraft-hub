@@ -59,6 +59,7 @@ impl admin_sign_out_all_region for super::RemoteReducers {
         AdminSignOutAllRegionCallbackId(self.imp.on_reducer(
             "admin_sign_out_all_region",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

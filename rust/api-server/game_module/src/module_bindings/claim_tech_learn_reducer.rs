@@ -67,6 +67,7 @@ impl claim_tech_learn for super::RemoteReducers {
         ClaimTechLearnCallbackId(self.imp.on_reducer(
             "claim_tech_learn",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

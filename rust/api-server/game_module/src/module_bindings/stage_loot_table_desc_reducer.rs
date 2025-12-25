@@ -65,6 +65,7 @@ impl stage_loot_table_desc for super::RemoteReducers {
         StageLootTableDescCallbackId(self.imp.on_reducer(
             "stage_loot_table_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

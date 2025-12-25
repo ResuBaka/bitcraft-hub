@@ -80,6 +80,7 @@ impl import_knowledge_stat_modifier_desc for super::RemoteReducers {
         ImportKnowledgeStatModifierDescCallbackId(self.imp.on_reducer(
             "import_knowledge_stat_modifier_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -59,6 +59,7 @@ impl clear_staged_static_data for super::RemoteReducers {
         ClearStagedStaticDataCallbackId(self.imp.on_reducer(
             "clear_staged_static_data",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -59,6 +59,7 @@ impl player_queue_join for super::RemoteReducers {
         PlayerQueueJoinCallbackId(self.imp.on_reducer(
             "player_queue_join",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -67,6 +67,7 @@ impl craft_continue_start for super::RemoteReducers {
         CraftContinueStartCallbackId(self.imp.on_reducer(
             "craft_continue_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

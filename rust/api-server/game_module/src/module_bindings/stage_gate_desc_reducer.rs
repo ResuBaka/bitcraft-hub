@@ -65,6 +65,7 @@ impl stage_gate_desc for super::RemoteReducers {
         StageGateDescCallbackId(self.imp.on_reducer(
             "stage_gate_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

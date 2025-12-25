@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::ability_type_enum_type::AbilityTypeEnum;
 use super::buff_category_type::BuffCategory;
 use super::chat_channel_type::ChatChannel;
 use super::permission_group_type::PermissionGroup;
@@ -23,6 +24,7 @@ pub struct TheGreatPlaceHolderTable {
     pub chat_channel: ChatChannel,
     pub permission: Permission,
     pub permission_group: PermissionGroup,
+    pub ability_type: AbilityTypeEnum,
 }
 
 impl __sdk::InModule for TheGreatPlaceHolderTable {

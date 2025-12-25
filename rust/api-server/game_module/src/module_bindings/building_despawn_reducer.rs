@@ -63,6 +63,7 @@ impl building_despawn for super::RemoteReducers {
         BuildingDespawnCallbackId(self.imp.on_reducer(
             "building_despawn",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

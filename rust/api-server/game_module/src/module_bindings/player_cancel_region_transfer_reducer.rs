@@ -64,6 +64,7 @@ impl player_cancel_region_transfer for super::RemoteReducers {
         PlayerCancelRegionTransferCallbackId(self.imp.on_reducer(
             "player_cancel_region_transfer",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

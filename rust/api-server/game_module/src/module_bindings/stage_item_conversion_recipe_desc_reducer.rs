@@ -80,6 +80,7 @@ impl stage_item_conversion_recipe_desc for super::RemoteReducers {
         StageItemConversionRecipeDescCallbackId(self.imp.on_reducer(
             "stage_item_conversion_recipe_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

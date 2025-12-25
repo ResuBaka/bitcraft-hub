@@ -65,6 +65,7 @@ impl generate_world for super::RemoteReducers {
         GenerateWorldCallbackId(self.imp.on_reducer(
             "generate_world",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

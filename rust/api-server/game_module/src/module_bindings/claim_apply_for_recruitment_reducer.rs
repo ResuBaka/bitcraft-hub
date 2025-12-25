@@ -77,6 +77,7 @@ impl claim_apply_for_recruitment for super::RemoteReducers {
         ClaimApplyForRecruitmentCallbackId(self.imp.on_reducer(
             "claim_apply_for_recruitment",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

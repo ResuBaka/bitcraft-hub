@@ -67,6 +67,7 @@ impl order_cancel for super::RemoteReducers {
         OrderCancelCallbackId(self.imp.on_reducer(
             "order_cancel",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

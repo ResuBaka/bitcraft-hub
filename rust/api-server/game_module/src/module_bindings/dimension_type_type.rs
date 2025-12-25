@@ -15,6 +15,8 @@ pub enum DimensionType {
     AncientRuin,
 
     BuildingInterior,
+
+    Dungeon,
 }
 
 impl __sdk::InModule for DimensionType {

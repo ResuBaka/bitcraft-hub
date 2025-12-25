@@ -59,6 +59,7 @@ impl admin_clear_all_resources for super::RemoteReducers {
         AdminClearAllResourcesCallbackId(self.imp.on_reducer(
             "admin_clear_all_resources",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

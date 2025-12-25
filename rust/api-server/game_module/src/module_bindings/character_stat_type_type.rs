@@ -115,6 +115,8 @@ pub enum CharacterStatType {
     MaxTeleportationEnergy,
 
     TeleportationEnergyRegenRate,
+
+    ConstructionPower,
 }
 
 impl __sdk::InModule for CharacterStatType {

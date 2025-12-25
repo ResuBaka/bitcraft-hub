@@ -77,6 +77,7 @@ impl closed_listing_collect for super::RemoteReducers {
         ClosedListingCollectCallbackId(self.imp.on_reducer(
             "closed_listing_collect",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

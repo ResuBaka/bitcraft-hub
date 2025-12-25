@@ -67,6 +67,7 @@ impl pause_play_timer for super::RemoteReducers {
         PausePlayTimerCallbackId(self.imp.on_reducer(
             "pause_play_timer",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

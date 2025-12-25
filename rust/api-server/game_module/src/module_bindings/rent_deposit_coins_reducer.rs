@@ -65,6 +65,7 @@ impl rent_deposit_coins for super::RemoteReducers {
         RentDepositCoinsCallbackId(self.imp.on_reducer(
             "rent_deposit_coins",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

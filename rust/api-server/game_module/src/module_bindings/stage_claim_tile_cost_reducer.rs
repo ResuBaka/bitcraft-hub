@@ -65,6 +65,7 @@ impl stage_claim_tile_cost for super::RemoteReducers {
         StageClaimTileCostCallbackId(self.imp.on_reducer(
             "stage_claim_tile_cost",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

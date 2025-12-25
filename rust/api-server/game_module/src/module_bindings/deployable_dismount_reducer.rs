@@ -69,6 +69,7 @@ impl deployable_dismount for super::RemoteReducers {
         DeployableDismountCallbackId(self.imp.on_reducer(
             "deployable_dismount",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

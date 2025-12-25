@@ -78,6 +78,7 @@ impl stage_environment_debuff_desc for super::RemoteReducers {
         StageEnvironmentDebuffDescCallbackId(self.imp.on_reducer(
             "stage_environment_debuff_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

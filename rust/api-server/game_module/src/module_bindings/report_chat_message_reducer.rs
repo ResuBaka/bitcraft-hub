@@ -65,6 +65,7 @@ impl report_chat_message for super::RemoteReducers {
         ReportChatMessageCallbackId(self.imp.on_reducer(
             "report_chat_message",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

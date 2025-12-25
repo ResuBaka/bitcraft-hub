@@ -67,6 +67,7 @@ impl import_satiation_state for super::RemoteReducers {
         ImportSatiationStateCallbackId(self.imp.on_reducer(
             "import_satiation_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

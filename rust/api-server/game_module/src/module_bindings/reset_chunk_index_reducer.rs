@@ -59,6 +59,7 @@ impl reset_chunk_index for super::RemoteReducers {
         ResetChunkIndexCallbackId(self.imp.on_reducer(
             "reset_chunk_index",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

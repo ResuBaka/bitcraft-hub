@@ -65,6 +65,7 @@ impl report_player for super::RemoteReducers {
         ReportPlayerCallbackId(self.imp.on_reducer(
             "report_player",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

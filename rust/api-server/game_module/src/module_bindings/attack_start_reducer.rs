@@ -65,6 +65,7 @@ impl attack_start for super::RemoteReducers {
         AttackStartCallbackId(self.imp.on_reducer(
             "attack_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -65,6 +65,7 @@ impl player_housing_update for super::RemoteReducers {
         PlayerHousingUpdateCallbackId(self.imp.on_reducer(
             "player_housing_update",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

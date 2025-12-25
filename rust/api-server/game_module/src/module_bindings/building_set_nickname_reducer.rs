@@ -73,6 +73,7 @@ impl building_set_nickname for super::RemoteReducers {
         BuildingSetNicknameCallbackId(self.imp.on_reducer(
             "building_set_nickname",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

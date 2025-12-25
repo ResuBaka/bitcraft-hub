@@ -99,6 +99,7 @@ impl insert_terrain_chunk for super::RemoteReducers {
         InsertTerrainChunkCallbackId(self.imp.on_reducer(
             "insert_terrain_chunk",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

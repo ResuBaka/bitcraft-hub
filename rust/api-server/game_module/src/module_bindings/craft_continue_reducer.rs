@@ -67,6 +67,7 @@ impl craft_continue for super::RemoteReducers {
         CraftContinueCallbackId(self.imp.on_reducer(
             "craft_continue",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

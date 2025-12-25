@@ -63,6 +63,7 @@ impl complete_onboarding_quest for super::RemoteReducers {
         CompleteOnboardingQuestCallbackId(self.imp.on_reducer(
             "complete_onboarding_quest",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

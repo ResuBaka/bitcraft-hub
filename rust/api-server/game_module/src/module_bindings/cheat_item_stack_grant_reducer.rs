@@ -88,6 +88,7 @@ impl cheat_item_stack_grant for super::RemoteReducers {
         CheatItemStackGrantCallbackId(self.imp.on_reducer(
             "cheat_item_stack_grant",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

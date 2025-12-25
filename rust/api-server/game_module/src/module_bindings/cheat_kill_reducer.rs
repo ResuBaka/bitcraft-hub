@@ -63,6 +63,7 @@ impl cheat_kill for super::RemoteReducers {
         CheatKillCallbackId(self.imp.on_reducer(
             "cheat_kill",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

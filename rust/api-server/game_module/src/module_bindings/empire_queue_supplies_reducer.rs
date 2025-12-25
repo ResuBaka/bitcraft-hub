@@ -67,6 +67,7 @@ impl empire_queue_supplies for super::RemoteReducers {
         EmpireQueueSuppliesCallbackId(self.imp.on_reducer(
             "empire_queue_supplies",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

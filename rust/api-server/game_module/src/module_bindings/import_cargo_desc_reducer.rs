@@ -65,6 +65,7 @@ impl import_cargo_desc for super::RemoteReducers {
         ImportCargoDescCallbackId(self.imp.on_reducer(
             "import_cargo_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

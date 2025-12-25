@@ -76,6 +76,7 @@ impl player_set_name_outcome_event_reducer for super::RemoteReducers {
         PlayerSetNameOutcomeEventReducerCallbackId(self.imp.on_reducer(
             "player_set_name_outcome_event_reducer",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

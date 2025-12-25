@@ -64,6 +64,7 @@ impl admin_update_light_source_states for super::RemoteReducers {
         AdminUpdateLightSourceStatesCallbackId(self.imp.on_reducer(
             "admin_update_light_source_states",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

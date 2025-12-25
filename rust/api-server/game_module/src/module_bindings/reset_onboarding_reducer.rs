@@ -59,6 +59,7 @@ impl reset_onboarding for super::RemoteReducers {
         ResetOnboardingCallbackId(self.imp.on_reducer(
             "reset_onboarding",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

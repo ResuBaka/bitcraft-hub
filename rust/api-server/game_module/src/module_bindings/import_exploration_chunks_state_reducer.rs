@@ -78,6 +78,7 @@ impl import_exploration_chunks_state for super::RemoteReducers {
         ImportExplorationChunksStateCallbackId(self.imp.on_reducer(
             "import_exploration_chunks_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

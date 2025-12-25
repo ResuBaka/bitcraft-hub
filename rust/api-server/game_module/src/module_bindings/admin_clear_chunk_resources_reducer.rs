@@ -65,6 +65,7 @@ impl admin_clear_chunk_resources for super::RemoteReducers {
         AdminClearChunkResourcesCallbackId(self.imp.on_reducer(
             "admin_clear_chunk_resources",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

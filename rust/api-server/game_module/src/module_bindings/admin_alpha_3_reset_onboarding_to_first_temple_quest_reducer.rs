@@ -74,6 +74,7 @@ impl admin_alpha_3_reset_onboarding_to_first_temple_quest for super::RemoteReduc
         AdminAlpha3ResetOnboardingToFirstTempleQuestCallbackId(self.imp.on_reducer(
             "admin_alpha3_reset_onboarding_to_first_temple_quest",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

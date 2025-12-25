@@ -59,6 +59,7 @@ impl generate_dev_island for super::RemoteReducers {
         GenerateDevIslandCallbackId(self.imp.on_reducer(
             "generate_dev_island",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

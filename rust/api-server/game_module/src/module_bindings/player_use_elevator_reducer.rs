@@ -65,6 +65,7 @@ impl player_use_elevator for super::RemoteReducers {
         PlayerUseElevatorCallbackId(self.imp.on_reducer(
             "player_use_elevator",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

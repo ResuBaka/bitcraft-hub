@@ -69,6 +69,7 @@ impl enemy_set_health_batch for super::RemoteReducers {
         EnemySetHealthBatchCallbackId(self.imp.on_reducer(
             "enemy_set_health_batch",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

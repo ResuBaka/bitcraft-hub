@@ -67,6 +67,7 @@ impl insert_resources_log for super::RemoteReducers {
         InsertResourcesLogCallbackId(self.imp.on_reducer(
             "insert_resources_log",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

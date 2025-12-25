@@ -77,6 +77,7 @@ impl claim_set_member_permissions for super::RemoteReducers {
         ClaimSetMemberPermissionsCallbackId(self.imp.on_reducer(
             "claim_set_member_permissions",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

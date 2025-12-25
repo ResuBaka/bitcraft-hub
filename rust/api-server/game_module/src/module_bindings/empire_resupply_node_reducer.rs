@@ -67,6 +67,7 @@ impl empire_resupply_node for super::RemoteReducers {
         EmpireResupplyNodeCallbackId(self.imp.on_reducer(
             "empire_resupply_node",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

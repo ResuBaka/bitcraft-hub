@@ -65,6 +65,7 @@ impl import_weapon_desc for super::RemoteReducers {
         ImportWeaponDescCallbackId(self.imp.on_reducer(
             "import_weapon_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

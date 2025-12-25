@@ -59,6 +59,7 @@ impl respawn_interior_npcs for super::RemoteReducers {
         RespawnInteriorNpcsCallbackId(self.imp.on_reducer(
             "respawn_interior_npcs",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

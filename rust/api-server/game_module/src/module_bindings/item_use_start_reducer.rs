@@ -65,6 +65,7 @@ impl item_use_start for super::RemoteReducers {
         ItemUseStartCallbackId(self.imp.on_reducer(
             "item_use_start",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

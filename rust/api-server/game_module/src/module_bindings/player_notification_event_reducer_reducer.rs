@@ -74,6 +74,7 @@ impl player_notification_event_reducer for super::RemoteReducers {
         PlayerNotificationEventReducerCallbackId(self.imp.on_reducer(
             "player_notification_event_reducer",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

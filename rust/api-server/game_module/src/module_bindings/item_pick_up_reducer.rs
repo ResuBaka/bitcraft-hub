@@ -69,6 +69,7 @@ impl item_pick_up for super::RemoteReducers {
         ItemPickUpCallbackId(self.imp.on_reducer(
             "item_pick_up",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

@@ -869,15 +869,15 @@ async fn connect_to_db_logic(
                 });
             }
 
-            for resource_desc in ctx.db.user_state().iter() {
-                if resource_desc.entity_id == 504403158285774600 {
-                    println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
-                }
-            }
-
-            for resource_desc in ctx.db.identity_role().iter() {
-                println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.role);
-            }
+            // for resource_desc in ctx.db.user_state().iter() {
+            //     if resource_desc.entity_id == 504403158285774600 {
+            //         println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
+            //     }
+            // }
+            //
+            // for resource_desc in ctx.db.identity_role().iter() {
+            //     println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.role);
+            // }
 
             tracing::debug!("Handled Subscription response");
         })

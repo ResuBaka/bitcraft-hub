@@ -69,6 +69,7 @@ impl building_set_sign_text for super::RemoteReducers {
         BuildingSetSignTextCallbackId(self.imp.on_reducer(
             "building_set_sign_text",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

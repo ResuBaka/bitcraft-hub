@@ -65,6 +65,7 @@ impl import_resource_state for super::RemoteReducers {
         ImportResourceStateCallbackId(self.imp.on_reducer(
             "import_resource_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

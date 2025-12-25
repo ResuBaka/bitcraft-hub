@@ -63,6 +63,7 @@ impl attack_impact for super::RemoteReducers {
         AttackImpactCallbackId(self.imp.on_reducer(
             "attack_impact",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

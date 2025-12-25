@@ -67,6 +67,7 @@ impl import_claim_tech_state for super::RemoteReducers {
         ImportClaimTechStateCallbackId(self.imp.on_reducer(
             "import_claim_tech_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

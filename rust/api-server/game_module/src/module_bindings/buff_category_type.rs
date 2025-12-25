@@ -35,6 +35,8 @@ pub enum BuffCategory {
     ElevatorSickness,
 
     NearbyFlame,
+
+    Sprint,
 }
 
 impl __sdk::InModule for BuffCategory {

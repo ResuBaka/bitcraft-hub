@@ -65,6 +65,7 @@ impl import_skill_desc for super::RemoteReducers {
         ImportSkillDescCallbackId(self.imp.on_reducer(
             "import_skill_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

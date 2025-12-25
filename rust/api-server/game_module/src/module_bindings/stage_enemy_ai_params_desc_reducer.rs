@@ -67,6 +67,7 @@ impl stage_enemy_ai_params_desc for super::RemoteReducers {
         StageEnemyAiParamsDescCallbackId(self.imp.on_reducer(
             "stage_enemy_ai_params_desc",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

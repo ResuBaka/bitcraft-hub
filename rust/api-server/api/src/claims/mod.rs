@@ -312,14 +312,12 @@ pub(crate) async fn get_claim(
                 let learned: Vec<i32> = claim_tech_state.learned.clone();
                 claim.upgrades = learned
                     .iter()
-                    .map(|id| {
-                        state
-                            .claim_tech_desc
+                    .filter_map(|id| {
+                        state.claim_tech_desc
                             .iter()
                             .find(|desc| desc.id == (*id))
-                            .unwrap()
-                            .clone()
                     })
+                    .map(|desc| desc.clone())
                     .collect::<Vec<claim_tech_desc::Model>>();
                 let found_tiers = learned
                     .iter()
@@ -818,13 +816,13 @@ pub(crate) async fn list_claims(
                     let learned: Vec<i32> = claim_tech_state.learned.clone();
                     claim_description.upgrades = learned
                         .iter()
-                        .map(|id| {
+                        .filter_map(|id| {
                             claim_tech_descs
                                 .iter()
                                 .find(|desc| desc.id == (*id))
-                                .unwrap()
                                 .clone()
                         })
+                        .map(|desc| desc.clone())
                         .collect::<Vec<claim_tech_desc::Model>>();
                     let found_tiers = learned
                         .iter()

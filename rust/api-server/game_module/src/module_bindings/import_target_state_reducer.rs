@@ -65,6 +65,7 @@ impl import_target_state for super::RemoteReducers {
         ImportTargetStateCallbackId(self.imp.on_reducer(
             "import_target_state",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

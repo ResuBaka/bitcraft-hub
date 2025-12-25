@@ -63,6 +63,7 @@ impl admin_sign_out_string for super::RemoteReducers {
         AdminSignOutStringCallbackId(self.imp.on_reducer(
             "admin_sign_out_string",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {

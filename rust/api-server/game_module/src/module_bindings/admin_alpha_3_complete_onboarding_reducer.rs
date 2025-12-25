@@ -68,6 +68,7 @@ impl admin_alpha_3_complete_onboarding for super::RemoteReducers {
         AdminAlpha3CompleteOnboardingCallbackId(self.imp.on_reducer(
             "admin_alpha3_complete_onboarding",
             Box::new(move |ctx: &super::ReducerEventContext| {
+                #[allow(irrefutable_let_patterns)]
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {
