@@ -23,16 +23,20 @@ export const useConfigStore = defineStore("config", () => {
   watch(state, save);
 
   function load() {
-    if (!IN_BROWSER) return;
+    if (import.meta.server) {
+      return;
+    }
 
-    const stored = localStorage.getItem("b-tool@config");
-    const data = stored ? JSON.parse(stored) : {};
-    let needsRefresh = data.version === state.version;
+    if (import.meta.client) {
+      const stored = localStorage.getItem("b-tool@config");
+      const data = stored ? JSON.parse(stored) : {};
+      let needsRefresh = data.version === state.version;
 
-    data.version = state.version;
-    Object.assign(state, deepMerge(state, data));
-    if (needsRefresh) {
-      save();
+      data.version = state.version;
+      Object.assign(state, deepMerge(state, data));
+      if (needsRefresh) {
+        save();
+      }
     }
   }
 
