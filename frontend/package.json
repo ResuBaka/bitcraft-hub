@@ -12,23 +12,23 @@
     "format:check": "biome format ./app"
   },
   "dependencies": {
-    "@pinia/nuxt": "^0.11.2",
-    "msgpackr": "^1.11.5",
-    "nuxt": "^4.2.0",
-    "vue": "^3.5.22",
-    "vue-router": "^4.6.3",
-    "vuetify-sonner": "^0.3.21"
+    "@pinia/nuxt": "^0.11.3",
+    "msgpackr": "^1.11.8",
+    "nuxt": "^4.2.2",
+    "vue": "^3.5.26",
+    "vue-router": "^4.6.4",
+    "vuetify-sonner": "^0.4.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.1",
-    "@nuxt/devtools": "^3.0.0",
-    "sass": "^1.93.2",
-    "@vueuse/core": "^14.0.0",
-    "@vueuse/shared": "^14.0.0",
-    "vuetify": "^3.10.7",
-    "vuetify-nuxt-module": "^0.18.8"
+    "@biomejs/biome": "^2.3.10",
+    "@nuxt/devtools": "^3.1.1",
+    "sass": "^1.97.1",
+    "@vueuse/core": "^14.1.0",
+    "@vueuse/shared": "^14.1.0",
+    "vuetify": "^3.11.5",
+    "vuetify-nuxt-module": "^0.19.1"
   },
   "overrides": {
-    "vite": "npm:vite@7.1.12"
+    "vite": "npm:vite@7.3.0"
   }
 }
