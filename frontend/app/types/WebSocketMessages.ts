@@ -25,8 +25,15 @@ export type WebSocketMessages =
     }
   | {
       t: "TotalExperience";
-      c: { user_id: bigint; experience: bigint; experience_per_hour: bigint };
+      c: {
+        user_id: bigint;
+        experience: bigint;
+        experience_per_hour: bigint;
+        rank: bigint;
+      };
     }
+  | { t: "TimePlayed"; c: { user_id: bigint; time: bigint; rank: bigint } }
+  | { t: "TimeSignedIn"; c: { user_id: bigint; time: bigint; rank: bigint } }
   | {
       t: "MovedOutOfClaim";
       c: { user_id: bigint; chunk_index: bigint; claim_id: bigint };

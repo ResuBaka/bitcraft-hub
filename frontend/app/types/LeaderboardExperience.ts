@@ -3,7 +3,7 @@
 export type LeaderboardExperience = {
   player_id: bigint;
   player_name: string | null;
-  experience: number;
+  experience: bigint;
   experience_per_hour: number;
   rank: bigint;
 };

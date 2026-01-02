@@ -1,11 +1,7 @@
 import type { WebSocketMessages } from "~/types/WebSocketMessages";
 
-export type MessageContentType<T extends WebSocketMessages["t"]> = Extract<
-  WebSocketMessages,
-  { t: T }
-> extends { c: infer C }
-  ? C
-  : never;
+export type MessageContentType<T extends WebSocketMessages["t"]> =
+  Extract<WebSocketMessages, { t: T }> extends { c: infer C } ? C : never;
 
 export type RefinedMessageContentType<T extends WebSocketMessages["t"]> =
   Extract<WebSocketMessages, { t: T }> extends { c: infer C } ? C : undefined;
