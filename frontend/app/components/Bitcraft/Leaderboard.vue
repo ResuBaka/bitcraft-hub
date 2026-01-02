@@ -65,6 +65,12 @@ const topics = computed(() => {
   return Array.from(topicsSet);
 });
 
+function swapArrayRank(arr, indexA, indexB) {
+  var temp = arr[indexA];
+  arr[indexA] = arr[indexB];
+  arr[indexB] = temp;
+}
+
 registerWebsocketMessageHandler("Experience", topics, (message) => {
   const skill = leaderboard.value?.leaderboard[message.skill_name].find(
     (item) => item.player_id === message.user_id,
@@ -72,6 +78,14 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
 
   if (skill) {
     skill.experience = message.experience;
+    if (skill.rank != message.rank) {
+      swapArrayRank(
+        leaderboard.value?.leaderboard["Experience"],
+        skill.rank - 1,
+        message.rank - 1,
+      );
+    }
+    skill.rank = message.rank;
   }
 });
 
@@ -102,10 +116,16 @@ registerWebsocketMessageHandler(
 
     if (skill) {
       skill.experience = message.experience;
-      skill.experience_per_hour = Math.round(
-        message.experience /
-          (leaderboard.value.player_map[message.user_id].time_signed_in / 3600),
-      );
+      skill.experience_per_hour = message.experience_per_hour;
+      if (skill.rank != message.rank) {
+        swapArrayRank(
+          leaderboard.value?.leaderboard["Experience"],
+          skill.rank - 1,
+          message.rank - 1,
+        );
+      }
+
+      skill.rank = message.rank;
     }
   },
 );

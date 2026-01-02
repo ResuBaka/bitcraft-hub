@@ -1356,6 +1356,17 @@ pub(crate) enum WebSocketMessages {
         user_id: i64,
         experience: u64,
         experience_per_hour: u64,
+        rank: u64,
+    },
+    TimePlayed {
+        user_id: i64,
+        time: u64,
+        rank: u64,
+    },
+    TimeSignedIn {
+        user_id: i64,
+        time: u64,
+        rank: u64,
     },
     MovedOutOfClaim {
         user_id: i64,
@@ -1450,6 +1461,12 @@ impl WebSocketMessages {
             // }
             WebSocketMessages::TotalExperience { user_id, .. } => {
                 Some(vec![("total_experience".to_string(), Some(*user_id))])
+            }
+            WebSocketMessages::TimePlayed { user_id, .. } => {
+                Some(vec![("time_played".to_string(), Some(*user_id))])
+            }
+            WebSocketMessages::TimeSignedIn { user_id, .. } => {
+                Some(vec![("time_signed_in".to_string(), Some(*user_id))])
             }
             WebSocketMessages::PlayerActionState(player_action_state) => Some(vec![(
                 "player_action_state".to_string(),

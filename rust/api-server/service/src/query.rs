@@ -1109,9 +1109,7 @@ impl Query {
                     .into(),
             )
             .filter(claim_state::Column::Neutral.ne(true))
-            .filter(claim_state::Column::EntityId.is_not_in([
-                360287970367149239 as i64
-            ]))
+            .filter(claim_state::Column::EntityId.is_not_in([360287970367149239 as i64]))
             // .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => {
@@ -1210,16 +1208,19 @@ impl Query {
             .await
     }
 
-    pub async fn get_experience_state_top_100_by_skill_id(
+    pub async fn get_experience_state_top_x_by_skill_id(
         db: &DbConn,
         skill_id: i64,
         exclude: Option<Vec<i64>>,
+        limit: Option<u64>,
     ) -> Result<Vec<experience_state::Model>, DbErr> {
         experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
-            .filter(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
-            .limit(100)
+            .filter(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
+            .apply_if(limit, |query, value| query.limit(value))
             .all(db)
             .await
     }
@@ -1233,7 +1234,9 @@ impl Query {
         experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
-            .filter(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .filter(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .filter(experience_state::Column::EntityId.is_in(player_ids))
             .all(db)
             .await
@@ -1248,7 +1251,9 @@ impl Query {
         let player_experience = experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
-            .filter(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .filter(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .filter(experience_state::Column::EntityId.eq(player_id))
             .one(db)
             .await?;
@@ -1262,7 +1267,9 @@ impl Query {
         let rank = experience_state::Entity::find()
             .order_by_desc(experience_state::Column::Experience)
             .filter(experience_state::Column::SkillId.eq(skill_id))
-            .filter(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .filter(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .filter(experience_state::Column::Experience.gte(player_experience.experience))
             .count(db)
             .await?;
@@ -1270,16 +1277,19 @@ impl Query {
         Ok((Some(player_experience), Some(rank)))
     }
 
-    pub async fn get_experience_state_top_100_total_level(
+    pub async fn get_experience_state_top_x_total_level(
         db: &DbConn,
         level_case_sql: String,
         exclude: Option<Vec<i64>>,
         excluded_skill_category: Option<[i64; 2]>,
+        limit: Option<u64>,
     ) -> Result<Vec<(u64, i32)>, DbErr> {
-        let query = sea_orm::sea_query::Query::select()
+        let mut query = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
             .expr_as(Expr::cust(level_case_sql), Alias::new("level"))
-            .and_where(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .and_where(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .apply_if(excluded_skill_category, |query, value| {
                 query.and_where(
                     experience_state::Column::SkillId.not_in_subquery(
@@ -1294,8 +1304,11 @@ impl Query {
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
-            .limit(100)
             .to_owned();
+
+        if let Some(limit) = limit {
+            query.limit(limit);
+        }
 
         let query = match db.get_database_backend() {
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
@@ -1394,7 +1407,9 @@ impl Query {
             .group_by_col(experience_state::Column::EntityId)
             .order_by_expr(Expr::cust("level"), Order::Desc)
             .and_where(experience_state::Column::EntityId.is_in(player_ids))
-            .and_where(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .and_where(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .apply_if(excluded_skill_category, |query, value| {
                 query.and_where(
                     experience_state::Column::SkillId.not_in_subquery(
@@ -1505,7 +1520,9 @@ impl Query {
             .expr_as(Expr::cust(&level_case_sql), Alias::new("level"))
             .from(experience_state::Entity)
             .and_where(Expr::col(experience_state::Column::EntityId).eq(player_id))
-            .and_where(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .and_where(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .apply_if(excluded_skill_category, |query, value| {
                 query.and_where(
                     experience_state::Column::SkillId.not_in_subquery(
@@ -1544,7 +1561,9 @@ impl Query {
             .column(experience_state::Column::EntityId)
             .expr_as(Expr::cust(level_case_sql), Alias::new("level"))
             .from(experience_state::Entity)
-            .and_where(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .and_where(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .group_by_col(experience_state::Column::EntityId)
             .apply_if(excluded_skill_category, |query, value| {
                 query.and_where(
@@ -1611,7 +1630,9 @@ impl Query {
                     ),
                 );
             })
-            .and_where(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .and_where(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .to_owned();
 
         let query_experience = match db.get_database_backend() {
@@ -1637,7 +1658,9 @@ impl Query {
             )
             .from(experience_state::Entity)
             .group_by_col(experience_state::Column::EntityId)
-            .and_where(experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])))
+            .and_where(
+                experience_state::Column::EntityId.is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
             .apply_if(excluded_skill_category, |query, value| {
                 query.and_where(
                     experience_state::Column::SkillId.not_in_subquery(
@@ -1677,12 +1700,13 @@ impl Query {
         Ok((Some(u64::try_from(experience).unwrap()), Some(rank)))
     }
 
-    pub async fn get_experience_state_top_100_total_experience(
+    pub async fn get_experience_state_top_x_total_experience(
         db: &DbConn,
         exclude: Option<Vec<i64>>,
         excluded_skill_category: Option<[i64; 2]>,
+        limit: Option<u64>,
     ) -> Result<Vec<(i64, i64, i64)>, DbErr> {
-        let query = sea_orm::sea_query::Query::select()
+        let mut query = sea_orm::sea_query::Query::select()
             .column((Alias::new("es"), experience_state::Column::EntityId))
             .expr_as(
                 Expr::cust("sum(experience)"),
@@ -1722,8 +1746,11 @@ impl Query {
             )
             .group_by_col((Alias::new("es"), experience_state::Column::EntityId))
             .order_by_expr(Expr::cust("total_experience"), Order::Desc)
-            .limit(100)
             .to_owned();
+
+        if let Some(limit) = limit {
+            query.limit(limit);
+        }
 
         let query = match db.get_database_backend() {
             DbBackend::Postgres => query.to_string(PostgresQueryBuilder),

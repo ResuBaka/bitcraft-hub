@@ -4,6 +4,8 @@ use crate::{AppRouter, AppState, leaderboard};
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use crossbeam_skiplist::SkipSet;
+use dashmap::DashMap;
 use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
@@ -24,7 +26,8 @@ macro_rules! generate_mysql_sum_level_sql_statement {
     }};
 }
 
-pub(crate) static EXCLUDED_USERS_FROM_LEADERBOARD: LazyLock<Vec<i64>> = LazyLock::new(|| vec![360287970201941063, 504403158285774600]);
+pub(crate) static EXCLUDED_USERS_FROM_LEADERBOARD: LazyLock<Vec<i64>> =
+    LazyLock::new(|| vec![360287970201941063, 504403158285774600]);
 pub(crate) static EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 0];
 
 pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
@@ -160,6 +163,111 @@ pub(crate) enum RankType {
     Time(LeaderboardTime),
 }
 
+pub struct LeaderboardEntry {
+    pub rank: usize,
+    pub user_id: i64,
+    pub xp: i64,
+}
+
+pub(super) struct Leaderboard {
+    // DashMap handles concurrent ID -> XP lookups
+    scores: DashMap<i64, i64>,
+    // RwLock protects the sorted order for ranking
+    sorted_ranks: SkipSet<(i64, i64)>,
+}
+
+impl Default for Leaderboard {
+    fn default() -> Self {
+        Self {
+            scores: DashMap::new(),
+            sorted_ranks: SkipSet::new(),
+        }
+    }
+}
+
+impl Leaderboard {
+    pub(super) fn update(&self, user_id: i64, new_xp: i64) {
+        // 1. Get or initialize current score
+        let mut current_xp_ref = self.scores.entry(user_id).or_insert(0);
+        let old_xp = *current_xp_ref;
+
+        if old_xp == new_xp || EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id) {
+            return;
+        }
+
+        // 2. If it's an update, remove the old entry from the sorted set
+        if old_xp != new_xp || self.sorted_ranks.contains(&(old_xp, user_id)) {
+            self.sorted_ranks.remove(&(old_xp, user_id));
+        }
+
+        // 3. Update both structures
+        *current_xp_ref = new_xp;
+        self.sorted_ranks.insert((new_xp, user_id));
+    }
+
+    pub(super) fn get_rank(&self, user_id: i64) -> Option<usize> {
+        self.sorted_ranks
+            .iter()
+            .rev()
+            .position(|entry| entry.value().1 == user_id)
+            .map(|p| p + 1)
+    }
+
+    pub(super) fn remove(&self, user_id: i64) {
+        let xp = self
+            .sorted_ranks
+            .iter()
+            .rev()
+            .find(|entry| entry.value().1 == user_id)
+            .map(|p| p.0);
+
+        if let Some(x) = xp {
+            self.sorted_ranks.remove(&(x, user_id));
+        }
+    }
+
+    pub(super) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
+        self.sorted_ranks
+            .iter()
+            .rev()
+            .enumerate()
+            .skip(offset)
+            .take(limit)
+            .map(|(idx, entry)| {
+                let entry = entry.value();
+
+                LeaderboardEntry {
+                    rank: idx + 1,
+                    user_id: entry.1,
+                    xp: entry.0,
+                }
+            })
+            .collect()
+    }
+}
+
+pub struct RankingSystem {
+    pub skill_leaderboards: DashMap<i64, Leaderboard>,
+    pub global_leaderboard: Leaderboard,
+    pub xp_per_hour: Leaderboard,
+    pub level_leaderboard: Leaderboard,
+    pub time_played: Leaderboard,
+    pub time_signed_in: Leaderboard,
+}
+
+impl Default for RankingSystem {
+    fn default() -> Self {
+        Self {
+            skill_leaderboards: DashMap::new(),
+            global_leaderboard: Leaderboard::default(),
+            level_leaderboard: Leaderboard::default(),
+            xp_per_hour: Leaderboard::default(),
+            time_played: Leaderboard::default(),
+            time_signed_in: Leaderboard::default(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, TS)]
 #[ts(export)]
 pub(crate) struct LeaderboardSkill {
@@ -190,7 +298,7 @@ pub(crate) struct LeaderboardExperiencePerHour {
 pub(crate) struct LeaderboardExperience {
     pub(crate) player_id: i64,
     pub(crate) player_name: Option<String>,
-    pub(crate) experience: i32,
+    pub(crate) experience: i64,
     pub(crate) experience_per_hour: i32,
     pub(crate) rank: u64,
 }
@@ -209,217 +317,151 @@ type LeaderboardRankTypeTasks =
 pub(crate) async fn get_top_100(
     state: State<AppState>,
 ) -> Result<axum_codec::Codec<GetTop100Response>, (StatusCode, &'static str)> {
-    let skills = Query::skill_descriptions(&state.conn)
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
+    let skills = state
+        .skill_desc
+        .iter()
+        .map(|skill_desc| skill_desc.clone())
+        .collect::<Vec<_>>();
 
     let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();
 
-    let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
+    // let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
 
-    let mut tasks: LeaderboardRankTypeTasks = vec![];
+    let mut results = vec![];
+
+    let entries_time_played = state.ranking_system.time_played.get_range(0, 100);
+    let mut leaderboard: Vec<RankType> = Vec::new();
+
+    for (i, entry) in entries_time_played.into_iter().enumerate() {
+        let rank = i + 1;
+        leaderboard.push(RankType::Time(LeaderboardTime {
+            player_id: entry.user_id as i64,
+            player_name: None,
+            time_played: entry.xp as u64,
+            rank: rank as u64,
+        }));
+    }
+    results.push(("Time Played".to_string(), leaderboard));
+
+    let entries_time_signed_in = state.ranking_system.time_signed_in.get_range(0, 100);
+    let mut leaderboard: Vec<RankType> = Vec::new();
+
+    for (i, entry) in entries_time_signed_in.into_iter().enumerate() {
+        let rank = i + 1;
+        leaderboard.push(RankType::Time(LeaderboardTime {
+            player_id: entry.user_id as i64,
+            player_name: None,
+            time_played: entry.xp as u64,
+            rank: rank as u64,
+        }));
+    }
+
+    results.push(("Time Online".to_string(), leaderboard));
+
+    let entries_per_hour_xp = state.ranking_system.xp_per_hour.get_range(0, 100);
+    let mut leaderboard: Vec<RankType> = Vec::new();
+
+    for (i, entry) in entries_per_hour_xp.into_iter().enumerate() {
+        let rank = i + 1;
+        leaderboard.push(RankType::ExperiencePerHour(LeaderboardExperiencePerHour {
+            player_id: entry.user_id,
+            player_name: None,
+            experience: entry.xp as i32,
+            rank: rank as u64,
+        }));
+    }
+
+    results.push(("Experience Per Hour".to_string(), leaderboard));
+
+    let entries_total_level = state.ranking_system.level_leaderboard.get_range(0, 100);
+    let mut leaderboard: Vec<RankType> = Vec::new();
+
+    for (i, entry) in entries_total_level.into_iter().enumerate() {
+        let rank = i + 1;
+        leaderboard.push(RankType::Level(LeaderboardLevel {
+            player_id: entry.user_id,
+            player_name: None,
+            level: entry.xp as u32,
+            rank: rank as u64,
+        }));
+    }
+
+    results.push(("Level".to_string(), leaderboard));
+
+    let entries_total_xp = state.ranking_system.global_leaderboard.get_range(0, 100);
+    let mut leaderboard: Vec<RankType> = Vec::new();
+
+    for (i, entry) in entries_total_xp.into_iter().enumerate() {
+        let rank = i + 1;
+        leaderboard.push(RankType::Experience(LeaderboardExperience {
+            player_id: entry.user_id,
+            player_name: None,
+            experience: entry.xp,
+            experience_per_hour: state
+                .ranking_system
+                .xp_per_hour
+                .scores
+                .get(&entry.user_id)
+                .unwrap()
+                .value()
+                .clone() as i32,
+            rank: rank as u64,
+        }));
+    }
+
+    results.push(("Experience".to_string(), leaderboard));
 
     for skill in skills {
         if skill.skill_category == 0 {
             continue;
         }
 
-        let db = state.conn.clone();
-        tasks.push(tokio::spawn(async move {
-            let mut leaderboard: Vec<RankType> = Vec::new();
-            let entries = Query::get_experience_state_top_100_by_skill_id(
-                &db,
-                skill.id,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            )
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
+        // let db = state.conn.clone();
+        let entries = state
+            .ranking_system
+            .skill_leaderboards
+            .get(&skill.id)
+            .unwrap()
+            .get_range(0, 100);
 
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
+        let mut leaderboard: Vec<RankType> = Vec::new();
 
-            for (i, entry) in entries.into_iter().enumerate() {
-                let rank = i + 1;
-                let player_name = None;
+        for (i, entry) in entries.into_iter().enumerate() {
+            let rank = i + 1;
+            let player_name = None;
 
-                leaderboard.push(RankType::Skill(LeaderboardSkill {
-                    player_id: entry.entity_id,
-                    player_name,
-                    experience: entry.experience,
-                    level: experience_to_level(entry.experience as i64),
-                    rank: rank as u64,
-                }));
-            }
+            leaderboard.push(RankType::Skill(LeaderboardSkill {
+                player_id: entry.user_id,
+                player_name,
+                experience: entry.xp as i32,
+                level: experience_to_level(entry.xp),
+                rank: rank as u64,
+            }));
+        }
 
-            Ok((skill.name.clone(), leaderboard))
-        }));
+        results.push((skill.name.clone(), leaderboard));
     }
 
-    let db = state.conn.clone();
-    tasks.push(tokio::spawn(async move {
-        let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_top_100_total_experience(
-            &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
-        )
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
-
-        for (i, entry) in entries.into_iter().enumerate() {
-            let rank = i + 1;
-            leaderboard.push(RankType::Experience(LeaderboardExperience {
-                player_id: entry.0,
-                player_name: None,
-                experience: entry.1 as i32,
-                experience_per_hour: entry.2 as i32,
-                rank: rank as u64,
-            }));
-        }
-
-        Ok(("Experience".to_string(), leaderboard))
-    }));
-
-    let db = state.conn.clone();
-    tasks.push(tokio::spawn(async move {
-        let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_top_100_experience_per_hour(
-            &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
-        )
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
-
-        for (i, entry) in entries.into_iter().enumerate() {
-            let rank = i + 1;
-            leaderboard.push(RankType::ExperiencePerHour(LeaderboardExperiencePerHour {
-                player_id: entry.entity_id,
-                player_name: None,
-                experience: entry.experience,
-                rank: rank as u64,
-            }));
-        }
-
-        Ok(("Experience Per Hour".to_string(), leaderboard))
-    }));
-
-    let db = state.conn.clone();
-    tasks.push(tokio::spawn(async move {
-        let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_top_100_total_level(
-            &db,
-            generated_level_sql,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
-        )
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
-
-        for (i, entry) in entries.into_iter().enumerate() {
-            let rank = i + 1;
-            leaderboard.push(RankType::Level(LeaderboardLevel {
-                player_id: entry.0 as i64,
-                player_name: None,
-                level: entry.1 as u32,
-                rank: rank as u64,
-            }));
-        }
-
-        Ok(("Level".to_string(), leaderboard))
-    }));
-
-    let db = state.conn.clone();
-    tasks.push(tokio::spawn(async move {
-        let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_top_100_time_played(
-            &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-        )
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
-
-        for (i, entry) in entries.into_iter().enumerate() {
-            let rank = i + 1;
-            leaderboard.push(RankType::Time(LeaderboardTime {
-                player_id: entry.0 as i64,
-                player_name: None,
-                time_played: entry.1 as u64,
-                rank: rank as u64,
-            }));
-        }
-
-        Ok(("Time Played".to_string(), leaderboard))
-    }));
-
-    let db = state.conn.clone();
-    tasks.push(tokio::spawn(async move {
-        let mut leaderboard: Vec<RankType> = Vec::new();
-        let entries = Query::get_experience_state_top_100_time_online(
-            &db,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-        )
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
-
-        for (i, entry) in entries.into_iter().enumerate() {
-            let rank = i + 1;
-            leaderboard.push(RankType::Time(LeaderboardTime {
-                player_id: entry.0 as i64,
-                player_name: None,
-                time_played: entry.1 as u64,
-                rank: rank as u64,
-            }));
-        }
-
-        Ok(("Time Online".to_string(), leaderboard))
-    }));
-
-    let results = futures::future::join_all(tasks).await;
     let mut player_ids: Vec<i64> = vec![];
 
-    for result in results.into_iter().flatten() {
-        if let Ok((name, mut leaderboard)) = result {
-            player_ids.append(
-                &mut leaderboard
-                    .iter()
-                    .map(|x| match x {
-                        RankType::Skill(x) => x.player_id,
-                        RankType::Level(x) => x.player_id,
-                        RankType::Experience(x) => x.player_id,
-                        RankType::Time(x) => x.player_id,
-                        RankType::ExperiencePerHour(x) => x.player_id,
-                    })
-                    .collect::<Vec<i64>>(),
-            );
+    for (name, mut leaderboard) in results.into_iter() {
+        player_ids.append(
+            &mut leaderboard
+                .iter()
+                .map(|x| match x {
+                    RankType::Skill(x) => x.player_id,
+                    RankType::Level(x) => x.player_id,
+                    RankType::Experience(x) => x.player_id,
+                    RankType::Time(x) => x.player_id,
+                    RankType::ExperiencePerHour(x) => x.player_id,
+                })
+                .collect::<Vec<i64>>(),
+        );
 
-            leaderboard_result
-                .entry(name)
-                .or_default()
-                .append(&mut leaderboard);
-        } else {
-            error!("Error: {result:?}");
-        }
+        leaderboard_result
+            .entry(name)
+            .or_default()
+            .append(&mut leaderboard);
     }
 
     player_ids.sort();
@@ -515,9 +557,6 @@ pub(crate) fn experience_to_level(experience: i64) -> i32 {
 #[ts(export)]
 pub(crate) struct PlayerLeaderboardResponse(BTreeMap<String, RankType>);
 
-type PlayerLeaderboardTasks =
-    Vec<tokio::task::JoinHandle<Result<(String, RankType), (StatusCode, &'static str)>>>;
-
 pub(crate) async fn player_leaderboard(
     state: State<AppState>,
     Path(player_id): Path<i64>,
@@ -532,111 +571,80 @@ pub(crate) async fn player_leaderboard(
 
     let mut leaderboard_result: BTreeMap<String, RankType> = BTreeMap::new();
 
-    let mut tasks: PlayerLeaderboardTasks = vec![];
+    let mut results = vec![];
 
     for skill in skills {
         if skill.skill_category == 0 {
             continue;
         }
 
-        let db = state.conn.clone();
-        tasks.push(tokio::spawn(async move {
-            let (entrie, rank) = Query::get_experience_state_player_by_skill_id(
-                &db,
-                skill.id,
-                player_id,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            )
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
+        let player_name = None;
 
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
+        let rank = state
+            .ranking_system
+            .skill_leaderboards
+            .get(&skill.id)
+            .unwrap()
+            .get_rank(player_id);
+        let total_experience = state
+            .ranking_system
+            .skill_leaderboards
+            .get(&skill.id)
+            .unwrap()
+            .scores
+            .get(&player_id)
+            .unwrap()
+            .clone();
 
-            if entrie.is_none() {
-                return Err((StatusCode::NOT_FOUND, ""));
-            }
-
-            let player_name = None;
-
-            let entry = entrie.unwrap();
-
-            Ok((
-                skill.name.clone(),
-                RankType::Skill(LeaderboardSkill {
-                    player_id: entry.entity_id,
-                    player_name,
-                    experience: entry.experience,
-                    level: experience_to_level(entry.experience as i64),
-                    rank: rank.unwrap(),
-                }),
-            ))
-        }));
+        results.push((
+            skill.name.clone(),
+            RankType::Skill(LeaderboardSkill {
+                player_id: player_id.clone(),
+                player_name,
+                experience: total_experience as i32,
+                level: experience_to_level(total_experience),
+                rank: rank.unwrap() as u64,
+            }),
+        ));
     }
 
-    let db = state.conn.clone();
-    tasks.push(tokio::spawn(async move {
-        let (total_experience, rank) = Query::get_experience_state_player_rank_total_experience(
-            &db,
+    let rank = state.ranking_system.global_leaderboard.get_rank(player_id);
+    let total_experience = state
+        .ranking_system
+        .global_leaderboard
+        .scores
+        .get(&player_id);
+
+    results.push((
+        "Experience".to_string(),
+        RankType::Experience(LeaderboardExperience {
             player_id,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
-        )
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
+            player_name: None,
+            experience: total_experience.unwrap().value().clone(),
+            experience_per_hour: 0,
+            rank: rank.unwrap() as u64,
+        }),
+    ));
 
-        Ok((
-            "Experience".to_string(),
-            RankType::Experience(LeaderboardExperience {
-                player_id,
-                player_name: None,
-                experience: total_experience.unwrap() as i32,
-                experience_per_hour: 0,
-                rank: rank.unwrap(),
-            }),
-        ))
-    }));
+    let rank = state.ranking_system.level_leaderboard.get_rank(player_id);
+    let level = state
+        .ranking_system
+        .level_leaderboard
+        .scores
+        .get(&player_id);
 
-    let db = state.conn.clone();
-    tasks.push(tokio::spawn(async move {
-        let generated_level_sql = generate_mysql_sum_level_sql_statement!(EXPERIENCE_PER_LEVEL);
-
-        let (level, rank) = Query::get_experience_state_player_level(
-            &db,
-            generated_level_sql,
+    results.push((
+        "Level".to_string(),
+        RankType::Level(LeaderboardLevel {
             player_id,
-            Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
-        )
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
+            player_name: None,
+            level: level.unwrap().value().clone() as u32,
+            rank: rank.unwrap() as u64,
+        }),
+    ));
 
-        Ok((
-            "Level".to_string(),
-            RankType::Level(LeaderboardLevel {
-                player_id,
-                player_name: None,
-                level: level.unwrap_or_default() as u32,
-                rank: rank.unwrap_or_default(),
-            }),
-        ))
-    }));
-
-    let results = futures::future::join_all(tasks).await;
-
-    for result in results.into_iter().flatten() {
-        if let Ok((name, leaderboard)) = result {
-            leaderboard_result.entry(name).or_insert(leaderboard);
-        } else {
-            error!("Error: {result:?}");
-        }
+    for (name, leaderboard) in results.into_iter() {
+        leaderboard_result.entry(name).or_insert(leaderboard);
     }
 
     let players_name_by_id = Query::find_player_username_by_ids(&state.conn, vec![player_id])
@@ -785,7 +793,7 @@ pub(crate) async fn get_claim_leaderboard(
             leaderboard.push(RankType::Experience(LeaderboardExperience {
                 player_id: entry.entity_id,
                 player_name: None,
-                experience: entry.experience,
+                experience: entry.experience as i64,
                 experience_per_hour: 0,
                 rank: rank as u64,
             }));

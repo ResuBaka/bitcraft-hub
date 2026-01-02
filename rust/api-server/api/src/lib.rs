@@ -30,6 +30,10 @@ mod vault_state;
 mod websocket;
 
 use crate::config::Config;
+use crate::leaderboard::{
+    EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY, EXCLUDED_USERS_FROM_LEADERBOARD,
+    Leaderboard, RankingSystem,
+};
 use crate::websocket::WebSocketMessages;
 use axum::extract::{
     MatchedPath, Query, Request, State,
@@ -484,6 +488,7 @@ struct AppState {
     connection_state: Arc<dashmap::DashMap<String, bool>>,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
+    player_state: Arc<dashmap::DashMap<i64, entity::player_state::Model>>,
     claim_member_state:
         Arc<dashmap::DashMap<u64, dashmap::DashMap<i64, entity::claim_member_state::Model>>>,
     player_to_claim_id_cache: Arc<dashmap::DashMap<u64, dashmap::DashSet<u64>>>,
@@ -516,6 +521,7 @@ struct AppState {
         Arc<dashmap::DashMap<i64, entity::auction_listing_state::AuctionListingState>>,
     npc_desc: Arc<dashmap::DashMap<i32, entity::npc_desc::Model>>,
     metrics_registry: prometheus::Registry,
+    ranking_system: Arc<RankingSystem>,
 }
 
 impl AppState {
@@ -531,6 +537,7 @@ impl AppState {
             tx,
             metrics_registry,
             connection_state: Arc::new(dashmap::DashMap::new()),
+            player_state: Arc::new(dashmap::DashMap::new()),
             clients_state: Arc::new(ClientsState::new()),
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
             claim_member_state: Arc::new(dashmap::DashMap::new()),
@@ -561,6 +568,7 @@ impl AppState {
             sell_order_state: Arc::new(dashmap::DashMap::new()),
             user_state: Arc::new(dashmap::DashMap::new()),
             npc_desc: Arc::new(dashmap::DashMap::new()),
+            ranking_system: Arc::new(RankingSystem::default()),
         }
     }
 
@@ -721,7 +729,116 @@ impl AppState {
                         self.item_list_desc.insert(value.id, value.clone());
                     });
             },
+            async move {
+                ::entity::player_state::Entity::find()
+                    .all(&self.conn)
+                    .await
+                    .unwrap_or_else(|err| {
+                        tracing::error!(
+                            error = err.to_string(),
+                            "Error loading claim_local_state in fill_state_from_db"
+                        );
+
+                        vec![]
+                    })
+                    .into_iter()
+                    .for_each(|value| {
+                        self.player_state.insert(value.entity_id, value.clone());
+                        self.ranking_system
+                            .time_played
+                            .update(value.entity_id, value.time_played as i64);
+                        self.ranking_system
+                            .time_signed_in
+                            .update(value.entity_id, value.time_signed_in as i64);
+                    });
+
+                let entries = service::Query::get_experience_state_top_x_total_experience(
+                    &self.conn,
+                    Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
+                    Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
+                    None,
+                )
+                .await
+                .unwrap_or_else(|error| {
+                    error!("Error: {error}");
+
+                    vec![]
+                });
+
+                for entry in entries.into_iter() {
+                    self.ranking_system
+                        .global_leaderboard
+                        .update(entry.0, entry.1);
+
+                    let mut xp_per_hour = 0;
+
+                    if let Some(player_state) = self.player_state.get(&entry.0) {
+                        if player_state.time_signed_in >= 3600 {
+                            xp_per_hour = entry.1 / (player_state.time_signed_in as i64 / 3600);
+                        }
+                    }
+
+                    self.ranking_system.xp_per_hour.update(entry.0, xp_per_hour)
+                }
+            },
+            async move {
+                let generated_level_sql =
+                    generate_mysql_sum_level_sql_statement!(leaderboard::EXPERIENCE_PER_LEVEL);
+
+                let entries = service::Query::get_experience_state_top_x_total_level(
+                    &self.conn,
+                    generated_level_sql,
+                    Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
+                    Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
+                    None,
+                )
+                .await
+                .unwrap_or_else(|error| {
+                    error!("Error: {error}");
+
+                    vec![]
+                });
+
+                for entry in entries.into_iter() {
+                    self.ranking_system
+                        .level_leaderboard
+                        .update(entry.0 as i64, entry.1 as i64)
+                }
+            },
         );
+
+        let _ = tokio::join!(async move {
+            for skill in self.skill_desc.iter() {
+                if skill.skill_category == 0 {
+                    continue;
+                }
+
+                self.ranking_system
+                    .skill_leaderboards
+                    .insert(skill.id, Leaderboard::default());
+
+                let entries = service::Query::get_experience_state_top_x_by_skill_id(
+                    &self.conn,
+                    skill.id,
+                    Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
+                    None,
+                )
+                .await
+                .unwrap_or_else(|error| {
+                    error!("Error: {error}");
+
+                    vec![]
+                });
+
+                for entry in entries.into_iter() {
+                    self.ranking_system
+                        .skill_leaderboards
+                        .get_mut(&skill.id)
+                        .unwrap()
+                        .update(entry.entity_id, entry.experience as i64)
+                }
+            }
+        },);
     }
 
     fn add_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {

@@ -55,6 +55,9 @@ pub(crate) fn start_worker_player_state(
 
                                 for model in data.into_iter().map(|value| {
                                     let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    global_app_state.player_state.insert(model.entity_id, model.clone());
+                                    global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
+                                    global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
 
                                     if model.signed_in {
                                         online += 1;
@@ -105,6 +108,9 @@ pub(crate) fn start_worker_player_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                global_app_state.player_state.insert(model.entity_id, model.clone());
+                                global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
+                                global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
 
                                 metrics::gauge!("players_current_state", &[
                                     ("online", model.signed_in.to_string()),
@@ -125,7 +131,27 @@ pub(crate) fn start_worker_player_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, old, .. } => {
                                 let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
+                                let rank = global_app_state.ranking_system.time_played.get_rank(model.time_played as i64);
+                                if let Some(rank) = rank {
+                                    let _ = global_app_state.tx.send(WebSocketMessages::TimePlayed {
+                                        user_id: model.entity_id,
+                                        time: model.time_played as u64,
+                                        rank: rank as u64,
+                                    });
+                                }
 
+                                global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
+                                let rank = global_app_state.ranking_system.time_signed_in.get_rank(model.time_played as i64);
+                                if let Some(rank) = rank {
+                                    let _ = global_app_state.tx.send(WebSocketMessages::TimeSignedIn {
+                                        user_id: model.entity_id,
+                                        time: model.time_played as u64,
+                                        rank: rank as u64,
+                                    });
+                                }
+
+                                global_app_state.player_state.insert(model.entity_id, model.clone());
 
                                 if model.signed_in != old.signed_in {
                                     metrics::gauge!("players_current_state", &[
@@ -156,6 +182,9 @@ pub(crate) fn start_worker_player_state(
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
+                                global_app_state.player_state.remove(&model.entity_id);
+                                global_app_state.ranking_system.time_played.remove(model.entity_id);
+                                global_app_state.ranking_system.time_signed_in.remove(model.entity_id);
 
                                 if ids.contains(&id) {
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {

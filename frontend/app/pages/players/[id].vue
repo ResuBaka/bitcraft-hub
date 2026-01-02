@@ -26,6 +26,9 @@ const nDate = Intl.DateTimeFormat(undefined, {
 const tmpPage = (route.query.page as string) ?? null;
 
 const topics = reactive<string[]>([`experience.${route.params.id}`]);
+const topics_total_experience = reactive<string[]>([
+  `total_experience.${route.params.id}`,
+]);
 
 let levelMap = {
   1: 0,
@@ -169,7 +172,6 @@ registerWebsocketMessageHandler(
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
   if (experienceData.value && experienceData.value[message.skill_name]) {
-    let currentExperience = experienceData.value[message.skill_name].experience;
     let currentLevel = experienceData.value[message.skill_name].level;
 
     experienceData.value[message.skill_name].experience = message.experience;
@@ -183,18 +185,19 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
 
       experienceData.value["Level"].level += 1;
     }
-
-    if (experienceData.value["Experience"]) {
-      let newExperience = message.experience;
-      let increase = newExperience - currentExperience;
-
-      experienceData.value["Experience"] = {
-        ...experienceData.value["Experience"],
-        experience: experienceData.value["Experience"].experience + increase,
-      };
-    }
   }
 });
+
+registerWebsocketMessageHandler(
+  "TotalExperience",
+  topics_total_experience,
+  (message) => {
+    if (experienceData.value && experienceData.value["Experience"]) {
+      experienceData.value["Experience"].experience = message.experience;
+      experienceData.value["Experience"].rank = message.rank;
+    }
+  },
+);
 
 const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
 
