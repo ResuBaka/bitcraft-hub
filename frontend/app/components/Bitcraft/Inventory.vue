@@ -69,11 +69,16 @@ watchThrottled(
         <v-list-item class="pa-4">
           <template #title>
             <span class="text-h6">Inventory: </span>
-            <strong class="text-primary">{{ inventory.nickname || inventory.entity_id }} </strong>
+            <strong class="text-secondary">{{ inventory.nickname || inventory.entity_id }} </strong>
             <template v-if="inventory.claim">
               &nbsp;
               <span class="text-h6">Claim: </span>
-              <strong class="text-primary">{{ inventory.claim.name }}</strong>
+              <nuxt-link class="text-primary text-decoration-none text-high-emphasis font-weight-black"
+                         :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id } }"
+              >
+                <strong>{{ inventory.claim.name }}</strong>
+              </nuxt-link>
+
             </template>
           </template>
           <template #append>
