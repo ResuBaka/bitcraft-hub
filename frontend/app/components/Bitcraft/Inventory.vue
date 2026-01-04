@@ -69,10 +69,12 @@ watchThrottled(
         <v-list-item class="pa-4">
           <template #title>
             <span class="text-h6">Inventory: </span>
-            <strong class="text-primary">{{ inventory.nickname || inventory.entity_id }}</strong>
-            <v-chip v-if="inventory.claim" size="small" class="ml-2" color="secondary" variant="flat">
-              {{ inventory.claim.name }}
-            </v-chip>
+            <strong class="text-primary">{{ inventory.nickname || inventory.entity_id }} </strong>
+            <template v-if="inventory.claim">
+              &nbsp;
+              <span class="text-h6">Claim: </span>
+              <strong class="text-primary">{{ inventory.claim.name }}</strong>
+            </template>
           </template>
           <template #append>
             <v-checkbox v-model="showChangelog" label="Show Changelog" hide-details density="compact"></v-checkbox>

@@ -42,6 +42,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
 
+use entity::inventory::ResolvedInventory;
 use ts_rs::TS;
 
 fn connect_to_db(
@@ -1408,6 +1409,9 @@ pub(crate) enum WebSocketMessages {
     InsertBuyOrder(entity::auction_listing_state::AuctionListingState),
     UpdateBuyOrder(entity::auction_listing_state::AuctionListingState),
     RemoveBuyOrder(entity::auction_listing_state::AuctionListingState),
+    InventoryUpdate {
+        resolved_inventory: entity::inventory::ResolvedInventory,
+    },
 }
 
 impl WebSocketMessages {
@@ -1571,6 +1575,12 @@ impl WebSocketMessages {
                 ),
                 ("remove_buy_order".to_string(), None),
             ]),
+            WebSocketMessages::InventoryUpdate {
+                resolved_inventory, ..
+            } => Some(vec![(
+                "inventory_update".to_string(),
+                Some(resolved_inventory.entity_id as i64),
+            )]),
         }
     }
 }

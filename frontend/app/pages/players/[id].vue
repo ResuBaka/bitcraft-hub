@@ -236,9 +236,37 @@ const { data: playerData, pending: playerPending } =
   });
 
 const { data: inventoryData, pending: inventoryPending } =
-  useFetchMsPack<InventorysResponse>(() => {
-    return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
-  });
+  useFetchMsPack<InventorysResponse>(
+    () => {
+      return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+    },
+    { deep: true },
+  );
+
+let inventoryUpdateTopics = computed(() => {
+  if (!inventoryData.value) {
+    return [];
+  }
+
+  return inventoryData.value?.inventorys.map(
+    (inventory) => `inventory_update.${inventory.entity_id}`,
+  );
+});
+
+registerWebsocketMessageHandler(
+  "InventoryUpdate",
+  inventoryUpdateTopics,
+  (message) => {
+    const index = inventoryData.value.inventorys.findIndex(
+      (value) => message.resolved_inventory.entity_id == value.entity_id,
+    );
+
+    if (index != -1) {
+      inventoryData.value.inventorys[index].pockets =
+        message.resolved_inventory.pockets;
+    }
+  },
+);
 
 const { data: npcData } = useFetchMsPack(() => {
   return `/npc`;

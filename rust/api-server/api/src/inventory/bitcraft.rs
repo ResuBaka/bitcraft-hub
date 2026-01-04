@@ -1,6 +1,8 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::inventory::resolve_pocket;
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use chrono::DateTime;
+use entity::inventory::ResolvedInventory;
 use entity::inventory_changelog::TypeOfChange;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
@@ -137,8 +139,26 @@ pub(crate) fn start_worker_inventory_state(
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
-                                    messages.push(model.into_active_model());
 
+                                    let mut pockets = vec![];
+                                    for pocket in &model.pockets {
+                                        pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
+                                    }
+
+                                    let _ = global_app_state.tx.send(WebSocketMessages::InventoryUpdate {
+                                        resolved_inventory: ResolvedInventory {
+                                            entity_id: model.entity_id,
+                                            pockets,
+                                            inventory_index: model.inventory_index,
+                                            cargo_index: model.cargo_index,
+                                            owner_entity_id: model.owner_entity_id,
+                                            player_owner_entity_id: model.player_owner_entity_id,
+                                            nickname: None,
+                                            claim: None,
+                                        }
+                                    });
+
+                                    messages.push(model.into_active_model());
 
 
                                     if let Some(caller_identity) = caller_identity {

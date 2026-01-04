@@ -351,7 +351,7 @@ pub(crate) fn start_worker_experience_state(
                                     }).collect::<Vec<_>>();
 
                                     for es in vec_es {
-                                        global_app_state.ranking_system.global_leaderboard.remove(es.entity_id);
+                                        // global_app_state.ranking_system.global_leaderboard.remove(es.entity_id);
 
                                         if let Err(error) = es.delete(&global_app_state.conn).await {
                                             tracing::error!(ExperienceState = id, error = error.to_string(), "Could not delete ExperienceState");

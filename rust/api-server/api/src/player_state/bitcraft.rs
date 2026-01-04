@@ -3,6 +3,7 @@ use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, sea_query};
+use spacetimedb_sdk::__codegen::{self as __sdk, Reducer};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -179,12 +180,13 @@ pub(crate) fn start_worker_player_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name, event } => {
                                 let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
-                                global_app_state.player_state.remove(&model.entity_id);
-                                global_app_state.ranking_system.time_played.remove(model.entity_id);
-                                global_app_state.ranking_system.time_signed_in.remove(model.entity_id);
+
+                                // global_app_state.player_state.remove(&model.entity_id);
+                                // global_app_state.ranking_system.time_played.remove(model.entity_id);
+                                // global_app_state.ranking_system.time_signed_in.remove(model.entity_id);
 
                                 if ids.contains(&id) {
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
