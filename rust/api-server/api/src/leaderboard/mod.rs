@@ -30,7 +30,7 @@ pub(crate) static EXCLUDED_USERS_FROM_LEADERBOARD: LazyLock<Vec<i64>> =
     LazyLock::new(|| vec![360287970201941063, 504403158285774600]);
 pub(crate) static EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 0];
 
-pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
+pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 110] = [
     (1, 0),
     (2, 640),
     (3, 1_340),
@@ -131,6 +131,16 @@ pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 100] = [
     (98, 103_692_650),
     (99, 114_626_640),
     (100, 126_704_730),
+    (101, 140_247_530),
+    (102, 155_076_640),
+    (103, 171_473_630),
+    (104, 189_604_290),
+    (105, 209_651_920),
+    (106, 231_819_190),
+    (107, 256_330_230),
+    (108, 283_432_830),
+    (109, 313_401_010),
+    (110, 346_537_750),
 ];
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -191,7 +201,7 @@ impl Leaderboard {
         let mut current_xp_ref = self.scores.entry(user_id).or_insert(0);
         let old_xp = *current_xp_ref;
 
-        if old_xp == new_xp || EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id) {
+        if (old_xp == new_xp && new_xp != 0) || EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id) {
             return;
         }
 
