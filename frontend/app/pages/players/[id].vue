@@ -436,29 +436,7 @@ const skillToToolIndex = {
   Tailoring: 7,
 };
 
-const tierColor = computed(() => {
-  let colorEffect = "";
-
-  if (theme.global.current.value.dark) {
-  } else {
-    colorEffect = "-darken-4";
-  }
-
-  const colors = {
-    1: `grey${colorEffect}`,
-    2: `orange${colorEffect}`,
-    3: `green${colorEffect}`,
-    4: `blue${colorEffect}`,
-    5: `purple${colorEffect}`,
-    6: `red${colorEffect}`,
-    7: `yellow${colorEffect}`,
-    8: `cyan${colorEffect}`,
-    9: `deep-purple${colorEffect}`,
-    10: `deep-purple${colorEffect}`,
-  };
-
-  return colors;
-});
+const tierColor = useTierColor();
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
   const days = Math.floor(seconds / (60 * 60 * 24));
@@ -578,7 +556,7 @@ useSeoMeta({
                 <v-card-title>Skills</v-card-title>
                 <v-card-text>
                   <v-row>
-                    <v-col cols="12" md="4" xxl="2" lg="2" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
+                    <v-col cols="12" md="4" sm="4" xxl="2" xl="2" lg="2" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
                       <v-list :class="xp_info.classes.container">
                         <div :class="xp_info.classes.list"></div>
                         <v-row dense no-gutters :class="xp_info.classes.content">

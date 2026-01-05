@@ -12,27 +12,6 @@ const props = defineProps<{
 }>();
 
 const showChangelog = ref(false);
-const theme = useTheme();
-
-// Helper for Tier Colors
-const getTierColor = (tier: number) => {
-  const colorEffect = theme.global.current.value.dark ? "" : "-darken-4";
-  const colors: Record<number, string> = {
-    1: `grey${colorEffect}`,
-    2: `orange${colorEffect}`,
-    3: `green${colorEffect}`,
-    4: `blue${colorEffect}`,
-    5: `purple${colorEffect}`,
-    6: `red${colorEffect}`,
-    7: `yellow${colorEffect}`,
-    8: `cyan${colorEffect}`,
-    9: `deepPurple${colorEffect}`,
-    10: `deepPurple${colorEffect}`,
-  };
-  return colors[tier] || `grey${colorEffect}`;
-};
-
-const router = useRouter();
 const playerId = ref<bigint | null>();
 const itemObject = ref<ItemCargo | undefined>();
 
@@ -98,9 +77,11 @@ watchThrottled(
             <v-col
                 v-for="(pocket, index) in inventory.pockets.filter(pocket => !!pocket.contents)"
                 :key="index"
-                cols="3"
-                sm="2"
-                md="1"
+                cols="4"
+                sm="4"
+                md="3"
+                xl="1"
+                lg="2"
                 class="d-flex justify-center"
             >
               <v-sheet

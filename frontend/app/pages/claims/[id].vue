@@ -14,6 +14,7 @@ import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
+import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 
 const {
   public: { iconDomain },
@@ -48,6 +49,8 @@ const rarityPlayersOffline = ref<string | null>(null);
 const tierPlayersOffline = ref<number | null>(null);
 
 const tmpPage = (route.query.page as string) ?? null;
+
+const tierToColor = useTierColor();
 
 if (tmpPage) {
   page.value = parseInt(tmpPage);
@@ -220,8 +223,7 @@ const inventorysBuildings = computed(() => {
   return claimFetch.value?.inventorys?.buildings.filter(
     (inventory) =>
       (!rarityBuildings.value ||
-        parseInt(Object.keys(inventory.item.rarity)[0]) ===
-          rarityBuildings.value) &&
+        inventory.item.rarity === rarityBuildings.value) &&
       (!tierBuildings.value || inventory.item.tier === tierBuildings.value) &&
       (!inventoryBuildingsSearch.value ||
         inventory.item.name
@@ -247,9 +249,7 @@ const inventorysPlayers = computed(() => {
 
   return claimFetch.value?.inventorys?.players.filter(
     (inventory) =>
-      (!rarityPlayers.value ||
-        parseInt(Object.keys(inventory.item.rarity)[0]) ===
-          rarityPlayers.value) &&
+      (!rarityPlayers.value || inventory.item.rarity === rarityPlayers.value) &&
       (!tierPlayers.value || inventory.item.tier === tierPlayers.value) &&
       (!inventoryPlayersSearch.value ||
         inventory.item.name
@@ -276,8 +276,7 @@ const inventorysPlayersOffline = computed(() => {
   return claimFetch.value?.inventorys?.players_offline.filter(
     (inventory) =>
       (!rarityPlayersOffline.value ||
-        parseInt(Object.keys(inventory.item.rarity)[0]) ===
-          rarityPlayersOffline.value) &&
+        inventory.item.rarity === rarityPlayersOffline.value) &&
       (!tierPlayersOffline.value ||
         inventory.item.tier === tierPlayersOffline.value) &&
       (!inventoryPlayersOfflineSearch.value ||
@@ -290,72 +289,6 @@ const inventorysPlayersOffline = computed(() => {
 const sortMembersLevelRaw = (a: any, b: any) => {
   return (b?.level || 0) - (a?.level || 0);
 };
-
-const theme = useTheme();
-
-const levelToColor = (level: number) => {
-  let colorEffect = "";
-
-  if (theme.global.current.value.dark) {
-  } else {
-    colorEffect = "-darken-4";
-  }
-
-  if (1 <= level && level <= 19) {
-    return `grey${colorEffect}`;
-  }
-  if (20 <= level && level <= 29) {
-    return `orange${colorEffect}`;
-  }
-  if (30 <= level && level <= 39) {
-    return `green${colorEffect}`;
-  }
-  if (40 <= level && level <= 49) {
-    return `blue${colorEffect}`;
-  }
-  if (50 <= level && level <= 59) {
-    return `purple${colorEffect}`;
-  }
-  if (60 <= level && level <= 69) {
-    return `red${colorEffect}`;
-  }
-  if (70 <= level && level <= 79) {
-    return `yellow${colorEffect}`;
-  }
-  if (80 <= level && level <= 89) {
-    return `cyan${colorEffect}`;
-  }
-  if (90 <= level && level <= 99) {
-    return `deepPurple${colorEffect}`;
-  }
-  if (100 <= level) {
-    return `deepPurple${colorEffect}`;
-  }
-};
-
-const tierToColor = computed(() => {
-  let colorEffect = "";
-
-  if (theme.global.current.value.dark) {
-  } else {
-    colorEffect = "-darken-1";
-  }
-
-  const colors = {
-    1: `grey${colorEffect}`,
-    2: `orange${colorEffect}`,
-    3: `green${colorEffect}`,
-    4: `blue${colorEffect}`,
-    5: `purple${colorEffect}`,
-    6: `red${colorEffect}`,
-    7: `yellow${colorEffect}`,
-    8: `cyan${colorEffect}`,
-    9: `deepPurple${colorEffect}`,
-    10: `deepPurple${colorEffect}`,
-  };
-
-  return colors;
-});
 
 const length = computed(() => {
   return Math.ceil((buidlingsFetch.value?.total || 0) / perPage) ?? 0;
@@ -520,6 +453,8 @@ const skillToToolIndex = {
   Smithing: 4,
   Tailoring: 7,
 };
+
+// Helper for Tier Colors
 
 watchThrottled(
   () => [item_object.value, player_id.value],
@@ -985,7 +920,7 @@ watchThrottled(
                   <v-col>
                     <v-select
                         v-model="rarityPlayers"
-                        :items="Array.from(new Set(claimFetch?.inventorys?.buildings?.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || [])).sort((a, b) => a - b)"
+                        :items="Array.from(new Set(claimFetch?.inventorys?.buildings?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"
                         label="Rarity"
                         outlined
                         dense
@@ -994,26 +929,41 @@ watchThrottled(
                   </v-col>
                 </v-row>
                 <v-row class="ma-0">
-                  <v-data-iterator :items="inventorysBuildings" :items-per-page="50" page="1" class="w-100">
+                  <v-data-iterator :items="inventorysBuildings" :items-per-page="52" page="1" class="w-100">
                     <template v-slot:default="{ items }">
                       <v-row class="ma-0">
                         <template
                             v-for="(inventory, i) in items"
                             :key="i"
                         >
-                          <v-col cols="12" md="4" lg="3" xl="2" class="pa-1">
-                            <v-list-item border="thin" :class="`border-color-tier-${inventory.raw.item.tier} rounded-sm pa-0 ma-0`" >
-                              <template #prepend v-if="iconDomain">
-                                <v-avatar :rounded="false" size="50" style="width: 90px;">
-                                  <v-img :cover="false"
-                                         :src="iconAssetUrlNameRandom(inventory.raw.item.icon_asset_name).url"></v-img>
-                                </v-avatar>
-                              </template>
-                              <div :class="`text-${tierToColor[inventory.raw.item.tier]}`">
-                                {{ inventory.raw.item.name }}:
-                                <strong>{{ inventory.raw.quantity }}</strong>
+                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">
+                            <v-sheet
+                                border
+                                rounded
+                                class="inventory-slot-box d-flex align-center justify-center position-relative"
+                                elevation="2"
+                            >
+                              <v-tooltip activator="parent" location="top" transition="fade-transition">
+                                <div class="text-center">
+                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">
+                                    {{ inventory.raw.item.name }}
+                                  </div>
+                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>
+                                </div>
+                              </v-tooltip>
+
+                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
+                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
+                                {{ inventory.raw.item.name }}
                               </div>
-                            </v-list-item>
+                              <div class="item-icon text-h6 font-weight-black">
+                                <inventory-img skip-error-text :item="inventory.raw.item" />
+                              </div>
+
+                              <div class="quantity-badge">
+                                {{ inventory.raw.quantity }}
+                              </div>
+                            </v-sheet>
                           </v-col>
                         </template>
                       </v-row>
@@ -1071,7 +1021,7 @@ watchThrottled(
                   <v-col>
                     <v-select
                         v-model="rarityPlayers"
-                        :items="Array.from(new Set(claimFetch?.inventorys?.players?.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || [])).sort((a, b) => a - b)"
+                        :items="Array.from(new Set(claimFetch?.inventorys?.players?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"
                         label="Rarity"
                         outlined
                         dense
@@ -1080,26 +1030,41 @@ watchThrottled(
                   </v-col>
                 </v-row>
                 <v-row class="ma-0">
-                  <v-data-iterator :items="inventorysPlayers" :items-per-page="50" class="w-100">
+                  <v-data-iterator :items="inventorysPlayers" :items-per-page="52" class="w-100">
                     <template v-slot:default="{ items }">
                       <v-row class="ma-0">
                         <template
                             v-for="(inventory, i) in items"
                             :key="i"
                         >
-                          <v-col cols="12" md="4" lg="3" xl="2" class="pa-1">
-                            <v-list-item border="thin" :class="`border-color-tier-${inventory.raw.item.tier} rounded-sm pa-0 ma-0`" >
-                              <template #prepend v-if="iconDomain">
-                                <v-avatar :rounded="false" size="50" style="width: 90px;">
-                                  <v-img :cover="false"
-                                         :src="iconAssetUrlNameRandom(inventory.raw.item.icon_asset_name).url"></v-img>
-                                </v-avatar>
-                              </template>
-                              <div :class="`text-${tierToColor[inventory.raw.item.tier]}`">
-                                {{ inventory.raw.item.name }}:
-                                <strong>{{ inventory.raw.quantity }}</strong>
-                              </div>
-                            </v-list-item>
+                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">
+                            <v-sheet
+                                border
+                                rounded
+                                class="inventory-slot-box d-flex align-center justify-center position-relative"
+                                elevation="2"
+                            >
+                                <v-tooltip activator="parent" location="top" transition="fade-transition">
+                                  <div class="text-center">
+                                    <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">
+                                      {{ inventory.raw.item.name }}
+                                    </div>
+                                    <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>
+                                  </div>
+                                </v-tooltip>
+
+                                <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
+                                <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
+                                  {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}
+                                </div>
+                                <div class="item-icon text-h6 font-weight-black">
+                                  <inventory-img skip-error-text :item="inventory.raw.item" />
+                                </div>
+
+                                <div class="quantity-badge">
+                                  {{ inventory.raw.quantity }}
+                                </div>
+                            </v-sheet>
                           </v-col>
                         </template>
                       </v-row>
@@ -1157,7 +1122,7 @@ watchThrottled(
                   <v-col>
                     <v-select
                         v-model="rarityPlayersOffline"
-                        :items="Array.from(new Set(claimFetch?.inventorys?.players_offline?.map((inventory) => parseInt(Object.keys(inventory.item.rarity)[0])) || [])).sort((a, b) => a - b)"
+                        :items="Array.from(new Set(claimFetch?.inventorys?.players_offline?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"
                         label="Rarity"
                         outlined
                         dense
@@ -1166,26 +1131,41 @@ watchThrottled(
                   </v-col>
                 </v-row>
                 <v-row class="ma-0">
-                  <v-data-iterator :items="inventorysPlayersOffline" :items-per-page="50" class="w-100">
+                  <v-data-iterator :items="inventorysPlayersOffline" :items-per-page="52" class="w-100">
                     <template v-slot:default="{ items }">
                       <v-row class="ma-0 min-w-max">
                         <template
                             v-for="(inventory, i) in items"
                             :key="i"
                         >
-                          <v-col cols="12" md="4" lg="3" xl="2" class="pa-1">
-                            <v-list-item border="thin" :class="`border-color-tier-${inventory.raw.item.tier} rounded-sm pa-0 ma-0`" >
-                              <template #prepend v-if="iconDomain">
-                                <v-avatar :rounded="false" size="50" style="width: 90px;">
-                                  <v-img :cover="false"
-                                         :src="iconAssetUrlNameRandom(inventory.raw.item.icon_asset_name).url"></v-img>
-                                </v-avatar>
-                              </template>
-                              <div :class="`text-${tierToColor[inventory.raw.item.tier]}`">
-                                {{ inventory.raw.item.name }}:
-                                <strong>{{ inventory.raw.quantity }}</strong>
+                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">
+                            <v-sheet
+                                border
+                                rounded
+                                class="inventory-slot-box d-flex align-center justify-center position-relative"
+                                elevation="2"
+                            >
+                              <v-tooltip activator="parent" location="top" transition="fade-transition">
+                                <div class="text-center">
+                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">
+                                    {{ inventory.raw.item.name }}
+                                  </div>
+                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>
+                                </div>
+                              </v-tooltip>
+
+                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
+                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
+                                {{ inventory.raw.item.name }}
                               </div>
-                            </v-list-item>
+                              <div class="item-icon text-h6 font-weight-black">
+                                <inventory-img skip-error-text :item="inventory.raw.item" />
+                              </div>
+
+                              <div class="quantity-badge">
+                                {{ inventory.raw.quantity }}
+                              </div>
+                            </v-sheet>
                           </v-col>
                         </template>
                       </v-row>
@@ -1384,3 +1364,53 @@ watchThrottled(
     </v-row>
   </v-container>
 </template>
+
+<style scoped>
+.inventory-container {
+  background-color: rgba(var(--v-border-color), 0.05);
+  min-height: 100px;
+}
+
+.inventory-slot-box {
+  width: 100%;
+  max-height: 100px;
+  aspect-ratio: 1 / 1;
+  background-color: rgb(var(--v-theme-surface));
+  cursor: default;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.inventory-slot-box.has-content {
+  cursor: pointer;
+}
+
+.inventory-slot-box.has-content:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--v-theme-primary), 0.5) !important;
+}
+
+/* Color strip at the top of the slot indicating item tier */
+.tier-border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.item-icon {
+  opacity: 0.8;
+  user-select: none;
+}
+
+.quantity-badge {
+  position: absolute;
+  bottom: 0px;
+  right: 4px;
+  font-size: 1.0rem;
+  font-weight: 800;
+  color: rgb(var(--v-theme-on-surface));
+  text-shadow: 0px 0px 3px rgb(var(--v-theme-surface));
+}
+</style>

@@ -1,7 +1,13 @@
 <script setup lang="ts">
-const props = defineProps<{
-  item: any;
-}>();
+const props = withDefaults(
+  defineProps<{
+    item: any;
+    skipErrorText?: boolean;
+  }>(),
+  {
+    skipErrorText: false,
+  },
+);
 
 const imagedErrored: boolean = ref(false);
 const iconUrl = (item: any) => {
@@ -24,7 +30,7 @@ const stippedName = computed(() => {
   <template v-if="!imagedErrored">
     <v-img @error="imagedErrored = true" :src="iconUrl(item).url" height="80" width="80"></v-img>
   </template>
-  <template v-else>
+  <template v-else-if="!skipErrorText">
     {{ stippedName.split(" ").map(part => part.charAt(0)).join("") }}
   </template>
 </template>
