@@ -26,7 +26,6 @@ const stippedName = computed(() => {
   </template>
   <template v-else>
     {{ stippedName.split(" ").map(part => part.charAt(0)).join("") }}
-    <pre>{{ item }}</pre>
   </template>
 </template>
 
