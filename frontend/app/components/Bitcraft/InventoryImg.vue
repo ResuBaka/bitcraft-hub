@@ -14,6 +14,10 @@ const iconUrl = (item: any) => {
 
   return iconAssetUrlNameRandom(item.icon_asset_name);
 };
+
+const stippedName = computed(() => {
+  return props.item.name.replace(/[\[\(\)\{\}\]]/ig, "")
+})
 </script>
 
 <template>
@@ -21,7 +25,8 @@ const iconUrl = (item: any) => {
     <v-img @error="imagedErrored = true" :src="iconUrl(item).url" height="80" width="80"></v-img>
   </template>
   <template v-else>
-    {{ item.name.split(" ").map(part => part.charAt(0)).join("") }}
+    {{ stippedName.split(" ").map(part => part.charAt(0)).join("") }}
+    <pre>{{ item }}</pre>
   </template>
 </template>
 
