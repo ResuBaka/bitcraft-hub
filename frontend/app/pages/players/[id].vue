@@ -578,7 +578,7 @@ useSeoMeta({
                 <v-card-title>Skills</v-card-title>
                 <v-card-text>
                   <v-row>
-                    <v-col cols="12" md="4" xxl="2" lg="3" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
+                    <v-col cols="12" md="4" xxl="2" lg="2" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
                       <v-list :class="xp_info.classes.container">
                         <div :class="xp_info.classes.list"></div>
                         <v-row dense no-gutters :class="xp_info.classes.content">
