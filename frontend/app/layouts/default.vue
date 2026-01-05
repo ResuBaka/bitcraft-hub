@@ -65,6 +65,7 @@
               </v-radio>
             </v-radio-group>
             <v-checkbox v-model="configStore.websocket.enabled_default" label="Connect to websocket by default"></v-checkbox>
+            <v-checkbox v-model="configStore.show_region_as_number" label="Toggle between showing regions name or number (Default Number)"></v-checkbox>
             <v-btn variant="text" class="text-capitalize font-weight-black" @click="requestTopics">Request Listed Subscribed Topics</v-btn>
         </v-card-text>
         <v-card-actions>

@@ -5,7 +5,6 @@ import AutocompleteItem from "./autocomplete/AutocompleteItem.vue";
 import InventoryChanges from "./InventoryChanges.vue";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
-import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 
 const props = defineProps<{
@@ -76,7 +75,7 @@ watchThrottled(
               <nuxt-link class="text-primary text-decoration-none text-high-emphasis font-weight-black"
                          :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id } }"
               >
-                <strong>{{ inventory.claim.name }}</strong>
+                <strong>{{ inventory.claim.name }} (<bitcraft-region :region="inventory.claim.region" />)</strong>
               </nuxt-link>
 
             </template>

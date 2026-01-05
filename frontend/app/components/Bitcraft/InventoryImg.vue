@@ -16,8 +16,8 @@ const iconUrl = (item: any) => {
 };
 
 const stippedName = computed(() => {
-  return props.item.name.replace(/[\[\(\)\{\}\]]/ig, "")
-})
+  return props.item.name.replace(/[\[\(\)\{\}\]]/gi, "");
+});
 </script>
 
 <template>

@@ -579,7 +579,7 @@ watchThrottled(
                 <v-list-item>
                   <v-list-item-title>Location</v-list-item-title>
                   <v-list-item-subtitle>
-                    R: {{ claim.region.replace("bitcraft-", "") }} N: {{ Math.ceil(claim.location.z / 3) }}, E:
+                    R: <bitcraft-region :region="claim.region" /> N: {{ Math.ceil(claim.location.z / 3) }}, E:
                     {{ Math.ceil(claim.location.x / 3) }}
                   </v-list-item-subtitle>
                 </v-list-item>

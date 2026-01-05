@@ -530,7 +530,7 @@ useSeoMeta({
             </tr>
             <tr v-if="playerData.player_location" style='text-align: right'>
               <th>Location:</th>
-              <td>N: {{ Math.floor(playerData.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(playerData.player_location?.location_x / 3 / 1000) }} R: {{ playerData.player_location?.region }}</td>
+              <td>N: {{ Math.floor(playerData.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(playerData.player_location?.location_x / 3 / 1000) }} R: <bitcraft-region v-if="playerData.player_location?.region" :region="playerData.player_location?.region" /></td>
             </tr>
             <tr style='text-align: right'>
               <th>Current Action:</th>

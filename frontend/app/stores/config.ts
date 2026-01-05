@@ -7,6 +7,7 @@ export type ConfigState = {
   websocket: {
     enabled_default: boolean;
   };
+  show_region_as_number: boolean;
 };
 
 export const DEFAULT_CONFIG: ConfigState = {
@@ -15,6 +16,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   websocket: {
     enabled_default: false,
   },
+  show_region_as_number: true,
 };
 
 export const useConfigStore = defineStore("config", () => {
