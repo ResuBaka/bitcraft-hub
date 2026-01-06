@@ -51,6 +51,8 @@ pub(crate) fn start_worker_deployable_state(
                                 for model in data.into_iter().map(|value| {
                                     let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
+                                    global_app_state.deployable_state.insert(model.entity_id, model.clone());
+
                                     model
                                 }) {
                                     use std::collections::hash_map::Entry;
@@ -84,6 +86,7 @@ pub(crate) fn start_worker_deployable_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                global_app_state.deployable_state.insert(model.entity_id, model.clone());
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -91,6 +94,7 @@ pub(crate) fn start_worker_deployable_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                global_app_state.deployable_state.insert(model.entity_id, model.clone());
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -98,6 +102,7 @@ pub(crate) fn start_worker_deployable_state(
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                global_app_state.deployable_state.remove(&model.entity_id);
                                 let id = model.entity_id;
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {

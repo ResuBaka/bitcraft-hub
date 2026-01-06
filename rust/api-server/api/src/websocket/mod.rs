@@ -1412,6 +1412,13 @@ pub(crate) enum WebSocketMessages {
     InventoryUpdate {
         resolved_inventory: entity::inventory::ResolvedInventory,
     },
+    InventoryRemove {
+        resolved_inventory: entity::inventory::ResolvedInventory,
+    },
+    InventoryInsert {
+        resolved_inventory: entity::inventory::ResolvedInventory,
+        player_owner_id: i64,
+    },
 }
 
 impl WebSocketMessages {
@@ -1581,6 +1588,36 @@ impl WebSocketMessages {
                 "inventory_update".to_string(),
                 Some(resolved_inventory.entity_id as i64),
             )]),
+            WebSocketMessages::InventoryRemove {
+                resolved_inventory, ..
+            } => Some(vec![
+                (
+                    "inventory_remove".to_string(),
+                    Some(resolved_inventory.entity_id as i64),
+                ),
+                (
+                    "inventory_remove_owner".to_string(),
+                    Some(resolved_inventory.entity_id as i64),
+                ),
+            ]),
+            WebSocketMessages::InventoryInsert {
+                resolved_inventory,
+                player_owner_id,
+                ..
+            } => Some(vec![
+                (
+                    "inventory_insert".to_string(),
+                    Some(resolved_inventory.entity_id as i64),
+                ),
+                (
+                    "inventory_insert_owner".to_string(),
+                    Some(resolved_inventory.owner_entity_id as i64),
+                ),
+                (
+                    "inventory_insert_player_owner".to_string(),
+                    Some(*player_owner_id),
+                ),
+            ]),
         }
     }
 }

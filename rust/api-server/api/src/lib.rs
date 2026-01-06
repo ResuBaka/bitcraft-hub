@@ -516,6 +516,7 @@ struct AppState {
     traveler_task_desc: Arc<dashmap::DashMap<i32, entity::traveler_task_desc::Model>>,
     user_state: Arc<dashmap::DashMap<Identity, u64>>,
     trade_order_state: Arc<dashmap::DashMap<i64, entity::trade_order::Model>>,
+    deployable_state: Arc<dashmap::DashMap<i64, entity::deployable_state::Model>>,
     buy_order_state: Arc<dashmap::DashMap<i64, entity::auction_listing_state::AuctionListingState>>,
     sell_order_state:
         Arc<dashmap::DashMap<i64, entity::auction_listing_state::AuctionListingState>>,
@@ -567,6 +568,7 @@ impl AppState {
             buy_order_state: Arc::new(dashmap::DashMap::new()),
             sell_order_state: Arc::new(dashmap::DashMap::new()),
             user_state: Arc::new(dashmap::DashMap::new()),
+            deployable_state: Arc::new(dashmap::DashMap::new()),
             npc_desc: Arc::new(dashmap::DashMap::new()),
             ranking_system: Arc::new(RankingSystem::default()),
         }

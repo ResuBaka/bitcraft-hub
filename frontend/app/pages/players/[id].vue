@@ -278,6 +278,47 @@ registerWebsocketMessageHandler(
   },
 );
 
+let inventoryRemoveTopics = computed(() => {
+  if (!inventoryData.value) {
+    return [];
+  }
+
+  return inventoryData.value?.inventorys.map(
+    (inventory) => `inventory_remove.${inventory.entity_id}`,
+  );
+});
+
+registerWebsocketMessageHandler(
+  "InventoryRemove",
+  inventoryRemoveTopics,
+  (message) => {
+    const index = inventoryData.value.inventorys.findIndex(
+      (value) => message.resolved_inventory.entity_id == value.entity_id,
+    );
+
+    if (index != -1) {
+      inventoryData.value.inventorys.splice(index, 1);
+    }
+  },
+);
+
+registerWebsocketMessageHandler(
+  "InventoryInsert",
+  [`inventory_insert_player_owner.${route.params.id}`],
+  (message) => {
+    const index = inventoryData.value.inventorys.findIndex(
+      (value) => message.resolved_inventory.entity_id == value.entity_id,
+    );
+
+    if (index != -1) {
+      inventoryData.value.inventorys[index].pockets =
+        message.resolved_inventory.pockets;
+    } else {
+      inventoryData.value.inventorys.push(message.resolved_inventory);
+    }
+  },
+);
+
 const { data: npcData } = useFetchMsPack(() => {
   return `/npc`;
 });
@@ -638,7 +679,7 @@ useSeoMeta({
 <!--            <v-col cols="12" md="6" v-if="playerTools">-->
 <!--              <bitcraft-playerData-tool-belt :inventory="playerTools"></bitcraft-playerData-tool-belt>-->
 <!--            </v-col>-->
-            <v-col cols="12" md="6" v-if="mainInventory">
+            <v-col cols="12" md="6"  v-if="mainInventory">
               <bitcraft-inventory :inventory="mainInventory"></bitcraft-inventory>
             </v-col>
 

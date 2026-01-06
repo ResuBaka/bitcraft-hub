@@ -15,6 +15,18 @@ const showChangelog = ref(false);
 const playerId = ref<bigint | null>();
 const itemObject = ref<ItemCargo | undefined>();
 
+const itemPockets = computed(() => {
+  return props.inventory?.pockets.slice(0, props.inventory.cargo_index) ?? [];
+});
+const cargoPockets = computed(() => {
+  return (
+    props.inventory?.pockets.slice(
+      props.inventory.pockets.length -
+        (props.inventory.pockets.length - props.inventory.cargo_index),
+    ) ?? []
+  );
+});
+
 const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } =
   useFetchMsPack<InventoryChangelog[]>(
     () => `/api/bitcraft/inventorys/changes/${props.inventory.entity_id}`,
@@ -43,11 +55,11 @@ watchThrottled(
 <template>
   <template v-if="inventory">
     <div v-bind="$attrs">
-      <v-card class="mb-5" elevation="2">
+      <v-card class="mb-5" elevation="2" >
         <v-list-item class="pa-4">
           <template #title>
             <span class="text-h6">Inventory: </span>
-            <strong class="text-secondary">{{ inventory.nickname || inventory.entity_id }} </strong>
+            <strong class="text-secondary">{{ inventory.nickname || inventory.entity_id.toString() }}</strong>
             <template v-if="inventory.claim">
               &nbsp;
               <span class="text-h6">Claim: </span>
@@ -62,16 +74,16 @@ watchThrottled(
           <template #append>
             <v-checkbox v-model="showChangelog" label="Show Changelog" hide-details density="compact"></v-checkbox>
           </template>
+          <template #subtitle>
+                Item: {{ itemPockets.filter(p => !!p.contents).length }}/{{ itemPockets.length }}
+                Cargo: {{ cargoPockets.filter(p => !!p.contents).length }}/{{ cargoPockets.length }}
+          </template>
         </v-list-item>
 
         <v-divider></v-divider>
 
         <v-card-text>
-          <div class="mb-4 d-flex justify-space-between align-center">
-            <div class="text-subtitle-2 text-medium-emphasis">
-              Occupied Slots: {{ inventory.pockets.filter(p => !!p.contents).length }} / {{ inventory.pockets.length }}
-            </div>
-          </div>
+
 
           <v-row dense class="inventory-container pa-2 rounded-lg">
             <v-col
@@ -102,6 +114,9 @@ watchThrottled(
                   </v-tooltip>
 
                   <div class="tier-border" :class="`bg-${getTierColor(pocket.contents.item.tier)}`"></div>
+                  <div class="tier-label" :class="`text-${getTierColor(pocket.contents.item.tier)}`">
+                    T{{ pocket.contents.item.tier }}
+                  </div>
 
                   <div class="item-icon text-h6 font-weight-black">
                     <inventory-img :item="pocket.contents.item" />
@@ -173,6 +188,7 @@ watchThrottled(
   left: 0;
   right: 0;
   height: 4px;
+  z-index: 1;
 }
 
 .item-icon {
@@ -188,5 +204,18 @@ watchThrottled(
   font-weight: 800;
   color: rgb(var(--v-theme-on-surface));
   text-shadow: 0px 0px 3px rgb(var(--v-theme-surface));
+}
+
+.tier-label {
+  position: absolute;
+  top: 8px; /* Adjusted to sit just below or on the 4px border */
+  left: 4px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+  /* Optional: gives it a slight shadow to pop against dark icons */
+  text-shadow: 0px 0px 2px rgb(var(--v-theme-surface));
 }
 </style>

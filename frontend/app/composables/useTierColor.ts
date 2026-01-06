@@ -16,8 +16,8 @@ export const useTierColor = () => {
     6: `red${colorEffect}`,
     7: `yellow${colorEffect}`,
     8: `cyan${colorEffect}`,
-    9: `deep-purple${colorEffect}`,
-    10: `deep-purple${colorEffect}`,
+    9: `blue-grey${colorEffect}`,
+    10: `lime-accent-4`,
   };
 
   return colors;

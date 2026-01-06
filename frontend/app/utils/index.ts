@@ -32,10 +32,10 @@ export const levelToColor = (level: number) => {
     return `cyan${colorEffect}`;
   }
   if (90 <= level && level <= 99) {
-    return `deep-purple${colorEffect}`;
+    return `blue-grey${colorEffect}`;
   }
   if (100 <= level) {
-    return `deep-purple${colorEffect}`;
+    return `lime-accent-4`;
   }
 };
 
@@ -51,8 +51,8 @@ export const getTierColor = (tier: number) => {
     6: `red${colorEffect}`,
     7: `yellow${colorEffect}`,
     8: `cyan${colorEffect}`,
-    9: `deep-purple${colorEffect}`,
-    10: `deep-purple${colorEffect}`,
+    9: `blue-grey${colorEffect}`,
+    10: `lime-accent-4`,
   };
   return colors[tier] || `grey${colorEffect}`;
 };

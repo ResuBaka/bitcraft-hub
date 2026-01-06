@@ -90,10 +90,15 @@
 </template>
 <script setup lang="ts">
 import { VSonner } from "vuetify-sonner";
+import { registerWebsocketMessageHandler } from "~/composables/websocket";
 const websocketStore = useWebsocketStore();
 const configStore = useConfigStore();
 const configDrawer = ref(false);
 const mobileDrawer = ref(false);
+
+registerWebsocketMessageHandler("SubscribedTopics", [], (message) => {
+  console.log("SubscribedTopics", message);
+});
 
 const vuetifyConfig = {
   global: {
@@ -139,3 +144,6 @@ const toggelConfigDrawer = () => {
   mobileDrawer.value = false;
 };
 </script>
+
+"inventory_insert_owner.144115188086908106"
+"inventory_insert_owner.144115188086908106"

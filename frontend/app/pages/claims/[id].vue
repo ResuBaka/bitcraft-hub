@@ -454,7 +454,7 @@ const skillToToolIndex = {
   Tailoring: 7,
 };
 
-// Helper for Tier Colors
+const numberFormat = new Intl.NumberFormat(undefined);
 
 watchThrottled(
   () => [item_object.value, player_id.value],
@@ -487,7 +487,7 @@ watchThrottled(
                 <v-list-item>
                   <v-list-item-title>Supplies</v-list-item-title>
                   <v-list-item-subtitle>
-                    <bitcraft-animated-number v-if="claim.supplies" :value="claim.supplies"
+                    <bitcraft-animated-number v-if="claim.supplies" :value="claim.supplies" :formater="numberFormat.format"
                                               :speed="50"></bitcraft-animated-number>
                   </v-list-item-subtitle>
                 </v-list-item>
@@ -496,7 +496,7 @@ watchThrottled(
                 <v-list-item>
                   <v-list-item-title>Tiles</v-list-item-title>
                   <v-list-item-subtitle>
-                    <bitcraft-animated-number v-if="claim.num_tiles" :value="claim.num_tiles"
+                    <bitcraft-animated-number v-if="claim.num_tiles" :value="claim.num_tiles" :formater="numberFormat.format"
                                               :speed="50"></bitcraft-animated-number>
                   </v-list-item-subtitle>
                 </v-list-item>
@@ -505,7 +505,7 @@ watchThrottled(
                 <v-list-item>
                   <v-list-item-title>Treasury</v-list-item-title>
                   <v-list-item-subtitle>
-                    <bitcraft-animated-number v-if="claim.treasury" :value="claim.treasury"
+                    <bitcraft-animated-number v-if="claim.treasury" :value="claim.treasury" :formater="numberFormat.format"
                                               :speed="50"></bitcraft-animated-number>
                   </v-list-item-subtitle>
                 </v-list-item>
@@ -523,7 +523,7 @@ watchThrottled(
                 <v-list-item>
                   <v-list-item-title>Buildings</v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ claimFetch?.building_states?.length || 0 }}
+                    {{ numberFormat.format(claimFetch?.building_states?.length || 0) }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-col>
@@ -957,7 +957,7 @@ watchThrottled(
                                 {{ inventory.raw.item.name }}
                               </div>
                               <div class="item-icon text-h6 font-weight-black">
-                                <inventory-img skip-error-text :item="inventory.raw.item" />
+                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />
                               </div>
 
                               <div class="quantity-badge">
@@ -1058,7 +1058,7 @@ watchThrottled(
                                   {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}
                                 </div>
                                 <div class="item-icon text-h6 font-weight-black">
-                                  <inventory-img skip-error-text :item="inventory.raw.item" />
+                                  <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />
                                 </div>
 
                                 <div class="quantity-badge">
@@ -1159,7 +1159,7 @@ watchThrottled(
                                 {{ inventory.raw.item.name }}
                               </div>
                               <div class="item-icon text-h6 font-weight-black">
-                                <inventory-img skip-error-text :item="inventory.raw.item" />
+                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />
                               </div>
 
                               <div class="quantity-badge">
@@ -1373,7 +1373,7 @@ watchThrottled(
 
 .inventory-slot-box {
   width: 100%;
-  max-height: 100px;
+  max-height: 70px;
   aspect-ratio: 1 / 1;
   background-color: rgb(var(--v-theme-surface));
   cursor: default;

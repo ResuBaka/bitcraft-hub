@@ -54,8 +54,8 @@ export default defineNuxtConfig({
               'color-tier-6': colors.red.darken4,
               'color-tier-7': colors.yellow.darken4,
               'color-tier-8': colors.cyan.darken4,
-              'color-tier-9': colors.deepPurple.darken4,
-              'color-tier-10': colors.deepPurple.darken4,
+              'color-tier-9': colors.blueGrey.darken4,
+              'color-tier-10': colors.lime.darken4,
             }
           },
           dark: {
@@ -68,8 +68,8 @@ export default defineNuxtConfig({
               'color-tier-6': colors.red.base,
               'color-tier-7': colors.yellow.base,
               'color-tier-8': colors.cyan.base,
-              'color-tier-9': colors.deepPurple.base,
-              'color-tier-10': colors.deepPurple.base,
+              'color-tier-9': colors.blueGrey.base,
+              'color-tier-10': colors.lime.accent4,
             }
           }
         }

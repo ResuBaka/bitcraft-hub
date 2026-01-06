@@ -2,6 +2,7 @@ use crate::AppState;
 use crate::inventory::resolve_pocket;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use chrono::DateTime;
+use entity::deployable_state;
 use entity::inventory::ResolvedInventory;
 use entity::inventory_changelog::TypeOfChange;
 use game_module::module_bindings::InventoryState;
@@ -115,6 +116,35 @@ pub(crate) fn start_worker_inventory_state(
                                 }
                                 SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                     let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+
+                                    let mut pockets = vec![];
+                                    for pocket in &model.pockets {
+                                        pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
+                                    }
+
+                                    let mut player_owner_id = model.player_owner_entity_id;
+                                    let mut nickname = None;
+
+                                    if model.player_owner_entity_id == 0 {
+                                        if let Some(deployable_state) = global_app_state.deployable_state.get(&model.owner_entity_id) {
+                                            player_owner_id = deployable_state.owner_id;
+                                            nickname = Some(deployable_state.nickname.clone());
+                                        }
+                                    }
+
+                                    let _ = global_app_state.tx.send(WebSocketMessages::InventoryInsert {
+                                        resolved_inventory: ResolvedInventory {
+                                            entity_id: model.entity_id,
+                                            pockets,
+                                            inventory_index: model.inventory_index,
+                                            cargo_index: model.cargo_index,
+                                            owner_entity_id: model.owner_entity_id,
+                                            player_owner_entity_id: model.player_owner_entity_id,
+                                            nickname,
+                                            claim: None,
+                                        },
+                                        player_owner_id,
+                                    });
 
                                     // global_app_state.inventory_state.insert(model.entity_id, model.clone());
                                     if let Some(index) = messages.iter().position(|value: &::entity::inventory::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
@@ -239,6 +269,24 @@ pub(crate) fn start_worker_inventory_state(
                                 SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                     let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                     let id = model.entity_id;
+
+                                    let mut pockets = vec![];
+                                    for pocket in &model.pockets {
+                                        pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
+                                    }
+
+                                    let _ = global_app_state.tx.send(WebSocketMessages::InventoryRemove {
+                                        resolved_inventory: ResolvedInventory {
+                                            entity_id: model.entity_id,
+                                            pockets,
+                                            inventory_index: model.inventory_index,
+                                            cargo_index: model.cargo_index,
+                                            owner_entity_id: model.owner_entity_id,
+                                            player_owner_entity_id: model.player_owner_entity_id,
+                                            nickname: None,
+                                            claim: None,
+                                        }
+                                    });
 
                                     // global_app_state.inventory_state.remove(&model.entity_id);
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
