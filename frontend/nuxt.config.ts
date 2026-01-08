@@ -46,6 +46,8 @@ export default defineNuxtConfig({
               surface: colors.grey.lighten3,
             },
             variables: {
+              'color-tier--1': colors.grey.darken4,
+              'color-tier-0': colors.grey.darken4,
               'color-tier-1': colors.grey.darken4,
               'color-tier-2': colors.orange.darken4,
               'color-tier-3': colors.green.darken4,
@@ -54,12 +56,20 @@ export default defineNuxtConfig({
               'color-tier-6': colors.red.darken4,
               'color-tier-7': colors.yellow.darken4,
               'color-tier-8': colors.cyan.darken4,
-              'color-tier-9': colors.blueGrey.darken4,
-              'color-tier-10': colors.lime.darken4,
+              'color-tier-9': colors.shades.black,
+              'color-tier-10': colors.shades.white,
+              'color-rarity-common': colors.brown.lighten1,
+              'color-rarity-uncommon': colors.brown.darken2,
+              'color-rarity-rare': colors.blue.darken2,
+              'color-rarity-epic': colors.amber.darken3,
+              'color-rarity-legendary': colors.cyan.darken1,
+              'color-rarity-mythic': colors.indigo.darken3,
             }
           },
           dark: {
             variables: {
+              'color-tier--1': colors.grey.lighten1,
+              'color-tier-0': colors.grey.lighten1,
               'color-tier-1': colors.grey.lighten1,
               'color-tier-2': colors.orange.base,
               'color-tier-3': colors.green.base,
@@ -68,8 +78,14 @@ export default defineNuxtConfig({
               'color-tier-6': colors.red.base,
               'color-tier-7': colors.yellow.base,
               'color-tier-8': colors.cyan.base,
-              'color-tier-9': colors.blueGrey.base,
-              'color-tier-10': colors.lime.accent4,
+              'color-tier-9': colors.shades.black,
+              'color-tier-10': colors.shades.white,
+              'color-rarity-common': colors.brown.lighten1,
+              'color-rarity-uncommon': colors.brown.darken2,
+              'color-rarity-rare': colors.blue.darken2,
+              'color-rarity-epic': colors.amber.darken3,
+              'color-rarity-legendary': colors.cyan.darken1,
+              'color-rarity-mythic': colors.indigo.darken3,
             }
           }
         }

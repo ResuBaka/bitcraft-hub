@@ -99,8 +99,8 @@ watchThrottled(
               <v-sheet
                   border
                   rounded
-                  class="inventory-slot-box d-flex align-center justify-center position-relative"
-                  :class="{ 'has-content': !!pocket.contents }"
+                  class="inventory-slot-box d-flex align-center justify-center position-relative border-lg"
+                  :class="`bg-color-tier-${pocket.contents.item.tier} border-color-rarity-${pocket.contents.item.rarity.toLowerCase()}`"
                   :elevation="pocket.contents ? 2 : 0"
               >
                 <template v-if="pocket.contents">
@@ -113,7 +113,6 @@ watchThrottled(
                     </div>
                   </v-tooltip>
 
-                  <div class="tier-border" :class="`bg-${getTierColor(pocket.contents.item.tier)}`"></div>
                   <div class="tier-label" :class="`text-${getTierColor(pocket.contents.item.tier)}`">
                     T{{ pocket.contents.item.tier }}
                   </div>
@@ -159,36 +158,15 @@ watchThrottled(
 
 <style scoped>
 .inventory-container {
-  background-color: rgba(var(--v-border-color), 0.05);
   min-height: 100px;
 }
 
 .inventory-slot-box {
   width: 100%;
   aspect-ratio: 1 / 1;
-  background-color: rgb(var(--v-theme-surface));
   cursor: default;
   overflow: hidden;
   transition: all 0.2s ease;
-}
-
-.inventory-slot-box.has-content {
-  cursor: pointer;
-}
-
-.inventory-slot-box.has-content:hover {
-  transform: translateY(-2px);
-  border-color: rgba(var(--v-theme-primary), 0.5) !important;
-}
-
-/* Color strip at the top of the slot indicating item tier */
-.tier-border {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  z-index: 1;
 }
 
 .item-icon {
