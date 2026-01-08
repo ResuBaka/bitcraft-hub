@@ -47,6 +47,8 @@ pub enum CollectibleType {
     ClothesCape,
 
     PremiumItem,
+
+    Emote,
 }
 
 impl __sdk::InModule for CollectibleType {

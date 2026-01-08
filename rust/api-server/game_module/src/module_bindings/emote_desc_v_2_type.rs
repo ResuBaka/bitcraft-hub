@@ -4,17 +4,20 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::chat_channel_type::ChatChannel;
-
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub struct PlayerChatPostMessageRequest {
-    pub text: String,
-    pub channel_id: ChatChannel,
-    pub target_id: u64,
-    pub language_code: String,
+pub struct EmoteDescV2 {
+    pub id: i32,
+    pub name: String,
+    pub animation: String,
+    pub duration: f32,
+    pub key_code: String,
+    pub command_line: String,
+    pub allow_while_mounted: bool,
+    pub allow_while_moving: bool,
+    pub enabled_by_collectible_id: i32,
 }
 
-impl __sdk::InModule for PlayerChatPostMessageRequest {
+impl __sdk::InModule for EmoteDescV2 {
     type Module = super::RemoteModule;
 }

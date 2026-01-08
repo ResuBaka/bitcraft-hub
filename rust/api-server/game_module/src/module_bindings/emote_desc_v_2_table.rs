@@ -5,42 +5,42 @@
 use super::emote_desc_v_2_type::EmoteDescV2;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-/// Table handle for the table `staged_emote_desc`.
+/// Table handle for the table `emote_desc_v2`.
 ///
-/// Obtain a handle from the [`StagedEmoteDescTableAccess::staged_emote_desc`] method on [`super::RemoteTables`],
-/// like `ctx.db.staged_emote_desc()`.
+/// Obtain a handle from the [`EmoteDescV2TableAccess::emote_desc_v_2`] method on [`super::RemoteTables`],
+/// like `ctx.db.emote_desc_v_2()`.
 ///
 /// Users are encouraged not to explicitly reference this type,
 /// but to directly chain method calls,
-/// like `ctx.db.staged_emote_desc().on_insert(...)`.
-pub struct StagedEmoteDescTableHandle<'ctx> {
+/// like `ctx.db.emote_desc_v_2().on_insert(...)`.
+pub struct EmoteDescV2TableHandle<'ctx> {
     imp: __sdk::TableHandle<EmoteDescV2>,
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
 #[allow(non_camel_case_types)]
-/// Extension trait for access to the table `staged_emote_desc`.
+/// Extension trait for access to the table `emote_desc_v2`.
 ///
 /// Implemented for [`super::RemoteTables`].
-pub trait StagedEmoteDescTableAccess {
+pub trait EmoteDescV2TableAccess {
     #[allow(non_snake_case)]
-    /// Obtain a [`StagedEmoteDescTableHandle`], which mediates access to the table `staged_emote_desc`.
-    fn staged_emote_desc(&self) -> StagedEmoteDescTableHandle<'_>;
+    /// Obtain a [`EmoteDescV2TableHandle`], which mediates access to the table `emote_desc_v2`.
+    fn emote_desc_v_2(&self) -> EmoteDescV2TableHandle<'_>;
 }
 
-impl StagedEmoteDescTableAccess for super::RemoteTables {
-    fn staged_emote_desc(&self) -> StagedEmoteDescTableHandle<'_> {
-        StagedEmoteDescTableHandle {
-            imp: self.imp.get_table::<EmoteDescV2>("staged_emote_desc"),
+impl EmoteDescV2TableAccess for super::RemoteTables {
+    fn emote_desc_v_2(&self) -> EmoteDescV2TableHandle<'_> {
+        EmoteDescV2TableHandle {
+            imp: self.imp.get_table::<EmoteDescV2>("emote_desc_v2"),
             ctx: std::marker::PhantomData,
         }
     }
 }
 
-pub struct StagedEmoteDescInsertCallbackId(__sdk::CallbackId);
-pub struct StagedEmoteDescDeleteCallbackId(__sdk::CallbackId);
+pub struct EmoteDescV2InsertCallbackId(__sdk::CallbackId);
+pub struct EmoteDescV2DeleteCallbackId(__sdk::CallbackId);
 
-impl<'ctx> __sdk::Table for StagedEmoteDescTableHandle<'ctx> {
+impl<'ctx> __sdk::Table for EmoteDescV2TableHandle<'ctx> {
     type Row = EmoteDescV2;
     type EventContext = super::EventContext;
 
@@ -51,51 +51,51 @@ impl<'ctx> __sdk::Table for StagedEmoteDescTableHandle<'ctx> {
         self.imp.iter()
     }
 
-    type InsertCallbackId = StagedEmoteDescInsertCallbackId;
+    type InsertCallbackId = EmoteDescV2InsertCallbackId;
 
     fn on_insert(
         &self,
         callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
-    ) -> StagedEmoteDescInsertCallbackId {
-        StagedEmoteDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    ) -> EmoteDescV2InsertCallbackId {
+        EmoteDescV2InsertCallbackId(self.imp.on_insert(Box::new(callback)))
     }
 
-    fn remove_on_insert(&self, callback: StagedEmoteDescInsertCallbackId) {
+    fn remove_on_insert(&self, callback: EmoteDescV2InsertCallbackId) {
         self.imp.remove_on_insert(callback.0)
     }
 
-    type DeleteCallbackId = StagedEmoteDescDeleteCallbackId;
+    type DeleteCallbackId = EmoteDescV2DeleteCallbackId;
 
     fn on_delete(
         &self,
         callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
-    ) -> StagedEmoteDescDeleteCallbackId {
-        StagedEmoteDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    ) -> EmoteDescV2DeleteCallbackId {
+        EmoteDescV2DeleteCallbackId(self.imp.on_delete(Box::new(callback)))
     }
 
-    fn remove_on_delete(&self, callback: StagedEmoteDescDeleteCallbackId) {
+    fn remove_on_delete(&self, callback: EmoteDescV2DeleteCallbackId) {
         self.imp.remove_on_delete(callback.0)
     }
 }
 
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<EmoteDescV2>("staged_emote_desc");
+    let _table = client_cache.get_or_make_table::<EmoteDescV2>("emote_desc_v2");
     _table.add_unique_constraint::<i32>("id", |row| &row.id);
 }
-pub struct StagedEmoteDescUpdateCallbackId(__sdk::CallbackId);
+pub struct EmoteDescV2UpdateCallbackId(__sdk::CallbackId);
 
-impl<'ctx> __sdk::TableWithPrimaryKey for StagedEmoteDescTableHandle<'ctx> {
-    type UpdateCallbackId = StagedEmoteDescUpdateCallbackId;
+impl<'ctx> __sdk::TableWithPrimaryKey for EmoteDescV2TableHandle<'ctx> {
+    type UpdateCallbackId = EmoteDescV2UpdateCallbackId;
 
     fn on_update(
         &self,
         callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
-    ) -> StagedEmoteDescUpdateCallbackId {
-        StagedEmoteDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    ) -> EmoteDescV2UpdateCallbackId {
+        EmoteDescV2UpdateCallbackId(self.imp.on_update(Box::new(callback)))
     }
 
-    fn remove_on_update(&self, callback: StagedEmoteDescUpdateCallbackId) {
+    fn remove_on_update(&self, callback: EmoteDescV2UpdateCallbackId) {
         self.imp.remove_on_update(callback.0)
     }
 }
@@ -111,29 +111,29 @@ pub(super) fn parse_table_update(
     })
 }
 
-/// Access to the `id` unique index on the table `staged_emote_desc`,
+/// Access to the `id` unique index on the table `emote_desc_v2`,
 /// which allows point queries on the field of the same name
-/// via the [`StagedEmoteDescIdUnique::find`] method.
+/// via the [`EmoteDescV2IdUnique::find`] method.
 ///
 /// Users are encouraged not to explicitly reference this type,
 /// but to directly chain method calls,
-/// like `ctx.db.staged_emote_desc().id().find(...)`.
-pub struct StagedEmoteDescIdUnique<'ctx> {
+/// like `ctx.db.emote_desc_v_2().id().find(...)`.
+pub struct EmoteDescV2IdUnique<'ctx> {
     imp: __sdk::UniqueConstraintHandle<EmoteDescV2, i32>,
     phantom: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
-impl<'ctx> StagedEmoteDescTableHandle<'ctx> {
-    /// Get a handle on the `id` unique index on the table `staged_emote_desc`.
-    pub fn id(&self) -> StagedEmoteDescIdUnique<'ctx> {
-        StagedEmoteDescIdUnique {
+impl<'ctx> EmoteDescV2TableHandle<'ctx> {
+    /// Get a handle on the `id` unique index on the table `emote_desc_v2`.
+    pub fn id(&self) -> EmoteDescV2IdUnique<'ctx> {
+        EmoteDescV2IdUnique {
             imp: self.imp.get_unique_constraint::<i32>("id"),
             phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<'ctx> StagedEmoteDescIdUnique<'ctx> {
+impl<'ctx> EmoteDescV2IdUnique<'ctx> {
     /// Find the subscribed row whose `id` column value is equal to `col_val`,
     /// if such a row is present in the client cache.
     pub fn find(&self, col_val: &i32) -> Option<EmoteDescV2> {

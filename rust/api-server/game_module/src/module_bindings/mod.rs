@@ -479,6 +479,8 @@ pub mod elevator_desc_table;
 pub mod elevator_desc_type;
 pub mod emote_desc_table;
 pub mod emote_desc_type;
+pub mod emote_desc_v_2_table;
+pub mod emote_desc_v_2_type;
 pub mod emote_reducer;
 pub mod emote_start_reducer;
 pub mod empire_add_siege_supplies_reducer;
@@ -971,6 +973,7 @@ pub mod message_contents_v_3_type;
 pub mod migrate_auto_attacks_reducer;
 pub mod migrate_character_stats_reducer;
 pub mod migrate_claim_tech_reducer;
+pub mod migrate_grant_default_collectibles_reducer;
 pub mod migrate_player_settings_reducer;
 pub mod migration_achievements_params_table;
 pub mod migration_achievements_params_type;
@@ -2780,6 +2783,8 @@ pub use elevator_desc_table::*;
 pub use elevator_desc_type::ElevatorDesc;
 pub use emote_desc_table::*;
 pub use emote_desc_type::EmoteDesc;
+pub use emote_desc_v_2_table::*;
+pub use emote_desc_v_2_type::EmoteDescV2;
 pub use emote_reducer::{emote, set_flags_for_emote, EmoteCallbackId};
 pub use emote_start_reducer::{emote_start, set_flags_for_emote_start, EmoteStartCallbackId};
 pub use empire_add_siege_supplies_reducer::{
@@ -3829,6 +3834,10 @@ pub use migrate_character_stats_reducer::{
 };
 pub use migrate_claim_tech_reducer::{
     migrate_claim_tech, set_flags_for_migrate_claim_tech, MigrateClaimTechCallbackId,
+};
+pub use migrate_grant_default_collectibles_reducer::{
+    migrate_grant_default_collectibles, set_flags_for_migrate_grant_default_collectibles,
+    MigrateGrantDefaultCollectiblesCallbackId,
 };
 pub use migrate_player_settings_reducer::{
     migrate_player_settings, set_flags_for_migrate_player_settings, MigratePlayerSettingsCallbackId,
@@ -6067,7 +6076,7 @@ pub enum Reducer {
         records: Vec<ElevatorDesc>,
     },
     ImportEmoteDesc {
-        records: Vec<EmoteDesc>,
+        records: Vec<EmoteDescV2>,
     },
     ImportEmpireColorsDesc {
         records: Vec<EmpireColorDesc>,
@@ -6508,6 +6517,7 @@ pub enum Reducer {
     MigrateAutoAttacks,
     MigrateCharacterStats,
     MigrateClaimTech,
+    MigrateGrantDefaultCollectibles,
     MigratePlayerSettings,
     MigrationSetAchievementParams {
         allow_destructive: bool,
@@ -6910,7 +6920,7 @@ pub enum Reducer {
         records: Vec<ElevatorDesc>,
     },
     StageEmoteDesc {
-        records: Vec<EmoteDesc>,
+        records: Vec<EmoteDescV2>,
     },
     StageEmpireColorsDesc {
         records: Vec<EmpireColorDesc>,
@@ -7683,6 +7693,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::MigrateAutoAttacks => "migrate_auto_attacks",
             Reducer::MigrateCharacterStats => "migrate_character_stats",
             Reducer::MigrateClaimTech => "migrate_claim_tech",
+            Reducer::MigrateGrantDefaultCollectibles => "migrate_grant_default_collectibles",
             Reducer::MigratePlayerSettings => "migrate_player_settings",
             Reducer::MigrationSetAchievementParams { .. } => "migration_set_achievement_params",
             Reducer::MigrationSetBuildingDescParams { .. } => "migration_set_building_desc_params",
@@ -8369,6 +8380,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "migrate_auto_attacks" => Ok(__sdk::parse_reducer_args::<migrate_auto_attacks_reducer::MigrateAutoAttacksArgs>("migrate_auto_attacks", &value.args)?.into()),
             "migrate_character_stats" => Ok(__sdk::parse_reducer_args::<migrate_character_stats_reducer::MigrateCharacterStatsArgs>("migrate_character_stats", &value.args)?.into()),
             "migrate_claim_tech" => Ok(__sdk::parse_reducer_args::<migrate_claim_tech_reducer::MigrateClaimTechArgs>("migrate_claim_tech", &value.args)?.into()),
+            "migrate_grant_default_collectibles" => Ok(__sdk::parse_reducer_args::<migrate_grant_default_collectibles_reducer::MigrateGrantDefaultCollectiblesArgs>("migrate_grant_default_collectibles", &value.args)?.into()),
             "migrate_player_settings" => Ok(__sdk::parse_reducer_args::<migrate_player_settings_reducer::MigratePlayerSettingsArgs>("migrate_player_settings", &value.args)?.into()),
             "migration_set_achievement_params" => Ok(__sdk::parse_reducer_args::<migration_set_achievement_params_reducer::MigrationSetAchievementParamsArgs>("migration_set_achievement_params", &value.args)?.into()),
             "migration_set_building_desc_params" => Ok(__sdk::parse_reducer_args::<migration_set_building_desc_params_reducer::MigrationSetBuildingDescParamsArgs>("migration_set_building_desc_params", &value.args)?.into()),
@@ -8708,6 +8720,7 @@ pub struct DbUpdate {
     dungeon_state: __sdk::TableUpdate<DungeonState>,
     elevator_desc: __sdk::TableUpdate<ElevatorDesc>,
     emote_desc: __sdk::TableUpdate<EmoteDesc>,
+    emote_desc_v_2: __sdk::TableUpdate<EmoteDescV2>,
     empire_chunk_state: __sdk::TableUpdate<EmpireChunkState>,
     empire_color_desc: __sdk::TableUpdate<EmpireColorDesc>,
     empire_expansion_state: __sdk::TableUpdate<EmpireExpansionState>,
@@ -8927,7 +8940,7 @@ pub struct DbUpdate {
     staged_deployable_desc: __sdk::TableUpdate<DeployableDescV4>,
     staged_distant_visible_entity_desc: __sdk::TableUpdate<DistantVisibleEntityDesc>,
     staged_elevator_desc: __sdk::TableUpdate<ElevatorDesc>,
-    staged_emote_desc: __sdk::TableUpdate<EmoteDesc>,
+    staged_emote_desc: __sdk::TableUpdate<EmoteDescV2>,
     staged_empire_colors_desc: __sdk::TableUpdate<EmpireColorDesc>,
     staged_empire_icon_desc: __sdk::TableUpdate<EmpireIconDesc>,
     staged_empire_notification_desc: __sdk::TableUpdate<EmpireNotificationDesc>,
@@ -9384,6 +9397,9 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
                 "emote_desc" => db_update
                     .emote_desc
                     .append(emote_desc_table::parse_table_update(table_update)?),
+                "emote_desc_v2" => db_update
+                    .emote_desc_v_2
+                    .append(emote_desc_v_2_table::parse_table_update(table_update)?),
                 "empire_chunk_state" => db_update
                     .empire_chunk_state
                     .append(empire_chunk_state_table::parse_table_update(table_update)?),
@@ -10977,6 +10993,9 @@ impl __sdk::DbUpdate for DbUpdate {
         diff.emote_desc = cache
             .apply_diff_to_table::<EmoteDesc>("emote_desc", &self.emote_desc)
             .with_updates_by_pk(|row| &row.id);
+        diff.emote_desc_v_2 = cache
+            .apply_diff_to_table::<EmoteDescV2>("emote_desc_v2", &self.emote_desc_v_2)
+            .with_updates_by_pk(|row| &row.id);
         diff.empire_chunk_state = cache
             .apply_diff_to_table::<EmpireChunkState>("empire_chunk_state", &self.empire_chunk_state)
             .with_updates_by_pk(|row| &row.chunk_index);
@@ -12071,7 +12090,7 @@ impl __sdk::DbUpdate for DbUpdate {
             .apply_diff_to_table::<ElevatorDesc>("staged_elevator_desc", &self.staged_elevator_desc)
             .with_updates_by_pk(|row| &row.building_id);
         diff.staged_emote_desc = cache
-            .apply_diff_to_table::<EmoteDesc>("staged_emote_desc", &self.staged_emote_desc)
+            .apply_diff_to_table::<EmoteDescV2>("staged_emote_desc", &self.staged_emote_desc)
             .with_updates_by_pk(|row| &row.id);
         diff.staged_empire_colors_desc = cache
             .apply_diff_to_table::<EmpireColorDesc>(
@@ -12774,6 +12793,7 @@ pub struct AppliedDiff<'r> {
     dungeon_state: __sdk::TableAppliedDiff<'r, DungeonState>,
     elevator_desc: __sdk::TableAppliedDiff<'r, ElevatorDesc>,
     emote_desc: __sdk::TableAppliedDiff<'r, EmoteDesc>,
+    emote_desc_v_2: __sdk::TableAppliedDiff<'r, EmoteDescV2>,
     empire_chunk_state: __sdk::TableAppliedDiff<'r, EmpireChunkState>,
     empire_color_desc: __sdk::TableAppliedDiff<'r, EmpireColorDesc>,
     empire_expansion_state: __sdk::TableAppliedDiff<'r, EmpireExpansionState>,
@@ -12996,7 +13016,7 @@ pub struct AppliedDiff<'r> {
     staged_deployable_desc: __sdk::TableAppliedDiff<'r, DeployableDescV4>,
     staged_distant_visible_entity_desc: __sdk::TableAppliedDiff<'r, DistantVisibleEntityDesc>,
     staged_elevator_desc: __sdk::TableAppliedDiff<'r, ElevatorDesc>,
-    staged_emote_desc: __sdk::TableAppliedDiff<'r, EmoteDesc>,
+    staged_emote_desc: __sdk::TableAppliedDiff<'r, EmoteDescV2>,
     staged_empire_colors_desc: __sdk::TableAppliedDiff<'r, EmpireColorDesc>,
     staged_empire_icon_desc: __sdk::TableAppliedDiff<'r, EmpireIconDesc>,
     staged_empire_notification_desc: __sdk::TableAppliedDiff<'r, EmpireNotificationDesc>,
@@ -13597,6 +13617,11 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             event,
         );
         callbacks.invoke_table_row_callbacks::<EmoteDesc>("emote_desc", &self.emote_desc, event);
+        callbacks.invoke_table_row_callbacks::<EmoteDescV2>(
+            "emote_desc_v2",
+            &self.emote_desc_v_2,
+            event,
+        );
         callbacks.invoke_table_row_callbacks::<EmpireChunkState>(
             "empire_chunk_state",
             &self.empire_chunk_state,
@@ -14648,7 +14673,7 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             &self.staged_elevator_desc,
             event,
         );
-        callbacks.invoke_table_row_callbacks::<EmoteDesc>(
+        callbacks.invoke_table_row_callbacks::<EmoteDescV2>(
             "staged_emote_desc",
             &self.staged_emote_desc,
             event,
@@ -16020,6 +16045,7 @@ impl __sdk::SpacetimeModule for RemoteModule {
         dungeon_state_table::register_table(client_cache);
         elevator_desc_table::register_table(client_cache);
         emote_desc_table::register_table(client_cache);
+        emote_desc_v_2_table::register_table(client_cache);
         empire_chunk_state_table::register_table(client_cache);
         empire_color_desc_table::register_table(client_cache);
         empire_expansion_state_table::register_table(client_cache);

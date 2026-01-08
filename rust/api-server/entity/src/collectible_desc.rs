@@ -88,6 +88,7 @@ pub enum CollectibleType {
     Pet = 17,
     ClothesCape = 18,
     PremiumItem = 19,
+    Emote = 20,
 }
 
 impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
@@ -132,6 +133,9 @@ impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
             }
             game_module::module_bindings::CollectibleType::PremiumItem => {
                 CollectibleType::PremiumItem
+            }
+            game_module::module_bindings::CollectibleType::Emote => {
+                CollectibleType::Emote
             }
         }
     }
