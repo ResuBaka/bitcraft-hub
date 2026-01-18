@@ -8,6 +8,7 @@ import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardRespons
 import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
 import type { InventorysResponse } from "~/types/InventorysResponse";
 import type { RankType } from "~/types/RankType";
+import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 
 const theme = useTheme();
 const page = ref(1);
@@ -530,43 +531,54 @@ useSeoMeta({
       </v-progress-circular>
     </v-layout>
     <template v-else-if="playerData">
-      <v-banner :class="`text-decoration-none font-weight-black ${playerData.signed_in ? 'text-green' : 'text-high-emphasis'}`">Player: {{ playerData?.username }}</v-banner>
+      <v-sheet
+          class="d-flex align-center justify-center flex-wrap text-center mx-auto px-4"
+          elevation="4"
+          height="110"
+          width="100%"
+      >
+        <div>
+          <h2 class="text-h5 font-weight-black" :class="`${playerData.signed_in ? 'text-green' : 'text-high-emphasis'}`">{{ playerData?.username }}</h2>
+          <div v-if="playerData.player_location">
+            <p class="text-body-2">N: {{ Math.floor(playerData.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(playerData.player_location?.location_x / 3 / 1000) }} R: <bitcraft-region v-if="playerData.player_location?.region" :region="playerData.player_location?.region" /></p>
+          </div>
+          <div class="d-flex flex-wrap justify-center ga-1">
+            <v-chip rounded="1">
+              Played: {{ secondsToDaysMinutesSecondsFormat(playerData.time_played) }}
+            </v-chip>
+            <v-chip rounded="1">
+              Signed in: {{ secondsToDaysMinutesSecondsFormat(playerData.time_signed_in) }}
+            </v-chip>
+            <v-chip rounded="1" v-if="new Date(playerData.sign_in_timestamp * 1000).getFullYear() !== 1970">
+              Login at: {{ nDate.format(new Date(playerData.sign_in_timestamp * 1000)) }}
+            </v-chip>
+            <v-chip rounded="1" color="yellow">
+              Hex Coins: {{ numberFormat.format(wallet?.pockets[0]?.contents?.quantity ?? 0) }}
+            </v-chip>
+          </div>
+        </div>
+      </v-sheet>
       <v-card>
         <v-card-text :class="computedClass">
           <v-table :class="computedClass" density="compact">
             <tbody>
-            <tr style='text-align: right'>
-              <th>Played:</th>
-              <td>{{ secondsToDaysMinutesSecondsFormat(playerData.time_played) }}</td>
-            </tr>
-            <tr style='text-align: right'>
-              <th>Signed in:</th>
-              <td>{{ secondsToDaysMinutesSecondsFormat(playerData.time_signed_in) }}</td>
-            </tr>
-            <tr style='text-align: right'>
-              <th>Signed in:</th>
-              <td>{{ nDate.format(new Date(playerData.sign_in_timestamp * 1000)) }}</td>
-            </tr>
-            <tr v-if="playerData.player_location" style='text-align: right'>
-              <th>Location:</th>
-              <td>N: {{ Math.floor(playerData.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(playerData.player_location?.location_x / 3 / 1000) }} R: <bitcraft-region v-if="playerData.player_location?.region" :region="playerData.player_location?.region" /></td>
-            </tr>
-            <tr style='text-align: right'>
+            <tr style='text-align: right' v-if="playerData.player_action_state">
               <th>Current Action:</th>
               <td>{{ playerData.player_action_state ?? "" }}</td>
             </tr>
-            <tr style='text-align: right'>
-              <th>Hex Coins:</th>
-              <td>{{ wallet?.pockets[0]?.contents?.quantity ?? 0 }}</td>
-            </tr>
-            <tr style='text-align: right' v-if="playerData?.claims?.length">
+            <tr v-if="playerData?.claims?.length">
               <th>Claims:</th>
               <td>
-                <nuxt-link class="text-decoration-none font-weight-black text-high-emphasis"
-                           :to="{ name: 'claims-id', params: { id: claim.entity_id.toString() } }"
-                           v-for="(claim, index) in playerData?.claims"
-                >{{ claim.name.toString() }}{{ index === (playerData?.claims?.length - 1) ? '' : ', ' }}
-                </nuxt-link>
+                <v-chip-group column class="justify-end-chips">
+                  <nuxt-link class="text-decoration-none font-weight-black text-high-emphasis"
+                             :to="{ name: 'claims-id', params: { id: claim.entity_id.toString() } }"
+                             v-for="(claim, index) in playerData?.claims"
+                  >
+                    <v-chip rounded="1">
+                      {{ claim.name.toString() }}
+                    </v-chip>
+                  </nuxt-link>
+                </v-chip-group>
               </td>
             </tr>
             </tbody>
@@ -576,8 +588,8 @@ useSeoMeta({
               <v-card variant="text" v-if="deployables !== undefined && deployables.length">
                 <v-card-title>Deployable</v-card-title>
                 <v-card-text>
-                  <v-row>
-                    <v-col cols="12" md="4" lg="2" v-for="deployable in deployables" :key="deployable.id">
+                  <div class="d-flex flex-wrap ga-1">
+                  <div v-for="deployable in deployables" :key="deployable.id">
                       <v-list>
                         <v-list-item>
                             <v-list-item-title>{{ deployable.collectible_desc.name }}</v-list-item-title>
@@ -585,8 +597,8 @@ useSeoMeta({
                             <v-list-item-subtitle>{{ deployable.activated ? "Activated" : "Not Activated" }}</v-list-item-subtitle>
                         </v-list-item>
                       </v-list>
-                    </v-col>
-                  </v-row>
+                    </div>
+                  </div>
                 </v-card-text>
               </v-card>
             </v-col>
@@ -597,11 +609,11 @@ useSeoMeta({
                 <v-card-title>Skills</v-card-title>
                 <v-card-text>
                   <v-row>
-                    <v-col cols="12" md="4" sm="4" xxl="2" xl="2" lg="2" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
+                    <v-col cols="12" md="6" xxl="2" xl="3" lg="4" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">
                       <v-list :class="xp_info.classes.container">
                         <div :class="xp_info.classes.list"></div>
                         <v-row dense no-gutters :class="xp_info.classes.content">
-                          <v-col>
+                          <v-col cols="8">
                           <v-list-item >
                             <v-list-item-title>{{ skill }}</v-list-item-title>
                             <v-list-item-subtitle v-if="!['Level'].includes(skill)">Experience: <bitcraft-animated-number :value="xp_info.experience" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>
@@ -613,9 +625,30 @@ useSeoMeta({
                             <v-list-item-subtitle>Rank: #<bitcraft-animated-number :value="xp_info.rank" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>
                           </v-list-item>
                           </v-col>
-                          <v-col cols="4" md="4" xs="4" v-if="skillToToolIndex[skill] >= 0 && tools?.pockets[skillToToolIndex[skill]].contents" :class="`text-${tierColor[tools?.pockets[skillToToolIndex[skill]].contents.item.tier]}`">
-                            {{ tools.pockets[skillToToolIndex[skill]].contents.item.name ?? "No tool" }} {{ tools.pockets[skillToToolIndex[skill]].contents.item.rarity ?? "" }}
-                            <v-img :src="iconUrl(tools.pockets[skillToToolIndex[skill]].contents.item).url" height="50" width="50"></v-img>
+                          <v-spacer />
+                          <v-col v-if="skillToToolIndex[skill] >= 0 && tools?.pockets[skillToToolIndex[skill]].contents" class="pr-2">
+                            <v-sheet
+                                rounded
+                                class="inventory-slot-box d-flex align-center justify-center position-relative border-lg"
+                                :class="`bg-color-tier-${tools?.pockets[skillToToolIndex[skill]].contents.item.tier} border-color-rarity-${tools?.pockets[skillToToolIndex[skill]].contents.item.rarity.toLowerCase()}`"
+                            >
+                              <v-tooltip activator="parent" location="top" transition="fade-transition">
+                                <div class="text-center">
+                                  <div :class="`font-weight-bold text-${getTierColor(tools?.pockets[skillToToolIndex[skill]].contents.item.tier)} text-uppercase`">
+                                    {{ tools?.pockets[skillToToolIndex[skill]].contents.item.name }}
+                                  </div>
+                                  <div class="text-caption">Rarity: {{ tools?.pockets[skillToToolIndex[skill]].contents.item.rarity }}</div>
+                                </div>
+                              </v-tooltip>
+
+                              <div class="tier-label" :class="`text-${getTierColor(tools?.pockets[skillToToolIndex[skill]].contents.item.tier)}`">
+                                T{{ tools?.pockets[skillToToolIndex[skill]].contents.item.tier }}
+                              </div>
+
+                              <div class="item-icon text-h6 font-weight-black">
+                                <inventory-img :item="tools.pockets[skillToToolIndex[skill]].contents.item" aspect-ratio="1"/>
+                              </div>
+                            </v-sheet>
                           </v-col>
                         </v-row>
                       </v-list>
@@ -703,4 +736,33 @@ useSeoMeta({
 </template>
 
 <style scoped>
+.justify-end-chips :deep(.v-slide-group__content) {
+  justify-content: flex-end;
+}
+
+.inventory-slot-box {
+  width: 100px;
+  aspect-ratio: 1 / 1;
+  cursor: default;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.item-icon {
+  opacity: 0.8;
+  user-select: none;
+}
+
+.tier-label {
+  position: absolute;
+  top: 8px; /* Adjusted to sit just below or on the 4px border */
+  left: 4px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+  /* Optional: gives it a slight shadow to pop against dark icons */
+  text-shadow: 0px 0px 2px rgb(var(--v-theme-surface));
+}
 </style>
