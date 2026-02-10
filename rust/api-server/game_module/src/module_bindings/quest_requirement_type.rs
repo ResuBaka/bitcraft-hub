@@ -4,32 +4,28 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::column_pad_4_u_64_type::ColumnPad4U64;
+use super::item_stack_type::ItemStack;
+use super::level_requirement_type::LevelRequirement;
+
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub enum AbilityType {
-    Unsupported(u128),
+pub enum QuestRequirement {
+    PaddingNone(ColumnPad4U64),
 
-    Eat(i32),
+    QuestChain(i32),
 
-    CombatAction(i32),
+    Achievement(i32),
 
-    AutoAttack,
+    Collectible(i32),
 
-    Custom(i32),
+    Level(LevelRequirement),
 
-    Prospecting(i32),
+    ItemStack(ItemStack),
 
-    Equip(i32),
-
-    DeployableDeploy(i32),
-
-    AddToToolbelt(i32),
-
-    DeployableToggle(i32),
-
-    Emote(i32),
+    SecondaryKnowledge(i32),
 }
 
-impl __sdk::InModule for AbilityType {
+impl __sdk::InModule for QuestRequirement {
     type Module = super::RemoteModule;
 }

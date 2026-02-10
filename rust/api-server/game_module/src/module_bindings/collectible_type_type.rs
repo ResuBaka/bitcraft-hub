@@ -49,6 +49,10 @@ pub enum CollectibleType {
     PremiumItem,
 
     Emote,
+
+    HousingWalls,
+
+    HousingFloor,
 }
 
 impl __sdk::InModule for CollectibleType {

@@ -6,30 +6,16 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub enum AbilityType {
-    Unsupported(u128),
-
-    Eat(i32),
-
-    CombatAction(i32),
-
-    AutoAttack,
-
-    Custom(i32),
-
-    Prospecting(i32),
-
-    Equip(i32),
-
-    DeployableDeploy(i32),
-
-    AddToToolbelt(i32),
-
-    DeployableToggle(i32),
-
-    Emote(i32),
+pub struct QuestChainState {
+    pub entity_id: u64,
+    pub player_entity_id: u64,
+    pub quest_chain_desc_id: i32,
+    pub stage_id: i32,
+    pub is_active: bool,
+    pub completed: bool,
+    pub stage_rewards_awarded: Vec<i32>,
 }
 
-impl __sdk::InModule for AbilityType {
+impl __sdk::InModule for QuestChainState {
     type Module = super::RemoteModule;
 }

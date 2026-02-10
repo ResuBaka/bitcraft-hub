@@ -4,32 +4,21 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::quest_requirement_type::QuestRequirement;
+use super::quest_reward_type::QuestReward;
+
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub enum AbilityType {
-    Unsupported(u128),
-
-    Eat(i32),
-
-    CombatAction(i32),
-
-    AutoAttack,
-
-    Custom(i32),
-
-    Prospecting(i32),
-
-    Equip(i32),
-
-    DeployableDeploy(i32),
-
-    AddToToolbelt(i32),
-
-    DeployableToggle(i32),
-
-    Emote(i32),
+pub struct QuestChainDesc {
+    pub id: i32,
+    pub name: String,
+    pub is_hint: bool,
+    pub stages: Vec<i32>,
+    pub requirements: Vec<QuestRequirement>,
+    pub rewards: Vec<QuestReward>,
+    pub implicit_rewards: Vec<QuestReward>,
 }
 
-impl __sdk::InModule for AbilityType {
+impl __sdk::InModule for QuestChainDesc {
     type Module = super::RemoteModule;
 }

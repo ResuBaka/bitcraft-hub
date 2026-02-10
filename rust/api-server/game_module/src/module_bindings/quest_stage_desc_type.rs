@@ -4,32 +4,17 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::completion_condition_type::CompletionCondition;
+
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub enum AbilityType {
-    Unsupported(u128),
-
-    Eat(i32),
-
-    CombatAction(i32),
-
-    AutoAttack,
-
-    Custom(i32),
-
-    Prospecting(i32),
-
-    Equip(i32),
-
-    DeployableDeploy(i32),
-
-    AddToToolbelt(i32),
-
-    DeployableToggle(i32),
-
-    Emote(i32),
+pub struct QuestStageDesc {
+    pub id: i32,
+    pub chain_desc_id: i32,
+    pub name: String,
+    pub completion_conditions: Vec<CompletionCondition>,
 }
 
-impl __sdk::InModule for AbilityType {
+impl __sdk::InModule for QuestStageDesc {
     type Module = super::RemoteModule;
 }

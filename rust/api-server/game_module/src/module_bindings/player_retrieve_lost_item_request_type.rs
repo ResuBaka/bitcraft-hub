@@ -11,6 +11,8 @@ pub struct PlayerRetrieveLostItemRequest {
     pub item_id: i32,
     pub is_cargo: bool,
     pub durability: i32,
+    pub target_inventory_entity_id: u64,
+    pub target_inventory_index: Option<i32>,
 }
 
 impl __sdk::InModule for PlayerRetrieveLostItemRequest {
