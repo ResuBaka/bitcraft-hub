@@ -20,4 +20,7 @@ export type CollectibleType =
   | "Crown"
   | "Pet"
   | "ClothesCape"
-  | "PremiumItem";
+  | "PremiumItem"
+  | "Emote"
+  | "HousingWalls"
+  | "HousingFloor";
