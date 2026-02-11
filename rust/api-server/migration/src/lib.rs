@@ -28,6 +28,10 @@ mod m20250721_155813_add_region_to_state_data;
 mod m20250816_092123_inventory_changelog_hypetable;
 mod m20250816_105212_inventory_changelog_hypetable_compression;
 mod m20250819_160231_add_two_now_field_to_collectible_desc;
+mod m20260211_000001_create_interior_network_desc;
+mod m20260211_000002_create_dimension_description_state;
+mod m20260211_000003_create_player_housing_state;
+mod m20260211_000004_create_permission_state;
 
 pub struct Migrator;
 
@@ -63,6 +67,10 @@ impl MigratorTrait for Migrator {
             Box::new(m20250816_092123_inventory_changelog_hypetable::Migration),
             Box::new(m20250816_105212_inventory_changelog_hypetable_compression::Migration),
             Box::new(m20250819_160231_add_two_now_field_to_collectible_desc::Migration),
+            Box::new(m20260211_000001_create_interior_network_desc::Migration),
+            Box::new(m20260211_000002_create_dimension_description_state::Migration),
+            Box::new(m20260211_000003_create_player_housing_state::Migration),
+            Box::new(m20260211_000004_create_permission_state::Migration),
         ]
     }
 }

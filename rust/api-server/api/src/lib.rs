@@ -8,6 +8,7 @@ mod collectible_desc;
 mod config;
 mod crafting_recipe_desc;
 mod deployable_state;
+mod houses;
 mod inventory;
 mod item_list_desc;
 mod items;
@@ -430,6 +431,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         .merge(trading_orders::get_routes())
         .merge(traveler_tasks::get_routes())
         .merge(auction_listing_state::get_routes())
+        .merge(houses::get_routes())
         .nest("/desc", desc_router)
         .nest_service(
             "/static",

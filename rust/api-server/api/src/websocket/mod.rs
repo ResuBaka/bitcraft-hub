@@ -5,6 +5,10 @@ use crate::auction_listing_state::bitcraft::{
 use crate::buildings::bitcraft::{
     start_worker_building_desc, start_worker_building_nickname_state, start_worker_building_state,
 };
+use crate::houses::bitcraft::{
+    start_worker_dimension_description_state, start_worker_interior_network_desc,
+    start_worker_permission_state, start_worker_player_housing_state,
+};
 use crate::cargo_desc::bitcraft::start_worker_cargo_desc;
 use crate::claims::bitcraft::{
     start_worker_claim_local_state, start_worker_claim_member_state, start_worker_claim_state,
@@ -42,7 +46,6 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
 
-use entity::inventory::ResolvedInventory;
 use ts_rs::TS;
 
 fn connect_to_db(
@@ -357,6 +360,10 @@ async fn connect_to_db_logic(
     buy_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
     sell_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
     collectible_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CollectibleDesc>>,
+    interior_network_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<InteriorNetworkDesc>>,
+    dimension_description_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DimensionDescriptionState>>,
+    player_housing_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerHousingState>>,
+    permission_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PermissionState>>,
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state.clone(),
@@ -530,6 +537,34 @@ async fn connect_to_db_logic(
         CollectibleDesc,
         database
     );
+    setup_spacetime_db_listeners!(
+        ctx,
+        interior_network_desc,
+        interior_network_desc_tx,
+        InteriorNetworkDesc,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        dimension_description_state,
+        dimension_description_state_tx,
+        DimensionDescriptionState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        player_housing_state,
+        player_housing_state_tx,
+        PlayerHousingState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        permission_state,
+        permission_state_tx,
+        PermissionState,
+        database
+    );
 
     let tables_to_subscribe = vec![
         "user_state",
@@ -571,6 +606,10 @@ async fn connect_to_db_logic(
         "buy_order_state",
         "sell_order_state",
         "npc_desc",
+        "interior_network_desc",
+        "dimension_description_state",
+        "player_housing_state",
+        "permission_state",
     ];
 
     let tmp_database = database.to_string().clone();
@@ -603,6 +642,10 @@ async fn connect_to_db_logic(
     let tmp_user_state_tx = user_state_tx.clone();
     let tmp_npc_desc_tx = npc_desc_tx.clone();
     let tmp_collectible_desc_tx = collectible_desc_tx.clone();
+    let tmp_interior_network_desc_tx = interior_network_desc_tx.clone();
+    let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
+    let tmp_player_housing_state_tx = player_housing_state_tx.clone();
+    let tmp_permission_state_tx = permission_state_tx.clone();
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
             tracing::debug!("Handle Subscription response");
@@ -870,6 +913,42 @@ async fn connect_to_db_logic(
                 });
             }
 
+            let tmp_database_name_arc = database_name_arc.clone();
+            let interior_network_desc = ctx.db.interior_network_desc().iter().collect::<Vec<_>>();
+            if !interior_network_desc.is_empty() {
+                let _ = tmp_interior_network_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: interior_network_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let dimension_description_state = ctx.db.dimension_description_state().iter().collect::<Vec<_>>();
+            if !dimension_description_state.is_empty() {
+                let _ = tmp_dimension_description_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: dimension_description_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
+            if !player_housing_state.is_empty() {
+                let _ = tmp_player_housing_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: player_housing_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let permission_state = ctx.db.permission_state().iter().collect::<Vec<_>>();
+            if !permission_state.is_empty() {
+                let _ = tmp_permission_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: permission_state,
+                });
+            }
+
             // for resource_desc in ctx.db.user_state().iter() {
             //     if resource_desc.entity_id == 504403158285774600 {
             //         println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
@@ -968,6 +1047,15 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (npc_desc_tx, npc_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (collectible_desc_tx, collectible_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
+        let (interior_network_desc_tx, interior_network_desc_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (dimension_description_state_tx, dimension_description_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (player_housing_state_tx, player_housing_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (permission_state_tx, permission_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+
         let mut remove_desc = false;
 
         let tmp_conf = config.clone();
@@ -1019,6 +1107,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_buy_order_state_tx = buy_order_state_tx.clone();
                 let tmp_sell_order_state_tx = sell_order_state_tx.clone();
                 let tmp_collectible_desc_tx = collectible_desc_tx.clone();
+                let tmp_interior_network_desc_tx = interior_network_desc_tx.clone();
+                let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
+                let tmp_player_housing_state_tx = player_housing_state_tx.clone();
+                let tmp_permission_state_tx = permission_state_tx.clone();
                 let tmp_conf = config.clone();
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
@@ -1070,6 +1162,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_buy_order_state_tx,
                             &tmp_sell_order_state_tx,
                             &tmp_collectible_desc_tx,
+                            &tmp_interior_network_desc_tx,
+                            &tmp_dimension_description_state_tx,
+                            &tmp_player_housing_state_tx,
+                            &tmp_permission_state_tx,
                         )
                             .await;
 
@@ -1279,6 +1375,31 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         );
 
         start_worker_user_state(global_app_state.clone(), user_state_rx);
+
+        start_worker_interior_network_desc(
+            global_app_state.clone(),
+            interior_network_desc_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_dimension_description_state(
+            global_app_state.clone(),
+            dimension_description_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_player_housing_state(
+            global_app_state.clone(),
+            player_housing_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_permission_state(
+            global_app_state.clone(),
+            permission_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
     });
 }
 
