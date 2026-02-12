@@ -387,9 +387,12 @@ pub(crate) async fn find_house_inventories(
     if let Some(dim_id) = dimension_id {
         // Query LocationState for all entities in this specific interior dimension AND region
         // dimension_id is only unique within a region
+        let mut region: String = "bitcraft-".to_owned();
+        region.push_str(&house.region_index.to_string());
+
         let locations = ::entity::location_state::Entity::find()
             .filter(::entity::location_state::Column::Dimension.eq(dim_id))
-            .filter(::entity::location_state::Column::Region.eq(&house.region))
+            .filter(::entity::location_state::Column::Region.eq(region))
             .all(&state.conn)
             .await
             .map_err(|e| {
