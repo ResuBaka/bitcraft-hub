@@ -121,8 +121,8 @@ export default defineNuxtConfig({
     public: {
       iconDomain: "",
       api: {
-        base: "",
-        websocket: "",
+        base: "http://localhost:8000",
+        websocket: "ws://localhost:8000",
       },
     },
   },

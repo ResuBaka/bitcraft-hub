@@ -32,6 +32,11 @@ mod m20260211_000001_create_interior_network_desc;
 mod m20260211_000002_create_dimension_description_state;
 mod m20260211_000003_create_player_housing_state;
 mod m20260211_000004_create_permission_state;
+mod m20260212_000001_create_portal_state;
+mod m20260212_000002_create_location_state;
+mod m20260212_000003_add_indices;
+mod m20260212_000004_fix_location_state_types;
+mod m20260212_000005_add_region_to_location_state;
 
 pub struct Migrator;
 
@@ -71,6 +76,11 @@ impl MigratorTrait for Migrator {
             Box::new(m20260211_000002_create_dimension_description_state::Migration),
             Box::new(m20260211_000003_create_player_housing_state::Migration),
             Box::new(m20260211_000004_create_permission_state::Migration),
+            Box::new(m20260212_000001_create_portal_state::Migration),
+            Box::new(m20260212_000002_create_location_state::Migration),
+            Box::new(m20260212_000003_add_indices::Migration),
+            Box::new(m20260212_000004_fix_location_state_types::Migration),
+            Box::new(m20260212_000005_add_region_to_location_state::Migration),
         ]
     }
 }

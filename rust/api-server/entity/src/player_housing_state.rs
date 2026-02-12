@@ -19,7 +19,20 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        has_many = "super::permission_state::Entity",
+        from = "Column::EntranceBuildingEntityId",
+        to = "super::permission_state::Column::OrdainedEntityId"
+    )]
+    Permissions,
+}
+
+impl Related<super::permission_state::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Permissions.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 

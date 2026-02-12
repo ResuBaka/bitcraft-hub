@@ -8,12 +8,14 @@ use crate::buildings::bitcraft::{
 use crate::houses::bitcraft::{
     start_worker_dimension_description_state, start_worker_interior_network_desc,
     start_worker_permission_state, start_worker_player_housing_state,
+    start_worker_portal_state,
 };
 use crate::cargo_desc::bitcraft::start_worker_cargo_desc;
 use crate::claims::bitcraft::{
     start_worker_claim_local_state, start_worker_claim_member_state, start_worker_claim_state,
     start_worker_claim_tech_desc, start_worker_claim_tech_state,
 };
+use crate::location_state::bitcraft::start_worker_location_state;
 use crate::collectible_desc::bitcraft::start_worker_collectible_desc;
 use crate::config::Config;
 use crate::crafting_recipe_desc::bitcraft::start_worker_crafting_recipe_desc;
@@ -22,7 +24,7 @@ use crate::inventory::bitcraft::start_worker_inventory_state;
 use crate::item_list_desc::bitcraft::start_worker_item_list_desc;
 use crate::items::bitcraft::start_worker_item_desc;
 use crate::leaderboard::bitcraft::start_worker_experience_state;
-use crate::location_state::bitcraft::start_worker_location_state;
+
 use crate::mobile_entity_state::bitcraft::start_worker_mobile_entity_state;
 use crate::npc_desc::bitcraft::start_worker_npc_desc;
 use crate::player_state::bitcraft::{
@@ -348,7 +350,6 @@ async fn connect_to_db_logic(
     claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
     building_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingState>>,
     building_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingDesc>>,
-    location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
     building_nickname_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingNicknameState>>,
     crafting_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     item_list_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemListDesc>>,
@@ -364,6 +365,8 @@ async fn connect_to_db_logic(
     dimension_description_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DimensionDescriptionState>>,
     player_housing_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerHousingState>>,
     permission_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PermissionState>>,
+    portal_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PortalState>>,
+    location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state.clone(),
@@ -565,6 +568,21 @@ async fn connect_to_db_logic(
         PermissionState,
         database
     );
+    setup_spacetime_db_listeners!(
+        ctx,
+        portal_state,
+        portal_state_tx,
+        PortalState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        location_state,
+        location_state_tx,
+        LocationState,
+        database
+    );
+
 
     let tables_to_subscribe = vec![
         "user_state",
@@ -610,6 +628,8 @@ async fn connect_to_db_logic(
         "dimension_description_state",
         "player_housing_state",
         "permission_state",
+        "portal_state",
+        "location_state WHERE dimension != 1",
     ];
 
     let tmp_database = database.to_string().clone();
@@ -646,6 +666,8 @@ async fn connect_to_db_logic(
     let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
     let tmp_player_housing_state_tx = player_housing_state_tx.clone();
     let tmp_permission_state_tx = permission_state_tx.clone();
+    let tmp_portal_state_tx = portal_state_tx.clone();
+
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
             tracing::debug!("Handle Subscription response");
@@ -949,6 +971,18 @@ async fn connect_to_db_logic(
                 });
             }
 
+            let tmp_database_name_arc = database_name_arc.clone();
+            let portal_state = ctx.db.portal_state().iter().collect::<Vec<_>>();
+            if !portal_state.is_empty() {
+                let _ = tmp_portal_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: portal_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+
+
             // for resource_desc in ctx.db.user_state().iter() {
             //     if resource_desc.entity_id == 504403158285774600 {
             //         println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
@@ -1030,7 +1064,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (building_state_tx, building_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (building_desc_tx, building_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (location_state_tx, location_state_rx) = tokio::sync::mpsc::unbounded_channel();
+
         let (building_nickname_state_tx, building_nickname_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
 
@@ -1054,6 +1088,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (player_housing_state_tx, player_housing_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
         let (permission_state_tx, permission_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (portal_state_tx, portal_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (location_state_tx, location_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
 
         let mut remove_desc = false;
@@ -1111,6 +1149,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
                 let tmp_player_housing_state_tx = player_housing_state_tx.clone();
                 let tmp_permission_state_tx = permission_state_tx.clone();
+                let tmp_portal_state_tx = portal_state_tx.clone();
+                let tmp_location_state_tx = location_state_tx.clone();
                 let tmp_conf = config.clone();
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
@@ -1150,7 +1190,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_claim_tech_desc_tx,
                             &tmp_building_state_tx,
                             &tmp_building_desc_tx,
-                            &tmp_location_state_tx,
                             &tmp_building_nickname_state_tx,
                             &tmp_crafting_recipe_desc_tx,
                             &tmp_item_list_desc_tx,
@@ -1166,6 +1205,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_dimension_description_state_tx,
                             &tmp_player_housing_state_tx,
                             &tmp_permission_state_tx,
+                            &tmp_portal_state_tx,
+                            &tmp_location_state_tx,
                         )
                             .await;
 
@@ -1397,6 +1438,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         start_worker_permission_state(
             global_app_state.clone(),
             permission_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_portal_state(
+            global_app_state.clone(),
+            portal_state_rx,
             3000,
             Duration::from_millis(50),
         );

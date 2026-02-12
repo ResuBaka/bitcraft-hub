@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::{
-    DimensionDescriptionState, InteriorNetworkDesc, PermissionState, PlayerHousingState,
+    DimensionDescriptionState, InteriorNetworkDesc, PermissionState, PlayerHousingState, PortalState,
 };
 use migration::{OnConflict, sea_query};
 use sea_orm::{
@@ -28,6 +28,7 @@ pub(crate) fn start_worker_interior_network_desc(
                 .update_columns([
                     ::entity::interior_network_desc::Column::DimensionType,
                     ::entity::interior_network_desc::Column::ChildInteriorInstances,
+                    ::entity::interior_network_desc::Column::Region,
                 ])
                 .to_owned();
 
@@ -41,49 +42,14 @@ pub(crate) fn start_worker_interior_network_desc(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known = ::entity::interior_network_desc::Entity::find()
-                                    .filter(::entity::interior_network_desc::Column::Region.eq(database_name.to_string()))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .map_or(vec![], |aa| aa)
-                                    .into_iter()
-                                    .map(|value| (value.building_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    ::entity::interior_network_desc::ModelBuilder::new(value)
+                                for entry in data {
+                                    let model = ::entity::interior_network_desc::ModelBuilder::new(entry)
                                         .with_region(database_name.to_string())
-                                        .build()
-                                }) {
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known.entry(model.building_id) {
-                                        Entry::Occupied(entry) => {
-                                            if &model != entry.get() {
-                                                local_messages.push(model.into_active_model());
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_) => {
-                                            local_messages.push(model.into_active_model());
-                                        }
+                                        .build();
+                                    if let Some(index) = messages.iter().position(|value: &::entity::interior_network_desc::ActiveModel| value.building_id.as_ref() == &model.building_id) {
+                                        messages.remove(index);
                                     }
-                                    if local_messages.len() >= batch_size {
-                                        let insert = insert_many_interior_network_desc(&global_app_state, &on_conflict, &mut local_messages).await;
-                                        if let Err(e) = insert { tracing::error!("Error inserting InteriorNetworkDesc: {}", e); }
-                                    }
-                                }
-                                if !local_messages.is_empty() {
-                                    let insert = insert_many_interior_network_desc(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    if let Err(e) = insert { tracing::error!("Error inserting InteriorNetworkDesc: {}", e); }
-                                }
-                                for chunk_ids in currently_known.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::interior_network_desc::Entity::delete_many()
-                                        .filter(::entity::interior_network_desc::Column::BuildingId.is_in(chunk_ids.clone()))
-                                        .exec(&global_app_state.conn).await {
-                                        tracing::error!("Could not delete InteriorNetworkDesc: {}", error);
-                                    }
+                                    messages.push(model.into_active_model());
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -133,13 +99,20 @@ async fn insert_many_interior_network_desc(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::interior_network_desc::ActiveModel>,
-) -> Result<InsertResult<::entity::interior_network_desc::ActiveModel>, DbErr> {
-    let insert = ::entity::interior_network_desc::Entity::insert_many(messages.clone())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
+) -> Result<(), DbErr> {
+    if messages.is_empty() {
+        return Ok(());
+    }
+
+    for chunk in messages.chunks(1000) {
+        ::entity::interior_network_desc::Entity::insert_many(chunk.to_vec())
+            .on_conflict(on_conflict.clone())
+            .exec(&global_app_state.conn)
+            .await?;
+    }
+
     messages.clear();
-    insert
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +133,7 @@ pub(crate) fn start_worker_dimension_description_state(
                     ::entity::dimension_description_state::Column::DimensionId,
                     ::entity::dimension_description_state::Column::DimensionType,
                     ::entity::dimension_description_state::Column::InteriorInstanceId,
+                    ::entity::dimension_description_state::Column::Region,
                 ])
                 .to_owned();
 
@@ -173,49 +147,14 @@ pub(crate) fn start_worker_dimension_description_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known = ::entity::dimension_description_state::Entity::find()
-                                    .filter(::entity::dimension_description_state::Column::Region.eq(database_name.to_string()))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .map_or(vec![], |aa| aa)
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    ::entity::dimension_description_state::ModelBuilder::new(value)
+                                for entry in data {
+                                    let model = ::entity::dimension_description_state::ModelBuilder::new(entry)
                                         .with_region(database_name.to_string())
-                                        .build()
-                                }) {
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known.entry(model.entity_id) {
-                                        Entry::Occupied(entry) => {
-                                            if &model != entry.get() {
-                                                local_messages.push(model.into_active_model());
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_) => {
-                                            local_messages.push(model.into_active_model());
-                                        }
+                                        .build();
+                                    if let Some(index) = messages.iter().position(|value: &::entity::dimension_description_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                        messages.remove(index);
                                     }
-                                    if local_messages.len() >= batch_size {
-                                        let insert = insert_many_dimension_description_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                        if let Err(e) = insert { tracing::error!("Error inserting DimensionDescriptionState: {}", e); }
-                                    }
-                                }
-                                if !local_messages.is_empty() {
-                                    let insert = insert_many_dimension_description_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    if let Err(e) = insert { tracing::error!("Error inserting DimensionDescriptionState: {}", e); }
-                                }
-                                for chunk_ids in currently_known.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::dimension_description_state::Entity::delete_many()
-                                        .filter(::entity::dimension_description_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .exec(&global_app_state.conn).await {
-                                        tracing::error!("Could not delete DimensionDescriptionState: {}", error);
-                                    }
+                                    messages.push(model.into_active_model());
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -251,7 +190,7 @@ pub(crate) fn start_worker_dimension_description_state(
             }
 
             if !messages.is_empty() {
-                tracing::debug!("DimensionDescriptionState -> Processing {} messages in batch", messages.len());
+                tracing::info!("DimensionDescriptionState -> Processing {} messages in batch", messages.len());
                 let insert = insert_many_dimension_description_state(&global_app_state, &on_conflict, &mut messages).await;
                 if let Err(e) = insert { tracing::error!("Error inserting DimensionDescriptionState: {}", e); }
             }
@@ -265,13 +204,20 @@ async fn insert_many_dimension_description_state(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::dimension_description_state::ActiveModel>,
-) -> Result<InsertResult<::entity::dimension_description_state::ActiveModel>, DbErr> {
-    let insert = ::entity::dimension_description_state::Entity::insert_many(messages.clone())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
+) -> Result<(), DbErr> {
+    if messages.is_empty() {
+        return Ok(());
+    }
+
+    for chunk in messages.chunks(1000) {
+        ::entity::dimension_description_state::Entity::insert_many(chunk.to_vec())
+            .on_conflict(on_conflict.clone())
+            .exec(&global_app_state.conn)
+            .await?;
+    }
+
     messages.clear();
-    insert
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -295,6 +241,7 @@ pub(crate) fn start_worker_player_housing_state(
                     ::entity::player_housing_state::Column::LockedUntil,
                     ::entity::player_housing_state::Column::IsEmpty,
                     ::entity::player_housing_state::Column::RegionIndex,
+                    ::entity::player_housing_state::Column::Region,
                 ])
                 .to_owned();
 
@@ -308,49 +255,14 @@ pub(crate) fn start_worker_player_housing_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known = ::entity::player_housing_state::Entity::find()
-                                    .filter(::entity::player_housing_state::Column::Region.eq(database_name.to_string()))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .map_or(vec![], |aa| aa)
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    ::entity::player_housing_state::ModelBuilder::new(value)
+                                for entry in data {
+                                    let model = ::entity::player_housing_state::ModelBuilder::new(entry)
                                         .with_region(database_name.to_string())
-                                        .build()
-                                }) {
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known.entry(model.entity_id) {
-                                        Entry::Occupied(entry) => {
-                                            if &model != entry.get() {
-                                                local_messages.push(model.into_active_model());
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_) => {
-                                            local_messages.push(model.into_active_model());
-                                        }
+                                        .build();
+                                    if let Some(index) = messages.iter().position(|value: &::entity::player_housing_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                        messages.remove(index);
                                     }
-                                    if local_messages.len() >= batch_size {
-                                        let insert = insert_many_player_housing_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                        if let Err(e) = insert { tracing::error!("Error inserting PlayerHousingState: {}", e); }
-                                    }
-                                }
-                                if !local_messages.is_empty() {
-                                    let insert = insert_many_player_housing_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    if let Err(e) = insert { tracing::error!("Error inserting PlayerHousingState: {}", e); }
-                                }
-                                for chunk_ids in currently_known.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::player_housing_state::Entity::delete_many()
-                                        .filter(::entity::player_housing_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .exec(&global_app_state.conn).await {
-                                        tracing::error!("Could not delete PlayerHousingState: {}", error);
-                                    }
+                                    messages.push(model.into_active_model());
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -386,7 +298,7 @@ pub(crate) fn start_worker_player_housing_state(
             }
 
             if !messages.is_empty() {
-                tracing::debug!("PlayerHousingState -> Processing {} messages in batch", messages.len());
+                tracing::info!("PlayerHousingState -> Processing {} messages in batch", messages.len());
                 let insert = insert_many_player_housing_state(&global_app_state, &on_conflict, &mut messages).await;
                 if let Err(e) = insert { tracing::error!("Error inserting PlayerHousingState: {}", e); }
             }
@@ -400,13 +312,20 @@ async fn insert_many_player_housing_state(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::player_housing_state::ActiveModel>,
-) -> Result<InsertResult<::entity::player_housing_state::ActiveModel>, DbErr> {
-    let insert = ::entity::player_housing_state::Entity::insert_many(messages.clone())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
+) -> Result<(), DbErr> {
+    if messages.is_empty() {
+        return Ok(());
+    }
+
+    for chunk in messages.chunks(1000) {
+        ::entity::player_housing_state::Entity::insert_many(chunk.to_vec())
+            .on_conflict(on_conflict.clone())
+            .exec(&global_app_state.conn)
+            .await?;
+    }
+
     messages.clear();
-    insert
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -427,6 +346,7 @@ pub(crate) fn start_worker_permission_state(
                     ::entity::permission_state::Column::AllowedEntityId,
                     ::entity::permission_state::Column::Group,
                     ::entity::permission_state::Column::Rank,
+                    ::entity::permission_state::Column::Region,
                 ])
                 .to_owned();
 
@@ -440,49 +360,14 @@ pub(crate) fn start_worker_permission_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known = ::entity::permission_state::Entity::find()
-                                    .filter(::entity::permission_state::Column::Region.eq(database_name.to_string()))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .map_or(vec![], |aa| aa)
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    ::entity::permission_state::ModelBuilder::new(value)
+                                for entry in data {
+                                    let model = ::entity::permission_state::ModelBuilder::new(entry)
                                         .with_region(database_name.to_string())
-                                        .build()
-                                }) {
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known.entry(model.entity_id) {
-                                        Entry::Occupied(entry) => {
-                                            if &model != entry.get() {
-                                                local_messages.push(model.into_active_model());
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_) => {
-                                            local_messages.push(model.into_active_model());
-                                        }
+                                        .build();
+                                    if let Some(index) = messages.iter().position(|value: &::entity::permission_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                        messages.remove(index);
                                     }
-                                    if local_messages.len() >= batch_size {
-                                        let insert = insert_many_permission_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                        if let Err(e) = insert { tracing::error!("Error inserting PermissionState: {}", e); }
-                                    }
-                                }
-                                if !local_messages.is_empty() {
-                                    let insert = insert_many_permission_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    if let Err(e) = insert { tracing::error!("Error inserting PermissionState: {}", e); }
-                                }
-                                for chunk_ids in currently_known.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::permission_state::Entity::delete_many()
-                                        .filter(::entity::permission_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .exec(&global_app_state.conn).await {
-                                        tracing::error!("Could not delete PermissionState: {}", error);
-                                    }
+                                    messages.push(model.into_active_model());
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -532,11 +417,125 @@ async fn insert_many_permission_state(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::permission_state::ActiveModel>,
-) -> Result<InsertResult<::entity::permission_state::ActiveModel>, DbErr> {
-    let insert = ::entity::permission_state::Entity::insert_many(messages.clone())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
+) -> Result<(), DbErr> {
+    if messages.is_empty() {
+        return Ok(());
+    }
+
+    for chunk in messages.chunks(1000) {
+        ::entity::permission_state::Entity::insert_many(chunk.to_vec())
+            .on_conflict(on_conflict.clone())
+            .exec(&global_app_state.conn)
+            .await?;
+    }
+
     messages.clear();
-    insert
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Portal State Worker
+// ─────────────────────────────────────────────────────────────────────────────
+
+pub(crate) fn start_worker_portal_state(
+    global_app_state: AppState,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<PortalState>>,
+    batch_size: usize,
+    time_limit: Duration,
+) {
+    tokio::spawn(async move {
+        let on_conflict =
+            sea_query::OnConflict::columns([::entity::portal_state::Column::EntityId])
+                .update_columns([
+                    ::entity::portal_state::Column::TargetBuildingEntityId,
+                    ::entity::portal_state::Column::DestinationX,
+                    ::entity::portal_state::Column::DestinationZ,
+                    ::entity::portal_state::Column::DestinationDimension,
+                    ::entity::portal_state::Column::Enabled,
+                    ::entity::portal_state::Column::AllowDeployables,
+                    ::entity::portal_state::Column::Region,
+                ])
+                .to_owned();
+
+        loop {
+            let mut messages = Vec::with_capacity(batch_size + 10);
+            let timer = sleep(time_limit);
+            tokio::pin!(timer);
+
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        match msg {
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                for entry in data {
+                                    let model = ::entity::portal_state::ModelBuilder::new(entry)
+                                        .with_region(database_name.to_string())
+                                        .build();
+                                    if let Some(index) = messages.iter().position(|value: &::entity::portal_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                        messages.remove(index);
+                                    }
+                                    messages.push(model.into_active_model());
+                                }
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages.iter().position(|value: &::entity::portal_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                messages.push(model.into_active_model());
+                                if messages.len() >= batch_size { break; }
+                            }
+                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                messages.push(model.into_active_model());
+                                if messages.len() >= batch_size { break; }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model = ::entity::portal_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                if let Err(error) = model.delete(&global_app_state.conn).await {
+                                    tracing::error!(error = error.to_string(), "Could not delete PortalState");
+                                }
+                            }
+                        }
+                    }
+                    _ = &mut timer => { break; }
+                    else => { break; }
+                }
+            }
+
+            if !messages.is_empty() {
+                tracing::debug!("PortalState -> Processing {} messages in batch", messages.len());
+                let insert = insert_many_portal_state(&global_app_state, &on_conflict, &mut messages).await;
+                if let Err(e) = insert { tracing::error!("Error inserting PortalState: {}", e); }
+            }
+
+            if messages.is_empty() && rx.is_closed() { break; }
+        }
+    });
+}
+
+async fn insert_many_portal_state(
+    global_app_state: &AppState,
+    on_conflict: &OnConflict,
+    messages: &mut Vec<::entity::portal_state::ActiveModel>,
+) -> Result<(), DbErr> {
+    if messages.is_empty() {
+        return Ok(());
+    }
+
+    for chunk in messages.chunks(1000) {
+        ::entity::portal_state::Entity::insert_many(chunk.to_vec())
+            .on_conflict(on_conflict.clone())
+            .exec(&global_app_state.conn)
+            .await?;
+    }
+
+    messages.clear();
+    Ok(())
 }

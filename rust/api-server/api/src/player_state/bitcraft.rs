@@ -3,7 +3,7 @@ use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, sea_query};
-use spacetimedb_sdk::__codegen::{self as __sdk, Reducer};
+
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;

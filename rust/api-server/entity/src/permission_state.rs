@@ -16,7 +16,44 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::player_housing_state::Entity",
+        from = "Column::OrdainedEntityId",
+        to = "super::player_housing_state::Column::EntranceBuildingEntityId"
+    )]
+    HousingState,
+    #[sea_orm(
+        belongs_to = "super::player_state::Entity",
+        from = "Column::AllowedEntityId",
+        to = "super::player_state::Column::EntityId"
+    )]
+    PlayerState,
+    #[sea_orm(
+        belongs_to = "super::player_username_state::Entity",
+        from = "Column::AllowedEntityId",
+        to = "super::player_username_state::Column::EntityId"
+    )]
+    PlayerUsernameState,
+}
+
+impl Related<super::player_housing_state::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HousingState.def()
+    }
+}
+
+impl Related<super::player_state::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::PlayerState.def()
+    }
+}
+
+impl Related<super::player_username_state::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::PlayerUsernameState.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 

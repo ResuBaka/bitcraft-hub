@@ -2,6 +2,7 @@
 
 export type PermissionEntry = {
   allowed_entity_id: bigint;
+  allowed_username: string | null;
   group: number;
   rank: number;
 };

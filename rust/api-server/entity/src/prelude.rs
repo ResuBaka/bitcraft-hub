@@ -20,6 +20,7 @@ pub use super::permission_state::Entity as PermissionState;
 pub use super::player_housing_state::Entity as PlayerHousingState;
 pub use super::player_state::Entity as PlayerState;
 pub use super::player_to_claim::Entity as PlayerToClaim;
+pub use super::portal_state::Entity as PortalState;
 pub use super::skill_desc::Entity as SkillDesc;
 pub use super::trade_order::Entity as TradeOrder;
 pub use super::user_state::Entity as UserState;

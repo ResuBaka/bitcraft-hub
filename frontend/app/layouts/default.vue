@@ -13,6 +13,7 @@
           <v-list-item to="/">Leaderboards</v-list-item>
           <v-list-item to="/items">Items</v-list-item>
           <v-list-item to="/claims">Claims</v-list-item>
+          <v-list-item to="/houses">Houses</v-list-item>
           <v-list-item to="/players">Players</v-list-item>
   <!--        <v-list-item to="/tradeOrders">Trade orders</v-list-item>-->
           <v-list-item to="/buildings">Buildings</v-list-item>
@@ -28,6 +29,7 @@
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/">Leaderboards</v-btn>
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/items">Items</v-btn>
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/claims">Claims</v-btn>
+            <v-btn variant="text" class="text-capitalize font-weight-black" to="/houses">Houses</v-btn>
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/players">Players</v-btn>
             <!--        <v-btn to="/tradeOrders">Trade orders</v-btn>-->
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/buildings">Buildings</v-btn>
