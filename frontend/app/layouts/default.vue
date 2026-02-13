@@ -13,7 +13,6 @@
           <v-list-item to="/">Leaderboards</v-list-item>
           <v-list-item to="/items">Items</v-list-item>
           <v-list-item to="/claims">Claims</v-list-item>
-          <v-list-item to="/houses">Houses</v-list-item>
           <v-list-item to="/players">Players</v-list-item>
   <!--        <v-list-item to="/tradeOrders">Trade orders</v-list-item>-->
           <v-list-item to="/buildings">Buildings</v-list-item>
