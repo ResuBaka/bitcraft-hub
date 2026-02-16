@@ -118,7 +118,7 @@ pub(crate) struct BuildingStateWithName {
     pub building_description_id: i32,
     pub constructed_by_player_entity_id: i64,
     pub building_name: String,
-    pub location: Option<entity::location::Model>,
+    pub location: Option<entity::location_state::Model>,
 }
 
 #[derive(Serialize, Deserialize, TS)]

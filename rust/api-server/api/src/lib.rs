@@ -511,7 +511,7 @@ struct AppState {
     building_nickname_state: Arc<dashmap::DashMap<i64, entity::building_nickname_state::Model>>,
     cargo_tiers: Arc<dashmap::DashSet<i64>>,
     action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
-    location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
+    location_state: Arc<dashmap::DashMap<i64, entity::location_state::Model>>,
     // inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
     #[allow(dead_code)]
     connected_user_map: Arc<dashmap::DashMap<String, i64>>,

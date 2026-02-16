@@ -620,7 +620,7 @@ async fn connect_to_db_logic(
         // "select location_state.* from location_state JOIN deployable_state ps ON deployable_state.entity_id = deployable_state.entity_id", // This currently takes to much cpu to run
         "traveler_task_desc",
         "traveler_task_state",
-        // "trade_order_state",
+        "trade_order_state",
         "buy_order_state",
         "sell_order_state",
         "npc_desc",
@@ -629,7 +629,7 @@ async fn connect_to_db_logic(
         "player_housing_state",
         "permission_state",
         "portal_state",
-        "location_state WHERE dimension != 1",
+        "location_state",
     ];
 
     let tmp_database = database.to_string().clone();

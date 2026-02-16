@@ -1,4 +1,5 @@
 pub(crate) mod bitcraft;
+pub(crate) mod profitable;
 
 use crate::inventory::resolve_contents;
 use crate::{AppRouter, AppState};
@@ -10,10 +11,12 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
-    Router::new().route(
-        "/api/bitcraft/trade_orders/get_trade_orders",
-        axum_codec::routing::get(get_trade_orders).into(),
-    )
+    Router::new()
+        .route(
+            "/api/bitcraft/trade_orders/get_trade_orders",
+            axum_codec::routing::get(get_trade_orders).into(),
+        )
+        .merge(profitable::get_routes())
 }
 
 async fn get_trade_orders(

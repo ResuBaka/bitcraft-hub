@@ -60,6 +60,8 @@ pub(crate) fn start_worker_location_state(
                                     let model = ::entity::location_state::ModelBuilder::new(entry)
                                         .with_region(database_name.to_string())
                                         .build();
+                                    global_app_state.location_state.insert(model.entity_id, model.clone());
+
                                     if let Some(index) = messages.iter().position(|value: &::entity::location_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
@@ -70,6 +72,8 @@ pub(crate) fn start_worker_location_state(
                                 let model = ::entity::location_state::ModelBuilder::new(new)
                                     .with_region(database_name.to_string())
                                     .build();
+                                global_app_state.location_state.insert(model.entity_id, model.clone());
+
                                 if let Some(index) = messages.iter().position(|value: &::entity::location_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                   messages.remove(index);
                                 }
@@ -80,6 +84,8 @@ pub(crate) fn start_worker_location_state(
                                 let model = ::entity::location_state::ModelBuilder::new(new)
                                     .with_region(database_name.to_string())
                                     .build();
+                                global_app_state.location_state.insert(model.entity_id, model.clone());
+
                                 if let Some(index) = messages.iter().position(|value: &::entity::location_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                   messages.remove(index);
                                 }
@@ -93,6 +99,7 @@ pub(crate) fn start_worker_location_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
+                                global_app_state.location_state.remove(&model.entity_id);
                                 if let Err(error) = model.delete(&global_app_state.conn).await {
                                     tracing::error!(error = error.to_string(), "Could not delete LocationState");
                                 }
