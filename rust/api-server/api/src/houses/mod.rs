@@ -116,34 +116,8 @@ pub(crate) async fn find_houses(
 
     // Apply filtering if owner is provided
     if !owner_param.is_empty() {
-        // Resolve owner entity ID
-        let owner_id = if let Ok(id) = owner_param.parse::<i64>() {
-            id
-        } else {
-            // Search by username
-            let user = ::entity::player_username_state::Entity::find()
-                .filter(::entity::player_username_state::Column::Username.eq(owner_param))
-                .one(&state.conn)
-                .await
-                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
-                .ok_or((StatusCode::NOT_FOUND, "User not found"))?;
-            user.entity_id as i64
-        };
-
-        // Find houses for this owner
-        // 1. Find permissions where allowed_entity_id is owner_id and rank is 7 (Owner) for buildings/houses
-        let ownerships = ::entity::permission_state::Entity::find()
-            .filter(::entity::permission_state::Column::AllowedEntityId.eq(owner_id))
-            .filter(::entity::permission_state::Column::Rank.eq(7)) // Permission::Owner matches rank 7
-            .all(&state.conn)
-            .await
-            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
-
-        // Collect building IDs that are owned
-        let building_ids: Vec<i64> = ownerships
-            .into_iter()
-            .map(|p| p.ordained_entity_id)
-            .collect();
+        let owner_id = resolve_owner_id_by_param(&state, owner_param).await?;
+        let building_ids = get_owned_building_entity_ids(&state, owner_id).await?;
 
         // Filter houses that match these IDs
         house_query = house_query.filter(
@@ -170,25 +144,7 @@ pub(crate) async fn find_houses(
     let mut houses_response = Vec::with_capacity(houses_models.len());
 
     for house in houses_models {
-        // Find owner from PermissionState
-        let owner_permission = ::entity::permission_state::Entity::find()
-            .filter(
-                sea_orm::Condition::any()
-                    .add(
-                        ::entity::permission_state::Column::OrdainedEntityId
-                            .eq(house.entrance_building_entity_id),
-                    )
-                    .add(::entity::permission_state::Column::OrdainedEntityId.eq(house.entity_id)),
-            )
-            .filter(::entity::permission_state::Column::Rank.eq(7))
-            .one(&state.conn)
-            .await
-            .unwrap_or_default(); // Ignore errors here, just handle missing owner
-
-        let owner_id = owner_permission
-            .as_ref()
-            .map(|p| p.allowed_entity_id)
-            .unwrap_or(0);
+        let owner_id = get_owner_entity_id_for_house(&state, &house).await;
         let resp = build_house_response(&state, house, owner_id).await?;
         houses_response.push(resp.0);
     }
@@ -215,17 +171,8 @@ async fn find_houses_by_owner_id(
     state: &AppState,
     owner_id: i64,
 ) -> Result<axum_codec::Codec<Vec<HouseResponse>>, (StatusCode, &'static str)> {
-    // 1. Find permissions where allowed_entity_id is owner_id and rank is 7 (Owner)
-    let ownerships = ::entity::permission_state::Entity::find()
-        .filter(::entity::permission_state::Column::AllowedEntityId.eq(owner_id))
-        .filter(::entity::permission_state::Column::Rank.eq(7)) // Permission::Owner matches rank 7
-        .all(&state.conn)
-        .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
-    let building_ids: Vec<i64> = ownerships
-        .into_iter()
-        .map(|p| p.ordained_entity_id)
-        .collect();
+    let building_ids = get_owned_building_entity_ids(state, owner_id).await?;
+
     // 2. Find Houses that have these entrance buildings OR are the houses themselves
     let houses = ::entity::player_housing_state::Entity::find()
         .filter(
@@ -263,8 +210,53 @@ pub(crate) async fn find_house(
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
         .ok_or((StatusCode::NOT_FOUND, "House not found"))?;
 
-    // Find owner from PermissionState where ordained_entity_id matches entrance_building_entity_id or house entity_id
-    let owner_permission = ::entity::permission_state::Entity::find()
+    let owner_id = get_owner_entity_id_for_house(&state, &house).await;
+
+    build_house_response(&state, house, owner_id).await
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+async fn resolve_owner_id_by_param(
+    state: &AppState,
+    owner_param: &str,
+) -> Result<i64, (StatusCode, &'static str)> {
+    if let Ok(id) = owner_param.parse::<i64>() {
+        Ok(id)
+    } else {
+        // Search by username
+        let user = ::entity::player_username_state::Entity::find()
+            .filter(::entity::player_username_state::Column::Username.eq(owner_param))
+            .one(&state.conn)
+            .await
+            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
+            .ok_or((StatusCode::NOT_FOUND, "User not found"))?;
+        Ok(user.entity_id as i64)
+    }
+}
+
+async fn get_owned_building_entity_ids(
+    state: &AppState,
+    owner_id: i64,
+) -> Result<Vec<i64>, (StatusCode, &'static str)> {
+    let ownerships = ::entity::permission_state::Entity::find()
+        .filter(::entity::permission_state::Column::AllowedEntityId.eq(owner_id))
+        .filter(::entity::permission_state::Column::Rank.eq(7)) // Permission::Owner matches rank 7
+        .all(&state.conn)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    Ok(ownerships
+        .into_iter()
+        .map(|p| p.ordained_entity_id)
+        .collect())
+}
+
+async fn get_owner_entity_id_for_house(
+    state: &AppState,
+    house: &::entity::player_housing_state::Model,
+) -> i64 {
+    ::entity::permission_state::Entity::find()
         .filter(
             sea_orm::Condition::any()
                 .add(
@@ -276,11 +268,9 @@ pub(crate) async fn find_house(
         .filter(::entity::permission_state::Column::Rank.eq(7))
         .one(&state.conn)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
-
-    let owner_id = owner_permission.map(|p| p.allowed_entity_id).unwrap_or(0);
-
-    build_house_response(&state, house, owner_id).await
+        .unwrap_or_default()
+        .map(|p| p.allowed_entity_id)
+        .unwrap_or(0)
 }
 
 async fn build_house_response(
@@ -315,20 +305,7 @@ async fn build_house_response(
     user_ids.sort();
     user_ids.dedup();
 
-    let usernames: HashMap<i64, String> = if !user_ids.is_empty() {
-        let models = ::entity::player_username_state::Entity::find()
-            .filter(::entity::player_username_state::Column::EntityId.is_in(user_ids.clone()))
-            .all(&state.conn)
-            .await
-            .unwrap_or_default();
-
-        models
-            .into_iter()
-            .map(|u| (u.entity_id as i64, u.username))
-            .collect()
-    } else {
-        HashMap::new()
-    };
+    let usernames = get_usernames_for_ids(state, &user_ids).await;
 
     let permissions = permission_models
         .into_iter()
@@ -376,65 +353,98 @@ pub(crate) async fn find_house_inventories(
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
         .ok_or((StatusCode::NOT_FOUND, "House not found"))?;
 
-    // 2. Find the dimension associated with this house
-    let dimension_desc = ::entity::dimension_description_state::Entity::find()
-        .filter(
-            ::entity::dimension_description_state::Column::DimensionNetworkEntityId
-                .eq(house.network_entity_id),
-        )
+    let dimension_id = get_dimension_id_for_house(&state, &house).await?;
+
+    let mut inventories = Vec::new();
+
+    if let Some(dim_id) = dimension_id {
+        let building_ids = get_building_entity_ids_in_dimension(&state, &house, dim_id).await?;
+
+        // 4. Query inventories
+        let inventory_models = ::entity::inventory::Entity::find()
+            .filter(::entity::inventory::Column::OwnerEntityId.is_in(building_ids))
+            .all(&state.conn)
+            .await
+            .map_err(|e| {
+                tracing::error!("Database error querying Inventory: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Database error querying Inventory",
+                )
+            })?;
+
+        // 5. Resolve the inventories
+        for inventory in inventory_models {
+            let pockets = resolve_inventory_pockets(&state, &inventory.pockets);
+            let nickname = get_building_nickname(&state, inventory.owner_entity_id).await;
+
+            inventories.push(::entity::inventory::ResolvedInventory {
+                entity_id: inventory.entity_id,
+                pockets,
+                inventory_index: inventory.inventory_index,
+                cargo_index: inventory.cargo_index,
+                owner_entity_id: inventory.owner_entity_id,
+                player_owner_entity_id: inventory.player_owner_entity_id,
+                nickname,
+                claim: None,
+            });
+        }
+    }
+
+    Ok(axum_codec::Codec(HouseInventoriesResponse {
+        house_entity_id: id,
+        dimension_id,
+        inventories,
+    }))
+}
+
+async fn get_dimension_id_for_house(
+    state: &AppState,
+    house: &::entity::player_housing_state::Model,
+) -> Result<Option<i64>, (StatusCode, &'static str)> {
+    let portal_exit = ::entity::portal_state::Entity::find_by_id(house.exit_portal_entity_id)
         .one(&state.conn)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
 
-    let mut dimension_id = dimension_desc.as_ref().map(|d| d.dimension_id);
-
-    if dimension_id.is_none() {
-        // Try fallback to InteriorNetworkDesc
-        // let network_desc =
-        //    ::entity::interior_network_desc::Entity::find_by_id(house.network_entity_id as i32)
-        //        .one(&state.conn)
-        //        .await
-        //        .unwrap_or_default();
-
-        // Fallback to LocationState via exit portal
-        let portal_exit = ::entity::portal_state::Entity::find_by_id(house.exit_portal_entity_id)
+    if let Some(portal) = portal_exit {
+        let portal_location = ::entity::location_state::Entity::find_by_id(portal.entity_id)
             .one(&state.conn)
             .await
             .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
 
-        if let Some(portal) = portal_exit {
-            let location_state = ::entity::location_state::Entity::find_by_id(portal.entity_id)
-                .one(&state.conn)
-                .await
-                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+        if let Some(loc) = portal_location {
+            return Ok(Some(loc.dimension));
         }
     }
 
-    // 3. Find all entities in this dimension
-    let mut dimension_entity_ids = vec![];
+    Ok(None)
+}
 
-    if let Some(dim_id) = dimension_id {
-        // Query LocationState for all entities in this specific interior dimension AND region
-        // dimension_id is only unique within a region
-        let mut region: String = "bitcraft-".to_owned();
-        region.push_str(&house.region_index.to_string());
+async fn get_building_entity_ids_in_dimension(
+    state: &AppState,
+    house: &::entity::player_housing_state::Model,
+    dim_id: i64,
+) -> Result<Vec<i64>, (StatusCode, &'static str)> {
+    // dimension_id is only unique within a region
+    let mut region: String = "bitcraft-".to_owned();
+    region.push_str(&house.region_index.to_string());
 
-        let locations = ::entity::location_state::Entity::find()
-            .filter(::entity::location_state::Column::Dimension.eq(dim_id))
-            .filter(::entity::location_state::Column::Region.eq(region))
-            .all(&state.conn)
-            .await
-            .map_err(|e| {
-                tracing::error!("Database error querying LocationState: {}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Database error querying LocationState",
-                )
-            })?;
-        dimension_entity_ids = locations.into_iter().map(|loc| loc.entity_id).collect();
-    }
-    let mut buildings_entity_ids = vec![];
-    // 3b. Find only buildings and deployables assigned to this specific interior claim
+    let locations = ::entity::location_state::Entity::find()
+        .filter(::entity::location_state::Column::Dimension.eq(dim_id))
+        .filter(::entity::location_state::Column::Region.eq(region))
+        .all(&state.conn)
+        .await
+        .map_err(|e| {
+            tracing::error!("Database error querying LocationState: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Database error querying LocationState",
+            )
+        })?;
+
+    let dimension_entity_ids: Vec<i64> = locations.into_iter().map(|loc| loc.entity_id).collect();
+
     let buildings = ::entity::building_state::Entity::find()
         .filter(::entity::building_state::Column::EntityId.is_in(dimension_entity_ids))
         .all(&state.conn)
@@ -446,74 +456,59 @@ pub(crate) async fn find_house_inventories(
                 "Database error querying BuildingState",
             )
         })?;
-    for building in buildings {
-        buildings_entity_ids.push(building.entity_id);
+
+    Ok(buildings.into_iter().map(|b| b.entity_id).collect())
+}
+
+fn resolve_inventory_pockets(
+    state: &AppState,
+    pockets: &[::entity::inventory::Pocket],
+) -> Vec<::entity::inventory::ItemSlotResolved> {
+    pockets
+        .iter()
+        .map(|pocket| {
+            crate::inventory::resolve_pocket(pocket, &state.item_desc, &state.cargo_desc)
+        })
+        .collect()
+}
+
+async fn get_building_nickname(state: &AppState, entity_id: i64) -> Option<String> {
+    // Try to get building nickname from AppState cache first
+    if let Some(name) = state.building_nickname_state.get(&entity_id) {
+        return Some(name.nickname.clone());
     }
 
-    // 4. Query inventories
-    let inventory_models = ::entity::inventory::Entity::find()
-        .filter(::entity::inventory::Column::OwnerEntityId.is_in(buildings_entity_ids))
+    // Fallback to database then description name
+    let building_state = ::entity::building_state::Entity::find_by_id(entity_id)
+        .one(&state.conn)
+        .await
+        .unwrap_or_default();
+
+    if let Some(building) = building_state {
+        if let Some(desc) = state
+            .building_desc
+            .get(&(building.building_description_id as i64))
+        {
+            return Some(desc.name.clone());
+        }
+    }
+
+    None
+}
+
+async fn get_usernames_for_ids(state: &AppState, user_ids: &[i64]) -> HashMap<i64, String> {
+    if user_ids.is_empty() {
+        return HashMap::new();
+    }
+
+    let models = ::entity::player_username_state::Entity::find()
+        .filter(::entity::player_username_state::Column::EntityId.is_in(user_ids.to_vec()))
         .all(&state.conn)
         .await
-        .map_err(|e| {
-            tracing::error!("Database error querying Inventory: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Database error querying Inventory",
-            )
-        })?;
+        .unwrap_or_default();
 
-    // 5. Resolve the inventories
-    let mut inventories = Vec::with_capacity(inventory_models.len());
-    for inventory in inventory_models {
-        let mut pockets = Vec::with_capacity(inventory.pockets.len());
-        for pocket in &inventory.pockets {
-            pockets.push(crate::inventory::resolve_pocket(
-                pocket,
-                &state.item_desc,
-                &state.cargo_desc,
-            ));
-        }
-
-        let mut nickname = None;
-
-        // Try to get building nickname
-        let building_state =
-            ::entity::building_state::Entity::find_by_id(inventory.owner_entity_id)
-                .one(&state.conn)
-                .await
-                .unwrap_or_default();
-
-        if let Some(building) = building_state {
-            if let Some(name) = state.building_nickname_state.get(&building.entity_id) {
-                nickname = Some(name.nickname.clone());
-            }
-
-            if nickname.is_none() {
-                if let Some(desc) = state
-                    .building_desc
-                    .get(&(building.building_description_id as i64))
-                {
-                    nickname = Some(desc.name.clone());
-                }
-            }
-        }
-
-        inventories.push(::entity::inventory::ResolvedInventory {
-            entity_id: inventory.entity_id,
-            pockets,
-            inventory_index: inventory.inventory_index,
-            cargo_index: inventory.cargo_index,
-            owner_entity_id: inventory.owner_entity_id,
-            player_owner_entity_id: inventory.player_owner_entity_id,
-            nickname,
-            claim: None,
-        });
-    }
-
-    Ok(axum_codec::Codec(HouseInventoriesResponse {
-        house_entity_id: id,
-        dimension_id,
-        inventories,
-    }))
+    models
+        .into_iter()
+        .map(|u| (u.entity_id as i64, u.username))
+        .collect()
 }

@@ -94,7 +94,11 @@ impl MigrationTrait for Migration {
                             .big_integer()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ClaimMemberState::UserName).string().not_null())
+                    .col(
+                        ColumnDef::new(ClaimMemberState::UserName)
+                            .string()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimMemberState::InventoryPermission)
                             .boolean()
@@ -131,20 +135,32 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ClaimLocalState::Supplies).integer().not_null())
+                    .col(
+                        ColumnDef::new(ClaimLocalState::Supplies)
+                            .integer()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimLocalState::BuildingMaintenance)
                             .float()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ClaimLocalState::NumTiles).integer().not_null())
+                    .col(
+                        ColumnDef::new(ClaimLocalState::NumTiles)
+                            .integer()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimLocalState::NumTileNeighbors)
                             .integer()
                             .not_null(),
                     )
                     .col(ColumnDef::new(ClaimLocalState::Location).json())
-                    .col(ColumnDef::new(ClaimLocalState::Treasury).integer().not_null())
+                    .col(
+                        ColumnDef::new(ClaimLocalState::Treasury)
+                            .integer()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimLocalState::XpGainedSinceLastCoinMinting)
                             .integer()

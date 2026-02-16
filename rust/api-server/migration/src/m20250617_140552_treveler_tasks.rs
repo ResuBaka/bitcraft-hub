@@ -125,16 +125,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(NpcDesc::Name).string().not_null())
                     .col(ColumnDef::new(NpcDesc::Population).float().not_null())
                     .col(ColumnDef::new(NpcDesc::Speed).integer().not_null())
-                    .col(
-                        ColumnDef::new(NpcDesc::MinTimeAtRuin)
-                            .integer()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(NpcDesc::MaxTimeAtRuin)
-                            .integer()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(NpcDesc::MinTimeAtRuin).integer().not_null())
+                    .col(ColumnDef::new(NpcDesc::MaxTimeAtRuin).integer().not_null())
                     .col(ColumnDef::new(NpcDesc::PrefabAddress).string().not_null())
                     .col(ColumnDef::new(NpcDesc::IconAddress).string().not_null())
                     .col(
