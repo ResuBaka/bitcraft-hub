@@ -105,17 +105,6 @@ pub(crate) fn start_worker_location_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!(
-                    "LocationState -> Processing {} messages in batch",
-                    messages.len()
-                );
-                // Log the region of the first message to verify
-                if let Some(first) = messages.first() {
-                    tracing::info!(
-                        "LocationState -> Sample region from batch: {:?}",
-                        first.region
-                    );
-                }
                 let insert =
                     insert_many_location_state(&global_app_state, &on_conflict, &mut messages)
                         .await;

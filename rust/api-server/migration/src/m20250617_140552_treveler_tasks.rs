@@ -1,5 +1,4 @@
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::sea_orm::Schema;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -7,41 +6,199 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let builder = manager.get_database_backend();
-        let db = manager.get_connection();
-        let schema = Schema::new(builder);
-
-        db.execute(
-            builder.build(&schema.create_table_from_entity(entity::traveler_task_desc::Entity)),
-        )
-        .await?;
-        db.execute(
-            builder.build(&schema.create_table_from_entity(entity::traveler_task_state::Entity)),
-        )
-        .await?;
-        db.execute(builder.build(&schema.create_table_from_entity(entity::npc_desc::Entity)))
+        manager
+            .create_table(
+                Table::create()
+                    .table(TravelerTaskDesc::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::Id)
+                            .integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::SkillId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::MinLevel)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::MaxLevel)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::RequiredItems)
+                            .json()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::RewardedItems)
+                            .json()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::RewardedExperience)
+                            .json()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskDesc::Description)
+                            .string()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
             .await?;
 
-        Ok(())
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx-traveler_task_desc-skill_id")
+                    .table(TravelerTaskDesc::Table)
+                    .col(TravelerTaskDesc::SkillId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(TravelerTaskState::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(TravelerTaskState::EntityId)
+                            .big_integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskState::PlayerEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskState::TravelerId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskState::TaskId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TravelerTaskState::Completed)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx-traveler_task_state-player_entity_id")
+                    .table(TravelerTaskState::Table)
+                    .col(TravelerTaskState::PlayerEntityId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(NpcDesc::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(NpcDesc::NpcType)
+                            .integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(NpcDesc::Name).string().not_null())
+                    .col(ColumnDef::new(NpcDesc::Population).float().not_null())
+                    .col(ColumnDef::new(NpcDesc::Speed).integer().not_null())
+                    .col(
+                        ColumnDef::new(NpcDesc::MinTimeAtRuin)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(NpcDesc::MaxTimeAtRuin)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(NpcDesc::PrefabAddress).string().not_null())
+                    .col(ColumnDef::new(NpcDesc::IconAddress).string().not_null())
+                    .col(
+                        ColumnDef::new(NpcDesc::ForceMarketMode)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(NpcDesc::TaskSkillCheck)
+                            .array(ColumnType::Integer)
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(
-                Table::drop()
-                    .table(entity::traveler_task_desc::Entity)
-                    .to_owned(),
-            )
+            .drop_table(Table::drop().table(TravelerTaskDesc::Table).to_owned())
             .await?;
         manager
-            .drop_table(
-                Table::drop()
-                    .table(entity::traveler_task_state::Entity)
-                    .to_owned(),
-            )
+            .drop_table(Table::drop().table(TravelerTaskState::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(entity::npc_desc::Entity).to_owned())
+            .drop_table(Table::drop().table(NpcDesc::Table).to_owned())
             .await
     }
+}
+
+#[derive(DeriveIden)]
+enum TravelerTaskDesc {
+    Table,
+    Id,
+    SkillId,
+    MinLevel,
+    MaxLevel,
+    RequiredItems,
+    RewardedItems,
+    RewardedExperience,
+    Description,
+}
+
+#[derive(DeriveIden)]
+enum TravelerTaskState {
+    Table,
+    EntityId,
+    PlayerEntityId,
+    TravelerId,
+    TaskId,
+    Completed,
+}
+
+#[derive(DeriveIden)]
+enum NpcDesc {
+    Table,
+    NpcType,
+    Name,
+    Population,
+    Speed,
+    MinTimeAtRuin,
+    MaxTimeAtRuin,
+    PrefabAddress,
+    IconAddress,
+    ForceMarketMode,
+    TaskSkillCheck,
 }

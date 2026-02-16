@@ -1,4 +1,3 @@
-use sea_orm_migration::sea_orm::{EntityName, Schema};
 use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
@@ -7,10 +6,6 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let builder = manager.get_database_backend();
-        let db = manager.get_connection();
-        let schema = Schema::new(builder);
-
         manager
             .alter_table(
                 Table::alter()
@@ -50,16 +45,130 @@ impl MigrationTrait for Migration {
                 .await?;
         }
 
-        db.execute(builder.build(&schema.create_table_from_entity(entity::claim_state::Entity)))
+        manager
+            .create_table(
+                Table::create()
+                    .table(ClaimState::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ClaimState::EntityId)
+                            .big_integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimState::OwnerPlayerEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimState::OwnerBuildingEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ClaimState::Name).string().not_null())
+                    .col(ColumnDef::new(ClaimState::Neutral).boolean().not_null())
+                    .col(ColumnDef::new(ClaimState::Region).string().not_null())
+                    .to_owned(),
+            )
             .await?;
-        db.execute(
-            builder.build(&schema.create_table_from_entity(entity::claim_member_state::Entity)),
-        )
-        .await?;
-        db.execute(
-            builder.build(&schema.create_table_from_entity(entity::claim_local_state::Entity)),
-        )
-        .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ClaimMemberState::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ClaimMemberState::EntityId)
+                            .big_integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimMemberState::ClaimEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimMemberState::PlayerEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ClaimMemberState::UserName).string().not_null())
+                    .col(
+                        ColumnDef::new(ClaimMemberState::InventoryPermission)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimMemberState::BuildPermission)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimMemberState::OfficerPermission)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimMemberState::CoOwnerPermission)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ClaimMemberState::Region).string().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ClaimLocalState::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ClaimLocalState::EntityId)
+                            .big_integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(ClaimLocalState::Supplies).integer().not_null())
+                    .col(
+                        ColumnDef::new(ClaimLocalState::BuildingMaintenance)
+                            .float()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ClaimLocalState::NumTiles).integer().not_null())
+                    .col(
+                        ColumnDef::new(ClaimLocalState::NumTileNeighbors)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ClaimLocalState::Location).json())
+                    .col(ColumnDef::new(ClaimLocalState::Treasury).integer().not_null())
+                    .col(
+                        ColumnDef::new(ClaimLocalState::XpGainedSinceLastCoinMinting)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimLocalState::SuppliesPurchaseThreshold)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimLocalState::SuppliesPurchasePrice)
+                            .float()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimLocalState::BuildingDescriptionId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ClaimLocalState::Region).string().not_null())
+                    .to_owned(),
+            )
+            .await?;
 
         manager
             .truncate_table(Table::truncate().table(ClaimTechState::Table).to_owned())
@@ -242,40 +351,17 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        if manager
-            .has_table(entity::claim_state::Entity.table_name())
-            .await?
-        {
-            manager
-                .drop_table(Table::drop().table(entity::claim_state::Entity).to_owned())
-                .await?;
-        }
+        manager
+            .drop_table(Table::drop().table(ClaimState::Table).to_owned())
+            .await?;
 
-        if manager
-            .has_table(entity::claim_member_state::Entity.table_name())
-            .await?
-        {
-            manager
-                .drop_table(
-                    Table::drop()
-                        .table(entity::claim_member_state::Entity)
-                        .to_owned(),
-                )
-                .await?;
-        }
+        manager
+            .drop_table(Table::drop().table(ClaimMemberState::Table).to_owned())
+            .await?;
 
-        if manager
-            .has_table(entity::claim_local_state::Entity.table_name())
-            .await?
-        {
-            manager
-                .drop_table(
-                    Table::drop()
-                        .table(entity::claim_local_state::Entity)
-                        .to_owned(),
-                )
-                .await?;
-        }
+        manager
+            .drop_table(Table::drop().table(ClaimLocalState::Table).to_owned())
+            .await?;
 
         manager
             .alter_table(
@@ -339,4 +425,36 @@ enum ClaimState {
     OwnerBuildingEntityId,
     Name,
     Neutral,
+    Region,
+}
+
+#[derive(DeriveIden)]
+enum ClaimMemberState {
+    Table,
+    EntityId,
+    ClaimEntityId,
+    PlayerEntityId,
+    UserName,
+    InventoryPermission,
+    BuildPermission,
+    OfficerPermission,
+    CoOwnerPermission,
+    Region,
+}
+
+#[derive(DeriveIden)]
+enum ClaimLocalState {
+    Table,
+    EntityId,
+    Supplies,
+    BuildingMaintenance,
+    NumTiles,
+    NumTileNeighbors,
+    Location,
+    Treasury,
+    XpGainedSinceLastCoinMinting,
+    SuppliesPurchaseThreshold,
+    SuppliesPurchasePrice,
+    BuildingDescriptionId,
+    Region,
 }

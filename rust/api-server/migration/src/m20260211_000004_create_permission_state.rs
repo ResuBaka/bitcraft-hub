@@ -1,4 +1,3 @@
-use crate::sea_orm::{EntityName, Schema};
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
@@ -7,32 +6,49 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let builder = manager.get_database_backend();
-        let db = manager.get_connection();
-        let schema = Schema::new(builder);
-
-        db.execute(
-            builder.build(&schema.create_table_from_entity(entity::permission_state::Entity)),
-        )
-        .await?;
-
-        Ok(())
+        manager
+            .create_table(
+                Table::create()
+                    .table(PermissionState::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(PermissionState::EntityId)
+                            .big_integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(PermissionState::OrdainedEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PermissionState::AllowedEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(PermissionState::Group).integer().not_null())
+                    .col(ColumnDef::new(PermissionState::Rank).integer().not_null())
+                    .col(ColumnDef::new(PermissionState::Region).string().not_null())
+                    .to_owned(),
+            )
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        if manager
-            .has_table(entity::permission_state::Entity.table_name())
-            .await?
-        {
-            manager
-                .drop_table(
-                    Table::drop()
-                        .table(entity::permission_state::Entity)
-                        .to_owned(),
-                )
-                .await?;
-        }
-
-        Ok(())
+        manager
+            .drop_table(Table::drop().table(PermissionState::Table).to_owned())
+            .await
     }
+}
+
+#[derive(DeriveIden)]
+enum PermissionState {
+    Table,
+    EntityId,
+    OrdainedEntityId,
+    AllowedEntityId,
+    Group,
+    Rank,
+    Region,
 }

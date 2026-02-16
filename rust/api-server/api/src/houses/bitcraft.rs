@@ -204,10 +204,6 @@ pub(crate) fn start_worker_dimension_description_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!(
-                    "DimensionDescriptionState -> Processing {} messages in batch",
-                    messages.len()
-                );
                 let insert = insert_many_dimension_description_state(
                     &global_app_state,
                     &on_conflict,
@@ -324,10 +320,6 @@ pub(crate) fn start_worker_player_housing_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!(
-                    "PlayerHousingState -> Processing {} messages in batch",
-                    messages.len()
-                );
                 let insert = insert_many_player_housing_state(
                     &global_app_state,
                     &on_conflict,

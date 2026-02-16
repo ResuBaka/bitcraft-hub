@@ -1,4 +1,3 @@
-use crate::sea_orm::{EntityName, Schema};
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
@@ -7,32 +6,79 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let builder = manager.get_database_backend();
-        let db = manager.get_connection();
-        let schema = Schema::new(builder);
-
-        db.execute(
-            builder.build(&schema.create_table_from_entity(entity::player_housing_state::Entity)),
-        )
-        .await?;
-
-        Ok(())
+        manager
+            .create_table(
+                Table::create()
+                    .table(PlayerHousingState::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(PlayerHousingState::EntityId)
+                            .big_integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::EntranceBuildingEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::NetworkEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::ExitPortalEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::Rank)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::LockedUntil)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::IsEmpty)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::RegionIndex)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PlayerHousingState::Region)
+                            .string()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        if manager
-            .has_table(entity::player_housing_state::Entity.table_name())
-            .await?
-        {
-            manager
-                .drop_table(
-                    Table::drop()
-                        .table(entity::player_housing_state::Entity)
-                        .to_owned(),
-                )
-                .await?;
-        }
-
-        Ok(())
+        manager
+            .drop_table(Table::drop().table(PlayerHousingState::Table).to_owned())
+            .await
     }
+}
+
+#[derive(DeriveIden)]
+enum PlayerHousingState {
+    Table,
+    EntityId,
+    EntranceBuildingEntityId,
+    NetworkEntityId,
+    ExitPortalEntityId,
+    Rank,
+    LockedUntil,
+    IsEmpty,
+    RegionIndex,
+    Region,
 }
