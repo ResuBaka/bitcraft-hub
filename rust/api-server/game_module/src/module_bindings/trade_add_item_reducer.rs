@@ -61,8 +61,8 @@ impl trade_add_item for super::RemoteReducers {
     fn on_trade_add_item(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeAddItemRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeAddItemCallbackId {
         TradeAddItemCallbackId(self.imp.on_reducer(
             "trade_add_item",

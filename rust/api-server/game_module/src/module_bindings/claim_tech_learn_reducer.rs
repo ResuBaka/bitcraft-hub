@@ -61,8 +61,8 @@ impl claim_tech_learn for super::RemoteReducers {
     fn on_claim_tech_learn(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTechLearnRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimTechLearnCallbackId {
         ClaimTechLearnCallbackId(self.imp.on_reducer(
             "claim_tech_learn",

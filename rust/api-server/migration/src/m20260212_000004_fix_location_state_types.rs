@@ -13,7 +13,11 @@ impl MigrationTrait for Migration {
                     .table(LocationState::Table)
                     .modify_column(ColumnDef::new(LocationState::X).big_integer().not_null())
                     .modify_column(ColumnDef::new(LocationState::Z).big_integer().not_null())
-                    .modify_column(ColumnDef::new(LocationState::Dimension).big_integer().not_null())
+                    .modify_column(
+                        ColumnDef::new(LocationState::Dimension)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await
@@ -27,7 +31,11 @@ impl MigrationTrait for Migration {
                     .table(LocationState::Table)
                     .modify_column(ColumnDef::new(LocationState::X).integer().not_null())
                     .modify_column(ColumnDef::new(LocationState::Z).integer().not_null())
-                    .modify_column(ColumnDef::new(LocationState::Dimension).integer().not_null())
+                    .modify_column(
+                        ColumnDef::new(LocationState::Dimension)
+                            .integer()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await

@@ -72,8 +72,8 @@ impl import_contribution_loot_desc for super::RemoteReducers {
     fn on_import_contribution_loot_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ContributionLootDescV2>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportContributionLootDescCallbackId {
         ImportContributionLootDescCallbackId(self.imp.on_reducer(
             "import_contribution_loot_desc",

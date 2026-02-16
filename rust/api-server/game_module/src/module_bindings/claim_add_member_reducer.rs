@@ -61,8 +61,8 @@ impl claim_add_member for super::RemoteReducers {
     fn on_claim_add_member(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimAddMemberRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimAddMemberCallbackId {
         ClaimAddMemberCallbackId(self.imp.on_reducer(
             "claim_add_member",

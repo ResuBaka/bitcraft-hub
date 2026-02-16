@@ -61,8 +61,8 @@ impl world_place_resource for super::RemoteReducers {
     fn on_world_place_resource(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &WorldPlaceResourceRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> WorldPlaceResourceCallbackId {
         WorldPlaceResourceCallbackId(self.imp.on_reducer(
             "world_place_resource",

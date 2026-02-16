@@ -63,8 +63,8 @@ impl stage_targeting_matrix_desc for super::RemoteReducers {
     fn on_stage_targeting_matrix_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TargetingMatrixDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageTargetingMatrixDescCallbackId {
         StageTargetingMatrixDescCallbackId(self.imp.on_reducer(
             "stage_targeting_matrix_desc",

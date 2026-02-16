@@ -12,8 +12,7 @@ impl MigrationTrait for Migration {
         let schema = Schema::new(builder);
 
         db.execute(
-            builder
-                .build(&schema.create_table_from_entity(entity::interior_network_desc::Entity)),
+            builder.build(&schema.create_table_from_entity(entity::interior_network_desc::Entity)),
         )
         .await?;
 

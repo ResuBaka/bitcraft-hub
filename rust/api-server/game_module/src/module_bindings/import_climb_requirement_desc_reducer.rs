@@ -72,8 +72,8 @@ impl import_climb_requirement_desc for super::RemoteReducers {
     fn on_import_climb_requirement_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ClimbRequirementDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportClimbRequirementDescCallbackId {
         ImportClimbRequirementDescCallbackId(self.imp.on_reducer(
             "import_climb_requirement_desc",

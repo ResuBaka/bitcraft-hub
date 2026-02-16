@@ -45,8 +45,8 @@ pub trait destroy_dimension_network {
     fn on_destroy_dimension_network(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &DestroyDimensionNetworkTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DestroyDimensionNetworkCallbackId;
     /// Cancel a callback previously registered by [`Self::on_destroy_dimension_network`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl destroy_dimension_network for super::RemoteReducers {
     fn on_destroy_dimension_network(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &DestroyDimensionNetworkTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DestroyDimensionNetworkCallbackId {
         DestroyDimensionNetworkCallbackId(self.imp.on_reducer(
             "destroy_dimension_network",

@@ -1836,18 +1836,18 @@ pub mod world_region_state_type;
 
 pub use a_i_debug_state_table::*;
 pub use ability_custom_activate_reducer::{
-    ability_custom_activate, set_flags_for_ability_custom_activate, AbilityCustomActivateCallbackId,
+    AbilityCustomActivateCallbackId, ability_custom_activate, set_flags_for_ability_custom_activate,
 };
 pub use ability_custom_activate_start_reducer::{
-    ability_custom_activate_start, set_flags_for_ability_custom_activate_start,
-    AbilityCustomActivateStartCallbackId,
+    AbilityCustomActivateStartCallbackId, ability_custom_activate_start,
+    set_flags_for_ability_custom_activate_start,
 };
 pub use ability_custom_desc_table::*;
 pub use ability_custom_desc_type::AbilityCustomDesc;
 pub use ability_remove_reducer::{
-    ability_remove, set_flags_for_ability_remove, AbilityRemoveCallbackId,
+    AbilityRemoveCallbackId, ability_remove, set_flags_for_ability_remove,
 };
-pub use ability_set_reducer::{ability_set, set_flags_for_ability_set, AbilitySetCallbackId};
+pub use ability_set_reducer::{AbilitySetCallbackId, ability_set, set_flags_for_ability_set};
 pub use ability_state_table::*;
 pub use ability_state_type::AbilityState;
 pub use ability_type_enum_type::AbilityTypeEnum;
@@ -1855,13 +1855,13 @@ pub use ability_type_type::AbilityType;
 pub use ability_unlock_desc_table::*;
 pub use ability_unlock_desc_type::AbilityUnlockDesc;
 pub use achievement_claim_reducer::{
-    achievement_claim, set_flags_for_achievement_claim, AchievementClaimCallbackId,
+    AchievementClaimCallbackId, achievement_claim, set_flags_for_achievement_claim,
 };
 pub use achievement_desc_table::*;
 pub use achievement_desc_type::AchievementDesc;
 pub use acquire_knowledge_from_entities_reducer::{
-    acquire_knowledge_from_entities, set_flags_for_acquire_knowledge_from_entities,
-    AcquireKnowledgeFromEntitiesCallbackId,
+    AcquireKnowledgeFromEntitiesCallbackId, acquire_knowledge_from_entities,
+    set_flags_for_acquire_knowledge_from_entities,
 };
 pub use action_bar_state_table::*;
 pub use action_bar_state_type::ActionBarState;
@@ -1876,285 +1876,285 @@ pub use active_buff_state_table::*;
 pub use active_buff_state_type::ActiveBuffState;
 pub use active_buff_type::ActiveBuff;
 pub use admin_add_specific_building_type_states_reducer::{
-    admin_add_specific_building_type_states, set_flags_for_admin_add_specific_building_type_states,
-    AdminAddSpecificBuildingTypeStatesCallbackId,
+    AdminAddSpecificBuildingTypeStatesCallbackId, admin_add_specific_building_type_states,
+    set_flags_for_admin_add_specific_building_type_states,
 };
 pub use admin_alpha_3_complete_onboarding_reducer::{
-    admin_alpha_3_complete_onboarding, set_flags_for_admin_alpha_3_complete_onboarding,
-    AdminAlpha3CompleteOnboardingCallbackId,
+    AdminAlpha3CompleteOnboardingCallbackId, admin_alpha_3_complete_onboarding,
+    set_flags_for_admin_alpha_3_complete_onboarding,
 };
 pub use admin_alpha_3_reset_onboarding_to_fifth_temple_quest_reducer::{
+    AdminAlpha3ResetOnboardingToFifthTempleQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_fifth_temple_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_fifth_temple_quest,
-    AdminAlpha3ResetOnboardingToFifthTempleQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_first_expand_quest_reducer::{
+    AdminAlpha3ResetOnboardingToFirstExpandQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_first_expand_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_first_expand_quest,
-    AdminAlpha3ResetOnboardingToFirstExpandQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_first_temple_quest_reducer::{
+    AdminAlpha3ResetOnboardingToFirstTempleQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_first_temple_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_first_temple_quest,
-    AdminAlpha3ResetOnboardingToFirstTempleQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_fourth_expand_quest_reducer::{
+    AdminAlpha3ResetOnboardingToFourthExpandQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_fourth_expand_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_fourth_expand_quest,
-    AdminAlpha3ResetOnboardingToFourthExpandQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_fourth_temple_quest_reducer::{
+    AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_fourth_temple_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_fourth_temple_quest,
-    AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_second_expand_quest_reducer::{
+    AdminAlpha3ResetOnboardingToSecondExpandQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_second_expand_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_second_expand_quest,
-    AdminAlpha3ResetOnboardingToSecondExpandQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_second_temple_quest_reducer::{
+    AdminAlpha3ResetOnboardingToSecondTempleQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_second_temple_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_second_temple_quest,
-    AdminAlpha3ResetOnboardingToSecondTempleQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_third_expand_quest_reducer::{
+    AdminAlpha3ResetOnboardingToThirdExpandQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_third_expand_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_third_expand_quest,
-    AdminAlpha3ResetOnboardingToThirdExpandQuestCallbackId,
 };
 pub use admin_alpha_3_reset_onboarding_to_third_temple_quest_reducer::{
+    AdminAlpha3ResetOnboardingToThirdTempleQuestCallbackId,
     admin_alpha_3_reset_onboarding_to_third_temple_quest,
     set_flags_for_admin_alpha_3_reset_onboarding_to_third_temple_quest,
-    AdminAlpha3ResetOnboardingToThirdTempleQuestCallbackId,
 };
 pub use admin_broadcast_message_msg_type::AdminBroadcastMessageMsg;
 pub use admin_broadcast_msg_region_reducer::{
-    admin_broadcast_msg_region, set_flags_for_admin_broadcast_msg_region,
-    AdminBroadcastMsgRegionCallbackId,
+    AdminBroadcastMsgRegionCallbackId, admin_broadcast_msg_region,
+    set_flags_for_admin_broadcast_msg_region,
 };
 pub use admin_broadcast_table::*;
 pub use admin_broadcast_type::AdminBroadcast;
 pub use admin_cap_skill_reducer::{
-    admin_cap_skill, set_flags_for_admin_cap_skill, AdminCapSkillCallbackId,
+    AdminCapSkillCallbackId, admin_cap_skill, set_flags_for_admin_cap_skill,
 };
 pub use admin_check_closed_listing_states_reducer::{
-    admin_check_closed_listing_states, set_flags_for_admin_check_closed_listing_states,
-    AdminCheckClosedListingStatesCallbackId,
+    AdminCheckClosedListingStatesCallbackId, admin_check_closed_listing_states,
+    set_flags_for_admin_check_closed_listing_states,
 };
 pub use admin_clear_all_resources_reducer::{
-    admin_clear_all_resources, set_flags_for_admin_clear_all_resources,
-    AdminClearAllResourcesCallbackId,
+    AdminClearAllResourcesCallbackId, admin_clear_all_resources,
+    set_flags_for_admin_clear_all_resources,
 };
 pub use admin_clear_chunk_resources_reducer::{
-    admin_clear_chunk_resources, set_flags_for_admin_clear_chunk_resources,
-    AdminClearChunkResourcesCallbackId,
+    AdminClearChunkResourcesCallbackId, admin_clear_chunk_resources,
+    set_flags_for_admin_clear_chunk_resources,
 };
 pub use admin_clear_resource_timer_table::*;
 pub use admin_clear_resource_timer_type::AdminClearResourceTimer;
 pub use admin_clear_unattached_herds_reducer::{
-    admin_clear_unattached_herds, set_flags_for_admin_clear_unattached_herds,
-    AdminClearUnattachedHerdsCallbackId,
+    AdminClearUnattachedHerdsCallbackId, admin_clear_unattached_herds,
+    set_flags_for_admin_clear_unattached_herds,
 };
 pub use admin_collapse_ruin_reducer::{
-    admin_collapse_ruin, set_flags_for_admin_collapse_ruin, AdminCollapseRuinCallbackId,
+    AdminCollapseRuinCallbackId, admin_collapse_ruin, set_flags_for_admin_collapse_ruin,
 };
 pub use admin_collapse_ruins_reducer::{
-    admin_collapse_ruins, set_flags_for_admin_collapse_ruins, AdminCollapseRuinsCallbackId,
+    AdminCollapseRuinsCallbackId, admin_collapse_ruins, set_flags_for_admin_collapse_ruins,
 };
 pub use admin_complete_all_passive_crafts_reducer::{
-    admin_complete_all_passive_crafts, set_flags_for_admin_complete_all_passive_crafts,
-    AdminCompleteAllPassiveCraftsCallbackId,
+    AdminCompleteAllPassiveCraftsCallbackId, admin_complete_all_passive_crafts,
+    set_flags_for_admin_complete_all_passive_crafts,
 };
 pub use admin_count_inventory_items_reducer::{
-    admin_count_inventory_items, set_flags_for_admin_count_inventory_items,
-    AdminCountInventoryItemsCallbackId,
+    AdminCountInventoryItemsCallbackId, admin_count_inventory_items,
+    set_flags_for_admin_count_inventory_items,
 };
 pub use admin_create_building_spawns_reducer::{
-    admin_create_building_spawns, set_flags_for_admin_create_building_spawns,
-    AdminCreateBuildingSpawnsCallbackId,
+    AdminCreateBuildingSpawnsCallbackId, admin_create_building_spawns,
+    set_flags_for_admin_create_building_spawns,
 };
 pub use admin_create_chat_message_reducer::{
-    admin_create_chat_message, set_flags_for_admin_create_chat_message,
-    AdminCreateChatMessageCallbackId,
+    AdminCreateChatMessageCallbackId, admin_create_chat_message,
+    set_flags_for_admin_create_chat_message,
 };
 pub use admin_create_entity_name_report_reducer::{
-    admin_create_entity_name_report, set_flags_for_admin_create_entity_name_report,
-    AdminCreateEntityNameReportCallbackId,
+    AdminCreateEntityNameReportCallbackId, admin_create_entity_name_report,
+    set_flags_for_admin_create_entity_name_report,
 };
 pub use admin_create_player_report_reducer::{
-    admin_create_player_report, set_flags_for_admin_create_player_report,
-    AdminCreatePlayerReportCallbackId,
+    AdminCreatePlayerReportCallbackId, admin_create_player_report,
+    set_flags_for_admin_create_player_report,
 };
 pub use admin_delete_all_items_of_type_reducer::{
-    admin_delete_all_items_of_type, set_flags_for_admin_delete_all_items_of_type,
-    AdminDeleteAllItemsOfTypeCallbackId,
+    AdminDeleteAllItemsOfTypeCallbackId, admin_delete_all_items_of_type,
+    set_flags_for_admin_delete_all_items_of_type,
 };
 pub use admin_delete_chat_message_reducer::{
-    admin_delete_chat_message, set_flags_for_admin_delete_chat_message,
-    AdminDeleteChatMessageCallbackId,
+    AdminDeleteChatMessageCallbackId, admin_delete_chat_message,
+    set_flags_for_admin_delete_chat_message,
 };
 pub use admin_despawn_overworld_enemies_reducer::{
-    admin_despawn_overworld_enemies, set_flags_for_admin_despawn_overworld_enemies,
-    AdminDespawnOverworldEnemiesCallbackId,
+    AdminDespawnOverworldEnemiesCallbackId, admin_despawn_overworld_enemies,
+    set_flags_for_admin_despawn_overworld_enemies,
 };
 pub use admin_dungeon_update_portals_reducer::{
-    admin_dungeon_update_portals, set_flags_for_admin_dungeon_update_portals,
-    AdminDungeonUpdatePortalsCallbackId,
+    AdminDungeonUpdatePortalsCallbackId, admin_dungeon_update_portals,
+    set_flags_for_admin_dungeon_update_portals,
 };
 pub use admin_find_all_players_with_item_above_quantity_reducer::{
+    AdminFindAllPlayersWithItemAboveQuantityCallbackId,
     admin_find_all_players_with_item_above_quantity,
     set_flags_for_admin_find_all_players_with_item_above_quantity,
-    AdminFindAllPlayersWithItemAboveQuantityCallbackId,
 };
 pub use admin_find_all_players_with_item_reducer::{
-    admin_find_all_players_with_item, set_flags_for_admin_find_all_players_with_item,
-    AdminFindAllPlayersWithItemCallbackId,
+    AdminFindAllPlayersWithItemCallbackId, admin_find_all_players_with_item,
+    set_flags_for_admin_find_all_players_with_item,
 };
 pub use admin_find_items_in_inventories_reducer::{
-    admin_find_items_in_inventories, set_flags_for_admin_find_items_in_inventories,
-    AdminFindItemsInInventoriesCallbackId,
+    AdminFindItemsInInventoriesCallbackId, admin_find_items_in_inventories,
+    set_flags_for_admin_find_items_in_inventories,
 };
 pub use admin_find_items_in_trades_reducer::{
-    admin_find_items_in_trades, set_flags_for_admin_find_items_in_trades,
-    AdminFindItemsInTradesCallbackId,
+    AdminFindItemsInTradesCallbackId, admin_find_items_in_trades,
+    set_flags_for_admin_find_items_in_trades,
 };
 pub use admin_grant_all_claim_supplies_reducer::{
-    admin_grant_all_claim_supplies, set_flags_for_admin_grant_all_claim_supplies,
-    AdminGrantAllClaimSuppliesCallbackId,
+    AdminGrantAllClaimSuppliesCallbackId, admin_grant_all_claim_supplies,
+    set_flags_for_admin_grant_all_claim_supplies,
 };
 pub use admin_grant_collectibles_reducer::{
-    admin_grant_collectibles, set_flags_for_admin_grant_collectibles,
-    AdminGrantCollectiblesCallbackId,
+    AdminGrantCollectiblesCallbackId, admin_grant_collectibles,
+    set_flags_for_admin_grant_collectibles,
 };
 pub use admin_migrate_action_state_reducer::{
-    admin_migrate_action_state, set_flags_for_admin_migrate_action_state,
-    AdminMigrateActionStateCallbackId,
+    AdminMigrateActionStateCallbackId, admin_migrate_action_state,
+    set_flags_for_admin_migrate_action_state,
 };
 pub use admin_migrate_housing_reducer::{
-    admin_migrate_housing, set_flags_for_admin_migrate_housing, AdminMigrateHousingCallbackId,
+    AdminMigrateHousingCallbackId, admin_migrate_housing, set_flags_for_admin_migrate_housing,
 };
 pub use admin_migrate_trade_orders_reducer::{
-    admin_migrate_trade_orders, set_flags_for_admin_migrate_trade_orders,
-    AdminMigrateTradeOrdersCallbackId,
+    AdminMigrateTradeOrdersCallbackId, admin_migrate_trade_orders,
+    set_flags_for_admin_migrate_trade_orders,
 };
 pub use admin_modify_chat_message_reducer::{
-    admin_modify_chat_message, set_flags_for_admin_modify_chat_message,
-    AdminModifyChatMessageCallbackId,
+    AdminModifyChatMessageCallbackId, admin_modify_chat_message,
+    set_flags_for_admin_modify_chat_message,
 };
 pub use admin_patch_housing_costs_reducer::{
-    admin_patch_housing_costs, set_flags_for_admin_patch_housing_costs,
-    AdminPatchHousingCostsCallbackId,
+    AdminPatchHousingCostsCallbackId, admin_patch_housing_costs,
+    set_flags_for_admin_patch_housing_costs,
 };
 pub use admin_rename_building_coord_reducer::{
-    admin_rename_building_coord, set_flags_for_admin_rename_building_coord,
-    AdminRenameBuildingCoordCallbackId,
+    AdminRenameBuildingCoordCallbackId, admin_rename_building_coord,
+    set_flags_for_admin_rename_building_coord,
 };
 pub use admin_rename_building_entity_reducer::{
-    admin_rename_building_entity, set_flags_for_admin_rename_building_entity,
-    AdminRenameBuildingEntityCallbackId,
+    AdminRenameBuildingEntityCallbackId, admin_rename_building_entity,
+    set_flags_for_admin_rename_building_entity,
 };
 pub use admin_rename_building_reducer::{
-    admin_rename_building, set_flags_for_admin_rename_building, AdminRenameBuildingCallbackId,
+    AdminRenameBuildingCallbackId, admin_rename_building, set_flags_for_admin_rename_building,
 };
 pub use admin_rename_claim_entity_reducer::{
-    admin_rename_claim_entity, set_flags_for_admin_rename_claim_entity,
-    AdminRenameClaimEntityCallbackId,
+    AdminRenameClaimEntityCallbackId, admin_rename_claim_entity,
+    set_flags_for_admin_rename_claim_entity,
 };
 pub use admin_rename_claim_reducer::{
-    admin_rename_claim, set_flags_for_admin_rename_claim, AdminRenameClaimCallbackId,
+    AdminRenameClaimCallbackId, admin_rename_claim, set_flags_for_admin_rename_claim,
 };
 pub use admin_rename_deployable_entity_reducer::{
-    admin_rename_deployable_entity, set_flags_for_admin_rename_deployable_entity,
-    AdminRenameDeployableEntityCallbackId,
+    AdminRenameDeployableEntityCallbackId, admin_rename_deployable_entity,
+    set_flags_for_admin_rename_deployable_entity,
 };
 pub use admin_rename_deployable_reducer::{
-    admin_rename_deployable, set_flags_for_admin_rename_deployable, AdminRenameDeployableCallbackId,
+    AdminRenameDeployableCallbackId, admin_rename_deployable, set_flags_for_admin_rename_deployable,
 };
 pub use admin_reset_all_herd_locations_reducer::{
-    admin_reset_all_herd_locations, set_flags_for_admin_reset_all_herd_locations,
-    AdminResetAllHerdLocationsCallbackId,
+    AdminResetAllHerdLocationsCallbackId, admin_reset_all_herd_locations,
+    set_flags_for_admin_reset_all_herd_locations,
 };
 pub use admin_reset_herd_locations_reducer::{
-    admin_reset_herd_locations, set_flags_for_admin_reset_herd_locations,
-    AdminResetHerdLocationsCallbackId,
+    AdminResetHerdLocationsCallbackId, admin_reset_herd_locations,
+    set_flags_for_admin_reset_herd_locations,
 };
 pub use admin_reset_onboarding_completely_reducer::{
-    admin_reset_onboarding_completely, set_flags_for_admin_reset_onboarding_completely,
-    AdminResetOnboardingCompletelyCallbackId,
+    AdminResetOnboardingCompletelyCallbackId, admin_reset_onboarding_completely,
+    set_flags_for_admin_reset_onboarding_completely,
 };
 pub use admin_resource_force_regen_reducer::{
-    admin_resource_force_regen, set_flags_for_admin_resource_force_regen,
-    AdminResourceForceRegenCallbackId,
+    AdminResourceForceRegenCallbackId, admin_resource_force_regen,
+    set_flags_for_admin_resource_force_regen,
 };
 pub use admin_resources_delete_very_slow_reducer::{
-    admin_resources_delete_very_slow, set_flags_for_admin_resources_delete_very_slow,
-    AdminResourcesDeleteVerySlowCallbackId,
+    AdminResourcesDeleteVerySlowCallbackId, admin_resources_delete_very_slow,
+    set_flags_for_admin_resources_delete_very_slow,
 };
 pub use admin_resources_log_count_reducer::{
-    admin_resources_log_count, set_flags_for_admin_resources_log_count,
-    AdminResourcesLogCountCallbackId,
+    AdminResourcesLogCountCallbackId, admin_resources_log_count,
+    set_flags_for_admin_resources_log_count,
 };
 pub use admin_restore_all_buildings_health_reducer::{
-    admin_restore_all_buildings_health, set_flags_for_admin_restore_all_buildings_health,
-    AdminRestoreAllBuildingsHealthCallbackId,
+    AdminRestoreAllBuildingsHealthCallbackId, admin_restore_all_buildings_health,
+    set_flags_for_admin_restore_all_buildings_health,
 };
 pub use admin_restore_all_collapsed_ruins_reducer::{
-    admin_restore_all_collapsed_ruins, set_flags_for_admin_restore_all_collapsed_ruins,
-    AdminRestoreAllCollapsedRuinsCallbackId,
+    AdminRestoreAllCollapsedRuinsCallbackId, admin_restore_all_collapsed_ruins,
+    set_flags_for_admin_restore_all_collapsed_ruins,
 };
 pub use admin_restore_player_state_reducer::{
-    admin_restore_player_state, set_flags_for_admin_restore_player_state,
-    AdminRestorePlayerStateCallbackId,
+    AdminRestorePlayerStateCallbackId, admin_restore_player_state,
+    set_flags_for_admin_restore_player_state,
 };
 pub use admin_restore_player_state_scheduled_reducer::{
-    admin_restore_player_state_scheduled, set_flags_for_admin_restore_player_state_scheduled,
-    AdminRestorePlayerStateScheduledCallbackId,
+    AdminRestorePlayerStateScheduledCallbackId, admin_restore_player_state_scheduled,
+    set_flags_for_admin_restore_player_state_scheduled,
 };
 pub use admin_restore_player_state_timer_table::*;
 pub use admin_restore_player_state_timer_type::AdminRestorePlayerStateTimer;
 pub use admin_set_resource_world_target_reducer::{
-    admin_set_resource_world_target, set_flags_for_admin_set_resource_world_target,
-    AdminSetResourceWorldTargetCallbackId,
+    AdminSetResourceWorldTargetCallbackId, admin_set_resource_world_target,
+    set_flags_for_admin_set_resource_world_target,
 };
 pub use admin_set_sign_text_coord_reducer::{
-    admin_set_sign_text_coord, set_flags_for_admin_set_sign_text_coord,
-    AdminSetSignTextCoordCallbackId,
+    AdminSetSignTextCoordCallbackId, admin_set_sign_text_coord,
+    set_flags_for_admin_set_sign_text_coord,
 };
 pub use admin_set_sign_text_entity_reducer::{
-    admin_set_sign_text_entity, set_flags_for_admin_set_sign_text_entity,
-    AdminSetSignTextEntityCallbackId,
+    AdminSetSignTextEntityCallbackId, admin_set_sign_text_entity,
+    set_flags_for_admin_set_sign_text_entity,
 };
 pub use admin_set_sign_text_reducer::{
-    admin_set_sign_text, set_flags_for_admin_set_sign_text, AdminSetSignTextCallbackId,
+    AdminSetSignTextCallbackId, admin_set_sign_text, set_flags_for_admin_set_sign_text,
 };
 pub use admin_sign_out_all_region_reducer::{
-    admin_sign_out_all_region, set_flags_for_admin_sign_out_all_region,
-    AdminSignOutAllRegionCallbackId,
+    AdminSignOutAllRegionCallbackId, admin_sign_out_all_region,
+    set_flags_for_admin_sign_out_all_region,
 };
 pub use admin_sign_out_reducer::{
-    admin_sign_out, set_flags_for_admin_sign_out, AdminSignOutCallbackId,
+    AdminSignOutCallbackId, admin_sign_out, set_flags_for_admin_sign_out,
 };
 pub use admin_sign_out_string_reducer::{
-    admin_sign_out_string, set_flags_for_admin_sign_out_string, AdminSignOutStringCallbackId,
+    AdminSignOutStringCallbackId, admin_sign_out_string, set_flags_for_admin_sign_out_string,
 };
 pub use admin_unlock_house_reducer::{
-    admin_unlock_house, set_flags_for_admin_unlock_house, AdminUnlockHouseCallbackId,
+    AdminUnlockHouseCallbackId, admin_unlock_house, set_flags_for_admin_unlock_house,
 };
 pub use admin_update_housing_portals_reducer::{
-    admin_update_housing_portals, set_flags_for_admin_update_housing_portals,
-    AdminUpdateHousingPortalsCallbackId,
+    AdminUpdateHousingPortalsCallbackId, admin_update_housing_portals,
+    set_flags_for_admin_update_housing_portals,
 };
 pub use admin_update_light_source_states_reducer::{
-    admin_update_light_source_states, set_flags_for_admin_update_light_source_states,
-    AdminUpdateLightSourceStatesCallbackId,
+    AdminUpdateLightSourceStatesCallbackId, admin_update_light_source_states,
+    set_flags_for_admin_update_light_source_states,
 };
 pub use admin_update_lore_knowledge_reducer::{
-    admin_update_lore_knowledge, set_flags_for_admin_update_lore_knowledge,
-    AdminUpdateLoreKnowledgeCallbackId,
+    AdminUpdateLoreKnowledgeCallbackId, admin_update_lore_knowledge,
+    set_flags_for_admin_update_lore_knowledge,
 };
 pub use advance_quest_stage_reducer::{
-    advance_quest_stage, set_flags_for_advance_quest_stage, AdvanceQuestStageCallbackId,
+    AdvanceQuestStageCallbackId, advance_quest_stage, set_flags_for_advance_quest_stage,
 };
 pub use ai_debug_state_type::AiDebugState;
 pub use alert_desc_table::*;
@@ -2165,10 +2165,10 @@ pub use alert_type_type::AlertType;
 pub use attached_herds_state_table::*;
 pub use attached_herds_state_type::AttachedHerdsState;
 pub use attack_impact_migrated_reducer::{
-    attack_impact_migrated, set_flags_for_attack_impact_migrated, AttackImpactMigratedCallbackId,
+    AttackImpactMigratedCallbackId, attack_impact_migrated, set_flags_for_attack_impact_migrated,
 };
 pub use attack_impact_reducer::{
-    attack_impact, set_flags_for_attack_impact, AttackImpactCallbackId,
+    AttackImpactCallbackId, attack_impact, set_flags_for_attack_impact,
 };
 pub use attack_impact_timer_migrated_table::*;
 pub use attack_impact_timer_migrated_type::AttackImpactTimerMigrated;
@@ -2176,38 +2176,38 @@ pub use attack_impact_timer_table::*;
 pub use attack_impact_timer_type::AttackImpactTimer;
 pub use attack_outcome_state_table::*;
 pub use attack_outcome_state_type::AttackOutcomeState;
-pub use attack_reducer::{attack, set_flags_for_attack, AttackCallbackId};
+pub use attack_reducer::{AttackCallbackId, attack, set_flags_for_attack};
 pub use attack_scheduled_reducer::{
-    attack_scheduled, set_flags_for_attack_scheduled, AttackScheduledCallbackId,
+    AttackScheduledCallbackId, attack_scheduled, set_flags_for_attack_scheduled,
 };
-pub use attack_start_reducer::{attack_start, set_flags_for_attack_start, AttackStartCallbackId};
+pub use attack_start_reducer::{AttackStartCallbackId, attack_start, set_flags_for_attack_start};
 pub use attack_timer_table::*;
 pub use attack_timer_type::AttackTimer;
 pub use auction_listing_state_type::AuctionListingState;
 pub use auto_claim_state_table::*;
 pub use auto_claim_state_type::AutoClaimState;
 pub use auto_logout_loop_reducer::{
-    auto_logout_loop, set_flags_for_auto_logout_loop, AutoLogoutLoopCallbackId,
+    AutoLogoutLoopCallbackId, auto_logout_loop, set_flags_for_auto_logout_loop,
 };
 pub use auto_logout_loop_timer_table::*;
 pub use auto_logout_loop_timer_type::AutoLogoutLoopTimer;
 pub use bank_state_table::*;
 pub use bank_state_type::BankState;
 pub use barter_stall_order_accept_reducer::{
-    barter_stall_order_accept, set_flags_for_barter_stall_order_accept,
-    BarterStallOrderAcceptCallbackId,
+    BarterStallOrderAcceptCallbackId, barter_stall_order_accept,
+    set_flags_for_barter_stall_order_accept,
 };
 pub use barter_stall_order_create_reducer::{
-    barter_stall_order_create, set_flags_for_barter_stall_order_create,
-    BarterStallOrderCreateCallbackId,
+    BarterStallOrderCreateCallbackId, barter_stall_order_create,
+    set_flags_for_barter_stall_order_create,
 };
 pub use barter_stall_order_delete_reducer::{
-    barter_stall_order_delete, set_flags_for_barter_stall_order_delete,
-    BarterStallOrderDeleteCallbackId,
+    BarterStallOrderDeleteCallbackId, barter_stall_order_delete,
+    set_flags_for_barter_stall_order_delete,
 };
 pub use barter_stall_set_market_mode_enabled_reducer::{
-    barter_stall_set_market_mode_enabled, set_flags_for_barter_stall_set_market_mode_enabled,
-    BarterStallSetMarketModeEnabledCallbackId,
+    BarterStallSetMarketModeEnabledCallbackId, barter_stall_set_market_mode_enabled,
+    set_flags_for_barter_stall_set_market_mode_enabled,
 };
 pub use barter_stall_set_market_mode_enabled_request_type::BarterStallSetMarketModeEnabledRequest;
 pub use barter_stall_state_table::*;
@@ -2219,7 +2219,7 @@ pub use blocked_identity_op_type::BlockedIdentityOp;
 pub use blocked_identity_table::*;
 pub use blocked_identity_type::BlockedIdentity;
 pub use blueprint_place_reducer::{
-    blueprint_place, set_flags_for_blueprint_place, BlueprintPlaceCallbackId,
+    BlueprintPlaceCallbackId, blueprint_place, set_flags_for_blueprint_place,
 };
 pub use buff_category_type::BuffCategory;
 pub use buff_desc_table::*;
@@ -2231,22 +2231,22 @@ pub use building_category_type::BuildingCategory;
 pub use building_claim_desc_table::*;
 pub use building_claim_desc_type::BuildingClaimDesc;
 pub use building_decay_agent_loop_reducer::{
-    building_decay_agent_loop, set_flags_for_building_decay_agent_loop,
-    BuildingDecayAgentLoopCallbackId,
+    BuildingDecayAgentLoopCallbackId, building_decay_agent_loop,
+    set_flags_for_building_decay_agent_loop,
 };
 pub use building_decay_loop_timer_table::*;
 pub use building_decay_loop_timer_type::BuildingDecayLoopTimer;
 pub use building_deconstruct_reducer::{
-    building_deconstruct, set_flags_for_building_deconstruct, BuildingDeconstructCallbackId,
+    BuildingDeconstructCallbackId, building_deconstruct, set_flags_for_building_deconstruct,
 };
 pub use building_deconstruct_start_reducer::{
-    building_deconstruct_start, set_flags_for_building_deconstruct_start,
-    BuildingDeconstructStartCallbackId,
+    BuildingDeconstructStartCallbackId, building_deconstruct_start,
+    set_flags_for_building_deconstruct_start,
 };
 pub use building_desc_table::*;
 pub use building_desc_type::BuildingDesc;
 pub use building_despawn_reducer::{
-    building_despawn, set_flags_for_building_despawn, BuildingDespawnCallbackId,
+    BuildingDespawnCallbackId, building_despawn, set_flags_for_building_despawn,
 };
 pub use building_despawn_timer_table::*;
 pub use building_despawn_timer_type::BuildingDespawnTimer;
@@ -2255,7 +2255,7 @@ pub use building_function_type_mapping_desc_table::*;
 pub use building_function_type_mapping_desc_type::BuildingFunctionTypeMappingDesc;
 pub use building_interaction_level_type::BuildingInteractionLevel;
 pub use building_move_reducer::{
-    building_move, set_flags_for_building_move, BuildingMoveCallbackId,
+    BuildingMoveCallbackId, building_move, set_flags_for_building_move,
 };
 pub use building_nickname_state_op_type::BuildingNicknameStateOp;
 pub use building_nickname_state_table::*;
@@ -2266,19 +2266,19 @@ pub use building_portal_desc_type::BuildingPortalDesc;
 pub use building_portal_desc_v_2_table::*;
 pub use building_portal_desc_v_2_type::BuildingPortalDescV2;
 pub use building_repair_reducer::{
-    building_repair, set_flags_for_building_repair, BuildingRepairCallbackId,
+    BuildingRepairCallbackId, building_repair, set_flags_for_building_repair,
 };
 pub use building_repair_start_reducer::{
-    building_repair_start, set_flags_for_building_repair_start, BuildingRepairStartCallbackId,
+    BuildingRepairStartCallbackId, building_repair_start, set_flags_for_building_repair_start,
 };
 pub use building_repairs_desc_table::*;
 pub use building_repairs_desc_type::BuildingRepairsDesc;
 pub use building_requirement_type::BuildingRequirement;
 pub use building_set_nickname_reducer::{
-    building_set_nickname, set_flags_for_building_set_nickname, BuildingSetNicknameCallbackId,
+    BuildingSetNicknameCallbackId, building_set_nickname, set_flags_for_building_set_nickname,
 };
 pub use building_set_sign_text_reducer::{
-    building_set_sign_text, set_flags_for_building_set_sign_text, BuildingSetSignTextCallbackId,
+    BuildingSetSignTextCallbackId, building_set_sign_text, set_flags_for_building_set_sign_text,
 };
 pub use building_set_sign_text_request_type::BuildingSetSignTextRequest;
 pub use building_spawn_desc_table::*;
@@ -2301,205 +2301,203 @@ pub use character_stats_state_table::*;
 pub use character_stats_state_type::CharacterStatsState;
 pub use chat_channel_type::ChatChannel;
 pub use chat_cleanup_agent_insert_reducer::{
-    chat_cleanup_agent_insert, set_flags_for_chat_cleanup_agent_insert,
-    ChatCleanupAgentInsertCallbackId,
+    ChatCleanupAgentInsertCallbackId, chat_cleanup_agent_insert,
+    set_flags_for_chat_cleanup_agent_insert,
 };
 pub use chat_cleanup_agent_loop_reducer::{
-    chat_cleanup_agent_loop, set_flags_for_chat_cleanup_agent_loop, ChatCleanupAgentLoopCallbackId,
+    ChatCleanupAgentLoopCallbackId, chat_cleanup_agent_loop, set_flags_for_chat_cleanup_agent_loop,
 };
 pub use chat_cleanup_timer_table::*;
 pub use chat_cleanup_timer_type::ChatCleanupTimer;
 pub use chat_message_state_table::*;
 pub use chat_message_state_type::ChatMessageState;
 pub use chat_post_message_reducer::{
-    chat_post_message, set_flags_for_chat_post_message, ChatPostMessageCallbackId,
+    ChatPostMessageCallbackId, chat_post_message, set_flags_for_chat_post_message,
 };
 pub use cheat_building_move_reducer::{
-    cheat_building_move, set_flags_for_cheat_building_move, CheatBuildingMoveCallbackId,
+    CheatBuildingMoveCallbackId, cheat_building_move, set_flags_for_cheat_building_move,
 };
 pub use cheat_building_place_reducer::{
-    cheat_building_place, set_flags_for_cheat_building_place, CheatBuildingPlaceCallbackId,
+    CheatBuildingPlaceCallbackId, cheat_building_place, set_flags_for_cheat_building_place,
 };
 pub use cheat_cargo_grant_reducer::{
-    cheat_cargo_grant, set_flags_for_cheat_cargo_grant, CheatCargoGrantCallbackId,
+    CheatCargoGrantCallbackId, cheat_cargo_grant, set_flags_for_cheat_cargo_grant,
 };
 pub use cheat_cargo_grant_request_type::CheatCargoGrantRequest;
 pub use cheat_claim_delete_walls_reducer::{
-    cheat_claim_delete_walls, set_flags_for_cheat_claim_delete_walls,
-    CheatClaimDeleteWallsCallbackId,
+    CheatClaimDeleteWallsCallbackId, cheat_claim_delete_walls,
+    set_flags_for_cheat_claim_delete_walls,
 };
 pub use cheat_claim_take_ownership_reducer::{
-    cheat_claim_take_ownership, set_flags_for_cheat_claim_take_ownership,
-    CheatClaimTakeOwnershipCallbackId,
+    CheatClaimTakeOwnershipCallbackId, cheat_claim_take_ownership,
+    set_flags_for_cheat_claim_take_ownership,
 };
 pub use cheat_claim_totem_add_supplies_reducer::{
-    cheat_claim_totem_add_supplies, set_flags_for_cheat_claim_totem_add_supplies,
-    CheatClaimTotemAddSuppliesCallbackId,
+    CheatClaimTotemAddSuppliesCallbackId, cheat_claim_totem_add_supplies,
+    set_flags_for_cheat_claim_totem_add_supplies,
 };
 pub use cheat_claim_totem_complete_current_research_reducer::{
-    cheat_claim_totem_complete_current_research,
+    CheatClaimTotemCompleteCurrentResearchCallbackId, cheat_claim_totem_complete_current_research,
     set_flags_for_cheat_claim_totem_complete_current_research,
-    CheatClaimTotemCompleteCurrentResearchCallbackId,
 };
 pub use cheat_claim_totem_research_all_reducer::{
-    cheat_claim_totem_research_all, set_flags_for_cheat_claim_totem_research_all,
-    CheatClaimTotemResearchAllCallbackId,
+    CheatClaimTotemResearchAllCallbackId, cheat_claim_totem_research_all,
+    set_flags_for_cheat_claim_totem_research_all,
 };
 pub use cheat_claim_unlock_tech_reducer::{
-    cheat_claim_unlock_tech, set_flags_for_cheat_claim_unlock_tech, CheatClaimUnlockTechCallbackId,
+    CheatClaimUnlockTechCallbackId, cheat_claim_unlock_tech, set_flags_for_cheat_claim_unlock_tech,
 };
 pub use cheat_claims_complete_all_current_research_reducer::{
-    cheat_claims_complete_all_current_research,
+    CheatClaimsCompleteAllCurrentResearchCallbackId, cheat_claims_complete_all_current_research,
     set_flags_for_cheat_claims_complete_all_current_research,
-    CheatClaimsCompleteAllCurrentResearchCallbackId,
 };
 pub use cheat_clear_buffs_and_debuffs_reducer::{
-    cheat_clear_buffs_and_debuffs, set_flags_for_cheat_clear_buffs_and_debuffs,
-    CheatClearBuffsAndDebuffsCallbackId,
+    CheatClearBuffsAndDebuffsCallbackId, cheat_clear_buffs_and_debuffs,
+    set_flags_for_cheat_clear_buffs_and_debuffs,
 };
 pub use cheat_compendium_enemy_place_request_type::CheatCompendiumEnemyPlaceRequest;
 pub use cheat_compendium_item_place_request_type::CheatCompendiumItemPlaceRequest;
 pub use cheat_compendium_place_enemy_reducer::{
-    cheat_compendium_place_enemy, set_flags_for_cheat_compendium_place_enemy,
-    CheatCompendiumPlaceEnemyCallbackId,
+    CheatCompendiumPlaceEnemyCallbackId, cheat_compendium_place_enemy,
+    set_flags_for_cheat_compendium_place_enemy,
 };
 pub use cheat_compendium_place_resource_reducer::{
-    cheat_compendium_place_resource, set_flags_for_cheat_compendium_place_resource,
-    CheatCompendiumPlaceResourceCallbackId,
+    CheatCompendiumPlaceResourceCallbackId, cheat_compendium_place_resource,
+    set_flags_for_cheat_compendium_place_resource,
 };
 pub use cheat_delete_item_reducer::{
-    cheat_delete_item, set_flags_for_cheat_delete_item, CheatDeleteItemCallbackId,
+    CheatDeleteItemCallbackId, cheat_delete_item, set_flags_for_cheat_delete_item,
 };
 pub use cheat_deployable_store_reducer::{
-    cheat_deployable_store, set_flags_for_cheat_deployable_store, CheatDeployableStoreCallbackId,
+    CheatDeployableStoreCallbackId, cheat_deployable_store, set_flags_for_cheat_deployable_store,
 };
 pub use cheat_discover_map_reducer::{
-    cheat_discover_map, set_flags_for_cheat_discover_map, CheatDiscoverMapCallbackId,
+    CheatDiscoverMapCallbackId, cheat_discover_map, set_flags_for_cheat_discover_map,
 };
 pub use cheat_discover_map_request_type::CheatDiscoverMapRequest;
 pub use cheat_drop_item_on_entity_reducer::{
-    cheat_drop_item_on_entity, set_flags_for_cheat_drop_item_on_entity,
-    CheatDropItemOnEntityCallbackId,
+    CheatDropItemOnEntityCallbackId, cheat_drop_item_on_entity,
+    set_flags_for_cheat_drop_item_on_entity,
 };
 pub use cheat_drop_item_on_tile_reducer::{
-    cheat_drop_item_on_tile, set_flags_for_cheat_drop_item_on_tile, CheatDropItemOnTileCallbackId,
+    CheatDropItemOnTileCallbackId, cheat_drop_item_on_tile, set_flags_for_cheat_drop_item_on_tile,
 };
 pub use cheat_experience_grant_reducer::{
-    cheat_experience_grant, set_flags_for_cheat_experience_grant, CheatExperienceGrantCallbackId,
+    CheatExperienceGrantCallbackId, cheat_experience_grant, set_flags_for_cheat_experience_grant,
 };
 pub use cheat_experience_grant_request_type::CheatExperienceGrantRequest;
 pub use cheat_grant_knowledge_reducer::{
-    cheat_grant_knowledge, set_flags_for_cheat_grant_knowledge, CheatGrantKnowledgeCallbackId,
+    CheatGrantKnowledgeCallbackId, cheat_grant_knowledge, set_flags_for_cheat_grant_knowledge,
 };
 pub use cheat_grant_knowledge_request_type::CheatGrantKnowledgeRequest;
 pub use cheat_grant_teleport_energy_reducer::{
-    cheat_grant_teleport_energy, set_flags_for_cheat_grant_teleport_energy,
-    CheatGrantTeleportEnergyCallbackId,
+    CheatGrantTeleportEnergyCallbackId, cheat_grant_teleport_energy,
+    set_flags_for_cheat_grant_teleport_energy,
 };
 pub use cheat_item_stack_grant_and_equip_reducer::{
-    cheat_item_stack_grant_and_equip, set_flags_for_cheat_item_stack_grant_and_equip,
-    CheatItemStackGrantAndEquipCallbackId,
+    CheatItemStackGrantAndEquipCallbackId, cheat_item_stack_grant_and_equip,
+    set_flags_for_cheat_item_stack_grant_and_equip,
 };
 pub use cheat_item_stack_grant_reducer::{
-    cheat_item_stack_grant, set_flags_for_cheat_item_stack_grant, CheatItemStackGrantCallbackId,
+    CheatItemStackGrantCallbackId, cheat_item_stack_grant, set_flags_for_cheat_item_stack_grant,
 };
-pub use cheat_kill_reducer::{cheat_kill, set_flags_for_cheat_kill, CheatKillCallbackId};
+pub use cheat_kill_reducer::{CheatKillCallbackId, cheat_kill, set_flags_for_cheat_kill};
 pub use cheat_paving_add_tile_reducer::{
-    cheat_paving_add_tile, set_flags_for_cheat_paving_add_tile, CheatPavingAddTileCallbackId,
+    CheatPavingAddTileCallbackId, cheat_paving_add_tile, set_flags_for_cheat_paving_add_tile,
 };
 pub use cheat_paving_destroy_reducer::{
-    cheat_paving_destroy, set_flags_for_cheat_paving_destroy, CheatPavingDestroyCallbackId,
+    CheatPavingDestroyCallbackId, cheat_paving_destroy, set_flags_for_cheat_paving_destroy,
 };
 pub use cheat_pillar_shaping_add_pillar_reducer::{
-    cheat_pillar_shaping_add_pillar, set_flags_for_cheat_pillar_shaping_add_pillar,
-    CheatPillarShapingAddPillarCallbackId,
+    CheatPillarShapingAddPillarCallbackId, cheat_pillar_shaping_add_pillar,
+    set_flags_for_cheat_pillar_shaping_add_pillar,
 };
 pub use cheat_pillar_shaping_destroy_reducer::{
-    cheat_pillar_shaping_destroy, set_flags_for_cheat_pillar_shaping_destroy,
-    CheatPillarShapingDestroyCallbackId,
+    CheatPillarShapingDestroyCallbackId, cheat_pillar_shaping_destroy,
+    set_flags_for_cheat_pillar_shaping_destroy,
 };
 pub use cheat_project_site_add_all_materials_reducer::{
-    cheat_project_site_add_all_materials, set_flags_for_cheat_project_site_add_all_materials,
-    CheatProjectSiteAddAllMaterialsCallbackId,
+    CheatProjectSiteAddAllMaterialsCallbackId, cheat_project_site_add_all_materials,
+    set_flags_for_cheat_project_site_add_all_materials,
 };
 pub use cheat_quest_advance_to_handin_reducer::{
-    cheat_quest_advance_to_handin, set_flags_for_cheat_quest_advance_to_handin,
-    CheatQuestAdvanceToHandinCallbackId,
+    CheatQuestAdvanceToHandinCallbackId, cheat_quest_advance_to_handin,
+    set_flags_for_cheat_quest_advance_to_handin,
 };
 pub use cheat_quest_restart_reducer::{
-    cheat_quest_restart, set_flags_for_cheat_quest_restart, CheatQuestRestartCallbackId,
+    CheatQuestRestartCallbackId, cheat_quest_restart, set_flags_for_cheat_quest_restart,
 };
 pub use cheat_quest_skip_reducer::{
-    cheat_quest_skip, set_flags_for_cheat_quest_skip, CheatQuestSkipCallbackId,
+    CheatQuestSkipCallbackId, cheat_quest_skip, set_flags_for_cheat_quest_skip,
 };
 pub use cheat_quest_skip_stage_reducer::{
-    cheat_quest_skip_stage, set_flags_for_cheat_quest_skip_stage, CheatQuestSkipStageCallbackId,
+    CheatQuestSkipStageCallbackId, cheat_quest_skip_stage, set_flags_for_cheat_quest_skip_stage,
 };
 pub use cheat_remove_entity_building_reducer::{
-    cheat_remove_entity_building, set_flags_for_cheat_remove_entity_building,
-    CheatRemoveEntityBuildingCallbackId,
+    CheatRemoveEntityBuildingCallbackId, cheat_remove_entity_building,
+    set_flags_for_cheat_remove_entity_building,
 };
 pub use cheat_remove_entity_enemy_reducer::{
-    cheat_remove_entity_enemy, set_flags_for_cheat_remove_entity_enemy,
-    CheatRemoveEntityEnemyCallbackId,
+    CheatRemoveEntityEnemyCallbackId, cheat_remove_entity_enemy,
+    set_flags_for_cheat_remove_entity_enemy,
 };
 pub use cheat_remove_entity_resource_reducer::{
-    cheat_remove_entity_resource, set_flags_for_cheat_remove_entity_resource,
-    CheatRemoveEntityResourceCallbackId,
+    CheatRemoveEntityResourceCallbackId, cheat_remove_entity_resource,
+    set_flags_for_cheat_remove_entity_resource,
 };
 pub use cheat_remove_item_quantity_all_reducer::{
-    cheat_remove_item_quantity_all, set_flags_for_cheat_remove_item_quantity_all,
-    CheatRemoveItemQuantityAllCallbackId,
+    CheatRemoveItemQuantityAllCallbackId, cheat_remove_item_quantity_all,
+    set_flags_for_cheat_remove_item_quantity_all,
 };
 pub use cheat_remove_item_quantity_reducer::{
-    cheat_remove_item_quantity, set_flags_for_cheat_remove_item_quantity,
-    CheatRemoveItemQuantityCallbackId,
+    CheatRemoveItemQuantityCallbackId, cheat_remove_item_quantity,
+    set_flags_for_cheat_remove_item_quantity,
 };
 pub use cheat_set_ai_debug_state_reducer::{
-    cheat_set_ai_debug_state, set_flags_for_cheat_set_ai_debug_state,
-    CheatSetAiDebugStateCallbackId,
+    CheatSetAiDebugStateCallbackId, cheat_set_ai_debug_state,
+    set_flags_for_cheat_set_ai_debug_state,
 };
 pub use cheat_set_debug_ai_state_request_type::CheatSetDebugAiStateRequest;
 pub use cheat_spawn_loot_chest_reducer::{
-    cheat_spawn_loot_chest, set_flags_for_cheat_spawn_loot_chest, CheatSpawnLootChestCallbackId,
+    CheatSpawnLootChestCallbackId, cheat_spawn_loot_chest, set_flags_for_cheat_spawn_loot_chest,
 };
 pub use cheat_spawn_loot_chest_request_type::CheatSpawnLootChestRequest;
 pub use cheat_teleport_float_reducer::{
-    cheat_teleport_float, set_flags_for_cheat_teleport_float, CheatTeleportFloatCallbackId,
+    CheatTeleportFloatCallbackId, cheat_teleport_float, set_flags_for_cheat_teleport_float,
 };
 pub use cheat_teleport_float_request_type::CheatTeleportFloatRequest;
 pub use cheat_terraform_reducer::{
-    cheat_terraform, set_flags_for_cheat_terraform, CheatTerraformCallbackId,
+    CheatTerraformCallbackId, cheat_terraform, set_flags_for_cheat_terraform,
 };
 pub use cheat_toggle_active_collectible_reducer::{
-    cheat_toggle_active_collectible, set_flags_for_cheat_toggle_active_collectible,
-    CheatToggleActiveCollectibleCallbackId,
+    CheatToggleActiveCollectibleCallbackId, cheat_toggle_active_collectible,
+    set_flags_for_cheat_toggle_active_collectible,
 };
 pub use cheat_toggle_active_collectible_request_type::CheatToggleActiveCollectibleRequest;
 pub use cheat_undiscover_map_reducer::{
-    cheat_undiscover_map, set_flags_for_cheat_undiscover_map, CheatUndiscoverMapCallbackId,
+    CheatUndiscoverMapCallbackId, cheat_undiscover_map, set_flags_for_cheat_undiscover_map,
 };
-pub use cheat_warp_reducer::{cheat_warp, set_flags_for_cheat_warp, CheatWarpCallbackId};
+pub use cheat_warp_reducer::{CheatWarpCallbackId, cheat_warp, set_flags_for_cheat_warp};
 pub use cheat_warp_request_type::CheatWarpRequest;
 pub use chest_loot_rarity_type::ChestLootRarity;
 pub use chest_rarity_desc_table::*;
 pub use chest_rarity_desc_type::ChestRarityDesc;
 pub use chunk_coordinates_message_type::ChunkCoordinatesMessage;
 pub use claim_add_member_reducer::{
-    claim_add_member, set_flags_for_claim_add_member, ClaimAddMemberCallbackId,
+    ClaimAddMemberCallbackId, claim_add_member, set_flags_for_claim_add_member,
 };
 pub use claim_add_recruitment_reducer::{
-    claim_add_recruitment, set_flags_for_claim_add_recruitment, ClaimAddRecruitmentCallbackId,
+    ClaimAddRecruitmentCallbackId, claim_add_recruitment, set_flags_for_claim_add_recruitment,
 };
 pub use claim_add_tile_reducer::{
-    claim_add_tile, set_flags_for_claim_add_tile, ClaimAddTileCallbackId,
+    ClaimAddTileCallbackId, claim_add_tile, set_flags_for_claim_add_tile,
 };
 pub use claim_apply_for_recruitment_reducer::{
-    claim_apply_for_recruitment, set_flags_for_claim_apply_for_recruitment,
-    ClaimApplyForRecruitmentCallbackId,
+    ClaimApplyForRecruitmentCallbackId, claim_apply_for_recruitment,
+    set_flags_for_claim_apply_for_recruitment,
 };
 pub use claim_create_empire_settlement_msg_type::ClaimCreateEmpireSettlementMsg;
-pub use claim_leave_reducer::{claim_leave, set_flags_for_claim_leave, ClaimLeaveCallbackId};
+pub use claim_leave_reducer::{ClaimLeaveCallbackId, claim_leave, set_flags_for_claim_leave};
 pub use claim_local_state_table::*;
 pub use claim_local_state_type::ClaimLocalState;
 pub use claim_local_supply_security_threshold_state_table::*;
@@ -2509,69 +2507,69 @@ pub use claim_member_state_table::*;
 pub use claim_member_state_type::ClaimMemberState;
 pub use claim_permission_type::ClaimPermission;
 pub use claim_purchase_supplies_from_player_reducer::{
-    claim_purchase_supplies_from_player, set_flags_for_claim_purchase_supplies_from_player,
-    ClaimPurchaseSuppliesFromPlayerCallbackId,
+    ClaimPurchaseSuppliesFromPlayerCallbackId, claim_purchase_supplies_from_player,
+    set_flags_for_claim_purchase_supplies_from_player,
 };
 pub use claim_purchase_supplies_from_player_request_type::ClaimPurchaseSuppliesFromPlayerRequest;
 pub use claim_recruitment_state_table::*;
 pub use claim_recruitment_state_type::ClaimRecruitmentState;
 pub use claim_remove_member_reducer::{
-    claim_remove_member, set_flags_for_claim_remove_member, ClaimRemoveMemberCallbackId,
+    ClaimRemoveMemberCallbackId, claim_remove_member, set_flags_for_claim_remove_member,
 };
 pub use claim_remove_recruitment_reducer::{
-    claim_remove_recruitment, set_flags_for_claim_remove_recruitment,
-    ClaimRemoveRecruitmentCallbackId,
+    ClaimRemoveRecruitmentCallbackId, claim_remove_recruitment,
+    set_flags_for_claim_remove_recruitment,
 };
 pub use claim_remove_tile_reducer::{
-    claim_remove_tile, set_flags_for_claim_remove_tile, ClaimRemoveTileCallbackId,
+    ClaimRemoveTileCallbackId, claim_remove_tile, set_flags_for_claim_remove_tile,
 };
-pub use claim_rename_reducer::{claim_rename, set_flags_for_claim_rename, ClaimRenameCallbackId};
+pub use claim_rename_reducer::{ClaimRenameCallbackId, claim_rename, set_flags_for_claim_rename};
 pub use claim_resupply_reducer::{
-    claim_resupply, set_flags_for_claim_resupply, ClaimResupplyCallbackId,
+    ClaimResupplyCallbackId, claim_resupply, set_flags_for_claim_resupply,
 };
 pub use claim_resupply_request_type::ClaimResupplyRequest;
 pub use claim_resupply_start_reducer::{
-    claim_resupply_start, set_flags_for_claim_resupply_start, ClaimResupplyStartCallbackId,
+    ClaimResupplyStartCallbackId, claim_resupply_start, set_flags_for_claim_resupply_start,
 };
 pub use claim_set_member_permissions_reducer::{
-    claim_set_member_permissions, set_flags_for_claim_set_member_permissions,
-    ClaimSetMemberPermissionsCallbackId,
+    ClaimSetMemberPermissionsCallbackId, claim_set_member_permissions,
+    set_flags_for_claim_set_member_permissions,
 };
 pub use claim_set_protection_threshold_reducer::{
-    claim_set_protection_threshold, set_flags_for_claim_set_protection_threshold,
-    ClaimSetProtectionThresholdCallbackId,
+    ClaimSetProtectionThresholdCallbackId, claim_set_protection_threshold,
+    set_flags_for_claim_set_protection_threshold,
 };
 pub use claim_set_purchase_supply_price_reducer::{
-    claim_set_purchase_supply_price, set_flags_for_claim_set_purchase_supply_price,
-    ClaimSetPurchaseSupplyPriceCallbackId,
+    ClaimSetPurchaseSupplyPriceCallbackId, claim_set_purchase_supply_price,
+    set_flags_for_claim_set_purchase_supply_price,
 };
 pub use claim_set_purchase_supply_price_request_type::ClaimSetPurchaseSupplyPriceRequest;
 pub use claim_set_purchase_supply_threshold_reducer::{
-    claim_set_purchase_supply_threshold, set_flags_for_claim_set_purchase_supply_threshold,
-    ClaimSetPurchaseSupplyThresholdCallbackId,
+    ClaimSetPurchaseSupplyThresholdCallbackId, claim_set_purchase_supply_threshold,
+    set_flags_for_claim_set_purchase_supply_threshold,
 };
 pub use claim_set_purchase_supply_threshold_request_type::ClaimSetPurchaseSupplyThresholdRequest;
 pub use claim_state_op_type::ClaimStateOp;
 pub use claim_state_table::*;
 pub use claim_state_type::ClaimState;
 pub use claim_take_ownership_reducer::{
-    claim_take_ownership, set_flags_for_claim_take_ownership, ClaimTakeOwnershipCallbackId,
+    ClaimTakeOwnershipCallbackId, claim_take_ownership, set_flags_for_claim_take_ownership,
 };
 pub use claim_tech_cancel_reducer::{
-    claim_tech_cancel, set_flags_for_claim_tech_cancel, ClaimTechCancelCallbackId,
+    ClaimTechCancelCallbackId, claim_tech_cancel, set_flags_for_claim_tech_cancel,
 };
 pub use claim_tech_desc_table::*;
 pub use claim_tech_desc_type::ClaimTechDesc;
 pub use claim_tech_desc_v_2_table::*;
 pub use claim_tech_desc_v_2_type::ClaimTechDescV2;
 pub use claim_tech_learn_reducer::{
-    claim_tech_learn, set_flags_for_claim_tech_learn, ClaimTechLearnCallbackId,
+    ClaimTechLearnCallbackId, claim_tech_learn, set_flags_for_claim_tech_learn,
 };
 pub use claim_tech_state_table::*;
 pub use claim_tech_state_type::ClaimTechState;
 pub use claim_tech_type_type::ClaimTechType;
 pub use claim_tech_unlock_tech_reducer::{
-    claim_tech_unlock_tech, set_flags_for_claim_tech_unlock_tech, ClaimTechUnlockTechCallbackId,
+    ClaimTechUnlockTechCallbackId, claim_tech_unlock_tech, set_flags_for_claim_tech_unlock_tech,
 };
 pub use claim_tech_unlock_timer_table::*;
 pub use claim_tech_unlock_timer_type::ClaimTechUnlockTimer;
@@ -2580,25 +2578,25 @@ pub use claim_tile_cost_type::ClaimTileCost;
 pub use claim_tile_state_table::*;
 pub use claim_tile_state_type::ClaimTileState;
 pub use claim_transfer_ownership_reducer::{
-    claim_transfer_ownership, set_flags_for_claim_transfer_ownership,
-    ClaimTransferOwnershipCallbackId,
+    ClaimTransferOwnershipCallbackId, claim_transfer_ownership,
+    set_flags_for_claim_transfer_ownership,
 };
 pub use claim_treasury_deposit_reducer::{
-    claim_treasury_deposit, set_flags_for_claim_treasury_deposit, ClaimTreasuryDepositCallbackId,
+    ClaimTreasuryDepositCallbackId, claim_treasury_deposit, set_flags_for_claim_treasury_deposit,
 };
 pub use claim_type_type::ClaimType;
 pub use claim_withdraw_from_treasury_reducer::{
-    claim_withdraw_from_treasury, set_flags_for_claim_withdraw_from_treasury,
-    ClaimWithdrawFromTreasuryCallbackId,
+    ClaimWithdrawFromTreasuryCallbackId, claim_withdraw_from_treasury,
+    set_flags_for_claim_withdraw_from_treasury,
 };
 pub use clear_staged_static_data_reducer::{
-    clear_staged_static_data, set_flags_for_clear_staged_static_data,
-    ClearStagedStaticDataCallbackId,
+    ClearStagedStaticDataCallbackId, clear_staged_static_data,
+    set_flags_for_clear_staged_static_data,
 };
 pub use climb_requirement_desc_table::*;
 pub use climb_requirement_desc_type::ClimbRequirementDesc;
 pub use closed_listing_collect_reducer::{
-    closed_listing_collect, set_flags_for_closed_listing_collect, ClosedListingCollectCallbackId,
+    ClosedListingCollectCallbackId, closed_listing_collect, set_flags_for_closed_listing_collect,
 };
 pub use closed_listing_state_table::*;
 pub use closed_listing_state_type::ClosedListingState;
@@ -2607,12 +2605,12 @@ pub use clothing_desc_type::ClothingDesc;
 pub use clothing_mask_type::ClothingMask;
 pub use clothing_visual_type::ClothingVisual;
 pub use collect_stats_reducer_reducer::{
-    collect_stats_reducer, set_flags_for_collect_stats_reducer, CollectStatsReducerCallbackId,
+    CollectStatsReducerCallbackId, collect_stats_reducer, set_flags_for_collect_stats_reducer,
 };
 pub use collect_stats_timer_table::*;
 pub use collect_stats_timer_type::CollectStatsTimer;
 pub use collectible_activate_reducer::{
-    collectible_activate, set_flags_for_collectible_activate, CollectibleActivateCallbackId,
+    CollectibleActivateCallbackId, collectible_activate, set_flags_for_collectible_activate,
 };
 pub use collectible_desc_table::*;
 pub use collectible_desc_type::CollectibleDesc;
@@ -2631,20 +2629,20 @@ pub use combat_dimension_state_type::CombatDimensionState;
 pub use combat_state_table::*;
 pub use combat_state_type::CombatState;
 pub use commit_staged_static_data_reducer::{
-    commit_staged_static_data, set_flags_for_commit_staged_static_data,
-    CommitStagedStaticDataCallbackId,
+    CommitStagedStaticDataCallbackId, commit_staged_static_data,
+    set_flags_for_commit_staged_static_data,
 };
 pub use common_rng_type::CommonRng;
 pub use complete_onboarding_quest_reducer::{
-    complete_onboarding_quest, set_flags_for_complete_onboarding_quest,
-    CompleteOnboardingQuestCallbackId,
+    CompleteOnboardingQuestCallbackId, complete_onboarding_quest,
+    set_flags_for_complete_onboarding_quest,
 };
 pub use complete_onboarding_state_reducer::{
-    complete_onboarding_state, set_flags_for_complete_onboarding_state,
-    CompleteOnboardingStateCallbackId,
+    CompleteOnboardingStateCallbackId, complete_onboarding_state,
+    set_flags_for_complete_onboarding_state,
 };
 pub use complete_quest_chain_reducer::{
-    complete_quest_chain, set_flags_for_complete_quest_chain, CompleteQuestChainCallbackId,
+    CompleteQuestChainCallbackId, complete_quest_chain, set_flags_for_complete_quest_chain,
 };
 pub use completion_condition_type::CompletionCondition;
 pub use config_table::*;
@@ -2660,45 +2658,45 @@ pub use contribution_loot_desc_v_2_type::ContributionLootDescV2;
 pub use contribution_state_table::*;
 pub use contribution_state_type::ContributionState;
 pub use convert_collectible_to_deed_reducer::{
-    convert_collectible_to_deed, set_flags_for_convert_collectible_to_deed,
-    ConvertCollectibleToDeedCallbackId,
+    ConvertCollectibleToDeedCallbackId, convert_collectible_to_deed,
+    set_flags_for_convert_collectible_to_deed,
 };
 pub use convert_deed_to_collectible_reducer::{
-    convert_deed_to_collectible, set_flags_for_convert_deed_to_collectible,
-    ConvertDeedToCollectibleCallbackId,
+    ConvertDeedToCollectibleCallbackId, convert_deed_to_collectible,
+    set_flags_for_convert_deed_to_collectible,
 };
-pub use craft_cancel_reducer::{craft_cancel, set_flags_for_craft_cancel, CraftCancelCallbackId};
+pub use craft_cancel_reducer::{CraftCancelCallbackId, craft_cancel, set_flags_for_craft_cancel};
 pub use craft_collect_all_reducer::{
-    craft_collect_all, set_flags_for_craft_collect_all, CraftCollectAllCallbackId,
+    CraftCollectAllCallbackId, craft_collect_all, set_flags_for_craft_collect_all,
 };
 pub use craft_collect_reducer::{
-    craft_collect, set_flags_for_craft_collect, CraftCollectCallbackId,
+    CraftCollectCallbackId, craft_collect, set_flags_for_craft_collect,
 };
 pub use craft_continue_reducer::{
-    craft_continue, set_flags_for_craft_continue, CraftContinueCallbackId,
+    CraftContinueCallbackId, craft_continue, set_flags_for_craft_continue,
 };
 pub use craft_continue_start_reducer::{
-    craft_continue_start, set_flags_for_craft_continue_start, CraftContinueStartCallbackId,
+    CraftContinueStartCallbackId, craft_continue_start, set_flags_for_craft_continue_start,
 };
 pub use craft_initiate_reducer::{
-    craft_initiate, set_flags_for_craft_initiate, CraftInitiateCallbackId,
+    CraftInitiateCallbackId, craft_initiate, set_flags_for_craft_initiate,
 };
 pub use craft_initiate_start_reducer::{
-    craft_initiate_start, set_flags_for_craft_initiate_start, CraftInitiateStartCallbackId,
+    CraftInitiateStartCallbackId, craft_initiate_start, set_flags_for_craft_initiate_start,
 };
 pub use craft_set_public_reducer::{
-    craft_set_public, set_flags_for_craft_set_public, CraftSetPublicCallbackId,
+    CraftSetPublicCallbackId, craft_set_public, set_flags_for_craft_set_public,
 };
 pub use crafting_recipe_desc_table::*;
 pub use crafting_recipe_desc_type::CraftingRecipeDesc;
 pub use create_player_report_request_type::CreatePlayerReportRequest;
 pub use crumb_tail_cleanup_agent_insert_reducer::{
-    crumb_tail_cleanup_agent_insert, set_flags_for_crumb_tail_cleanup_agent_insert,
-    CrumbTailCleanupAgentInsertCallbackId,
+    CrumbTailCleanupAgentInsertCallbackId, crumb_tail_cleanup_agent_insert,
+    set_flags_for_crumb_tail_cleanup_agent_insert,
 };
 pub use crumb_tail_cleanup_agent_loop_reducer::{
-    crumb_tail_cleanup_agent_loop, set_flags_for_crumb_tail_cleanup_agent_loop,
-    CrumbTailCleanupAgentLoopCallbackId,
+    CrumbTailCleanupAgentLoopCallbackId, crumb_tail_cleanup_agent_loop,
+    set_flags_for_crumb_tail_cleanup_agent_loop,
 };
 pub use crumb_tail_cleanup_timer_table::*;
 pub use crumb_trail_cleanup_timer_type::CrumbTrailCleanupTimer;
@@ -2710,21 +2708,21 @@ pub use crumb_trail_state_table::*;
 pub use crumb_trail_state_type::CrumbTrailState;
 pub use csv_stat_entry_type::CsvStatEntry;
 pub use current_version_reducer::{
-    current_version, set_flags_for_current_version, CurrentVersionCallbackId,
+    CurrentVersionCallbackId, current_version, set_flags_for_current_version,
 };
 pub use day_night_agent_loop_reducer::{
-    day_night_agent_loop, set_flags_for_day_night_agent_loop, DayNightAgentLoopCallbackId,
+    DayNightAgentLoopCallbackId, day_night_agent_loop, set_flags_for_day_night_agent_loop,
 };
 pub use day_night_loop_timer_table::*;
 pub use day_night_loop_timer_type::DayNightLoopTimer;
 pub use deconstruction_recipe_desc_table::*;
 pub use deconstruction_recipe_desc_type::DeconstructionRecipeDesc;
 pub use delete_all_npcs_reducer::{
-    delete_all_npcs, set_flags_for_delete_all_npcs, DeleteAllNpcsCallbackId,
+    DeleteAllNpcsCallbackId, delete_all_npcs, set_flags_for_delete_all_npcs,
 };
 pub use delete_developer_identity_reducer::{
-    delete_developer_identity, set_flags_for_delete_developer_identity,
-    DeleteDeveloperIdentityCallbackId,
+    DeleteDeveloperIdentityCallbackId, delete_developer_identity,
+    set_flags_for_delete_developer_identity,
 };
 pub use delete_empire_msg_type::DeleteEmpireMsg;
 pub use deployable_collectible_state_table::*;
@@ -2732,11 +2730,11 @@ pub use deployable_collectible_state_type::DeployableCollectibleState;
 pub use deployable_collectible_state_v_2_table::*;
 pub use deployable_collectible_state_v_2_type::DeployableCollectibleStateV2;
 pub use deployable_deploy_reducer::{
-    deployable_deploy, set_flags_for_deployable_deploy, DeployableDeployCallbackId,
+    DeployableDeployCallbackId, deployable_deploy, set_flags_for_deployable_deploy,
 };
 pub use deployable_deploy_request_type::DeployableDeployRequest;
 pub use deployable_deploy_start_reducer::{
-    deployable_deploy_start, set_flags_for_deployable_deploy_start, DeployableDeployStartCallbackId,
+    DeployableDeployStartCallbackId, deployable_deploy_start, set_flags_for_deployable_deploy_start,
 };
 pub use deployable_desc_table::*;
 pub use deployable_desc_type::DeployableDesc;
@@ -2747,57 +2745,57 @@ pub use deployable_desc_v_3_type::DeployableDescV3;
 pub use deployable_desc_v_4_table::*;
 pub use deployable_desc_v_4_type::DeployableDescV4;
 pub use deployable_dismount_reducer::{
-    deployable_dismount, set_flags_for_deployable_dismount, DeployableDismountCallbackId,
+    DeployableDismountCallbackId, deployable_dismount, set_flags_for_deployable_dismount,
 };
 pub use deployable_dismount_scheduled_reducer::{
-    deployable_dismount_scheduled, set_flags_for_deployable_dismount_scheduled,
-    DeployableDismountScheduledCallbackId,
+    DeployableDismountScheduledCallbackId, deployable_dismount_scheduled,
+    set_flags_for_deployable_dismount_scheduled,
 };
 pub use deployable_dismount_timer_table::*;
 pub use deployable_dismount_timer_type::DeployableDismountTimer;
 pub use deployable_follow_reducer::{
-    deployable_follow, set_flags_for_deployable_follow, DeployableFollowCallbackId,
+    DeployableFollowCallbackId, deployable_follow, set_flags_for_deployable_follow,
 };
 pub use deployable_mount_reducer::{
-    deployable_mount, set_flags_for_deployable_mount, DeployableMountCallbackId,
+    DeployableMountCallbackId, deployable_mount, set_flags_for_deployable_mount,
 };
 pub use deployable_move_off_bounds_reducer::{
-    deployable_move_off_bounds, set_flags_for_deployable_move_off_bounds,
-    DeployableMoveOffBoundsCallbackId,
+    DeployableMoveOffBoundsCallbackId, deployable_move_off_bounds,
+    set_flags_for_deployable_move_off_bounds,
 };
 pub use deployable_move_off_claim_reducer::{
-    deployable_move_off_claim, set_flags_for_deployable_move_off_claim,
-    DeployableMoveOffClaimCallbackId,
+    DeployableMoveOffClaimCallbackId, deployable_move_off_claim,
+    set_flags_for_deployable_move_off_claim,
 };
 pub use deployable_move_reducer::{
-    deployable_move, set_flags_for_deployable_move, DeployableMoveCallbackId,
+    DeployableMoveCallbackId, deployable_move, set_flags_for_deployable_move,
 };
 pub use deployable_state_table::*;
 pub use deployable_state_type::DeployableState;
 pub use deployable_store_from_collectible_id_reducer::{
-    deployable_store_from_collectible_id, set_flags_for_deployable_store_from_collectible_id,
-    DeployableStoreFromCollectibleIdCallbackId,
+    DeployableStoreFromCollectibleIdCallbackId, deployable_store_from_collectible_id,
+    set_flags_for_deployable_store_from_collectible_id,
 };
 pub use deployable_store_reducer::{
-    deployable_store, set_flags_for_deployable_store, DeployableStoreCallbackId,
+    DeployableStoreCallbackId, deployable_store, set_flags_for_deployable_store,
 };
 pub use deployable_store_request_type::DeployableStoreRequest;
 pub use deployable_store_start_reducer::{
-    deployable_store_start, set_flags_for_deployable_store_start, DeployableStoreStartCallbackId,
+    DeployableStoreStartCallbackId, deployable_store_start, set_flags_for_deployable_store_start,
 };
 pub use deployable_toggle_auto_follow_reducer::{
-    deployable_toggle_auto_follow, set_flags_for_deployable_toggle_auto_follow,
-    DeployableToggleAutoFollowCallbackId,
+    DeployableToggleAutoFollowCallbackId, deployable_toggle_auto_follow,
+    set_flags_for_deployable_toggle_auto_follow,
 };
 pub use deployable_type_type::DeployableType;
 pub use destroy_dimension_network_reducer::{
-    destroy_dimension_network, set_flags_for_destroy_dimension_network,
-    DestroyDimensionNetworkCallbackId,
+    DestroyDimensionNetworkCallbackId, destroy_dimension_network,
+    set_flags_for_destroy_dimension_network,
 };
 pub use destroy_dimension_network_timer_table::*;
 pub use destroy_dimension_network_timer_type::DestroyDimensionNetworkTimer;
 pub use dev_delete_world_reducer::{
-    dev_delete_world, set_flags_for_dev_delete_world, DevDeleteWorldCallbackId,
+    DevDeleteWorldCallbackId, dev_delete_world, set_flags_for_dev_delete_world,
 };
 pub use developer_table::*;
 pub use developer_type::Developer;
@@ -2807,58 +2805,58 @@ pub use dimension_network_state_table::*;
 pub use dimension_network_state_type::DimensionNetworkState;
 pub use dimension_type_type::DimensionType;
 pub use discover_entities_reducer::{
-    discover_entities, set_flags_for_discover_entities, DiscoverEntitiesCallbackId,
+    DiscoverEntitiesCallbackId, discover_entities, set_flags_for_discover_entities,
 };
 pub use distant_visible_entity_desc_table::*;
 pub use distant_visible_entity_desc_type::DistantVisibleEntityDesc;
 pub use distant_visible_entity_table::*;
 pub use distant_visible_entity_type::DistantVisibleEntity;
 pub use dropped_inventory_despawn_reducer::{
-    dropped_inventory_despawn, set_flags_for_dropped_inventory_despawn,
-    DroppedInventoryDespawnCallbackId,
+    DroppedInventoryDespawnCallbackId, dropped_inventory_despawn,
+    set_flags_for_dropped_inventory_despawn,
 };
 pub use dropped_inventory_despawn_timer_table::*;
 pub use dropped_inventory_despawn_timer_type::DroppedInventoryDespawnTimer;
 pub use dropped_inventory_destroy_reducer::{
-    dropped_inventory_destroy, set_flags_for_dropped_inventory_destroy,
-    DroppedInventoryDestroyCallbackId,
+    DroppedInventoryDestroyCallbackId, dropped_inventory_destroy,
+    set_flags_for_dropped_inventory_destroy,
 };
 pub use dropped_inventory_lose_ownership_reducer::{
-    dropped_inventory_lose_ownership, set_flags_for_dropped_inventory_lose_ownership,
-    DroppedInventoryLoseOwnershipCallbackId,
+    DroppedInventoryLoseOwnershipCallbackId, dropped_inventory_lose_ownership,
+    set_flags_for_dropped_inventory_lose_ownership,
 };
 pub use dropped_inventory_ownership_timer_table::*;
 pub use dropped_inventory_ownership_timer_type::DroppedInventoryOwnershipTimer;
 pub use dropped_inventory_release_reducer::{
-    dropped_inventory_release, set_flags_for_dropped_inventory_release,
-    DroppedInventoryReleaseCallbackId,
+    DroppedInventoryReleaseCallbackId, dropped_inventory_release,
+    set_flags_for_dropped_inventory_release,
 };
 pub use dropped_inventory_state_table::*;
 pub use dropped_inventory_state_type::DroppedInventoryState;
 pub use duel_agent_timer_loop_reducer::{
-    duel_agent_timer_loop, set_flags_for_duel_agent_timer_loop, DuelAgentTimerLoopCallbackId,
+    DuelAgentTimerLoopCallbackId, duel_agent_timer_loop, set_flags_for_duel_agent_timer_loop,
 };
 pub use duel_agent_timer_table::*;
 pub use duel_agent_timer_type::DuelAgentTimer;
-pub use duel_despawn_reducer::{duel_despawn, set_flags_for_duel_despawn, DuelDespawnCallbackId};
+pub use duel_despawn_reducer::{DuelDespawnCallbackId, duel_despawn, set_flags_for_duel_despawn};
 pub use duel_despawn_timer_table::*;
 pub use duel_despawn_timer_type::DuelDespawnTimer;
 pub use duel_state_table::*;
 pub use duel_state_type::DuelState;
 pub use dungeon_state_table::*;
 pub use dungeon_state_type::DungeonState;
-pub use eat_reducer::{eat, set_flags_for_eat, EatCallbackId};
+pub use eat_reducer::{EatCallbackId, eat, set_flags_for_eat};
 pub use elevator_desc_table::*;
 pub use elevator_desc_type::ElevatorDesc;
 pub use emote_desc_table::*;
 pub use emote_desc_type::EmoteDesc;
 pub use emote_desc_v_2_table::*;
 pub use emote_desc_v_2_type::EmoteDescV2;
-pub use emote_reducer::{emote, set_flags_for_emote, EmoteCallbackId};
-pub use emote_start_reducer::{emote_start, set_flags_for_emote_start, EmoteStartCallbackId};
+pub use emote_reducer::{EmoteCallbackId, emote, set_flags_for_emote};
+pub use emote_start_reducer::{EmoteStartCallbackId, emote_start, set_flags_for_emote_start};
 pub use empire_add_siege_supplies_reducer::{
-    empire_add_siege_supplies, set_flags_for_empire_add_siege_supplies,
-    EmpireAddSiegeSuppliesCallbackId,
+    EmpireAddSiegeSuppliesCallbackId, empire_add_siege_supplies,
+    set_flags_for_empire_add_siege_supplies,
 };
 pub use empire_add_siege_supplies_request_type::EmpireAddSiegeSuppliesRequest;
 pub use empire_chunk_state_op_type::EmpireChunkStateOp;
@@ -2866,24 +2864,24 @@ pub use empire_chunk_state_table::*;
 pub use empire_chunk_state_type::EmpireChunkState;
 pub use empire_claim_join_msg_type::EmpireClaimJoinMsg;
 pub use empire_claim_join_reducer::{
-    empire_claim_join, set_flags_for_empire_claim_join, EmpireClaimJoinCallbackId,
+    EmpireClaimJoinCallbackId, empire_claim_join, set_flags_for_empire_claim_join,
 };
 pub use empire_collect_hexite_capsule_msg_type::EmpireCollectHexiteCapsuleMsg;
 pub use empire_collect_hexite_capsule_reducer::{
-    empire_collect_hexite_capsule, set_flags_for_empire_collect_hexite_capsule,
-    EmpireCollectHexiteCapsuleCallbackId,
+    EmpireCollectHexiteCapsuleCallbackId, empire_collect_hexite_capsule,
+    set_flags_for_empire_collect_hexite_capsule,
 };
 pub use empire_collect_hexite_capsule_request_type::EmpireCollectHexiteCapsuleRequest;
 pub use empire_color_desc_table::*;
 pub use empire_color_desc_type::EmpireColorDesc;
 pub use empire_create_building_msg_type::EmpireCreateBuildingMsg;
 pub use empire_deploy_siege_engine_reducer::{
-    empire_deploy_siege_engine, set_flags_for_empire_deploy_siege_engine,
-    EmpireDeploySiegeEngineCallbackId,
+    EmpireDeploySiegeEngineCallbackId, empire_deploy_siege_engine,
+    set_flags_for_empire_deploy_siege_engine,
 };
 pub use empire_deploy_siege_engine_start_reducer::{
-    empire_deploy_siege_engine_start, set_flags_for_empire_deploy_siege_engine_start,
-    EmpireDeploySiegeEngineStartCallbackId,
+    EmpireDeploySiegeEngineStartCallbackId, empire_deploy_siege_engine_start,
+    set_flags_for_empire_deploy_siege_engine_start,
 };
 pub use empire_expansion_state_op_type::EmpireExpansionStateOp;
 pub use empire_expansion_state_table::*;
@@ -2904,7 +2902,7 @@ pub use empire_player_data_state_table::*;
 pub use empire_player_data_state_type::EmpirePlayerDataState;
 pub use empire_queue_supplies_msg_type::EmpireQueueSuppliesMsg;
 pub use empire_queue_supplies_reducer::{
-    empire_queue_supplies, set_flags_for_empire_queue_supplies, EmpireQueueSuppliesCallbackId,
+    EmpireQueueSuppliesCallbackId, empire_queue_supplies, set_flags_for_empire_queue_supplies,
 };
 pub use empire_queue_supplies_request_type::EmpireQueueSuppliesRequest;
 pub use empire_rank_desc_table::*;
@@ -2915,20 +2913,20 @@ pub use empire_rank_state_type::EmpireRankState;
 pub use empire_remove_crown_msg_type::EmpireRemoveCrownMsg;
 pub use empire_resupply_node_msg_type::EmpireResupplyNodeMsg;
 pub use empire_resupply_node_reducer::{
-    empire_resupply_node, set_flags_for_empire_resupply_node, EmpireResupplyNodeCallbackId,
+    EmpireResupplyNodeCallbackId, empire_resupply_node, set_flags_for_empire_resupply_node,
 };
 pub use empire_resupply_node_request_type::EmpireResupplyNodeRequest;
 pub use empire_resupply_node_start_reducer::{
-    empire_resupply_node_start, set_flags_for_empire_resupply_node_start,
-    EmpireResupplyNodeStartCallbackId,
+    EmpireResupplyNodeStartCallbackId, empire_resupply_node_start,
+    set_flags_for_empire_resupply_node_start,
 };
 pub use empire_settlement_state_op_type::EmpireSettlementStateOp;
 pub use empire_settlement_state_table::*;
 pub use empire_settlement_state_type::EmpireSettlementState;
 pub use empire_siege_add_supplies_msg_type::EmpireSiegeAddSuppliesMsg;
 pub use empire_siege_depleted_watchtower_reducer::{
-    empire_siege_depleted_watchtower, set_flags_for_empire_siege_depleted_watchtower,
-    EmpireSiegeDepletedWatchtowerCallbackId,
+    EmpireSiegeDepletedWatchtowerCallbackId, empire_siege_depleted_watchtower,
+    set_flags_for_empire_siege_depleted_watchtower,
 };
 pub use empire_start_siege_msg_type::EmpireStartSiegeMsg;
 pub use empire_start_siege_request_type::EmpireStartSiegeRequest;
@@ -2941,40 +2939,40 @@ pub use empire_territory_desc_table::*;
 pub use empire_territory_desc_type::EmpireTerritoryDesc;
 pub use empire_update_emperor_crown_msg_type::EmpireUpdateEmperorCrownMsg;
 pub use end_grace_period_reducer::{
-    end_grace_period, set_flags_for_end_grace_period, EndGracePeriodCallbackId,
+    EndGracePeriodCallbackId, end_grace_period, set_flags_for_end_grace_period,
 };
 pub use end_grace_period_timer_table::*;
 pub use end_grace_period_timer_type::EndGracePeriodTimer;
 pub use enemy_ai_params_desc_table::*;
 pub use enemy_ai_params_desc_type::EnemyAiParamsDesc;
 pub use enemy_clear_aggro_reducer::{
-    enemy_clear_aggro, set_flags_for_enemy_clear_aggro, EnemyClearAggroCallbackId,
+    EnemyClearAggroCallbackId, enemy_clear_aggro, set_flags_for_enemy_clear_aggro,
 };
 pub use enemy_clear_aggro_request_type::EnemyClearAggroRequest;
 pub use enemy_desc_table::*;
 pub use enemy_desc_type::EnemyDesc;
 pub use enemy_despawn_from_mob_monitor_batch_reducer::{
-    enemy_despawn_from_mob_monitor_batch, set_flags_for_enemy_despawn_from_mob_monitor_batch,
-    EnemyDespawnFromMobMonitorBatchCallbackId,
+    EnemyDespawnFromMobMonitorBatchCallbackId, enemy_despawn_from_mob_monitor_batch,
+    set_flags_for_enemy_despawn_from_mob_monitor_batch,
 };
 pub use enemy_despawn_from_mob_monitor_reducer::{
-    enemy_despawn_from_mob_monitor, set_flags_for_enemy_despawn_from_mob_monitor,
-    EnemyDespawnFromMobMonitorCallbackId,
+    EnemyDespawnFromMobMonitorCallbackId, enemy_despawn_from_mob_monitor,
+    set_flags_for_enemy_despawn_from_mob_monitor,
 };
 pub use enemy_despawn_reducer::{
-    enemy_despawn, set_flags_for_enemy_despawn, EnemyDespawnCallbackId,
+    EnemyDespawnCallbackId, enemy_despawn, set_flags_for_enemy_despawn,
 };
 pub use enemy_despawn_timer_table::*;
 pub use enemy_despawn_timer_type::EnemyDespawnTimer;
 pub use enemy_mob_monitor_state_table::*;
 pub use enemy_mob_monitor_state_type::EnemyMobMonitorState;
 pub use enemy_move_batch_reducer::{
-    enemy_move_batch, set_flags_for_enemy_move_batch, EnemyMoveBatchCallbackId,
+    EnemyMoveBatchCallbackId, enemy_move_batch, set_flags_for_enemy_move_batch,
 };
-pub use enemy_move_reducer::{enemy_move, set_flags_for_enemy_move, EnemyMoveCallbackId};
+pub use enemy_move_reducer::{EnemyMoveCallbackId, enemy_move, set_flags_for_enemy_move};
 pub use enemy_move_request_type::EnemyMoveRequest;
 pub use enemy_regen_agent_loop_reducer::{
-    enemy_regen_agent_loop, set_flags_for_enemy_regen_agent_loop, EnemyRegenAgentLoopCallbackId,
+    EnemyRegenAgentLoopCallbackId, enemy_regen_agent_loop, set_flags_for_enemy_regen_agent_loop,
 };
 pub use enemy_regen_loop_timer_table::*;
 pub use enemy_regen_loop_timer_type::EnemyRegenLoopTimer;
@@ -2983,20 +2981,20 @@ pub use enemy_scaling_desc_type::EnemyScalingDesc;
 pub use enemy_scaling_state_table::*;
 pub use enemy_scaling_state_type::EnemyScalingState;
 pub use enemy_set_health_batch_reducer::{
-    enemy_set_health_batch, set_flags_for_enemy_set_health_batch, EnemySetHealthBatchCallbackId,
+    EnemySetHealthBatchCallbackId, enemy_set_health_batch, set_flags_for_enemy_set_health_batch,
 };
 pub use enemy_set_health_reducer::{
-    enemy_set_health, set_flags_for_enemy_set_health, EnemySetHealthCallbackId,
+    EnemySetHealthCallbackId, enemy_set_health, set_flags_for_enemy_set_health,
 };
 pub use enemy_set_health_request_type::EnemySetHealthRequest;
 pub use enemy_spawn_batch_reducer::{
-    enemy_spawn_batch, set_flags_for_enemy_spawn_batch, EnemySpawnBatchCallbackId,
+    EnemySpawnBatchCallbackId, enemy_spawn_batch, set_flags_for_enemy_spawn_batch,
 };
 pub use enemy_spawn_loot_reducer::{
-    enemy_spawn_loot, set_flags_for_enemy_spawn_loot, EnemySpawnLootCallbackId,
+    EnemySpawnLootCallbackId, enemy_spawn_loot, set_flags_for_enemy_spawn_loot,
 };
 pub use enemy_spawn_loot_request_type::EnemySpawnLootRequest;
-pub use enemy_spawn_reducer::{enemy_spawn, set_flags_for_enemy_spawn, EnemySpawnCallbackId};
+pub use enemy_spawn_reducer::{EnemySpawnCallbackId, enemy_spawn, set_flags_for_enemy_spawn};
 pub use enemy_spawn_request_type::EnemySpawnRequest;
 pub use enemy_state_table::*;
 pub use enemy_state_type::EnemyState;
@@ -3005,8 +3003,8 @@ pub use enemy_type_type::EnemyType;
 pub use entity_attack_request_type::EntityAttackRequest;
 pub use entity_type_type::EntityType;
 pub use environment_debuff_agent_loop_reducer::{
-    environment_debuff_agent_loop, set_flags_for_environment_debuff_agent_loop,
-    EnvironmentDebuffAgentLoopCallbackId,
+    EnvironmentDebuffAgentLoopCallbackId, environment_debuff_agent_loop,
+    set_flags_for_environment_debuff_agent_loop,
 };
 pub use environment_debuff_desc_table::*;
 pub use environment_debuff_desc_type::EnvironmentDebuffDesc;
@@ -3014,12 +3012,12 @@ pub use environment_debuff_loop_timer_table::*;
 pub use environment_debuff_loop_timer_type::EnvironmentDebuffLoopTimer;
 pub use environment_resistance_type_type::EnvironmentResistanceType;
 pub use equipment_add_reducer::{
-    equipment_add, set_flags_for_equipment_add, EquipmentAddCallbackId,
+    EquipmentAddCallbackId, equipment_add, set_flags_for_equipment_add,
 };
 pub use equipment_desc_table::*;
 pub use equipment_desc_type::EquipmentDesc;
 pub use equipment_remove_reducer::{
-    equipment_remove, set_flags_for_equipment_remove, EquipmentRemoveCallbackId,
+    EquipmentRemoveCallbackId, equipment_remove, set_flags_for_equipment_remove,
 };
 pub use equipment_slot_type::EquipmentSlot;
 pub use equipment_slot_type_type::EquipmentSlotType;
@@ -3034,9 +3032,9 @@ pub use exploration_chunks_state_table::*;
 pub use exploration_chunks_state_type::ExplorationChunksState;
 pub use extract_outcome_state_table::*;
 pub use extract_outcome_state_type::ExtractOutcomeState;
-pub use extract_reducer::{extract, set_flags_for_extract, ExtractCallbackId};
+pub use extract_reducer::{ExtractCallbackId, extract, set_flags_for_extract};
 pub use extract_start_reducer::{
-    extract_start, set_flags_for_extract_start, ExtractStartCallbackId,
+    ExtractStartCallbackId, extract_start, set_flags_for_extract_start,
 };
 pub use extraction_recipe_desc_table::*;
 pub use extraction_recipe_desc_type::ExtractionRecipeDesc;
@@ -3050,18 +3048,18 @@ pub use footprint_type_type::FootprintType;
 pub use force_generate_types_table::*;
 pub use force_generate_types_type::ForceGenerateTypes;
 pub use force_start_agents_reducer::{
-    force_start_agents, set_flags_for_force_start_agents, ForceStartAgentsCallbackId,
+    ForceStartAgentsCallbackId, force_start_agents, set_flags_for_force_start_agents,
 };
 pub use gate_desc_table::*;
 pub use gate_desc_type::GateDesc;
 pub use generate_dev_island_reducer::{
-    generate_dev_island, set_flags_for_generate_dev_island, GenerateDevIslandCallbackId,
+    GenerateDevIslandCallbackId, generate_dev_island, set_flags_for_generate_dev_island,
 };
 pub use generate_flat_world_reducer::{
-    generate_flat_world, set_flags_for_generate_flat_world, GenerateFlatWorldCallbackId,
+    GenerateFlatWorldCallbackId, generate_flat_world, set_flags_for_generate_flat_world,
 };
 pub use generate_world_reducer::{
-    generate_world, set_flags_for_generate_world, GenerateWorldCallbackId,
+    GenerateWorldCallbackId, generate_world, set_flags_for_generate_world,
 };
 pub use global_delete_empire_building_msg_type::GlobalDeleteEmpireBuildingMsg;
 pub use global_search_state_table::*;
@@ -3071,7 +3069,7 @@ pub use globals_type::Globals;
 pub use grace_period_type_type::GracePeriodType;
 pub use grant_hub_item_msg_type::GrantHubItemMsg;
 pub use growth_agent_loop_reducer::{
-    growth_agent_loop, set_flags_for_growth_agent_loop, GrowthAgentLoopCallbackId,
+    GrowthAgentLoopCallbackId, growth_agent_loop, set_flags_for_growth_agent_loop,
 };
 pub use growth_loop_timer_table::*;
 pub use growth_loop_timer_type::GrowthLoopTimer;
@@ -3086,654 +3084,652 @@ pub use hex_direction_type::HexDirection;
 pub use hexite_exchange_entry_desc_table::*;
 pub use hexite_exchange_entry_desc_type::HexiteExchangeEntryDesc;
 pub use hide_deployable_reducer::{
-    hide_deployable, set_flags_for_hide_deployable, HideDeployableCallbackId,
+    HideDeployableCallbackId, hide_deployable, set_flags_for_hide_deployable,
 };
 pub use hide_deployable_timer_table::*;
 pub use hide_deployable_timer_type::HideDeployableTimer;
 pub use hub_item_type_type::HubItemType;
 pub use identity_connected_reducer::{
-    identity_connected, set_flags_for_identity_connected, IdentityConnectedCallbackId,
+    IdentityConnectedCallbackId, identity_connected, set_flags_for_identity_connected,
 };
 pub use identity_disconnected_reducer::{
-    identity_disconnected, set_flags_for_identity_disconnected, IdentityDisconnectedCallbackId,
+    IdentityDisconnectedCallbackId, identity_disconnected, set_flags_for_identity_disconnected,
 };
 pub use identity_role_op_type::IdentityRoleOp;
 pub use identity_role_table::*;
 pub use identity_role_type::IdentityRole;
 pub use import_ability_custom_desc_reducer::{
-    import_ability_custom_desc, set_flags_for_import_ability_custom_desc,
-    ImportAbilityCustomDescCallbackId,
+    ImportAbilityCustomDescCallbackId, import_ability_custom_desc,
+    set_flags_for_import_ability_custom_desc,
 };
 pub use import_ability_unlock_desc_reducer::{
-    import_ability_unlock_desc, set_flags_for_import_ability_unlock_desc,
-    ImportAbilityUnlockDescCallbackId,
+    ImportAbilityUnlockDescCallbackId, import_ability_unlock_desc,
+    set_flags_for_import_ability_unlock_desc,
 };
 pub use import_achievement_desc_reducer::{
-    import_achievement_desc, set_flags_for_import_achievement_desc, ImportAchievementDescCallbackId,
+    ImportAchievementDescCallbackId, import_achievement_desc, set_flags_for_import_achievement_desc,
 };
 pub use import_active_buff_state_reducer::{
-    import_active_buff_state, set_flags_for_import_active_buff_state,
-    ImportActiveBuffStateCallbackId,
+    ImportActiveBuffStateCallbackId, import_active_buff_state,
+    set_flags_for_import_active_buff_state,
 };
 pub use import_admin_broadcast_reducer::{
-    import_admin_broadcast, set_flags_for_import_admin_broadcast, ImportAdminBroadcastCallbackId,
+    ImportAdminBroadcastCallbackId, import_admin_broadcast, set_flags_for_import_admin_broadcast,
 };
 pub use import_alert_desc_reducer::{
-    import_alert_desc, set_flags_for_import_alert_desc, ImportAlertDescCallbackId,
+    ImportAlertDescCallbackId, import_alert_desc, set_flags_for_import_alert_desc,
 };
 pub use import_alert_state_reducer::{
-    import_alert_state, set_flags_for_import_alert_state, ImportAlertStateCallbackId,
+    ImportAlertStateCallbackId, import_alert_state, set_flags_for_import_alert_state,
 };
 pub use import_attack_outcome_state_reducer::{
-    import_attack_outcome_state, set_flags_for_import_attack_outcome_state,
-    ImportAttackOutcomeStateCallbackId,
+    ImportAttackOutcomeStateCallbackId, import_attack_outcome_state,
+    set_flags_for_import_attack_outcome_state,
 };
 pub use import_biome_desc_reducer::{
-    import_biome_desc, set_flags_for_import_biome_desc, ImportBiomeDescCallbackId,
+    ImportBiomeDescCallbackId, import_biome_desc, set_flags_for_import_biome_desc,
 };
 pub use import_buff_desc_reducer::{
-    import_buff_desc, set_flags_for_import_buff_desc, ImportBuffDescCallbackId,
+    ImportBuffDescCallbackId, import_buff_desc, set_flags_for_import_buff_desc,
 };
 pub use import_buff_type_desc_reducer::{
-    import_buff_type_desc, set_flags_for_import_buff_type_desc, ImportBuffTypeDescCallbackId,
+    ImportBuffTypeDescCallbackId, import_buff_type_desc, set_flags_for_import_buff_type_desc,
 };
 pub use import_building_claim_desc_reducer::{
-    import_building_claim_desc, set_flags_for_import_building_claim_desc,
-    ImportBuildingClaimDescCallbackId,
+    ImportBuildingClaimDescCallbackId, import_building_claim_desc,
+    set_flags_for_import_building_claim_desc,
 };
 pub use import_building_desc_reducer::{
-    import_building_desc, set_flags_for_import_building_desc, ImportBuildingDescCallbackId,
+    ImportBuildingDescCallbackId, import_building_desc, set_flags_for_import_building_desc,
 };
 pub use import_building_portal_desc_v_2_reducer::{
-    import_building_portal_desc_v_2, set_flags_for_import_building_portal_desc_v_2,
-    ImportBuildingPortalDescV2CallbackId,
+    ImportBuildingPortalDescV2CallbackId, import_building_portal_desc_v_2,
+    set_flags_for_import_building_portal_desc_v_2,
 };
 pub use import_building_repairs_desc_reducer::{
-    import_building_repairs_desc, set_flags_for_import_building_repairs_desc,
-    ImportBuildingRepairsDescCallbackId,
+    ImportBuildingRepairsDescCallbackId, import_building_repairs_desc,
+    set_flags_for_import_building_repairs_desc,
 };
 pub use import_building_spawn_desc_reducer::{
-    import_building_spawn_desc, set_flags_for_import_building_spawn_desc,
-    ImportBuildingSpawnDescCallbackId,
+    ImportBuildingSpawnDescCallbackId, import_building_spawn_desc,
+    set_flags_for_import_building_spawn_desc,
 };
 pub use import_building_state_reducer::{
-    import_building_state, set_flags_for_import_building_state, ImportBuildingStateCallbackId,
+    ImportBuildingStateCallbackId, import_building_state, set_flags_for_import_building_state,
 };
 pub use import_building_type_desc_reducer::{
-    import_building_type_desc, set_flags_for_import_building_type_desc,
-    ImportBuildingTypeDescCallbackId,
+    ImportBuildingTypeDescCallbackId, import_building_type_desc,
+    set_flags_for_import_building_type_desc,
 };
 pub use import_cargo_desc_reducer::{
-    import_cargo_desc, set_flags_for_import_cargo_desc, ImportCargoDescCallbackId,
+    ImportCargoDescCallbackId, import_cargo_desc, set_flags_for_import_cargo_desc,
 };
 pub use import_character_stat_desc_reducer::{
-    import_character_stat_desc, set_flags_for_import_character_stat_desc,
-    ImportCharacterStatDescCallbackId,
+    ImportCharacterStatDescCallbackId, import_character_stat_desc,
+    set_flags_for_import_character_stat_desc,
 };
 pub use import_character_stats_state_reducer::{
-    import_character_stats_state, set_flags_for_import_character_stats_state,
-    ImportCharacterStatsStateCallbackId,
+    ImportCharacterStatsStateCallbackId, import_character_stats_state,
+    set_flags_for_import_character_stats_state,
 };
 pub use import_chat_message_state_reducer::{
-    import_chat_message_state, set_flags_for_import_chat_message_state,
-    ImportChatMessageStateCallbackId,
+    ImportChatMessageStateCallbackId, import_chat_message_state,
+    set_flags_for_import_chat_message_state,
 };
 pub use import_chest_rarity_desc_reducer::{
-    import_chest_rarity_desc, set_flags_for_import_chest_rarity_desc,
-    ImportChestRarityDescCallbackId,
+    ImportChestRarityDescCallbackId, import_chest_rarity_desc,
+    set_flags_for_import_chest_rarity_desc,
 };
 pub use import_claim_local_state_reducer::{
-    import_claim_local_state, set_flags_for_import_claim_local_state,
-    ImportClaimLocalStateCallbackId,
+    ImportClaimLocalStateCallbackId, import_claim_local_state,
+    set_flags_for_import_claim_local_state,
 };
 pub use import_claim_recruitment_state_reducer::{
-    import_claim_recruitment_state, set_flags_for_import_claim_recruitment_state,
-    ImportClaimRecruitmentStateCallbackId,
+    ImportClaimRecruitmentStateCallbackId, import_claim_recruitment_state,
+    set_flags_for_import_claim_recruitment_state,
 };
 pub use import_claim_state_reducer::{
-    import_claim_state, set_flags_for_import_claim_state, ImportClaimStateCallbackId,
+    ImportClaimStateCallbackId, import_claim_state, set_flags_for_import_claim_state,
 };
 pub use import_claim_tech_desc_reducer::{
-    import_claim_tech_desc, set_flags_for_import_claim_tech_desc, ImportClaimTechDescCallbackId,
+    ImportClaimTechDescCallbackId, import_claim_tech_desc, set_flags_for_import_claim_tech_desc,
 };
 pub use import_claim_tech_state_reducer::{
-    import_claim_tech_state, set_flags_for_import_claim_tech_state, ImportClaimTechStateCallbackId,
+    ImportClaimTechStateCallbackId, import_claim_tech_state, set_flags_for_import_claim_tech_state,
 };
 pub use import_claim_tile_cost_reducer::{
-    import_claim_tile_cost, set_flags_for_import_claim_tile_cost, ImportClaimTileCostCallbackId,
+    ImportClaimTileCostCallbackId, import_claim_tile_cost, set_flags_for_import_claim_tile_cost,
 };
 pub use import_claim_tile_state_reducer::{
-    import_claim_tile_state, set_flags_for_import_claim_tile_state, ImportClaimTileStateCallbackId,
+    ImportClaimTileStateCallbackId, import_claim_tile_state, set_flags_for_import_claim_tile_state,
 };
 pub use import_climb_requirement_desc_reducer::{
-    import_climb_requirement_desc, set_flags_for_import_climb_requirement_desc,
-    ImportClimbRequirementDescCallbackId,
+    ImportClimbRequirementDescCallbackId, import_climb_requirement_desc,
+    set_flags_for_import_climb_requirement_desc,
 };
 pub use import_clothing_desc_reducer::{
-    import_clothing_desc, set_flags_for_import_clothing_desc, ImportClothingDescCallbackId,
+    ImportClothingDescCallbackId, import_clothing_desc, set_flags_for_import_clothing_desc,
 };
 pub use import_collectible_desc_reducer::{
-    import_collectible_desc, set_flags_for_import_collectible_desc, ImportCollectibleDescCallbackId,
+    ImportCollectibleDescCallbackId, import_collectible_desc, set_flags_for_import_collectible_desc,
 };
 pub use import_combat_action_desc_v_3_reducer::{
-    import_combat_action_desc_v_3, set_flags_for_import_combat_action_desc_v_3,
-    ImportCombatActionDescV3CallbackId,
+    ImportCombatActionDescV3CallbackId, import_combat_action_desc_v_3,
+    set_flags_for_import_combat_action_desc_v_3,
 };
 pub use import_combat_action_multi_hit_desc_reducer::{
-    import_combat_action_multi_hit_desc, set_flags_for_import_combat_action_multi_hit_desc,
-    ImportCombatActionMultiHitDescCallbackId,
+    ImportCombatActionMultiHitDescCallbackId, import_combat_action_multi_hit_desc,
+    set_flags_for_import_combat_action_multi_hit_desc,
 };
 pub use import_combat_state_reducer::{
-    import_combat_state, set_flags_for_import_combat_state, ImportCombatStateCallbackId,
+    ImportCombatStateCallbackId, import_combat_state, set_flags_for_import_combat_state,
 };
 pub use import_config_reducer::{
-    import_config, set_flags_for_import_config, ImportConfigCallbackId,
+    ImportConfigCallbackId, import_config, set_flags_for_import_config,
 };
 pub use import_construction_recipe_desc_reducer::{
-    import_construction_recipe_desc, set_flags_for_import_construction_recipe_desc,
-    ImportConstructionRecipeDescCallbackId,
+    ImportConstructionRecipeDescCallbackId, import_construction_recipe_desc,
+    set_flags_for_import_construction_recipe_desc,
 };
 pub use import_contribution_loot_desc_reducer::{
-    import_contribution_loot_desc, set_flags_for_import_contribution_loot_desc,
-    ImportContributionLootDescCallbackId,
+    ImportContributionLootDescCallbackId, import_contribution_loot_desc,
+    set_flags_for_import_contribution_loot_desc,
 };
 pub use import_crafting_recipe_desc_reducer::{
-    import_crafting_recipe_desc, set_flags_for_import_crafting_recipe_desc,
-    ImportCraftingRecipeDescCallbackId,
+    ImportCraftingRecipeDescCallbackId, import_crafting_recipe_desc,
+    set_flags_for_import_crafting_recipe_desc,
 };
 pub use import_deconstruction_recipe_desc_reducer::{
-    import_deconstruction_recipe_desc, set_flags_for_import_deconstruction_recipe_desc,
-    ImportDeconstructionRecipeDescCallbackId,
+    ImportDeconstructionRecipeDescCallbackId, import_deconstruction_recipe_desc,
+    set_flags_for_import_deconstruction_recipe_desc,
 };
 pub use import_deployable_desc_reducer::{
-    import_deployable_desc, set_flags_for_import_deployable_desc, ImportDeployableDescCallbackId,
+    ImportDeployableDescCallbackId, import_deployable_desc, set_flags_for_import_deployable_desc,
 };
 pub use import_deployable_state_reducer::{
-    import_deployable_state, set_flags_for_import_deployable_state, ImportDeployableStateCallbackId,
+    ImportDeployableStateCallbackId, import_deployable_state, set_flags_for_import_deployable_state,
 };
 pub use import_dimension_description_state_reducer::{
-    import_dimension_description_state, set_flags_for_import_dimension_description_state,
-    ImportDimensionDescriptionStateCallbackId,
+    ImportDimensionDescriptionStateCallbackId, import_dimension_description_state,
+    set_flags_for_import_dimension_description_state,
 };
 pub use import_dimension_network_description_state_reducer::{
-    import_dimension_network_description_state,
+    ImportDimensionNetworkDescriptionStateCallbackId, import_dimension_network_description_state,
     set_flags_for_import_dimension_network_description_state,
-    ImportDimensionNetworkDescriptionStateCallbackId,
 };
 pub use import_distant_visible_entity_desc_reducer::{
-    import_distant_visible_entity_desc, set_flags_for_import_distant_visible_entity_desc,
-    ImportDistantVisibleEntityDescCallbackId,
+    ImportDistantVisibleEntityDescCallbackId, import_distant_visible_entity_desc,
+    set_flags_for_import_distant_visible_entity_desc,
 };
 pub use import_dropped_inventory_state_reducer::{
-    import_dropped_inventory_state, set_flags_for_import_dropped_inventory_state,
-    ImportDroppedInventoryStateCallbackId,
+    ImportDroppedInventoryStateCallbackId, import_dropped_inventory_state,
+    set_flags_for_import_dropped_inventory_state,
 };
 pub use import_elevator_desc_reducer::{
-    import_elevator_desc, set_flags_for_import_elevator_desc, ImportElevatorDescCallbackId,
+    ImportElevatorDescCallbackId, import_elevator_desc, set_flags_for_import_elevator_desc,
 };
 pub use import_emote_desc_reducer::{
-    import_emote_desc, set_flags_for_import_emote_desc, ImportEmoteDescCallbackId,
+    ImportEmoteDescCallbackId, import_emote_desc, set_flags_for_import_emote_desc,
 };
 pub use import_empire_colors_desc_reducer::{
-    import_empire_colors_desc, set_flags_for_import_empire_colors_desc,
-    ImportEmpireColorsDescCallbackId,
+    ImportEmpireColorsDescCallbackId, import_empire_colors_desc,
+    set_flags_for_import_empire_colors_desc,
 };
 pub use import_empire_icon_desc_reducer::{
-    import_empire_icon_desc, set_flags_for_import_empire_icon_desc, ImportEmpireIconDescCallbackId,
+    ImportEmpireIconDescCallbackId, import_empire_icon_desc, set_flags_for_import_empire_icon_desc,
 };
 pub use import_empire_notification_desc_reducer::{
-    import_empire_notification_desc, set_flags_for_import_empire_notification_desc,
-    ImportEmpireNotificationDescCallbackId,
+    ImportEmpireNotificationDescCallbackId, import_empire_notification_desc,
+    set_flags_for_import_empire_notification_desc,
 };
 pub use import_empire_rank_desc_reducer::{
-    import_empire_rank_desc, set_flags_for_import_empire_rank_desc, ImportEmpireRankDescCallbackId,
+    ImportEmpireRankDescCallbackId, import_empire_rank_desc, set_flags_for_import_empire_rank_desc,
 };
 pub use import_empire_supplies_desc_reducer::{
-    import_empire_supplies_desc, set_flags_for_import_empire_supplies_desc,
-    ImportEmpireSuppliesDescCallbackId,
+    ImportEmpireSuppliesDescCallbackId, import_empire_supplies_desc,
+    set_flags_for_import_empire_supplies_desc,
 };
 pub use import_empire_territory_desc_reducer::{
-    import_empire_territory_desc, set_flags_for_import_empire_territory_desc,
-    ImportEmpireTerritoryDescCallbackId,
+    ImportEmpireTerritoryDescCallbackId, import_empire_territory_desc,
+    set_flags_for_import_empire_territory_desc,
 };
 pub use import_enemy_ai_params_desc_reducer::{
-    import_enemy_ai_params_desc, set_flags_for_import_enemy_ai_params_desc,
-    ImportEnemyAiParamsDescCallbackId,
+    ImportEnemyAiParamsDescCallbackId, import_enemy_ai_params_desc,
+    set_flags_for_import_enemy_ai_params_desc,
 };
 pub use import_enemy_desc_reducer::{
-    import_enemy_desc, set_flags_for_import_enemy_desc, ImportEnemyDescCallbackId,
+    ImportEnemyDescCallbackId, import_enemy_desc, set_flags_for_import_enemy_desc,
 };
 pub use import_enemy_scaling_desc_reducer::{
-    import_enemy_scaling_desc, set_flags_for_import_enemy_scaling_desc,
-    ImportEnemyScalingDescCallbackId,
+    ImportEnemyScalingDescCallbackId, import_enemy_scaling_desc,
+    set_flags_for_import_enemy_scaling_desc,
 };
 pub use import_enemy_state_reducer::{
-    import_enemy_state, set_flags_for_import_enemy_state, ImportEnemyStateCallbackId,
+    ImportEnemyStateCallbackId, import_enemy_state, set_flags_for_import_enemy_state,
 };
 pub use import_environment_debuff_desc_reducer::{
-    import_environment_debuff_desc, set_flags_for_import_environment_debuff_desc,
-    ImportEnvironmentDebuffDescCallbackId,
+    ImportEnvironmentDebuffDescCallbackId, import_environment_debuff_desc,
+    set_flags_for_import_environment_debuff_desc,
 };
 pub use import_equipment_desc_reducer::{
-    import_equipment_desc, set_flags_for_import_equipment_desc, ImportEquipmentDescCallbackId,
+    ImportEquipmentDescCallbackId, import_equipment_desc, set_flags_for_import_equipment_desc,
 };
 pub use import_equipment_state_reducer::{
-    import_equipment_state, set_flags_for_import_equipment_state, ImportEquipmentStateCallbackId,
+    ImportEquipmentStateCallbackId, import_equipment_state, set_flags_for_import_equipment_state,
 };
 pub use import_experience_state_reducer::{
-    import_experience_state, set_flags_for_import_experience_state, ImportExperienceStateCallbackId,
+    ImportExperienceStateCallbackId, import_experience_state, set_flags_for_import_experience_state,
 };
 pub use import_exploration_chunks_state_reducer::{
-    import_exploration_chunks_state, set_flags_for_import_exploration_chunks_state,
-    ImportExplorationChunksStateCallbackId,
+    ImportExplorationChunksStateCallbackId, import_exploration_chunks_state,
+    set_flags_for_import_exploration_chunks_state,
 };
 pub use import_extraction_recipe_desc_reducer::{
-    import_extraction_recipe_desc, set_flags_for_import_extraction_recipe_desc,
-    ImportExtractionRecipeDescCallbackId,
+    ImportExtractionRecipeDescCallbackId, import_extraction_recipe_desc,
+    set_flags_for_import_extraction_recipe_desc,
 };
 pub use import_food_desc_reducer::{
-    import_food_desc, set_flags_for_import_food_desc, ImportFoodDescCallbackId,
+    ImportFoodDescCallbackId, import_food_desc, set_flags_for_import_food_desc,
 };
 pub use import_footprint_tile_state_reducer::{
-    import_footprint_tile_state, set_flags_for_import_footprint_tile_state,
-    ImportFootprintTileStateCallbackId,
+    ImportFootprintTileStateCallbackId, import_footprint_tile_state,
+    set_flags_for_import_footprint_tile_state,
 };
 pub use import_gate_desc_reducer::{
-    import_gate_desc, set_flags_for_import_gate_desc, ImportGateDescCallbackId,
+    ImportGateDescCallbackId, import_gate_desc, set_flags_for_import_gate_desc,
 };
 pub use import_globals_reducer::{
-    import_globals, set_flags_for_import_globals, ImportGlobalsCallbackId,
+    ImportGlobalsCallbackId, import_globals, set_flags_for_import_globals,
 };
 pub use import_growth_state_reducer::{
-    import_growth_state, set_flags_for_import_growth_state, ImportGrowthStateCallbackId,
+    ImportGrowthStateCallbackId, import_growth_state, set_flags_for_import_growth_state,
 };
 pub use import_health_state_reducer::{
-    import_health_state, set_flags_for_import_health_state, ImportHealthStateCallbackId,
+    ImportHealthStateCallbackId, import_health_state, set_flags_for_import_health_state,
 };
 pub use import_herd_cache_reducer::{
-    import_herd_cache, set_flags_for_import_herd_cache, ImportHerdCacheCallbackId,
+    ImportHerdCacheCallbackId, import_herd_cache, set_flags_for_import_herd_cache,
 };
 pub use import_hexite_exchange_entry_desc_reducer::{
-    import_hexite_exchange_entry_desc, set_flags_for_import_hexite_exchange_entry_desc,
-    ImportHexiteExchangeEntryDescCallbackId,
+    ImportHexiteExchangeEntryDescCallbackId, import_hexite_exchange_entry_desc,
+    set_flags_for_import_hexite_exchange_entry_desc,
 };
 pub use import_identity_role_reducer::{
-    import_identity_role, set_flags_for_import_identity_role, ImportIdentityRoleCallbackId,
+    ImportIdentityRoleCallbackId, import_identity_role, set_flags_for_import_identity_role,
 };
 pub use import_interior_collapse_trigger_state_reducer::{
-    import_interior_collapse_trigger_state, set_flags_for_import_interior_collapse_trigger_state,
-    ImportInteriorCollapseTriggerStateCallbackId,
+    ImportInteriorCollapseTriggerStateCallbackId, import_interior_collapse_trigger_state,
+    set_flags_for_import_interior_collapse_trigger_state,
 };
 pub use import_interior_environment_desc_reducer::{
-    import_interior_environment_desc, set_flags_for_import_interior_environment_desc,
-    ImportInteriorEnvironmentDescCallbackId,
+    ImportInteriorEnvironmentDescCallbackId, import_interior_environment_desc,
+    set_flags_for_import_interior_environment_desc,
 };
 pub use import_interior_instance_desc_reducer::{
-    import_interior_instance_desc, set_flags_for_import_interior_instance_desc,
-    ImportInteriorInstanceDescCallbackId,
+    ImportInteriorInstanceDescCallbackId, import_interior_instance_desc,
+    set_flags_for_import_interior_instance_desc,
 };
 pub use import_interior_network_desc_reducer::{
-    import_interior_network_desc, set_flags_for_import_interior_network_desc,
-    ImportInteriorNetworkDescCallbackId,
+    ImportInteriorNetworkDescCallbackId, import_interior_network_desc,
+    set_flags_for_import_interior_network_desc,
 };
 pub use import_interior_portal_connections_desc_reducer::{
-    import_interior_portal_connections_desc, set_flags_for_import_interior_portal_connections_desc,
-    ImportInteriorPortalConnectionsDescCallbackId,
+    ImportInteriorPortalConnectionsDescCallbackId, import_interior_portal_connections_desc,
+    set_flags_for_import_interior_portal_connections_desc,
 };
 pub use import_interior_shape_desc_reducer::{
-    import_interior_shape_desc, set_flags_for_import_interior_shape_desc,
-    ImportInteriorShapeDescCallbackId,
+    ImportInteriorShapeDescCallbackId, import_interior_shape_desc,
+    set_flags_for_import_interior_shape_desc,
 };
 pub use import_interior_spawn_desc_reducer::{
-    import_interior_spawn_desc, set_flags_for_import_interior_spawn_desc,
-    ImportInteriorSpawnDescCallbackId,
+    ImportInteriorSpawnDescCallbackId, import_interior_spawn_desc,
+    set_flags_for_import_interior_spawn_desc,
 };
 pub use import_inventory_state_reducer::{
-    import_inventory_state, set_flags_for_import_inventory_state, ImportInventoryStateCallbackId,
+    ImportInventoryStateCallbackId, import_inventory_state, set_flags_for_import_inventory_state,
 };
 pub use import_item_conversion_recipe_desc_reducer::{
-    import_item_conversion_recipe_desc, set_flags_for_import_item_conversion_recipe_desc,
-    ImportItemConversionRecipeDescCallbackId,
+    ImportItemConversionRecipeDescCallbackId, import_item_conversion_recipe_desc,
+    set_flags_for_import_item_conversion_recipe_desc,
 };
 pub use import_item_desc_reducer::{
-    import_item_desc, set_flags_for_import_item_desc, ImportItemDescCallbackId,
+    ImportItemDescCallbackId, import_item_desc, set_flags_for_import_item_desc,
 };
 pub use import_item_list_desc_reducer::{
-    import_item_list_desc, set_flags_for_import_item_list_desc, ImportItemListDescCallbackId,
+    ImportItemListDescCallbackId, import_item_list_desc, set_flags_for_import_item_list_desc,
 };
 pub use import_knowledge_achievement_state_reducer::{
-    import_knowledge_achievement_state, set_flags_for_import_knowledge_achievement_state,
-    ImportKnowledgeAchievementStateCallbackId,
+    ImportKnowledgeAchievementStateCallbackId, import_knowledge_achievement_state,
+    set_flags_for_import_knowledge_achievement_state,
 };
 pub use import_knowledge_battle_action_state_reducer::{
-    import_knowledge_battle_action_state, set_flags_for_import_knowledge_battle_action_state,
-    ImportKnowledgeBattleActionStateCallbackId,
+    ImportKnowledgeBattleActionStateCallbackId, import_knowledge_battle_action_state,
+    set_flags_for_import_knowledge_battle_action_state,
 };
 pub use import_knowledge_building_state_reducer::{
-    import_knowledge_building_state, set_flags_for_import_knowledge_building_state,
-    ImportKnowledgeBuildingStateCallbackId,
+    ImportKnowledgeBuildingStateCallbackId, import_knowledge_building_state,
+    set_flags_for_import_knowledge_building_state,
 };
 pub use import_knowledge_cargo_state_reducer::{
-    import_knowledge_cargo_state, set_flags_for_import_knowledge_cargo_state,
-    ImportKnowledgeCargoStateCallbackId,
+    ImportKnowledgeCargoStateCallbackId, import_knowledge_cargo_state,
+    set_flags_for_import_knowledge_cargo_state,
 };
 pub use import_knowledge_construction_state_reducer::{
-    import_knowledge_construction_state, set_flags_for_import_knowledge_construction_state,
-    ImportKnowledgeConstructionStateCallbackId,
+    ImportKnowledgeConstructionStateCallbackId, import_knowledge_construction_state,
+    set_flags_for_import_knowledge_construction_state,
 };
 pub use import_knowledge_craft_state_reducer::{
-    import_knowledge_craft_state, set_flags_for_import_knowledge_craft_state,
-    ImportKnowledgeCraftStateCallbackId,
+    ImportKnowledgeCraftStateCallbackId, import_knowledge_craft_state,
+    set_flags_for_import_knowledge_craft_state,
 };
 pub use import_knowledge_deployable_state_reducer::{
-    import_knowledge_deployable_state, set_flags_for_import_knowledge_deployable_state,
-    ImportKnowledgeDeployableStateCallbackId,
+    ImportKnowledgeDeployableStateCallbackId, import_knowledge_deployable_state,
+    set_flags_for_import_knowledge_deployable_state,
 };
 pub use import_knowledge_enemy_state_reducer::{
-    import_knowledge_enemy_state, set_flags_for_import_knowledge_enemy_state,
-    ImportKnowledgeEnemyStateCallbackId,
+    ImportKnowledgeEnemyStateCallbackId, import_knowledge_enemy_state,
+    set_flags_for_import_knowledge_enemy_state,
 };
 pub use import_knowledge_extract_state_reducer::{
-    import_knowledge_extract_state, set_flags_for_import_knowledge_extract_state,
-    ImportKnowledgeExtractStateCallbackId,
+    ImportKnowledgeExtractStateCallbackId, import_knowledge_extract_state,
+    set_flags_for_import_knowledge_extract_state,
 };
 pub use import_knowledge_item_state_reducer::{
-    import_knowledge_item_state, set_flags_for_import_knowledge_item_state,
-    ImportKnowledgeItemStateCallbackId,
+    ImportKnowledgeItemStateCallbackId, import_knowledge_item_state,
+    set_flags_for_import_knowledge_item_state,
 };
 pub use import_knowledge_lore_state_reducer::{
-    import_knowledge_lore_state, set_flags_for_import_knowledge_lore_state,
-    ImportKnowledgeLoreStateCallbackId,
+    ImportKnowledgeLoreStateCallbackId, import_knowledge_lore_state,
+    set_flags_for_import_knowledge_lore_state,
 };
 pub use import_knowledge_npc_state_reducer::{
-    import_knowledge_npc_state, set_flags_for_import_knowledge_npc_state,
-    ImportKnowledgeNpcStateCallbackId,
+    ImportKnowledgeNpcStateCallbackId, import_knowledge_npc_state,
+    set_flags_for_import_knowledge_npc_state,
 };
 pub use import_knowledge_paving_state_reducer::{
-    import_knowledge_paving_state, set_flags_for_import_knowledge_paving_state,
-    ImportKnowledgePavingStateCallbackId,
+    ImportKnowledgePavingStateCallbackId, import_knowledge_paving_state,
+    set_flags_for_import_knowledge_paving_state,
 };
 pub use import_knowledge_pillar_shaping_state_reducer::{
-    import_knowledge_pillar_shaping_state, set_flags_for_import_knowledge_pillar_shaping_state,
-    ImportKnowledgePillarShapingStateCallbackId,
+    ImportKnowledgePillarShapingStateCallbackId, import_knowledge_pillar_shaping_state,
+    set_flags_for_import_knowledge_pillar_shaping_state,
 };
 pub use import_knowledge_resource_placement_state_reducer::{
-    import_knowledge_resource_placement_state,
+    ImportKnowledgeResourcePlacementStateCallbackId, import_knowledge_resource_placement_state,
     set_flags_for_import_knowledge_resource_placement_state,
-    ImportKnowledgeResourcePlacementStateCallbackId,
 };
 pub use import_knowledge_resource_state_reducer::{
-    import_knowledge_resource_state, set_flags_for_import_knowledge_resource_state,
-    ImportKnowledgeResourceStateCallbackId,
+    ImportKnowledgeResourceStateCallbackId, import_knowledge_resource_state,
+    set_flags_for_import_knowledge_resource_state,
 };
 pub use import_knowledge_ruins_state_reducer::{
-    import_knowledge_ruins_state, set_flags_for_import_knowledge_ruins_state,
-    ImportKnowledgeRuinsStateCallbackId,
+    ImportKnowledgeRuinsStateCallbackId, import_knowledge_ruins_state,
+    set_flags_for_import_knowledge_ruins_state,
 };
 pub use import_knowledge_scroll_desc_reducer::{
-    import_knowledge_scroll_desc, set_flags_for_import_knowledge_scroll_desc,
-    ImportKnowledgeScrollDescCallbackId,
+    ImportKnowledgeScrollDescCallbackId, import_knowledge_scroll_desc,
+    set_flags_for_import_knowledge_scroll_desc,
 };
 pub use import_knowledge_scroll_type_desc_reducer::{
-    import_knowledge_scroll_type_desc, set_flags_for_import_knowledge_scroll_type_desc,
-    ImportKnowledgeScrollTypeDescCallbackId,
+    ImportKnowledgeScrollTypeDescCallbackId, import_knowledge_scroll_type_desc,
+    set_flags_for_import_knowledge_scroll_type_desc,
 };
 pub use import_knowledge_secondary_state_reducer::{
-    import_knowledge_secondary_state, set_flags_for_import_knowledge_secondary_state,
-    ImportKnowledgeSecondaryStateCallbackId,
+    ImportKnowledgeSecondaryStateCallbackId, import_knowledge_secondary_state,
+    set_flags_for_import_knowledge_secondary_state,
 };
 pub use import_knowledge_stat_modifier_desc_reducer::{
-    import_knowledge_stat_modifier_desc, set_flags_for_import_knowledge_stat_modifier_desc,
-    ImportKnowledgeStatModifierDescCallbackId,
+    ImportKnowledgeStatModifierDescCallbackId, import_knowledge_stat_modifier_desc,
+    set_flags_for_import_knowledge_stat_modifier_desc,
 };
 pub use import_knowledge_vault_state_reducer::{
-    import_knowledge_vault_state, set_flags_for_import_knowledge_vault_state,
-    ImportKnowledgeVaultStateCallbackId,
+    ImportKnowledgeVaultStateCallbackId, import_knowledge_vault_state,
+    set_flags_for_import_knowledge_vault_state,
 };
 pub use import_location_cache_reducer::{
-    import_location_cache, set_flags_for_import_location_cache, ImportLocationCacheCallbackId,
+    ImportLocationCacheCallbackId, import_location_cache, set_flags_for_import_location_cache,
 };
 pub use import_location_state_reducer::{
-    import_location_state, set_flags_for_import_location_state, ImportLocationStateCallbackId,
+    ImportLocationStateCallbackId, import_location_state, set_flags_for_import_location_state,
 };
 pub use import_loot_chest_desc_reducer::{
-    import_loot_chest_desc, set_flags_for_import_loot_chest_desc, ImportLootChestDescCallbackId,
+    ImportLootChestDescCallbackId, import_loot_chest_desc, set_flags_for_import_loot_chest_desc,
 };
 pub use import_loot_chest_state_reducer::{
-    import_loot_chest_state, set_flags_for_import_loot_chest_state, ImportLootChestStateCallbackId,
+    ImportLootChestStateCallbackId, import_loot_chest_state, set_flags_for_import_loot_chest_state,
 };
 pub use import_loot_rarity_desc_reducer::{
-    import_loot_rarity_desc, set_flags_for_import_loot_rarity_desc, ImportLootRarityDescCallbackId,
+    ImportLootRarityDescCallbackId, import_loot_rarity_desc, set_flags_for_import_loot_rarity_desc,
 };
 pub use import_loot_table_desc_reducer::{
-    import_loot_table_desc, set_flags_for_import_loot_table_desc, ImportLootTableDescCallbackId,
+    ImportLootTableDescCallbackId, import_loot_table_desc, set_flags_for_import_loot_table_desc,
 };
 pub use import_mobile_entity_state_reducer::{
-    import_mobile_entity_state, set_flags_for_import_mobile_entity_state,
-    ImportMobileEntityStateCallbackId,
+    ImportMobileEntityStateCallbackId, import_mobile_entity_state,
+    set_flags_for_import_mobile_entity_state,
 };
 pub use import_mounting_state_reducer::{
-    import_mounting_state, set_flags_for_import_mounting_state, ImportMountingStateCallbackId,
+    ImportMountingStateCallbackId, import_mounting_state, set_flags_for_import_mounting_state,
 };
 pub use import_npc_desc_reducer::{
-    import_npc_desc, set_flags_for_import_npc_desc, ImportNpcDescCallbackId,
+    ImportNpcDescCallbackId, import_npc_desc, set_flags_for_import_npc_desc,
 };
 pub use import_npc_state_reducer::{
-    import_npc_state, set_flags_for_import_npc_state, ImportNpcStateCallbackId,
+    ImportNpcStateCallbackId, import_npc_state, set_flags_for_import_npc_state,
 };
 pub use import_onboarding_reward_desc_reducer::{
-    import_onboarding_reward_desc, set_flags_for_import_onboarding_reward_desc,
-    ImportOnboardingRewardDescCallbackId,
+    ImportOnboardingRewardDescCallbackId, import_onboarding_reward_desc,
+    set_flags_for_import_onboarding_reward_desc,
 };
 pub use import_onboarding_state_reducer::{
-    import_onboarding_state, set_flags_for_import_onboarding_state, ImportOnboardingStateCallbackId,
+    ImportOnboardingStateCallbackId, import_onboarding_state, set_flags_for_import_onboarding_state,
 };
 pub use import_parameters_desc_reducer::{
-    import_parameters_desc, set_flags_for_import_parameters_desc, ImportParametersDescCallbackId,
+    ImportParametersDescCallbackId, import_parameters_desc, set_flags_for_import_parameters_desc,
 };
 pub use import_pathfinding_desc_reducer::{
-    import_pathfinding_desc, set_flags_for_import_pathfinding_desc, ImportPathfindingDescCallbackId,
+    ImportPathfindingDescCallbackId, import_pathfinding_desc, set_flags_for_import_pathfinding_desc,
 };
 pub use import_paved_tile_state_reducer::{
-    import_paved_tile_state, set_flags_for_import_paved_tile_state, ImportPavedTileStateCallbackId,
+    ImportPavedTileStateCallbackId, import_paved_tile_state, set_flags_for_import_paved_tile_state,
 };
 pub use import_paving_tile_desc_reducer::{
-    import_paving_tile_desc, set_flags_for_import_paving_tile_desc, ImportPavingTileDescCallbackId,
+    ImportPavingTileDescCallbackId, import_paving_tile_desc, set_flags_for_import_paving_tile_desc,
 };
 pub use import_pillar_shaping_desc_reducer::{
-    import_pillar_shaping_desc, set_flags_for_import_pillar_shaping_desc,
-    ImportPillarShapingDescCallbackId,
+    ImportPillarShapingDescCallbackId, import_pillar_shaping_desc,
+    set_flags_for_import_pillar_shaping_desc,
 };
 pub use import_player_action_desc_reducer::{
-    import_player_action_desc, set_flags_for_import_player_action_desc,
-    ImportPlayerActionDescCallbackId,
+    ImportPlayerActionDescCallbackId, import_player_action_desc,
+    set_flags_for_import_player_action_desc,
 };
 pub use import_player_action_state_reducer::{
-    import_player_action_state, set_flags_for_import_player_action_state,
-    ImportPlayerActionStateCallbackId,
+    ImportPlayerActionStateCallbackId, import_player_action_state,
+    set_flags_for_import_player_action_state,
 };
 pub use import_player_housing_desc_reducer::{
-    import_player_housing_desc, set_flags_for_import_player_housing_desc,
-    ImportPlayerHousingDescCallbackId,
+    ImportPlayerHousingDescCallbackId, import_player_housing_desc,
+    set_flags_for_import_player_housing_desc,
 };
 pub use import_player_prefs_state_reducer::{
-    import_player_prefs_state, set_flags_for_import_player_prefs_state,
-    ImportPlayerPrefsStateCallbackId,
+    ImportPlayerPrefsStateCallbackId, import_player_prefs_state,
+    set_flags_for_import_player_prefs_state,
 };
 pub use import_player_state_reducer::{
-    import_player_state, set_flags_for_import_player_state, ImportPlayerStateCallbackId,
+    ImportPlayerStateCallbackId, import_player_state, set_flags_for_import_player_state,
 };
 pub use import_portal_state_reducer::{
-    import_portal_state, set_flags_for_import_portal_state, ImportPortalStateCallbackId,
+    ImportPortalStateCallbackId, import_portal_state, set_flags_for_import_portal_state,
 };
 pub use import_premium_item_desc_reducer::{
-    import_premium_item_desc, set_flags_for_import_premium_item_desc,
-    ImportPremiumItemDescCallbackId,
+    ImportPremiumItemDescCallbackId, import_premium_item_desc,
+    set_flags_for_import_premium_item_desc,
 };
 pub use import_premium_service_desc_reducer::{
-    import_premium_service_desc, set_flags_for_import_premium_service_desc,
-    ImportPremiumServiceDescCallbackId,
+    ImportPremiumServiceDescCallbackId, import_premium_service_desc,
+    set_flags_for_import_premium_service_desc,
 };
 pub use import_private_parameters_desc_reducer::{
-    import_private_parameters_desc, set_flags_for_import_private_parameters_desc,
-    ImportPrivateParametersDescCallbackId,
+    ImportPrivateParametersDescCallbackId, import_private_parameters_desc,
+    set_flags_for_import_private_parameters_desc,
 };
 pub use import_progressive_action_state_reducer::{
-    import_progressive_action_state, set_flags_for_import_progressive_action_state,
-    ImportProgressiveActionStateCallbackId,
+    ImportProgressiveActionStateCallbackId, import_progressive_action_state,
+    set_flags_for_import_progressive_action_state,
 };
 pub use import_project_site_state_reducer::{
-    import_project_site_state, set_flags_for_import_project_site_state,
-    ImportProjectSiteStateCallbackId,
+    ImportProjectSiteStateCallbackId, import_project_site_state,
+    set_flags_for_import_project_site_state,
 };
 pub use import_prospecting_desc_reducer::{
-    import_prospecting_desc, set_flags_for_import_prospecting_desc, ImportProspectingDescCallbackId,
+    ImportProspectingDescCallbackId, import_prospecting_desc, set_flags_for_import_prospecting_desc,
 };
 pub use import_quest_chain_desc_reducer::{
-    import_quest_chain_desc, set_flags_for_import_quest_chain_desc, ImportQuestChainDescCallbackId,
+    ImportQuestChainDescCallbackId, import_quest_chain_desc, set_flags_for_import_quest_chain_desc,
 };
 pub use import_quest_stage_desc_reducer::{
-    import_quest_stage_desc, set_flags_for_import_quest_stage_desc, ImportQuestStageDescCallbackId,
+    ImportQuestStageDescCallbackId, import_quest_stage_desc, set_flags_for_import_quest_stage_desc,
 };
 pub use import_rent_state_reducer::{
-    import_rent_state, set_flags_for_import_rent_state, ImportRentStateCallbackId,
+    ImportRentStateCallbackId, import_rent_state, set_flags_for_import_rent_state,
 };
 pub use import_reserved_name_desc_reducer::{
-    import_reserved_name_desc, set_flags_for_import_reserved_name_desc,
-    ImportReservedNameDescCallbackId,
+    ImportReservedNameDescCallbackId, import_reserved_name_desc,
+    set_flags_for_import_reserved_name_desc,
 };
 pub use import_resource_clump_desc_reducer::{
-    import_resource_clump_desc, set_flags_for_import_resource_clump_desc,
-    ImportResourceClumpDescCallbackId,
+    ImportResourceClumpDescCallbackId, import_resource_clump_desc,
+    set_flags_for_import_resource_clump_desc,
 };
 pub use import_resource_count_reducer::{
-    import_resource_count, set_flags_for_import_resource_count, ImportResourceCountCallbackId,
+    ImportResourceCountCallbackId, import_resource_count, set_flags_for_import_resource_count,
 };
 pub use import_resource_desc_reducer::{
-    import_resource_desc, set_flags_for_import_resource_desc, ImportResourceDescCallbackId,
+    ImportResourceDescCallbackId, import_resource_desc, set_flags_for_import_resource_desc,
 };
 pub use import_resource_growth_recipe_desc_reducer::{
-    import_resource_growth_recipe_desc, set_flags_for_import_resource_growth_recipe_desc,
-    ImportResourceGrowthRecipeDescCallbackId,
+    ImportResourceGrowthRecipeDescCallbackId, import_resource_growth_recipe_desc,
+    set_flags_for_import_resource_growth_recipe_desc,
 };
 pub use import_resource_placement_recipe_desc_reducer::{
-    import_resource_placement_recipe_desc, set_flags_for_import_resource_placement_recipe_desc,
-    ImportResourcePlacementRecipeDescCallbackId,
+    ImportResourcePlacementRecipeDescCallbackId, import_resource_placement_recipe_desc,
+    set_flags_for_import_resource_placement_recipe_desc,
 };
 pub use import_resource_state_reducer::{
-    import_resource_state, set_flags_for_import_resource_state, ImportResourceStateCallbackId,
+    ImportResourceStateCallbackId, import_resource_state, set_flags_for_import_resource_state,
 };
 pub use import_resources_log_reducer::{
-    import_resources_log, set_flags_for_import_resources_log, ImportResourcesLogCallbackId,
+    ImportResourcesLogCallbackId, import_resources_log, set_flags_for_import_resources_log,
 };
 pub use import_satiation_state_reducer::{
-    import_satiation_state, set_flags_for_import_satiation_state, ImportSatiationStateCallbackId,
+    ImportSatiationStateCallbackId, import_satiation_state, set_flags_for_import_satiation_state,
 };
 pub use import_secondary_knowledge_desc_reducer::{
-    import_secondary_knowledge_desc, set_flags_for_import_secondary_knowledge_desc,
-    ImportSecondaryKnowledgeDescCallbackId,
+    ImportSecondaryKnowledgeDescCallbackId, import_secondary_knowledge_desc,
+    set_flags_for_import_secondary_knowledge_desc,
 };
 pub use import_server_identity_reducer::{
-    import_server_identity, set_flags_for_import_server_identity, ImportServerIdentityCallbackId,
+    ImportServerIdentityCallbackId, import_server_identity, set_flags_for_import_server_identity,
 };
 pub use import_signed_in_player_state_reducer::{
-    import_signed_in_player_state, set_flags_for_import_signed_in_player_state,
-    ImportSignedInPlayerStateCallbackId,
+    ImportSignedInPlayerStateCallbackId, import_signed_in_player_state,
+    set_flags_for_import_signed_in_player_state,
 };
 pub use import_skill_desc_reducer::{
-    import_skill_desc, set_flags_for_import_skill_desc, ImportSkillDescCallbackId,
+    ImportSkillDescCallbackId, import_skill_desc, set_flags_for_import_skill_desc,
 };
 pub use import_stage_rewards_desc_reducer::{
-    import_stage_rewards_desc, set_flags_for_import_stage_rewards_desc,
-    ImportStageRewardsDescCallbackId,
+    ImportStageRewardsDescCallbackId, import_stage_rewards_desc,
+    set_flags_for_import_stage_rewards_desc,
 };
 pub use import_stamina_state_reducer::{
-    import_stamina_state, set_flags_for_import_stamina_state, ImportStaminaStateCallbackId,
+    ImportStaminaStateCallbackId, import_stamina_state, set_flags_for_import_stamina_state,
 };
 pub use import_target_state_reducer::{
-    import_target_state, set_flags_for_import_target_state, ImportTargetStateCallbackId,
+    ImportTargetStateCallbackId, import_target_state, set_flags_for_import_target_state,
 };
 pub use import_targetable_state_reducer::{
-    import_targetable_state, set_flags_for_import_targetable_state, ImportTargetableStateCallbackId,
+    ImportTargetableStateCallbackId, import_targetable_state, set_flags_for_import_targetable_state,
 };
 pub use import_targeting_matrix_desc_reducer::{
-    import_targeting_matrix_desc, set_flags_for_import_targeting_matrix_desc,
-    ImportTargetingMatrixDescCallbackId,
+    ImportTargetingMatrixDescCallbackId, import_targeting_matrix_desc,
+    set_flags_for_import_targeting_matrix_desc,
 };
 pub use import_teleport_item_desc_reducer::{
-    import_teleport_item_desc, set_flags_for_import_teleport_item_desc,
-    ImportTeleportItemDescCallbackId,
+    ImportTeleportItemDescCallbackId, import_teleport_item_desc,
+    set_flags_for_import_teleport_item_desc,
 };
 pub use import_terraform_recipe_desc_reducer::{
-    import_terraform_recipe_desc, set_flags_for_import_terraform_recipe_desc,
-    ImportTerraformRecipeDescCallbackId,
+    ImportTerraformRecipeDescCallbackId, import_terraform_recipe_desc,
+    set_flags_for_import_terraform_recipe_desc,
 };
 pub use import_terrain_chunk_state_reducer::{
-    import_terrain_chunk_state, set_flags_for_import_terrain_chunk_state,
-    ImportTerrainChunkStateCallbackId,
+    ImportTerrainChunkStateCallbackId, import_terrain_chunk_state,
+    set_flags_for_import_terrain_chunk_state,
 };
 pub use import_tool_desc_reducer::{
-    import_tool_desc, set_flags_for_import_tool_desc, ImportToolDescCallbackId,
+    ImportToolDescCallbackId, import_tool_desc, set_flags_for_import_tool_desc,
 };
 pub use import_tool_type_desc_reducer::{
-    import_tool_type_desc, set_flags_for_import_tool_type_desc, ImportToolTypeDescCallbackId,
+    ImportToolTypeDescCallbackId, import_tool_type_desc, set_flags_for_import_tool_type_desc,
 };
 pub use import_trade_order_state_reducer::{
-    import_trade_order_state, set_flags_for_import_trade_order_state,
-    ImportTradeOrderStateCallbackId,
+    ImportTradeOrderStateCallbackId, import_trade_order_state,
+    set_flags_for_import_trade_order_state,
 };
 pub use import_trade_session_state_reducer::{
-    import_trade_session_state, set_flags_for_import_trade_session_state,
-    ImportTradeSessionStateCallbackId,
+    ImportTradeSessionStateCallbackId, import_trade_session_state,
+    set_flags_for_import_trade_session_state,
 };
 pub use import_traveler_task_desc_reducer::{
-    import_traveler_task_desc, set_flags_for_import_traveler_task_desc,
-    ImportTravelerTaskDescCallbackId,
+    ImportTravelerTaskDescCallbackId, import_traveler_task_desc,
+    set_flags_for_import_traveler_task_desc,
 };
 pub use import_traveler_trade_order_desc_reducer::{
-    import_traveler_trade_order_desc, set_flags_for_import_traveler_trade_order_desc,
-    ImportTravelerTradeOrderDescCallbackId,
+    ImportTravelerTradeOrderDescCallbackId, import_traveler_trade_order_desc,
+    set_flags_for_import_traveler_trade_order_desc,
 };
 pub use import_user_moderation_state_reducer::{
-    import_user_moderation_state, set_flags_for_import_user_moderation_state,
-    ImportUserModerationStateCallbackId,
+    ImportUserModerationStateCallbackId, import_user_moderation_state,
+    set_flags_for_import_user_moderation_state,
 };
 pub use import_user_state_reducer::{
-    import_user_state, set_flags_for_import_user_state, ImportUserStateCallbackId,
+    ImportUserStateCallbackId, import_user_state, set_flags_for_import_user_state,
 };
 pub use import_vault_state_reducer::{
-    import_vault_state, set_flags_for_import_vault_state, ImportVaultStateCallbackId,
+    ImportVaultStateCallbackId, import_vault_state, set_flags_for_import_vault_state,
 };
 pub use import_wall_desc_reducer::{
-    import_wall_desc, set_flags_for_import_wall_desc, ImportWallDescCallbackId,
+    ImportWallDescCallbackId, import_wall_desc, set_flags_for_import_wall_desc,
 };
 pub use import_weapon_desc_reducer::{
-    import_weapon_desc, set_flags_for_import_weapon_desc, ImportWeaponDescCallbackId,
+    ImportWeaponDescCallbackId, import_weapon_desc, set_flags_for_import_weapon_desc,
 };
 pub use import_weapon_type_desc_reducer::{
-    import_weapon_type_desc, set_flags_for_import_weapon_type_desc, ImportWeaponTypeDescCallbackId,
+    ImportWeaponTypeDescCallbackId, import_weapon_type_desc, set_flags_for_import_weapon_type_desc,
 };
 pub use import_wind_params_desc_reducer::{
-    import_wind_params_desc, set_flags_for_import_wind_params_desc, ImportWindParamsDescCallbackId,
+    ImportWindParamsDescCallbackId, import_wind_params_desc, set_flags_for_import_wind_params_desc,
 };
 pub use import_world_region_name_state_reducer::{
-    import_world_region_name_state, set_flags_for_import_world_region_name_state,
-    ImportWorldRegionNameStateCallbackId,
+    ImportWorldRegionNameStateCallbackId, import_world_region_name_state,
+    set_flags_for_import_world_region_name_state,
 };
 pub use import_world_region_state_reducer::{
-    import_world_region_state, set_flags_for_import_world_region_state,
-    ImportWorldRegionStateCallbackId,
+    ImportWorldRegionStateCallbackId, import_world_region_state,
+    set_flags_for_import_world_region_state,
 };
 pub use input_item_stack_type::InputItemStack;
 pub use insert_developer_identity_reducer::{
-    insert_developer_identity, set_flags_for_insert_developer_identity,
-    InsertDeveloperIdentityCallbackId,
+    InsertDeveloperIdentityCallbackId, insert_developer_identity,
+    set_flags_for_insert_developer_identity,
 };
 pub use insert_resources_log_reducer::{
-    insert_resources_log, set_flags_for_insert_resources_log, InsertResourcesLogCallbackId,
+    InsertResourcesLogCallbackId, insert_resources_log, set_flags_for_insert_resources_log,
 };
 pub use insert_terrain_chunk_reducer::{
-    insert_terrain_chunk, set_flags_for_insert_terrain_chunk, InsertTerrainChunkCallbackId,
+    InsertTerrainChunkCallbackId, insert_terrain_chunk, set_flags_for_insert_terrain_chunk,
 };
 pub use inter_module_message_counter_table::*;
 pub use inter_module_message_counter_type::InterModuleMessageCounter;
@@ -3763,11 +3759,11 @@ pub use interior_player_count_state_type::InteriorPlayerCountState;
 pub use interior_portal_connections_desc_table::*;
 pub use interior_portal_connections_desc_type::InteriorPortalConnectionsDesc;
 pub use interior_set_collapsed_reducer::{
-    interior_set_collapsed, set_flags_for_interior_set_collapsed, InteriorSetCollapsedCallbackId,
+    InteriorSetCollapsedCallbackId, interior_set_collapsed, set_flags_for_interior_set_collapsed,
 };
 pub use interior_set_collapsed_scheduled_reducer::{
-    interior_set_collapsed_scheduled, set_flags_for_interior_set_collapsed_scheduled,
-    InteriorSetCollapsedScheduledCallbackId,
+    InteriorSetCollapsedScheduledCallbackId, interior_set_collapsed_scheduled,
+    set_flags_for_interior_set_collapsed_scheduled,
 };
 pub use interior_set_collapsed_timer_table::*;
 pub use interior_set_collapsed_timer_type::InteriorSetCollapsedTimer;
@@ -3777,43 +3773,43 @@ pub use interior_spawn_desc_table::*;
 pub use interior_spawn_desc_type::InteriorSpawnDesc;
 pub use interior_spawn_type_type::InteriorSpawnType;
 pub use inventory_create_personal_reducer::{
-    inventory_create_personal, set_flags_for_inventory_create_personal,
-    InventoryCreatePersonalCallbackId,
+    InventoryCreatePersonalCallbackId, inventory_create_personal,
+    set_flags_for_inventory_create_personal,
 };
 pub use inventory_sort_reducer::{
-    inventory_sort, set_flags_for_inventory_sort, InventorySortCallbackId,
+    InventorySortCallbackId, inventory_sort, set_flags_for_inventory_sort,
 };
 pub use inventory_state_table::*;
 pub use inventory_state_type::InventoryState;
 pub use item_conversion_location_context_type::ItemConversionLocationContext;
 pub use item_conversion_recipe_desc_table::*;
 pub use item_conversion_recipe_desc_type::ItemConversionRecipeDesc;
-pub use item_convert_reducer::{item_convert, set_flags_for_item_convert, ItemConvertCallbackId};
+pub use item_convert_reducer::{ItemConvertCallbackId, item_convert, set_flags_for_item_convert};
 pub use item_convert_start_reducer::{
-    item_convert_start, set_flags_for_item_convert_start, ItemConvertStartCallbackId,
+    ItemConvertStartCallbackId, item_convert_start, set_flags_for_item_convert_start,
 };
 pub use item_desc_table::*;
 pub use item_desc_type::ItemDesc;
-pub use item_drop_reducer::{item_drop, set_flags_for_item_drop, ItemDropCallbackId};
+pub use item_drop_reducer::{ItemDropCallbackId, item_drop, set_flags_for_item_drop};
 pub use item_list_desc_table::*;
 pub use item_list_desc_type::ItemListDesc;
 pub use item_list_possibility_type::ItemListPossibility;
-pub use item_pick_up_reducer::{item_pick_up, set_flags_for_item_pick_up, ItemPickUpCallbackId};
+pub use item_pick_up_reducer::{ItemPickUpCallbackId, item_pick_up, set_flags_for_item_pick_up};
 pub use item_stack_completion_condition_type::ItemStackCompletionCondition;
 pub use item_stack_move_all_reducer::{
-    item_stack_move_all, set_flags_for_item_stack_move_all, ItemStackMoveAllCallbackId,
+    ItemStackMoveAllCallbackId, item_stack_move_all, set_flags_for_item_stack_move_all,
 };
 pub use item_stack_move_reducer::{
-    item_stack_move, set_flags_for_item_stack_move, ItemStackMoveCallbackId,
+    ItemStackMoveCallbackId, item_stack_move, set_flags_for_item_stack_move,
 };
 pub use item_stack_split_reducer::{
-    item_stack_split, set_flags_for_item_stack_split, ItemStackSplitCallbackId,
+    ItemStackSplitCallbackId, item_stack_split, set_flags_for_item_stack_split,
 };
 pub use item_stack_type::ItemStack;
 pub use item_type_type::ItemType;
-pub use item_use_reducer::{item_use, set_flags_for_item_use, ItemUseCallbackId};
+pub use item_use_reducer::{ItemUseCallbackId, item_use, set_flags_for_item_use};
 pub use item_use_start_reducer::{
-    item_use_start, set_flags_for_item_use_start, ItemUseStartCallbackId,
+    ItemUseStartCallbackId, item_use_start, set_flags_for_item_use_start,
 };
 pub use knowledge_achievement_state_table::*;
 pub use knowledge_achievement_state_type::KnowledgeAchievementState;
@@ -3869,29 +3865,29 @@ pub use large_hex_tile_message_type::LargeHexTileMessage;
 pub use level_requirement_type::LevelRequirement;
 pub use light_source_state_table::*;
 pub use light_source_state_type::LightSourceState;
-pub use load_config_reducer::{load_config, set_flags_for_load_config, LoadConfigCallbackId};
+pub use load_config_reducer::{LoadConfigCallbackId, load_config, set_flags_for_load_config};
 pub use location_cache_table::*;
 pub use location_cache_type::LocationCache;
 pub use location_state_op_type::LocationStateOp;
 pub use location_state_table::*;
 pub use location_state_type::LocationState;
 pub use log_claim_member_leaderboard_reducer::{
-    log_claim_member_leaderboard, set_flags_for_log_claim_member_leaderboard,
-    LogClaimMemberLeaderboardCallbackId,
+    LogClaimMemberLeaderboardCallbackId, log_claim_member_leaderboard,
+    set_flags_for_log_claim_member_leaderboard,
 };
 pub use log_claim_tier_leaderboard_reducer::{
-    log_claim_tier_leaderboard, set_flags_for_log_claim_tier_leaderboard,
-    LogClaimTierLeaderboardCallbackId,
+    LogClaimTierLeaderboardCallbackId, log_claim_tier_leaderboard,
+    set_flags_for_log_claim_tier_leaderboard,
 };
 pub use loot_chest_desc_table::*;
 pub use loot_chest_desc_type::LootChestDesc;
 pub use loot_chest_despawn_reducer::{
-    loot_chest_despawn, set_flags_for_loot_chest_despawn, LootChestDespawnCallbackId,
+    LootChestDespawnCallbackId, loot_chest_despawn, set_flags_for_loot_chest_despawn,
 };
 pub use loot_chest_despawn_timer_table::*;
 pub use loot_chest_despawn_timer_type::LootChestDespawnTimer;
 pub use loot_chest_spawn_reducer::{
-    loot_chest_spawn, set_flags_for_loot_chest_spawn, LootChestSpawnCallbackId,
+    LootChestSpawnCallbackId, loot_chest_spawn, set_flags_for_loot_chest_spawn,
 };
 pub use loot_chest_spawn_timer_table::*;
 pub use loot_chest_spawn_timer_type::LootChestSpawnTimer;
@@ -3910,35 +3906,35 @@ pub use message_contents_v_2_type::MessageContentsV2;
 pub use message_contents_v_3_type::MessageContentsV3;
 pub use message_contents_v_4_type::MessageContentsV4;
 pub use migrate_auto_attacks_reducer::{
-    migrate_auto_attacks, set_flags_for_migrate_auto_attacks, MigrateAutoAttacksCallbackId,
+    MigrateAutoAttacksCallbackId, migrate_auto_attacks, set_flags_for_migrate_auto_attacks,
 };
 pub use migrate_character_stats_reducer::{
-    migrate_character_stats, set_flags_for_migrate_character_stats, MigrateCharacterStatsCallbackId,
+    MigrateCharacterStatsCallbackId, migrate_character_stats, set_flags_for_migrate_character_stats,
 };
 pub use migrate_claim_tech_reducer::{
-    migrate_claim_tech, set_flags_for_migrate_claim_tech, MigrateClaimTechCallbackId,
+    MigrateClaimTechCallbackId, migrate_claim_tech, set_flags_for_migrate_claim_tech,
 };
 pub use migrate_grant_default_collectibles_reducer::{
-    migrate_grant_default_collectibles, set_flags_for_migrate_grant_default_collectibles,
-    MigrateGrantDefaultCollectiblesCallbackId,
+    MigrateGrantDefaultCollectiblesCallbackId, migrate_grant_default_collectibles,
+    set_flags_for_migrate_grant_default_collectibles,
 };
 pub use migrate_onboarding_reducer::{
-    migrate_onboarding, set_flags_for_migrate_onboarding, MigrateOnboardingCallbackId,
+    MigrateOnboardingCallbackId, migrate_onboarding, set_flags_for_migrate_onboarding,
 };
 pub use migrate_player_settings_reducer::{
-    migrate_player_settings, set_flags_for_migrate_player_settings, MigratePlayerSettingsCallbackId,
+    MigratePlayerSettingsCallbackId, migrate_player_settings, set_flags_for_migrate_player_settings,
 };
 pub use migration_achievements_params_table::*;
 pub use migration_achievements_params_type::MigrationAchievementsParams;
 pub use migration_building_desc_params_table::*;
 pub use migration_building_desc_params_type::MigrationBuildingDescParams;
 pub use migration_set_achievement_params_reducer::{
-    migration_set_achievement_params, set_flags_for_migration_set_achievement_params,
-    MigrationSetAchievementParamsCallbackId,
+    MigrationSetAchievementParamsCallbackId, migration_set_achievement_params,
+    set_flags_for_migration_set_achievement_params,
 };
 pub use migration_set_building_desc_params_reducer::{
-    migration_set_building_desc_params, set_flags_for_migration_set_building_desc_params,
-    MigrationSetBuildingDescParamsCallbackId,
+    MigrationSetBuildingDescParamsCallbackId, migration_set_building_desc_params,
+    set_flags_for_migration_set_building_desc_params,
 };
 pub use mobile_entity_state_table::*;
 pub use mobile_entity_state_type::MobileEntityState;
@@ -3953,7 +3949,7 @@ pub use movement_speed_type::MovementSpeed;
 pub use movement_type_type::MovementType;
 pub use notification_severity_type::NotificationSeverity;
 pub use npc_ai_agent_loop_reducer::{
-    npc_ai_agent_loop, set_flags_for_npc_ai_agent_loop, NpcAiAgentLoopCallbackId,
+    NpcAiAgentLoopCallbackId, npc_ai_agent_loop, set_flags_for_npc_ai_agent_loop,
 };
 pub use npc_ai_loop_timer_table::*;
 pub use npc_ai_loop_timer_type::NpcAiLoopTimer;
@@ -3968,14 +3964,14 @@ pub use offset_coordinates_small_message_type::OffsetCoordinatesSmallMessage;
 pub use on_claim_members_changed_msg_type::OnClaimMembersChangedMsg;
 pub use on_deployable_recovered_msg_type::OnDeployableRecoveredMsg;
 pub use on_durability_zero_reducer::{
-    on_durability_zero, set_flags_for_on_durability_zero, OnDurabilityZeroCallbackId,
+    OnDurabilityZeroCallbackId, on_durability_zero, set_flags_for_on_durability_zero,
 };
 pub use on_durability_zero_timer_table::*;
 pub use on_durability_zero_timer_type::OnDurabilityZeroTimer;
 pub use on_empire_building_deleted_msg_type::OnEmpireBuildingDeletedMsg;
 pub use on_inter_module_message_processed_reducer::{
-    on_inter_module_message_processed, set_flags_for_on_inter_module_message_processed,
-    OnInterModuleMessageProcessedCallbackId,
+    OnInterModuleMessageProcessedCallbackId, on_inter_module_message_processed,
+    set_flags_for_on_inter_module_message_processed,
 };
 pub use on_player_joined_empire_msg_type::OnPlayerJoinedEmpireMsg;
 pub use on_player_left_empire_msg_type::OnPlayerLeftEmpireMsg;
@@ -3986,21 +3982,21 @@ pub use onboarding_reward_desc_type::OnboardingRewardDesc;
 pub use onboarding_state_table::*;
 pub use onboarding_state_type::OnboardingState;
 pub use online_timestamp_type::OnlineTimestamp;
-pub use order_cancel_reducer::{order_cancel, set_flags_for_order_cancel, OrderCancelCallbackId};
+pub use order_cancel_reducer::{OrderCancelCallbackId, order_cancel, set_flags_for_order_cancel};
 pub use order_collect_reducer::{
-    order_collect, set_flags_for_order_collect, OrderCollectCallbackId,
+    OrderCollectCallbackId, order_collect, set_flags_for_order_collect,
 };
 pub use order_edit_buy_order_reducer::{
-    order_edit_buy_order, set_flags_for_order_edit_buy_order, OrderEditBuyOrderCallbackId,
+    OrderEditBuyOrderCallbackId, order_edit_buy_order, set_flags_for_order_edit_buy_order,
 };
 pub use order_edit_sell_order_reducer::{
-    order_edit_sell_order, set_flags_for_order_edit_sell_order, OrderEditSellOrderCallbackId,
+    OrderEditSellOrderCallbackId, order_edit_sell_order, set_flags_for_order_edit_sell_order,
 };
 pub use order_post_buy_order_reducer::{
-    order_post_buy_order, set_flags_for_order_post_buy_order, OrderPostBuyOrderCallbackId,
+    OrderPostBuyOrderCallbackId, order_post_buy_order, set_flags_for_order_post_buy_order,
 };
 pub use order_post_sell_order_reducer::{
-    order_post_sell_order, set_flags_for_order_post_sell_order, OrderPostSellOrderCallbackId,
+    OrderPostSellOrderCallbackId, order_post_sell_order, set_flags_for_order_post_sell_order,
 };
 pub use parameters_desc_table::*;
 pub use parameters_desc_type::ParametersDesc;
@@ -4011,20 +4007,20 @@ pub use parameters_player_move_desc_type::ParametersPlayerMoveDesc;
 pub use partial_experience_state_table::*;
 pub use partial_experience_state_type::PartialExperienceState;
 pub use passive_craft_cancel_reducer::{
-    passive_craft_cancel, set_flags_for_passive_craft_cancel, PassiveCraftCancelCallbackId,
+    PassiveCraftCancelCallbackId, passive_craft_cancel, set_flags_for_passive_craft_cancel,
 };
 pub use passive_craft_collect_all_reducer::{
-    passive_craft_collect_all, set_flags_for_passive_craft_collect_all,
-    PassiveCraftCollectAllCallbackId,
+    PassiveCraftCollectAllCallbackId, passive_craft_collect_all,
+    set_flags_for_passive_craft_collect_all,
 };
 pub use passive_craft_collect_reducer::{
-    passive_craft_collect, set_flags_for_passive_craft_collect, PassiveCraftCollectCallbackId,
+    PassiveCraftCollectCallbackId, passive_craft_collect, set_flags_for_passive_craft_collect,
 };
 pub use passive_craft_process_reducer::{
-    passive_craft_process, set_flags_for_passive_craft_process, PassiveCraftProcessCallbackId,
+    PassiveCraftProcessCallbackId, passive_craft_process, set_flags_for_passive_craft_process,
 };
 pub use passive_craft_queue_reducer::{
-    passive_craft_queue, set_flags_for_passive_craft_queue, PassiveCraftQueueCallbackId,
+    PassiveCraftQueueCallbackId, passive_craft_queue, set_flags_for_passive_craft_queue,
 };
 pub use passive_craft_state_table::*;
 pub use passive_craft_state_type::PassiveCraftState;
@@ -4035,27 +4031,27 @@ pub use pathfinding_desc_table::*;
 pub use pathfinding_desc_type::PathfindingDesc;
 pub use pathfinding_traversal_option_type::PathfindingTraversalOption;
 pub use pause_play_timer_reducer::{
-    pause_play_timer, set_flags_for_pause_play_timer, PausePlayTimerCallbackId,
+    PausePlayTimerCallbackId, pause_play_timer, set_flags_for_pause_play_timer,
 };
 pub use paved_tile_state_table::*;
 pub use paved_tile_state_type::PavedTileState;
 pub use paving_destroy_tile_reducer::{
-    paving_destroy_tile, set_flags_for_paving_destroy_tile, PavingDestroyTileCallbackId,
+    PavingDestroyTileCallbackId, paving_destroy_tile, set_flags_for_paving_destroy_tile,
 };
 pub use paving_destroy_tile_start_reducer::{
-    paving_destroy_tile_start, set_flags_for_paving_destroy_tile_start,
-    PavingDestroyTileStartCallbackId,
+    PavingDestroyTileStartCallbackId, paving_destroy_tile_start,
+    set_flags_for_paving_destroy_tile_start,
 };
 pub use paving_place_tile_reducer::{
-    paving_place_tile, set_flags_for_paving_place_tile, PavingPlaceTileCallbackId,
+    PavingPlaceTileCallbackId, paving_place_tile, set_flags_for_paving_place_tile,
 };
 pub use paving_place_tile_start_reducer::{
-    paving_place_tile_start, set_flags_for_paving_place_tile_start, PavingPlaceTileStartCallbackId,
+    PavingPlaceTileStartCallbackId, paving_place_tile_start, set_flags_for_paving_place_tile_start,
 };
 pub use paving_tile_desc_table::*;
 pub use paving_tile_desc_type::PavingTileDesc;
 pub use permission_edit_reducer::{
-    permission_edit, set_flags_for_permission_edit, PermissionEditCallbackId,
+    PermissionEditCallbackId, permission_edit, set_flags_for_permission_edit,
 };
 pub use permission_group_type::PermissionGroup;
 pub use permission_state_table::*;
@@ -4064,26 +4060,26 @@ pub use permission_type::Permission;
 pub use pillar_shaping_desc_table::*;
 pub use pillar_shaping_desc_type::PillarShapingDesc;
 pub use pillar_shaping_destroy_reducer::{
-    pillar_shaping_destroy, set_flags_for_pillar_shaping_destroy, PillarShapingDestroyCallbackId,
+    PillarShapingDestroyCallbackId, pillar_shaping_destroy, set_flags_for_pillar_shaping_destroy,
 };
 pub use pillar_shaping_destroy_start_reducer::{
-    pillar_shaping_destroy_start, set_flags_for_pillar_shaping_destroy_start,
-    PillarShapingDestroyStartCallbackId,
+    PillarShapingDestroyStartCallbackId, pillar_shaping_destroy_start,
+    set_flags_for_pillar_shaping_destroy_start,
 };
 pub use pillar_shaping_place_pillar_reducer::{
-    pillar_shaping_place_pillar, set_flags_for_pillar_shaping_place_pillar,
-    PillarShapingPlacePillarCallbackId,
+    PillarShapingPlacePillarCallbackId, pillar_shaping_place_pillar,
+    set_flags_for_pillar_shaping_place_pillar,
 };
 pub use pillar_shaping_place_pillar_start_reducer::{
-    pillar_shaping_place_pillar_start, set_flags_for_pillar_shaping_place_pillar_start,
-    PillarShapingPlacePillarStartCallbackId,
+    PillarShapingPlacePillarStartCallbackId, pillar_shaping_place_pillar_start,
+    set_flags_for_pillar_shaping_place_pillar_start,
 };
 pub use pillar_shaping_state_table::*;
 pub use pillar_shaping_state_type::PillarShapingState;
 pub use player_achievement_claim_request_type::PlayerAchievementClaimRequest;
 pub use player_acquire_knowledge_from_entities_request_type::PlayerAcquireKnowledgeFromEntitiesRequest;
 pub use player_action_cancel_reducer::{
-    player_action_cancel, set_flags_for_player_action_cancel, PlayerActionCancelCallbackId,
+    PlayerActionCancelCallbackId, player_action_cancel, set_flags_for_player_action_cancel,
 };
 pub use player_action_desc_table::*;
 pub use player_action_desc_type::PlayerActionDesc;
@@ -4100,8 +4096,8 @@ pub use player_building_move_request_type::PlayerBuildingMoveRequest;
 pub use player_building_repair_request_type::PlayerBuildingRepairRequest;
 pub use player_building_set_nickname_request_type::PlayerBuildingSetNicknameRequest;
 pub use player_cancel_region_transfer_reducer::{
-    player_cancel_region_transfer, set_flags_for_player_cancel_region_transfer,
-    PlayerCancelRegionTransferCallbackId,
+    PlayerCancelRegionTransferCallbackId, player_cancel_region_transfer,
+    set_flags_for_player_cancel_region_transfer,
 };
 pub use player_chat_post_message_request_type::PlayerChatPostMessageRequest;
 pub use player_claim_add_member_request_type::PlayerClaimAddMemberRequest;
@@ -4121,18 +4117,18 @@ pub use player_claim_tech_learn_request_type::PlayerClaimTechLearnRequest;
 pub use player_claim_transfer_ownership_request_type::PlayerClaimTransferOwnershipRequest;
 pub use player_claim_withdraw_from_treasury_request_type::PlayerClaimWithdrawFromTreasuryRequest;
 pub use player_clear_action_state_reducer::{
-    player_clear_action_state, set_flags_for_player_clear_action_state,
-    PlayerClearActionStateCallbackId,
+    PlayerClearActionStateCallbackId, player_clear_action_state,
+    set_flags_for_player_clear_action_state,
 };
-pub use player_climb_reducer::{player_climb, set_flags_for_player_climb, PlayerClimbCallbackId};
+pub use player_climb_reducer::{PlayerClimbCallbackId, player_climb, set_flags_for_player_climb};
 pub use player_climb_request_type::PlayerClimbRequest;
 pub use player_climb_start_reducer::{
-    player_climb_start, set_flags_for_player_climb_start, PlayerClimbStartCallbackId,
+    PlayerClimbStartCallbackId, player_climb_start, set_flags_for_player_climb_start,
 };
 pub use player_closed_listing_collect_request_type::PlayerClosedListingCollectRequest;
 pub use player_collectible_activate_request_type::PlayerCollectibleActivateRequest;
 pub use player_complete_task_reducer::{
-    player_complete_task, set_flags_for_player_complete_task, PlayerCompleteTaskCallbackId,
+    PlayerCompleteTaskCallbackId, player_complete_task, set_flags_for_player_complete_task,
 };
 pub use player_complete_task_request_type::PlayerCompleteTaskRequest;
 pub use player_convert_collectible_to_deed_request_type::PlayerConvertCollectibleToDeedRequest;
@@ -4144,7 +4140,7 @@ pub use player_craft_continue_request_type::PlayerCraftContinueRequest;
 pub use player_craft_initiate_request_type::PlayerCraftInitiateRequest;
 pub use player_create_msg_type::PlayerCreateMsg;
 pub use player_death_start_reducer::{
-    player_death_start, set_flags_for_player_death_start, PlayerDeathStartCallbackId,
+    PlayerDeathStartCallbackId, player_death_start, set_flags_for_player_death_start,
 };
 pub use player_death_timer_table::*;
 pub use player_death_timer_type::PlayerDeathTimer;
@@ -4153,63 +4149,63 @@ pub use player_deployable_mount_request_type::PlayerDeployableMountRequest;
 pub use player_deployable_move_request_type::PlayerDeployableMoveRequest;
 pub use player_discover_entities_request_type::PlayerDiscoverEntitiesRequest;
 pub use player_dismiss_alert_reducer::{
-    player_dismiss_alert, set_flags_for_player_dismiss_alert, PlayerDismissAlertCallbackId,
+    PlayerDismissAlertCallbackId, player_dismiss_alert, set_flags_for_player_dismiss_alert,
 };
 pub use player_dismiss_alert_request_type::PlayerDismissAlertRequest;
 pub use player_dropped_inventory_pick_up_request_type::PlayerDroppedInventoryPickUpRequest;
 pub use player_duel_initiate_reducer::{
-    player_duel_initiate, set_flags_for_player_duel_initiate, PlayerDuelInitiateCallbackId,
+    PlayerDuelInitiateCallbackId, player_duel_initiate, set_flags_for_player_duel_initiate,
 };
 pub use player_eat_request_type::PlayerEatRequest;
 pub use player_edit_order_request_type::PlayerEditOrderRequest;
 pub use player_elevator_arrive_reducer::{
-    player_elevator_arrive, set_flags_for_player_elevator_arrive, PlayerElevatorArriveCallbackId,
+    PlayerElevatorArriveCallbackId, player_elevator_arrive, set_flags_for_player_elevator_arrive,
 };
 pub use player_emote_request_type::PlayerEmoteRequest;
 pub use player_equipment_add_request_type::PlayerEquipmentAddRequest;
 pub use player_equipment_remove_request_type::PlayerEquipmentRemoveRequest;
 pub use player_extract_request_type::PlayerExtractRequest;
 pub use player_housing_change_entrance_reducer::{
-    player_housing_change_entrance, set_flags_for_player_housing_change_entrance,
-    PlayerHousingChangeEntranceCallbackId,
+    PlayerHousingChangeEntranceCallbackId, player_housing_change_entrance,
+    set_flags_for_player_housing_change_entrance,
 };
 pub use player_housing_customization_state_table::*;
 pub use player_housing_customization_state_type::PlayerHousingCustomizationState;
 pub use player_housing_desc_table::*;
 pub use player_housing_desc_type::PlayerHousingDesc;
 pub use player_housing_enter_reducer::{
-    player_housing_enter, set_flags_for_player_housing_enter, PlayerHousingEnterCallbackId,
+    PlayerHousingEnterCallbackId, player_housing_enter, set_flags_for_player_housing_enter,
 };
 pub use player_housing_enter_request_type::PlayerHousingEnterRequest;
 pub use player_housing_evict_player_complete_reducer::{
-    player_housing_evict_player_complete, set_flags_for_player_housing_evict_player_complete,
-    PlayerHousingEvictPlayerCompleteCallbackId,
+    PlayerHousingEvictPlayerCompleteCallbackId, player_housing_evict_player_complete,
+    set_flags_for_player_housing_evict_player_complete,
 };
 pub use player_housing_evict_player_reducer::{
-    player_housing_evict_player, set_flags_for_player_housing_evict_player,
-    PlayerHousingEvictPlayerCallbackId,
+    PlayerHousingEvictPlayerCallbackId, player_housing_evict_player,
+    set_flags_for_player_housing_evict_player,
 };
 pub use player_housing_evict_player_request_type::PlayerHousingEvictPlayerRequest;
 pub use player_housing_evict_player_timer_table::*;
 pub use player_housing_evict_player_timer_type::PlayerHousingEvictPlayerTimer;
 pub use player_housing_income_agent_loop_reducer::{
-    player_housing_income_agent_loop, set_flags_for_player_housing_income_agent_loop,
-    PlayerHousingIncomeAgentLoopCallbackId,
+    PlayerHousingIncomeAgentLoopCallbackId, player_housing_income_agent_loop,
+    set_flags_for_player_housing_income_agent_loop,
 };
 pub use player_housing_income_loop_timer_table::*;
 pub use player_housing_income_loop_timer_type::PlayerHousingIncomeLoopTimer;
 pub use player_housing_moving_cost_state_table::*;
 pub use player_housing_moving_cost_state_type::PlayerHousingMovingCostState;
 pub use player_housing_request_access_reducer::{
-    player_housing_request_access, set_flags_for_player_housing_request_access,
-    PlayerHousingRequestAccessCallbackId,
+    PlayerHousingRequestAccessCallbackId, player_housing_request_access,
+    set_flags_for_player_housing_request_access,
 };
 pub use player_housing_request_access_request_type::PlayerHousingRequestAccessRequest;
 pub use player_housing_state_op_type::PlayerHousingStateOp;
 pub use player_housing_state_table::*;
 pub use player_housing_state_type::PlayerHousingState;
 pub use player_housing_update_reducer::{
-    player_housing_update, set_flags_for_player_housing_update, PlayerHousingUpdateCallbackId,
+    PlayerHousingUpdateCallbackId, player_housing_update, set_flags_for_player_housing_update,
 };
 pub use player_item_convert_request_type::PlayerItemConvertRequest;
 pub use player_item_drop_request_type::PlayerItemDropRequest;
@@ -4219,13 +4215,13 @@ pub use player_item_stack_split_request_type::PlayerItemStackSplitRequest;
 pub use player_item_use_request_type::PlayerItemUseRequest;
 pub use player_lowercase_username_state_table::*;
 pub use player_lowercase_username_state_type::PlayerLowercaseUsernameState;
-pub use player_move_reducer::{player_move, set_flags_for_player_move, PlayerMoveCallbackId};
+pub use player_move_reducer::{PlayerMoveCallbackId, player_move, set_flags_for_player_move};
 pub use player_move_request_type::PlayerMoveRequest;
 pub use player_note_state_table::*;
 pub use player_note_state_type::PlayerNoteState;
 pub use player_notification_event_reducer_reducer::{
-    player_notification_event_reducer, set_flags_for_player_notification_event_reducer,
-    PlayerNotificationEventReducerCallbackId,
+    PlayerNotificationEventReducerCallbackId, player_notification_event_reducer,
+    set_flags_for_player_notification_event_reducer,
 };
 pub use player_notification_event_table::*;
 pub use player_notification_event_type::PlayerNotificationEvent;
@@ -4248,24 +4244,24 @@ pub use player_project_site_advance_project_request_type::PlayerProjectSiteAdvan
 pub use player_project_site_cancel_request_type::PlayerProjectSiteCancelRequest;
 pub use player_project_site_place_request_type::PlayerProjectSitePlaceRequest;
 pub use player_queue_join_reducer::{
-    player_queue_join, set_flags_for_player_queue_join, PlayerQueueJoinCallbackId,
+    PlayerQueueJoinCallbackId, player_queue_join, set_flags_for_player_queue_join,
 };
 pub use player_queue_leave_reducer::{
-    player_queue_leave, set_flags_for_player_queue_leave, PlayerQueueLeaveCallbackId,
+    PlayerQueueLeaveCallbackId, player_queue_leave, set_flags_for_player_queue_leave,
 };
 pub use player_queue_state_table::*;
 pub use player_queue_state_type::PlayerQueueState;
 pub use player_regen_agent_loop_reducer::{
-    player_regen_agent_loop, set_flags_for_player_regen_agent_loop, PlayerRegenAgentLoopCallbackId,
+    PlayerRegenAgentLoopCallbackId, player_regen_agent_loop, set_flags_for_player_regen_agent_loop,
 };
 pub use player_regen_loop_timer_table::*;
 pub use player_regen_loop_timer_type::PlayerRegenLoopTimer;
 pub use player_region_crossover_reducer::{
-    player_region_crossover, set_flags_for_player_region_crossover, PlayerRegionCrossoverCallbackId,
+    PlayerRegionCrossoverCallbackId, player_region_crossover, set_flags_for_player_region_crossover,
 };
 pub use player_region_transfer_event_reducer_reducer::{
-    player_region_transfer_event_reducer, set_flags_for_player_region_transfer_event_reducer,
-    PlayerRegionTransferEventReducerCallbackId,
+    PlayerRegionTransferEventReducerCallbackId, player_region_transfer_event_reducer,
+    set_flags_for_player_region_transfer_event_reducer,
 };
 pub use player_region_transfer_event_table::*;
 pub use player_region_transfer_event_type::PlayerRegionTransferEvent;
@@ -4275,27 +4271,27 @@ pub use player_report_state_timestamp_table::*;
 pub use player_report_state_timestamp_type::PlayerReportStateTimestamp;
 pub use player_report_state_type::PlayerReportState;
 pub use player_respawn_reducer::{
-    player_respawn, set_flags_for_player_respawn, PlayerRespawnCallbackId,
+    PlayerRespawnCallbackId, player_respawn, set_flags_for_player_respawn,
 };
 pub use player_retrieve_lost_item_request_type::PlayerRetrieveLostItemRequest;
 pub use player_scroll_read_request_type::PlayerScrollReadRequest;
 pub use player_set_default_deployable_reducer::{
-    player_set_default_deployable, set_flags_for_player_set_default_deployable,
-    PlayerSetDefaultDeployableCallbackId,
+    PlayerSetDefaultDeployableCallbackId, player_set_default_deployable,
+    set_flags_for_player_set_default_deployable,
 };
 pub use player_set_default_deployable_request_type::PlayerSetDefaultDeployableRequest;
 pub use player_set_home_request_type::PlayerSetHomeRequest;
 pub use player_set_name_outcome_event_reducer_reducer::{
-    player_set_name_outcome_event_reducer, set_flags_for_player_set_name_outcome_event_reducer,
-    PlayerSetNameOutcomeEventReducerCallbackId,
+    PlayerSetNameOutcomeEventReducerCallbackId, player_set_name_outcome_event_reducer,
+    set_flags_for_player_set_name_outcome_event_reducer,
 };
 pub use player_set_name_outcome_event_table::*;
 pub use player_set_name_outcome_event_type::PlayerSetNameOutcomeEvent;
 pub use player_settings_state_table::*;
 pub use player_settings_state_type::PlayerSettingsState;
 pub use player_settings_state_update_reducer::{
-    player_settings_state_update, set_flags_for_player_settings_state_update,
-    PlayerSettingsStateUpdateCallbackId,
+    PlayerSettingsStateUpdateCallbackId, player_settings_state_update,
+    set_flags_for_player_settings_state_update,
 };
 pub use player_settings_state_v_2_table::*;
 pub use player_settings_state_v_2_type::PlayerSettingsStateV2;
@@ -4305,21 +4301,21 @@ pub use player_sleep_request_type::PlayerSleepRequest;
 pub use player_state_table::*;
 pub use player_state_type::PlayerState;
 pub use player_teleport_home_reducer::{
-    player_teleport_home, set_flags_for_player_teleport_home, PlayerTeleportHomeCallbackId,
+    PlayerTeleportHomeCallbackId, player_teleport_home, set_flags_for_player_teleport_home,
 };
 pub use player_teleport_home_request_type::PlayerTeleportHomeRequest;
 pub use player_teleport_home_start_reducer::{
-    player_teleport_home_start, set_flags_for_player_teleport_home_start,
-    PlayerTeleportHomeStartCallbackId,
+    PlayerTeleportHomeStartCallbackId, player_teleport_home_start,
+    set_flags_for_player_teleport_home_start,
 };
 pub use player_teleport_waystone_reducer::{
-    player_teleport_waystone, set_flags_for_player_teleport_waystone,
-    PlayerTeleportWaystoneCallbackId,
+    PlayerTeleportWaystoneCallbackId, player_teleport_waystone,
+    set_flags_for_player_teleport_waystone,
 };
 pub use player_teleport_waystone_request_type::PlayerTeleportWaystoneRequest;
 pub use player_teleport_waystone_start_reducer::{
-    player_teleport_waystone_start, set_flags_for_player_teleport_waystone_start,
-    PlayerTeleportWaystoneStartCallbackId,
+    PlayerTeleportWaystoneStartCallbackId, player_teleport_waystone_start,
+    set_flags_for_player_teleport_waystone_start,
 };
 pub use player_terraform_cancel_request_type::PlayerTerraformCancelRequest;
 pub use player_terraform_request_type::PlayerTerraformRequest;
@@ -4335,19 +4331,19 @@ pub use player_trade_initiate_session_request_type::PlayerTradeInitiateSessionRe
 pub use player_trade_remove_item_request_type::PlayerTradeRemoveItemRequest;
 pub use player_trade_swap_pockets_request_type::PlayerTradeSwapPocketsRequest;
 pub use player_use_elevator_reducer::{
-    player_use_elevator, set_flags_for_player_use_elevator, PlayerUseElevatorCallbackId,
+    PlayerUseElevatorCallbackId, player_use_elevator, set_flags_for_player_use_elevator,
 };
 pub use player_use_elevator_timer_table::*;
 pub use player_use_elevator_timer_type::PlayerUseElevatorTimer;
 pub use player_username_state_table::*;
 pub use player_username_state_type::PlayerUsernameState;
 pub use player_vote_answer_reducer::{
-    player_vote_answer, set_flags_for_player_vote_answer, PlayerVoteAnswerCallbackId,
+    PlayerVoteAnswerCallbackId, player_vote_answer, set_flags_for_player_vote_answer,
 };
 pub use player_vote_answer_request_type::PlayerVoteAnswerRequest;
 pub use player_vote_answer_type::PlayerVoteAnswer;
 pub use player_vote_conclude_reducer::{
-    player_vote_conclude, set_flags_for_player_vote_conclude, PlayerVoteConcludeCallbackId,
+    PlayerVoteConcludeCallbackId, player_vote_conclude, set_flags_for_player_vote_conclude,
 };
 pub use player_vote_conclude_timer_table::*;
 pub use player_vote_conclude_timer_type::PlayerVoteConcludeTimer;
@@ -4356,10 +4352,10 @@ pub use player_vote_state_type::PlayerVoteState;
 pub use player_vote_type_type::PlayerVoteType;
 pub use pocket_key_type::PocketKey;
 pub use pocket_swap_contents_reducer::{
-    pocket_swap_contents, set_flags_for_pocket_swap_contents, PocketSwapContentsCallbackId,
+    PocketSwapContentsCallbackId, pocket_swap_contents, set_flags_for_pocket_swap_contents,
 };
 pub use pocket_type::Pocket;
-pub use portal_enter_reducer::{portal_enter, set_flags_for_portal_enter, PortalEnterCallbackId};
+pub use portal_enter_reducer::{PortalEnterCallbackId, portal_enter, set_flags_for_portal_enter};
 pub use portal_state_table::*;
 pub use portal_state_type::PortalState;
 pub use premium_item_desc_table::*;
@@ -4371,35 +4367,35 @@ pub use private_parameters_desc_table::*;
 pub use private_parameters_desc_type::PrivateParametersDesc;
 pub use probabilistic_item_stack_type::ProbabilisticItemStack;
 pub use process_inter_module_message_reducer::{
-    process_inter_module_message, set_flags_for_process_inter_module_message,
-    ProcessInterModuleMessageCallbackId,
+    ProcessInterModuleMessageCallbackId, process_inter_module_message,
+    set_flags_for_process_inter_module_message,
 };
 pub use progressive_action_state_table::*;
 pub use progressive_action_state_type::ProgressiveActionState;
 pub use progressive_action_status_type::ProgressiveActionStatus;
 pub use project_site_add_materials_reducer::{
-    project_site_add_materials, set_flags_for_project_site_add_materials,
-    ProjectSiteAddMaterialsCallbackId,
+    ProjectSiteAddMaterialsCallbackId, project_site_add_materials,
+    set_flags_for_project_site_add_materials,
 };
 pub use project_site_advance_project_reducer::{
-    project_site_advance_project, set_flags_for_project_site_advance_project,
-    ProjectSiteAdvanceProjectCallbackId,
+    ProjectSiteAdvanceProjectCallbackId, project_site_advance_project,
+    set_flags_for_project_site_advance_project,
 };
 pub use project_site_advance_project_start_reducer::{
-    project_site_advance_project_start, set_flags_for_project_site_advance_project_start,
-    ProjectSiteAdvanceProjectStartCallbackId,
+    ProjectSiteAdvanceProjectStartCallbackId, project_site_advance_project_start,
+    set_flags_for_project_site_advance_project_start,
 };
 pub use project_site_cancel_reducer::{
-    project_site_cancel, set_flags_for_project_site_cancel, ProjectSiteCancelCallbackId,
+    ProjectSiteCancelCallbackId, project_site_cancel, set_flags_for_project_site_cancel,
 };
 pub use project_site_place_reducer::{
-    project_site_place, set_flags_for_project_site_place, ProjectSitePlaceCallbackId,
+    ProjectSitePlaceCallbackId, project_site_place, set_flags_for_project_site_place,
 };
 pub use project_site_state_table::*;
 pub use project_site_state_type::ProjectSiteState;
-pub use prospect_reducer::{prospect, set_flags_for_prospect, ProspectCallbackId};
+pub use prospect_reducer::{ProspectCallbackId, prospect, set_flags_for_prospect};
 pub use prospect_start_reducer::{
-    prospect_start, set_flags_for_prospect_start, ProspectStartCallbackId,
+    ProspectStartCallbackId, prospect_start, set_flags_for_prospect_start,
 };
 pub use prospecting_desc_table::*;
 pub use prospecting_desc_type::ProspectingDesc;
@@ -4426,97 +4422,97 @@ pub use region_population_info_table::*;
 pub use region_population_info_type::RegionPopulationInfo;
 pub use region_population_loop_timer_type::RegionPopulationLoopTimer;
 pub use region_popuplation_agent_loop_reducer::{
-    region_popuplation_agent_loop, set_flags_for_region_popuplation_agent_loop,
-    RegionPopuplationAgentLoopCallbackId,
+    RegionPopuplationAgentLoopCallbackId, region_popuplation_agent_loop,
+    set_flags_for_region_popuplation_agent_loop,
 };
 pub use region_popuplation_loop_timer_table::*;
 pub use region_sign_in_parameters_op_type::RegionSignInParametersOp;
 pub use region_sign_in_parameters_table::*;
 pub use region_sign_in_parameters_type::RegionSignInParameters;
 pub use rent_add_listing_reducer::{
-    rent_add_listing, set_flags_for_rent_add_listing, RentAddListingCallbackId,
+    RentAddListingCallbackId, rent_add_listing, set_flags_for_rent_add_listing,
 };
 pub use rent_add_listing_request_type::RentAddListingRequest;
 pub use rent_add_tenant_reducer::{
-    rent_add_tenant, set_flags_for_rent_add_tenant, RentAddTenantCallbackId,
+    RentAddTenantCallbackId, rent_add_tenant, set_flags_for_rent_add_tenant,
 };
 pub use rent_add_tenant_request_type::RentAddTenantRequest;
 pub use rent_collect_eviction_fee_reducer::{
-    rent_collect_eviction_fee, set_flags_for_rent_collect_eviction_fee,
-    RentCollectEvictionFeeCallbackId,
+    RentCollectEvictionFeeCallbackId, rent_collect_eviction_fee,
+    set_flags_for_rent_collect_eviction_fee,
 };
 pub use rent_collector_agent_loop_reducer::{
-    rent_collector_agent_loop, set_flags_for_rent_collector_agent_loop,
-    RentCollectorAgentLoopCallbackId,
+    RentCollectorAgentLoopCallbackId, rent_collector_agent_loop,
+    set_flags_for_rent_collector_agent_loop,
 };
 pub use rent_collector_loop_timer_table::*;
 pub use rent_collector_loop_timer_type::RentCollectorLoopTimer;
 pub use rent_deposit_coins_reducer::{
-    rent_deposit_coins, set_flags_for_rent_deposit_coins, RentDepositCoinsCallbackId,
+    RentDepositCoinsCallbackId, rent_deposit_coins, set_flags_for_rent_deposit_coins,
 };
 pub use rent_deposit_coins_request_type::RentDepositCoinsRequest;
-pub use rent_evict_reducer::{rent_evict, set_flags_for_rent_evict, RentEvictCallbackId};
+pub use rent_evict_reducer::{RentEvictCallbackId, rent_evict, set_flags_for_rent_evict};
 pub use rent_evict_request_type::RentEvictRequest;
 pub use rent_evict_term_reducer::{
-    rent_evict_term, set_flags_for_rent_evict_term, RentEvictTermCallbackId,
+    RentEvictTermCallbackId, rent_evict_term, set_flags_for_rent_evict_term,
 };
 pub use rent_evict_timer_table::*;
 pub use rent_evict_timer_type::RentEvictTimer;
 pub use rent_purchase_reducer::{
-    rent_purchase, set_flags_for_rent_purchase, RentPurchaseCallbackId,
+    RentPurchaseCallbackId, rent_purchase, set_flags_for_rent_purchase,
 };
 pub use rent_purchase_request_type::RentPurchaseRequest;
 pub use rent_remove_tenant_reducer::{
-    rent_remove_tenant, set_flags_for_rent_remove_tenant, RentRemoveTenantCallbackId,
+    RentRemoveTenantCallbackId, rent_remove_tenant, set_flags_for_rent_remove_tenant,
 };
 pub use rent_remove_tenant_request_type::RentRemoveTenantRequest;
 pub use rent_set_daily_rate_reducer::{
-    rent_set_daily_rate, set_flags_for_rent_set_daily_rate, RentSetDailyRateCallbackId,
+    RentSetDailyRateCallbackId, rent_set_daily_rate, set_flags_for_rent_set_daily_rate,
 };
 pub use rent_set_daily_rate_request_type::RentSetDailyRateRequest;
 pub use rent_state_table::*;
 pub use rent_state_type::RentState;
 pub use rent_terminate_reducer::{
-    rent_terminate, set_flags_for_rent_terminate, RentTerminateCallbackId,
+    RentTerminateCallbackId, rent_terminate, set_flags_for_rent_terminate,
 };
 pub use rent_terminate_request_type::RentTerminateRequest;
-pub use rent_unlist_reducer::{rent_unlist, set_flags_for_rent_unlist, RentUnlistCallbackId};
+pub use rent_unlist_reducer::{RentUnlistCallbackId, rent_unlist, set_flags_for_rent_unlist};
 pub use rent_unlist_request_type::RentUnlistRequest;
 pub use replace_identity_msg_type::ReplaceIdentityMsg;
 pub use report_chat_message_reducer::{
-    report_chat_message, set_flags_for_report_chat_message, ReportChatMessageCallbackId,
+    ReportChatMessageCallbackId, report_chat_message, set_flags_for_report_chat_message,
 };
 pub use report_entity_message_type::ReportEntityMessage;
 pub use report_entity_reducer::{
-    report_entity, set_flags_for_report_entity, ReportEntityCallbackId,
+    ReportEntityCallbackId, report_entity, set_flags_for_report_entity,
 };
 pub use report_player_chat_message_type::ReportPlayerChatMessage;
 pub use report_player_message_type::ReportPlayerMessage;
 pub use report_player_reducer::{
-    report_player, set_flags_for_report_player, ReportPlayerCallbackId,
+    ReportPlayerCallbackId, report_player, set_flags_for_report_player,
 };
 pub use request_stage_reward_reducer::{
-    request_stage_reward, set_flags_for_request_stage_reward, RequestStageRewardCallbackId,
+    RequestStageRewardCallbackId, request_stage_reward, set_flags_for_request_stage_reward,
 };
 pub use reserved_name_desc_table::*;
 pub use reserved_name_desc_type::ReservedNameDesc;
 pub use reset_chunk_index_reducer::{
-    reset_chunk_index, set_flags_for_reset_chunk_index, ResetChunkIndexCallbackId,
+    ResetChunkIndexCallbackId, reset_chunk_index, set_flags_for_reset_chunk_index,
 };
 pub use reset_chunk_index_timer_table::*;
 pub use reset_chunk_index_timer_type::ResetChunkIndexTimer;
 pub use reset_chunk_index_with_dimension_reducer::{
-    reset_chunk_index_with_dimension, set_flags_for_reset_chunk_index_with_dimension,
-    ResetChunkIndexWithDimensionCallbackId,
+    ResetChunkIndexWithDimensionCallbackId, reset_chunk_index_with_dimension,
+    set_flags_for_reset_chunk_index_with_dimension,
 };
 pub use reset_mobile_entity_position_reducer::{
-    reset_mobile_entity_position, set_flags_for_reset_mobile_entity_position,
-    ResetMobileEntityPositionCallbackId,
+    ResetMobileEntityPositionCallbackId, reset_mobile_entity_position,
+    set_flags_for_reset_mobile_entity_position,
 };
 pub use reset_mobile_entity_timer_table::*;
 pub use reset_mobile_entity_timer_type::ResetMobileEntityTimer;
 pub use reset_onboarding_reducer::{
-    reset_onboarding, set_flags_for_reset_onboarding, ResetOnboardingCallbackId,
+    ResetOnboardingCallbackId, reset_onboarding, set_flags_for_reset_onboarding,
 };
 pub use resource_clump_desc_table::*;
 pub use resource_clump_desc_type::ResourceClumpDesc;
@@ -4536,8 +4532,8 @@ pub use resource_placement_recipe_desc_v_2_table::*;
 pub use resource_placement_recipe_desc_v_2_type::ResourcePlacementRecipeDescV2;
 pub use resource_placement_type::ResourcePlacement;
 pub use resource_spawn_scheduled_reducer::{
-    resource_spawn_scheduled, set_flags_for_resource_spawn_scheduled,
-    ResourceSpawnScheduledCallbackId,
+    ResourceSpawnScheduledCallbackId, resource_spawn_scheduled,
+    set_flags_for_resource_spawn_scheduled,
 };
 pub use resource_spawn_timer_table::*;
 pub use resource_spawn_timer_type::ResourceSpawnTimer;
@@ -4548,19 +4544,19 @@ pub use resources_log_type::ResourcesLog;
 pub use resources_regen_loop_timer_table::*;
 pub use resources_regen_loop_timer_type::ResourcesRegenLoopTimer;
 pub use resources_regen_reducer::{
-    resources_regen, set_flags_for_resources_regen, ResourcesRegenCallbackId,
+    ResourcesRegenCallbackId, resources_regen, set_flags_for_resources_regen,
 };
 pub use respawn_interior_npcs_reducer::{
-    respawn_interior_npcs, set_flags_for_respawn_interior_npcs, RespawnInteriorNpcsCallbackId,
+    RespawnInteriorNpcsCallbackId, respawn_interior_npcs, set_flags_for_respawn_interior_npcs,
 };
 pub use respawn_resource_in_chunk_reducer::{
-    respawn_resource_in_chunk, set_flags_for_respawn_resource_in_chunk,
-    RespawnResourceInChunkCallbackId,
+    RespawnResourceInChunkCallbackId, respawn_resource_in_chunk,
+    set_flags_for_respawn_resource_in_chunk,
 };
 pub use respawn_resource_in_chunk_timer_table::*;
 pub use respawn_resource_in_chunk_timer_type::RespawnResourceInChunkTimer;
 pub use retrieve_lost_item_reducer::{
-    retrieve_lost_item, set_flags_for_retrieve_lost_item, RetrieveLostItemCallbackId,
+    RetrieveLostItemCallbackId, retrieve_lost_item, set_flags_for_retrieve_lost_item,
 };
 pub use rez_sick_long_term_state_table::*;
 pub use rez_sick_long_term_state_type::RezSickLongTermState;
@@ -4569,17 +4565,17 @@ pub use ruins_entity_value_pair_type::RuinsEntityValuePair;
 pub use satiation_state_table::*;
 pub use satiation_state_type::SatiationState;
 pub use save_inter_module_message_error_reducer::{
-    save_inter_module_message_error, set_flags_for_save_inter_module_message_error,
-    SaveInterModuleMessageErrorCallbackId,
+    SaveInterModuleMessageErrorCallbackId, save_inter_module_message_error,
+    set_flags_for_save_inter_module_message_error,
 };
-pub use scroll_read_reducer::{scroll_read, set_flags_for_scroll_read, ScrollReadCallbackId};
+pub use scroll_read_reducer::{ScrollReadCallbackId, scroll_read, set_flags_for_scroll_read};
 pub use search_for_closest_building_reducer::{
-    search_for_closest_building, set_flags_for_search_for_closest_building,
-    SearchForClosestBuildingCallbackId,
+    SearchForClosestBuildingCallbackId, search_for_closest_building,
+    set_flags_for_search_for_closest_building,
 };
 pub use search_for_closest_building_type_reducer::{
-    search_for_closest_building_type, set_flags_for_search_for_closest_building_type,
-    SearchForClosestBuildingTypeCallbackId,
+    SearchForClosestBuildingTypeCallbackId, search_for_closest_building_type,
+    set_flags_for_search_for_closest_building_type,
 };
 pub use secondary_knowledge_desc_table::*;
 pub use secondary_knowledge_desc_type::SecondaryKnowledgeDesc;
@@ -4587,15 +4583,15 @@ pub use sell_order_state_table::*;
 pub use server_identity_table::*;
 pub use server_identity_type::ServerIdentity;
 pub use server_teleport_player_reducer::{
-    server_teleport_player, set_flags_for_server_teleport_player, ServerTeleportPlayerCallbackId,
+    ServerTeleportPlayerCallbackId, server_teleport_player, set_flags_for_server_teleport_player,
 };
 pub use server_teleport_reason_type::ServerTeleportReason;
-pub use set_home_reducer::{set_flags_for_set_home, set_home, SetHomeCallbackId};
+pub use set_home_reducer::{SetHomeCallbackId, set_flags_for_set_home, set_home};
 pub use set_quest_chain_active_reducer::{
-    set_flags_for_set_quest_chain_active, set_quest_chain_active, SetQuestChainActiveCallbackId,
+    SetQuestChainActiveCallbackId, set_flags_for_set_quest_chain_active, set_quest_chain_active,
 };
-pub use sign_in_reducer::{set_flags_for_sign_in, sign_in, SignInCallbackId};
-pub use sign_out_reducer::{set_flags_for_sign_out, sign_out, SignOutCallbackId};
+pub use sign_in_reducer::{SignInCallbackId, set_flags_for_sign_in, sign_in};
+pub use sign_out_reducer::{SignOutCallbackId, set_flags_for_sign_out, sign_out};
 pub use sign_player_out_msg_type::SignPlayerOutMsg;
 pub use signed_in_player_state_table::*;
 pub use signed_in_player_state_type::SignedInPlayerState;
@@ -4608,347 +4604,348 @@ pub use skill_desc_table::*;
 pub use skill_desc_type::SkillDesc;
 pub use skill_type_type::SkillType;
 pub use skip_onboarding_reducer::{
-    set_flags_for_skip_onboarding, skip_onboarding, SkipOnboardingCallbackId,
+    SkipOnboardingCallbackId, set_flags_for_skip_onboarding, skip_onboarding,
 };
-pub use sleep_reducer::{set_flags_for_sleep, sleep, SleepCallbackId};
+pub use sleep_reducer::{SleepCallbackId, set_flags_for_sleep, sleep};
 pub use small_hex_tile_message_type::SmallHexTileMessage;
 pub use spawn_info_type::SpawnInfo;
 pub use stage_ability_custom_desc_reducer::{
-    set_flags_for_stage_ability_custom_desc, stage_ability_custom_desc,
-    StageAbilityCustomDescCallbackId,
+    StageAbilityCustomDescCallbackId, set_flags_for_stage_ability_custom_desc,
+    stage_ability_custom_desc,
 };
 pub use stage_ability_unlock_desc_reducer::{
-    set_flags_for_stage_ability_unlock_desc, stage_ability_unlock_desc,
-    StageAbilityUnlockDescCallbackId,
+    StageAbilityUnlockDescCallbackId, set_flags_for_stage_ability_unlock_desc,
+    stage_ability_unlock_desc,
 };
 pub use stage_achievement_desc_reducer::{
-    set_flags_for_stage_achievement_desc, stage_achievement_desc, StageAchievementDescCallbackId,
+    StageAchievementDescCallbackId, set_flags_for_stage_achievement_desc, stage_achievement_desc,
 };
 pub use stage_alert_desc_reducer::{
-    set_flags_for_stage_alert_desc, stage_alert_desc, StageAlertDescCallbackId,
+    StageAlertDescCallbackId, set_flags_for_stage_alert_desc, stage_alert_desc,
 };
 pub use stage_biome_desc_reducer::{
-    set_flags_for_stage_biome_desc, stage_biome_desc, StageBiomeDescCallbackId,
+    StageBiomeDescCallbackId, set_flags_for_stage_biome_desc, stage_biome_desc,
 };
 pub use stage_buff_desc_reducer::{
-    set_flags_for_stage_buff_desc, stage_buff_desc, StageBuffDescCallbackId,
+    StageBuffDescCallbackId, set_flags_for_stage_buff_desc, stage_buff_desc,
 };
 pub use stage_buff_type_desc_reducer::{
-    set_flags_for_stage_buff_type_desc, stage_buff_type_desc, StageBuffTypeDescCallbackId,
+    StageBuffTypeDescCallbackId, set_flags_for_stage_buff_type_desc, stage_buff_type_desc,
 };
 pub use stage_building_claim_desc_reducer::{
-    set_flags_for_stage_building_claim_desc, stage_building_claim_desc,
-    StageBuildingClaimDescCallbackId,
+    StageBuildingClaimDescCallbackId, set_flags_for_stage_building_claim_desc,
+    stage_building_claim_desc,
 };
 pub use stage_building_desc_reducer::{
-    set_flags_for_stage_building_desc, stage_building_desc, StageBuildingDescCallbackId,
+    StageBuildingDescCallbackId, set_flags_for_stage_building_desc, stage_building_desc,
 };
 pub use stage_building_portal_desc_v_2_reducer::{
-    set_flags_for_stage_building_portal_desc_v_2, stage_building_portal_desc_v_2,
-    StageBuildingPortalDescV2CallbackId,
+    StageBuildingPortalDescV2CallbackId, set_flags_for_stage_building_portal_desc_v_2,
+    stage_building_portal_desc_v_2,
 };
 pub use stage_building_repairs_desc_reducer::{
-    set_flags_for_stage_building_repairs_desc, stage_building_repairs_desc,
-    StageBuildingRepairsDescCallbackId,
+    StageBuildingRepairsDescCallbackId, set_flags_for_stage_building_repairs_desc,
+    stage_building_repairs_desc,
 };
 pub use stage_building_spawn_desc_reducer::{
-    set_flags_for_stage_building_spawn_desc, stage_building_spawn_desc,
-    StageBuildingSpawnDescCallbackId,
+    StageBuildingSpawnDescCallbackId, set_flags_for_stage_building_spawn_desc,
+    stage_building_spawn_desc,
 };
 pub use stage_building_type_desc_reducer::{
-    set_flags_for_stage_building_type_desc, stage_building_type_desc,
-    StageBuildingTypeDescCallbackId,
+    StageBuildingTypeDescCallbackId, set_flags_for_stage_building_type_desc,
+    stage_building_type_desc,
 };
 pub use stage_cargo_desc_reducer::{
-    set_flags_for_stage_cargo_desc, stage_cargo_desc, StageCargoDescCallbackId,
+    StageCargoDescCallbackId, set_flags_for_stage_cargo_desc, stage_cargo_desc,
 };
 pub use stage_character_stat_desc_reducer::{
-    set_flags_for_stage_character_stat_desc, stage_character_stat_desc,
-    StageCharacterStatDescCallbackId,
+    StageCharacterStatDescCallbackId, set_flags_for_stage_character_stat_desc,
+    stage_character_stat_desc,
 };
 pub use stage_chest_rarity_desc_reducer::{
-    set_flags_for_stage_chest_rarity_desc, stage_chest_rarity_desc, StageChestRarityDescCallbackId,
+    StageChestRarityDescCallbackId, set_flags_for_stage_chest_rarity_desc, stage_chest_rarity_desc,
 };
 pub use stage_claim_tech_desc_v_2_reducer::{
-    set_flags_for_stage_claim_tech_desc_v_2, stage_claim_tech_desc_v_2,
-    StageClaimTechDescV2CallbackId,
+    StageClaimTechDescV2CallbackId, set_flags_for_stage_claim_tech_desc_v_2,
+    stage_claim_tech_desc_v_2,
 };
 pub use stage_claim_tile_cost_reducer::{
-    set_flags_for_stage_claim_tile_cost, stage_claim_tile_cost, StageClaimTileCostCallbackId,
+    StageClaimTileCostCallbackId, set_flags_for_stage_claim_tile_cost, stage_claim_tile_cost,
 };
 pub use stage_climb_requirement_desc_reducer::{
-    set_flags_for_stage_climb_requirement_desc, stage_climb_requirement_desc,
-    StageClimbRequirementDescCallbackId,
+    StageClimbRequirementDescCallbackId, set_flags_for_stage_climb_requirement_desc,
+    stage_climb_requirement_desc,
 };
 pub use stage_clothing_desc_reducer::{
-    set_flags_for_stage_clothing_desc, stage_clothing_desc, StageClothingDescCallbackId,
+    StageClothingDescCallbackId, set_flags_for_stage_clothing_desc, stage_clothing_desc,
 };
 pub use stage_collectible_desc_reducer::{
-    set_flags_for_stage_collectible_desc, stage_collectible_desc, StageCollectibleDescCallbackId,
+    StageCollectibleDescCallbackId, set_flags_for_stage_collectible_desc, stage_collectible_desc,
 };
 pub use stage_combat_action_desc_v_3_reducer::{
-    set_flags_for_stage_combat_action_desc_v_3, stage_combat_action_desc_v_3,
-    StageCombatActionDescV3CallbackId,
+    StageCombatActionDescV3CallbackId, set_flags_for_stage_combat_action_desc_v_3,
+    stage_combat_action_desc_v_3,
 };
 pub use stage_combat_action_multi_hit_desc_reducer::{
-    set_flags_for_stage_combat_action_multi_hit_desc, stage_combat_action_multi_hit_desc,
-    StageCombatActionMultiHitDescCallbackId,
+    StageCombatActionMultiHitDescCallbackId, set_flags_for_stage_combat_action_multi_hit_desc,
+    stage_combat_action_multi_hit_desc,
 };
 pub use stage_construction_recipe_desc_v_2_reducer::{
-    set_flags_for_stage_construction_recipe_desc_v_2, stage_construction_recipe_desc_v_2,
-    StageConstructionRecipeDescV2CallbackId,
+    StageConstructionRecipeDescV2CallbackId, set_flags_for_stage_construction_recipe_desc_v_2,
+    stage_construction_recipe_desc_v_2,
 };
 pub use stage_contribution_loot_desc_reducer::{
-    set_flags_for_stage_contribution_loot_desc, stage_contribution_loot_desc,
-    StageContributionLootDescCallbackId,
+    StageContributionLootDescCallbackId, set_flags_for_stage_contribution_loot_desc,
+    stage_contribution_loot_desc,
 };
 pub use stage_crafting_recipe_desc_reducer::{
-    set_flags_for_stage_crafting_recipe_desc, stage_crafting_recipe_desc,
-    StageCraftingRecipeDescCallbackId,
+    StageCraftingRecipeDescCallbackId, set_flags_for_stage_crafting_recipe_desc,
+    stage_crafting_recipe_desc,
 };
 pub use stage_deconstruction_recipe_desc_reducer::{
-    set_flags_for_stage_deconstruction_recipe_desc, stage_deconstruction_recipe_desc,
-    StageDeconstructionRecipeDescCallbackId,
+    StageDeconstructionRecipeDescCallbackId, set_flags_for_stage_deconstruction_recipe_desc,
+    stage_deconstruction_recipe_desc,
 };
 pub use stage_deployable_desc_reducer::{
-    set_flags_for_stage_deployable_desc, stage_deployable_desc, StageDeployableDescCallbackId,
+    StageDeployableDescCallbackId, set_flags_for_stage_deployable_desc, stage_deployable_desc,
 };
 pub use stage_distant_visible_entity_desc_reducer::{
-    set_flags_for_stage_distant_visible_entity_desc, stage_distant_visible_entity_desc,
-    StageDistantVisibleEntityDescCallbackId,
+    StageDistantVisibleEntityDescCallbackId, set_flags_for_stage_distant_visible_entity_desc,
+    stage_distant_visible_entity_desc,
 };
 pub use stage_elevator_desc_reducer::{
-    set_flags_for_stage_elevator_desc, stage_elevator_desc, StageElevatorDescCallbackId,
+    StageElevatorDescCallbackId, set_flags_for_stage_elevator_desc, stage_elevator_desc,
 };
 pub use stage_emote_desc_reducer::{
-    set_flags_for_stage_emote_desc, stage_emote_desc, StageEmoteDescCallbackId,
+    StageEmoteDescCallbackId, set_flags_for_stage_emote_desc, stage_emote_desc,
 };
 pub use stage_empire_colors_desc_reducer::{
-    set_flags_for_stage_empire_colors_desc, stage_empire_colors_desc,
-    StageEmpireColorsDescCallbackId,
+    StageEmpireColorsDescCallbackId, set_flags_for_stage_empire_colors_desc,
+    stage_empire_colors_desc,
 };
 pub use stage_empire_icon_desc_reducer::{
-    set_flags_for_stage_empire_icon_desc, stage_empire_icon_desc, StageEmpireIconDescCallbackId,
+    StageEmpireIconDescCallbackId, set_flags_for_stage_empire_icon_desc, stage_empire_icon_desc,
 };
 pub use stage_empire_notification_desc_reducer::{
-    set_flags_for_stage_empire_notification_desc, stage_empire_notification_desc,
-    StageEmpireNotificationDescCallbackId,
+    StageEmpireNotificationDescCallbackId, set_flags_for_stage_empire_notification_desc,
+    stage_empire_notification_desc,
 };
 pub use stage_empire_rank_desc_reducer::{
-    set_flags_for_stage_empire_rank_desc, stage_empire_rank_desc, StageEmpireRankDescCallbackId,
+    StageEmpireRankDescCallbackId, set_flags_for_stage_empire_rank_desc, stage_empire_rank_desc,
 };
 pub use stage_empire_supplies_desc_reducer::{
-    set_flags_for_stage_empire_supplies_desc, stage_empire_supplies_desc,
-    StageEmpireSuppliesDescCallbackId,
+    StageEmpireSuppliesDescCallbackId, set_flags_for_stage_empire_supplies_desc,
+    stage_empire_supplies_desc,
 };
 pub use stage_empire_territory_desc_reducer::{
-    set_flags_for_stage_empire_territory_desc, stage_empire_territory_desc,
-    StageEmpireTerritoryDescCallbackId,
+    StageEmpireTerritoryDescCallbackId, set_flags_for_stage_empire_territory_desc,
+    stage_empire_territory_desc,
 };
 pub use stage_enemy_ai_params_desc_reducer::{
-    set_flags_for_stage_enemy_ai_params_desc, stage_enemy_ai_params_desc,
-    StageEnemyAiParamsDescCallbackId,
+    StageEnemyAiParamsDescCallbackId, set_flags_for_stage_enemy_ai_params_desc,
+    stage_enemy_ai_params_desc,
 };
 pub use stage_enemy_desc_reducer::{
-    set_flags_for_stage_enemy_desc, stage_enemy_desc, StageEnemyDescCallbackId,
+    StageEnemyDescCallbackId, set_flags_for_stage_enemy_desc, stage_enemy_desc,
 };
 pub use stage_enemy_scaling_desc_reducer::{
-    set_flags_for_stage_enemy_scaling_desc, stage_enemy_scaling_desc,
-    StageEnemyScalingDescCallbackId,
+    StageEnemyScalingDescCallbackId, set_flags_for_stage_enemy_scaling_desc,
+    stage_enemy_scaling_desc,
 };
 pub use stage_environment_debuff_desc_reducer::{
-    set_flags_for_stage_environment_debuff_desc, stage_environment_debuff_desc,
-    StageEnvironmentDebuffDescCallbackId,
+    StageEnvironmentDebuffDescCallbackId, set_flags_for_stage_environment_debuff_desc,
+    stage_environment_debuff_desc,
 };
 pub use stage_equipment_desc_reducer::{
-    set_flags_for_stage_equipment_desc, stage_equipment_desc, StageEquipmentDescCallbackId,
+    StageEquipmentDescCallbackId, set_flags_for_stage_equipment_desc, stage_equipment_desc,
 };
 pub use stage_extraction_recipe_desc_reducer::{
-    set_flags_for_stage_extraction_recipe_desc, stage_extraction_recipe_desc,
-    StageExtractionRecipeDescCallbackId,
+    StageExtractionRecipeDescCallbackId, set_flags_for_stage_extraction_recipe_desc,
+    stage_extraction_recipe_desc,
 };
 pub use stage_food_desc_reducer::{
-    set_flags_for_stage_food_desc, stage_food_desc, StageFoodDescCallbackId,
+    StageFoodDescCallbackId, set_flags_for_stage_food_desc, stage_food_desc,
 };
 pub use stage_gate_desc_reducer::{
-    set_flags_for_stage_gate_desc, stage_gate_desc, StageGateDescCallbackId,
+    StageGateDescCallbackId, set_flags_for_stage_gate_desc, stage_gate_desc,
 };
 pub use stage_hexite_exchange_entry_desc_reducer::{
-    set_flags_for_stage_hexite_exchange_entry_desc, stage_hexite_exchange_entry_desc,
-    StageHexiteExchangeEntryDescCallbackId,
+    StageHexiteExchangeEntryDescCallbackId, set_flags_for_stage_hexite_exchange_entry_desc,
+    stage_hexite_exchange_entry_desc,
 };
 pub use stage_interior_environment_desc_reducer::{
-    set_flags_for_stage_interior_environment_desc, stage_interior_environment_desc,
-    StageInteriorEnvironmentDescCallbackId,
+    StageInteriorEnvironmentDescCallbackId, set_flags_for_stage_interior_environment_desc,
+    stage_interior_environment_desc,
 };
 pub use stage_interior_instance_desc_reducer::{
-    set_flags_for_stage_interior_instance_desc, stage_interior_instance_desc,
-    StageInteriorInstanceDescCallbackId,
+    StageInteriorInstanceDescCallbackId, set_flags_for_stage_interior_instance_desc,
+    stage_interior_instance_desc,
 };
 pub use stage_interior_network_desc_reducer::{
-    set_flags_for_stage_interior_network_desc, stage_interior_network_desc,
-    StageInteriorNetworkDescCallbackId,
+    StageInteriorNetworkDescCallbackId, set_flags_for_stage_interior_network_desc,
+    stage_interior_network_desc,
 };
 pub use stage_interior_portal_connections_desc_reducer::{
-    set_flags_for_stage_interior_portal_connections_desc, stage_interior_portal_connections_desc,
     StageInteriorPortalConnectionsDescCallbackId,
+    set_flags_for_stage_interior_portal_connections_desc, stage_interior_portal_connections_desc,
 };
 pub use stage_interior_shape_desc_reducer::{
-    set_flags_for_stage_interior_shape_desc, stage_interior_shape_desc,
-    StageInteriorShapeDescCallbackId,
+    StageInteriorShapeDescCallbackId, set_flags_for_stage_interior_shape_desc,
+    stage_interior_shape_desc,
 };
 pub use stage_interior_spawn_desc_reducer::{
-    set_flags_for_stage_interior_spawn_desc, stage_interior_spawn_desc,
-    StageInteriorSpawnDescCallbackId,
+    StageInteriorSpawnDescCallbackId, set_flags_for_stage_interior_spawn_desc,
+    stage_interior_spawn_desc,
 };
 pub use stage_item_conversion_recipe_desc_reducer::{
-    set_flags_for_stage_item_conversion_recipe_desc, stage_item_conversion_recipe_desc,
-    StageItemConversionRecipeDescCallbackId,
+    StageItemConversionRecipeDescCallbackId, set_flags_for_stage_item_conversion_recipe_desc,
+    stage_item_conversion_recipe_desc,
 };
 pub use stage_item_desc_reducer::{
-    set_flags_for_stage_item_desc, stage_item_desc, StageItemDescCallbackId,
+    StageItemDescCallbackId, set_flags_for_stage_item_desc, stage_item_desc,
 };
 pub use stage_item_list_desc_reducer::{
-    set_flags_for_stage_item_list_desc, stage_item_list_desc, StageItemListDescCallbackId,
+    StageItemListDescCallbackId, set_flags_for_stage_item_list_desc, stage_item_list_desc,
 };
 pub use stage_knowledge_scroll_desc_reducer::{
-    set_flags_for_stage_knowledge_scroll_desc, stage_knowledge_scroll_desc,
-    StageKnowledgeScrollDescCallbackId,
+    StageKnowledgeScrollDescCallbackId, set_flags_for_stage_knowledge_scroll_desc,
+    stage_knowledge_scroll_desc,
 };
 pub use stage_knowledge_scroll_type_desc_reducer::{
-    set_flags_for_stage_knowledge_scroll_type_desc, stage_knowledge_scroll_type_desc,
-    StageKnowledgeScrollTypeDescCallbackId,
+    StageKnowledgeScrollTypeDescCallbackId, set_flags_for_stage_knowledge_scroll_type_desc,
+    stage_knowledge_scroll_type_desc,
 };
 pub use stage_knowledge_stat_modifier_desc_reducer::{
-    set_flags_for_stage_knowledge_stat_modifier_desc, stage_knowledge_stat_modifier_desc,
-    StageKnowledgeStatModifierDescCallbackId,
+    StageKnowledgeStatModifierDescCallbackId, set_flags_for_stage_knowledge_stat_modifier_desc,
+    stage_knowledge_stat_modifier_desc,
 };
 pub use stage_loot_chest_desc_reducer::{
-    set_flags_for_stage_loot_chest_desc, stage_loot_chest_desc, StageLootChestDescCallbackId,
+    StageLootChestDescCallbackId, set_flags_for_stage_loot_chest_desc, stage_loot_chest_desc,
 };
 pub use stage_loot_rarity_desc_reducer::{
-    set_flags_for_stage_loot_rarity_desc, stage_loot_rarity_desc, StageLootRarityDescCallbackId,
+    StageLootRarityDescCallbackId, set_flags_for_stage_loot_rarity_desc, stage_loot_rarity_desc,
 };
 pub use stage_loot_table_desc_reducer::{
-    set_flags_for_stage_loot_table_desc, stage_loot_table_desc, StageLootTableDescCallbackId,
+    StageLootTableDescCallbackId, set_flags_for_stage_loot_table_desc, stage_loot_table_desc,
 };
 pub use stage_npc_desc_reducer::{
-    set_flags_for_stage_npc_desc, stage_npc_desc, StageNpcDescCallbackId,
+    StageNpcDescCallbackId, set_flags_for_stage_npc_desc, stage_npc_desc,
 };
 pub use stage_onboarding_reward_desc_reducer::{
-    set_flags_for_stage_onboarding_reward_desc, stage_onboarding_reward_desc,
-    StageOnboardingRewardDescCallbackId,
+    StageOnboardingRewardDescCallbackId, set_flags_for_stage_onboarding_reward_desc,
+    stage_onboarding_reward_desc,
 };
 pub use stage_parameters_desc_reducer::{
-    set_flags_for_stage_parameters_desc, stage_parameters_desc, StageParametersDescCallbackId,
+    StageParametersDescCallbackId, set_flags_for_stage_parameters_desc, stage_parameters_desc,
 };
 pub use stage_pathfinding_desc_reducer::{
-    set_flags_for_stage_pathfinding_desc, stage_pathfinding_desc, StagePathfindingDescCallbackId,
+    StagePathfindingDescCallbackId, set_flags_for_stage_pathfinding_desc, stage_pathfinding_desc,
 };
 pub use stage_paving_tile_desc_reducer::{
-    set_flags_for_stage_paving_tile_desc, stage_paving_tile_desc, StagePavingTileDescCallbackId,
+    StagePavingTileDescCallbackId, set_flags_for_stage_paving_tile_desc, stage_paving_tile_desc,
 };
 pub use stage_pillar_shaping_desc_reducer::{
-    set_flags_for_stage_pillar_shaping_desc, stage_pillar_shaping_desc,
-    StagePillarShapingDescCallbackId,
+    StagePillarShapingDescCallbackId, set_flags_for_stage_pillar_shaping_desc,
+    stage_pillar_shaping_desc,
 };
 pub use stage_player_action_desc_reducer::{
-    set_flags_for_stage_player_action_desc, stage_player_action_desc,
-    StagePlayerActionDescCallbackId,
+    StagePlayerActionDescCallbackId, set_flags_for_stage_player_action_desc,
+    stage_player_action_desc,
 };
 pub use stage_player_housing_desc_reducer::{
-    set_flags_for_stage_player_housing_desc, stage_player_housing_desc,
-    StagePlayerHousingDescCallbackId,
+    StagePlayerHousingDescCallbackId, set_flags_for_stage_player_housing_desc,
+    stage_player_housing_desc,
 };
 pub use stage_premium_item_desc_reducer::{
-    set_flags_for_stage_premium_item_desc, stage_premium_item_desc, StagePremiumItemDescCallbackId,
+    StagePremiumItemDescCallbackId, set_flags_for_stage_premium_item_desc, stage_premium_item_desc,
 };
 pub use stage_premium_service_desc_reducer::{
-    set_flags_for_stage_premium_service_desc, stage_premium_service_desc,
-    StagePremiumServiceDescCallbackId,
+    StagePremiumServiceDescCallbackId, set_flags_for_stage_premium_service_desc,
+    stage_premium_service_desc,
 };
 pub use stage_private_parameters_desc_reducer::{
-    set_flags_for_stage_private_parameters_desc, stage_private_parameters_desc,
-    StagePrivateParametersDescCallbackId,
+    StagePrivateParametersDescCallbackId, set_flags_for_stage_private_parameters_desc,
+    stage_private_parameters_desc,
 };
 pub use stage_prospecting_desc_reducer::{
-    set_flags_for_stage_prospecting_desc, stage_prospecting_desc, StageProspectingDescCallbackId,
+    StageProspectingDescCallbackId, set_flags_for_stage_prospecting_desc, stage_prospecting_desc,
 };
 pub use stage_quest_chain_desc_reducer::{
-    set_flags_for_stage_quest_chain_desc, stage_quest_chain_desc, StageQuestChainDescCallbackId,
+    StageQuestChainDescCallbackId, set_flags_for_stage_quest_chain_desc, stage_quest_chain_desc,
 };
 pub use stage_quest_stage_desc_reducer::{
-    set_flags_for_stage_quest_stage_desc, stage_quest_stage_desc, StageQuestStageDescCallbackId,
+    StageQuestStageDescCallbackId, set_flags_for_stage_quest_stage_desc, stage_quest_stage_desc,
 };
 pub use stage_reserved_name_desc_reducer::{
-    set_flags_for_stage_reserved_name_desc, stage_reserved_name_desc,
-    StageReservedNameDescCallbackId,
+    StageReservedNameDescCallbackId, set_flags_for_stage_reserved_name_desc,
+    stage_reserved_name_desc,
 };
 pub use stage_resource_clump_desc_reducer::{
-    set_flags_for_stage_resource_clump_desc, stage_resource_clump_desc,
-    StageResourceClumpDescCallbackId,
+    StageResourceClumpDescCallbackId, set_flags_for_stage_resource_clump_desc,
+    stage_resource_clump_desc,
 };
 pub use stage_resource_desc_reducer::{
-    set_flags_for_stage_resource_desc, stage_resource_desc, StageResourceDescCallbackId,
+    StageResourceDescCallbackId, set_flags_for_stage_resource_desc, stage_resource_desc,
 };
 pub use stage_resource_growth_recipe_desc_reducer::{
-    set_flags_for_stage_resource_growth_recipe_desc, stage_resource_growth_recipe_desc,
-    StageResourceGrowthRecipeDescCallbackId,
+    StageResourceGrowthRecipeDescCallbackId, set_flags_for_stage_resource_growth_recipe_desc,
+    stage_resource_growth_recipe_desc,
 };
 pub use stage_resource_placement_recipe_desc_v_2_reducer::{
+    StageResourcePlacementRecipeDescV2CallbackId,
     set_flags_for_stage_resource_placement_recipe_desc_v_2,
-    stage_resource_placement_recipe_desc_v_2, StageResourcePlacementRecipeDescV2CallbackId,
+    stage_resource_placement_recipe_desc_v_2,
 };
 pub use stage_rewards_desc_table::*;
 pub use stage_rewards_desc_type::StageRewardsDesc;
 pub use stage_secondary_knowledge_desc_reducer::{
-    set_flags_for_stage_secondary_knowledge_desc, stage_secondary_knowledge_desc,
-    StageSecondaryKnowledgeDescCallbackId,
+    StageSecondaryKnowledgeDescCallbackId, set_flags_for_stage_secondary_knowledge_desc,
+    stage_secondary_knowledge_desc,
 };
 pub use stage_skill_desc_reducer::{
-    set_flags_for_stage_skill_desc, stage_skill_desc, StageSkillDescCallbackId,
+    StageSkillDescCallbackId, set_flags_for_stage_skill_desc, stage_skill_desc,
 };
 pub use stage_stage_rewards_desc_reducer::{
-    set_flags_for_stage_stage_rewards_desc, stage_stage_rewards_desc,
-    StageStageRewardsDescCallbackId,
+    StageStageRewardsDescCallbackId, set_flags_for_stage_stage_rewards_desc,
+    stage_stage_rewards_desc,
 };
 pub use stage_targeting_matrix_desc_reducer::{
-    set_flags_for_stage_targeting_matrix_desc, stage_targeting_matrix_desc,
-    StageTargetingMatrixDescCallbackId,
+    StageTargetingMatrixDescCallbackId, set_flags_for_stage_targeting_matrix_desc,
+    stage_targeting_matrix_desc,
 };
 pub use stage_teleport_item_desc_reducer::{
-    set_flags_for_stage_teleport_item_desc, stage_teleport_item_desc,
-    StageTeleportItemDescCallbackId,
+    StageTeleportItemDescCallbackId, set_flags_for_stage_teleport_item_desc,
+    stage_teleport_item_desc,
 };
 pub use stage_terraform_recipe_desc_reducer::{
-    set_flags_for_stage_terraform_recipe_desc, stage_terraform_recipe_desc,
-    StageTerraformRecipeDescCallbackId,
+    StageTerraformRecipeDescCallbackId, set_flags_for_stage_terraform_recipe_desc,
+    stage_terraform_recipe_desc,
 };
 pub use stage_tool_desc_reducer::{
-    set_flags_for_stage_tool_desc, stage_tool_desc, StageToolDescCallbackId,
+    StageToolDescCallbackId, set_flags_for_stage_tool_desc, stage_tool_desc,
 };
 pub use stage_tool_type_desc_reducer::{
-    set_flags_for_stage_tool_type_desc, stage_tool_type_desc, StageToolTypeDescCallbackId,
+    StageToolTypeDescCallbackId, set_flags_for_stage_tool_type_desc, stage_tool_type_desc,
 };
 pub use stage_traveler_task_desc_reducer::{
-    set_flags_for_stage_traveler_task_desc, stage_traveler_task_desc,
-    StageTravelerTaskDescCallbackId,
+    StageTravelerTaskDescCallbackId, set_flags_for_stage_traveler_task_desc,
+    stage_traveler_task_desc,
 };
 pub use stage_traveler_trade_order_desc_reducer::{
-    set_flags_for_stage_traveler_trade_order_desc, stage_traveler_trade_order_desc,
-    StageTravelerTradeOrderDescCallbackId,
+    StageTravelerTradeOrderDescCallbackId, set_flags_for_stage_traveler_trade_order_desc,
+    stage_traveler_trade_order_desc,
 };
 pub use stage_wall_desc_reducer::{
-    set_flags_for_stage_wall_desc, stage_wall_desc, StageWallDescCallbackId,
+    StageWallDescCallbackId, set_flags_for_stage_wall_desc, stage_wall_desc,
 };
 pub use stage_weapon_desc_reducer::{
-    set_flags_for_stage_weapon_desc, stage_weapon_desc, StageWeaponDescCallbackId,
+    StageWeaponDescCallbackId, set_flags_for_stage_weapon_desc, stage_weapon_desc,
 };
 pub use stage_weapon_type_desc_reducer::{
-    set_flags_for_stage_weapon_type_desc, stage_weapon_type_desc, StageWeaponTypeDescCallbackId,
+    StageWeaponTypeDescCallbackId, set_flags_for_stage_weapon_type_desc, stage_weapon_type_desc,
 };
 pub use stage_wind_params_desc_reducer::{
-    set_flags_for_stage_wind_params_desc, stage_wind_params_desc, StageWindParamsDescCallbackId,
+    StageWindParamsDescCallbackId, set_flags_for_stage_wind_params_desc, stage_wind_params_desc,
 };
 pub use staged_ability_custom_desc_table::*;
 pub use staged_ability_unlock_desc_table::*;
@@ -5065,18 +5062,18 @@ pub use staged_weapon_type_desc_table::*;
 pub use staged_wind_params_desc_table::*;
 pub use stamina_state_table::*;
 pub use stamina_state_type::StaminaState;
-pub use start_agents_reducer::{set_flags_for_start_agents, start_agents, StartAgentsCallbackId};
+pub use start_agents_reducer::{StartAgentsCallbackId, set_flags_for_start_agents, start_agents};
 pub use start_generating_world_reducer::{
-    set_flags_for_start_generating_world, start_generating_world, StartGeneratingWorldCallbackId,
+    StartGeneratingWorldCallbackId, set_flags_for_start_generating_world, start_generating_world,
 };
 pub use start_onboarding_quest_reducer::{
-    set_flags_for_start_onboarding_quest, start_onboarding_quest, StartOnboardingQuestCallbackId,
+    StartOnboardingQuestCallbackId, set_flags_for_start_onboarding_quest, start_onboarding_quest,
 };
 pub use start_quest_chain_reducer::{
-    set_flags_for_start_quest_chain, start_quest_chain, StartQuestChainCallbackId,
+    StartQuestChainCallbackId, set_flags_for_start_quest_chain, start_quest_chain,
 };
 pub use starving_agent_loop_reducer::{
-    set_flags_for_starving_agent_loop, starving_agent_loop, StarvingAgentLoopCallbackId,
+    StarvingAgentLoopCallbackId, set_flags_for_starving_agent_loop, starving_agent_loop,
 };
 pub use starving_loop_timer_table::*;
 pub use starving_loop_timer_type::StarvingLoopTimer;
@@ -5090,22 +5087,22 @@ pub use static_data_upload_v_5_type::StaticDataUploadV5;
 pub use static_data_upload_v_6_type::StaticDataUploadV6;
 pub use static_data_upload_v_7_type::StaticDataUploadV7;
 pub use static_data_upload_v_8_type::StaticDataUploadV8;
-pub use stop_agents_reducer::{set_flags_for_stop_agents, stop_agents, StopAgentsCallbackId};
+pub use stop_agents_reducer::{StopAgentsCallbackId, set_flags_for_stop_agents, stop_agents};
 pub use storage_log_cleanup_loop_reducer::{
-    set_flags_for_storage_log_cleanup_loop, storage_log_cleanup_loop,
-    StorageLogCleanupLoopCallbackId,
+    StorageLogCleanupLoopCallbackId, set_flags_for_storage_log_cleanup_loop,
+    storage_log_cleanup_loop,
 };
 pub use storage_log_cleanup_loop_timer_table::*;
 pub use storage_log_cleanup_loop_timer_type::StorageLogCleanupLoopTimer;
 pub use storage_log_state_table::*;
 pub use surface_type_type::SurfaceType;
 pub use synchronize_time_reducer::{
-    set_flags_for_synchronize_time, synchronize_time, SynchronizeTimeCallbackId,
+    SynchronizeTimeCallbackId, set_flags_for_synchronize_time, synchronize_time,
 };
 pub use target_state_table::*;
 pub use target_state_type::TargetState;
 pub use target_update_reducer::{
-    set_flags_for_target_update, target_update, TargetUpdateCallbackId,
+    TargetUpdateCallbackId, set_flags_for_target_update, target_update,
 };
 pub use target_update_request_type::TargetUpdateRequest;
 pub use targetable_state_table::*;
@@ -5119,27 +5116,27 @@ pub use teleport_location_type_type::TeleportLocationType;
 pub use teleport_player_timer_table::*;
 pub use teleport_player_timer_type::TeleportPlayerTimer;
 pub use teleportation_energy_regen_agent_loop_reducer::{
-    set_flags_for_teleportation_energy_regen_agent_loop, teleportation_energy_regen_agent_loop,
     TeleportationEnergyRegenAgentLoopCallbackId,
+    set_flags_for_teleportation_energy_regen_agent_loop, teleportation_energy_regen_agent_loop,
 };
 pub use teleportation_energy_regen_loop_timer_table::*;
 pub use teleportation_energy_regen_loop_timer_type::TeleportationEnergyRegenLoopTimer;
 pub use teleportation_energy_state_table::*;
 pub use teleportation_energy_state_type::TeleportationEnergyState;
 pub use terraform_cancel_reducer::{
-    set_flags_for_terraform_cancel, terraform_cancel, TerraformCancelCallbackId,
+    TerraformCancelCallbackId, set_flags_for_terraform_cancel, terraform_cancel,
 };
 pub use terraform_progress_state_table::*;
 pub use terraform_progress_state_type::TerraformProgressState;
 pub use terraform_recipe_desc_table::*;
 pub use terraform_recipe_desc_type::TerraformRecipeDesc;
-pub use terraform_reducer::{set_flags_for_terraform, terraform, TerraformCallbackId};
+pub use terraform_reducer::{TerraformCallbackId, set_flags_for_terraform, terraform};
 pub use terraform_set_final_target_reducer::{
-    set_flags_for_terraform_set_final_target, terraform_set_final_target,
-    TerraformSetFinalTargetCallbackId,
+    TerraformSetFinalTargetCallbackId, set_flags_for_terraform_set_final_target,
+    terraform_set_final_target,
 };
 pub use terraform_start_reducer::{
-    set_flags_for_terraform_start, terraform_start, TerraformStartCallbackId,
+    TerraformStartCallbackId, set_flags_for_terraform_start, terraform_start,
 };
 pub use terrain_cell_type::TerrainCell;
 pub use terrain_chunk_state_table::*;
@@ -5155,30 +5152,30 @@ pub use tool_type_desc_table::*;
 pub use tool_type_desc_type::ToolTypeDesc;
 pub use toolbar_state_table::*;
 pub use toolbar_state_type::ToolbarState;
-pub use trade_accept_reducer::{set_flags_for_trade_accept, trade_accept, TradeAcceptCallbackId};
+pub use trade_accept_reducer::{TradeAcceptCallbackId, set_flags_for_trade_accept, trade_accept};
 pub use trade_accept_session_reducer::{
-    set_flags_for_trade_accept_session, trade_accept_session, TradeAcceptSessionCallbackId,
+    TradeAcceptSessionCallbackId, set_flags_for_trade_accept_session, trade_accept_session,
 };
 pub use trade_add_item_reducer::{
-    set_flags_for_trade_add_item, trade_add_item, TradeAddItemCallbackId,
+    TradeAddItemCallbackId, set_flags_for_trade_add_item, trade_add_item,
 };
 pub use trade_cancel_server_reducer::{
-    set_flags_for_trade_cancel_server, trade_cancel_server, TradeCancelServerCallbackId,
+    TradeCancelServerCallbackId, set_flags_for_trade_cancel_server, trade_cancel_server,
 };
 pub use trade_decline_reducer::{
-    set_flags_for_trade_decline, trade_decline, TradeDeclineCallbackId,
+    TradeDeclineCallbackId, set_flags_for_trade_decline, trade_decline,
 };
 pub use trade_decline_session_reducer::{
-    set_flags_for_trade_decline_session, trade_decline_session, TradeDeclineSessionCallbackId,
+    TradeDeclineSessionCallbackId, set_flags_for_trade_decline_session, trade_decline_session,
 };
 pub use trade_initiate_session_reducer::{
-    set_flags_for_trade_initiate_session, trade_initiate_session, TradeInitiateSessionCallbackId,
+    TradeInitiateSessionCallbackId, set_flags_for_trade_initiate_session, trade_initiate_session,
 };
 pub use trade_order_state_table::*;
 pub use trade_order_state_type::TradeOrderState;
 pub use trade_pocket_type::TradePocket;
 pub use trade_remove_item_reducer::{
-    set_flags_for_trade_remove_item, trade_remove_item, TradeRemoveItemCallbackId,
+    TradeRemoveItemCallbackId, set_flags_for_trade_remove_item, trade_remove_item,
 };
 pub use trade_session_loop_timer_table::*;
 pub use trade_session_loop_timer_type::TradeSessionLoopTimer;
@@ -5186,14 +5183,14 @@ pub use trade_session_state_table::*;
 pub use trade_session_state_type::TradeSessionState;
 pub use trade_session_status_type::TradeSessionStatus;
 pub use trade_sessions_agent_loop_reducer::{
-    set_flags_for_trade_sessions_agent_loop, trade_sessions_agent_loop,
-    TradeSessionsAgentLoopCallbackId,
+    TradeSessionsAgentLoopCallbackId, set_flags_for_trade_sessions_agent_loop,
+    trade_sessions_agent_loop,
 };
 pub use trade_swap_pockets_reducer::{
-    set_flags_for_trade_swap_pockets, trade_swap_pockets, TradeSwapPocketsCallbackId,
+    TradeSwapPocketsCallbackId, set_flags_for_trade_swap_pockets, trade_swap_pockets,
 };
 pub use transfer_player_delayed_reducer::{
-    set_flags_for_transfer_player_delayed, transfer_player_delayed, TransferPlayerDelayedCallbackId,
+    TransferPlayerDelayedCallbackId, set_flags_for_transfer_player_delayed, transfer_player_delayed,
 };
 pub use transfer_player_housing_msg_type::TransferPlayerHousingMsg;
 pub use transfer_player_msg_type::TransferPlayerMsg;
@@ -5203,8 +5200,8 @@ pub use transfer_player_msg_v_4_type::TransferPlayerMsgV4;
 pub use transfer_player_timer_table::*;
 pub use transfer_player_timer_type::TransferPlayerTimer;
 pub use traveler_task_agent_loop_reducer::{
-    set_flags_for_traveler_task_agent_loop, traveler_task_agent_loop,
-    TravelerTaskAgentLoopCallbackId,
+    TravelerTaskAgentLoopCallbackId, set_flags_for_traveler_task_agent_loop,
+    traveler_task_agent_loop,
 };
 pub use traveler_task_desc_table::*;
 pub use traveler_task_desc_type::TravelerTaskDesc;
@@ -5220,11 +5217,12 @@ pub use unclaimed_collectibles_state_type::UnclaimedCollectiblesState;
 pub use unclaimed_shards_state_table::*;
 pub use unclaimed_shards_state_type::UnclaimedShardsState;
 pub use update_moving_cost_reducer::{
-    set_flags_for_update_moving_cost, update_moving_cost, UpdateMovingCostCallbackId,
+    UpdateMovingCostCallbackId, set_flags_for_update_moving_cost, update_moving_cost,
 };
 pub use update_scheduled_timers_from_static_data_reducer::{
+    UpdateScheduledTimersFromStaticDataCallbackId,
     set_flags_for_update_scheduled_timers_from_static_data,
-    update_scheduled_timers_from_static_data, UpdateScheduledTimersFromStaticDataCallbackId,
+    update_scheduled_timers_from_static_data,
 };
 pub use user_authentication_state_op_type::UserAuthenticationStateOp;
 pub use user_authentication_state_table::*;
@@ -5284,11 +5282,11 @@ pub use world_gen_vector_2_type::WorldGenVector2;
 pub use world_gen_world_definition_type::WorldGenWorldDefinition;
 pub use world_gen_world_map_definition_type::WorldGenWorldMapDefinition;
 pub use world_place_building_reducer::{
-    set_flags_for_world_place_building, world_place_building, WorldPlaceBuildingCallbackId,
+    WorldPlaceBuildingCallbackId, set_flags_for_world_place_building, world_place_building,
 };
 pub use world_place_building_request_type::WorldPlaceBuildingRequest;
 pub use world_place_resource_reducer::{
-    set_flags_for_world_place_resource, world_place_resource, WorldPlaceResourceCallbackId,
+    WorldPlaceResourceCallbackId, set_flags_for_world_place_resource, world_place_resource,
 };
 pub use world_place_resource_request_type::WorldPlaceResourceRequest;
 pub use world_placement_type_type::WorldPlacementType;
@@ -15841,21 +15839,21 @@ impl __sdk::SubscriptionHandle for SubscriptionHandle {
 /// either a [`DbConnection`] or an [`EventContext`] and operate on either.
 pub trait RemoteDbContext:
     __sdk::DbContext<
-    DbView = RemoteTables,
-    Reducers = RemoteReducers,
-    SetReducerFlags = SetReducerFlags,
-    SubscriptionBuilder = __sdk::SubscriptionBuilder<RemoteModule>,
->
+        DbView = RemoteTables,
+        Reducers = RemoteReducers,
+        SetReducerFlags = SetReducerFlags,
+        SubscriptionBuilder = __sdk::SubscriptionBuilder<RemoteModule>,
+    >
 {
 }
 impl<
-        Ctx: __sdk::DbContext<
+    Ctx: __sdk::DbContext<
             DbView = RemoteTables,
             Reducers = RemoteReducers,
             SetReducerFlags = SetReducerFlags,
             SubscriptionBuilder = __sdk::SubscriptionBuilder<RemoteModule>,
         >,
-    > RemoteDbContext for Ctx
+> RemoteDbContext for Ctx
 {
 }
 

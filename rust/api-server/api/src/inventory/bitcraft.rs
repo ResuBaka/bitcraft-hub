@@ -377,10 +377,7 @@ async fn insert_multiple_inventory_changelog(
             .await;
 
         if let Err(e) = insert {
-            tracing::error!(
-                "Error inserting InventoryChangelog chunk: {}",
-                e
-            );
+            tracing::error!("Error inserting InventoryChangelog chunk: {}", e);
         }
     }
 

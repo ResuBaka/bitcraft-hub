@@ -7,7 +7,6 @@ use tikv_jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-
 #[tokio::main]
 async fn main() {
     api::main().await.expect("Failed to start server");

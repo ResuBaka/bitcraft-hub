@@ -63,8 +63,8 @@ impl import_knowledge_craft_state for super::RemoteReducers {
     fn on_import_knowledge_craft_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeCraftState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgeCraftStateCallbackId {
         ImportKnowledgeCraftStateCallbackId(self.imp.on_reducer(
             "import_knowledge_craft_state",

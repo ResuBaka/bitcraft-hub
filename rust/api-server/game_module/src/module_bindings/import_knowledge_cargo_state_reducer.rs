@@ -63,8 +63,8 @@ impl import_knowledge_cargo_state for super::RemoteReducers {
     fn on_import_knowledge_cargo_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeCargoState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgeCargoStateCallbackId {
         ImportKnowledgeCargoStateCallbackId(self.imp.on_reducer(
             "import_knowledge_cargo_state",

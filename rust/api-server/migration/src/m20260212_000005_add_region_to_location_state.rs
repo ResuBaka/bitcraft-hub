@@ -10,7 +10,12 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(LocationState::Table)
-                    .add_column(ColumnDef::new(LocationState::Region).string().not_null().default(""))
+                    .add_column(
+                        ColumnDef::new(LocationState::Region)
+                            .string()
+                            .not_null()
+                            .default(""),
+                    )
                     .to_owned(),
             )
             .await

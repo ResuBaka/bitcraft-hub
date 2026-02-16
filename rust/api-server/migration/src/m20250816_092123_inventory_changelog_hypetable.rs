@@ -18,20 +18,27 @@ impl MigrationTrait for Migration {
             let pk_name: String = row.try_get("", "conname")?;
             let stmt = Statement::from_string(
                 manager.get_database_backend(),
-                format!("ALTER TABLE inventory_changelog DROP CONSTRAINT \"{}\";", pk_name),
+                format!(
+                    "ALTER TABLE inventory_changelog DROP CONSTRAINT \"{}\";",
+                    pk_name
+                ),
             );
             db.execute(stmt).await?;
         }
 
         // Ensure id is auto-incrementing (Identity) if it has no default value
-        let has_default = db.query_one(Statement::from_string(
-            manager.get_database_backend(),
-            "SELECT 1 FROM pg_attribute a
+        let has_default = db
+            .query_one(Statement::from_string(
+                manager.get_database_backend(),
+                "SELECT 1 FROM pg_attribute a
              LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
              WHERE a.attrelid = 'inventory_changelog'::regclass
              AND a.attname = 'id'
-             AND (a.attidentity <> '' OR d.adbin IS NOT NULL)".to_string(),
-        )).await?.is_some();
+             AND (a.attidentity <> '' OR d.adbin IS NOT NULL)"
+                    .to_string(),
+            ))
+            .await?
+            .is_some();
 
         if !has_default {
             db.execute(Statement::from_string(

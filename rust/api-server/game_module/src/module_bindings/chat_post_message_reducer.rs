@@ -47,8 +47,8 @@ pub trait chat_post_message {
     fn on_chat_post_message(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerChatPostMessageRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ChatPostMessageCallbackId;
     /// Cancel a callback previously registered by [`Self::on_chat_post_message`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl chat_post_message for super::RemoteReducers {
     fn on_chat_post_message(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerChatPostMessageRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ChatPostMessageCallbackId {
         ChatPostMessageCallbackId(self.imp.on_reducer(
             "chat_post_message",

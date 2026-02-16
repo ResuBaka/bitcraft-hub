@@ -55,18 +55,38 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_index(Index::drop().name("idx-location-state-dimension").table(LocationState::Table).to_owned())
+            .drop_index(
+                Index::drop()
+                    .name("idx-location-state-dimension")
+                    .table(LocationState::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_index(Index::drop().name("idx-building-state-claim-entity-id").table(BuildingState::Table).to_owned())
+            .drop_index(
+                Index::drop()
+                    .name("idx-building-state-claim-entity-id")
+                    .table(BuildingState::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_index(Index::drop().name("idx-deployable-state-claim-entity-id").table(DeployableState::Table).to_owned())
+            .drop_index(
+                Index::drop()
+                    .name("idx-deployable-state-claim-entity-id")
+                    .table(DeployableState::Table)
+                    .to_owned(),
+            )
             .await?;
         manager
-            .drop_index(Index::drop().name("idx-inventory-owner-entity-id").table(Inventory::Table).to_owned())
+            .drop_index(
+                Index::drop()
+                    .name("idx-inventory-owner-entity-id")
+                    .table(Inventory::Table)
+                    .to_owned(),
+            )
             .await?;
-            
+
         Ok(())
     }
 }

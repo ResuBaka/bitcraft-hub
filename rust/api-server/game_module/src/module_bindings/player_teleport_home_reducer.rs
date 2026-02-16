@@ -61,8 +61,8 @@ impl player_teleport_home for super::RemoteReducers {
     fn on_player_teleport_home(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTeleportHomeRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlayerTeleportHomeCallbackId {
         PlayerTeleportHomeCallbackId(self.imp.on_reducer(
             "player_teleport_home",

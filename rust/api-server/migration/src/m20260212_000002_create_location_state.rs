@@ -24,7 +24,11 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(LocationState::X).big_integer().not_null())
                     .col(ColumnDef::new(LocationState::Z).big_integer().not_null())
-                    .col(ColumnDef::new(LocationState::Dimension).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(LocationState::Dimension)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .to_owned(),
             )
             .await

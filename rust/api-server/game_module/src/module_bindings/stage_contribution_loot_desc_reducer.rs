@@ -69,8 +69,8 @@ impl stage_contribution_loot_desc for super::RemoteReducers {
     fn on_stage_contribution_loot_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ContributionLootDescV2>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageContributionLootDescCallbackId {
         StageContributionLootDescCallbackId(self.imp.on_reducer(
             "stage_contribution_loot_desc",

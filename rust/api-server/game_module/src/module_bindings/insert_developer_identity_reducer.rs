@@ -60,8 +60,8 @@ pub trait insert_developer_identity {
     fn on_insert_developer_identity(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &String, &String, &String, &String, &bool)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> InsertDeveloperIdentityCallbackId;
     /// Cancel a callback previously registered by [`Self::on_insert_developer_identity`],
     /// causing it not to run in the future.
@@ -91,8 +91,8 @@ impl insert_developer_identity for super::RemoteReducers {
     fn on_insert_developer_identity(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &String, &String, &String, &String, &bool)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> InsertDeveloperIdentityCallbackId {
         InsertDeveloperIdentityCallbackId(self.imp.on_reducer(
             "insert_developer_identity",

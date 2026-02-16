@@ -47,8 +47,8 @@ pub trait craft_collect_all {
     fn on_craft_collect_all(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftCollectAllRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CraftCollectAllCallbackId;
     /// Cancel a callback previously registered by [`Self::on_craft_collect_all`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl craft_collect_all for super::RemoteReducers {
     fn on_craft_collect_all(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftCollectAllRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CraftCollectAllCallbackId {
         CraftCollectAllCallbackId(self.imp.on_reducer(
             "craft_collect_all",

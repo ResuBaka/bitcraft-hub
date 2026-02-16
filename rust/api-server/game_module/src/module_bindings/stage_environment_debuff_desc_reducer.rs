@@ -72,8 +72,8 @@ impl stage_environment_debuff_desc for super::RemoteReducers {
     fn on_stage_environment_debuff_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EnvironmentDebuffDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageEnvironmentDebuffDescCallbackId {
         StageEnvironmentDebuffDescCallbackId(self.imp.on_reducer(
             "stage_environment_debuff_desc",

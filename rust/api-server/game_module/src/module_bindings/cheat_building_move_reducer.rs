@@ -61,8 +61,8 @@ impl cheat_building_move for super::RemoteReducers {
     fn on_cheat_building_move(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBuildingMoveRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatBuildingMoveCallbackId {
         CheatBuildingMoveCallbackId(self.imp.on_reducer(
             "cheat_building_move",

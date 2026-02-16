@@ -12,8 +12,7 @@ impl MigrationTrait for Migration {
         let schema = Schema::new(builder);
 
         db.execute(
-            builder
-                .build(&schema.create_table_from_entity(entity::permission_state::Entity)),
+            builder.build(&schema.create_table_from_entity(entity::permission_state::Entity)),
         )
         .await?;
 

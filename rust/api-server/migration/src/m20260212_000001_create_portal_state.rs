@@ -17,12 +17,32 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(PortalState::TargetBuildingEntityId).big_integer().not_null())
-                    .col(ColumnDef::new(PortalState::DestinationX).integer().not_null())
-                    .col(ColumnDef::new(PortalState::DestinationZ).integer().not_null())
-                    .col(ColumnDef::new(PortalState::DestinationDimension).integer().not_null())
+                    .col(
+                        ColumnDef::new(PortalState::TargetBuildingEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PortalState::DestinationX)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PortalState::DestinationZ)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PortalState::DestinationDimension)
+                            .integer()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(PortalState::Enabled).boolean().not_null())
-                    .col(ColumnDef::new(PortalState::AllowDeployables).boolean().not_null())
+                    .col(
+                        ColumnDef::new(PortalState::AllowDeployables)
+                            .boolean()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(PortalState::Region).text().not_null())
                     .to_owned(),
             )

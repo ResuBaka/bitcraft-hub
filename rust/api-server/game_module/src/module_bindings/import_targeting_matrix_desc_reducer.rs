@@ -63,8 +63,8 @@ impl import_targeting_matrix_desc for super::RemoteReducers {
     fn on_import_targeting_matrix_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TargetingMatrixDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportTargetingMatrixDescCallbackId {
         ImportTargetingMatrixDescCallbackId(self.imp.on_reducer(
             "import_targeting_matrix_desc",

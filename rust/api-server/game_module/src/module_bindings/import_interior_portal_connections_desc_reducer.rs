@@ -50,8 +50,8 @@ pub trait import_interior_portal_connections_desc {
     fn on_import_interior_portal_connections_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorPortalConnectionsDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportInteriorPortalConnectionsDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_interior_portal_connections_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_interior_portal_connections_desc for super::RemoteReducers {
     fn on_import_interior_portal_connections_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorPortalConnectionsDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportInteriorPortalConnectionsDescCallbackId {
         ImportInteriorPortalConnectionsDescCallbackId(
             self.imp.on_reducer(

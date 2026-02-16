@@ -1,7 +1,8 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::{
-    DimensionDescriptionState, InteriorNetworkDesc, PermissionState, PlayerHousingState, PortalState,
+    DimensionDescriptionState, InteriorNetworkDesc, PermissionState, PlayerHousingState,
+    PortalState,
 };
 use migration::{OnConflict, sea_query};
 use sea_orm::{
@@ -85,12 +86,24 @@ pub(crate) fn start_worker_interior_network_desc(
             }
 
             if !messages.is_empty() {
-                tracing::debug!("InteriorNetworkDesc -> Processing {} messages in batch", messages.len());
-                let insert = insert_many_interior_network_desc(&global_app_state, &on_conflict, &mut messages).await;
-                if let Err(e) = insert { tracing::error!("Error inserting InteriorNetworkDesc: {}", e); }
+                tracing::debug!(
+                    "InteriorNetworkDesc -> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = insert_many_interior_network_desc(
+                    &global_app_state,
+                    &on_conflict,
+                    &mut messages,
+                )
+                .await;
+                if let Err(e) = insert {
+                    tracing::error!("Error inserting InteriorNetworkDesc: {}", e);
+                }
             }
 
-            if messages.is_empty() && rx.is_closed() { break; }
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
         }
     });
 }
@@ -126,16 +139,17 @@ pub(crate) fn start_worker_dimension_description_state(
     time_limit: Duration,
 ) {
     tokio::spawn(async move {
-        let on_conflict =
-            sea_query::OnConflict::columns([::entity::dimension_description_state::Column::EntityId])
-                .update_columns([
-                    ::entity::dimension_description_state::Column::DimensionNetworkEntityId,
-                    ::entity::dimension_description_state::Column::DimensionId,
-                    ::entity::dimension_description_state::Column::DimensionType,
-                    ::entity::dimension_description_state::Column::InteriorInstanceId,
-                    ::entity::dimension_description_state::Column::Region,
-                ])
-                .to_owned();
+        let on_conflict = sea_query::OnConflict::columns([
+            ::entity::dimension_description_state::Column::EntityId,
+        ])
+        .update_columns([
+            ::entity::dimension_description_state::Column::DimensionNetworkEntityId,
+            ::entity::dimension_description_state::Column::DimensionId,
+            ::entity::dimension_description_state::Column::DimensionType,
+            ::entity::dimension_description_state::Column::InteriorInstanceId,
+            ::entity::dimension_description_state::Column::Region,
+        ])
+        .to_owned();
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
@@ -190,12 +204,24 @@ pub(crate) fn start_worker_dimension_description_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!("DimensionDescriptionState -> Processing {} messages in batch", messages.len());
-                let insert = insert_many_dimension_description_state(&global_app_state, &on_conflict, &mut messages).await;
-                if let Err(e) = insert { tracing::error!("Error inserting DimensionDescriptionState: {}", e); }
+                tracing::info!(
+                    "DimensionDescriptionState -> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = insert_many_dimension_description_state(
+                    &global_app_state,
+                    &on_conflict,
+                    &mut messages,
+                )
+                .await;
+                if let Err(e) = insert {
+                    tracing::error!("Error inserting DimensionDescriptionState: {}", e);
+                }
             }
 
-            if messages.is_empty() && rx.is_closed() { break; }
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
         }
     });
 }
@@ -298,12 +324,24 @@ pub(crate) fn start_worker_player_housing_state(
             }
 
             if !messages.is_empty() {
-                tracing::info!("PlayerHousingState -> Processing {} messages in batch", messages.len());
-                let insert = insert_many_player_housing_state(&global_app_state, &on_conflict, &mut messages).await;
-                if let Err(e) = insert { tracing::error!("Error inserting PlayerHousingState: {}", e); }
+                tracing::info!(
+                    "PlayerHousingState -> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert = insert_many_player_housing_state(
+                    &global_app_state,
+                    &on_conflict,
+                    &mut messages,
+                )
+                .await;
+                if let Err(e) = insert {
+                    tracing::error!("Error inserting PlayerHousingState: {}", e);
+                }
             }
 
-            if messages.is_empty() && rx.is_closed() { break; }
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
         }
     });
 }
@@ -403,12 +441,21 @@ pub(crate) fn start_worker_permission_state(
             }
 
             if !messages.is_empty() {
-                tracing::debug!("PermissionState -> Processing {} messages in batch", messages.len());
-                let insert = insert_many_permission_state(&global_app_state, &on_conflict, &mut messages).await;
-                if let Err(e) = insert { tracing::error!("Error inserting PermissionState: {}", e); }
+                tracing::debug!(
+                    "PermissionState -> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert =
+                    insert_many_permission_state(&global_app_state, &on_conflict, &mut messages)
+                        .await;
+                if let Err(e) = insert {
+                    tracing::error!("Error inserting PermissionState: {}", e);
+                }
             }
 
-            if messages.is_empty() && rx.is_closed() { break; }
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
         }
     });
 }
@@ -510,12 +557,20 @@ pub(crate) fn start_worker_portal_state(
             }
 
             if !messages.is_empty() {
-                tracing::debug!("PortalState -> Processing {} messages in batch", messages.len());
-                let insert = insert_many_portal_state(&global_app_state, &on_conflict, &mut messages).await;
-                if let Err(e) = insert { tracing::error!("Error inserting PortalState: {}", e); }
+                tracing::debug!(
+                    "PortalState -> Processing {} messages in batch",
+                    messages.len()
+                );
+                let insert =
+                    insert_many_portal_state(&global_app_state, &on_conflict, &mut messages).await;
+                if let Err(e) = insert {
+                    tracing::error!("Error inserting PortalState: {}", e);
+                }
             }
 
-            if messages.is_empty() && rx.is_closed() { break; }
+            if messages.is_empty() && rx.is_closed() {
+                break;
+            }
         }
     });
 }

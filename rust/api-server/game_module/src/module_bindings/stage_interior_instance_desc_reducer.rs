@@ -37,7 +37,7 @@ pub trait stage_interior_instance_desc {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_stage_interior_instance_desc`] callbacks.
     fn stage_interior_instance_desc(&self, records: Vec<InteriorInstanceDesc>)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_interior_instance_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -67,8 +67,8 @@ impl stage_interior_instance_desc for super::RemoteReducers {
     fn on_stage_interior_instance_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorInstanceDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageInteriorInstanceDescCallbackId {
         StageInteriorInstanceDescCallbackId(self.imp.on_reducer(
             "stage_interior_instance_desc",
