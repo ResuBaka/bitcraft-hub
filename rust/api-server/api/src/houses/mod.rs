@@ -466,9 +466,7 @@ fn resolve_inventory_pockets(
 ) -> Vec<::entity::inventory::ItemSlotResolved> {
     pockets
         .iter()
-        .map(|pocket| {
-            crate::inventory::resolve_pocket(pocket, &state.item_desc, &state.cargo_desc)
-        })
+        .map(|pocket| crate::inventory::resolve_pocket(pocket, &state.item_desc, &state.cargo_desc))
         .collect()
 }
 
