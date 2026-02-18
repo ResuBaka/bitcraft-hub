@@ -133,7 +133,8 @@ const resourceEffortMap = computed(() => {
         if (itemStack.item_stack.item_type === "Item") {
           const itemId = itemStack.item_stack.item_id;
           const itemDesc = allRecipiesFetch.value?.item_desc?.[itemId];
-          const itemListDescDirect = allRecipiesFetch.value?.item_list_desc?.[itemId];
+          const itemListDescDirect =
+            allRecipiesFetch.value?.item_list_desc?.[itemId];
           const itemListId = itemDesc?.item_list_id || 0;
 
           const list =
@@ -149,7 +150,11 @@ const resourceEffortMap = computed(() => {
                 if (inner.item_type !== "Item") continue;
                 const innerQuantity = inner.quantity || 1;
                 if (innerQuantity <= 0) continue;
-                const expectedYield = probability * quantity * possibilityProbability * innerQuantity;
+                const expectedYield =
+                  probability *
+                  quantity *
+                  possibilityProbability *
+                  innerQuantity;
                 if (expectedYield <= 0) continue;
                 expectedYieldByItemId[inner.item_id] =
                   (expectedYieldByItemId[inner.item_id] || 0) + expectedYield;
@@ -164,21 +169,27 @@ const resourceEffortMap = computed(() => {
 
         if (itemStack.item_stack.item_type === "Item") {
           expectedYieldByItemId[itemStack.item_stack.item_id] =
-            (expectedYieldByItemId[itemStack.item_stack.item_id] || 0) + expectedYield;
+            (expectedYieldByItemId[itemStack.item_stack.item_id] || 0) +
+            expectedYield;
         } else {
           expectedYieldByCargoId[itemStack.item_stack.item_id] =
-            (expectedYieldByCargoId[itemStack.item_stack.item_id] || 0) + expectedYield;
+            (expectedYieldByCargoId[itemStack.item_stack.item_id] || 0) +
+            expectedYield;
         }
       }
     }
 
-    for (const [itemId, expectedYield] of Object.entries(expectedYieldByItemId)) {
+    for (const [itemId, expectedYield] of Object.entries(
+      expectedYieldByItemId,
+    )) {
       if (expectedYield <= 0) continue;
       const attemptsPerUnit = 1 / expectedYield;
       itemEffort[getEffortKey("Item", Number(itemId))] = attemptsPerUnit;
     }
 
-    for (const [cargoId, expectedYield] of Object.entries(expectedYieldByCargoId)) {
+    for (const [cargoId, expectedYield] of Object.entries(
+      expectedYieldByCargoId,
+    )) {
       if (expectedYield <= 0) continue;
       const attemptsPerUnit = 1 / expectedYield;
       itemEffort[getEffortKey("Cargo", Number(cargoId))] = attemptsPerUnit;
@@ -368,7 +379,8 @@ const recipeInfo = computed(() => {
     const children = [];
     let looped = false;
     if (crafted[type][id] === undefined) {
-      const actions_required = getExtractionActionsRequired(type, id, quantity) || 0;
+      const actions_required =
+        getExtractionActionsRequired(type, id, quantity) || 0;
       if (actions_required > 0) {
         return [
           {
