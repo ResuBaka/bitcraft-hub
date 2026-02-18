@@ -244,15 +244,14 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-  const { data: playerData, pending: playerPending } =
+const { data: playerData, pending: playerPending } =
   useFetchMsPack<FindPlayerByIdResponse>(() => {
     return `/api/bitcraft/players/${route.params.id}`;
   });
 
-const { data: houses, pending: housesPending } =
-  await useLazyFetchMsPack<HouseResponse[]>(
-    () => `/api/bitcraft/houses/by_owner/${route.params.id}`,
-  );
+const { data: houses, pending: housesPending } = await useLazyFetchMsPack<
+  HouseResponse[]
+>(() => `/api/bitcraft/houses/by_owner/${route.params.id}`);
 
 const { data: inventoryData, pending: inventoryPending } =
   useFetchMsPack<InventorysResponse>(

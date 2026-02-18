@@ -1,11 +1,12 @@
-use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
+use sea_orm::FromJsonQueryResult;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub mod experience_stack_f32;
 pub mod item_stack;
 pub mod location;
+pub mod probabilistic_item_stack;
 pub mod timestamp;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Eq, TS, FromJsonQueryResult)]

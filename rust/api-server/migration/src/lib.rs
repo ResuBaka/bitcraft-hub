@@ -37,6 +37,7 @@ mod m20260212_000002_create_location_state;
 mod m20260212_000003_add_indices;
 mod m20260212_000004_fix_location_state_types;
 mod m20260212_000005_add_region_to_location_state;
+mod m20260216_000001_create_resource_tables;
 
 pub struct Migrator;
 
@@ -81,6 +82,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260212_000003_add_indices::Migration),
             Box::new(m20260212_000004_fix_location_state_types::Migration),
             Box::new(m20260212_000005_add_region_to_location_state::Migration),
+            Box::new(m20260216_000001_create_resource_tables::Migration),
         ]
     }
 }

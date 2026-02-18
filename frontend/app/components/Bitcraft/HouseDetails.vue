@@ -9,19 +9,14 @@ const props = defineProps<{
 
 const tab = ref(null);
 
-const {
-  data: inventories,
-  pending: invPending,
-} = await useLazyFetchMsPack<HouseInventoriesResponse>(
-  () => `/api/bitcraft/houses/${props.house.entity_id}/inventories`,
-);
+const { data: inventories, pending: invPending } =
+  await useLazyFetchMsPack<HouseInventoriesResponse>(
+    () => `/api/bitcraft/houses/${props.house.entity_id}/inventories`,
+  );
 
-const {
-  data: changelog,
-  pending: changelogPending,
-} = await useLazyFetchMsPack<InventoryChangelog[]>(
-  () => `/api/bitcraft/inventorys/changes/${props.house.entity_id}`,
-);
+const { data: changelog, pending: changelogPending } = await useLazyFetchMsPack<
+  InventoryChangelog[]
+>(() => `/api/bitcraft/inventorys/changes/${props.house.entity_id}`);
 
 const theme = useTheme();
 const computedClass = computed(() => {

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { watchDebounced, watchThrottled } from "@vueuse/shared";
+import type { ItemsAndCargoResponse } from "~/types/ItemsAndCargoResponse";
+import type { MetaResponse } from "~/types/MetaResponse";
 
 const page = ref(1);
 const perPage = 16;
@@ -23,46 +25,47 @@ if (route.query.page) {
   page.value = parseInt(route.query.page);
 }
 
-const { data, pending, refresh } = await useLazyFetchMsPack(
-  () => {
-    return `/api/bitcraft/itemsAndCargo`;
-  },
-  {
-    onRequest: ({ options }) => {
-      options.query = options.query || {};
-
-      if (search.value) {
-        options.query.search = search.value;
-      }
-
-      if (page.value) {
-        options.query.page = page.value;
-      }
-
-      if (tag.value) {
-        options.query.tag = tag.value;
-      }
-
-      if (tier.value) {
-        options.query.tier = tier.value;
-      }
-
-      if (perPage) {
-        options.query.per_page = perPage;
-      }
-
-      if (Object.keys(options.query).length > 2) {
-        const query = { ...options.query };
-        delete query.per_page;
-        router.push({ query });
-      } else if (options.query.page <= 1) {
-        router.push({});
-      }
+const { data, pending, refresh } =
+  await useLazyFetchMsPack<ItemsAndCargoResponse>(
+    () => {
+      return `/api/bitcraft/itemsAndCargo`;
     },
-  },
-);
+    {
+      onRequest: ({ options }) => {
+        options.query = options.query || {};
 
-const { data: metaData } = await useLazyFetchMsPack(() => {
+        if (search.value) {
+          options.query.search = search.value;
+        }
+
+        if (page.value) {
+          options.query.page = page.value;
+        }
+
+        if (tag.value) {
+          options.query.tag = tag.value;
+        }
+
+        if (tier.value) {
+          options.query.tier = tier.value;
+        }
+
+        if (perPage) {
+          options.query.per_page = perPage;
+        }
+
+        if (Object.keys(options.query).length > 2) {
+          const query = { ...options.query };
+          delete query.per_page;
+          router.push({ query });
+        } else if (options.query.page <= 1) {
+          router.push({});
+        }
+      },
+    },
+  );
+
+const { data: metaData } = await useLazyFetchMsPack<MetaResponse>(() => {
   return `/api/bitcraft/itemsAndCargo/meta`;
 });
 
@@ -154,7 +157,7 @@ useSeoMeta({
     </v-row>
     <template v-if="data">
       <v-row>
-        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in data.items" :key="item.id">
+        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in data.items.filter(i => !i.name.includes('Package'))" :key="item.id">
           <bitcraft-card-item :item="item"></bitcraft-card-item>
         </v-col>
       </v-row>
