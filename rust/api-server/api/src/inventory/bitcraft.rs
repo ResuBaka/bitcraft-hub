@@ -347,15 +347,13 @@ async fn insert_multiple_inventory(
         return;
     }
 
-    for chunk in messages.chunks(1000) {
-        let insert = ::entity::inventory::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await;
+    let insert = ::entity::inventory::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
 
-        if let Err(e) = insert {
-            tracing::error!("Error inserting InventoryState chunk: {}", e);
-        }
+    if let Err(e) = insert {
+        tracing::error!("Error inserting InventoryState chunk: {}", e);
     }
 
     messages.clear();
@@ -370,15 +368,13 @@ async fn insert_multiple_inventory_changelog(
         return;
     }
 
-    for chunk in messages.chunks(1000) {
-        let insert = ::entity::inventory_changelog::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await;
+    let insert = ::entity::inventory_changelog::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await;
 
-        if let Err(e) = insert {
-            tracing::error!("Error inserting InventoryChangelog chunk: {}", e);
-        }
+    if let Err(e) = insert {
+        tracing::error!("Error inserting InventoryChangelog chunk: {}", e);
     }
 
     messages.clear();

@@ -124,12 +124,10 @@ async fn insert_many_interior_network_desc(
         return Ok(());
     }
 
-    for chunk in messages.chunks(1000) {
-        ::entity::interior_network_desc::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await?;
-    }
+    ::entity::interior_network_desc::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await?;
 
     messages.clear();
     Ok(())
@@ -245,12 +243,10 @@ async fn insert_many_dimension_description_state(
         return Ok(());
     }
 
-    for chunk in messages.chunks(1000) {
-        ::entity::dimension_description_state::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await?;
-    }
+    ::entity::dimension_description_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await?;
 
     messages.clear();
     Ok(())
@@ -368,12 +364,10 @@ async fn insert_many_player_housing_state(
         return Ok(());
     }
 
-    for chunk in messages.chunks(1000) {
-        ::entity::player_housing_state::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await?;
-    }
+    ::entity::player_housing_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await?;
 
     messages.clear();
     Ok(())
@@ -485,12 +479,10 @@ async fn insert_many_permission_state(
         return Ok(());
     }
 
-    for chunk in messages.chunks(1000) {
-        ::entity::permission_state::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await?;
-    }
+    ::entity::permission_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await?;
 
     messages.clear();
     Ok(())
@@ -607,12 +599,10 @@ async fn insert_many_portal_state(
         return Ok(());
     }
 
-    for chunk in messages.chunks(1000) {
-        ::entity::portal_state::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await?;
-    }
+    ::entity::portal_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await?;
 
     messages.clear();
     Ok(())

@@ -21,8 +21,8 @@ mod mobile_entity_state;
 mod npc_desc;
 mod player_state;
 mod recipes;
-mod resource_desc;
 mod reducer_event_handler;
+mod resource_desc;
 mod skill_descriptions;
 mod trading_orders;
 mod traveler_task_desc;
@@ -423,7 +423,10 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         //     axum_codec::routing::get(locations::list_locations).into(),
         // )
         .route("/items", axum_codec::routing::get(items::list_items).into())
-        .route("/items/world", axum_codec::routing::get(items::list_world_items).into())
+        .route(
+            "/items/world",
+            axum_codec::routing::get(items::list_world_items).into(),
+        )
         .merge(player_state::get_routes())
         .merge(claims::get_routes())
         .merge(buildings::get_routes())

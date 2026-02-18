@@ -1,5 +1,5 @@
-use crate::shared::item_stack::ItemStack;
 use crate::shared::Rarity;
+use crate::shared::item_stack::ItemStack;
 use game_module::module_bindings::ResourceDesc;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};

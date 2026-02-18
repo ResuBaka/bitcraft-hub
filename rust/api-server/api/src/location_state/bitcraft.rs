@@ -15,14 +15,10 @@ pub(crate) async fn insert_many_location_state(
         return Ok(());
     }
 
-    // Postgres has a limit of 65k parameters. With 5 columns, we should stay below ~13k items per batch.
-    // Using 1000 for extra safety and better monitoring.
-    for chunk in messages.chunks(1000) {
-        ::entity::location_state::Entity::insert_many(chunk.to_vec())
-            .on_conflict(on_conflict.clone())
-            .exec(&global_app_state.conn)
-            .await?;
-    }
+    ::entity::location_state::Entity::insert_many(messages.clone())
+        .on_conflict(on_conflict.clone())
+        .exec(&global_app_state.conn)
+        .await?;
 
     messages.clear();
     Ok(())

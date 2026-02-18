@@ -18,11 +18,19 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(ResourceDesc::Name).string().not_null())
-                    .col(ColumnDef::new(ResourceDesc::Description).string().not_null())
+                    .col(
+                        ColumnDef::new(ResourceDesc::Description)
+                            .string()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ResourceDesc::Tier).integer().not_null())
                     .col(ColumnDef::new(ResourceDesc::Tag).string().not_null())
                     .col(ColumnDef::new(ResourceDesc::Rarity).integer().not_null())
-                    .col(ColumnDef::new(ResourceDesc::OnDestroyYield).json().not_null())
+                    .col(
+                        ColumnDef::new(ResourceDesc::OnDestroyYield)
+                            .json()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ResourceDesc::OnDestroyYieldResourceId)
                             .integer()
