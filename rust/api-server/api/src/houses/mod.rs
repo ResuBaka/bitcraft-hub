@@ -19,11 +19,11 @@ pub(crate) fn get_routes() -> AppRouter {
         )
         .route(
             "/houses/by_owner/{id}",
-            axum_codec::routing::get(find_houses_by_owner).into(),
+            axum_codec::routing::get(find_houses_by_owner_id).into(),
         )
         .route(
             "/api/bitcraft/houses/by_owner/{id}",
-            axum_codec::routing::get(find_houses_by_owner).into(),
+            axum_codec::routing::get(find_houses_by_owner_id).into(),
         )
         .route("/houses/{id}", axum_codec::routing::get(find_house).into())
         .route(
@@ -160,18 +160,11 @@ pub(crate) async fn find_houses(
 /// GET /houses/by_owner/{id}
 ///
 /// Finds houses by owner player entity ID.
-pub(crate) async fn find_houses_by_owner(
-    state: State<AppState>,
-    Path(id): Path<i64>,
+pub(crate) async fn find_houses_by_owner_id(
+    State(state): State<AppState>,
+    Path(owner_id): Path<i64>,
 ) -> Result<axum_codec::Codec<Vec<HouseResponse>>, (StatusCode, &'static str)> {
-    find_houses_by_owner_id(&state, id).await
-}
-
-async fn find_houses_by_owner_id(
-    state: &AppState,
-    owner_id: i64,
-) -> Result<axum_codec::Codec<Vec<HouseResponse>>, (StatusCode, &'static str)> {
-    let building_ids = get_owned_building_entity_ids(state, owner_id).await?;
+    let building_ids = get_owned_building_entity_ids(&state, owner_id).await?;
 
     // 2. Find Houses that have these entrance buildings OR are the houses themselves
     let houses = ::entity::player_housing_state::Entity::find()
@@ -189,7 +182,7 @@ async fn find_houses_by_owner_id(
 
     let mut response = Vec::new();
     for house in houses {
-        let resp = build_house_response(state, house, owner_id).await?;
+        let resp = build_house_response(&state, house, owner_id).await?;
         response.push(resp.0);
     }
 
@@ -427,8 +420,7 @@ async fn get_building_entity_ids_in_dimension(
     dim_id: i64,
 ) -> Result<Vec<i64>, (StatusCode, &'static str)> {
     // dimension_id is only unique within a region
-    let mut region: String = "bitcraft-".to_owned();
-    region.push_str(&house.region_index.to_string());
+    let mut region: String = format!("bitcraft-{}", house.region_index);
 
     let locations = ::entity::location_state::Entity::find()
         .filter(::entity::location_state::Column::Dimension.eq(dim_id))

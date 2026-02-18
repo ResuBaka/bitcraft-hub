@@ -51,6 +51,9 @@ pub(crate) fn start_worker_interior_network_desc(
                                         messages.remove(index);
                                     }
                                     messages.push(model.into_active_model());
+                                    if messages.len() >= batch_size {
+                                        break;
+                                    }
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -59,7 +62,9 @@ pub(crate) fn start_worker_interior_network_desc(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::interior_network_desc::ModelBuilder::new(new).with_region(database_name.to_string()).build();
@@ -67,7 +72,9 @@ pub(crate) fn start_worker_interior_network_desc(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model = ::entity::interior_network_desc::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
@@ -169,6 +176,9 @@ pub(crate) fn start_worker_dimension_description_state(
                                         messages.remove(index);
                                     }
                                     messages.push(model.into_active_model());
+                                    if messages.len() >= batch_size {
+                                    break;
+                                }
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -177,7 +187,9 @@ pub(crate) fn start_worker_dimension_description_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::dimension_description_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
@@ -185,7 +197,9 @@ pub(crate) fn start_worker_dimension_description_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model = ::entity::dimension_description_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
@@ -285,6 +299,9 @@ pub(crate) fn start_worker_player_housing_state(
                                         messages.remove(index);
                                     }
                                     messages.push(model.into_active_model());
+                                    if messages.len() >= batch_size {
+                                        break;
+                                    }
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -293,7 +310,9 @@ pub(crate) fn start_worker_player_housing_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                 if messages.len() >= batch_size {
+                                        break;
+                                    }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::player_housing_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
@@ -301,7 +320,9 @@ pub(crate) fn start_worker_player_housing_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model = ::entity::player_housing_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
@@ -398,6 +419,9 @@ pub(crate) fn start_worker_permission_state(
                                         messages.remove(index);
                                     }
                                     messages.push(model.into_active_model());
+                                    if messages.len() >= batch_size {
+                                        break;
+                                    }
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -406,7 +430,9 @@ pub(crate) fn start_worker_permission_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break
+                                }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::permission_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
@@ -414,7 +440,9 @@ pub(crate) fn start_worker_permission_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model = ::entity::permission_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
@@ -433,10 +461,6 @@ pub(crate) fn start_worker_permission_state(
             }
 
             if !messages.is_empty() {
-                tracing::debug!(
-                    "PermissionState -> Processing {} messages in batch",
-                    messages.len()
-                );
                 let insert =
                     insert_many_permission_state(&global_app_state, &on_conflict, &mut messages)
                         .await;
@@ -514,6 +538,9 @@ pub(crate) fn start_worker_portal_state(
                                         messages.remove(index);
                                     }
                                     messages.push(model.into_active_model());
+                                    if messages.len() >= batch_size {
+                                        break;
+                                    }
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -522,7 +549,9 @@ pub(crate) fn start_worker_portal_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
@@ -530,7 +559,9 @@ pub(crate) fn start_worker_portal_state(
                                     messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
-                                if messages.len() >= batch_size { break; }
+                                if messages.len() >= batch_size {
+                                    break;
+                                }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model = ::entity::portal_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
