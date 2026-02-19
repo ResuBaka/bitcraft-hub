@@ -26,7 +26,7 @@ pub trait CrumbTrailContributionLockStateTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`CrumbTrailContributionLockStateTableHandle`], which mediates access to the table `crumb_trail_contribution_lock_state`.
     fn crumb_trail_contribution_lock_state(&self)
-        -> CrumbTrailContributionLockStateTableHandle<'_>;
+    -> CrumbTrailContributionLockStateTableHandle<'_>;
 }
 
 impl CrumbTrailContributionLockStateTableAccess for super::RemoteTables {

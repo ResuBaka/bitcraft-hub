@@ -1,10 +1,12 @@
-pub(crate) mod bitcraft;
-
 use crate::{AppState, Params};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
+use entity::item_desc;
 use serde_json::{Value, json};
 use service::Query as QueryCore;
+use std::collections::HashMap;
+
+pub(crate) mod bitcraft;
 
 pub async fn list_items(
     state: State<AppState>,
@@ -32,4 +34,16 @@ pub async fn list_items(
         "total": num_pages.number_of_items,
         "page": page,
     })))
+}
+
+pub async fn list_world_items(
+    state: State<AppState>,
+) -> Result<axum_codec::Codec<HashMap<i32, item_desc::Model>>, (StatusCode, &'static str)> {
+    let items: HashMap<i32, item_desc::Model> = state
+        .item_desc
+        .iter()
+        .map(|value| (*value.key(), value.clone()))
+        .collect();
+
+    Ok(axum_codec::Codec(items))
 }

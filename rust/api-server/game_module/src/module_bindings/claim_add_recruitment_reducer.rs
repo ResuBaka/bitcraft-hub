@@ -37,7 +37,7 @@ pub trait claim_add_recruitment {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_claim_add_recruitment`] callbacks.
     fn claim_add_recruitment(&self, request: PlayerClaimAddRecruitmentRequest)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `claim_add_recruitment`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -48,8 +48,8 @@ pub trait claim_add_recruitment {
     fn on_claim_add_recruitment(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimAddRecruitmentRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimAddRecruitmentCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_add_recruitment`],
     /// causing it not to run in the future.
@@ -67,8 +67,8 @@ impl claim_add_recruitment for super::RemoteReducers {
     fn on_claim_add_recruitment(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimAddRecruitmentRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimAddRecruitmentCallbackId {
         ClaimAddRecruitmentCallbackId(self.imp.on_reducer(
             "claim_add_recruitment",

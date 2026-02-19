@@ -27,8 +27,7 @@
             <v-btn variant="text" class="text-capitalize font-weight-black" stacked @click="reopenConnection"><v-badge dot floating :color="websocketStore.isConnected ? 'green' : 'red'">Live Data</v-badge></v-btn>
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/">Leaderboards</v-btn>
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/items">Items</v-btn>
-            <v-btn variant="text" class="text-capitalize font-weight-black" to="/claims">Claims</v-btn>
-            <v-btn variant="text" class="text-capitalize font-weight-black" to="/players">Players</v-btn>
+            <v-btn variant="text" class="text-capitalize font-weight-black" to="/claims">Claims</v-btn>            <v-btn variant="text" class="text-capitalize font-weight-black" to="/players">Players</v-btn>
             <!--        <v-btn to="/tradeOrders">Trade orders</v-btn>-->
             <v-btn variant="text" class="text-capitalize font-weight-black" to="/buildings">Buildings</v-btn>
             <v-btn variant="text" class="text-capitalize font-weight-black" icon="mdi-cog-outline" @click="toggelConfigDrawer"></v-btn>

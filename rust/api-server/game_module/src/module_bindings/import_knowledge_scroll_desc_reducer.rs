@@ -63,8 +63,8 @@ impl import_knowledge_scroll_desc for super::RemoteReducers {
     fn on_import_knowledge_scroll_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeScrollDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgeScrollDescCallbackId {
         ImportKnowledgeScrollDescCallbackId(self.imp.on_reducer(
             "import_knowledge_scroll_desc",

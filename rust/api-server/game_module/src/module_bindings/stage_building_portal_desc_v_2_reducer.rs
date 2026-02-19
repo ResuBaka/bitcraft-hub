@@ -72,8 +72,8 @@ impl stage_building_portal_desc_v_2 for super::RemoteReducers {
     fn on_stage_building_portal_desc_v_2(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingPortalDescV2>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageBuildingPortalDescV2CallbackId {
         StageBuildingPortalDescV2CallbackId(self.imp.on_reducer(
             "stage_building_portal_desc_v2",

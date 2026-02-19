@@ -50,8 +50,8 @@ pub trait claim_treasury_deposit {
     fn on_claim_treasury_deposit(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimDepositToTreasuryRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimTreasuryDepositCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_treasury_deposit`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl claim_treasury_deposit for super::RemoteReducers {
     fn on_claim_treasury_deposit(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimDepositToTreasuryRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimTreasuryDepositCallbackId {
         ClaimTreasuryDepositCallbackId(self.imp.on_reducer(
             "claim_treasury_deposit",

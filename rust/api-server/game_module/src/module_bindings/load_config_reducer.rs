@@ -74,8 +74,8 @@ impl load_config for super::RemoteReducers {
     fn on_load_config(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<String>, &Vec<String>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> LoadConfigCallbackId {
         LoadConfigCallbackId(self.imp.on_reducer(
             "load_config",

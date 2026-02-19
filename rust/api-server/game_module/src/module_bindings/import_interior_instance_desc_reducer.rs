@@ -72,8 +72,8 @@ impl import_interior_instance_desc for super::RemoteReducers {
     fn on_import_interior_instance_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorInstanceDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportInteriorInstanceDescCallbackId {
         ImportInteriorInstanceDescCallbackId(self.imp.on_reducer(
             "import_interior_instance_desc",

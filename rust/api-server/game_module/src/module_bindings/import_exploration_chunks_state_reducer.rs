@@ -72,8 +72,8 @@ impl import_exploration_chunks_state for super::RemoteReducers {
     fn on_import_exploration_chunks_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ExplorationChunksState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportExplorationChunksStateCallbackId {
         ImportExplorationChunksStateCallbackId(self.imp.on_reducer(
             "import_exploration_chunks_state",

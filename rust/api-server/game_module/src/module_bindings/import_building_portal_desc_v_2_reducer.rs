@@ -72,8 +72,8 @@ impl import_building_portal_desc_v_2 for super::RemoteReducers {
     fn on_import_building_portal_desc_v_2(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingPortalDescV2>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportBuildingPortalDescV2CallbackId {
         ImportBuildingPortalDescV2CallbackId(self.imp.on_reducer(
             "import_building_portal_desc_v2",

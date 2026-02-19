@@ -48,8 +48,8 @@ pub trait dropped_inventory_lose_ownership {
     fn on_dropped_inventory_lose_ownership(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &DroppedInventoryOwnershipTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DroppedInventoryLoseOwnershipCallbackId;
     /// Cancel a callback previously registered by [`Self::on_dropped_inventory_lose_ownership`],
     /// causing it not to run in the future.
@@ -72,8 +72,8 @@ impl dropped_inventory_lose_ownership for super::RemoteReducers {
     fn on_dropped_inventory_lose_ownership(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &DroppedInventoryOwnershipTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DroppedInventoryLoseOwnershipCallbackId {
         DroppedInventoryLoseOwnershipCallbackId(self.imp.on_reducer(
             "dropped_inventory_lose_ownership",

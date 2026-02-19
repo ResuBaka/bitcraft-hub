@@ -61,8 +61,8 @@ impl pause_play_timer for super::RemoteReducers {
     fn on_pause_play_timer(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPausePlayTimerRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PausePlayTimerCallbackId {
         PausePlayTimerCallbackId(self.imp.on_reducer(
             "pause_play_timer",

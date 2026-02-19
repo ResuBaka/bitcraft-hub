@@ -14,11 +14,18 @@ use crate::collectible_desc::bitcraft::start_worker_collectible_desc;
 use crate::config::Config;
 use crate::crafting_recipe_desc::bitcraft::start_worker_crafting_recipe_desc;
 use crate::deployable_state::bitcraft::start_worker_deployable_state;
+use crate::extraction_recipe_desc::bitcraft::start_worker_extraction_recipe_desc;
+use crate::houses::bitcraft::{
+    start_worker_dimension_description_state, start_worker_interior_network_desc,
+    start_worker_permission_state, start_worker_player_housing_state, start_worker_portal_state,
+};
 use crate::inventory::bitcraft::start_worker_inventory_state;
 use crate::item_list_desc::bitcraft::start_worker_item_list_desc;
 use crate::items::bitcraft::start_worker_item_desc;
 use crate::leaderboard::bitcraft::start_worker_experience_state;
 use crate::location_state::bitcraft::start_worker_location_state;
+use crate::resource_desc::bitcraft::start_worker_resource_desc;
+
 use crate::mobile_entity_state::bitcraft::start_worker_mobile_entity_state;
 use crate::npc_desc::bitcraft::start_worker_npc_desc;
 use crate::player_state::bitcraft::{
@@ -42,7 +49,6 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
 
-use entity::inventory::ResolvedInventory;
 use ts_rs::TS;
 
 fn connect_to_db(
@@ -345,7 +351,6 @@ async fn connect_to_db_logic(
     claim_tech_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimTechDesc>>,
     building_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingState>>,
     building_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingDesc>>,
-    location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
     building_nickname_state_tx: &UnboundedSender<SpacetimeUpdateMessages<BuildingNicknameState>>,
     crafting_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CraftingRecipeDesc>>,
     item_list_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemListDesc>>,
@@ -357,6 +362,16 @@ async fn connect_to_db_logic(
     buy_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
     sell_order_state_tx: &UnboundedSender<SpacetimeUpdateMessages<AuctionListingState>>,
     collectible_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CollectibleDesc>>,
+    interior_network_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<InteriorNetworkDesc>>,
+    dimension_description_state_tx: &UnboundedSender<
+        SpacetimeUpdateMessages<DimensionDescriptionState>,
+    >,
+    player_housing_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerHousingState>>,
+    permission_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PermissionState>>,
+    portal_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PortalState>>,
+    location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
+    resource_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ResourceDesc>>,
+    extraction_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ExtractionRecipeDesc>>,
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state.clone(),
@@ -530,6 +545,50 @@ async fn connect_to_db_logic(
         CollectibleDesc,
         database
     );
+    setup_spacetime_db_listeners!(
+        ctx,
+        interior_network_desc,
+        interior_network_desc_tx,
+        InteriorNetworkDesc,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        dimension_description_state,
+        dimension_description_state_tx,
+        DimensionDescriptionState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        player_housing_state,
+        player_housing_state_tx,
+        PlayerHousingState,
+        database
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        permission_state,
+        permission_state_tx,
+        PermissionState,
+        database
+    );
+    setup_spacetime_db_listeners!(ctx, portal_state, portal_state_tx, PortalState, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        location_state,
+        location_state_tx,
+        LocationState,
+        database
+    );
+    setup_spacetime_db_listeners!(ctx, resource_desc, resource_desc_tx, ResourceDesc, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        extraction_recipe_desc,
+        extraction_recipe_desc_tx,
+        ExtractionRecipeDesc,
+        database
+    );
 
     let tables_to_subscribe = vec![
         "user_state",
@@ -559,6 +618,7 @@ async fn connect_to_db_logic(
         "collectible_desc",
         "claim_tech_desc",
         "resource_desc",
+        "extraction_recipe_desc",
         "identity_role",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
@@ -571,6 +631,16 @@ async fn connect_to_db_logic(
         "buy_order_state",
         "sell_order_state",
         "npc_desc",
+        "interior_network_desc",
+        "dimension_description_state",
+        "player_housing_state",
+        "permission_state",
+        "portal_state",
+    ];
+
+    let sql_subscribe = vec![
+        "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id",
+        "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id",
     ];
 
     let tmp_database = database.to_string().clone();
@@ -603,6 +673,14 @@ async fn connect_to_db_logic(
     let tmp_user_state_tx = user_state_tx.clone();
     let tmp_npc_desc_tx = npc_desc_tx.clone();
     let tmp_collectible_desc_tx = collectible_desc_tx.clone();
+    let tmp_interior_network_desc_tx = interior_network_desc_tx.clone();
+    let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
+    let tmp_player_housing_state_tx = player_housing_state_tx.clone();
+    let tmp_permission_state_tx = permission_state_tx.clone();
+    let tmp_portal_state_tx = portal_state_tx.clone();
+    let tmp_resource_desc_tx = resource_desc_tx.clone();
+    let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
+
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
             tracing::debug!("Handle Subscription response");
@@ -722,6 +800,24 @@ async fn connect_to_db_logic(
                 let _ = tmp_npc_desc_tx.send(SpacetimeUpdateMessages::Initial {
                     database_name: tmp_database_name_arc.clone(),
                     data: npc_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let resource_desc = ctx.db.resource_desc().iter().collect::<Vec<_>>();
+            if !resource_desc.is_empty() {
+                let _ = tmp_resource_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: resource_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let extraction_recipe_desc = ctx.db.extraction_recipe_desc().iter().collect::<Vec<_>>();
+            if !extraction_recipe_desc.is_empty() {
+                let _ = tmp_extraction_recipe_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: extraction_recipe_desc,
                 });
             }
 
@@ -870,6 +966,57 @@ async fn connect_to_db_logic(
                 });
             }
 
+            let tmp_database_name_arc = database_name_arc.clone();
+            let interior_network_desc = ctx.db.interior_network_desc().iter().collect::<Vec<_>>();
+            if !interior_network_desc.is_empty() {
+                let _ = tmp_interior_network_desc_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: interior_network_desc,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let dimension_description_state = ctx
+                .db
+                .dimension_description_state()
+                .iter()
+                .collect::<Vec<_>>();
+            if !dimension_description_state.is_empty() {
+                let _ = tmp_dimension_description_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: dimension_description_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
+            if !player_housing_state.is_empty() {
+                let _ = tmp_player_housing_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: player_housing_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let permission_state = ctx.db.permission_state().iter().collect::<Vec<_>>();
+            if !permission_state.is_empty() {
+                let _ = tmp_permission_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: permission_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+            let portal_state = ctx.db.portal_state().iter().collect::<Vec<_>>();
+            if !portal_state.is_empty() {
+                let _ = tmp_portal_state_tx.send(SpacetimeUpdateMessages::Initial {
+                    database_name: tmp_database_name_arc.clone(),
+                    data: portal_state,
+                });
+            }
+
+            let tmp_database_name_arc = database_name_arc.clone();
+
             // for resource_desc in ctx.db.user_state().iter() {
             //     if resource_desc.entity_id == 504403158285774600 {
             //         println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
@@ -893,6 +1040,7 @@ async fn connect_to_db_logic(
 
                     Some(format!("select * from {table}"))
                 })
+                .chain(sql_subscribe.into_iter().map(|s| s.to_string()))
                 .collect::<Vec<_>>(),
         );
 
@@ -951,11 +1099,11 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (building_state_tx, building_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (building_desc_tx, building_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (location_state_tx, location_state_rx) = tokio::sync::mpsc::unbounded_channel();
+
         let (building_nickname_state_tx, building_nickname_state_rx) =
             tokio::sync::mpsc::unbounded_channel();
 
-        let (crafting_recipe_desc_tx, crafting_recipe_desc_desc_rx) =
+        let (crafting_recipe_desc_tx, crafting_recipe_desc_rx) =
             tokio::sync::mpsc::unbounded_channel();
 
         let (traveler_task_desc_tx, traveler_task_desc_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -967,6 +1115,19 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let (npc_desc_tx, npc_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (collectible_desc_tx, collectible_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let (interior_network_desc_tx, interior_network_desc_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (dimension_description_state_tx, dimension_description_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (player_housing_state_tx, player_housing_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
+        let (permission_state_tx, permission_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (portal_state_tx, portal_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (location_state_tx, location_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (resource_desc_tx, resource_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
         let mut remove_desc = false;
 
@@ -1019,6 +1180,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_buy_order_state_tx = buy_order_state_tx.clone();
                 let tmp_sell_order_state_tx = sell_order_state_tx.clone();
                 let tmp_collectible_desc_tx = collectible_desc_tx.clone();
+                let tmp_interior_network_desc_tx = interior_network_desc_tx.clone();
+                let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
+                let tmp_player_housing_state_tx = player_housing_state_tx.clone();
+                let tmp_permission_state_tx = permission_state_tx.clone();
+                let tmp_portal_state_tx = portal_state_tx.clone();
+                let tmp_location_state_tx = location_state_tx.clone();
+                let tmp_resource_desc_tx = resource_desc_tx.clone();
+                let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
                 let tmp_conf = config.clone();
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
@@ -1058,7 +1227,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_claim_tech_desc_tx,
                             &tmp_building_state_tx,
                             &tmp_building_desc_tx,
-                            &tmp_location_state_tx,
                             &tmp_building_nickname_state_tx,
                             &tmp_crafting_recipe_desc_tx,
                             &tmp_item_list_desc_tx,
@@ -1070,6 +1238,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_buy_order_state_tx,
                             &tmp_sell_order_state_tx,
                             &tmp_collectible_desc_tx,
+                            &tmp_interior_network_desc_tx,
+                            &tmp_dimension_description_state_tx,
+                            &tmp_player_housing_state_tx,
+                            &tmp_permission_state_tx,
+                            &tmp_portal_state_tx,
+                            &tmp_location_state_tx,
+                            &tmp_resource_desc_tx,
+                            &tmp_extraction_recipe_desc_tx,
                         )
                             .await;
 
@@ -1221,7 +1397,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         );
         start_worker_crafting_recipe_desc(
             global_app_state.clone(),
-            crafting_recipe_desc_desc_rx,
+            crafting_recipe_desc_rx,
             3000,
             Duration::from_millis(50),
         );
@@ -1279,6 +1455,49 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         );
 
         start_worker_user_state(global_app_state.clone(), user_state_rx);
+
+        start_worker_interior_network_desc(
+            global_app_state.clone(),
+            interior_network_desc_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_dimension_description_state(
+            global_app_state.clone(),
+            dimension_description_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_player_housing_state(
+            global_app_state.clone(),
+            player_housing_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_permission_state(
+            global_app_state.clone(),
+            permission_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_portal_state(
+            global_app_state.clone(),
+            portal_state_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_resource_desc(
+            global_app_state.clone(),
+            resource_desc_rx,
+            3000,
+            Duration::from_millis(50),
+        );
+        start_worker_extraction_recipe_desc(
+            global_app_state.clone(),
+            extraction_recipe_desc_rx,
+            3000,
+            Duration::from_millis(50),
+        );
     });
 }
 

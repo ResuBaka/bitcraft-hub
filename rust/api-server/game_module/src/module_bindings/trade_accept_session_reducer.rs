@@ -47,8 +47,8 @@ pub trait trade_accept_session {
     fn on_trade_accept_session(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeAcceptSessionRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeAcceptSessionCallbackId;
     /// Cancel a callback previously registered by [`Self::on_trade_accept_session`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl trade_accept_session for super::RemoteReducers {
     fn on_trade_accept_session(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeAcceptSessionRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeAcceptSessionCallbackId {
         TradeAcceptSessionCallbackId(self.imp.on_reducer(
             "trade_accept_session",

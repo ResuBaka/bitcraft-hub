@@ -7,9 +7,11 @@ use ::entity::collectible_desc;
 use ::entity::collectible_desc::CollectibleType;
 use ::entity::crafting_recipe;
 use ::entity::deployable_state;
+use ::entity::extraction_recipe_desc;
 use ::entity::inventory;
 use ::entity::inventory_changelog;
 use ::entity::inventory_changelog::ItemType;
+use ::entity::resource_desc;
 use ::entity::trade_order;
 use ::entity::traveler_task_state;
 use ::entity::vault_state_collectibles;
@@ -2297,6 +2299,16 @@ impl Query {
         let num_pages = paginator.num_items_and_pages().await?;
 
         paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
+    }
+
+    pub async fn all_resource_desc(db: &DbConn) -> Result<Vec<resource_desc::Model>, DbErr> {
+        resource_desc::Entity::find().all(db).await
+    }
+
+    pub async fn all_extraction_recipe_desc(
+        db: &DbConn,
+    ) -> Result<Vec<extraction_recipe_desc::Model>, DbErr> {
+        extraction_recipe_desc::Entity::find().all(db).await
     }
 }
 

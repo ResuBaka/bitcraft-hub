@@ -50,8 +50,8 @@ pub trait stage_hexite_exchange_entry_desc {
     fn on_stage_hexite_exchange_entry_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<HexiteExchangeEntryDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageHexiteExchangeEntryDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_hexite_exchange_entry_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_hexite_exchange_entry_desc for super::RemoteReducers {
     fn on_stage_hexite_exchange_entry_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<HexiteExchangeEntryDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageHexiteExchangeEntryDescCallbackId {
         StageHexiteExchangeEntryDescCallbackId(self.imp.on_reducer(
             "stage_hexite_exchange_entry_desc",

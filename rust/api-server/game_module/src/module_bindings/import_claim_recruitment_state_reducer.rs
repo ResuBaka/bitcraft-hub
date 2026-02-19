@@ -72,8 +72,8 @@ impl import_claim_recruitment_state for super::RemoteReducers {
     fn on_import_claim_recruitment_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ClaimRecruitmentState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportClaimRecruitmentStateCallbackId {
         ImportClaimRecruitmentStateCallbackId(self.imp.on_reducer(
             "import_claim_recruitment_state",

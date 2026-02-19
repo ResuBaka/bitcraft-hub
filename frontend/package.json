@@ -14,7 +14,7 @@
   "dependencies": {
     "@pinia/nuxt": "^0.11.3",
     "msgpackr": "^1.11.8",
-    "nuxt": "^4.2.2",
+    "nuxt": "^4.3.1",
     "vue": "^3.6.0-beta.3",
     "vue-router": "^4.6.4",
     "vuetify-sonner": "^0.4.2"

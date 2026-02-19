@@ -11,6 +11,16 @@ import type { ItemStack } from "~/types/ItemStack";
 import type { CraftingRecipe } from "~/types/CraftingRecipe";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
 import type { ResolvedInventory } from "~/types/ResolvedInventory";
+import type { ItemDesc } from "~/types/ItemDesc";
+import type { ExtractionRecipeResponse } from "~/types/ExtractionRecipeResponse";
+
+type ResourceEffort = {
+  [itemKey: string]: number; // attempts needed per unit
+};
+
+function getEffortKey(itemType: "Item" | "Cargo", itemId: number): string {
+  return `${itemType}:${itemId}`;
+}
 
 export type PannelIndexs = {
   pannels: number;
@@ -40,6 +50,8 @@ export type objectWithChildren = {
 };
 
 export type RecipeWithChildren = {
+  actions_required: number;
+  shadow_actions_required: number;
   children: objectWithChildren[];
 };
 
@@ -81,6 +93,148 @@ watchThrottled(
 
 const { data: allRecipiesFetch } = useFetchMsPack<RecipesAllResponse>(() => {
   return `/recipes/get_all`;
+});
+
+const { data: worldItemsFetch } = useFetchMsPack<{
+  [key: number]: ItemDesc;
+}>(() => {
+  return `/items/world`;
+});
+
+const { data: extractionRecipesFetch } = useFetchMsPack<
+  ExtractionRecipeResponse[]
+>(() => {
+  return `/api/bitcraft/extractionRecipes/all`;
+});
+
+const worldItemsMap = computed(() => {
+  return worldItemsFetch.value || {};
+});
+
+const resourceEffortMap = computed(() => {
+  const effortMap: { [resourceId: number]: ResourceEffort } = {};
+
+  if (!extractionRecipesFetch.value) return effortMap;
+
+  for (const recipe of extractionRecipesFetch.value) {
+    const itemEffort: ResourceEffort = {};
+
+    const expectedYieldByItemId: Record<number, number> = {};
+    const expectedYieldByCargoId: Record<number, number> = {};
+
+    // Calculate effort for each extracted item
+    for (const itemStack of recipe.extracted_item_stacks) {
+      if (itemStack.item_stack) {
+        const probability = itemStack.probability || 0;
+        const quantity = itemStack.item_stack.quantity || 1;
+
+        if (probability <= 0 || quantity <= 0) continue;
+
+        if (itemStack.item_stack.item_type === "Item") {
+          const itemId = itemStack.item_stack.item_id;
+          const itemDesc = allRecipiesFetch.value?.item_desc?.[itemId];
+          const itemListDescDirect =
+            allRecipiesFetch.value?.item_list_desc?.[itemId];
+          const itemListId = itemDesc?.item_list_id || 0;
+
+          const list =
+            itemListId !== 0
+              ? allRecipiesFetch.value?.item_list_desc?.[itemListId]
+              : itemListDescDirect;
+
+          if (list?.possibilities) {
+            for (const possibility of list.possibilities) {
+              const possibilityProbability = possibility.probability || 0;
+              if (possibilityProbability <= 0) continue;
+              for (const inner of possibility.items || []) {
+                if (inner.item_type !== "Item") continue;
+                const innerQuantity = inner.quantity || 1;
+                if (innerQuantity <= 0) continue;
+                const expectedYield =
+                  probability *
+                  quantity *
+                  possibilityProbability *
+                  innerQuantity;
+                if (expectedYield <= 0) continue;
+                expectedYieldByItemId[inner.item_id] =
+                  (expectedYieldByItemId[inner.item_id] || 0) + expectedYield;
+              }
+            }
+            continue;
+          }
+        }
+
+        const expectedYield = probability * quantity;
+        if (expectedYield <= 0) continue;
+
+        if (itemStack.item_stack.item_type === "Item") {
+          expectedYieldByItemId[itemStack.item_stack.item_id] =
+            (expectedYieldByItemId[itemStack.item_stack.item_id] || 0) +
+            expectedYield;
+        } else {
+          expectedYieldByCargoId[itemStack.item_stack.item_id] =
+            (expectedYieldByCargoId[itemStack.item_stack.item_id] || 0) +
+            expectedYield;
+        }
+      }
+    }
+
+    for (const [itemId, expectedYield] of Object.entries(
+      expectedYieldByItemId,
+    )) {
+      if (expectedYield <= 0) continue;
+      const attemptsPerUnit = 1 / expectedYield;
+      itemEffort[getEffortKey("Item", Number(itemId))] = attemptsPerUnit;
+    }
+
+    for (const [cargoId, expectedYield] of Object.entries(
+      expectedYieldByCargoId,
+    )) {
+      if (expectedYield <= 0) continue;
+      const attemptsPerUnit = 1 / expectedYield;
+      itemEffort[getEffortKey("Cargo", Number(cargoId))] = attemptsPerUnit;
+    }
+
+    effortMap[recipe.resource_id] = itemEffort;
+  }
+
+  return effortMap;
+});
+
+function getExtractionActionsRequired(
+  itemType: "Item" | "Cargo",
+  itemId: number,
+  quantity: number,
+): number | undefined {
+  const map = resourceEffortMap.value;
+  let bestAttemptsPerUnit: number | undefined;
+  const key = getEffortKey(itemType, itemId);
+
+  for (const resourceEffort of Object.values(map)) {
+    const attempts = resourceEffort[key];
+    if (attempts === undefined) continue;
+    if (bestAttemptsPerUnit === undefined || attempts < bestAttemptsPerUnit) {
+      bestAttemptsPerUnit = attempts;
+    }
+  }
+
+  if (bestAttemptsPerUnit === undefined) return;
+
+  const actions = Math.ceil(bestAttemptsPerUnit * Math.max(0, quantity || 0));
+  if (actions <= 0) return;
+  return actions;
+}
+
+const worldItemIds = computed(() => {
+  return new Set(
+    Object.keys(worldItemsFetch.value || {})
+      ?.filter((itemId) => {
+        const id = Number(itemId);
+        const itemDesc = allRecipiesFetch.value?.item_desc[id];
+        return !itemDesc?.name.includes("Package");
+      })
+      .map((i) => Number(i)) || [],
+  );
 });
 
 let id = route.params.id;
@@ -225,9 +379,24 @@ const recipeInfo = computed(() => {
     const children = [];
     let looped = false;
     if (crafted[type][id] === undefined) {
+      const actions_required =
+        getExtractionActionsRequired(type, id, quantity) || 0;
+      if (actions_required > 0) {
+        return [
+          {
+            actions_required,
+            shadow_actions_required: actions_required,
+            children: [],
+          },
+        ];
+      }
+
       return;
     }
-    for (const recipe of crafted[type][id]) {
+    let recipesToProcess = crafted[type][id].filter(
+      (r) => !allRecipies[r.id]?.name.includes("Package"),
+    );
+    for (const recipe of recipesToProcess) {
       let itemChildren = [];
       const exists = recipes.findIndex((value) => value == recipe.id) !== -1;
       if (exists) {
@@ -240,6 +409,14 @@ const recipeInfo = computed(() => {
         continue;
       }
       for (const item of realRecipe.consumed_item_stacks) {
+        const consumedItemName =
+          item.item_type === "Item"
+            ? item_desc[item.item_id]?.name
+            : cargo_desc[item.item_id]?.name;
+        if (consumedItemName?.includes("Package")) {
+          continue;
+        }
+
         let get_qauntity = getQuantity(
           item.quantity,
           quantity,
@@ -274,8 +451,14 @@ const recipeInfo = computed(() => {
           });
         }
       }
+      const shadow_actions_required =
+        realRecipe.actions_required * Math.ceil(quantity / recipe.quantity);
+      let actions_required = shadow_actions_required;
+
       if (itemChildren.filter((item) => !item.looped).length > 0) {
         children.push({
+          actions_required,
+          shadow_actions_required,
           children: itemChildren,
         });
       }
@@ -435,10 +618,20 @@ const recipeInfo = computed(() => {
       return;
     }
     for (const recipe of recipes) {
+      let selectedPannel = 0;
+      if (recipe.children && recipe.children.length > 1) {
+        const index = recipe.children.findIndex((alt) =>
+          alt.children.every((ing) => !ing.looped),
+        );
+        if (index !== -1) {
+          selectedPannel = index;
+        }
+      }
       const pannel: PannelIndexs = {
-        pannels: 0,
+        pannels: selectedPannel,
         children: [],
       };
+
       pannelIndexs.push(pannel);
       if (recipe.children === undefined) {
         continue;
@@ -474,6 +667,14 @@ const recipeInfo = computed(() => {
       if (item === undefined) {
         continue;
       }
+      const itemName =
+        item.type === "Item"
+          ? allRecipiesFetch.value?.item_desc[item.id]?.name
+          : allRecipiesFetch.value?.cargo_desc[item.id]?.name;
+      if (itemName?.includes("Package")) {
+        continue;
+      }
+
       if (item.deleted === true) {
         if (
           item.id === undefined ||
@@ -598,6 +799,8 @@ useSeoMeta({
               :item="recipeInfo.items"
               :item_desc="allRecipiesFetch.item_desc"
               :cargo_desc="allRecipiesFetch.cargo_desc"
+              :item_list_desc="allRecipiesFetch.item_list_desc"
+              :resource-effort-map="resourceEffortMap"
               :pannel_indexs="pannelIndexs[0]"
             />
           </template>

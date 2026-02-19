@@ -8,6 +8,8 @@ mod collectible_desc;
 mod config;
 mod crafting_recipe_desc;
 mod deployable_state;
+mod extraction_recipe_desc;
+mod houses;
 mod inventory;
 mod item_list_desc;
 mod items;
@@ -20,6 +22,7 @@ mod npc_desc;
 mod player_state;
 mod recipes;
 mod reducer_event_handler;
+mod resource_desc;
 mod skill_descriptions;
 mod trading_orders;
 mod traveler_task_desc;
@@ -420,16 +423,22 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         //     axum_codec::routing::get(locations::list_locations).into(),
         // )
         .route("/items", axum_codec::routing::get(items::list_items).into())
+        .route(
+            "/items/world",
+            axum_codec::routing::get(items::list_world_items).into(),
+        )
         .merge(player_state::get_routes())
         .merge(claims::get_routes())
         .merge(buildings::get_routes())
         .merge(inventory::get_routes())
         .merge(recipes::get_routes())
         .merge(items_and_cargo::get_routes())
+        .merge(extraction_recipe_desc::get_routes())
         .merge(leaderboard::get_routes())
         .merge(trading_orders::get_routes())
         .merge(traveler_tasks::get_routes())
         .merge(auction_listing_state::get_routes())
+        .merge(houses::get_routes())
         .nest("/desc", desc_router)
         .nest_service(
             "/static",

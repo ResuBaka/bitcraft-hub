@@ -2,7 +2,7 @@ use crate::AppState;
 use crate::inventory::resolve_pocket;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use chrono::DateTime;
-use entity::deployable_state;
+
 use entity::inventory::ResolvedInventory;
 use entity::inventory_changelog::TypeOfChange;
 use game_module::module_bindings::InventoryState;
@@ -343,13 +343,17 @@ async fn insert_multiple_inventory(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::inventory::ActiveModel>,
 ) {
+    if messages.is_empty() {
+        return;
+    }
+
     let insert = ::entity::inventory::Entity::insert_many(messages.clone())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting InventoryState: {}", insert.unwrap_err())
+    if let Err(e) = insert {
+        tracing::error!("Error inserting InventoryState chunk: {}", e);
     }
 
     messages.clear();
@@ -360,16 +364,17 @@ async fn insert_multiple_inventory_changelog(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::inventory_changelog::ActiveModel>,
 ) {
+    if messages.is_empty() {
+        return;
+    }
+
     let insert = ::entity::inventory_changelog::Entity::insert_many(messages.clone())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!(
-            "Error inserting InventoryChangelog: {}",
-            insert.unwrap_err()
-        )
+    if let Err(e) = insert {
+        tracing::error!("Error inserting InventoryChangelog chunk: {}", e);
     }
 
     messages.clear();

@@ -61,8 +61,8 @@ impl building_move for super::RemoteReducers {
     fn on_building_move(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBuildingMoveRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> BuildingMoveCallbackId {
         BuildingMoveCallbackId(self.imp.on_reducer(
             "building_move",

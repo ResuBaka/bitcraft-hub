@@ -61,8 +61,8 @@ impl respawn_resource_in_chunk for super::RemoteReducers {
     fn on_respawn_resource_in_chunk(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &RespawnResourceInChunkTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> RespawnResourceInChunkCallbackId {
         RespawnResourceInChunkCallbackId(self.imp.on_reducer(
             "respawn_resource_in_chunk",

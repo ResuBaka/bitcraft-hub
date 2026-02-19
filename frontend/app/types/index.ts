@@ -12,3 +12,5 @@ export type WebSocketMessageHandlers = {
     (message: RefinedMessageContentType<K>) => void
   >;
 };
+
+export * from "./HouseResponse";

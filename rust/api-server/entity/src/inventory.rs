@@ -7,7 +7,7 @@ use sea_orm::{FromJsonQueryResult, JsonValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
 #[sea_orm(table_name = "inventory")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -21,7 +21,7 @@ pub struct Model {
     pub region: String,
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 pub struct Pocket {
     pub volume: i32,
     pub contents: Option<ItemStack>,

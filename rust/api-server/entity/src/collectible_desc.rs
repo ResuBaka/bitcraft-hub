@@ -136,9 +136,7 @@ impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
             game_module::module_bindings::CollectibleType::PremiumItem => {
                 CollectibleType::PremiumItem
             }
-            game_module::module_bindings::CollectibleType::Emote => {
-                CollectibleType::Emote
-            }
+            game_module::module_bindings::CollectibleType::Emote => CollectibleType::Emote,
             game_module::module_bindings::CollectibleType::HousingWalls => {
                 CollectibleType::HousingWalls
             }

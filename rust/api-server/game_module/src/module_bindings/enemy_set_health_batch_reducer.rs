@@ -63,8 +63,8 @@ impl enemy_set_health_batch for super::RemoteReducers {
     fn on_enemy_set_health_batch(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EnemySetHealthRequest>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> EnemySetHealthBatchCallbackId {
         EnemySetHealthBatchCallbackId(self.imp.on_reducer(
             "enemy_set_health_batch",

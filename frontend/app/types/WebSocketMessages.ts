@@ -5,6 +5,7 @@ import type { ClaimLocalState } from "./ClaimLocalState";
 import type { MobileEntityState } from "./MobileEntityState";
 import type { PlayerActionState } from "./PlayerActionState";
 import type { PlayerState } from "./PlayerState";
+import type { ResolvedInventory } from "./ResolvedInventory";
 import type { TravelerTaskState } from "./TravelerTaskState";
 
 export type WebSocketMessages =
@@ -64,4 +65,10 @@ export type WebSocketMessages =
   | { t: "RemoveSellOrder"; c: AuctionListingState }
   | { t: "InsertBuyOrder"; c: AuctionListingState }
   | { t: "UpdateBuyOrder"; c: AuctionListingState }
-  | { t: "RemoveBuyOrder"; c: AuctionListingState };
+  | { t: "RemoveBuyOrder"; c: AuctionListingState }
+  | { t: "InventoryUpdate"; c: { resolved_inventory: ResolvedInventory } }
+  | { t: "InventoryRemove"; c: { resolved_inventory: ResolvedInventory } }
+  | {
+      t: "InventoryInsert";
+      c: { resolved_inventory: ResolvedInventory; player_owner_id: bigint };
+    };

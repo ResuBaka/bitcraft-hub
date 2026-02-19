@@ -31,3 +31,10 @@ target/
 config.toml
 
 Icons/
+
+#AI files
+copilot-instructions.md
+.windsurfrules
+AGENTS.md
+CLAUDE.md
+rules

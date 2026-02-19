@@ -63,8 +63,8 @@ impl import_user_moderation_state for super::RemoteReducers {
     fn on_import_user_moderation_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<UserModerationState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportUserModerationStateCallbackId {
         ImportUserModerationStateCallbackId(self.imp.on_reducer(
             "import_user_moderation_state",

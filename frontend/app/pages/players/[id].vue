@@ -7,6 +7,9 @@ import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardResponse";
 import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
 import type { InventorysResponse } from "~/types/InventorysResponse";
+import type { HouseResponse } from "~/types/HouseResponse";
+import type { HouseInventoriesResponse } from "~/types/HouseInventoriesResponse";
+import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { RankType } from "~/types/RankType";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 
@@ -245,6 +248,10 @@ const { data: playerData, pending: playerPending } =
   useFetchMsPack<FindPlayerByIdResponse>(() => {
     return `/api/bitcraft/players/${route.params.id}`;
   });
+
+const { data: houses, pending: housesPending } = await useLazyFetchMsPack<
+  HouseResponse[]
+>(() => `/api/bitcraft/houses/by_owner/${route.params.id}`);
 
 const { data: inventoryData, pending: inventoryPending } =
   useFetchMsPack<InventorysResponse>(
@@ -518,6 +525,21 @@ const iconUrl = (item: any) => {
   return iconAssetUrlNameRandom(item.icon_asset_name);
 };
 
+const getRankName = (rank: number) => {
+  switch (rank) {
+    case 7:
+      return "Owner";
+    case 6:
+      return "Admin";
+    case 5:
+      return "Resident";
+    case 1:
+      return "Guest";
+    default:
+      return `Rank ${rank}`;
+  }
+};
+
 useSeoMeta({
   title: () => `Player ${playerData.value?.username ?? route.params.id}`,
   description: () => `Player ${playerData.value?.username ?? route.params.id}`,
@@ -702,6 +724,22 @@ useSeoMeta({
               </template>
               </v-row>
             </template>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+        <v-expansion-panel v-if="houses && houses.length">
+          <v-expansion-panel-title>
+            <v-row>
+              <v-col class="d-flex justify-center">
+                <h2 class="pl-md-3 pl-xl-0">Houses ({{ houses.length }})</h2>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <bitcraft-house-details
+              v-for="house in houses"
+              :key="house.entity_id.toString()"
+              :house="house"
+            />
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>

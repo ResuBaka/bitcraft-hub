@@ -25,7 +25,7 @@ impl From<game_module::module_bindings::ItemType> for ItemType {
 #[ts(rename = "InventoryChangelog")]
 #[sea_orm(table_name = "inventory_changelog")]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = true)]
     pub id: i64,
     pub entity_id: i64,
     pub user_id: Option<i64>,
