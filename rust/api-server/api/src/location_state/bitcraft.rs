@@ -52,6 +52,7 @@ pub(crate) fn start_worker_location_state(
                     Some(msg) = rx.recv() => {
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::location_state::ModelBuilder::new(entry)
                                         .with_region(database_name.to_string())
@@ -59,7 +60,18 @@ pub(crate) fn start_worker_location_state(
                                     if let Some(index) = messages.iter().position(|value: &::entity::location_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
-                                    messages.push(model.into_active_model());
+                                    local_messages.push(model.into_active_model());
+                                    if local_messages.len() >= batch_size {
+                                        let insert = insert_many_location_state(
+                                            &global_app_state,
+                                            &on_conflict,
+                                            &mut local_messages,
+                                        )
+                                        .await;
+                                        if let Err(e) = insert {
+                                            tracing::error!("Error inserting InteriorNetworkDesc: {}", e);
+                                        }
+                                    }
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
