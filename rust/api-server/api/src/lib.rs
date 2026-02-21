@@ -457,6 +457,11 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
             "/metrics",
             get(|State(app_state): State<AppState>| async move {
                 let encoder = prometheus::TextEncoder::new();
+
+                metrics::gauge!("database_connection_pool_idle").set(app_state.conn.get_postgres_connection_pool().num_idle() as f64);
+                metrics::gauge!("database_connection_pool_total").set(app_state.conn.get_postgres_connection_pool().size() as f64);
+
+
                 let metric_families = app_state.metrics_registry.gather();
                 let prometheus_body = encoder.encode_to_string(&metric_families);
                 let metrics_body = prometheus.render();
