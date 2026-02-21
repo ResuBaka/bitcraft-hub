@@ -45,7 +45,7 @@ const getRankName = (rank: number) => {
 <template>
   <v-card variant="outlined" class="mb-4">
     <v-card-title class="d-flex align-center gap-4">
-      <span class="text-h6 font-weight-black">House {{ house.entity_id }}</span>
+      <span class="text-h6 font-weight-black">House {{ house.owner_username ?? house.entity_id }}</span>
       <v-chip color="primary" label size="small">{{ house.region }}</v-chip>
       <v-spacer></v-spacer>
       <v-chip :color="house.is_empty ? 'grey' : 'success'" size="small" label>
@@ -67,14 +67,7 @@ const getRankName = (rank: number) => {
         <!-- Overview -->
         <v-window-item value="overview">
           <v-row dense>
-            <v-col cols="12" md="6">
-              <v-list lines="two" :class="computedClass" class="rounded" density="compact">
-                <v-list-item title="Entity ID" :subtitle="house.entity_id.toString()"></v-list-item>
-                <v-divider></v-divider>
-                <v-list-item title="Entrance Building ID" :subtitle="house.entrance_building_entity_id.toString()"></v-list-item>
-              </v-list>
-            </v-col>
-            <v-col cols="12" md="6">
+            <v-col cols="12">
               <v-list lines="two" :class="computedClass" class="rounded" density="compact">
                 <v-list-item title="Region" :subtitle="`${house.region} (Index: ${house.region_index})`"></v-list-item>
                 <v-divider></v-divider>
@@ -89,7 +82,6 @@ const getRankName = (rank: number) => {
           <v-table v-if="house.permissions.length > 0" density="compact">
             <thead>
               <tr>
-                <th class="text-left">Player ID</th>
                 <th class="text-left">Username</th>
                 <th class="text-left">Group</th>
                 <th class="text-left">Rank</th>
@@ -99,10 +91,9 @@ const getRankName = (rank: number) => {
               <tr v-for="p in house.permissions" :key="p.allowed_entity_id.toString()">
                 <td>
                   <nuxt-link :to="{ name: 'players-id', params: { id: p.allowed_entity_id.toString() } }">
-                    {{ p.allowed_entity_id.toString() }}
+                    {{ p.allowed_username || 'Unknown' }}
                   </nuxt-link>
                 </td>
-                <td>{{ p.allowed_username || 'Unknown' }}</td>
                 <td>{{ p.group }}</td>
                 <td>
                   <v-chip :color="p.rank === 7 ? 'gold' : 'blue-grey'" size="x-small">
@@ -123,12 +114,13 @@ const getRankName = (rank: number) => {
             <v-progress-circular indeterminate size="24"></v-progress-circular>
           </div>
           <template v-else-if="inventories && inventories.inventories.length > 0">
-            <bitcraft-inventory
-              v-for="inv in inventories.inventories"
-              :key="inv.entity_id.toString()"
-              :inventory="inv"
-              class="mb-2"
-            />
+            <v-row>
+              <v-col cols="12" md="6" v-for="inv in inventories.inventories.filter(inventory => !!inventory.pockets.filter((pocket) => !!pocket.contents?.quantity).length)" :key="inv.entity_id.toString()">
+                <bitcraft-inventory
+                  :inventory="inv"
+                />
+              </v-col>
+            </v-row>
           </template>
           <div v-else class="text-center py-4 text-grey text-caption">
             No interior inventories found.
