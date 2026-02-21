@@ -16,3 +16,44 @@ pub struct TargetingMatrixDesc {
 impl __sdk::InModule for TargetingMatrixDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TargetingMatrixDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct TargetingMatrixDescCols {
+    pub id: __sdk::__query_builder::Col<TargetingMatrixDesc, i32>,
+    pub interact: __sdk::__query_builder::Col<TargetingMatrixDesc, bool>,
+    pub categories_attacked: __sdk::__query_builder::Col<TargetingMatrixDesc, Vec<i32>>,
+    pub categories_weights: __sdk::__query_builder::Col<TargetingMatrixDesc, Vec<f32>>,
+}
+
+impl __sdk::__query_builder::HasCols for TargetingMatrixDesc {
+    type Cols = TargetingMatrixDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TargetingMatrixDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            interact: __sdk::__query_builder::Col::new(table_name, "interact"),
+            categories_attacked: __sdk::__query_builder::Col::new(
+                table_name,
+                "categories_attacked",
+            ),
+            categories_weights: __sdk::__query_builder::Col::new(table_name, "categories_weights"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TargetingMatrixDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TargetingMatrixDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<TargetingMatrixDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TargetingMatrixDesc {
+    type IxCols = TargetingMatrixDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TargetingMatrixDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

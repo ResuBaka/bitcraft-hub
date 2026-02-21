@@ -47,8 +47,8 @@ pub trait terraform_cancel {
     fn on_terraform_cancel(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTerraformCancelRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TerraformCancelCallbackId;
     /// Cancel a callback previously registered by [`Self::on_terraform_cancel`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl terraform_cancel for super::RemoteReducers {
     fn on_terraform_cancel(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTerraformCancelRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TerraformCancelCallbackId {
         TerraformCancelCallbackId(self.imp.on_reducer(
             "terraform_cancel",

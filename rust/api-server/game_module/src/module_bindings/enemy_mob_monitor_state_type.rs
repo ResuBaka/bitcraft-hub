@@ -19,3 +19,42 @@ pub struct EnemyMobMonitorState {
 impl __sdk::InModule for EnemyMobMonitorState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnemyMobMonitorState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnemyMobMonitorStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EnemyMobMonitorState, u64>,
+    pub enemy_type: __sdk::__query_builder::Col<EnemyMobMonitorState, EnemyType>,
+    pub herd_entity_id: __sdk::__query_builder::Col<EnemyMobMonitorState, u64>,
+    pub herd_location:
+        __sdk::__query_builder::Col<EnemyMobMonitorState, OffsetCoordinatesSmallMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for EnemyMobMonitorState {
+    type Cols = EnemyMobMonitorStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnemyMobMonitorStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            enemy_type: __sdk::__query_builder::Col::new(table_name, "enemy_type"),
+            herd_entity_id: __sdk::__query_builder::Col::new(table_name, "herd_entity_id"),
+            herd_location: __sdk::__query_builder::Col::new(table_name, "herd_location"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnemyMobMonitorState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnemyMobMonitorStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<EnemyMobMonitorState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnemyMobMonitorState {
+    type IxCols = EnemyMobMonitorStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnemyMobMonitorStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

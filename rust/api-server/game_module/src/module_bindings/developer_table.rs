@@ -142,3 +142,19 @@ impl<'ctx> DeveloperIdentityUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `Developer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait developerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `Developer`.
+    fn developer(&self) -> __sdk::__query_builder::Table<Developer>;
+}
+
+impl developerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn developer(&self) -> __sdk::__query_builder::Table<Developer> {
+        __sdk::__query_builder::Table::new("developer")
+    }
+}

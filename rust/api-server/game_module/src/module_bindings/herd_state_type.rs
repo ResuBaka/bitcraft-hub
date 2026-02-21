@@ -18,3 +18,59 @@ pub struct HerdState {
 impl __sdk::InModule for HerdState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `HerdState`.
+///
+/// Provides typed access to columns for query building.
+pub struct HerdStateCols {
+    pub entity_id: __sdk::__query_builder::Col<HerdState, u64>,
+    pub enemy_ai_params_desc_id: __sdk::__query_builder::Col<HerdState, i32>,
+    pub current_population: __sdk::__query_builder::Col<HerdState, i32>,
+    pub ignore_eagerness: __sdk::__query_builder::Col<HerdState, bool>,
+    pub population_variance: __sdk::__query_builder::Col<HerdState, Vec<f32>>,
+    pub crumb_trail_entity_id: __sdk::__query_builder::Col<HerdState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for HerdState {
+    type Cols = HerdStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        HerdStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            enemy_ai_params_desc_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "enemy_ai_params_desc_id",
+            ),
+            current_population: __sdk::__query_builder::Col::new(table_name, "current_population"),
+            ignore_eagerness: __sdk::__query_builder::Col::new(table_name, "ignore_eagerness"),
+            population_variance: __sdk::__query_builder::Col::new(
+                table_name,
+                "population_variance",
+            ),
+            crumb_trail_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "crumb_trail_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `HerdState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct HerdStateIxCols {
+    pub enemy_ai_params_desc_id: __sdk::__query_builder::IxCol<HerdState, i32>,
+    pub entity_id: __sdk::__query_builder::IxCol<HerdState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for HerdState {
+    type IxCols = HerdStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        HerdStateIxCols {
+            enemy_ai_params_desc_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "enemy_ai_params_desc_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

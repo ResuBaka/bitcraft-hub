@@ -18,3 +18,62 @@ pub struct DuelState {
 impl __sdk::InModule for DuelState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DuelState`.
+///
+/// Provides typed access to columns for query building.
+pub struct DuelStateCols {
+    pub entity_id: __sdk::__query_builder::Col<DuelState, u64>,
+    pub initiator_entity_id: __sdk::__query_builder::Col<DuelState, u64>,
+    pub acceptor_entity_id: __sdk::__query_builder::Col<DuelState, u64>,
+    pub victor: __sdk::__query_builder::Col<DuelState, Option<u64>>,
+    pub player_entity_ids: __sdk::__query_builder::Col<DuelState, Vec<u64>>,
+    pub out_of_range_timestamps:
+        __sdk::__query_builder::Col<DuelState, Vec<Option<__sdk::Timestamp>>>,
+}
+
+impl __sdk::__query_builder::HasCols for DuelState {
+    type Cols = DuelStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DuelStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            initiator_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "initiator_entity_id",
+            ),
+            acceptor_entity_id: __sdk::__query_builder::Col::new(table_name, "acceptor_entity_id"),
+            victor: __sdk::__query_builder::Col::new(table_name, "victor"),
+            player_entity_ids: __sdk::__query_builder::Col::new(table_name, "player_entity_ids"),
+            out_of_range_timestamps: __sdk::__query_builder::Col::new(
+                table_name,
+                "out_of_range_timestamps",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DuelState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DuelStateIxCols {
+    pub acceptor_entity_id: __sdk::__query_builder::IxCol<DuelState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<DuelState, u64>,
+    pub initiator_entity_id: __sdk::__query_builder::IxCol<DuelState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DuelState {
+    type IxCols = DuelStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DuelStateIxCols {
+            acceptor_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "acceptor_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            initiator_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "initiator_entity_id",
+            ),
+        }
+    }
+}

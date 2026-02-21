@@ -146,3 +146,19 @@ impl<'ctx> UserPreviousRegionStateIdentityUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `UserPreviousRegionState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait user_previous_region_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `UserPreviousRegionState`.
+    fn user_previous_region_state(&self) -> __sdk::__query_builder::Table<UserPreviousRegionState>;
+}
+
+impl user_previous_region_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn user_previous_region_state(&self) -> __sdk::__query_builder::Table<UserPreviousRegionState> {
+        __sdk::__query_builder::Table::new("user_previous_region_state")
+    }
+}

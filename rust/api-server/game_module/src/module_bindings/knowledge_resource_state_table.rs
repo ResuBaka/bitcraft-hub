@@ -144,3 +144,19 @@ impl<'ctx> KnowledgeResourceStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `KnowledgeResourceState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait knowledge_resource_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `KnowledgeResourceState`.
+    fn knowledge_resource_state(&self) -> __sdk::__query_builder::Table<KnowledgeResourceState>;
+}
+
+impl knowledge_resource_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn knowledge_resource_state(&self) -> __sdk::__query_builder::Table<KnowledgeResourceState> {
+        __sdk::__query_builder::Table::new("knowledge_resource_state")
+    }
+}

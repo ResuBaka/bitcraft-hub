@@ -142,3 +142,19 @@ impl<'ctx> EnemyDespawnTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnemyDespawnTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait enemy_despawn_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnemyDespawnTimer`.
+    fn enemy_despawn_timer(&self) -> __sdk::__query_builder::Table<EnemyDespawnTimer>;
+}
+
+impl enemy_despawn_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn enemy_despawn_timer(&self) -> __sdk::__query_builder::Table<EnemyDespawnTimer> {
+        __sdk::__query_builder::Table::new("enemy_despawn_timer")
+    }
+}

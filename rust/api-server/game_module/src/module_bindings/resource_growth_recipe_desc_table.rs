@@ -143,3 +143,23 @@ impl<'ctx> ResourceGrowthRecipeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourceGrowthRecipeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resource_growth_recipe_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourceGrowthRecipeDesc`.
+    fn resource_growth_recipe_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<ResourceGrowthRecipeDesc>;
+}
+
+impl resource_growth_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resource_growth_recipe_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<ResourceGrowthRecipeDesc> {
+        __sdk::__query_builder::Table::new("resource_growth_recipe_desc")
+    }
+}

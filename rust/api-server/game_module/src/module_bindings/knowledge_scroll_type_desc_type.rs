@@ -14,3 +14,37 @@ pub struct KnowledgeScrollTypeDesc {
 impl __sdk::InModule for KnowledgeScrollTypeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgeScrollTypeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgeScrollTypeDescCols {
+    pub id: __sdk::__query_builder::Col<KnowledgeScrollTypeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<KnowledgeScrollTypeDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgeScrollTypeDesc {
+    type Cols = KnowledgeScrollTypeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgeScrollTypeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgeScrollTypeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgeScrollTypeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<KnowledgeScrollTypeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgeScrollTypeDesc {
+    type IxCols = KnowledgeScrollTypeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgeScrollTypeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

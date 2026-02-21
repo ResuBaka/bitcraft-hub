@@ -18,3 +18,43 @@ pub struct EndGracePeriodTimer {
 impl __sdk::InModule for EndGracePeriodTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EndGracePeriodTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct EndGracePeriodTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<EndGracePeriodTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<EndGracePeriodTimer, __sdk::ScheduleAt>,
+    pub identity: __sdk::__query_builder::Col<EndGracePeriodTimer, __sdk::Identity>,
+    pub grace_period_type: __sdk::__query_builder::Col<EndGracePeriodTimer, GracePeriodType>,
+}
+
+impl __sdk::__query_builder::HasCols for EndGracePeriodTimer {
+    type Cols = EndGracePeriodTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EndGracePeriodTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+            grace_period_type: __sdk::__query_builder::Col::new(table_name, "grace_period_type"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EndGracePeriodTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EndGracePeriodTimerIxCols {
+    pub identity: __sdk::__query_builder::IxCol<EndGracePeriodTimer, __sdk::Identity>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<EndGracePeriodTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EndGracePeriodTimer {
+    type IxCols = EndGracePeriodTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EndGracePeriodTimerIxCols {
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

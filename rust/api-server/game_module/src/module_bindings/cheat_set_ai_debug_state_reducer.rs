@@ -63,8 +63,8 @@ impl cheat_set_ai_debug_state for super::RemoteReducers {
     fn on_cheat_set_ai_debug_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatSetDebugAiStateRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatSetAiDebugStateCallbackId {
         CheatSetAiDebugStateCallbackId(self.imp.on_reducer(
             "cheat_set_ai_debug_state",

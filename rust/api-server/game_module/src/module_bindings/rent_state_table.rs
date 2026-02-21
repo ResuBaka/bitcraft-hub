@@ -173,3 +173,19 @@ impl<'ctx> RentStateDimensionNetworkIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `RentState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait rent_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `RentState`.
+    fn rent_state(&self) -> __sdk::__query_builder::Table<RentState>;
+}
+
+impl rent_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn rent_state(&self) -> __sdk::__query_builder::Table<RentState> {
+        __sdk::__query_builder::Table::new("rent_state")
+    }
+}

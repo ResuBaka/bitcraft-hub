@@ -18,3 +18,47 @@ pub struct BuildingPortalDesc {
 impl __sdk::InModule for BuildingPortalDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingPortalDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingPortalDescCols {
+    pub id: __sdk::__query_builder::Col<BuildingPortalDesc, i32>,
+    pub name: __sdk::__query_builder::Col<BuildingPortalDesc, String>,
+    pub building_id: __sdk::__query_builder::Col<BuildingPortalDesc, i32>,
+    pub allow_deployables: __sdk::__query_builder::Col<BuildingPortalDesc, bool>,
+    pub pos_x: __sdk::__query_builder::Col<BuildingPortalDesc, i32>,
+    pub pos_z: __sdk::__query_builder::Col<BuildingPortalDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingPortalDesc {
+    type Cols = BuildingPortalDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingPortalDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            allow_deployables: __sdk::__query_builder::Col::new(table_name, "allow_deployables"),
+            pos_x: __sdk::__query_builder::Col::new(table_name, "pos_x"),
+            pos_z: __sdk::__query_builder::Col::new(table_name, "pos_z"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingPortalDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingPortalDescIxCols {
+    pub building_id: __sdk::__query_builder::IxCol<BuildingPortalDesc, i32>,
+    pub id: __sdk::__query_builder::IxCol<BuildingPortalDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingPortalDesc {
+    type IxCols = BuildingPortalDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingPortalDescIxCols {
+            building_id: __sdk::__query_builder::IxCol::new(table_name, "building_id"),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

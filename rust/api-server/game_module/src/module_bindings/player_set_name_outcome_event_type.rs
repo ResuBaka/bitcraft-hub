@@ -15,3 +15,39 @@ pub struct PlayerSetNameOutcomeEvent {
 impl __sdk::InModule for PlayerSetNameOutcomeEvent {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerSetNameOutcomeEvent`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerSetNameOutcomeEventCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PlayerSetNameOutcomeEvent, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PlayerSetNameOutcomeEvent, __sdk::ScheduleAt>,
+    pub player_entity_id: __sdk::__query_builder::Col<PlayerSetNameOutcomeEvent, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerSetNameOutcomeEvent {
+    type Cols = PlayerSetNameOutcomeEventCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerSetNameOutcomeEventCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerSetNameOutcomeEvent`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerSetNameOutcomeEventIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<PlayerSetNameOutcomeEvent, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerSetNameOutcomeEvent {
+    type IxCols = PlayerSetNameOutcomeEventIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerSetNameOutcomeEventIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

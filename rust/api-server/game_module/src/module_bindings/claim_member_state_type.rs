@@ -20,3 +20,59 @@ pub struct ClaimMemberState {
 impl __sdk::InModule for ClaimMemberState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimMemberState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimMemberStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ClaimMemberState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<ClaimMemberState, u64>,
+    pub player_entity_id: __sdk::__query_builder::Col<ClaimMemberState, u64>,
+    pub user_name: __sdk::__query_builder::Col<ClaimMemberState, String>,
+    pub inventory_permission: __sdk::__query_builder::Col<ClaimMemberState, bool>,
+    pub build_permission: __sdk::__query_builder::Col<ClaimMemberState, bool>,
+    pub officer_permission: __sdk::__query_builder::Col<ClaimMemberState, bool>,
+    pub co_owner_permission: __sdk::__query_builder::Col<ClaimMemberState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimMemberState {
+    type Cols = ClaimMemberStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimMemberStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            user_name: __sdk::__query_builder::Col::new(table_name, "user_name"),
+            inventory_permission: __sdk::__query_builder::Col::new(
+                table_name,
+                "inventory_permission",
+            ),
+            build_permission: __sdk::__query_builder::Col::new(table_name, "build_permission"),
+            officer_permission: __sdk::__query_builder::Col::new(table_name, "officer_permission"),
+            co_owner_permission: __sdk::__query_builder::Col::new(
+                table_name,
+                "co_owner_permission",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimMemberState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimMemberStateIxCols {
+    pub claim_entity_id: __sdk::__query_builder::IxCol<ClaimMemberState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<ClaimMemberState, u64>,
+    pub player_entity_id: __sdk::__query_builder::IxCol<ClaimMemberState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimMemberState {
+    type IxCols = ClaimMemberStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimMemberStateIxCols {
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::IxCol::new(table_name, "player_entity_id"),
+        }
+    }
+}

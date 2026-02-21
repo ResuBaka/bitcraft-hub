@@ -15,3 +15,39 @@ pub struct RegionConnectionInfo {
 impl __sdk::InModule for RegionConnectionInfo {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RegionConnectionInfo`.
+///
+/// Provides typed access to columns for query building.
+pub struct RegionConnectionInfoCols {
+    pub id: __sdk::__query_builder::Col<RegionConnectionInfo, u8>,
+    pub host: __sdk::__query_builder::Col<RegionConnectionInfo, String>,
+    pub module: __sdk::__query_builder::Col<RegionConnectionInfo, String>,
+}
+
+impl __sdk::__query_builder::HasCols for RegionConnectionInfo {
+    type Cols = RegionConnectionInfoCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RegionConnectionInfoCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            host: __sdk::__query_builder::Col::new(table_name, "host"),
+            module: __sdk::__query_builder::Col::new(table_name, "module"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RegionConnectionInfo`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RegionConnectionInfoIxCols {
+    pub id: __sdk::__query_builder::IxCol<RegionConnectionInfo, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RegionConnectionInfo {
+    type IxCols = RegionConnectionInfoIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RegionConnectionInfoIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

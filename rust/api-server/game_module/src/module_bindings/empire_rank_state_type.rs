@@ -17,3 +17,47 @@ pub struct EmpireRankState {
 impl __sdk::InModule for EmpireRankState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireRankState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireRankStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EmpireRankState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::Col<EmpireRankState, u64>,
+    pub rank: __sdk::__query_builder::Col<EmpireRankState, u8>,
+    pub title: __sdk::__query_builder::Col<EmpireRankState, String>,
+    pub permissions: __sdk::__query_builder::Col<EmpireRankState, Vec<bool>>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireRankState {
+    type Cols = EmpireRankStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireRankStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            empire_entity_id: __sdk::__query_builder::Col::new(table_name, "empire_entity_id"),
+            rank: __sdk::__query_builder::Col::new(table_name, "rank"),
+            title: __sdk::__query_builder::Col::new(table_name, "title"),
+            permissions: __sdk::__query_builder::Col::new(table_name, "permissions"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireRankState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireRankStateIxCols {
+    pub empire_entity_id: __sdk::__query_builder::IxCol<EmpireRankState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<EmpireRankState, u64>,
+    pub rank: __sdk::__query_builder::IxCol<EmpireRankState, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireRankState {
+    type IxCols = EmpireRankStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireRankStateIxCols {
+            empire_entity_id: __sdk::__query_builder::IxCol::new(table_name, "empire_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            rank: __sdk::__query_builder::IxCol::new(table_name, "rank"),
+        }
+    }
+}

@@ -144,3 +144,19 @@ impl<'ctx> StagedCollectibleDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CollectibleDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_collectible_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CollectibleDesc`.
+    fn staged_collectible_desc(&self) -> __sdk::__query_builder::Table<CollectibleDesc>;
+}
+
+impl staged_collectible_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_collectible_desc(&self) -> __sdk::__query_builder::Table<CollectibleDesc> {
+        __sdk::__query_builder::Table::new("staged_collectible_desc")
+    }
+}

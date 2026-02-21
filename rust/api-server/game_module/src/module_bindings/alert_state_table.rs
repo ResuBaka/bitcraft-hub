@@ -141,3 +141,19 @@ impl<'ctx> AlertStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AlertState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait alert_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AlertState`.
+    fn alert_state(&self) -> __sdk::__query_builder::Table<AlertState>;
+}
+
+impl alert_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn alert_state(&self) -> __sdk::__query_builder::Table<AlertState> {
+        __sdk::__query_builder::Table::new("alert_state")
+    }
+}

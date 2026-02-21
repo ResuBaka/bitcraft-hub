@@ -16,3 +16,47 @@ pub struct WallDesc {
 impl __sdk::InModule for WallDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WallDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct WallDescCols {
+    pub building_id: __sdk::__query_builder::Col<WallDesc, i32>,
+    pub large_post_asset_name: __sdk::__query_builder::Col<WallDesc, String>,
+    pub small_post_asset_name: __sdk::__query_builder::Col<WallDesc, String>,
+    pub wall_asset_names: __sdk::__query_builder::Col<WallDesc, Vec<String>>,
+}
+
+impl __sdk::__query_builder::HasCols for WallDesc {
+    type Cols = WallDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WallDescCols {
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            large_post_asset_name: __sdk::__query_builder::Col::new(
+                table_name,
+                "large_post_asset_name",
+            ),
+            small_post_asset_name: __sdk::__query_builder::Col::new(
+                table_name,
+                "small_post_asset_name",
+            ),
+            wall_asset_names: __sdk::__query_builder::Col::new(table_name, "wall_asset_names"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WallDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WallDescIxCols {
+    pub building_id: __sdk::__query_builder::IxCol<WallDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WallDesc {
+    type IxCols = WallDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WallDescIxCols {
+            building_id: __sdk::__query_builder::IxCol::new(table_name, "building_id"),
+        }
+    }
+}

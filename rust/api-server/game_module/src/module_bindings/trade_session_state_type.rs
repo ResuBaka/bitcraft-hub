@@ -23,3 +23,62 @@ pub struct TradeSessionState {
 impl __sdk::InModule for TradeSessionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TradeSessionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct TradeSessionStateCols {
+    pub entity_id: __sdk::__query_builder::Col<TradeSessionState, u64>,
+    pub status: __sdk::__query_builder::Col<TradeSessionState, TradeSessionStatus>,
+    pub initiator_entity_id: __sdk::__query_builder::Col<TradeSessionState, u64>,
+    pub acceptor_entity_id: __sdk::__query_builder::Col<TradeSessionState, u64>,
+    pub initiator_offer: __sdk::__query_builder::Col<TradeSessionState, Vec<TradePocket>>,
+    pub acceptor_offer: __sdk::__query_builder::Col<TradeSessionState, Vec<TradePocket>>,
+    pub updated_at: __sdk::__query_builder::Col<TradeSessionState, __sdk::Timestamp>,
+    pub resolution_message: __sdk::__query_builder::Col<TradeSessionState, String>,
+}
+
+impl __sdk::__query_builder::HasCols for TradeSessionState {
+    type Cols = TradeSessionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TradeSessionStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            status: __sdk::__query_builder::Col::new(table_name, "status"),
+            initiator_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "initiator_entity_id",
+            ),
+            acceptor_entity_id: __sdk::__query_builder::Col::new(table_name, "acceptor_entity_id"),
+            initiator_offer: __sdk::__query_builder::Col::new(table_name, "initiator_offer"),
+            acceptor_offer: __sdk::__query_builder::Col::new(table_name, "acceptor_offer"),
+            updated_at: __sdk::__query_builder::Col::new(table_name, "updated_at"),
+            resolution_message: __sdk::__query_builder::Col::new(table_name, "resolution_message"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TradeSessionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TradeSessionStateIxCols {
+    pub acceptor_entity_id: __sdk::__query_builder::IxCol<TradeSessionState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<TradeSessionState, u64>,
+    pub initiator_entity_id: __sdk::__query_builder::IxCol<TradeSessionState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TradeSessionState {
+    type IxCols = TradeSessionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TradeSessionStateIxCols {
+            acceptor_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "acceptor_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            initiator_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "initiator_entity_id",
+            ),
+        }
+    }
+}

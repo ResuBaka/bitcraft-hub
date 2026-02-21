@@ -14,3 +14,37 @@ pub struct LootRarityDesc {
 impl __sdk::InModule for LootRarityDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LootRarityDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct LootRarityDescCols {
+    pub id: __sdk::__query_builder::Col<LootRarityDesc, i32>,
+    pub name: __sdk::__query_builder::Col<LootRarityDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for LootRarityDesc {
+    type Cols = LootRarityDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LootRarityDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LootRarityDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LootRarityDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<LootRarityDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LootRarityDesc {
+    type IxCols = LootRarityDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LootRarityDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

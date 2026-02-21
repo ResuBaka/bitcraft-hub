@@ -14,3 +14,37 @@ pub struct TravelerTaskLoopTimer {
 impl __sdk::InModule for TravelerTaskLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TravelerTaskLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct TravelerTaskLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<TravelerTaskLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<TravelerTaskLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for TravelerTaskLoopTimer {
+    type Cols = TravelerTaskLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TravelerTaskLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TravelerTaskLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TravelerTaskLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<TravelerTaskLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TravelerTaskLoopTimer {
+    type IxCols = TravelerTaskLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TravelerTaskLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

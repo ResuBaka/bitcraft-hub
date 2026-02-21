@@ -14,3 +14,40 @@ pub struct PlayerHousingMovingCostState {
 impl __sdk::InModule for PlayerHousingMovingCostState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerHousingMovingCostState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerHousingMovingCostStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerHousingMovingCostState, u64>,
+    pub moving_time_cost_minutes: __sdk::__query_builder::Col<PlayerHousingMovingCostState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerHousingMovingCostState {
+    type Cols = PlayerHousingMovingCostStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerHousingMovingCostStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            moving_time_cost_minutes: __sdk::__query_builder::Col::new(
+                table_name,
+                "moving_time_cost_minutes",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerHousingMovingCostState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerHousingMovingCostStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerHousingMovingCostState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerHousingMovingCostState {
+    type IxCols = PlayerHousingMovingCostStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerHousingMovingCostStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -63,8 +63,8 @@ impl import_interior_network_desc for super::RemoteReducers {
     fn on_import_interior_network_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorNetworkDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportInteriorNetworkDescCallbackId {
         ImportInteriorNetworkDescCallbackId(self.imp.on_reducer(
             "import_interior_network_desc",

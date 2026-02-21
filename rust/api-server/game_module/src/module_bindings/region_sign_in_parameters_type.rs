@@ -18,3 +18,57 @@ pub struct RegionSignInParameters {
 impl __sdk::InModule for RegionSignInParameters {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RegionSignInParameters`.
+///
+/// Provides typed access to columns for query building.
+pub struct RegionSignInParametersCols {
+    pub region_id: __sdk::__query_builder::Col<RegionSignInParameters, u8>,
+    pub is_signing_in_blocked: __sdk::__query_builder::Col<RegionSignInParameters, bool>,
+    pub max_signed_in_players: __sdk::__query_builder::Col<RegionSignInParameters, u64>,
+    pub max_queue_length: __sdk::__query_builder::Col<RegionSignInParameters, u64>,
+    pub queue_length_tolerance: __sdk::__query_builder::Col<RegionSignInParameters, u32>,
+    pub grace_period_seconds: __sdk::__query_builder::Col<RegionSignInParameters, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for RegionSignInParameters {
+    type Cols = RegionSignInParametersCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RegionSignInParametersCols {
+            region_id: __sdk::__query_builder::Col::new(table_name, "region_id"),
+            is_signing_in_blocked: __sdk::__query_builder::Col::new(
+                table_name,
+                "is_signing_in_blocked",
+            ),
+            max_signed_in_players: __sdk::__query_builder::Col::new(
+                table_name,
+                "max_signed_in_players",
+            ),
+            max_queue_length: __sdk::__query_builder::Col::new(table_name, "max_queue_length"),
+            queue_length_tolerance: __sdk::__query_builder::Col::new(
+                table_name,
+                "queue_length_tolerance",
+            ),
+            grace_period_seconds: __sdk::__query_builder::Col::new(
+                table_name,
+                "grace_period_seconds",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RegionSignInParameters`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RegionSignInParametersIxCols {
+    pub region_id: __sdk::__query_builder::IxCol<RegionSignInParameters, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RegionSignInParameters {
+    type IxCols = RegionSignInParametersIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RegionSignInParametersIxCols {
+            region_id: __sdk::__query_builder::IxCol::new(table_name, "region_id"),
+        }
+    }
+}

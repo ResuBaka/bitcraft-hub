@@ -17,3 +17,56 @@ pub struct BuildingState {
 impl __sdk::InModule for BuildingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<BuildingState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<BuildingState, u64>,
+    pub direction_index: __sdk::__query_builder::Col<BuildingState, i32>,
+    pub building_description_id: __sdk::__query_builder::Col<BuildingState, i32>,
+    pub constructed_by_player_entity_id: __sdk::__query_builder::Col<BuildingState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingState {
+    type Cols = BuildingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            direction_index: __sdk::__query_builder::Col::new(table_name, "direction_index"),
+            building_description_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "building_description_id",
+            ),
+            constructed_by_player_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "constructed_by_player_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingStateIxCols {
+    pub building_description_id: __sdk::__query_builder::IxCol<BuildingState, i32>,
+    pub claim_entity_id: __sdk::__query_builder::IxCol<BuildingState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<BuildingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingState {
+    type IxCols = BuildingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingStateIxCols {
+            building_description_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_description_id",
+            ),
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

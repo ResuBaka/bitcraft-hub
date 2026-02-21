@@ -20,3 +20,55 @@ pub struct WorldRegionState {
 impl __sdk::InModule for WorldRegionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WorldRegionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct WorldRegionStateCols {
+    pub id: __sdk::__query_builder::Col<WorldRegionState, u8>,
+    pub region_min_chunk_x: __sdk::__query_builder::Col<WorldRegionState, u16>,
+    pub region_min_chunk_z: __sdk::__query_builder::Col<WorldRegionState, u16>,
+    pub region_width_chunks: __sdk::__query_builder::Col<WorldRegionState, u16>,
+    pub region_height_chunks: __sdk::__query_builder::Col<WorldRegionState, u16>,
+    pub region_index: __sdk::__query_builder::Col<WorldRegionState, u8>,
+    pub region_count: __sdk::__query_builder::Col<WorldRegionState, u8>,
+    pub region_count_sqrt: __sdk::__query_builder::Col<WorldRegionState, u8>,
+}
+
+impl __sdk::__query_builder::HasCols for WorldRegionState {
+    type Cols = WorldRegionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WorldRegionStateCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            region_min_chunk_x: __sdk::__query_builder::Col::new(table_name, "region_min_chunk_x"),
+            region_min_chunk_z: __sdk::__query_builder::Col::new(table_name, "region_min_chunk_z"),
+            region_width_chunks: __sdk::__query_builder::Col::new(
+                table_name,
+                "region_width_chunks",
+            ),
+            region_height_chunks: __sdk::__query_builder::Col::new(
+                table_name,
+                "region_height_chunks",
+            ),
+            region_index: __sdk::__query_builder::Col::new(table_name, "region_index"),
+            region_count: __sdk::__query_builder::Col::new(table_name, "region_count"),
+            region_count_sqrt: __sdk::__query_builder::Col::new(table_name, "region_count_sqrt"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WorldRegionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WorldRegionStateIxCols {
+    pub id: __sdk::__query_builder::IxCol<WorldRegionState, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WorldRegionState {
+    type IxCols = WorldRegionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WorldRegionStateIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

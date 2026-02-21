@@ -16,3 +16,37 @@ pub struct OnboardingRewardDesc {
 impl __sdk::InModule for OnboardingRewardDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `OnboardingRewardDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct OnboardingRewardDescCols {
+    pub state_id: __sdk::__query_builder::Col<OnboardingRewardDesc, u16>,
+    pub item_stack_rewards: __sdk::__query_builder::Col<OnboardingRewardDesc, Vec<ItemStack>>,
+}
+
+impl __sdk::__query_builder::HasCols for OnboardingRewardDesc {
+    type Cols = OnboardingRewardDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        OnboardingRewardDescCols {
+            state_id: __sdk::__query_builder::Col::new(table_name, "state_id"),
+            item_stack_rewards: __sdk::__query_builder::Col::new(table_name, "item_stack_rewards"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `OnboardingRewardDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct OnboardingRewardDescIxCols {
+    pub state_id: __sdk::__query_builder::IxCol<OnboardingRewardDesc, u16>,
+}
+
+impl __sdk::__query_builder::HasIxCols for OnboardingRewardDesc {
+    type IxCols = OnboardingRewardDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        OnboardingRewardDescIxCols {
+            state_id: __sdk::__query_builder::IxCol::new(table_name, "state_id"),
+        }
+    }
+}

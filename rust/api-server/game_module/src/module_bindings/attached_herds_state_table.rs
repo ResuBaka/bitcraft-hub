@@ -142,3 +142,19 @@ impl<'ctx> AttachedHerdsStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AttachedHerdsState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait attached_herds_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AttachedHerdsState`.
+    fn attached_herds_state(&self) -> __sdk::__query_builder::Table<AttachedHerdsState>;
+}
+
+impl attached_herds_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn attached_herds_state(&self) -> __sdk::__query_builder::Table<AttachedHerdsState> {
+        __sdk::__query_builder::Table::new("attached_herds_state")
+    }
+}

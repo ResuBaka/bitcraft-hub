@@ -140,3 +140,19 @@ impl<'ctx> HerdStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `HerdState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait herd_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `HerdState`.
+    fn herd_state(&self) -> __sdk::__query_builder::Table<HerdState>;
+}
+
+impl herd_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn herd_state(&self) -> __sdk::__query_builder::Table<HerdState> {
+        __sdk::__query_builder::Table::new("herd_state")
+    }
+}

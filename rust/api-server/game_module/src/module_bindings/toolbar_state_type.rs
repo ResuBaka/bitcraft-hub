@@ -16,3 +16,43 @@ pub struct ToolbarState {
 impl __sdk::InModule for ToolbarState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ToolbarState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ToolbarStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ToolbarState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<ToolbarState, u64>,
+    pub index: __sdk::__query_builder::Col<ToolbarState, u8>,
+    pub actions: __sdk::__query_builder::Col<ToolbarState, Vec<u64>>,
+}
+
+impl __sdk::__query_builder::HasCols for ToolbarState {
+    type Cols = ToolbarStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ToolbarStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            index: __sdk::__query_builder::Col::new(table_name, "index"),
+            actions: __sdk::__query_builder::Col::new(table_name, "actions"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ToolbarState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ToolbarStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ToolbarState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<ToolbarState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ToolbarState {
+    type IxCols = ToolbarStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ToolbarStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

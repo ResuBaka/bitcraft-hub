@@ -15,3 +15,39 @@ pub struct PlayerHousingIncomeLoopTimer {
 impl __sdk::InModule for PlayerHousingIncomeLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerHousingIncomeLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerHousingIncomeLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PlayerHousingIncomeLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PlayerHousingIncomeLoopTimer, __sdk::ScheduleAt>,
+    pub first_tick: __sdk::__query_builder::Col<PlayerHousingIncomeLoopTimer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerHousingIncomeLoopTimer {
+    type Cols = PlayerHousingIncomeLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerHousingIncomeLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            first_tick: __sdk::__query_builder::Col::new(table_name, "first_tick"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerHousingIncomeLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerHousingIncomeLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<PlayerHousingIncomeLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerHousingIncomeLoopTimer {
+    type IxCols = PlayerHousingIncomeLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerHousingIncomeLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

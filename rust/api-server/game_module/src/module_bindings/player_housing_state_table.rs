@@ -173,3 +173,19 @@ impl<'ctx> PlayerHousingStateNetworkEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerHousingState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_housing_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerHousingState`.
+    fn player_housing_state(&self) -> __sdk::__query_builder::Table<PlayerHousingState>;
+}
+
+impl player_housing_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_housing_state(&self) -> __sdk::__query_builder::Table<PlayerHousingState> {
+        __sdk::__query_builder::Table::new("player_housing_state")
+    }
+}

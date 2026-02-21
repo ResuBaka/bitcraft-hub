@@ -173,3 +173,19 @@ impl<'ctx> PlayerUsernameStateUsernameUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerUsernameState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_username_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerUsernameState`.
+    fn player_username_state(&self) -> __sdk::__query_builder::Table<PlayerUsernameState>;
+}
+
+impl player_username_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_username_state(&self) -> __sdk::__query_builder::Table<PlayerUsernameState> {
+        __sdk::__query_builder::Table::new("player_username_state")
+    }
+}

@@ -14,3 +14,37 @@ pub struct AttachedHerdsState {
 impl __sdk::InModule for AttachedHerdsState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AttachedHerdsState`.
+///
+/// Provides typed access to columns for query building.
+pub struct AttachedHerdsStateCols {
+    pub entity_id: __sdk::__query_builder::Col<AttachedHerdsState, u64>,
+    pub herds_entity_ids: __sdk::__query_builder::Col<AttachedHerdsState, Vec<u64>>,
+}
+
+impl __sdk::__query_builder::HasCols for AttachedHerdsState {
+    type Cols = AttachedHerdsStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AttachedHerdsStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            herds_entity_ids: __sdk::__query_builder::Col::new(table_name, "herds_entity_ids"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AttachedHerdsState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AttachedHerdsStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<AttachedHerdsState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AttachedHerdsState {
+    type IxCols = AttachedHerdsStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AttachedHerdsStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

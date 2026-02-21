@@ -47,8 +47,8 @@ pub trait collectible_activate {
     fn on_collectible_activate(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerCollectibleActivateRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CollectibleActivateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_collectible_activate`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl collectible_activate for super::RemoteReducers {
     fn on_collectible_activate(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCollectibleActivateRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CollectibleActivateCallbackId {
         CollectibleActivateCallbackId(self.imp.on_reducer(
             "collectible_activate",

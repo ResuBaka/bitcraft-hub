@@ -14,3 +14,41 @@ pub struct ClaimLocalSupplySecurityThresholdState {
 impl __sdk::InModule for ClaimLocalSupplySecurityThresholdState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimLocalSupplySecurityThresholdState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimLocalSupplySecurityThresholdStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ClaimLocalSupplySecurityThresholdState, u64>,
+    pub supply_security_threshold_hours:
+        __sdk::__query_builder::Col<ClaimLocalSupplySecurityThresholdState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimLocalSupplySecurityThresholdState {
+    type Cols = ClaimLocalSupplySecurityThresholdStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimLocalSupplySecurityThresholdStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            supply_security_threshold_hours: __sdk::__query_builder::Col::new(
+                table_name,
+                "supply_security_threshold_hours",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimLocalSupplySecurityThresholdState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimLocalSupplySecurityThresholdStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ClaimLocalSupplySecurityThresholdState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimLocalSupplySecurityThresholdState {
+    type IxCols = ClaimLocalSupplySecurityThresholdStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimLocalSupplySecurityThresholdStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -142,3 +142,19 @@ impl<'ctx> StagedEmpireIconDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EmpireIconDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_empire_icon_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EmpireIconDesc`.
+    fn staged_empire_icon_desc(&self) -> __sdk::__query_builder::Table<EmpireIconDesc>;
+}
+
+impl staged_empire_icon_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_empire_icon_desc(&self) -> __sdk::__query_builder::Table<EmpireIconDesc> {
+        __sdk::__query_builder::Table::new("staged_empire_icon_desc")
+    }
+}

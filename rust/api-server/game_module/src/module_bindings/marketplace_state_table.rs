@@ -141,3 +141,19 @@ impl<'ctx> MarketplaceStateBuildingEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `MarketplaceState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait marketplace_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `MarketplaceState`.
+    fn marketplace_state(&self) -> __sdk::__query_builder::Table<MarketplaceState>;
+}
+
+impl marketplace_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn marketplace_state(&self) -> __sdk::__query_builder::Table<MarketplaceState> {
+        __sdk::__query_builder::Table::new("marketplace_state")
+    }
+}

@@ -19,3 +19,49 @@ pub struct OnDurabilityZeroTimer {
 impl __sdk::InModule for OnDurabilityZeroTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `OnDurabilityZeroTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct OnDurabilityZeroTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<OnDurabilityZeroTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<OnDurabilityZeroTimer, __sdk::ScheduleAt>,
+    pub player_entity_id: __sdk::__query_builder::Col<OnDurabilityZeroTimer, u64>,
+    pub broken_item_id: __sdk::__query_builder::Col<OnDurabilityZeroTimer, i32>,
+    pub convert_into: __sdk::__query_builder::Col<OnDurabilityZeroTimer, i32>,
+    pub still_equipped: __sdk::__query_builder::Col<OnDurabilityZeroTimer, bool>,
+    pub added_to_inventory: __sdk::__query_builder::Col<OnDurabilityZeroTimer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for OnDurabilityZeroTimer {
+    type Cols = OnDurabilityZeroTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        OnDurabilityZeroTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            broken_item_id: __sdk::__query_builder::Col::new(table_name, "broken_item_id"),
+            convert_into: __sdk::__query_builder::Col::new(table_name, "convert_into"),
+            still_equipped: __sdk::__query_builder::Col::new(table_name, "still_equipped"),
+            added_to_inventory: __sdk::__query_builder::Col::new(table_name, "added_to_inventory"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `OnDurabilityZeroTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct OnDurabilityZeroTimerIxCols {
+    pub player_entity_id: __sdk::__query_builder::IxCol<OnDurabilityZeroTimer, u64>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<OnDurabilityZeroTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for OnDurabilityZeroTimer {
+    type IxCols = OnDurabilityZeroTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        OnDurabilityZeroTimerIxCols {
+            player_entity_id: __sdk::__query_builder::IxCol::new(table_name, "player_entity_id"),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

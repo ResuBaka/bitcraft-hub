@@ -140,3 +140,19 @@ impl<'ctx> PermissionStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PermissionState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait permission_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PermissionState`.
+    fn permission_state(&self) -> __sdk::__query_builder::Table<PermissionState>;
+}
+
+impl permission_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn permission_state(&self) -> __sdk::__query_builder::Table<PermissionState> {
+        __sdk::__query_builder::Table::new("permission_state")
+    }
+}

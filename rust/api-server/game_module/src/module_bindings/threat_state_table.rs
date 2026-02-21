@@ -140,3 +140,19 @@ impl<'ctx> ThreatStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ThreatState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait threat_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ThreatState`.
+    fn threat_state(&self) -> __sdk::__query_builder::Table<ThreatState>;
+}
+
+impl threat_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn threat_state(&self) -> __sdk::__query_builder::Table<ThreatState> {
+        __sdk::__query_builder::Table::new("threat_state")
+    }
+}

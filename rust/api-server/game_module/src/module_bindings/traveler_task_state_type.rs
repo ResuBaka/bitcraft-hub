@@ -17,3 +17,45 @@ pub struct TravelerTaskState {
 impl __sdk::InModule for TravelerTaskState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TravelerTaskState`.
+///
+/// Provides typed access to columns for query building.
+pub struct TravelerTaskStateCols {
+    pub entity_id: __sdk::__query_builder::Col<TravelerTaskState, u64>,
+    pub player_entity_id: __sdk::__query_builder::Col<TravelerTaskState, u64>,
+    pub traveler_id: __sdk::__query_builder::Col<TravelerTaskState, i32>,
+    pub task_id: __sdk::__query_builder::Col<TravelerTaskState, i32>,
+    pub completed: __sdk::__query_builder::Col<TravelerTaskState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for TravelerTaskState {
+    type Cols = TravelerTaskStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TravelerTaskStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            traveler_id: __sdk::__query_builder::Col::new(table_name, "traveler_id"),
+            task_id: __sdk::__query_builder::Col::new(table_name, "task_id"),
+            completed: __sdk::__query_builder::Col::new(table_name, "completed"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TravelerTaskState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TravelerTaskStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<TravelerTaskState, u64>,
+    pub player_entity_id: __sdk::__query_builder::IxCol<TravelerTaskState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TravelerTaskState {
+    type IxCols = TravelerTaskStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TravelerTaskStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::IxCol::new(table_name, "player_entity_id"),
+        }
+    }
+}

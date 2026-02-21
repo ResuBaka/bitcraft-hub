@@ -143,3 +143,19 @@ impl<'ctx> ExplorationChunksStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ExplorationChunksState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait exploration_chunks_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ExplorationChunksState`.
+    fn exploration_chunks_state(&self) -> __sdk::__query_builder::Table<ExplorationChunksState>;
+}
+
+impl exploration_chunks_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn exploration_chunks_state(&self) -> __sdk::__query_builder::Table<ExplorationChunksState> {
+        __sdk::__query_builder::Table::new("exploration_chunks_state")
+    }
+}

@@ -21,3 +21,53 @@ pub struct EmpireNodeState {
 impl __sdk::InModule for EmpireNodeState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireNodeState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireNodeStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EmpireNodeState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::Col<EmpireNodeState, u64>,
+    pub chunk_index: __sdk::__query_builder::Col<EmpireNodeState, u64>,
+    pub energy: __sdk::__query_builder::Col<EmpireNodeState, i32>,
+    pub active: __sdk::__query_builder::Col<EmpireNodeState, bool>,
+    pub upkeep: __sdk::__query_builder::Col<EmpireNodeState, i32>,
+    pub location: __sdk::__query_builder::Col<EmpireNodeState, OffsetCoordinatesSmallMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireNodeState {
+    type Cols = EmpireNodeStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireNodeStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            empire_entity_id: __sdk::__query_builder::Col::new(table_name, "empire_entity_id"),
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            energy: __sdk::__query_builder::Col::new(table_name, "energy"),
+            active: __sdk::__query_builder::Col::new(table_name, "active"),
+            upkeep: __sdk::__query_builder::Col::new(table_name, "upkeep"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireNodeState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireNodeStateIxCols {
+    pub active: __sdk::__query_builder::IxCol<EmpireNodeState, bool>,
+    pub chunk_index: __sdk::__query_builder::IxCol<EmpireNodeState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::IxCol<EmpireNodeState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<EmpireNodeState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireNodeState {
+    type IxCols = EmpireNodeStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireNodeStateIxCols {
+            active: __sdk::__query_builder::IxCol::new(table_name, "active"),
+            chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+            empire_entity_id: __sdk::__query_builder::IxCol::new(table_name, "empire_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

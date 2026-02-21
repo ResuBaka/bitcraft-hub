@@ -142,3 +142,19 @@ impl<'ctx> GlobalSearchStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `GlobalSearchState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait global_search_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `GlobalSearchState`.
+    fn global_search_state(&self) -> __sdk::__query_builder::Table<GlobalSearchState>;
+}
+
+impl global_search_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn global_search_state(&self) -> __sdk::__query_builder::Table<GlobalSearchState> {
+        __sdk::__query_builder::Table::new("global_search_state")
+    }
+}

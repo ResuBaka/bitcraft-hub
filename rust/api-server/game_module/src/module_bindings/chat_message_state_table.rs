@@ -140,3 +140,19 @@ impl<'ctx> ChatMessageStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ChatMessageState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait chat_message_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ChatMessageState`.
+    fn chat_message_state(&self) -> __sdk::__query_builder::Table<ChatMessageState>;
+}
+
+impl chat_message_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn chat_message_state(&self) -> __sdk::__query_builder::Table<ChatMessageState> {
+        __sdk::__query_builder::Table::new("chat_message_state")
+    }
+}

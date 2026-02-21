@@ -47,8 +47,8 @@ pub trait retrieve_lost_item {
     fn on_retrieve_lost_item(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerRetrieveLostItemRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> RetrieveLostItemCallbackId;
     /// Cancel a callback previously registered by [`Self::on_retrieve_lost_item`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl retrieve_lost_item for super::RemoteReducers {
     fn on_retrieve_lost_item(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerRetrieveLostItemRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> RetrieveLostItemCallbackId {
         RetrieveLostItemCallbackId(self.imp.on_reducer(
             "retrieve_lost_item",

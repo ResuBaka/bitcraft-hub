@@ -28,3 +28,67 @@ pub struct ItemDesc {
 impl __sdk::InModule for ItemDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ItemDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ItemDescCols {
+    pub id: __sdk::__query_builder::Col<ItemDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ItemDesc, String>,
+    pub description: __sdk::__query_builder::Col<ItemDesc, String>,
+    pub volume: __sdk::__query_builder::Col<ItemDesc, i32>,
+    pub durability: __sdk::__query_builder::Col<ItemDesc, i32>,
+    pub convert_to_on_durability_zero: __sdk::__query_builder::Col<ItemDesc, i32>,
+    pub secondary_knowledge_id: __sdk::__query_builder::Col<ItemDesc, i32>,
+    pub model_asset_name: __sdk::__query_builder::Col<ItemDesc, String>,
+    pub icon_asset_name: __sdk::__query_builder::Col<ItemDesc, String>,
+    pub tier: __sdk::__query_builder::Col<ItemDesc, i32>,
+    pub tag: __sdk::__query_builder::Col<ItemDesc, String>,
+    pub rarity: __sdk::__query_builder::Col<ItemDesc, Rarity>,
+    pub compendium_entry: __sdk::__query_builder::Col<ItemDesc, bool>,
+    pub item_list_id: __sdk::__query_builder::Col<ItemDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ItemDesc {
+    type Cols = ItemDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ItemDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            volume: __sdk::__query_builder::Col::new(table_name, "volume"),
+            durability: __sdk::__query_builder::Col::new(table_name, "durability"),
+            convert_to_on_durability_zero: __sdk::__query_builder::Col::new(
+                table_name,
+                "convert_to_on_durability_zero",
+            ),
+            secondary_knowledge_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "secondary_knowledge_id",
+            ),
+            model_asset_name: __sdk::__query_builder::Col::new(table_name, "model_asset_name"),
+            icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            tag: __sdk::__query_builder::Col::new(table_name, "tag"),
+            rarity: __sdk::__query_builder::Col::new(table_name, "rarity"),
+            compendium_entry: __sdk::__query_builder::Col::new(table_name, "compendium_entry"),
+            item_list_id: __sdk::__query_builder::Col::new(table_name, "item_list_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ItemDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ItemDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ItemDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ItemDesc {
+    type IxCols = ItemDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ItemDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

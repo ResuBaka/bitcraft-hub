@@ -19,3 +19,44 @@ pub struct EmpireNotificationDesc {
 impl __sdk::InModule for EmpireNotificationDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireNotificationDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireNotificationDescCols {
+    pub id: __sdk::__query_builder::Col<EmpireNotificationDesc, i32>,
+    pub notification_type:
+        __sdk::__query_builder::Col<EmpireNotificationDesc, EmpireNotificationType>,
+    pub priority: __sdk::__query_builder::Col<EmpireNotificationDesc, i32>,
+    pub show_on_login: __sdk::__query_builder::Col<EmpireNotificationDesc, bool>,
+    pub text: __sdk::__query_builder::Col<EmpireNotificationDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireNotificationDesc {
+    type Cols = EmpireNotificationDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireNotificationDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            notification_type: __sdk::__query_builder::Col::new(table_name, "notification_type"),
+            priority: __sdk::__query_builder::Col::new(table_name, "priority"),
+            show_on_login: __sdk::__query_builder::Col::new(table_name, "show_on_login"),
+            text: __sdk::__query_builder::Col::new(table_name, "text"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireNotificationDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireNotificationDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<EmpireNotificationDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireNotificationDesc {
+    type IxCols = EmpireNotificationDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireNotificationDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

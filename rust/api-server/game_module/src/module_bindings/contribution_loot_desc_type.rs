@@ -16,3 +16,46 @@ pub struct ContributionLootDesc {
 impl __sdk::InModule for ContributionLootDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ContributionLootDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ContributionLootDescCols {
+    pub id: __sdk::__query_builder::Col<ContributionLootDesc, i32>,
+    pub enemy_type_id: __sdk::__query_builder::Col<ContributionLootDesc, i32>,
+    pub item_list_id: __sdk::__query_builder::Col<ContributionLootDesc, i32>,
+    pub minimum_contribution: __sdk::__query_builder::Col<ContributionLootDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ContributionLootDesc {
+    type Cols = ContributionLootDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ContributionLootDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            enemy_type_id: __sdk::__query_builder::Col::new(table_name, "enemy_type_id"),
+            item_list_id: __sdk::__query_builder::Col::new(table_name, "item_list_id"),
+            minimum_contribution: __sdk::__query_builder::Col::new(
+                table_name,
+                "minimum_contribution",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ContributionLootDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ContributionLootDescIxCols {
+    pub enemy_type_id: __sdk::__query_builder::IxCol<ContributionLootDesc, i32>,
+    pub id: __sdk::__query_builder::IxCol<ContributionLootDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ContributionLootDesc {
+    type IxCols = ContributionLootDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ContributionLootDescIxCols {
+            enemy_type_id: __sdk::__query_builder::IxCol::new(table_name, "enemy_type_id"),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

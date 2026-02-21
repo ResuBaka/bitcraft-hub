@@ -141,3 +141,19 @@ impl<'ctx> FoodDescItemIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `FoodDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait food_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `FoodDesc`.
+    fn food_desc(&self) -> __sdk::__query_builder::Table<FoodDesc>;
+}
+
+impl food_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn food_desc(&self) -> __sdk::__query_builder::Table<FoodDesc> {
+        __sdk::__query_builder::Table::new("food_desc")
+    }
+}

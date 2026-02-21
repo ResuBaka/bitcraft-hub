@@ -15,3 +15,39 @@ pub struct CollectStatsTimer {
 impl __sdk::InModule for CollectStatsTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CollectStatsTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct CollectStatsTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<CollectStatsTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<CollectStatsTimer, __sdk::ScheduleAt>,
+    pub entity_id: __sdk::__query_builder::Col<CollectStatsTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for CollectStatsTimer {
+    type Cols = CollectStatsTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CollectStatsTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CollectStatsTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CollectStatsTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<CollectStatsTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CollectStatsTimer {
+    type IxCols = CollectStatsTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CollectStatsTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

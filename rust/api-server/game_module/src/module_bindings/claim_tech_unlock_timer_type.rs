@@ -16,3 +16,41 @@ pub struct ClaimTechUnlockTimer {
 impl __sdk::InModule for ClaimTechUnlockTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimTechUnlockTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimTechUnlockTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<ClaimTechUnlockTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<ClaimTechUnlockTimer, __sdk::ScheduleAt>,
+    pub claim_entity_id: __sdk::__query_builder::Col<ClaimTechUnlockTimer, u64>,
+    pub tech_id: __sdk::__query_builder::Col<ClaimTechUnlockTimer, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimTechUnlockTimer {
+    type Cols = ClaimTechUnlockTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimTechUnlockTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            tech_id: __sdk::__query_builder::Col::new(table_name, "tech_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimTechUnlockTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimTechUnlockTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<ClaimTechUnlockTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimTechUnlockTimer {
+    type IxCols = ClaimTechUnlockTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimTechUnlockTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

@@ -140,3 +140,19 @@ impl<'ctx> MountingStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `MountingState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait mounting_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `MountingState`.
+    fn mounting_state(&self) -> __sdk::__query_builder::Table<MountingState>;
+}
+
+impl mounting_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn mounting_state(&self) -> __sdk::__query_builder::Table<MountingState> {
+        __sdk::__query_builder::Table::new("mounting_state")
+    }
+}

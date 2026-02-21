@@ -143,3 +143,19 @@ impl<'ctx> StagedProspectingDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ProspectingDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_prospecting_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ProspectingDesc`.
+    fn staged_prospecting_desc(&self) -> __sdk::__query_builder::Table<ProspectingDesc>;
+}
+
+impl staged_prospecting_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_prospecting_desc(&self) -> __sdk::__query_builder::Table<ProspectingDesc> {
+        __sdk::__query_builder::Table::new("staged_prospecting_desc")
+    }
+}

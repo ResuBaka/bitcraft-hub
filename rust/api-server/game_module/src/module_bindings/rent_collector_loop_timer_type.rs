@@ -15,3 +15,39 @@ pub struct RentCollectorLoopTimer {
 impl __sdk::InModule for RentCollectorLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RentCollectorLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct RentCollectorLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<RentCollectorLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<RentCollectorLoopTimer, __sdk::ScheduleAt>,
+    pub first_tick: __sdk::__query_builder::Col<RentCollectorLoopTimer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for RentCollectorLoopTimer {
+    type Cols = RentCollectorLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RentCollectorLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            first_tick: __sdk::__query_builder::Col::new(table_name, "first_tick"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RentCollectorLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RentCollectorLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<RentCollectorLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RentCollectorLoopTimer {
+    type IxCols = RentCollectorLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RentCollectorLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

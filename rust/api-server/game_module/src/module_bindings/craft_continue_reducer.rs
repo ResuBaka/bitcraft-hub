@@ -61,8 +61,8 @@ impl craft_continue for super::RemoteReducers {
     fn on_craft_continue(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftContinueRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CraftContinueCallbackId {
         CraftContinueCallbackId(self.imp.on_reducer(
             "craft_continue",

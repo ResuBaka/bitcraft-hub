@@ -39,3 +39,115 @@ pub struct ConstructionRecipeDesc {
 impl __sdk::InModule for ConstructionRecipeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ConstructionRecipeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ConstructionRecipeDescCols {
+    pub id: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ConstructionRecipeDesc, String>,
+    pub time_requirement: __sdk::__query_builder::Col<ConstructionRecipeDesc, f32>,
+    pub stamina_requirement: __sdk::__query_builder::Col<ConstructionRecipeDesc, f32>,
+    pub consumed_building: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub required_interior_tier: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub level_requirements:
+        __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<LevelRequirement>>,
+    pub tool_requirements:
+        __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<ToolRequirement>>,
+    pub consumed_item_stacks:
+        __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<InputItemStack>>,
+    pub consumed_cargo_stacks:
+        __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<InputItemStack>>,
+    pub consumed_shards: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub experience_per_progress:
+        __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<ExperienceStackF32>>,
+    pub discovery_triggers: __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<i32>>,
+    pub required_knowledges: __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<i32>>,
+    pub required_claim_tech_id: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub full_discovery_score: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub building_description_id: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub required_paving_tier: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub actions_required: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub instantly_built: __sdk::__query_builder::Col<ConstructionRecipeDesc, bool>,
+    pub recipe_performance_id: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ConstructionRecipeDesc {
+    type Cols = ConstructionRecipeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ConstructionRecipeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            time_requirement: __sdk::__query_builder::Col::new(table_name, "time_requirement"),
+            stamina_requirement: __sdk::__query_builder::Col::new(
+                table_name,
+                "stamina_requirement",
+            ),
+            consumed_building: __sdk::__query_builder::Col::new(table_name, "consumed_building"),
+            required_interior_tier: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_interior_tier",
+            ),
+            level_requirements: __sdk::__query_builder::Col::new(table_name, "level_requirements"),
+            tool_requirements: __sdk::__query_builder::Col::new(table_name, "tool_requirements"),
+            consumed_item_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumed_item_stacks",
+            ),
+            consumed_cargo_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumed_cargo_stacks",
+            ),
+            consumed_shards: __sdk::__query_builder::Col::new(table_name, "consumed_shards"),
+            experience_per_progress: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_progress",
+            ),
+            discovery_triggers: __sdk::__query_builder::Col::new(table_name, "discovery_triggers"),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+            required_claim_tech_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_claim_tech_id",
+            ),
+            full_discovery_score: __sdk::__query_builder::Col::new(
+                table_name,
+                "full_discovery_score",
+            ),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
+            building_description_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "building_description_id",
+            ),
+            required_paving_tier: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_paving_tier",
+            ),
+            actions_required: __sdk::__query_builder::Col::new(table_name, "actions_required"),
+            instantly_built: __sdk::__query_builder::Col::new(table_name, "instantly_built"),
+            recipe_performance_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "recipe_performance_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ConstructionRecipeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ConstructionRecipeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ConstructionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ConstructionRecipeDesc {
+    type IxCols = ConstructionRecipeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ConstructionRecipeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

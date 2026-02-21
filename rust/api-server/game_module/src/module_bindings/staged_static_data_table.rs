@@ -141,3 +141,19 @@ impl<'ctx> StagedStaticDataVersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `StagedStaticData`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_static_dataQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `StagedStaticData`.
+    fn staged_static_data(&self) -> __sdk::__query_builder::Table<StagedStaticData>;
+}
+
+impl staged_static_dataQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_static_data(&self) -> __sdk::__query_builder::Table<StagedStaticData> {
+        __sdk::__query_builder::Table::new("staged_static_data")
+    }
+}

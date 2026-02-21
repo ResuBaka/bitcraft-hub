@@ -16,3 +16,43 @@ pub struct ContributionState {
 impl __sdk::InModule for ContributionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ContributionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ContributionStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ContributionState, u64>,
+    pub player_entity_id: __sdk::__query_builder::Col<ContributionState, u64>,
+    pub enemy_entity_id: __sdk::__query_builder::Col<ContributionState, u64>,
+    pub contribution: __sdk::__query_builder::Col<ContributionState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for ContributionState {
+    type Cols = ContributionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ContributionStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            enemy_entity_id: __sdk::__query_builder::Col::new(table_name, "enemy_entity_id"),
+            contribution: __sdk::__query_builder::Col::new(table_name, "contribution"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ContributionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ContributionStateIxCols {
+    pub enemy_entity_id: __sdk::__query_builder::IxCol<ContributionState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<ContributionState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ContributionState {
+    type IxCols = ContributionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ContributionStateIxCols {
+            enemy_entity_id: __sdk::__query_builder::IxCol::new(table_name, "enemy_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

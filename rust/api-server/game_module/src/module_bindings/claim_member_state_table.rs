@@ -140,3 +140,19 @@ impl<'ctx> ClaimMemberStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ClaimMemberState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait claim_member_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ClaimMemberState`.
+    fn claim_member_state(&self) -> __sdk::__query_builder::Table<ClaimMemberState>;
+}
+
+impl claim_member_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn claim_member_state(&self) -> __sdk::__query_builder::Table<ClaimMemberState> {
+        __sdk::__query_builder::Table::new("claim_member_state")
+    }
+}

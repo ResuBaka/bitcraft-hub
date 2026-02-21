@@ -47,8 +47,8 @@ pub trait deployable_dismount {
     fn on_deployable_dismount(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableDismountRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DeployableDismountCallbackId;
     /// Cancel a callback previously registered by [`Self::on_deployable_dismount`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl deployable_dismount for super::RemoteReducers {
     fn on_deployable_dismount(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableDismountRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DeployableDismountCallbackId {
         DeployableDismountCallbackId(self.imp.on_reducer(
             "deployable_dismount",

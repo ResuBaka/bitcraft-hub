@@ -31,3 +31,82 @@ pub struct TravelerTradeOrderDesc {
 impl __sdk::InModule for TravelerTradeOrderDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TravelerTradeOrderDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct TravelerTradeOrderDescCols {
+    pub id: __sdk::__query_builder::Col<TravelerTradeOrderDesc, i32>,
+    pub starting_stock: __sdk::__query_builder::Col<TravelerTradeOrderDesc, i32>,
+    pub always_offered: __sdk::__query_builder::Col<TravelerTradeOrderDesc, bool>,
+    pub traveler: __sdk::__query_builder::Col<TravelerTradeOrderDesc, NpcType>,
+    pub offer_items: __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<ItemStack>>,
+    pub offer_cargo_id: __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<i32>>,
+    pub required_items: __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<ItemStack>>,
+    pub required_cargo_id: __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<i32>>,
+    pub level_requirements:
+        __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<LevelRequirement>>,
+    pub achievement_requirements: __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<i32>>,
+    pub hide_if_requirements_are_not_met: __sdk::__query_builder::Col<TravelerTradeOrderDesc, bool>,
+    pub required_knowledges: __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<i32>>,
+    pub hide_without_required_knowledge: __sdk::__query_builder::Col<TravelerTradeOrderDesc, bool>,
+    pub blocking_knowledges: __sdk::__query_builder::Col<TravelerTradeOrderDesc, Vec<i32>>,
+    pub hide_with_blocking_knowledges: __sdk::__query_builder::Col<TravelerTradeOrderDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for TravelerTradeOrderDesc {
+    type Cols = TravelerTradeOrderDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TravelerTradeOrderDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            starting_stock: __sdk::__query_builder::Col::new(table_name, "starting_stock"),
+            always_offered: __sdk::__query_builder::Col::new(table_name, "always_offered"),
+            traveler: __sdk::__query_builder::Col::new(table_name, "traveler"),
+            offer_items: __sdk::__query_builder::Col::new(table_name, "offer_items"),
+            offer_cargo_id: __sdk::__query_builder::Col::new(table_name, "offer_cargo_id"),
+            required_items: __sdk::__query_builder::Col::new(table_name, "required_items"),
+            required_cargo_id: __sdk::__query_builder::Col::new(table_name, "required_cargo_id"),
+            level_requirements: __sdk::__query_builder::Col::new(table_name, "level_requirements"),
+            achievement_requirements: __sdk::__query_builder::Col::new(
+                table_name,
+                "achievement_requirements",
+            ),
+            hide_if_requirements_are_not_met: __sdk::__query_builder::Col::new(
+                table_name,
+                "hide_if_requirements_are_not_met",
+            ),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+            hide_without_required_knowledge: __sdk::__query_builder::Col::new(
+                table_name,
+                "hide_without_required_knowledge",
+            ),
+            blocking_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "blocking_knowledges",
+            ),
+            hide_with_blocking_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "hide_with_blocking_knowledges",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TravelerTradeOrderDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TravelerTradeOrderDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<TravelerTradeOrderDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TravelerTradeOrderDesc {
+    type IxCols = TravelerTradeOrderDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TravelerTradeOrderDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

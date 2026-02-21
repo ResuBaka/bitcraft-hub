@@ -17,3 +17,46 @@ pub struct ClimbRequirementDesc {
 impl __sdk::InModule for ClimbRequirementDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClimbRequirementDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClimbRequirementDescCols {
+    pub id: __sdk::__query_builder::Col<ClimbRequirementDesc, i32>,
+    pub min_elevation: __sdk::__query_builder::Col<ClimbRequirementDesc, i16>,
+    pub max_elevation: __sdk::__query_builder::Col<ClimbRequirementDesc, i16>,
+    pub stamina_cost: __sdk::__query_builder::Col<ClimbRequirementDesc, i32>,
+    pub min_climb_proficiency: __sdk::__query_builder::Col<ClimbRequirementDesc, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for ClimbRequirementDesc {
+    type Cols = ClimbRequirementDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClimbRequirementDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            min_elevation: __sdk::__query_builder::Col::new(table_name, "min_elevation"),
+            max_elevation: __sdk::__query_builder::Col::new(table_name, "max_elevation"),
+            stamina_cost: __sdk::__query_builder::Col::new(table_name, "stamina_cost"),
+            min_climb_proficiency: __sdk::__query_builder::Col::new(
+                table_name,
+                "min_climb_proficiency",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClimbRequirementDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClimbRequirementDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ClimbRequirementDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClimbRequirementDesc {
+    type IxCols = ClimbRequirementDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClimbRequirementDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

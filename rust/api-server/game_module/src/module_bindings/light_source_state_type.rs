@@ -14,3 +14,37 @@ pub struct LightSourceState {
 impl __sdk::InModule for LightSourceState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LightSourceState`.
+///
+/// Provides typed access to columns for query building.
+pub struct LightSourceStateCols {
+    pub entity_id: __sdk::__query_builder::Col<LightSourceState, u64>,
+    pub radius: __sdk::__query_builder::Col<LightSourceState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for LightSourceState {
+    type Cols = LightSourceStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LightSourceStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            radius: __sdk::__query_builder::Col::new(table_name, "radius"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LightSourceState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LightSourceStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<LightSourceState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LightSourceState {
+    type IxCols = LightSourceStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LightSourceStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

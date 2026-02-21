@@ -143,3 +143,19 @@ impl<'ctx> TerraformProgressStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TerraformProgressState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait terraform_progress_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TerraformProgressState`.
+    fn terraform_progress_state(&self) -> __sdk::__query_builder::Table<TerraformProgressState>;
+}
+
+impl terraform_progress_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn terraform_progress_state(&self) -> __sdk::__query_builder::Table<TerraformProgressState> {
+        __sdk::__query_builder::Table::new("terraform_progress_state")
+    }
+}

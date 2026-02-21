@@ -20,3 +20,45 @@ pub struct InteriorShapeDesc {
 impl __sdk::InModule for InteriorShapeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorShapeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorShapeDescCols {
+    pub id: __sdk::__query_builder::Col<InteriorShapeDesc, i32>,
+    pub footprint: __sdk::__query_builder::Col<InteriorShapeDesc, Vec<FootprintTile>>,
+    pub min_x: __sdk::__query_builder::Col<InteriorShapeDesc, i32>,
+    pub min_z: __sdk::__query_builder::Col<InteriorShapeDesc, i32>,
+    pub size_x: __sdk::__query_builder::Col<InteriorShapeDesc, i32>,
+    pub size_z: __sdk::__query_builder::Col<InteriorShapeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorShapeDesc {
+    type Cols = InteriorShapeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorShapeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            footprint: __sdk::__query_builder::Col::new(table_name, "footprint"),
+            min_x: __sdk::__query_builder::Col::new(table_name, "min_x"),
+            min_z: __sdk::__query_builder::Col::new(table_name, "min_z"),
+            size_x: __sdk::__query_builder::Col::new(table_name, "size_x"),
+            size_z: __sdk::__query_builder::Col::new(table_name, "size_z"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorShapeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorShapeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<InteriorShapeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorShapeDesc {
+    type IxCols = InteriorShapeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorShapeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

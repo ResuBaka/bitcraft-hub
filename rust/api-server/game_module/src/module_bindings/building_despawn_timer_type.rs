@@ -15,3 +15,39 @@ pub struct BuildingDespawnTimer {
 impl __sdk::InModule for BuildingDespawnTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingDespawnTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingDespawnTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<BuildingDespawnTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<BuildingDespawnTimer, __sdk::ScheduleAt>,
+    pub entity_id: __sdk::__query_builder::Col<BuildingDespawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingDespawnTimer {
+    type Cols = BuildingDespawnTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingDespawnTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingDespawnTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingDespawnTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<BuildingDespawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingDespawnTimer {
+    type IxCols = BuildingDespawnTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingDespawnTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

@@ -140,3 +140,19 @@ impl<'ctx> WorldRegionStateIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `WorldRegionState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait world_region_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `WorldRegionState`.
+    fn world_region_state(&self) -> __sdk::__query_builder::Table<WorldRegionState>;
+}
+
+impl world_region_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn world_region_state(&self) -> __sdk::__query_builder::Table<WorldRegionState> {
+        __sdk::__query_builder::Table::new("world_region_state")
+    }
+}

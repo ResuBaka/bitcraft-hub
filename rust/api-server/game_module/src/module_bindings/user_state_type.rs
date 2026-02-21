@@ -15,3 +15,41 @@ pub struct UserState {
 impl __sdk::InModule for UserState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `UserState`.
+///
+/// Provides typed access to columns for query building.
+pub struct UserStateCols {
+    pub identity: __sdk::__query_builder::Col<UserState, __sdk::Identity>,
+    pub entity_id: __sdk::__query_builder::Col<UserState, u64>,
+    pub can_sign_in: __sdk::__query_builder::Col<UserState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for UserState {
+    type Cols = UserStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        UserStateCols {
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            can_sign_in: __sdk::__query_builder::Col::new(table_name, "can_sign_in"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `UserState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct UserStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<UserState, u64>,
+    pub identity: __sdk::__query_builder::IxCol<UserState, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasIxCols for UserState {
+    type IxCols = UserStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        UserStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+        }
+    }
+}

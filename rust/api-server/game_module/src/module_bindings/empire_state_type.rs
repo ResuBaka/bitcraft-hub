@@ -21,3 +21,57 @@ pub struct EmpireState {
 impl __sdk::InModule for EmpireState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EmpireState, u64>,
+    pub capital_building_entity_id: __sdk::__query_builder::Col<EmpireState, u64>,
+    pub name: __sdk::__query_builder::Col<EmpireState, String>,
+    pub shard_treasury: __sdk::__query_builder::Col<EmpireState, u32>,
+    pub nobility_threshold: __sdk::__query_builder::Col<EmpireState, i32>,
+    pub num_claims: __sdk::__query_builder::Col<EmpireState, i32>,
+    pub location: __sdk::__query_builder::Col<EmpireState, OffsetCoordinatesSmallMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireState {
+    type Cols = EmpireStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            capital_building_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "capital_building_entity_id",
+            ),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            shard_treasury: __sdk::__query_builder::Col::new(table_name, "shard_treasury"),
+            nobility_threshold: __sdk::__query_builder::Col::new(table_name, "nobility_threshold"),
+            num_claims: __sdk::__query_builder::Col::new(table_name, "num_claims"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireStateIxCols {
+    pub capital_building_entity_id: __sdk::__query_builder::IxCol<EmpireState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<EmpireState, u64>,
+    pub name: __sdk::__query_builder::IxCol<EmpireState, String>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireState {
+    type IxCols = EmpireStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireStateIxCols {
+            capital_building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "capital_building_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            name: __sdk::__query_builder::IxCol::new(table_name, "name"),
+        }
+    }
+}

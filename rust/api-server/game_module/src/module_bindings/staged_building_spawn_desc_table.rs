@@ -145,3 +145,19 @@ impl<'ctx> StagedBuildingSpawnDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BuildingSpawnDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_building_spawn_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BuildingSpawnDesc`.
+    fn staged_building_spawn_desc(&self) -> __sdk::__query_builder::Table<BuildingSpawnDesc>;
+}
+
+impl staged_building_spawn_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_building_spawn_desc(&self) -> __sdk::__query_builder::Table<BuildingSpawnDesc> {
+        __sdk::__query_builder::Table::new("staged_building_spawn_desc")
+    }
+}

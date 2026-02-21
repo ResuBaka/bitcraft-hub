@@ -20,3 +20,55 @@ pub struct InventoryState {
 impl __sdk::InModule for InventoryState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InventoryState`.
+///
+/// Provides typed access to columns for query building.
+pub struct InventoryStateCols {
+    pub entity_id: __sdk::__query_builder::Col<InventoryState, u64>,
+    pub pockets: __sdk::__query_builder::Col<InventoryState, Vec<Pocket>>,
+    pub inventory_index: __sdk::__query_builder::Col<InventoryState, i32>,
+    pub cargo_index: __sdk::__query_builder::Col<InventoryState, i32>,
+    pub owner_entity_id: __sdk::__query_builder::Col<InventoryState, u64>,
+    pub player_owner_entity_id: __sdk::__query_builder::Col<InventoryState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for InventoryState {
+    type Cols = InventoryStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InventoryStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            pockets: __sdk::__query_builder::Col::new(table_name, "pockets"),
+            inventory_index: __sdk::__query_builder::Col::new(table_name, "inventory_index"),
+            cargo_index: __sdk::__query_builder::Col::new(table_name, "cargo_index"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            player_owner_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "player_owner_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InventoryState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InventoryStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<InventoryState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<InventoryState, u64>,
+    pub player_owner_entity_id: __sdk::__query_builder::IxCol<InventoryState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InventoryState {
+    type IxCols = InventoryStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InventoryStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+            player_owner_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "player_owner_entity_id",
+            ),
+        }
+    }
+}

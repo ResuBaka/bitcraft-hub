@@ -141,3 +141,19 @@ impl<'ctx> DungeonStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DungeonState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait dungeon_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DungeonState`.
+    fn dungeon_state(&self) -> __sdk::__query_builder::Table<DungeonState>;
+}
+
+impl dungeon_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn dungeon_state(&self) -> __sdk::__query_builder::Table<DungeonState> {
+        __sdk::__query_builder::Table::new("dungeon_state")
+    }
+}

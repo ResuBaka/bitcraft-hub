@@ -50,8 +50,8 @@ pub trait player_teleport_waystone_start {
     fn on_player_teleport_waystone_start(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTeleportWaystoneRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerTeleportWaystoneStartCallbackId;
     /// Cancel a callback previously registered by [`Self::on_player_teleport_waystone_start`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl player_teleport_waystone_start for super::RemoteReducers {
     fn on_player_teleport_waystone_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTeleportWaystoneRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerTeleportWaystoneStartCallbackId {
         PlayerTeleportWaystoneStartCallbackId(self.imp.on_reducer(
             "player_teleport_waystone_start",

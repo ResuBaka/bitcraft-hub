@@ -143,3 +143,19 @@ impl<'ctx> ResourceSpawnTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourceSpawnTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resource_spawn_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourceSpawnTimer`.
+    fn resource_spawn_timer(&self) -> __sdk::__query_builder::Table<ResourceSpawnTimer>;
+}
+
+impl resource_spawn_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resource_spawn_timer(&self) -> __sdk::__query_builder::Table<ResourceSpawnTimer> {
+        __sdk::__query_builder::Table::new("resource_spawn_timer")
+    }
+}

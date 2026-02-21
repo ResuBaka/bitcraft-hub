@@ -182,3 +182,19 @@ impl<'ctx> DeployableDescV4DeployFromCollectibleIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DeployableDescV4`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait deployable_desc_v4QueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DeployableDescV4`.
+    fn deployable_desc_v4(&self) -> __sdk::__query_builder::Table<DeployableDescV4>;
+}
+
+impl deployable_desc_v4QueryTableAccess for __sdk::QueryTableAccessor {
+    fn deployable_desc_v4(&self) -> __sdk::__query_builder::Table<DeployableDescV4> {
+        __sdk::__query_builder::Table::new("deployable_desc_v4")
+    }
+}

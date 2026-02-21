@@ -15,3 +15,39 @@ pub struct WorldRegionNameState {
 impl __sdk::InModule for WorldRegionNameState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WorldRegionNameState`.
+///
+/// Provides typed access to columns for query building.
+pub struct WorldRegionNameStateCols {
+    pub id: __sdk::__query_builder::Col<WorldRegionNameState, u16>,
+    pub player_facing_name: __sdk::__query_builder::Col<WorldRegionNameState, String>,
+    pub module_name_prefix: __sdk::__query_builder::Col<WorldRegionNameState, String>,
+}
+
+impl __sdk::__query_builder::HasCols for WorldRegionNameState {
+    type Cols = WorldRegionNameStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WorldRegionNameStateCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            player_facing_name: __sdk::__query_builder::Col::new(table_name, "player_facing_name"),
+            module_name_prefix: __sdk::__query_builder::Col::new(table_name, "module_name_prefix"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WorldRegionNameState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WorldRegionNameStateIxCols {
+    pub id: __sdk::__query_builder::IxCol<WorldRegionNameState, u16>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WorldRegionNameState {
+    type IxCols = WorldRegionNameStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WorldRegionNameStateIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

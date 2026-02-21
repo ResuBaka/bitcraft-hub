@@ -145,3 +145,19 @@ impl<'ctx> StagedTravelerTaskDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TravelerTaskDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_traveler_task_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TravelerTaskDesc`.
+    fn staged_traveler_task_desc(&self) -> __sdk::__query_builder::Table<TravelerTaskDesc>;
+}
+
+impl staged_traveler_task_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_traveler_task_desc(&self) -> __sdk::__query_builder::Table<TravelerTaskDesc> {
+        __sdk::__query_builder::Table::new("staged_traveler_task_desc")
+    }
+}

@@ -27,3 +27,64 @@ pub struct DeconstructionRecipeDesc {
 impl __sdk::InModule for DeconstructionRecipeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DeconstructionRecipeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct DeconstructionRecipeDescCols {
+    pub id: __sdk::__query_builder::Col<DeconstructionRecipeDesc, i32>,
+    pub time_requirement: __sdk::__query_builder::Col<DeconstructionRecipeDesc, f32>,
+    pub consumed_building: __sdk::__query_builder::Col<DeconstructionRecipeDesc, i32>,
+    pub level_requirements:
+        __sdk::__query_builder::Col<DeconstructionRecipeDesc, Vec<LevelRequirement>>,
+    pub tool_requirements:
+        __sdk::__query_builder::Col<DeconstructionRecipeDesc, Vec<ToolRequirement>>,
+    pub output_item_stacks: __sdk::__query_builder::Col<DeconstructionRecipeDesc, Vec<ItemStack>>,
+    pub output_cargo_id: __sdk::__query_builder::Col<DeconstructionRecipeDesc, i32>,
+    pub experience_per_progress:
+        __sdk::__query_builder::Col<DeconstructionRecipeDesc, Vec<ExperienceStackF32>>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<DeconstructionRecipeDesc, i32>,
+    pub recipe_performance_id: __sdk::__query_builder::Col<DeconstructionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for DeconstructionRecipeDesc {
+    type Cols = DeconstructionRecipeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DeconstructionRecipeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            time_requirement: __sdk::__query_builder::Col::new(table_name, "time_requirement"),
+            consumed_building: __sdk::__query_builder::Col::new(table_name, "consumed_building"),
+            level_requirements: __sdk::__query_builder::Col::new(table_name, "level_requirements"),
+            tool_requirements: __sdk::__query_builder::Col::new(table_name, "tool_requirements"),
+            output_item_stacks: __sdk::__query_builder::Col::new(table_name, "output_item_stacks"),
+            output_cargo_id: __sdk::__query_builder::Col::new(table_name, "output_cargo_id"),
+            experience_per_progress: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_progress",
+            ),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
+            recipe_performance_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "recipe_performance_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DeconstructionRecipeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DeconstructionRecipeDescIxCols {
+    pub consumed_building: __sdk::__query_builder::IxCol<DeconstructionRecipeDesc, i32>,
+    pub id: __sdk::__query_builder::IxCol<DeconstructionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DeconstructionRecipeDesc {
+    type IxCols = DeconstructionRecipeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DeconstructionRecipeDescIxCols {
+            consumed_building: __sdk::__query_builder::IxCol::new(table_name, "consumed_building"),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

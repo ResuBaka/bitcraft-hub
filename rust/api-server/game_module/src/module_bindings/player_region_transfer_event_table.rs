@@ -143,3 +143,23 @@ impl<'ctx> PlayerRegionTransferEventScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerRegionTransferEvent`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_region_transfer_eventQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerRegionTransferEvent`.
+    fn player_region_transfer_event(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerRegionTransferEvent>;
+}
+
+impl player_region_transfer_eventQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_region_transfer_event(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerRegionTransferEvent> {
+        __sdk::__query_builder::Table::new("player_region_transfer_event")
+    }
+}

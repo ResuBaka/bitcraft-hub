@@ -26,3 +26,61 @@ pub struct PlayerVoteState {
 impl __sdk::InModule for PlayerVoteState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerVoteState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerVoteStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerVoteState, u64>,
+    pub vote_type: __sdk::__query_builder::Col<PlayerVoteState, PlayerVoteType>,
+    pub initiator_entity_id: __sdk::__query_builder::Col<PlayerVoteState, u64>,
+    pub participants_entity_id: __sdk::__query_builder::Col<PlayerVoteState, Vec<u64>>,
+    pub answers: __sdk::__query_builder::Col<PlayerVoteState, Vec<PlayerVoteAnswer>>,
+    pub initiator_name: __sdk::__query_builder::Col<PlayerVoteState, String>,
+    pub pass_threshold: __sdk::__query_builder::Col<PlayerVoteState, f32>,
+    pub outcome: __sdk::__query_builder::Col<PlayerVoteState, PlayerVoteAnswer>,
+    pub argument1: __sdk::__query_builder::Col<PlayerVoteState, u64>,
+    pub argument2: __sdk::__query_builder::Col<PlayerVoteState, u64>,
+    pub outcome_str: __sdk::__query_builder::Col<PlayerVoteState, String>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerVoteState {
+    type Cols = PlayerVoteStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerVoteStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            vote_type: __sdk::__query_builder::Col::new(table_name, "vote_type"),
+            initiator_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "initiator_entity_id",
+            ),
+            participants_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "participants_entity_id",
+            ),
+            answers: __sdk::__query_builder::Col::new(table_name, "answers"),
+            initiator_name: __sdk::__query_builder::Col::new(table_name, "initiator_name"),
+            pass_threshold: __sdk::__query_builder::Col::new(table_name, "pass_threshold"),
+            outcome: __sdk::__query_builder::Col::new(table_name, "outcome"),
+            argument1: __sdk::__query_builder::Col::new(table_name, "argument1"),
+            argument2: __sdk::__query_builder::Col::new(table_name, "argument2"),
+            outcome_str: __sdk::__query_builder::Col::new(table_name, "outcome_str"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerVoteState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerVoteStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerVoteState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerVoteState {
+    type IxCols = PlayerVoteStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerVoteStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

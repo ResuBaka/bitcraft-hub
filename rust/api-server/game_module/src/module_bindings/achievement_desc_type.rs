@@ -26,3 +26,67 @@ pub struct AchievementDesc {
 impl __sdk::InModule for AchievementDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AchievementDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct AchievementDescCols {
+    pub id: __sdk::__query_builder::Col<AchievementDesc, i32>,
+    pub name: __sdk::__query_builder::Col<AchievementDesc, String>,
+    pub description: __sdk::__query_builder::Col<AchievementDesc, String>,
+    pub requisites: __sdk::__query_builder::Col<AchievementDesc, Vec<i32>>,
+    pub skill_id: __sdk::__query_builder::Col<AchievementDesc, i32>,
+    pub skill_level: __sdk::__query_builder::Col<AchievementDesc, i32>,
+    pub resource_disc: __sdk::__query_builder::Col<AchievementDesc, Vec<i32>>,
+    pub crafting_disc: __sdk::__query_builder::Col<AchievementDesc, Vec<i32>>,
+    pub cargo_disc: __sdk::__query_builder::Col<AchievementDesc, Vec<i32>>,
+    pub item_disc: __sdk::__query_builder::Col<AchievementDesc, Vec<i32>>,
+    pub collectible_rewards: __sdk::__query_builder::Col<AchievementDesc, Vec<i32>>,
+    pub points_reward: __sdk::__query_builder::Col<AchievementDesc, i32>,
+    pub pct_chunks_discovered: __sdk::__query_builder::Col<AchievementDesc, f32>,
+    pub chunks_discovered: __sdk::__query_builder::Col<AchievementDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for AchievementDesc {
+    type Cols = AchievementDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AchievementDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            requisites: __sdk::__query_builder::Col::new(table_name, "requisites"),
+            skill_id: __sdk::__query_builder::Col::new(table_name, "skill_id"),
+            skill_level: __sdk::__query_builder::Col::new(table_name, "skill_level"),
+            resource_disc: __sdk::__query_builder::Col::new(table_name, "resource_disc"),
+            crafting_disc: __sdk::__query_builder::Col::new(table_name, "crafting_disc"),
+            cargo_disc: __sdk::__query_builder::Col::new(table_name, "cargo_disc"),
+            item_disc: __sdk::__query_builder::Col::new(table_name, "item_disc"),
+            collectible_rewards: __sdk::__query_builder::Col::new(
+                table_name,
+                "collectible_rewards",
+            ),
+            points_reward: __sdk::__query_builder::Col::new(table_name, "points_reward"),
+            pct_chunks_discovered: __sdk::__query_builder::Col::new(
+                table_name,
+                "pct_chunks_discovered",
+            ),
+            chunks_discovered: __sdk::__query_builder::Col::new(table_name, "chunks_discovered"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AchievementDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AchievementDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<AchievementDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AchievementDesc {
+    type IxCols = AchievementDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AchievementDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

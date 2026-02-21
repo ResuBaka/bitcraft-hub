@@ -140,3 +140,19 @@ impl<'ctx> ResourceStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourceState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resource_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourceState`.
+    fn resource_state(&self) -> __sdk::__query_builder::Table<ResourceState>;
+}
+
+impl resource_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resource_state(&self) -> __sdk::__query_builder::Table<ResourceState> {
+        __sdk::__query_builder::Table::new("resource_state")
+    }
+}

@@ -142,3 +142,19 @@ impl<'ctx> StagedLootRarityDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LootRarityDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_loot_rarity_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LootRarityDesc`.
+    fn staged_loot_rarity_desc(&self) -> __sdk::__query_builder::Table<LootRarityDesc>;
+}
+
+impl staged_loot_rarity_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_loot_rarity_desc(&self) -> __sdk::__query_builder::Table<LootRarityDesc> {
+        __sdk::__query_builder::Table::new("staged_loot_rarity_desc")
+    }
+}

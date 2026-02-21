@@ -50,8 +50,8 @@ pub trait player_housing_evict_player {
     fn on_player_housing_evict_player(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingEvictPlayerRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerHousingEvictPlayerCallbackId;
     /// Cancel a callback previously registered by [`Self::on_player_housing_evict_player`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl player_housing_evict_player for super::RemoteReducers {
     fn on_player_housing_evict_player(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingEvictPlayerRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerHousingEvictPlayerCallbackId {
         PlayerHousingEvictPlayerCallbackId(self.imp.on_reducer(
             "player_housing_evict_player",

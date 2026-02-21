@@ -143,3 +143,19 @@ impl<'ctx> StagedKnowledgeScrollDescItemIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `KnowledgeScrollDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_knowledge_scroll_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `KnowledgeScrollDesc`.
+    fn staged_knowledge_scroll_desc(&self) -> __sdk::__query_builder::Table<KnowledgeScrollDesc>;
+}
+
+impl staged_knowledge_scroll_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_knowledge_scroll_desc(&self) -> __sdk::__query_builder::Table<KnowledgeScrollDesc> {
+        __sdk::__query_builder::Table::new("staged_knowledge_scroll_desc")
+    }
+}

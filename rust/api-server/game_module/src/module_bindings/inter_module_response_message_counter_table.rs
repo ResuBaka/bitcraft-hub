@@ -151,3 +151,23 @@ impl<'ctx> InterModuleResponseMessageCounterDstModuleIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InterModuleResponseMessageCounter`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait inter_module_response_message_counterQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InterModuleResponseMessageCounter`.
+    fn inter_module_response_message_counter(
+        &self,
+    ) -> __sdk::__query_builder::Table<InterModuleResponseMessageCounter>;
+}
+
+impl inter_module_response_message_counterQueryTableAccess for __sdk::QueryTableAccessor {
+    fn inter_module_response_message_counter(
+        &self,
+    ) -> __sdk::__query_builder::Table<InterModuleResponseMessageCounter> {
+        __sdk::__query_builder::Table::new("inter_module_response_message_counter")
+    }
+}

@@ -37,7 +37,7 @@ pub trait stage_extraction_recipe_desc {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_stage_extraction_recipe_desc`] callbacks.
     fn stage_extraction_recipe_desc(&self, records: Vec<ExtractionRecipeDesc>)
-    -> __sdk::Result<()>;
+        -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_extraction_recipe_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -67,8 +67,8 @@ impl stage_extraction_recipe_desc for super::RemoteReducers {
     fn on_stage_extraction_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ExtractionRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageExtractionRecipeDescCallbackId {
         StageExtractionRecipeDescCallbackId(self.imp.on_reducer(
             "stage_extraction_recipe_desc",

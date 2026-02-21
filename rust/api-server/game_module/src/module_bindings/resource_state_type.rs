@@ -15,3 +15,41 @@ pub struct ResourceState {
 impl __sdk::InModule for ResourceState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourceState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourceStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ResourceState, u64>,
+    pub resource_id: __sdk::__query_builder::Col<ResourceState, i32>,
+    pub direction_index: __sdk::__query_builder::Col<ResourceState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourceState {
+    type Cols = ResourceStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourceStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            resource_id: __sdk::__query_builder::Col::new(table_name, "resource_id"),
+            direction_index: __sdk::__query_builder::Col::new(table_name, "direction_index"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourceState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourceStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ResourceState, u64>,
+    pub resource_id: __sdk::__query_builder::IxCol<ResourceState, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourceState {
+    type IxCols = ResourceStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourceStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            resource_id: __sdk::__query_builder::IxCol::new(table_name, "resource_id"),
+        }
+    }
+}

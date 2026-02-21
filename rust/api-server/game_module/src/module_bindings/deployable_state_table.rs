@@ -140,3 +140,19 @@ impl<'ctx> DeployableStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DeployableState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait deployable_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DeployableState`.
+    fn deployable_state(&self) -> __sdk::__query_builder::Table<DeployableState>;
+}
+
+impl deployable_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn deployable_state(&self) -> __sdk::__query_builder::Table<DeployableState> {
+        __sdk::__query_builder::Table::new("deployable_state")
+    }
+}

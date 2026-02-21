@@ -16,3 +16,44 @@ pub struct DroppedInventoryOwnershipTimer {
 impl __sdk::InModule for DroppedInventoryOwnershipTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DroppedInventoryOwnershipTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct DroppedInventoryOwnershipTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<DroppedInventoryOwnershipTimer, u64>,
+    pub scheduled_at:
+        __sdk::__query_builder::Col<DroppedInventoryOwnershipTimer, __sdk::ScheduleAt>,
+    pub entity_id: __sdk::__query_builder::Col<DroppedInventoryOwnershipTimer, u64>,
+    pub started_at: __sdk::__query_builder::Col<DroppedInventoryOwnershipTimer, __sdk::Timestamp>,
+}
+
+impl __sdk::__query_builder::HasCols for DroppedInventoryOwnershipTimer {
+    type Cols = DroppedInventoryOwnershipTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DroppedInventoryOwnershipTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            started_at: __sdk::__query_builder::Col::new(table_name, "started_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DroppedInventoryOwnershipTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DroppedInventoryOwnershipTimerIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<DroppedInventoryOwnershipTimer, u64>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<DroppedInventoryOwnershipTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DroppedInventoryOwnershipTimer {
+    type IxCols = DroppedInventoryOwnershipTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DroppedInventoryOwnershipTimerIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

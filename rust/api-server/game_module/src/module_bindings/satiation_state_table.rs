@@ -140,3 +140,19 @@ impl<'ctx> SatiationStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `SatiationState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait satiation_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `SatiationState`.
+    fn satiation_state(&self) -> __sdk::__query_builder::Table<SatiationState>;
+}
+
+impl satiation_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn satiation_state(&self) -> __sdk::__query_builder::Table<SatiationState> {
+        __sdk::__query_builder::Table::new("satiation_state")
+    }
+}

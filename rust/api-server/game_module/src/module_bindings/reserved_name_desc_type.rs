@@ -13,3 +13,35 @@ pub struct ReservedNameDesc {
 impl __sdk::InModule for ReservedNameDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ReservedNameDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ReservedNameDescCols {
+    pub name: __sdk::__query_builder::Col<ReservedNameDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for ReservedNameDesc {
+    type Cols = ReservedNameDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ReservedNameDescCols {
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ReservedNameDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ReservedNameDescIxCols {
+    pub name: __sdk::__query_builder::IxCol<ReservedNameDesc, String>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ReservedNameDesc {
+    type IxCols = ReservedNameDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ReservedNameDescIxCols {
+            name: __sdk::__query_builder::IxCol::new(table_name, "name"),
+        }
+    }
+}

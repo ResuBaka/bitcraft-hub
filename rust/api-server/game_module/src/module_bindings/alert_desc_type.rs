@@ -17,3 +17,43 @@ pub struct AlertDesc {
 impl __sdk::InModule for AlertDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AlertDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct AlertDescCols {
+    pub alert_type: __sdk::__query_builder::Col<AlertDesc, i32>,
+    pub show_timer: __sdk::__query_builder::Col<AlertDesc, bool>,
+    pub duration: __sdk::__query_builder::Col<AlertDesc, f32>,
+    pub header: __sdk::__query_builder::Col<AlertDesc, String>,
+    pub body: __sdk::__query_builder::Col<AlertDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for AlertDesc {
+    type Cols = AlertDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AlertDescCols {
+            alert_type: __sdk::__query_builder::Col::new(table_name, "alert_type"),
+            show_timer: __sdk::__query_builder::Col::new(table_name, "show_timer"),
+            duration: __sdk::__query_builder::Col::new(table_name, "duration"),
+            header: __sdk::__query_builder::Col::new(table_name, "header"),
+            body: __sdk::__query_builder::Col::new(table_name, "body"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AlertDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AlertDescIxCols {
+    pub alert_type: __sdk::__query_builder::IxCol<AlertDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AlertDesc {
+    type IxCols = AlertDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AlertDescIxCols {
+            alert_type: __sdk::__query_builder::IxCol::new(table_name, "alert_type"),
+        }
+    }
+}

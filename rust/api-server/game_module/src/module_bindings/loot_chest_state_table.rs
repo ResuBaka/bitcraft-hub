@@ -140,3 +140,19 @@ impl<'ctx> LootChestStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LootChestState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait loot_chest_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LootChestState`.
+    fn loot_chest_state(&self) -> __sdk::__query_builder::Table<LootChestState>;
+}
+
+impl loot_chest_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn loot_chest_state(&self) -> __sdk::__query_builder::Table<LootChestState> {
+        __sdk::__query_builder::Table::new("loot_chest_state")
+    }
+}

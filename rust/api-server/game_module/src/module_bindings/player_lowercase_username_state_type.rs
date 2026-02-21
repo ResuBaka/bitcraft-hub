@@ -14,3 +14,42 @@ pub struct PlayerLowercaseUsernameState {
 impl __sdk::InModule for PlayerLowercaseUsernameState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerLowercaseUsernameState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerLowercaseUsernameStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerLowercaseUsernameState, u64>,
+    pub username_lowercase: __sdk::__query_builder::Col<PlayerLowercaseUsernameState, String>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerLowercaseUsernameState {
+    type Cols = PlayerLowercaseUsernameStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerLowercaseUsernameStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            username_lowercase: __sdk::__query_builder::Col::new(table_name, "username_lowercase"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerLowercaseUsernameState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerLowercaseUsernameStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerLowercaseUsernameState, u64>,
+    pub username_lowercase: __sdk::__query_builder::IxCol<PlayerLowercaseUsernameState, String>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerLowercaseUsernameState {
+    type IxCols = PlayerLowercaseUsernameStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerLowercaseUsernameStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            username_lowercase: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "username_lowercase",
+            ),
+        }
+    }
+}

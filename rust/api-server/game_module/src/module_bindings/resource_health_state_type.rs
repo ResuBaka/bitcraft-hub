@@ -14,3 +14,37 @@ pub struct ResourceHealthState {
 impl __sdk::InModule for ResourceHealthState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourceHealthState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourceHealthStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ResourceHealthState, u64>,
+    pub health: __sdk::__query_builder::Col<ResourceHealthState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourceHealthState {
+    type Cols = ResourceHealthStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourceHealthStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            health: __sdk::__query_builder::Col::new(table_name, "health"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourceHealthState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourceHealthStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ResourceHealthState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourceHealthState {
+    type IxCols = ResourceHealthStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourceHealthStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

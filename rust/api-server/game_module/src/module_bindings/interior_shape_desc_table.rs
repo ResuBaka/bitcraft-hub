@@ -143,3 +143,19 @@ impl<'ctx> InteriorShapeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InteriorShapeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait interior_shape_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InteriorShapeDesc`.
+    fn interior_shape_desc(&self) -> __sdk::__query_builder::Table<InteriorShapeDesc>;
+}
+
+impl interior_shape_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn interior_shape_desc(&self) -> __sdk::__query_builder::Table<InteriorShapeDesc> {
+        __sdk::__query_builder::Table::new("interior_shape_desc")
+    }
+}

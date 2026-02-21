@@ -21,3 +21,50 @@ pub struct EnemyState {
 impl __sdk::InModule for EnemyState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnemyState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnemyStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EnemyState, u64>,
+    pub herd_entity_id: __sdk::__query_builder::Col<EnemyState, u64>,
+    pub direction: __sdk::__query_builder::Col<EnemyState, i32>,
+    pub status: __sdk::__query_builder::Col<EnemyState, EnemyStatus>,
+    pub last_ranged_attack_timestamp: __sdk::__query_builder::Col<EnemyState, __sdk::Timestamp>,
+    pub enemy_type: __sdk::__query_builder::Col<EnemyState, EnemyType>,
+}
+
+impl __sdk::__query_builder::HasCols for EnemyState {
+    type Cols = EnemyStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnemyStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            herd_entity_id: __sdk::__query_builder::Col::new(table_name, "herd_entity_id"),
+            direction: __sdk::__query_builder::Col::new(table_name, "direction"),
+            status: __sdk::__query_builder::Col::new(table_name, "status"),
+            last_ranged_attack_timestamp: __sdk::__query_builder::Col::new(
+                table_name,
+                "last_ranged_attack_timestamp",
+            ),
+            enemy_type: __sdk::__query_builder::Col::new(table_name, "enemy_type"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnemyState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnemyStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<EnemyState, u64>,
+    pub herd_entity_id: __sdk::__query_builder::IxCol<EnemyState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnemyState {
+    type IxCols = EnemyStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnemyStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            herd_entity_id: __sdk::__query_builder::IxCol::new(table_name, "herd_entity_id"),
+        }
+    }
+}

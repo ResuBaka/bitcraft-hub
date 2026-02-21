@@ -171,3 +171,19 @@ impl<'ctx> PlayerDeathTimerPlayerEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerDeathTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_death_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerDeathTimer`.
+    fn player_death_timer(&self) -> __sdk::__query_builder::Table<PlayerDeathTimer>;
+}
+
+impl player_death_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_death_timer(&self) -> __sdk::__query_builder::Table<PlayerDeathTimer> {
+        __sdk::__query_builder::Table::new("player_death_timer")
+    }
+}

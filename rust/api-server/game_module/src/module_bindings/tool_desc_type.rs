@@ -17,3 +17,45 @@ pub struct ToolDesc {
 impl __sdk::InModule for ToolDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ToolDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ToolDescCols {
+    pub id: __sdk::__query_builder::Col<ToolDesc, i32>,
+    pub item_id: __sdk::__query_builder::Col<ToolDesc, i32>,
+    pub tool_type: __sdk::__query_builder::Col<ToolDesc, i32>,
+    pub level: __sdk::__query_builder::Col<ToolDesc, i32>,
+    pub power: __sdk::__query_builder::Col<ToolDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ToolDesc {
+    type Cols = ToolDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ToolDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            item_id: __sdk::__query_builder::Col::new(table_name, "item_id"),
+            tool_type: __sdk::__query_builder::Col::new(table_name, "tool_type"),
+            level: __sdk::__query_builder::Col::new(table_name, "level"),
+            power: __sdk::__query_builder::Col::new(table_name, "power"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ToolDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ToolDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ToolDesc, i32>,
+    pub item_id: __sdk::__query_builder::IxCol<ToolDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ToolDesc {
+    type IxCols = ToolDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ToolDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
+        }
+    }
+}

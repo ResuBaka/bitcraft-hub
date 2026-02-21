@@ -18,3 +18,45 @@ pub struct QuestStageDesc {
 impl __sdk::InModule for QuestStageDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `QuestStageDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct QuestStageDescCols {
+    pub id: __sdk::__query_builder::Col<QuestStageDesc, i32>,
+    pub chain_desc_id: __sdk::__query_builder::Col<QuestStageDesc, i32>,
+    pub name: __sdk::__query_builder::Col<QuestStageDesc, String>,
+    pub completion_conditions:
+        __sdk::__query_builder::Col<QuestStageDesc, Vec<CompletionCondition>>,
+}
+
+impl __sdk::__query_builder::HasCols for QuestStageDesc {
+    type Cols = QuestStageDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        QuestStageDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            chain_desc_id: __sdk::__query_builder::Col::new(table_name, "chain_desc_id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            completion_conditions: __sdk::__query_builder::Col::new(
+                table_name,
+                "completion_conditions",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `QuestStageDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct QuestStageDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<QuestStageDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for QuestStageDesc {
+    type IxCols = QuestStageDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        QuestStageDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

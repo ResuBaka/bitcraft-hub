@@ -16,3 +16,41 @@ pub struct EnemyDespawnTimer {
 impl __sdk::InModule for EnemyDespawnTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnemyDespawnTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnemyDespawnTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<EnemyDespawnTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<EnemyDespawnTimer, __sdk::ScheduleAt>,
+    pub attacker_entity_id: __sdk::__query_builder::Col<EnemyDespawnTimer, u64>,
+    pub entity_id: __sdk::__query_builder::Col<EnemyDespawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for EnemyDespawnTimer {
+    type Cols = EnemyDespawnTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnemyDespawnTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            attacker_entity_id: __sdk::__query_builder::Col::new(table_name, "attacker_entity_id"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnemyDespawnTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnemyDespawnTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<EnemyDespawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnemyDespawnTimer {
+    type IxCols = EnemyDespawnTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnemyDespawnTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

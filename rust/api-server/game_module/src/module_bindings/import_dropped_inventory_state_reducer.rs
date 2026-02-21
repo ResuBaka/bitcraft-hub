@@ -72,8 +72,8 @@ impl import_dropped_inventory_state for super::RemoteReducers {
     fn on_import_dropped_inventory_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DroppedInventoryState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportDroppedInventoryStateCallbackId {
         ImportDroppedInventoryStateCallbackId(self.imp.on_reducer(
             "import_dropped_inventory_state",

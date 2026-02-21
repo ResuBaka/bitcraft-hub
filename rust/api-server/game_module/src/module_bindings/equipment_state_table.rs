@@ -141,3 +141,19 @@ impl<'ctx> EquipmentStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EquipmentState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait equipment_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EquipmentState`.
+    fn equipment_state(&self) -> __sdk::__query_builder::Table<EquipmentState>;
+}
+
+impl equipment_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn equipment_state(&self) -> __sdk::__query_builder::Table<EquipmentState> {
+        __sdk::__query_builder::Table::new("equipment_state")
+    }
+}

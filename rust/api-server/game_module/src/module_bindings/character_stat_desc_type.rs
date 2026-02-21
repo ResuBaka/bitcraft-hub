@@ -19,3 +19,47 @@ pub struct CharacterStatDesc {
 impl __sdk::InModule for CharacterStatDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CharacterStatDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct CharacterStatDescCols {
+    pub stat_type: __sdk::__query_builder::Col<CharacterStatDesc, i32>,
+    pub name: __sdk::__query_builder::Col<CharacterStatDesc, String>,
+    pub value: __sdk::__query_builder::Col<CharacterStatDesc, f32>,
+    pub min_value: __sdk::__query_builder::Col<CharacterStatDesc, f32>,
+    pub max_value: __sdk::__query_builder::Col<CharacterStatDesc, f32>,
+    pub suffix: __sdk::__query_builder::Col<CharacterStatDesc, String>,
+    pub desc: __sdk::__query_builder::Col<CharacterStatDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for CharacterStatDesc {
+    type Cols = CharacterStatDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CharacterStatDescCols {
+            stat_type: __sdk::__query_builder::Col::new(table_name, "stat_type"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            value: __sdk::__query_builder::Col::new(table_name, "value"),
+            min_value: __sdk::__query_builder::Col::new(table_name, "min_value"),
+            max_value: __sdk::__query_builder::Col::new(table_name, "max_value"),
+            suffix: __sdk::__query_builder::Col::new(table_name, "suffix"),
+            desc: __sdk::__query_builder::Col::new(table_name, "desc"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CharacterStatDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CharacterStatDescIxCols {
+    pub stat_type: __sdk::__query_builder::IxCol<CharacterStatDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CharacterStatDesc {
+    type IxCols = CharacterStatDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CharacterStatDescIxCols {
+            stat_type: __sdk::__query_builder::IxCol::new(table_name, "stat_type"),
+        }
+    }
+}

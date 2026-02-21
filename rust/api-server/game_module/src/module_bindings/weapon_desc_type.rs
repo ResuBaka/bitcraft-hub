@@ -19,3 +19,50 @@ pub struct WeaponDesc {
 impl __sdk::InModule for WeaponDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WeaponDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct WeaponDescCols {
+    pub item_id: __sdk::__query_builder::Col<WeaponDesc, i32>,
+    pub tier: __sdk::__query_builder::Col<WeaponDesc, i32>,
+    pub weapon_type: __sdk::__query_builder::Col<WeaponDesc, i32>,
+    pub min_damage: __sdk::__query_builder::Col<WeaponDesc, i32>,
+    pub max_damage: __sdk::__query_builder::Col<WeaponDesc, i32>,
+    pub cooldown: __sdk::__query_builder::Col<WeaponDesc, f32>,
+    pub stamina_use_multiplier: __sdk::__query_builder::Col<WeaponDesc, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for WeaponDesc {
+    type Cols = WeaponDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WeaponDescCols {
+            item_id: __sdk::__query_builder::Col::new(table_name, "item_id"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            weapon_type: __sdk::__query_builder::Col::new(table_name, "weapon_type"),
+            min_damage: __sdk::__query_builder::Col::new(table_name, "min_damage"),
+            max_damage: __sdk::__query_builder::Col::new(table_name, "max_damage"),
+            cooldown: __sdk::__query_builder::Col::new(table_name, "cooldown"),
+            stamina_use_multiplier: __sdk::__query_builder::Col::new(
+                table_name,
+                "stamina_use_multiplier",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WeaponDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WeaponDescIxCols {
+    pub item_id: __sdk::__query_builder::IxCol<WeaponDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WeaponDesc {
+    type IxCols = WeaponDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WeaponDescIxCols {
+            item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
+        }
+    }
+}

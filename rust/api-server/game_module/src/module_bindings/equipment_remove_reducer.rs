@@ -47,8 +47,8 @@ pub trait equipment_remove {
     fn on_equipment_remove(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerEquipmentRemoveRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EquipmentRemoveCallbackId;
     /// Cancel a callback previously registered by [`Self::on_equipment_remove`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl equipment_remove for super::RemoteReducers {
     fn on_equipment_remove(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerEquipmentRemoveRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EquipmentRemoveCallbackId {
         EquipmentRemoveCallbackId(self.imp.on_reducer(
             "equipment_remove",

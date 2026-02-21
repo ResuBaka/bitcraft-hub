@@ -36,3 +36,94 @@ pub struct ExtractionRecipeDesc {
 impl __sdk::InModule for ExtractionRecipeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ExtractionRecipeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ExtractionRecipeDescCols {
+    pub id: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+    pub resource_id: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+    pub cargo_id: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+    pub discovery_triggers: __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<i32>>,
+    pub required_knowledges: __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<i32>>,
+    pub time_requirement: __sdk::__query_builder::Col<ExtractionRecipeDesc, f32>,
+    pub stamina_requirement: __sdk::__query_builder::Col<ExtractionRecipeDesc, f32>,
+    pub tool_durability_lost: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+    pub extracted_item_stacks:
+        __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<ProbabilisticItemStack>>,
+    pub consumed_item_stacks:
+        __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<InputItemStack>>,
+    pub range: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+    pub tool_requirements: __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<ToolRequirement>>,
+    pub allow_use_hands: __sdk::__query_builder::Col<ExtractionRecipeDesc, bool>,
+    pub level_requirements:
+        __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<LevelRequirement>>,
+    pub experience_per_progress:
+        __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<ExperienceStackF32>>,
+    pub verb_phrase: __sdk::__query_builder::Col<ExtractionRecipeDesc, String>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+    pub recipe_performance_id: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
+    type Cols = ExtractionRecipeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ExtractionRecipeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            resource_id: __sdk::__query_builder::Col::new(table_name, "resource_id"),
+            cargo_id: __sdk::__query_builder::Col::new(table_name, "cargo_id"),
+            discovery_triggers: __sdk::__query_builder::Col::new(table_name, "discovery_triggers"),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+            time_requirement: __sdk::__query_builder::Col::new(table_name, "time_requirement"),
+            stamina_requirement: __sdk::__query_builder::Col::new(
+                table_name,
+                "stamina_requirement",
+            ),
+            tool_durability_lost: __sdk::__query_builder::Col::new(
+                table_name,
+                "tool_durability_lost",
+            ),
+            extracted_item_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "extracted_item_stacks",
+            ),
+            consumed_item_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumed_item_stacks",
+            ),
+            range: __sdk::__query_builder::Col::new(table_name, "range"),
+            tool_requirements: __sdk::__query_builder::Col::new(table_name, "tool_requirements"),
+            allow_use_hands: __sdk::__query_builder::Col::new(table_name, "allow_use_hands"),
+            level_requirements: __sdk::__query_builder::Col::new(table_name, "level_requirements"),
+            experience_per_progress: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_progress",
+            ),
+            verb_phrase: __sdk::__query_builder::Col::new(table_name, "verb_phrase"),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
+            recipe_performance_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "recipe_performance_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ExtractionRecipeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ExtractionRecipeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ExtractionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ExtractionRecipeDesc {
+    type IxCols = ExtractionRecipeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ExtractionRecipeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

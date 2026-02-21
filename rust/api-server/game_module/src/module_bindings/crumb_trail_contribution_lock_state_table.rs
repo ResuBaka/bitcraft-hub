@@ -26,7 +26,7 @@ pub trait CrumbTrailContributionLockStateTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`CrumbTrailContributionLockStateTableHandle`], which mediates access to the table `crumb_trail_contribution_lock_state`.
     fn crumb_trail_contribution_lock_state(&self)
-    -> CrumbTrailContributionLockStateTableHandle<'_>;
+        -> CrumbTrailContributionLockStateTableHandle<'_>;
 }
 
 impl CrumbTrailContributionLockStateTableAccess for super::RemoteTables {
@@ -148,5 +148,25 @@ impl<'ctx> CrumbTrailContributionLockStateEntityIdUnique<'ctx> {
     /// if such a row is present in the client cache.
     pub fn find(&self, col_val: &u64) -> Option<CrumbTrailContributionLockState> {
         self.imp.find(col_val)
+    }
+}
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CrumbTrailContributionLockState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait crumb_trail_contribution_lock_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CrumbTrailContributionLockState`.
+    fn crumb_trail_contribution_lock_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<CrumbTrailContributionLockState>;
+}
+
+impl crumb_trail_contribution_lock_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn crumb_trail_contribution_lock_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<CrumbTrailContributionLockState> {
+        __sdk::__query_builder::Table::new("crumb_trail_contribution_lock_state")
     }
 }

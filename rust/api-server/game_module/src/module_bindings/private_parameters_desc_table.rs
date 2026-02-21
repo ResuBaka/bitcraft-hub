@@ -143,3 +143,19 @@ impl<'ctx> PrivateParametersDescVersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PrivateParametersDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait private_parameters_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PrivateParametersDesc`.
+    fn private_parameters_desc(&self) -> __sdk::__query_builder::Table<PrivateParametersDesc>;
+}
+
+impl private_parameters_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn private_parameters_desc(&self) -> __sdk::__query_builder::Table<PrivateParametersDesc> {
+        __sdk::__query_builder::Table::new("private_parameters_desc")
+    }
+}

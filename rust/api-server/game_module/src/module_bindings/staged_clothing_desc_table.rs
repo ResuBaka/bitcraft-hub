@@ -141,3 +141,19 @@ impl<'ctx> StagedClothingDescItemIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ClothingDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_clothing_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ClothingDesc`.
+    fn staged_clothing_desc(&self) -> __sdk::__query_builder::Table<ClothingDesc>;
+}
+
+impl staged_clothing_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_clothing_desc(&self) -> __sdk::__query_builder::Table<ClothingDesc> {
+        __sdk::__query_builder::Table::new("staged_clothing_desc")
+    }
+}

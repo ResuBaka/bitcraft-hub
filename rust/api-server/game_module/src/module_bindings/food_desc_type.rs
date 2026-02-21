@@ -23,3 +23,57 @@ pub struct FoodDesc {
 impl __sdk::InModule for FoodDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `FoodDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct FoodDescCols {
+    pub item_id: __sdk::__query_builder::Col<FoodDesc, i32>,
+    pub hp: __sdk::__query_builder::Col<FoodDesc, f32>,
+    pub up_to_hp: __sdk::__query_builder::Col<FoodDesc, f32>,
+    pub stamina: __sdk::__query_builder::Col<FoodDesc, f32>,
+    pub up_to_stamina: __sdk::__query_builder::Col<FoodDesc, f32>,
+    pub hunger: __sdk::__query_builder::Col<FoodDesc, f32>,
+    pub teleportation_energy: __sdk::__query_builder::Col<FoodDesc, f32>,
+    pub consumable_while_in_combat: __sdk::__query_builder::Col<FoodDesc, bool>,
+    pub buffs: __sdk::__query_builder::Col<FoodDesc, Vec<BuffEffect>>,
+}
+
+impl __sdk::__query_builder::HasCols for FoodDesc {
+    type Cols = FoodDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        FoodDescCols {
+            item_id: __sdk::__query_builder::Col::new(table_name, "item_id"),
+            hp: __sdk::__query_builder::Col::new(table_name, "hp"),
+            up_to_hp: __sdk::__query_builder::Col::new(table_name, "up_to_hp"),
+            stamina: __sdk::__query_builder::Col::new(table_name, "stamina"),
+            up_to_stamina: __sdk::__query_builder::Col::new(table_name, "up_to_stamina"),
+            hunger: __sdk::__query_builder::Col::new(table_name, "hunger"),
+            teleportation_energy: __sdk::__query_builder::Col::new(
+                table_name,
+                "teleportation_energy",
+            ),
+            consumable_while_in_combat: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumable_while_in_combat",
+            ),
+            buffs: __sdk::__query_builder::Col::new(table_name, "buffs"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `FoodDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct FoodDescIxCols {
+    pub item_id: __sdk::__query_builder::IxCol<FoodDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for FoodDesc {
+    type IxCols = FoodDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        FoodDescIxCols {
+            item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
+        }
+    }
+}

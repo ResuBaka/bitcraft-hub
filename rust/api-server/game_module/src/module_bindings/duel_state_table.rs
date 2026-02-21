@@ -202,3 +202,19 @@ impl<'ctx> DuelStateAcceptorEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DuelState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait duel_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DuelState`.
+    fn duel_state(&self) -> __sdk::__query_builder::Table<DuelState>;
+}
+
+impl duel_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn duel_state(&self) -> __sdk::__query_builder::Table<DuelState> {
+        __sdk::__query_builder::Table::new("duel_state")
+    }
+}

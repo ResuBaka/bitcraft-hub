@@ -36,3 +36,81 @@ pub struct CollectibleDesc {
 impl __sdk::InModule for CollectibleDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CollectibleDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct CollectibleDescCols {
+    pub id: __sdk::__query_builder::Col<CollectibleDesc, i32>,
+    pub name: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub description: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub collectible_type: __sdk::__query_builder::Col<CollectibleDesc, CollectibleType>,
+    pub invalidates_type: __sdk::__query_builder::Col<CollectibleDesc, CollectibleType>,
+    pub auto_collect: __sdk::__query_builder::Col<CollectibleDesc, bool>,
+    pub collectible_rarity: __sdk::__query_builder::Col<CollectibleDesc, Rarity>,
+    pub starting_loadout: __sdk::__query_builder::Col<CollectibleDesc, bool>,
+    pub locked: __sdk::__query_builder::Col<CollectibleDesc, bool>,
+    pub variant: __sdk::__query_builder::Col<CollectibleDesc, i32>,
+    pub color: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub emission: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub max_equip_count: __sdk::__query_builder::Col<CollectibleDesc, i32>,
+    pub model_asset_name: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub variant_material: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub icon_asset_name: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub tag: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub display_string: __sdk::__query_builder::Col<CollectibleDesc, String>,
+    pub item_deed_id: __sdk::__query_builder::Col<CollectibleDesc, i32>,
+    pub required_knowledges_to_use: __sdk::__query_builder::Col<CollectibleDesc, Vec<i32>>,
+    pub required_knowledges_to_convert: __sdk::__query_builder::Col<CollectibleDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for CollectibleDesc {
+    type Cols = CollectibleDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CollectibleDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            collectible_type: __sdk::__query_builder::Col::new(table_name, "collectible_type"),
+            invalidates_type: __sdk::__query_builder::Col::new(table_name, "invalidates_type"),
+            auto_collect: __sdk::__query_builder::Col::new(table_name, "auto_collect"),
+            collectible_rarity: __sdk::__query_builder::Col::new(table_name, "collectible_rarity"),
+            starting_loadout: __sdk::__query_builder::Col::new(table_name, "starting_loadout"),
+            locked: __sdk::__query_builder::Col::new(table_name, "locked"),
+            variant: __sdk::__query_builder::Col::new(table_name, "variant"),
+            color: __sdk::__query_builder::Col::new(table_name, "color"),
+            emission: __sdk::__query_builder::Col::new(table_name, "emission"),
+            max_equip_count: __sdk::__query_builder::Col::new(table_name, "max_equip_count"),
+            model_asset_name: __sdk::__query_builder::Col::new(table_name, "model_asset_name"),
+            variant_material: __sdk::__query_builder::Col::new(table_name, "variant_material"),
+            icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
+            tag: __sdk::__query_builder::Col::new(table_name, "tag"),
+            display_string: __sdk::__query_builder::Col::new(table_name, "display_string"),
+            item_deed_id: __sdk::__query_builder::Col::new(table_name, "item_deed_id"),
+            required_knowledges_to_use: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges_to_use",
+            ),
+            required_knowledges_to_convert: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges_to_convert",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CollectibleDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CollectibleDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<CollectibleDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CollectibleDesc {
+    type IxCols = CollectibleDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CollectibleDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

@@ -14,3 +14,37 @@ pub struct PlayerReportStateTimestamp {
 impl __sdk::InModule for PlayerReportStateTimestamp {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerReportStateTimestamp`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerReportStateTimestampCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerReportStateTimestamp, u64>,
+    pub timestamp: __sdk::__query_builder::Col<PlayerReportStateTimestamp, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerReportStateTimestamp {
+    type Cols = PlayerReportStateTimestampCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerReportStateTimestampCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerReportStateTimestamp`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerReportStateTimestampIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerReportStateTimestamp, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerReportStateTimestamp {
+    type IxCols = PlayerReportStateTimestampIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerReportStateTimestampIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

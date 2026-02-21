@@ -41,3 +41,139 @@ pub struct ProspectingDesc {
 impl __sdk::InModule for ProspectingDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ProspectingDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ProspectingDescCols {
+    pub id: __sdk::__query_builder::Col<ProspectingDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ProspectingDesc, String>,
+    pub description: __sdk::__query_builder::Col<ProspectingDesc, String>,
+    pub resource_clump_id: __sdk::__query_builder::Col<ProspectingDesc, i32>,
+    pub placeholder_resource_clump_id: __sdk::__query_builder::Col<ProspectingDesc, i32>,
+    pub enemy_ai_desc_id: __sdk::__query_builder::Col<ProspectingDesc, i32>,
+    pub is_aquatic_resource: __sdk::__query_builder::Col<ProspectingDesc, bool>,
+    pub biome_requirements: __sdk::__query_builder::Col<ProspectingDesc, Vec<i32>>,
+    pub equipment_requirements: __sdk::__query_builder::Col<ProspectingDesc, Vec<i32>>,
+    pub required_items_to_start: __sdk::__query_builder::Col<ProspectingDesc, Vec<ItemStack>>,
+    pub required_items_to_interact_with_reward:
+        __sdk::__query_builder::Col<ProspectingDesc, Vec<ItemStack>>,
+    pub consumed_items_by_ability_trigger:
+        __sdk::__query_builder::Col<ProspectingDesc, Vec<ItemStack>>,
+    pub allow_aquatic_prospecting: __sdk::__query_builder::Col<ProspectingDesc, bool>,
+    pub bread_crumb_count: __sdk::__query_builder::Col<ProspectingDesc, Vec<i32>>,
+    pub bread_crumb_radius: __sdk::__query_builder::Col<ProspectingDesc, Vec<i32>>,
+    pub distance_between_bread_crumbs: __sdk::__query_builder::Col<ProspectingDesc, Vec<i32>>,
+    pub deadzone_angle_between_crumbs: __sdk::__query_builder::Col<ProspectingDesc, f32>,
+    pub allow_aquatic_bread_crumb: __sdk::__query_builder::Col<ProspectingDesc, bool>,
+    pub pointer_duration: __sdk::__query_builder::Col<ProspectingDesc, f32>,
+    pub prospecting_duration: __sdk::__query_builder::Col<ProspectingDesc, f32>,
+    pub join_radius: __sdk::__query_builder::Col<ProspectingDesc, i32>,
+    pub contribution_per_visited_bread_crumb: __sdk::__query_builder::Col<ProspectingDesc, i32>,
+    pub breadcrumb_found_message: __sdk::__query_builder::Col<ProspectingDesc, String>,
+    pub resource_uncovered_message: __sdk::__query_builder::Col<ProspectingDesc, String>,
+    pub breadcrumb_found_by_someone_else_message:
+        __sdk::__query_builder::Col<ProspectingDesc, String>,
+    pub resource_uncovered_by_someone_else_message:
+        __sdk::__query_builder::Col<ProspectingDesc, String>,
+    pub icon_asset_path: __sdk::__query_builder::Col<ProspectingDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for ProspectingDesc {
+    type Cols = ProspectingDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ProspectingDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            resource_clump_id: __sdk::__query_builder::Col::new(table_name, "resource_clump_id"),
+            placeholder_resource_clump_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "placeholder_resource_clump_id",
+            ),
+            enemy_ai_desc_id: __sdk::__query_builder::Col::new(table_name, "enemy_ai_desc_id"),
+            is_aquatic_resource: __sdk::__query_builder::Col::new(
+                table_name,
+                "is_aquatic_resource",
+            ),
+            biome_requirements: __sdk::__query_builder::Col::new(table_name, "biome_requirements"),
+            equipment_requirements: __sdk::__query_builder::Col::new(
+                table_name,
+                "equipment_requirements",
+            ),
+            required_items_to_start: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_items_to_start",
+            ),
+            required_items_to_interact_with_reward: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_items_to_interact_with_reward",
+            ),
+            consumed_items_by_ability_trigger: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumed_items_by_ability_trigger",
+            ),
+            allow_aquatic_prospecting: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_aquatic_prospecting",
+            ),
+            bread_crumb_count: __sdk::__query_builder::Col::new(table_name, "bread_crumb_count"),
+            bread_crumb_radius: __sdk::__query_builder::Col::new(table_name, "bread_crumb_radius"),
+            distance_between_bread_crumbs: __sdk::__query_builder::Col::new(
+                table_name,
+                "distance_between_bread_crumbs",
+            ),
+            deadzone_angle_between_crumbs: __sdk::__query_builder::Col::new(
+                table_name,
+                "deadzone_angle_between_crumbs",
+            ),
+            allow_aquatic_bread_crumb: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_aquatic_bread_crumb",
+            ),
+            pointer_duration: __sdk::__query_builder::Col::new(table_name, "pointer_duration"),
+            prospecting_duration: __sdk::__query_builder::Col::new(
+                table_name,
+                "prospecting_duration",
+            ),
+            join_radius: __sdk::__query_builder::Col::new(table_name, "join_radius"),
+            contribution_per_visited_bread_crumb: __sdk::__query_builder::Col::new(
+                table_name,
+                "contribution_per_visited_bread_crumb",
+            ),
+            breadcrumb_found_message: __sdk::__query_builder::Col::new(
+                table_name,
+                "breadcrumb_found_message",
+            ),
+            resource_uncovered_message: __sdk::__query_builder::Col::new(
+                table_name,
+                "resource_uncovered_message",
+            ),
+            breadcrumb_found_by_someone_else_message: __sdk::__query_builder::Col::new(
+                table_name,
+                "breadcrumb_found_by_someone_else_message",
+            ),
+            resource_uncovered_by_someone_else_message: __sdk::__query_builder::Col::new(
+                table_name,
+                "resource_uncovered_by_someone_else_message",
+            ),
+            icon_asset_path: __sdk::__query_builder::Col::new(table_name, "icon_asset_path"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ProspectingDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ProspectingDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ProspectingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ProspectingDesc {
+    type IxCols = ProspectingDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ProspectingDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

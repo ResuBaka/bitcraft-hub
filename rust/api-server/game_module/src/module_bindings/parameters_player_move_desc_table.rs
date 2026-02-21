@@ -144,3 +144,23 @@ impl<'ctx> ParametersPlayerMoveDescVersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ParametersPlayerMoveDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait parameters_player_move_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ParametersPlayerMoveDesc`.
+    fn parameters_player_move_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<ParametersPlayerMoveDesc>;
+}
+
+impl parameters_player_move_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn parameters_player_move_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<ParametersPlayerMoveDesc> {
+        __sdk::__query_builder::Table::new("parameters_player_move_desc")
+    }
+}

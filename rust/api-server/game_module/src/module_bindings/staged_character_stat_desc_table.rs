@@ -142,3 +142,19 @@ impl<'ctx> StagedCharacterStatDescStatTypeUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CharacterStatDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_character_stat_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CharacterStatDesc`.
+    fn staged_character_stat_desc(&self) -> __sdk::__query_builder::Table<CharacterStatDesc>;
+}
+
+impl staged_character_stat_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_character_stat_desc(&self) -> __sdk::__query_builder::Table<CharacterStatDesc> {
+        __sdk::__query_builder::Table::new("staged_character_stat_desc")
+    }
+}

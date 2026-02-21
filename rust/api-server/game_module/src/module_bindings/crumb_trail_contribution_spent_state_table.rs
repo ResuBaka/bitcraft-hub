@@ -151,3 +151,23 @@ impl<'ctx> CrumbTrailContributionSpentStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CrumbTrailContributionSpentState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait crumb_trail_contribution_spent_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CrumbTrailContributionSpentState`.
+    fn crumb_trail_contribution_spent_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<CrumbTrailContributionSpentState>;
+}
+
+impl crumb_trail_contribution_spent_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn crumb_trail_contribution_spent_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<CrumbTrailContributionSpentState> {
+        __sdk::__query_builder::Table::new("crumb_trail_contribution_spent_state")
+    }
+}

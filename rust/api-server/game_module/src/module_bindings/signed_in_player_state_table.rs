@@ -142,3 +142,19 @@ impl<'ctx> SignedInPlayerStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `SignedInPlayerState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait signed_in_player_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `SignedInPlayerState`.
+    fn signed_in_player_state(&self) -> __sdk::__query_builder::Table<SignedInPlayerState>;
+}
+
+impl signed_in_player_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn signed_in_player_state(&self) -> __sdk::__query_builder::Table<SignedInPlayerState> {
+        __sdk::__query_builder::Table::new("signed_in_player_state")
+    }
+}

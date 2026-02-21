@@ -21,3 +21,61 @@ pub struct RentState {
 impl __sdk::InModule for RentState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RentState`.
+///
+/// Provides typed access to columns for query building.
+pub struct RentStateCols {
+    pub entity_id: __sdk::__query_builder::Col<RentState, u64>,
+    pub dimension_network_id: __sdk::__query_builder::Col<RentState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<RentState, u64>,
+    pub white_list: __sdk::__query_builder::Col<RentState, Vec<u64>>,
+    pub daily_rent: __sdk::__query_builder::Col<RentState, u32>,
+    pub paid_rent: __sdk::__query_builder::Col<RentState, u32>,
+    pub active: __sdk::__query_builder::Col<RentState, bool>,
+    pub defaulted: __sdk::__query_builder::Col<RentState, bool>,
+    pub eviction_timestamp: __sdk::__query_builder::Col<RentState, Option<__sdk::Timestamp>>,
+}
+
+impl __sdk::__query_builder::HasCols for RentState {
+    type Cols = RentStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RentStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            dimension_network_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "dimension_network_id",
+            ),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            white_list: __sdk::__query_builder::Col::new(table_name, "white_list"),
+            daily_rent: __sdk::__query_builder::Col::new(table_name, "daily_rent"),
+            paid_rent: __sdk::__query_builder::Col::new(table_name, "paid_rent"),
+            active: __sdk::__query_builder::Col::new(table_name, "active"),
+            defaulted: __sdk::__query_builder::Col::new(table_name, "defaulted"),
+            eviction_timestamp: __sdk::__query_builder::Col::new(table_name, "eviction_timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RentState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RentStateIxCols {
+    pub claim_entity_id: __sdk::__query_builder::IxCol<RentState, u64>,
+    pub dimension_network_id: __sdk::__query_builder::IxCol<RentState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<RentState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RentState {
+    type IxCols = RentStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RentStateIxCols {
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+            dimension_network_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "dimension_network_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

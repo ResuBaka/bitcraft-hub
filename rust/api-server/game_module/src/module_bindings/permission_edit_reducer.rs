@@ -61,8 +61,8 @@ impl permission_edit for super::RemoteReducers {
     fn on_permission_edit(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPermissionEditRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PermissionEditCallbackId {
         PermissionEditCallbackId(self.imp.on_reducer(
             "permission_edit",

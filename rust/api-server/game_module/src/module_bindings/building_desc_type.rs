@@ -38,3 +38,86 @@ pub struct BuildingDesc {
 impl __sdk::InModule for BuildingDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingDescCols {
+    pub id: __sdk::__query_builder::Col<BuildingDesc, i32>,
+    pub functions: __sdk::__query_builder::Col<BuildingDesc, Vec<BuildingFunction>>,
+    pub name: __sdk::__query_builder::Col<BuildingDesc, String>,
+    pub description: __sdk::__query_builder::Col<BuildingDesc, String>,
+    pub rested_buff_duration: __sdk::__query_builder::Col<BuildingDesc, i32>,
+    pub light_radius: __sdk::__query_builder::Col<BuildingDesc, i32>,
+    pub model_asset_name: __sdk::__query_builder::Col<BuildingDesc, String>,
+    pub icon_asset_name: __sdk::__query_builder::Col<BuildingDesc, String>,
+    pub unenterable: __sdk::__query_builder::Col<BuildingDesc, bool>,
+    pub wilderness: __sdk::__query_builder::Col<BuildingDesc, bool>,
+    pub footprint: __sdk::__query_builder::Col<BuildingDesc, Vec<FootprintTile>>,
+    pub max_health: __sdk::__query_builder::Col<BuildingDesc, i32>,
+    pub ignore_damage: __sdk::__query_builder::Col<BuildingDesc, bool>,
+    pub defense_level: __sdk::__query_builder::Col<BuildingDesc, i32>,
+    pub decay: __sdk::__query_builder::Col<BuildingDesc, f32>,
+    pub maintenance: __sdk::__query_builder::Col<BuildingDesc, f32>,
+    pub build_permission: __sdk::__query_builder::Col<BuildingDesc, BuildingInteractionLevel>,
+    pub interact_permission: __sdk::__query_builder::Col<BuildingDesc, BuildingInteractionLevel>,
+    pub has_action: __sdk::__query_builder::Col<BuildingDesc, bool>,
+    pub show_in_compendium: __sdk::__query_builder::Col<BuildingDesc, bool>,
+    pub is_ruins: __sdk::__query_builder::Col<BuildingDesc, bool>,
+    pub not_deconstructible: __sdk::__query_builder::Col<BuildingDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingDesc {
+    type Cols = BuildingDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            functions: __sdk::__query_builder::Col::new(table_name, "functions"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            rested_buff_duration: __sdk::__query_builder::Col::new(
+                table_name,
+                "rested_buff_duration",
+            ),
+            light_radius: __sdk::__query_builder::Col::new(table_name, "light_radius"),
+            model_asset_name: __sdk::__query_builder::Col::new(table_name, "model_asset_name"),
+            icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
+            unenterable: __sdk::__query_builder::Col::new(table_name, "unenterable"),
+            wilderness: __sdk::__query_builder::Col::new(table_name, "wilderness"),
+            footprint: __sdk::__query_builder::Col::new(table_name, "footprint"),
+            max_health: __sdk::__query_builder::Col::new(table_name, "max_health"),
+            ignore_damage: __sdk::__query_builder::Col::new(table_name, "ignore_damage"),
+            defense_level: __sdk::__query_builder::Col::new(table_name, "defense_level"),
+            decay: __sdk::__query_builder::Col::new(table_name, "decay"),
+            maintenance: __sdk::__query_builder::Col::new(table_name, "maintenance"),
+            build_permission: __sdk::__query_builder::Col::new(table_name, "build_permission"),
+            interact_permission: __sdk::__query_builder::Col::new(
+                table_name,
+                "interact_permission",
+            ),
+            has_action: __sdk::__query_builder::Col::new(table_name, "has_action"),
+            show_in_compendium: __sdk::__query_builder::Col::new(table_name, "show_in_compendium"),
+            is_ruins: __sdk::__query_builder::Col::new(table_name, "is_ruins"),
+            not_deconstructible: __sdk::__query_builder::Col::new(
+                table_name,
+                "not_deconstructible",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<BuildingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingDesc {
+    type IxCols = BuildingDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

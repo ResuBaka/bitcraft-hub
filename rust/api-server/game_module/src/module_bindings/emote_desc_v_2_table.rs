@@ -140,3 +140,19 @@ impl<'ctx> EmoteDescV2IdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EmoteDescV2`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait emote_desc_v2QueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EmoteDescV2`.
+    fn emote_desc_v2(&self) -> __sdk::__query_builder::Table<EmoteDescV2>;
+}
+
+impl emote_desc_v2QueryTableAccess for __sdk::QueryTableAccessor {
+    fn emote_desc_v2(&self) -> __sdk::__query_builder::Table<EmoteDescV2> {
+        __sdk::__query_builder::Table::new("emote_desc_v2")
+    }
+}

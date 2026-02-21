@@ -50,8 +50,8 @@ pub trait cheat_pillar_shaping_destroy {
     fn on_cheat_pillar_shaping_destroy(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingDestroyRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatPillarShapingDestroyCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_pillar_shaping_destroy`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl cheat_pillar_shaping_destroy for super::RemoteReducers {
     fn on_cheat_pillar_shaping_destroy(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingDestroyRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatPillarShapingDestroyCallbackId {
         CheatPillarShapingDestroyCallbackId(self.imp.on_reducer(
             "cheat_pillar_shaping_destroy",

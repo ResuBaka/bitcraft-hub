@@ -143,3 +143,19 @@ impl<'ctx> StagedClimbRequirementDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ClimbRequirementDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_climb_requirement_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ClimbRequirementDesc`.
+    fn staged_climb_requirement_desc(&self) -> __sdk::__query_builder::Table<ClimbRequirementDesc>;
+}
+
+impl staged_climb_requirement_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_climb_requirement_desc(&self) -> __sdk::__query_builder::Table<ClimbRequirementDesc> {
+        __sdk::__query_builder::Table::new("staged_climb_requirement_desc")
+    }
+}

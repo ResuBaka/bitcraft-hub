@@ -147,3 +147,19 @@ impl<'ctx> ConstructionRecipeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ConstructionRecipeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait construction_recipe_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ConstructionRecipeDesc`.
+    fn construction_recipe_desc(&self) -> __sdk::__query_builder::Table<ConstructionRecipeDesc>;
+}
+
+impl construction_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn construction_recipe_desc(&self) -> __sdk::__query_builder::Table<ConstructionRecipeDesc> {
+        __sdk::__query_builder::Table::new("construction_recipe_desc")
+    }
+}

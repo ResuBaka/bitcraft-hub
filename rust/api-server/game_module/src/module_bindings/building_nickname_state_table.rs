@@ -142,3 +142,19 @@ impl<'ctx> BuildingNicknameStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BuildingNicknameState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait building_nickname_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BuildingNicknameState`.
+    fn building_nickname_state(&self) -> __sdk::__query_builder::Table<BuildingNicknameState>;
+}
+
+impl building_nickname_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn building_nickname_state(&self) -> __sdk::__query_builder::Table<BuildingNicknameState> {
+        __sdk::__query_builder::Table::new("building_nickname_state")
+    }
+}

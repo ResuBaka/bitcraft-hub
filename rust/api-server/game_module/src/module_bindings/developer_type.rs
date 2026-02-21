@@ -17,3 +17,43 @@ pub struct Developer {
 impl __sdk::InModule for Developer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `Developer`.
+///
+/// Provides typed access to columns for query building.
+pub struct DeveloperCols {
+    pub identity: __sdk::__query_builder::Col<Developer, __sdk::Identity>,
+    pub developer_name: __sdk::__query_builder::Col<Developer, String>,
+    pub service_name: __sdk::__query_builder::Col<Developer, String>,
+    pub email: __sdk::__query_builder::Col<Developer, String>,
+    pub is_external: __sdk::__query_builder::Col<Developer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for Developer {
+    type Cols = DeveloperCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DeveloperCols {
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+            developer_name: __sdk::__query_builder::Col::new(table_name, "developer_name"),
+            service_name: __sdk::__query_builder::Col::new(table_name, "service_name"),
+            email: __sdk::__query_builder::Col::new(table_name, "email"),
+            is_external: __sdk::__query_builder::Col::new(table_name, "is_external"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `Developer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DeveloperIxCols {
+    pub identity: __sdk::__query_builder::IxCol<Developer, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasIxCols for Developer {
+    type IxCols = DeveloperIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DeveloperIxCols {
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+        }
+    }
+}

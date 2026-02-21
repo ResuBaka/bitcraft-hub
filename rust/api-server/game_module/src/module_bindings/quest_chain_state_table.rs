@@ -140,3 +140,19 @@ impl<'ctx> QuestChainStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `QuestChainState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait quest_chain_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `QuestChainState`.
+    fn quest_chain_state(&self) -> __sdk::__query_builder::Table<QuestChainState>;
+}
+
+impl quest_chain_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn quest_chain_state(&self) -> __sdk::__query_builder::Table<QuestChainState> {
+        __sdk::__query_builder::Table::new("quest_chain_state")
+    }
+}

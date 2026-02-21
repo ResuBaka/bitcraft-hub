@@ -72,8 +72,8 @@ impl import_knowledge_resource_state for super::RemoteReducers {
     fn on_import_knowledge_resource_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeResourceState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportKnowledgeResourceStateCallbackId {
         ImportKnowledgeResourceStateCallbackId(self.imp.on_reducer(
             "import_knowledge_resource_state",

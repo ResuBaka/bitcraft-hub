@@ -144,3 +144,19 @@ impl<'ctx> EnemyMobMonitorStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnemyMobMonitorState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait enemy_mob_monitor_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnemyMobMonitorState`.
+    fn enemy_mob_monitor_state(&self) -> __sdk::__query_builder::Table<EnemyMobMonitorState>;
+}
+
+impl enemy_mob_monitor_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn enemy_mob_monitor_state(&self) -> __sdk::__query_builder::Table<EnemyMobMonitorState> {
+        __sdk::__query_builder::Table::new("enemy_mob_monitor_state")
+    }
+}

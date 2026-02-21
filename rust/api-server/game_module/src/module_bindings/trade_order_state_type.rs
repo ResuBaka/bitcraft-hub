@@ -22,3 +22,54 @@ pub struct TradeOrderState {
 impl __sdk::InModule for TradeOrderState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TradeOrderState`.
+///
+/// Provides typed access to columns for query building.
+pub struct TradeOrderStateCols {
+    pub entity_id: __sdk::__query_builder::Col<TradeOrderState, u64>,
+    pub shop_entity_id: __sdk::__query_builder::Col<TradeOrderState, u64>,
+    pub remaining_stock: __sdk::__query_builder::Col<TradeOrderState, i32>,
+    pub offer_items: __sdk::__query_builder::Col<TradeOrderState, Vec<ItemStack>>,
+    pub offer_cargo_id: __sdk::__query_builder::Col<TradeOrderState, Vec<i32>>,
+    pub required_items: __sdk::__query_builder::Col<TradeOrderState, Vec<ItemStack>>,
+    pub required_cargo_id: __sdk::__query_builder::Col<TradeOrderState, Vec<i32>>,
+    pub traveler_trade_order_id: __sdk::__query_builder::Col<TradeOrderState, Option<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for TradeOrderState {
+    type Cols = TradeOrderStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TradeOrderStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            shop_entity_id: __sdk::__query_builder::Col::new(table_name, "shop_entity_id"),
+            remaining_stock: __sdk::__query_builder::Col::new(table_name, "remaining_stock"),
+            offer_items: __sdk::__query_builder::Col::new(table_name, "offer_items"),
+            offer_cargo_id: __sdk::__query_builder::Col::new(table_name, "offer_cargo_id"),
+            required_items: __sdk::__query_builder::Col::new(table_name, "required_items"),
+            required_cargo_id: __sdk::__query_builder::Col::new(table_name, "required_cargo_id"),
+            traveler_trade_order_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "traveler_trade_order_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TradeOrderState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TradeOrderStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<TradeOrderState, u64>,
+    pub shop_entity_id: __sdk::__query_builder::IxCol<TradeOrderState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TradeOrderState {
+    type IxCols = TradeOrderStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TradeOrderStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            shop_entity_id: __sdk::__query_builder::IxCol::new(table_name, "shop_entity_id"),
+        }
+    }
+}

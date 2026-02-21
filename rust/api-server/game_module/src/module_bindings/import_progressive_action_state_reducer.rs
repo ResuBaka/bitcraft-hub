@@ -72,8 +72,8 @@ impl import_progressive_action_state for super::RemoteReducers {
     fn on_import_progressive_action_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ProgressiveActionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportProgressiveActionStateCallbackId {
         ImportProgressiveActionStateCallbackId(self.imp.on_reducer(
             "import_progressive_action_state",

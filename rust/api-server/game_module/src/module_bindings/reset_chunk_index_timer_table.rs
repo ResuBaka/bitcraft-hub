@@ -142,3 +142,19 @@ impl<'ctx> ResetChunkIndexTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResetChunkIndexTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait reset_chunk_index_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResetChunkIndexTimer`.
+    fn reset_chunk_index_timer(&self) -> __sdk::__query_builder::Table<ResetChunkIndexTimer>;
+}
+
+impl reset_chunk_index_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn reset_chunk_index_timer(&self) -> __sdk::__query_builder::Table<ResetChunkIndexTimer> {
+        __sdk::__query_builder::Table::new("reset_chunk_index_timer")
+    }
+}

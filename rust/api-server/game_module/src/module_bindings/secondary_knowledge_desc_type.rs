@@ -14,3 +14,37 @@ pub struct SecondaryKnowledgeDesc {
 impl __sdk::InModule for SecondaryKnowledgeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `SecondaryKnowledgeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct SecondaryKnowledgeDescCols {
+    pub id: __sdk::__query_builder::Col<SecondaryKnowledgeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<SecondaryKnowledgeDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for SecondaryKnowledgeDesc {
+    type Cols = SecondaryKnowledgeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        SecondaryKnowledgeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `SecondaryKnowledgeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct SecondaryKnowledgeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<SecondaryKnowledgeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for SecondaryKnowledgeDesc {
+    type IxCols = SecondaryKnowledgeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        SecondaryKnowledgeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

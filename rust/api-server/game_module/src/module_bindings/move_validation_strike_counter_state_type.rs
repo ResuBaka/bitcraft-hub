@@ -14,3 +14,41 @@ pub struct MoveValidationStrikeCounterState {
 impl __sdk::InModule for MoveValidationStrikeCounterState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `MoveValidationStrikeCounterState`.
+///
+/// Provides typed access to columns for query building.
+pub struct MoveValidationStrikeCounterStateCols {
+    pub entity_id: __sdk::__query_builder::Col<MoveValidationStrikeCounterState, u64>,
+    pub validation_failure_timestamps:
+        __sdk::__query_builder::Col<MoveValidationStrikeCounterState, Vec<__sdk::Timestamp>>,
+}
+
+impl __sdk::__query_builder::HasCols for MoveValidationStrikeCounterState {
+    type Cols = MoveValidationStrikeCounterStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        MoveValidationStrikeCounterStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            validation_failure_timestamps: __sdk::__query_builder::Col::new(
+                table_name,
+                "validation_failure_timestamps",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `MoveValidationStrikeCounterState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct MoveValidationStrikeCounterStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<MoveValidationStrikeCounterState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for MoveValidationStrikeCounterState {
+    type IxCols = MoveValidationStrikeCounterStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        MoveValidationStrikeCounterStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

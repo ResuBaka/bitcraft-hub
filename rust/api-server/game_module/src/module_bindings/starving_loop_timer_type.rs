@@ -14,3 +14,37 @@ pub struct StarvingLoopTimer {
 impl __sdk::InModule for StarvingLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `StarvingLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct StarvingLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<StarvingLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<StarvingLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for StarvingLoopTimer {
+    type Cols = StarvingLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        StarvingLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `StarvingLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct StarvingLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<StarvingLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for StarvingLoopTimer {
+    type IxCols = StarvingLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        StarvingLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

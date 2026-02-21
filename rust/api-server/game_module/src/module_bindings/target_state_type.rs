@@ -14,3 +14,39 @@ pub struct TargetState {
 impl __sdk::InModule for TargetState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TargetState`.
+///
+/// Provides typed access to columns for query building.
+pub struct TargetStateCols {
+    pub entity_id: __sdk::__query_builder::Col<TargetState, u64>,
+    pub target_entity_id: __sdk::__query_builder::Col<TargetState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for TargetState {
+    type Cols = TargetStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TargetStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            target_entity_id: __sdk::__query_builder::Col::new(table_name, "target_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TargetState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TargetStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<TargetState, u64>,
+    pub target_entity_id: __sdk::__query_builder::IxCol<TargetState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TargetState {
+    type IxCols = TargetStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TargetStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            target_entity_id: __sdk::__query_builder::IxCol::new(table_name, "target_entity_id"),
+        }
+    }
+}

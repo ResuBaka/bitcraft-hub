@@ -145,3 +145,19 @@ impl<'ctx> BuildingSpawnDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BuildingSpawnDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait building_spawn_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BuildingSpawnDesc`.
+    fn building_spawn_desc(&self) -> __sdk::__query_builder::Table<BuildingSpawnDesc>;
+}
+
+impl building_spawn_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn building_spawn_desc(&self) -> __sdk::__query_builder::Table<BuildingSpawnDesc> {
+        __sdk::__query_builder::Table::new("building_spawn_desc")
+    }
+}

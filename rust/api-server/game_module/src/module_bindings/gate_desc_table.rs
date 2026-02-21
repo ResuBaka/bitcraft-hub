@@ -140,3 +140,19 @@ impl<'ctx> GateDescBuildingIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `GateDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait gate_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `GateDesc`.
+    fn gate_desc(&self) -> __sdk::__query_builder::Table<GateDesc>;
+}
+
+impl gate_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn gate_desc(&self) -> __sdk::__query_builder::Table<GateDesc> {
+        __sdk::__query_builder::Table::new("gate_desc")
+    }
+}

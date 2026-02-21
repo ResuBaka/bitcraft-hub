@@ -15,3 +15,39 @@ pub struct WeaponTypeDesc {
 impl __sdk::InModule for WeaponTypeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WeaponTypeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct WeaponTypeDescCols {
+    pub id: __sdk::__query_builder::Col<WeaponTypeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<WeaponTypeDesc, String>,
+    pub hunting: __sdk::__query_builder::Col<WeaponTypeDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for WeaponTypeDesc {
+    type Cols = WeaponTypeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WeaponTypeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            hunting: __sdk::__query_builder::Col::new(table_name, "hunting"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WeaponTypeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WeaponTypeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<WeaponTypeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WeaponTypeDesc {
+    type IxCols = WeaponTypeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WeaponTypeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

@@ -16,3 +16,38 @@ pub struct PrivateParametersDesc {
 impl __sdk::InModule for PrivateParametersDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PrivateParametersDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PrivateParametersDescCols {
+    pub version: __sdk::__query_builder::Col<PrivateParametersDesc, i32>,
+    pub move_validation:
+        __sdk::__query_builder::Col<PrivateParametersDesc, MoveValidationParamsDesc>,
+}
+
+impl __sdk::__query_builder::HasCols for PrivateParametersDesc {
+    type Cols = PrivateParametersDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PrivateParametersDescCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            move_validation: __sdk::__query_builder::Col::new(table_name, "move_validation"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PrivateParametersDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PrivateParametersDescIxCols {
+    pub version: __sdk::__query_builder::IxCol<PrivateParametersDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PrivateParametersDesc {
+    type IxCols = PrivateParametersDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PrivateParametersDescIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

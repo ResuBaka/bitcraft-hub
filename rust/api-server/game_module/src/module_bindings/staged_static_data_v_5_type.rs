@@ -16,3 +16,37 @@ pub struct StagedStaticDataV5 {
 impl __sdk::InModule for StagedStaticDataV5 {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `StagedStaticDataV5`.
+///
+/// Provides typed access to columns for query building.
+pub struct StagedStaticDataV5Cols {
+    pub version: __sdk::__query_builder::Col<StagedStaticDataV5, u32>,
+    pub static_data: __sdk::__query_builder::Col<StagedStaticDataV5, StaticDataUploadV5>,
+}
+
+impl __sdk::__query_builder::HasCols for StagedStaticDataV5 {
+    type Cols = StagedStaticDataV5Cols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        StagedStaticDataV5Cols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            static_data: __sdk::__query_builder::Col::new(table_name, "static_data"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `StagedStaticDataV5`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct StagedStaticDataV5IxCols {
+    pub version: __sdk::__query_builder::IxCol<StagedStaticDataV5, u32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for StagedStaticDataV5 {
+    type IxCols = StagedStaticDataV5IxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        StagedStaticDataV5IxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

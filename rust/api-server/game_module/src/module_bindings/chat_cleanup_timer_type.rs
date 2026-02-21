@@ -14,3 +14,37 @@ pub struct ChatCleanupTimer {
 impl __sdk::InModule for ChatCleanupTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ChatCleanupTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct ChatCleanupTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<ChatCleanupTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<ChatCleanupTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for ChatCleanupTimer {
+    type Cols = ChatCleanupTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ChatCleanupTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ChatCleanupTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ChatCleanupTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<ChatCleanupTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ChatCleanupTimer {
+    type IxCols = ChatCleanupTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ChatCleanupTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

@@ -140,3 +140,19 @@ impl<'ctx> BarterStallStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BarterStallState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait barter_stall_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BarterStallState`.
+    fn barter_stall_state(&self) -> __sdk::__query_builder::Table<BarterStallState>;
+}
+
+impl barter_stall_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn barter_stall_state(&self) -> __sdk::__query_builder::Table<BarterStallState> {
+        __sdk::__query_builder::Table::new("barter_stall_state")
+    }
+}

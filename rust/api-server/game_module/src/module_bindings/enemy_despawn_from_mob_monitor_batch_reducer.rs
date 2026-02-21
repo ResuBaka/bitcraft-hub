@@ -35,7 +35,7 @@ pub trait enemy_despawn_from_mob_monitor_batch {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_enemy_despawn_from_mob_monitor_batch`] callbacks.
     fn enemy_despawn_from_mob_monitor_batch(&self, enemy_entity_ids: Vec<u64>)
-    -> __sdk::Result<()>;
+        -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `enemy_despawn_from_mob_monitor_batch`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -76,7 +76,7 @@ impl enemy_despawn_from_mob_monitor_batch for super::RemoteReducers {
                 let super::ReducerEventContext {
                     event: __sdk::ReducerEvent {
                         reducer: super::Reducer::EnemyDespawnFromMobMonitorBatch {
-                            enemy_entity_ids
+                            enemy_entity_ids, 
                         },
                         ..
                     },

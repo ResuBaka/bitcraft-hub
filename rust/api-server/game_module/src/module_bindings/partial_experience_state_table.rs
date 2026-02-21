@@ -144,3 +144,19 @@ impl<'ctx> PartialExperienceStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PartialExperienceState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait partial_experience_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PartialExperienceState`.
+    fn partial_experience_state(&self) -> __sdk::__query_builder::Table<PartialExperienceState>;
+}
+
+impl partial_experience_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn partial_experience_state(&self) -> __sdk::__query_builder::Table<PartialExperienceState> {
+        __sdk::__query_builder::Table::new("partial_experience_state")
+    }
+}

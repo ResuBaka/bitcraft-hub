@@ -18,3 +18,41 @@ pub struct BuildingTypeDesc {
 impl __sdk::InModule for BuildingTypeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingTypeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingTypeDescCols {
+    pub id: __sdk::__query_builder::Col<BuildingTypeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<BuildingTypeDesc, String>,
+    pub category: __sdk::__query_builder::Col<BuildingTypeDesc, BuildingCategory>,
+    pub actions: __sdk::__query_builder::Col<BuildingTypeDesc, Vec<String>>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingTypeDesc {
+    type Cols = BuildingTypeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingTypeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            category: __sdk::__query_builder::Col::new(table_name, "category"),
+            actions: __sdk::__query_builder::Col::new(table_name, "actions"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingTypeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingTypeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<BuildingTypeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingTypeDesc {
+    type IxCols = BuildingTypeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingTypeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

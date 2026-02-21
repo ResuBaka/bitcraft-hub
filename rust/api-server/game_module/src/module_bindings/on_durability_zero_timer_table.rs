@@ -143,3 +143,19 @@ impl<'ctx> OnDurabilityZeroTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `OnDurabilityZeroTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait on_durability_zero_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `OnDurabilityZeroTimer`.
+    fn on_durability_zero_timer(&self) -> __sdk::__query_builder::Table<OnDurabilityZeroTimer>;
+}
+
+impl on_durability_zero_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn on_durability_zero_timer(&self) -> __sdk::__query_builder::Table<OnDurabilityZeroTimer> {
+        __sdk::__query_builder::Table::new("on_durability_zero_timer")
+    }
+}

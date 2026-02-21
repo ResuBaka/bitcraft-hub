@@ -20,3 +20,43 @@ pub struct TeleportPlayerTimer {
 impl __sdk::InModule for TeleportPlayerTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TeleportPlayerTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct TeleportPlayerTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<TeleportPlayerTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<TeleportPlayerTimer, __sdk::ScheduleAt>,
+    pub location: __sdk::__query_builder::Col<TeleportPlayerTimer, OffsetCoordinatesFloat>,
+    pub player_entity_id: __sdk::__query_builder::Col<TeleportPlayerTimer, u64>,
+    pub reason: __sdk::__query_builder::Col<TeleportPlayerTimer, ServerTeleportReason>,
+}
+
+impl __sdk::__query_builder::HasCols for TeleportPlayerTimer {
+    type Cols = TeleportPlayerTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TeleportPlayerTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            reason: __sdk::__query_builder::Col::new(table_name, "reason"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TeleportPlayerTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TeleportPlayerTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<TeleportPlayerTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TeleportPlayerTimer {
+    type IxCols = TeleportPlayerTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TeleportPlayerTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

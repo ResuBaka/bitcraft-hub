@@ -17,3 +17,42 @@ pub struct PlayerActionDesc {
 impl __sdk::InModule for PlayerActionDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerActionDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerActionDescCols {
+    pub action_type_id: __sdk::__query_builder::Col<PlayerActionDesc, i32>,
+    pub layer: __sdk::__query_builder::Col<PlayerActionDesc, PlayerActionLayer>,
+    pub allowed_concurrent_action_ids: __sdk::__query_builder::Col<PlayerActionDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerActionDesc {
+    type Cols = PlayerActionDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerActionDescCols {
+            action_type_id: __sdk::__query_builder::Col::new(table_name, "action_type_id"),
+            layer: __sdk::__query_builder::Col::new(table_name, "layer"),
+            allowed_concurrent_action_ids: __sdk::__query_builder::Col::new(
+                table_name,
+                "allowed_concurrent_action_ids",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerActionDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerActionDescIxCols {
+    pub action_type_id: __sdk::__query_builder::IxCol<PlayerActionDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerActionDesc {
+    type IxCols = PlayerActionDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerActionDescIxCols {
+            action_type_id: __sdk::__query_builder::IxCol::new(table_name, "action_type_id"),
+        }
+    }
+}

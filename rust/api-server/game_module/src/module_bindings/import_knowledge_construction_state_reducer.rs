@@ -50,8 +50,8 @@ pub trait import_knowledge_construction_state {
     fn on_import_knowledge_construction_state(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeConstructionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportKnowledgeConstructionStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_knowledge_construction_state`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_knowledge_construction_state for super::RemoteReducers {
     fn on_import_knowledge_construction_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeConstructionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportKnowledgeConstructionStateCallbackId {
         ImportKnowledgeConstructionStateCallbackId(self.imp.on_reducer(
             "import_knowledge_construction_state",

@@ -22,3 +22,64 @@ pub struct AbilityUnlockDesc {
 impl __sdk::InModule for AbilityUnlockDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AbilityUnlockDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct AbilityUnlockDescCols {
+    pub id: __sdk::__query_builder::Col<AbilityUnlockDesc, i32>,
+    pub ability_type_enum_id: __sdk::__query_builder::Col<AbilityUnlockDesc, i32>,
+    pub ability_data: __sdk::__query_builder::Col<AbilityUnlockDesc, Option<AbilityType>>,
+    pub level_requirements: __sdk::__query_builder::Col<AbilityUnlockDesc, Vec<LevelRequirement>>,
+    pub required_claim_tech_id: __sdk::__query_builder::Col<AbilityUnlockDesc, i32>,
+    pub required_knowledges: __sdk::__query_builder::Col<AbilityUnlockDesc, Vec<i32>>,
+    pub blocking_knowledges: __sdk::__query_builder::Col<AbilityUnlockDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for AbilityUnlockDesc {
+    type Cols = AbilityUnlockDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AbilityUnlockDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            ability_type_enum_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "ability_type_enum_id",
+            ),
+            ability_data: __sdk::__query_builder::Col::new(table_name, "ability_data"),
+            level_requirements: __sdk::__query_builder::Col::new(table_name, "level_requirements"),
+            required_claim_tech_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_claim_tech_id",
+            ),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+            blocking_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "blocking_knowledges",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AbilityUnlockDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AbilityUnlockDescIxCols {
+    pub ability_type_enum_id: __sdk::__query_builder::IxCol<AbilityUnlockDesc, i32>,
+    pub id: __sdk::__query_builder::IxCol<AbilityUnlockDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AbilityUnlockDesc {
+    type IxCols = AbilityUnlockDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AbilityUnlockDescIxCols {
+            ability_type_enum_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "ability_type_enum_id",
+            ),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

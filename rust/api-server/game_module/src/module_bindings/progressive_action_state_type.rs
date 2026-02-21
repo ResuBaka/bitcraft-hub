@@ -22,3 +22,60 @@ pub struct ProgressiveActionState {
 impl __sdk::InModule for ProgressiveActionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ProgressiveActionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ProgressiveActionStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ProgressiveActionState, u64>,
+    pub building_entity_id: __sdk::__query_builder::Col<ProgressiveActionState, u64>,
+    pub function_type: __sdk::__query_builder::Col<ProgressiveActionState, i32>,
+    pub progress: __sdk::__query_builder::Col<ProgressiveActionState, i32>,
+    pub recipe_id: __sdk::__query_builder::Col<ProgressiveActionState, i32>,
+    pub craft_count: __sdk::__query_builder::Col<ProgressiveActionState, i32>,
+    pub last_crit_outcome: __sdk::__query_builder::Col<ProgressiveActionState, i32>,
+    pub owner_entity_id: __sdk::__query_builder::Col<ProgressiveActionState, u64>,
+    pub lock_expiration: __sdk::__query_builder::Col<ProgressiveActionState, __sdk::Timestamp>,
+    pub preparation: __sdk::__query_builder::Col<ProgressiveActionState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for ProgressiveActionState {
+    type Cols = ProgressiveActionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ProgressiveActionStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            function_type: __sdk::__query_builder::Col::new(table_name, "function_type"),
+            progress: __sdk::__query_builder::Col::new(table_name, "progress"),
+            recipe_id: __sdk::__query_builder::Col::new(table_name, "recipe_id"),
+            craft_count: __sdk::__query_builder::Col::new(table_name, "craft_count"),
+            last_crit_outcome: __sdk::__query_builder::Col::new(table_name, "last_crit_outcome"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            lock_expiration: __sdk::__query_builder::Col::new(table_name, "lock_expiration"),
+            preparation: __sdk::__query_builder::Col::new(table_name, "preparation"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ProgressiveActionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ProgressiveActionStateIxCols {
+    pub building_entity_id: __sdk::__query_builder::IxCol<ProgressiveActionState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<ProgressiveActionState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<ProgressiveActionState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ProgressiveActionState {
+    type IxCols = ProgressiveActionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ProgressiveActionStateIxCols {
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

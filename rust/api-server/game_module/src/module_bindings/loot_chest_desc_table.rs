@@ -140,3 +140,19 @@ impl<'ctx> LootChestDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LootChestDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait loot_chest_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LootChestDesc`.
+    fn loot_chest_desc(&self) -> __sdk::__query_builder::Table<LootChestDesc>;
+}
+
+impl loot_chest_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn loot_chest_desc(&self) -> __sdk::__query_builder::Table<LootChestDesc> {
+        __sdk::__query_builder::Table::new("loot_chest_desc")
+    }
+}

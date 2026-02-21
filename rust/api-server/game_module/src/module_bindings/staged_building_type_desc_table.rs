@@ -143,3 +143,19 @@ impl<'ctx> StagedBuildingTypeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BuildingTypeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_building_type_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BuildingTypeDesc`.
+    fn staged_building_type_desc(&self) -> __sdk::__query_builder::Table<BuildingTypeDesc>;
+}
+
+impl staged_building_type_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_building_type_desc(&self) -> __sdk::__query_builder::Table<BuildingTypeDesc> {
+        __sdk::__query_builder::Table::new("staged_building_type_desc")
+    }
+}

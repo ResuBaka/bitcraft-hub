@@ -47,8 +47,8 @@ pub trait achievement_claim {
     fn on_achievement_claim(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerAchievementClaimRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AchievementClaimCallbackId;
     /// Cancel a callback previously registered by [`Self::on_achievement_claim`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl achievement_claim for super::RemoteReducers {
     fn on_achievement_claim(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerAchievementClaimRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AchievementClaimCallbackId {
         AchievementClaimCallbackId(self.imp.on_reducer(
             "achievement_claim",

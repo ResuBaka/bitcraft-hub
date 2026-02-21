@@ -146,3 +146,19 @@ impl<'ctx> EquipmentDescItemIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EquipmentDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait equipment_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EquipmentDesc`.
+    fn equipment_desc(&self) -> __sdk::__query_builder::Table<EquipmentDesc>;
+}
+
+impl equipment_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn equipment_desc(&self) -> __sdk::__query_builder::Table<EquipmentDesc> {
+        __sdk::__query_builder::Table::new("equipment_desc")
+    }
+}

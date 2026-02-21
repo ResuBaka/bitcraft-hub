@@ -15,3 +15,39 @@ pub struct EmpireColorDesc {
 impl __sdk::InModule for EmpireColorDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireColorDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireColorDescCols {
+    pub id: __sdk::__query_builder::Col<EmpireColorDesc, i32>,
+    pub color_argb: __sdk::__query_builder::Col<EmpireColorDesc, u64>,
+    pub color2_argb: __sdk::__query_builder::Col<EmpireColorDesc, Option<u64>>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireColorDesc {
+    type Cols = EmpireColorDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireColorDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            color_argb: __sdk::__query_builder::Col::new(table_name, "color_argb"),
+            color2_argb: __sdk::__query_builder::Col::new(table_name, "color2_argb"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireColorDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireColorDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<EmpireColorDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireColorDesc {
+    type IxCols = EmpireColorDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireColorDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

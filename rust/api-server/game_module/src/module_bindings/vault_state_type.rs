@@ -16,3 +16,37 @@ pub struct VaultState {
 impl __sdk::InModule for VaultState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `VaultState`.
+///
+/// Provides typed access to columns for query building.
+pub struct VaultStateCols {
+    pub entity_id: __sdk::__query_builder::Col<VaultState, u64>,
+    pub collectibles: __sdk::__query_builder::Col<VaultState, Vec<VaultCollectible>>,
+}
+
+impl __sdk::__query_builder::HasCols for VaultState {
+    type Cols = VaultStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        VaultStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            collectibles: __sdk::__query_builder::Col::new(table_name, "collectibles"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `VaultState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct VaultStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<VaultState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for VaultState {
+    type IxCols = VaultStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        VaultStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

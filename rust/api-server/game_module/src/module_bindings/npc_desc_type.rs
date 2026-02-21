@@ -22,3 +22,53 @@ pub struct NpcDesc {
 impl __sdk::InModule for NpcDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `NpcDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct NpcDescCols {
+    pub npc_type: __sdk::__query_builder::Col<NpcDesc, i32>,
+    pub name: __sdk::__query_builder::Col<NpcDesc, String>,
+    pub population: __sdk::__query_builder::Col<NpcDesc, f32>,
+    pub speed: __sdk::__query_builder::Col<NpcDesc, i32>,
+    pub min_time_at_ruin: __sdk::__query_builder::Col<NpcDesc, i32>,
+    pub max_time_at_ruin: __sdk::__query_builder::Col<NpcDesc, i32>,
+    pub prefab_address: __sdk::__query_builder::Col<NpcDesc, String>,
+    pub icon_address: __sdk::__query_builder::Col<NpcDesc, String>,
+    pub force_market_mode: __sdk::__query_builder::Col<NpcDesc, bool>,
+    pub task_skill_check: __sdk::__query_builder::Col<NpcDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for NpcDesc {
+    type Cols = NpcDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        NpcDescCols {
+            npc_type: __sdk::__query_builder::Col::new(table_name, "npc_type"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            population: __sdk::__query_builder::Col::new(table_name, "population"),
+            speed: __sdk::__query_builder::Col::new(table_name, "speed"),
+            min_time_at_ruin: __sdk::__query_builder::Col::new(table_name, "min_time_at_ruin"),
+            max_time_at_ruin: __sdk::__query_builder::Col::new(table_name, "max_time_at_ruin"),
+            prefab_address: __sdk::__query_builder::Col::new(table_name, "prefab_address"),
+            icon_address: __sdk::__query_builder::Col::new(table_name, "icon_address"),
+            force_market_mode: __sdk::__query_builder::Col::new(table_name, "force_market_mode"),
+            task_skill_check: __sdk::__query_builder::Col::new(table_name, "task_skill_check"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `NpcDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct NpcDescIxCols {
+    pub npc_type: __sdk::__query_builder::IxCol<NpcDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for NpcDesc {
+    type IxCols = NpcDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        NpcDescIxCols {
+            npc_type: __sdk::__query_builder::IxCol::new(table_name, "npc_type"),
+        }
+    }
+}

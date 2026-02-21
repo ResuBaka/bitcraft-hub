@@ -50,8 +50,8 @@ pub trait import_interior_environment_desc {
     fn on_import_interior_environment_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorEnvironmentDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportInteriorEnvironmentDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_interior_environment_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_interior_environment_desc for super::RemoteReducers {
     fn on_import_interior_environment_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorEnvironmentDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportInteriorEnvironmentDescCallbackId {
         ImportInteriorEnvironmentDescCallbackId(self.imp.on_reducer(
             "import_interior_environment_desc",

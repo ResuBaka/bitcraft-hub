@@ -143,3 +143,19 @@ impl<'ctx> ContributionLootDescV2IdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ContributionLootDescV2`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait contribution_loot_desc_v2QueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ContributionLootDescV2`.
+    fn contribution_loot_desc_v2(&self) -> __sdk::__query_builder::Table<ContributionLootDescV2>;
+}
+
+impl contribution_loot_desc_v2QueryTableAccess for __sdk::QueryTableAccessor {
+    fn contribution_loot_desc_v2(&self) -> __sdk::__query_builder::Table<ContributionLootDescV2> {
+        __sdk::__query_builder::Table::new("contribution_loot_desc_v2")
+    }
+}

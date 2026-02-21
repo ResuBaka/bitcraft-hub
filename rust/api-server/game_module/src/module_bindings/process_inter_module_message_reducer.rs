@@ -73,8 +73,8 @@ impl process_inter_module_message for super::RemoteReducers {
     fn on_process_inter_module_message(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &u8, &InterModuleMessageV4)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProcessInterModuleMessageCallbackId {
         ProcessInterModuleMessageCallbackId(self.imp.on_reducer(
             "process_inter_module_message",

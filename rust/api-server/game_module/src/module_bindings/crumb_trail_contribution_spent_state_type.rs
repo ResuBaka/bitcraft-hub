@@ -15,3 +15,47 @@ pub struct CrumbTrailContributionSpentState {
 impl __sdk::InModule for CrumbTrailContributionSpentState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CrumbTrailContributionSpentState`.
+///
+/// Provides typed access to columns for query building.
+pub struct CrumbTrailContributionSpentStateCols {
+    pub entity_id: __sdk::__query_builder::Col<CrumbTrailContributionSpentState, u64>,
+    pub player_entity_id: __sdk::__query_builder::Col<CrumbTrailContributionSpentState, u64>,
+    pub crumb_trail_entity_id: __sdk::__query_builder::Col<CrumbTrailContributionSpentState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for CrumbTrailContributionSpentState {
+    type Cols = CrumbTrailContributionSpentStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CrumbTrailContributionSpentStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            crumb_trail_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "crumb_trail_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CrumbTrailContributionSpentState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CrumbTrailContributionSpentStateIxCols {
+    pub crumb_trail_entity_id: __sdk::__query_builder::IxCol<CrumbTrailContributionSpentState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<CrumbTrailContributionSpentState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CrumbTrailContributionSpentState {
+    type IxCols = CrumbTrailContributionSpentStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CrumbTrailContributionSpentStateIxCols {
+            crumb_trail_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "crumb_trail_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

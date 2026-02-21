@@ -22,3 +22,54 @@ pub struct AttackImpactTimerMigrated {
 impl __sdk::InModule for AttackImpactTimerMigrated {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AttackImpactTimerMigrated`.
+///
+/// Provides typed access to columns for query building.
+pub struct AttackImpactTimerMigratedCols {
+    pub scheduled_id: __sdk::__query_builder::Col<AttackImpactTimerMigrated, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<AttackImpactTimerMigrated, __sdk::ScheduleAt>,
+    pub attacker_entity_id: __sdk::__query_builder::Col<AttackImpactTimerMigrated, u64>,
+    pub defender_entity_id: __sdk::__query_builder::Col<AttackImpactTimerMigrated, u64>,
+    pub combat_action_id: __sdk::__query_builder::Col<AttackImpactTimerMigrated, i32>,
+    pub attacker_type: __sdk::__query_builder::Col<AttackImpactTimerMigrated, EntityType>,
+    pub defender_type: __sdk::__query_builder::Col<AttackImpactTimerMigrated, EntityType>,
+    pub main_attack: __sdk::__query_builder::Col<AttackImpactTimerMigrated, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for AttackImpactTimerMigrated {
+    type Cols = AttackImpactTimerMigratedCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AttackImpactTimerMigratedCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            attacker_entity_id: __sdk::__query_builder::Col::new(table_name, "attacker_entity_id"),
+            defender_entity_id: __sdk::__query_builder::Col::new(table_name, "defender_entity_id"),
+            combat_action_id: __sdk::__query_builder::Col::new(table_name, "combat_action_id"),
+            attacker_type: __sdk::__query_builder::Col::new(table_name, "attacker_type"),
+            defender_type: __sdk::__query_builder::Col::new(table_name, "defender_type"),
+            main_attack: __sdk::__query_builder::Col::new(table_name, "main_attack"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AttackImpactTimerMigrated`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AttackImpactTimerMigratedIxCols {
+    pub attacker_entity_id: __sdk::__query_builder::IxCol<AttackImpactTimerMigrated, u64>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<AttackImpactTimerMigrated, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AttackImpactTimerMigrated {
+    type IxCols = AttackImpactTimerMigratedIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AttackImpactTimerMigratedIxCols {
+            attacker_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "attacker_entity_id",
+            ),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

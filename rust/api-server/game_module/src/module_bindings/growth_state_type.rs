@@ -15,3 +15,39 @@ pub struct GrowthState {
 impl __sdk::InModule for GrowthState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `GrowthState`.
+///
+/// Provides typed access to columns for query building.
+pub struct GrowthStateCols {
+    pub entity_id: __sdk::__query_builder::Col<GrowthState, u64>,
+    pub end_timestamp: __sdk::__query_builder::Col<GrowthState, __sdk::Timestamp>,
+    pub growth_recipe_id: __sdk::__query_builder::Col<GrowthState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for GrowthState {
+    type Cols = GrowthStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        GrowthStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            end_timestamp: __sdk::__query_builder::Col::new(table_name, "end_timestamp"),
+            growth_recipe_id: __sdk::__query_builder::Col::new(table_name, "growth_recipe_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `GrowthState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct GrowthStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<GrowthState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for GrowthState {
+    type IxCols = GrowthStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        GrowthStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -15,3 +15,39 @@ pub struct RentEvictTimer {
 impl __sdk::InModule for RentEvictTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RentEvictTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct RentEvictTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<RentEvictTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<RentEvictTimer, __sdk::ScheduleAt>,
+    pub rent_entity_id: __sdk::__query_builder::Col<RentEvictTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for RentEvictTimer {
+    type Cols = RentEvictTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RentEvictTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            rent_entity_id: __sdk::__query_builder::Col::new(table_name, "rent_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RentEvictTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RentEvictTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<RentEvictTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RentEvictTimer {
+    type IxCols = RentEvictTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RentEvictTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

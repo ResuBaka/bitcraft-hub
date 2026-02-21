@@ -28,3 +28,61 @@ pub struct EquipmentDesc {
 impl __sdk::InModule for EquipmentDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EquipmentDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EquipmentDescCols {
+    pub item_id: __sdk::__query_builder::Col<EquipmentDesc, i32>,
+    pub slots: __sdk::__query_builder::Col<EquipmentDesc, Vec<EquipmentSlotType>>,
+    pub visual_type: __sdk::__query_builder::Col<EquipmentDesc, EquipmentVisualType>,
+    pub level_requirement: __sdk::__query_builder::Col<EquipmentDesc, Option<LevelRequirement>>,
+    pub clothing_visual: __sdk::__query_builder::Col<EquipmentDesc, Option<ClothingVisual>>,
+    pub hand_equipment_visual:
+        __sdk::__query_builder::Col<EquipmentDesc, Option<HandEquipmentVisual>>,
+    pub stats: __sdk::__query_builder::Col<EquipmentDesc, Vec<CsvStatEntry>>,
+    pub required_achievements: __sdk::__query_builder::Col<EquipmentDesc, Vec<i32>>,
+    pub required_knowledges: __sdk::__query_builder::Col<EquipmentDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for EquipmentDesc {
+    type Cols = EquipmentDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EquipmentDescCols {
+            item_id: __sdk::__query_builder::Col::new(table_name, "item_id"),
+            slots: __sdk::__query_builder::Col::new(table_name, "slots"),
+            visual_type: __sdk::__query_builder::Col::new(table_name, "visual_type"),
+            level_requirement: __sdk::__query_builder::Col::new(table_name, "level_requirement"),
+            clothing_visual: __sdk::__query_builder::Col::new(table_name, "clothing_visual"),
+            hand_equipment_visual: __sdk::__query_builder::Col::new(
+                table_name,
+                "hand_equipment_visual",
+            ),
+            stats: __sdk::__query_builder::Col::new(table_name, "stats"),
+            required_achievements: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_achievements",
+            ),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EquipmentDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EquipmentDescIxCols {
+    pub item_id: __sdk::__query_builder::IxCol<EquipmentDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EquipmentDesc {
+    type IxCols = EquipmentDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EquipmentDescIxCols {
+            item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
+        }
+    }
+}

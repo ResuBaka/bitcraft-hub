@@ -21,3 +21,59 @@ pub struct EmpireSettlementState {
 impl __sdk::InModule for EmpireSettlementState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireSettlementState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireSettlementStateCols {
+    pub building_entity_id: __sdk::__query_builder::Col<EmpireSettlementState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<EmpireSettlementState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::Col<EmpireSettlementState, u64>,
+    pub chunk_index: __sdk::__query_builder::Col<EmpireSettlementState, u64>,
+    pub can_house_empire_storehouse: __sdk::__query_builder::Col<EmpireSettlementState, bool>,
+    pub members_donations: __sdk::__query_builder::Col<EmpireSettlementState, u32>,
+    pub location: __sdk::__query_builder::Col<EmpireSettlementState, OffsetCoordinatesSmallMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireSettlementState {
+    type Cols = EmpireSettlementStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireSettlementStateCols {
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            empire_entity_id: __sdk::__query_builder::Col::new(table_name, "empire_entity_id"),
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            can_house_empire_storehouse: __sdk::__query_builder::Col::new(
+                table_name,
+                "can_house_empire_storehouse",
+            ),
+            members_donations: __sdk::__query_builder::Col::new(table_name, "members_donations"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireSettlementState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireSettlementStateIxCols {
+    pub building_entity_id: __sdk::__query_builder::IxCol<EmpireSettlementState, u64>,
+    pub chunk_index: __sdk::__query_builder::IxCol<EmpireSettlementState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::IxCol<EmpireSettlementState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::IxCol<EmpireSettlementState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireSettlementState {
+    type IxCols = EmpireSettlementStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireSettlementStateIxCols {
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+            empire_entity_id: __sdk::__query_builder::IxCol::new(table_name, "empire_entity_id"),
+        }
+    }
+}

@@ -47,8 +47,8 @@ pub trait project_site_place {
     fn on_project_site_place(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSitePlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProjectSitePlaceCallbackId;
     /// Cancel a callback previously registered by [`Self::on_project_site_place`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl project_site_place for super::RemoteReducers {
     fn on_project_site_place(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSitePlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProjectSitePlaceCallbackId {
         ProjectSitePlaceCallbackId(self.imp.on_reducer(
             "project_site_place",

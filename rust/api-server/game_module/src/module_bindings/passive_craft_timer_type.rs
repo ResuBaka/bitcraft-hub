@@ -15,3 +15,41 @@ pub struct PassiveCraftTimer {
 impl __sdk::InModule for PassiveCraftTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PassiveCraftTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct PassiveCraftTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PassiveCraftTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PassiveCraftTimer, __sdk::ScheduleAt>,
+    pub craft_entity_id: __sdk::__query_builder::Col<PassiveCraftTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for PassiveCraftTimer {
+    type Cols = PassiveCraftTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PassiveCraftTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            craft_entity_id: __sdk::__query_builder::Col::new(table_name, "craft_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PassiveCraftTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PassiveCraftTimerIxCols {
+    pub craft_entity_id: __sdk::__query_builder::IxCol<PassiveCraftTimer, u64>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<PassiveCraftTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PassiveCraftTimer {
+    type IxCols = PassiveCraftTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PassiveCraftTimerIxCols {
+            craft_entity_id: __sdk::__query_builder::IxCol::new(table_name, "craft_entity_id"),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

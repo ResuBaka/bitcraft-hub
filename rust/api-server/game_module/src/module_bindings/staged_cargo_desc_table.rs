@@ -141,3 +141,19 @@ impl<'ctx> StagedCargoDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CargoDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_cargo_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CargoDesc`.
+    fn staged_cargo_desc(&self) -> __sdk::__query_builder::Table<CargoDesc>;
+}
+
+impl staged_cargo_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_cargo_desc(&self) -> __sdk::__query_builder::Table<CargoDesc> {
+        __sdk::__query_builder::Table::new("staged_cargo_desc")
+    }
+}

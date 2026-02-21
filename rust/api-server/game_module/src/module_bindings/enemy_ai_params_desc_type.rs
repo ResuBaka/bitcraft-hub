@@ -26,3 +26,58 @@ pub struct EnemyAiParamsDesc {
 impl __sdk::InModule for EnemyAiParamsDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnemyAiParamsDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnemyAiParamsDescCols {
+    pub id: __sdk::__query_builder::Col<EnemyAiParamsDesc, i32>,
+    pub enemy_type: __sdk::__query_builder::Col<EnemyAiParamsDesc, EnemyType>,
+    pub biome: __sdk::__query_builder::Col<EnemyAiParamsDesc, Biome>,
+    pub avg_herd_size: __sdk::__query_builder::Col<EnemyAiParamsDesc, i32>,
+    pub var_herd_size: __sdk::__query_builder::Col<EnemyAiParamsDesc, f32>,
+    pub herds_per_chunk: __sdk::__query_builder::Col<EnemyAiParamsDesc, f32>,
+    pub roaming_distance: __sdk::__query_builder::Col<EnemyAiParamsDesc, i32>,
+    pub spawn_eagerness: __sdk::__query_builder::Col<EnemyAiParamsDesc, f32>,
+    pub time_of_day_start: __sdk::__query_builder::Col<EnemyAiParamsDesc, f32>,
+    pub time_of_day_end: __sdk::__query_builder::Col<EnemyAiParamsDesc, f32>,
+    pub spawn_frequency_minutes: __sdk::__query_builder::Col<EnemyAiParamsDesc, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for EnemyAiParamsDesc {
+    type Cols = EnemyAiParamsDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnemyAiParamsDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            enemy_type: __sdk::__query_builder::Col::new(table_name, "enemy_type"),
+            biome: __sdk::__query_builder::Col::new(table_name, "biome"),
+            avg_herd_size: __sdk::__query_builder::Col::new(table_name, "avg_herd_size"),
+            var_herd_size: __sdk::__query_builder::Col::new(table_name, "var_herd_size"),
+            herds_per_chunk: __sdk::__query_builder::Col::new(table_name, "herds_per_chunk"),
+            roaming_distance: __sdk::__query_builder::Col::new(table_name, "roaming_distance"),
+            spawn_eagerness: __sdk::__query_builder::Col::new(table_name, "spawn_eagerness"),
+            time_of_day_start: __sdk::__query_builder::Col::new(table_name, "time_of_day_start"),
+            time_of_day_end: __sdk::__query_builder::Col::new(table_name, "time_of_day_end"),
+            spawn_frequency_minutes: __sdk::__query_builder::Col::new(
+                table_name,
+                "spawn_frequency_minutes",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnemyAiParamsDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnemyAiParamsDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<EnemyAiParamsDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnemyAiParamsDesc {
+    type IxCols = EnemyAiParamsDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnemyAiParamsDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

@@ -25,3 +25,71 @@ pub struct ClaimLocalState {
 impl __sdk::InModule for ClaimLocalState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimLocalState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimLocalStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ClaimLocalState, u64>,
+    pub supplies: __sdk::__query_builder::Col<ClaimLocalState, i32>,
+    pub building_maintenance: __sdk::__query_builder::Col<ClaimLocalState, f32>,
+    pub num_tiles: __sdk::__query_builder::Col<ClaimLocalState, i32>,
+    pub num_tile_neighbors: __sdk::__query_builder::Col<ClaimLocalState, u32>,
+    pub location:
+        __sdk::__query_builder::Col<ClaimLocalState, Option<OffsetCoordinatesSmallMessage>>,
+    pub treasury: __sdk::__query_builder::Col<ClaimLocalState, u32>,
+    pub xp_gained_since_last_coin_minting: __sdk::__query_builder::Col<ClaimLocalState, u32>,
+    pub supplies_purchase_threshold: __sdk::__query_builder::Col<ClaimLocalState, u32>,
+    pub supplies_purchase_price: __sdk::__query_builder::Col<ClaimLocalState, f32>,
+    pub building_description_id: __sdk::__query_builder::Col<ClaimLocalState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimLocalState {
+    type Cols = ClaimLocalStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimLocalStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            supplies: __sdk::__query_builder::Col::new(table_name, "supplies"),
+            building_maintenance: __sdk::__query_builder::Col::new(
+                table_name,
+                "building_maintenance",
+            ),
+            num_tiles: __sdk::__query_builder::Col::new(table_name, "num_tiles"),
+            num_tile_neighbors: __sdk::__query_builder::Col::new(table_name, "num_tile_neighbors"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+            treasury: __sdk::__query_builder::Col::new(table_name, "treasury"),
+            xp_gained_since_last_coin_minting: __sdk::__query_builder::Col::new(
+                table_name,
+                "xp_gained_since_last_coin_minting",
+            ),
+            supplies_purchase_threshold: __sdk::__query_builder::Col::new(
+                table_name,
+                "supplies_purchase_threshold",
+            ),
+            supplies_purchase_price: __sdk::__query_builder::Col::new(
+                table_name,
+                "supplies_purchase_price",
+            ),
+            building_description_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "building_description_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimLocalState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimLocalStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ClaimLocalState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimLocalState {
+    type IxCols = ClaimLocalStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimLocalStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

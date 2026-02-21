@@ -140,3 +140,19 @@ impl<'ctx> ReservedNameDescNameUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ReservedNameDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait reserved_name_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ReservedNameDesc`.
+    fn reserved_name_desc(&self) -> __sdk::__query_builder::Table<ReservedNameDesc>;
+}
+
+impl reserved_name_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn reserved_name_desc(&self) -> __sdk::__query_builder::Table<ReservedNameDesc> {
+        __sdk::__query_builder::Table::new("reserved_name_desc")
+    }
+}

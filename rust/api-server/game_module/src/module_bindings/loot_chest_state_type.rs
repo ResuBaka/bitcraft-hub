@@ -17,3 +17,43 @@ pub struct LootChestState {
 impl __sdk::InModule for LootChestState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LootChestState`.
+///
+/// Provides typed access to columns for query building.
+pub struct LootChestStateCols {
+    pub entity_id: __sdk::__query_builder::Col<LootChestState, u64>,
+    pub building_entity_id: __sdk::__query_builder::Col<LootChestState, u64>,
+    pub loot_chest_id: __sdk::__query_builder::Col<LootChestState, i32>,
+    pub direction_index: __sdk::__query_builder::Col<LootChestState, i32>,
+    pub building_spawn_id: __sdk::__query_builder::Col<LootChestState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for LootChestState {
+    type Cols = LootChestStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LootChestStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            loot_chest_id: __sdk::__query_builder::Col::new(table_name, "loot_chest_id"),
+            direction_index: __sdk::__query_builder::Col::new(table_name, "direction_index"),
+            building_spawn_id: __sdk::__query_builder::Col::new(table_name, "building_spawn_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LootChestState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LootChestStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<LootChestState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LootChestState {
+    type IxCols = LootChestStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LootChestStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

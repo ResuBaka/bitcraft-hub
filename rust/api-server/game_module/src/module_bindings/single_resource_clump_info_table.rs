@@ -144,3 +144,19 @@ impl<'ctx> SingleResourceClumpInfoClumpIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `SingleResourceClumpInfo`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait single_resource_clump_infoQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `SingleResourceClumpInfo`.
+    fn single_resource_clump_info(&self) -> __sdk::__query_builder::Table<SingleResourceClumpInfo>;
+}
+
+impl single_resource_clump_infoQueryTableAccess for __sdk::QueryTableAccessor {
+    fn single_resource_clump_info(&self) -> __sdk::__query_builder::Table<SingleResourceClumpInfo> {
+        __sdk::__query_builder::Table::new("single_resource_clump_info")
+    }
+}

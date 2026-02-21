@@ -142,3 +142,19 @@ impl<'ctx> MobileEntityStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `MobileEntityState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait mobile_entity_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `MobileEntityState`.
+    fn mobile_entity_state(&self) -> __sdk::__query_builder::Table<MobileEntityState>;
+}
+
+impl mobile_entity_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn mobile_entity_state(&self) -> __sdk::__query_builder::Table<MobileEntityState> {
+        __sdk::__query_builder::Table::new("mobile_entity_state")
+    }
+}

@@ -22,3 +22,51 @@ pub struct SkillDesc {
 impl __sdk::InModule for SkillDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `SkillDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct SkillDescCols {
+    pub id: __sdk::__query_builder::Col<SkillDesc, i32>,
+    pub skill_type: __sdk::__query_builder::Col<SkillDesc, i32>,
+    pub name: __sdk::__query_builder::Col<SkillDesc, String>,
+    pub description: __sdk::__query_builder::Col<SkillDesc, String>,
+    pub icon_asset_name: __sdk::__query_builder::Col<SkillDesc, String>,
+    pub title: __sdk::__query_builder::Col<SkillDesc, String>,
+    pub skill_category: __sdk::__query_builder::Col<SkillDesc, SkillCategory>,
+    pub max_level: __sdk::__query_builder::Col<SkillDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for SkillDesc {
+    type Cols = SkillDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        SkillDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            skill_type: __sdk::__query_builder::Col::new(table_name, "skill_type"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
+            title: __sdk::__query_builder::Col::new(table_name, "title"),
+            skill_category: __sdk::__query_builder::Col::new(table_name, "skill_category"),
+            max_level: __sdk::__query_builder::Col::new(table_name, "max_level"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `SkillDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct SkillDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<SkillDesc, i32>,
+    pub skill_type: __sdk::__query_builder::IxCol<SkillDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for SkillDesc {
+    type IxCols = SkillDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        SkillDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            skill_type: __sdk::__query_builder::IxCol::new(table_name, "skill_type"),
+        }
+    }
+}

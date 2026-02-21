@@ -17,3 +17,39 @@ pub struct DistantVisibleEntityDesc {
 impl __sdk::InModule for DistantVisibleEntityDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DistantVisibleEntityDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct DistantVisibleEntityDescCols {
+    pub id: __sdk::__query_builder::Col<DistantVisibleEntityDesc, i32>,
+    pub entity_type: __sdk::__query_builder::Col<DistantVisibleEntityDesc, EntityType>,
+    pub description_id: __sdk::__query_builder::Col<DistantVisibleEntityDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for DistantVisibleEntityDesc {
+    type Cols = DistantVisibleEntityDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DistantVisibleEntityDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            entity_type: __sdk::__query_builder::Col::new(table_name, "entity_type"),
+            description_id: __sdk::__query_builder::Col::new(table_name, "description_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DistantVisibleEntityDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DistantVisibleEntityDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<DistantVisibleEntityDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DistantVisibleEntityDesc {
+    type IxCols = DistantVisibleEntityDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DistantVisibleEntityDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

@@ -141,3 +141,19 @@ impl<'ctx> PlayerActionDescActionTypeIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerActionDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_action_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerActionDesc`.
+    fn player_action_desc(&self) -> __sdk::__query_builder::Table<PlayerActionDesc>;
+}
+
+impl player_action_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_action_desc(&self) -> __sdk::__query_builder::Table<PlayerActionDesc> {
+        __sdk::__query_builder::Table::new("player_action_desc")
+    }
+}

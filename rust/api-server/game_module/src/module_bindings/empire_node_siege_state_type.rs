@@ -18,3 +18,55 @@ pub struct EmpireNodeSiegeState {
 impl __sdk::InModule for EmpireNodeSiegeState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireNodeSiegeState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireNodeSiegeStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EmpireNodeSiegeState, u64>,
+    pub building_entity_id: __sdk::__query_builder::Col<EmpireNodeSiegeState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::Col<EmpireNodeSiegeState, u64>,
+    pub energy: __sdk::__query_builder::Col<EmpireNodeSiegeState, i32>,
+    pub active: __sdk::__query_builder::Col<EmpireNodeSiegeState, bool>,
+    pub start_timestamp:
+        __sdk::__query_builder::Col<EmpireNodeSiegeState, Option<__sdk::Timestamp>>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireNodeSiegeState {
+    type Cols = EmpireNodeSiegeStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireNodeSiegeStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            empire_entity_id: __sdk::__query_builder::Col::new(table_name, "empire_entity_id"),
+            energy: __sdk::__query_builder::Col::new(table_name, "energy"),
+            active: __sdk::__query_builder::Col::new(table_name, "active"),
+            start_timestamp: __sdk::__query_builder::Col::new(table_name, "start_timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireNodeSiegeState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireNodeSiegeStateIxCols {
+    pub active: __sdk::__query_builder::IxCol<EmpireNodeSiegeState, bool>,
+    pub building_entity_id: __sdk::__query_builder::IxCol<EmpireNodeSiegeState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::IxCol<EmpireNodeSiegeState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<EmpireNodeSiegeState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireNodeSiegeState {
+    type IxCols = EmpireNodeSiegeStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireNodeSiegeStateIxCols {
+            active: __sdk::__query_builder::IxCol::new(table_name, "active"),
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            empire_entity_id: __sdk::__query_builder::IxCol::new(table_name, "empire_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

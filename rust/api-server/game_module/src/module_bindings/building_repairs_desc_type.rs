@@ -14,3 +14,37 @@ pub struct BuildingRepairsDesc {
 impl __sdk::InModule for BuildingRepairsDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingRepairsDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingRepairsDescCols {
+    pub cargo_id: __sdk::__query_builder::Col<BuildingRepairsDesc, i32>,
+    pub repair_value: __sdk::__query_builder::Col<BuildingRepairsDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingRepairsDesc {
+    type Cols = BuildingRepairsDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingRepairsDescCols {
+            cargo_id: __sdk::__query_builder::Col::new(table_name, "cargo_id"),
+            repair_value: __sdk::__query_builder::Col::new(table_name, "repair_value"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingRepairsDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingRepairsDescIxCols {
+    pub cargo_id: __sdk::__query_builder::IxCol<BuildingRepairsDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingRepairsDesc {
+    type IxCols = BuildingRepairsDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingRepairsDescIxCols {
+            cargo_id: __sdk::__query_builder::IxCol::new(table_name, "cargo_id"),
+        }
+    }
+}

@@ -14,3 +14,40 @@ pub struct GateDesc {
 impl __sdk::InModule for GateDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `GateDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct GateDescCols {
+    pub building_id: __sdk::__query_builder::Col<GateDesc, i32>,
+    pub small_post_asset_name: __sdk::__query_builder::Col<GateDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for GateDesc {
+    type Cols = GateDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        GateDescCols {
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            small_post_asset_name: __sdk::__query_builder::Col::new(
+                table_name,
+                "small_post_asset_name",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `GateDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct GateDescIxCols {
+    pub building_id: __sdk::__query_builder::IxCol<GateDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for GateDesc {
+    type IxCols = GateDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        GateDescIxCols {
+            building_id: __sdk::__query_builder::IxCol::new(table_name, "building_id"),
+        }
+    }
+}

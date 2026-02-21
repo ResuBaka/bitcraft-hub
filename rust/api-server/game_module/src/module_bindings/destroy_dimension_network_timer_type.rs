@@ -18,3 +18,48 @@ pub struct DestroyDimensionNetworkTimer {
 impl __sdk::InModule for DestroyDimensionNetworkTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DestroyDimensionNetworkTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct DestroyDimensionNetworkTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<DestroyDimensionNetworkTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<DestroyDimensionNetworkTimer, __sdk::ScheduleAt>,
+    pub player_teleport_location:
+        __sdk::__query_builder::Col<DestroyDimensionNetworkTimer, OffsetCoordinatesFloat>,
+    pub dimension_network_entity_id: __sdk::__query_builder::Col<DestroyDimensionNetworkTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for DestroyDimensionNetworkTimer {
+    type Cols = DestroyDimensionNetworkTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DestroyDimensionNetworkTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            player_teleport_location: __sdk::__query_builder::Col::new(
+                table_name,
+                "player_teleport_location",
+            ),
+            dimension_network_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "dimension_network_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DestroyDimensionNetworkTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DestroyDimensionNetworkTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<DestroyDimensionNetworkTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DestroyDimensionNetworkTimer {
+    type IxCols = DestroyDimensionNetworkTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DestroyDimensionNetworkTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

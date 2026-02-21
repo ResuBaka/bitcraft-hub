@@ -140,3 +140,19 @@ impl<'ctx> PlayerPrefsStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerPrefsState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_prefs_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerPrefsState`.
+    fn player_prefs_state(&self) -> __sdk::__query_builder::Table<PlayerPrefsState>;
+}
+
+impl player_prefs_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_prefs_state(&self) -> __sdk::__query_builder::Table<PlayerPrefsState> {
+        __sdk::__query_builder::Table::new("player_prefs_state")
+    }
+}

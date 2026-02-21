@@ -17,3 +17,46 @@ pub struct AttackOutcomeState {
 impl __sdk::InModule for AttackOutcomeState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AttackOutcomeState`.
+///
+/// Provides typed access to columns for query building.
+pub struct AttackOutcomeStateCols {
+    pub entity_id: __sdk::__query_builder::Col<AttackOutcomeState, u64>,
+    pub last_attacked_timestamp: __sdk::__query_builder::Col<AttackOutcomeState, u64>,
+    pub damage: __sdk::__query_builder::Col<AttackOutcomeState, i32>,
+    pub crit_result: __sdk::__query_builder::Col<AttackOutcomeState, bool>,
+    pub dodge_result: __sdk::__query_builder::Col<AttackOutcomeState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for AttackOutcomeState {
+    type Cols = AttackOutcomeStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AttackOutcomeStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            last_attacked_timestamp: __sdk::__query_builder::Col::new(
+                table_name,
+                "last_attacked_timestamp",
+            ),
+            damage: __sdk::__query_builder::Col::new(table_name, "damage"),
+            crit_result: __sdk::__query_builder::Col::new(table_name, "crit_result"),
+            dodge_result: __sdk::__query_builder::Col::new(table_name, "dodge_result"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AttackOutcomeState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AttackOutcomeStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<AttackOutcomeState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AttackOutcomeState {
+    type IxCols = AttackOutcomeStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AttackOutcomeStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

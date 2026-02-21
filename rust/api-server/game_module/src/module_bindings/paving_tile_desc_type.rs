@@ -31,3 +31,79 @@ pub struct PavingTileDesc {
 impl __sdk::InModule for PavingTileDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PavingTileDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PavingTileDescCols {
+    pub id: __sdk::__query_builder::Col<PavingTileDesc, i32>,
+    pub name: __sdk::__query_builder::Col<PavingTileDesc, String>,
+    pub consumed_item_stacks: __sdk::__query_builder::Col<PavingTileDesc, Vec<InputItemStack>>,
+    pub input_cargo_id: __sdk::__query_builder::Col<PavingTileDesc, i32>,
+    pub input_cargo_discovery_score: __sdk::__query_builder::Col<PavingTileDesc, i32>,
+    pub experience_per_progress:
+        __sdk::__query_builder::Col<PavingTileDesc, Vec<ExperienceStackF32>>,
+    pub discovery_triggers: __sdk::__query_builder::Col<PavingTileDesc, Vec<i32>>,
+    pub required_knowledges: __sdk::__query_builder::Col<PavingTileDesc, Vec<i32>>,
+    pub full_discovery_score: __sdk::__query_builder::Col<PavingTileDesc, i32>,
+    pub paving_duration: __sdk::__query_builder::Col<PavingTileDesc, f32>,
+    pub prefab_address: __sdk::__query_builder::Col<PavingTileDesc, String>,
+    pub tier: __sdk::__query_builder::Col<PavingTileDesc, i32>,
+    pub stat_effects: __sdk::__query_builder::Col<PavingTileDesc, Vec<CsvStatEntry>>,
+    pub icon_address: __sdk::__query_builder::Col<PavingTileDesc, String>,
+    pub description: __sdk::__query_builder::Col<PavingTileDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for PavingTileDesc {
+    type Cols = PavingTileDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PavingTileDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            consumed_item_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumed_item_stacks",
+            ),
+            input_cargo_id: __sdk::__query_builder::Col::new(table_name, "input_cargo_id"),
+            input_cargo_discovery_score: __sdk::__query_builder::Col::new(
+                table_name,
+                "input_cargo_discovery_score",
+            ),
+            experience_per_progress: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_progress",
+            ),
+            discovery_triggers: __sdk::__query_builder::Col::new(table_name, "discovery_triggers"),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+            full_discovery_score: __sdk::__query_builder::Col::new(
+                table_name,
+                "full_discovery_score",
+            ),
+            paving_duration: __sdk::__query_builder::Col::new(table_name, "paving_duration"),
+            prefab_address: __sdk::__query_builder::Col::new(table_name, "prefab_address"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            stat_effects: __sdk::__query_builder::Col::new(table_name, "stat_effects"),
+            icon_address: __sdk::__query_builder::Col::new(table_name, "icon_address"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PavingTileDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PavingTileDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<PavingTileDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PavingTileDesc {
+    type IxCols = PavingTileDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PavingTileDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

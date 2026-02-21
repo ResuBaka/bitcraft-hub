@@ -47,8 +47,8 @@ pub trait discover_entities {
     fn on_discover_entities(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerDiscoverEntitiesRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DiscoverEntitiesCallbackId;
     /// Cancel a callback previously registered by [`Self::on_discover_entities`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl discover_entities for super::RemoteReducers {
     fn on_discover_entities(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDiscoverEntitiesRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DiscoverEntitiesCallbackId {
         DiscoverEntitiesCallbackId(self.imp.on_reducer(
             "discover_entities",

@@ -141,3 +141,19 @@ impl<'ctx> BankStateBuildingEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BankState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait bank_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BankState`.
+    fn bank_state(&self) -> __sdk::__query_builder::Table<BankState>;
+}
+
+impl bank_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn bank_state(&self) -> __sdk::__query_builder::Table<BankState> {
+        __sdk::__query_builder::Table::new("bank_state")
+    }
+}

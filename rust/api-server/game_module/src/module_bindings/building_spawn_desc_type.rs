@@ -27,3 +27,55 @@ pub struct BuildingSpawnDesc {
 impl __sdk::InModule for BuildingSpawnDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingSpawnDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingSpawnDescCols {
+    pub id: __sdk::__query_builder::Col<BuildingSpawnDesc, i32>,
+    pub building_id: __sdk::__query_builder::Col<BuildingSpawnDesc, i32>,
+    pub x: __sdk::__query_builder::Col<BuildingSpawnDesc, i32>,
+    pub z: __sdk::__query_builder::Col<BuildingSpawnDesc, i32>,
+    pub direction: __sdk::__query_builder::Col<BuildingSpawnDesc, i32>,
+    pub spawn_type: __sdk::__query_builder::Col<BuildingSpawnDesc, BuildingSpawnType>,
+    pub traveler_type: __sdk::__query_builder::Col<BuildingSpawnDesc, Option<NpcType>>,
+    pub enemy_type: __sdk::__query_builder::Col<BuildingSpawnDesc, Option<EnemyType>>,
+    pub spawn_ids: __sdk::__query_builder::Col<BuildingSpawnDesc, Vec<i32>>,
+    pub respawn_time_min: __sdk::__query_builder::Col<BuildingSpawnDesc, f32>,
+    pub respawn_time_max: __sdk::__query_builder::Col<BuildingSpawnDesc, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingSpawnDesc {
+    type Cols = BuildingSpawnDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingSpawnDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            x: __sdk::__query_builder::Col::new(table_name, "x"),
+            z: __sdk::__query_builder::Col::new(table_name, "z"),
+            direction: __sdk::__query_builder::Col::new(table_name, "direction"),
+            spawn_type: __sdk::__query_builder::Col::new(table_name, "spawn_type"),
+            traveler_type: __sdk::__query_builder::Col::new(table_name, "traveler_type"),
+            enemy_type: __sdk::__query_builder::Col::new(table_name, "enemy_type"),
+            spawn_ids: __sdk::__query_builder::Col::new(table_name, "spawn_ids"),
+            respawn_time_min: __sdk::__query_builder::Col::new(table_name, "respawn_time_min"),
+            respawn_time_max: __sdk::__query_builder::Col::new(table_name, "respawn_time_max"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingSpawnDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingSpawnDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<BuildingSpawnDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingSpawnDesc {
+    type IxCols = BuildingSpawnDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingSpawnDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

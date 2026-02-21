@@ -61,8 +61,8 @@ impl item_stack_split for super::RemoteReducers {
     fn on_item_stack_split(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerItemStackSplitRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ItemStackSplitCallbackId {
         ItemStackSplitCallbackId(self.imp.on_reducer(
             "item_stack_split",

@@ -14,3 +14,37 @@ pub struct ResourcesRegenLoopTimer {
 impl __sdk::InModule for ResourcesRegenLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourcesRegenLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourcesRegenLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<ResourcesRegenLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<ResourcesRegenLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourcesRegenLoopTimer {
+    type Cols = ResourcesRegenLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourcesRegenLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourcesRegenLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourcesRegenLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<ResourcesRegenLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourcesRegenLoopTimer {
+    type IxCols = ResourcesRegenLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourcesRegenLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

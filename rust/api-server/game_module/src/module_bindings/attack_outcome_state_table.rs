@@ -142,3 +142,19 @@ impl<'ctx> AttackOutcomeStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AttackOutcomeState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait attack_outcome_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AttackOutcomeState`.
+    fn attack_outcome_state(&self) -> __sdk::__query_builder::Table<AttackOutcomeState>;
+}
+
+impl attack_outcome_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn attack_outcome_state(&self) -> __sdk::__query_builder::Table<AttackOutcomeState> {
+        __sdk::__query_builder::Table::new("attack_outcome_state")
+    }
+}

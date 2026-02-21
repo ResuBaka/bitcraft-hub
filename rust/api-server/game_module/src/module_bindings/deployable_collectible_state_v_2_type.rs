@@ -20,3 +20,56 @@ pub struct DeployableCollectibleStateV2 {
 impl __sdk::InModule for DeployableCollectibleStateV2 {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DeployableCollectibleStateV2`.
+///
+/// Provides typed access to columns for query building.
+pub struct DeployableCollectibleStateV2Cols {
+    pub deployable_entity_id: __sdk::__query_builder::Col<DeployableCollectibleStateV2, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<DeployableCollectibleStateV2, u64>,
+    pub collectible_id: __sdk::__query_builder::Col<DeployableCollectibleStateV2, i32>,
+    pub deployable_desc_id: __sdk::__query_builder::Col<DeployableCollectibleStateV2, i32>,
+    pub location: __sdk::__query_builder::Col<
+        DeployableCollectibleStateV2,
+        Option<OffsetCoordinatesSmallMessage>,
+    >,
+    pub auto_follow: __sdk::__query_builder::Col<DeployableCollectibleStateV2, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for DeployableCollectibleStateV2 {
+    type Cols = DeployableCollectibleStateV2Cols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DeployableCollectibleStateV2Cols {
+            deployable_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "deployable_entity_id",
+            ),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            collectible_id: __sdk::__query_builder::Col::new(table_name, "collectible_id"),
+            deployable_desc_id: __sdk::__query_builder::Col::new(table_name, "deployable_desc_id"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+            auto_follow: __sdk::__query_builder::Col::new(table_name, "auto_follow"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DeployableCollectibleStateV2`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DeployableCollectibleStateV2IxCols {
+    pub deployable_entity_id: __sdk::__query_builder::IxCol<DeployableCollectibleStateV2, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<DeployableCollectibleStateV2, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DeployableCollectibleStateV2 {
+    type IxCols = DeployableCollectibleStateV2IxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DeployableCollectibleStateV2IxCols {
+            deployable_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "deployable_entity_id",
+            ),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

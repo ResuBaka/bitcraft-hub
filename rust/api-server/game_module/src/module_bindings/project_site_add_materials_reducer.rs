@@ -50,8 +50,8 @@ pub trait project_site_add_materials {
     fn on_project_site_add_materials(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteAddMaterialsRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProjectSiteAddMaterialsCallbackId;
     /// Cancel a callback previously registered by [`Self::on_project_site_add_materials`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl project_site_add_materials for super::RemoteReducers {
     fn on_project_site_add_materials(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteAddMaterialsRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProjectSiteAddMaterialsCallbackId {
         ProjectSiteAddMaterialsCallbackId(self.imp.on_reducer(
             "project_site_add_materials",

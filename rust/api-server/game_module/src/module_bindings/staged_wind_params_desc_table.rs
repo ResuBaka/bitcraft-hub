@@ -142,3 +142,19 @@ impl<'ctx> StagedWindParamsDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `WindParamsDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_wind_params_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `WindParamsDesc`.
+    fn staged_wind_params_desc(&self) -> __sdk::__query_builder::Table<WindParamsDesc>;
+}
+
+impl staged_wind_params_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_wind_params_desc(&self) -> __sdk::__query_builder::Table<WindParamsDesc> {
+        __sdk::__query_builder::Table::new("staged_wind_params_desc")
+    }
+}

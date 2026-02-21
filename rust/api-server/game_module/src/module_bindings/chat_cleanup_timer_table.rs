@@ -140,3 +140,19 @@ impl<'ctx> ChatCleanupTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ChatCleanupTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait chat_cleanup_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ChatCleanupTimer`.
+    fn chat_cleanup_timer(&self) -> __sdk::__query_builder::Table<ChatCleanupTimer>;
+}
+
+impl chat_cleanup_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn chat_cleanup_timer(&self) -> __sdk::__query_builder::Table<ChatCleanupTimer> {
+        __sdk::__query_builder::Table::new("chat_cleanup_timer")
+    }
+}

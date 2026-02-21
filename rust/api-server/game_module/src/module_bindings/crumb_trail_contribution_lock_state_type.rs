@@ -14,3 +14,45 @@ pub struct CrumbTrailContributionLockState {
 impl __sdk::InModule for CrumbTrailContributionLockState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CrumbTrailContributionLockState`.
+///
+/// Provides typed access to columns for query building.
+pub struct CrumbTrailContributionLockStateCols {
+    pub entity_id: __sdk::__query_builder::Col<CrumbTrailContributionLockState, u64>,
+    pub crumb_trail_entity_id: __sdk::__query_builder::Col<CrumbTrailContributionLockState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for CrumbTrailContributionLockState {
+    type Cols = CrumbTrailContributionLockStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CrumbTrailContributionLockStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            crumb_trail_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "crumb_trail_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CrumbTrailContributionLockState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CrumbTrailContributionLockStateIxCols {
+    pub crumb_trail_entity_id: __sdk::__query_builder::IxCol<CrumbTrailContributionLockState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<CrumbTrailContributionLockState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CrumbTrailContributionLockState {
+    type IxCols = CrumbTrailContributionLockStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CrumbTrailContributionLockStateIxCols {
+            crumb_trail_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "crumb_trail_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

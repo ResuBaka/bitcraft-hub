@@ -142,3 +142,19 @@ impl<'ctx> ClaimTechUnlockTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ClaimTechUnlockTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait claim_tech_unlock_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ClaimTechUnlockTimer`.
+    fn claim_tech_unlock_timer(&self) -> __sdk::__query_builder::Table<ClaimTechUnlockTimer>;
+}
+
+impl claim_tech_unlock_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn claim_tech_unlock_timer(&self) -> __sdk::__query_builder::Table<ClaimTechUnlockTimer> {
+        __sdk::__query_builder::Table::new("claim_tech_unlock_timer")
+    }
+}

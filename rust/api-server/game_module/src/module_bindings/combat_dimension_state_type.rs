@@ -13,3 +13,35 @@ pub struct CombatDimensionState {
 impl __sdk::InModule for CombatDimensionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CombatDimensionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct CombatDimensionStateCols {
+    pub dimension_id: __sdk::__query_builder::Col<CombatDimensionState, u32>,
+}
+
+impl __sdk::__query_builder::HasCols for CombatDimensionState {
+    type Cols = CombatDimensionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CombatDimensionStateCols {
+            dimension_id: __sdk::__query_builder::Col::new(table_name, "dimension_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CombatDimensionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CombatDimensionStateIxCols {
+    pub dimension_id: __sdk::__query_builder::IxCol<CombatDimensionState, u32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CombatDimensionState {
+    type IxCols = CombatDimensionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CombatDimensionStateIxCols {
+            dimension_id: __sdk::__query_builder::IxCol::new(table_name, "dimension_id"),
+        }
+    }
+}

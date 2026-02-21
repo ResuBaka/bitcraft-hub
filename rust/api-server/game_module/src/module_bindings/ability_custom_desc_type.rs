@@ -31,3 +31,70 @@ pub struct AbilityCustomDesc {
 impl __sdk::InModule for AbilityCustomDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AbilityCustomDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct AbilityCustomDescCols {
+    pub id: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
+    pub ability_name: __sdk::__query_builder::Col<AbilityCustomDesc, String>,
+    pub stamina_cost: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
+    pub health_cost: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
+    pub cast_time: __sdk::__query_builder::Col<AbilityCustomDesc, f32>,
+    pub range: __sdk::__query_builder::Col<AbilityCustomDesc, f32>,
+    pub friendly: __sdk::__query_builder::Col<AbilityCustomDesc, bool>,
+    pub radius: __sdk::__query_builder::Col<AbilityCustomDesc, f32>,
+    pub buffs: __sdk::__query_builder::Col<AbilityCustomDesc, Vec<BuffEffect>>,
+    pub buff_toggle: __sdk::__query_builder::Col<AbilityCustomDesc, bool>,
+    pub damage: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
+    pub threat_value: __sdk::__query_builder::Col<AbilityCustomDesc, f32>,
+    pub cooldown: __sdk::__query_builder::Col<AbilityCustomDesc, f32>,
+    pub global_cooldown: __sdk::__query_builder::Col<AbilityCustomDesc, f32>,
+    pub linked_ability_buff_desc_id: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
+    pub animation: __sdk::__query_builder::Col<AbilityCustomDesc, String>,
+    pub icon_path: __sdk::__query_builder::Col<AbilityCustomDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for AbilityCustomDesc {
+    type Cols = AbilityCustomDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AbilityCustomDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            ability_name: __sdk::__query_builder::Col::new(table_name, "ability_name"),
+            stamina_cost: __sdk::__query_builder::Col::new(table_name, "stamina_cost"),
+            health_cost: __sdk::__query_builder::Col::new(table_name, "health_cost"),
+            cast_time: __sdk::__query_builder::Col::new(table_name, "cast_time"),
+            range: __sdk::__query_builder::Col::new(table_name, "range"),
+            friendly: __sdk::__query_builder::Col::new(table_name, "friendly"),
+            radius: __sdk::__query_builder::Col::new(table_name, "radius"),
+            buffs: __sdk::__query_builder::Col::new(table_name, "buffs"),
+            buff_toggle: __sdk::__query_builder::Col::new(table_name, "buff_toggle"),
+            damage: __sdk::__query_builder::Col::new(table_name, "damage"),
+            threat_value: __sdk::__query_builder::Col::new(table_name, "threat_value"),
+            cooldown: __sdk::__query_builder::Col::new(table_name, "cooldown"),
+            global_cooldown: __sdk::__query_builder::Col::new(table_name, "global_cooldown"),
+            linked_ability_buff_desc_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "linked_ability_buff_desc_id",
+            ),
+            animation: __sdk::__query_builder::Col::new(table_name, "animation"),
+            icon_path: __sdk::__query_builder::Col::new(table_name, "icon_path"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AbilityCustomDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AbilityCustomDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<AbilityCustomDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AbilityCustomDesc {
+    type IxCols = AbilityCustomDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AbilityCustomDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

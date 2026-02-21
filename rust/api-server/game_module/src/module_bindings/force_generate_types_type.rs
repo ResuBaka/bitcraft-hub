@@ -27,3 +27,55 @@ pub struct ForceGenerateTypes {
 impl __sdk::InModule for ForceGenerateTypes {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ForceGenerateTypes`.
+///
+/// Provides typed access to columns for query building.
+pub struct ForceGenerateTypesCols {
+    pub hex_direction: __sdk::__query_builder::Col<ForceGenerateTypes, HexDirection>,
+    pub float_hex_tile: __sdk::__query_builder::Col<ForceGenerateTypes, FloatHexTileMessage>,
+    pub chunk_coordinates_message:
+        __sdk::__query_builder::Col<ForceGenerateTypes, ChunkCoordinatesMessage>,
+    pub claim_permission: __sdk::__query_builder::Col<ForceGenerateTypes, ClaimPermission>,
+    pub large_hex_tile_message:
+        __sdk::__query_builder::Col<ForceGenerateTypes, LargeHexTileMessage>,
+    pub terrain_cell: __sdk::__query_builder::Col<ForceGenerateTypes, TerrainCell>,
+    pub item_conversion_locatin_context:
+        __sdk::__query_builder::Col<ForceGenerateTypes, ItemConversionLocationContext>,
+}
+
+impl __sdk::__query_builder::HasCols for ForceGenerateTypes {
+    type Cols = ForceGenerateTypesCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ForceGenerateTypesCols {
+            hex_direction: __sdk::__query_builder::Col::new(table_name, "hex_direction"),
+            float_hex_tile: __sdk::__query_builder::Col::new(table_name, "float_hex_tile"),
+            chunk_coordinates_message: __sdk::__query_builder::Col::new(
+                table_name,
+                "chunk_coordinates_message",
+            ),
+            claim_permission: __sdk::__query_builder::Col::new(table_name, "claim_permission"),
+            large_hex_tile_message: __sdk::__query_builder::Col::new(
+                table_name,
+                "large_hex_tile_message",
+            ),
+            terrain_cell: __sdk::__query_builder::Col::new(table_name, "terrain_cell"),
+            item_conversion_locatin_context: __sdk::__query_builder::Col::new(
+                table_name,
+                "item_conversion_locatin_context",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ForceGenerateTypes`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ForceGenerateTypesIxCols {}
+
+impl __sdk::__query_builder::HasIxCols for ForceGenerateTypes {
+    type IxCols = ForceGenerateTypesIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ForceGenerateTypesIxCols {}
+    }
+}

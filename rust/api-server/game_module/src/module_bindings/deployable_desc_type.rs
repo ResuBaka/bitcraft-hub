@@ -46,3 +46,123 @@ pub struct DeployableDesc {
 impl __sdk::InModule for DeployableDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DeployableDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct DeployableDescCols {
+    pub id: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub name: __sdk::__query_builder::Col<DeployableDesc, String>,
+    pub deploy_from_collectible_id: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub deploy_time: __sdk::__query_builder::Col<DeployableDesc, f32>,
+    pub deployable_type: __sdk::__query_builder::Col<DeployableDesc, DeployableType>,
+    pub pathfinding_id: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub movement_type: __sdk::__query_builder::Col<DeployableDesc, MovementType>,
+    pub can_enter_portals: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub speed: __sdk::__query_builder::Col<DeployableDesc, Vec<MovementSpeed>>,
+    pub use_player_speed_modifier: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub placeable_on_land: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub placeable_in_water: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub capacity: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub storage: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub stockpile: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub barter: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub item_slot_size: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub cargo_slot_size: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub model_address: __sdk::__query_builder::Col<DeployableDesc, String>,
+    pub stats: __sdk::__query_builder::Col<DeployableDesc, Vec<CsvStatEntry>>,
+    pub player_animations_in_deployable_slots:
+        __sdk::__query_builder::Col<DeployableDesc, Vec<i32>>,
+    pub allow_driver_extract: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub allow_passenger_extract: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub show_for_secs_after_owner_logout: __sdk::__query_builder::Col<DeployableDesc, i32>,
+    pub allow_emote_while_driver: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub allow_emote_while_passenger: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub experience_per_progress:
+        __sdk::__query_builder::Col<DeployableDesc, Vec<ExperienceStackF32>>,
+    pub mounting_radius: __sdk::__query_builder::Col<DeployableDesc, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for DeployableDesc {
+    type Cols = DeployableDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DeployableDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            deploy_from_collectible_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "deploy_from_collectible_id",
+            ),
+            deploy_time: __sdk::__query_builder::Col::new(table_name, "deploy_time"),
+            deployable_type: __sdk::__query_builder::Col::new(table_name, "deployable_type"),
+            pathfinding_id: __sdk::__query_builder::Col::new(table_name, "pathfinding_id"),
+            movement_type: __sdk::__query_builder::Col::new(table_name, "movement_type"),
+            can_enter_portals: __sdk::__query_builder::Col::new(table_name, "can_enter_portals"),
+            speed: __sdk::__query_builder::Col::new(table_name, "speed"),
+            use_player_speed_modifier: __sdk::__query_builder::Col::new(
+                table_name,
+                "use_player_speed_modifier",
+            ),
+            placeable_on_land: __sdk::__query_builder::Col::new(table_name, "placeable_on_land"),
+            placeable_in_water: __sdk::__query_builder::Col::new(table_name, "placeable_in_water"),
+            capacity: __sdk::__query_builder::Col::new(table_name, "capacity"),
+            storage: __sdk::__query_builder::Col::new(table_name, "storage"),
+            stockpile: __sdk::__query_builder::Col::new(table_name, "stockpile"),
+            barter: __sdk::__query_builder::Col::new(table_name, "barter"),
+            item_slot_size: __sdk::__query_builder::Col::new(table_name, "item_slot_size"),
+            cargo_slot_size: __sdk::__query_builder::Col::new(table_name, "cargo_slot_size"),
+            model_address: __sdk::__query_builder::Col::new(table_name, "model_address"),
+            stats: __sdk::__query_builder::Col::new(table_name, "stats"),
+            player_animations_in_deployable_slots: __sdk::__query_builder::Col::new(
+                table_name,
+                "player_animations_in_deployable_slots",
+            ),
+            allow_driver_extract: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_driver_extract",
+            ),
+            allow_passenger_extract: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_passenger_extract",
+            ),
+            show_for_secs_after_owner_logout: __sdk::__query_builder::Col::new(
+                table_name,
+                "show_for_secs_after_owner_logout",
+            ),
+            allow_emote_while_driver: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_emote_while_driver",
+            ),
+            allow_emote_while_passenger: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_emote_while_passenger",
+            ),
+            experience_per_progress: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_progress",
+            ),
+            mounting_radius: __sdk::__query_builder::Col::new(table_name, "mounting_radius"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DeployableDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DeployableDescIxCols {
+    pub deploy_from_collectible_id: __sdk::__query_builder::IxCol<DeployableDesc, i32>,
+    pub id: __sdk::__query_builder::IxCol<DeployableDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DeployableDesc {
+    type IxCols = DeployableDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DeployableDescIxCols {
+            deploy_from_collectible_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "deploy_from_collectible_id",
+            ),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

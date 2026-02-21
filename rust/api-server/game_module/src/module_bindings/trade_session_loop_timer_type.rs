@@ -14,3 +14,37 @@ pub struct TradeSessionLoopTimer {
 impl __sdk::InModule for TradeSessionLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TradeSessionLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct TradeSessionLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<TradeSessionLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<TradeSessionLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for TradeSessionLoopTimer {
+    type Cols = TradeSessionLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TradeSessionLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TradeSessionLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TradeSessionLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<TradeSessionLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TradeSessionLoopTimer {
+    type IxCols = TradeSessionLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TradeSessionLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

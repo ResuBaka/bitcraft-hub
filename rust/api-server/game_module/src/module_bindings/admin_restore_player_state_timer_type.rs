@@ -22,3 +22,57 @@ pub struct AdminRestorePlayerStateTimer {
 impl __sdk::InModule for AdminRestorePlayerStateTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AdminRestorePlayerStateTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct AdminRestorePlayerStateTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, __sdk::ScheduleAt>,
+    pub username: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, String>,
+    pub restore_position: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, bool>,
+    pub force_signout: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, bool>,
+    pub restore_all_deployables_positions:
+        __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, bool>,
+    pub store_deployables: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, bool>,
+    pub clear_cargo: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, bool>,
+    pub clear_items: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, bool>,
+    pub clear_toolbelt: __sdk::__query_builder::Col<AdminRestorePlayerStateTimer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for AdminRestorePlayerStateTimer {
+    type Cols = AdminRestorePlayerStateTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AdminRestorePlayerStateTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            username: __sdk::__query_builder::Col::new(table_name, "username"),
+            restore_position: __sdk::__query_builder::Col::new(table_name, "restore_position"),
+            force_signout: __sdk::__query_builder::Col::new(table_name, "force_signout"),
+            restore_all_deployables_positions: __sdk::__query_builder::Col::new(
+                table_name,
+                "restore_all_deployables_positions",
+            ),
+            store_deployables: __sdk::__query_builder::Col::new(table_name, "store_deployables"),
+            clear_cargo: __sdk::__query_builder::Col::new(table_name, "clear_cargo"),
+            clear_items: __sdk::__query_builder::Col::new(table_name, "clear_items"),
+            clear_toolbelt: __sdk::__query_builder::Col::new(table_name, "clear_toolbelt"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AdminRestorePlayerStateTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AdminRestorePlayerStateTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<AdminRestorePlayerStateTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AdminRestorePlayerStateTimer {
+    type IxCols = AdminRestorePlayerStateTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AdminRestorePlayerStateTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

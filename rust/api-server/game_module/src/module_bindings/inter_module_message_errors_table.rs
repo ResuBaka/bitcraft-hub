@@ -143,3 +143,23 @@ impl<'ctx> InterModuleMessageErrorsSenderModuleIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InterModuleMessageErrors`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait inter_module_message_errorsQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InterModuleMessageErrors`.
+    fn inter_module_message_errors(
+        &self,
+    ) -> __sdk::__query_builder::Table<InterModuleMessageErrors>;
+}
+
+impl inter_module_message_errorsQueryTableAccess for __sdk::QueryTableAccessor {
+    fn inter_module_message_errors(
+        &self,
+    ) -> __sdk::__query_builder::Table<InterModuleMessageErrors> {
+        __sdk::__query_builder::Table::new("inter_module_message_errors")
+    }
+}

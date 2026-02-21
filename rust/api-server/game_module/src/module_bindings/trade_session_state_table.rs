@@ -144,3 +144,19 @@ impl<'ctx> TradeSessionStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TradeSessionState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait trade_session_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TradeSessionState`.
+    fn trade_session_state(&self) -> __sdk::__query_builder::Table<TradeSessionState>;
+}
+
+impl trade_session_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn trade_session_state(&self) -> __sdk::__query_builder::Table<TradeSessionState> {
+        __sdk::__query_builder::Table::new("trade_session_state")
+    }
+}

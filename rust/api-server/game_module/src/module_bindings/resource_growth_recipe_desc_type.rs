@@ -16,3 +16,43 @@ pub struct ResourceGrowthRecipeDesc {
 impl __sdk::InModule for ResourceGrowthRecipeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourceGrowthRecipeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourceGrowthRecipeDescCols {
+    pub id: __sdk::__query_builder::Col<ResourceGrowthRecipeDesc, i32>,
+    pub resource_id: __sdk::__query_builder::Col<ResourceGrowthRecipeDesc, i32>,
+    pub time: __sdk::__query_builder::Col<ResourceGrowthRecipeDesc, Vec<f32>>,
+    pub grown_resource_id: __sdk::__query_builder::Col<ResourceGrowthRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourceGrowthRecipeDesc {
+    type Cols = ResourceGrowthRecipeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourceGrowthRecipeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            resource_id: __sdk::__query_builder::Col::new(table_name, "resource_id"),
+            time: __sdk::__query_builder::Col::new(table_name, "time"),
+            grown_resource_id: __sdk::__query_builder::Col::new(table_name, "grown_resource_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourceGrowthRecipeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourceGrowthRecipeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ResourceGrowthRecipeDesc, i32>,
+    pub resource_id: __sdk::__query_builder::IxCol<ResourceGrowthRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourceGrowthRecipeDesc {
+    type IxCols = ResourceGrowthRecipeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourceGrowthRecipeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            resource_id: __sdk::__query_builder::IxCol::new(table_name, "resource_id"),
+        }
+    }
+}

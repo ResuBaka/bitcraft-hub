@@ -14,3 +14,37 @@ pub struct TeleportationEnergyState {
 impl __sdk::InModule for TeleportationEnergyState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TeleportationEnergyState`.
+///
+/// Provides typed access to columns for query building.
+pub struct TeleportationEnergyStateCols {
+    pub entity_id: __sdk::__query_builder::Col<TeleportationEnergyState, u64>,
+    pub energy: __sdk::__query_builder::Col<TeleportationEnergyState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for TeleportationEnergyState {
+    type Cols = TeleportationEnergyStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TeleportationEnergyStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            energy: __sdk::__query_builder::Col::new(table_name, "energy"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TeleportationEnergyState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TeleportationEnergyStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<TeleportationEnergyState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TeleportationEnergyState {
+    type IxCols = TeleportationEnergyStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TeleportationEnergyStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -47,8 +47,8 @@ pub trait claim_remove_tile {
     fn on_claim_remove_tile(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRemoveTileRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimRemoveTileCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_remove_tile`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl claim_remove_tile for super::RemoteReducers {
     fn on_claim_remove_tile(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRemoveTileRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimRemoveTileCallbackId {
         ClaimRemoveTileCallbackId(self.imp.on_reducer(
             "claim_remove_tile",

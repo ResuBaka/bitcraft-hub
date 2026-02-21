@@ -21,3 +21,62 @@ pub struct ProspectingState {
 impl __sdk::InModule for ProspectingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ProspectingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ProspectingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ProspectingState, u64>,
+    pub prospecting_id: __sdk::__query_builder::Col<ProspectingState, i32>,
+    pub crumb_trail_entity_id: __sdk::__query_builder::Col<ProspectingState, u64>,
+    pub completed_steps: __sdk::__query_builder::Col<ProspectingState, i32>,
+    pub ongoing_step: __sdk::__query_builder::Col<ProspectingState, i32>,
+    pub total_steps: __sdk::__query_builder::Col<ProspectingState, i32>,
+    pub next_crumb_angle: __sdk::__query_builder::Col<ProspectingState, Vec<f32>>,
+    pub last_prospection_timestamp: __sdk::__query_builder::Col<ProspectingState, __sdk::Timestamp>,
+    pub contribution: __sdk::__query_builder::Col<ProspectingState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ProspectingState {
+    type Cols = ProspectingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ProspectingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            prospecting_id: __sdk::__query_builder::Col::new(table_name, "prospecting_id"),
+            crumb_trail_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "crumb_trail_entity_id",
+            ),
+            completed_steps: __sdk::__query_builder::Col::new(table_name, "completed_steps"),
+            ongoing_step: __sdk::__query_builder::Col::new(table_name, "ongoing_step"),
+            total_steps: __sdk::__query_builder::Col::new(table_name, "total_steps"),
+            next_crumb_angle: __sdk::__query_builder::Col::new(table_name, "next_crumb_angle"),
+            last_prospection_timestamp: __sdk::__query_builder::Col::new(
+                table_name,
+                "last_prospection_timestamp",
+            ),
+            contribution: __sdk::__query_builder::Col::new(table_name, "contribution"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ProspectingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ProspectingStateIxCols {
+    pub crumb_trail_entity_id: __sdk::__query_builder::IxCol<ProspectingState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<ProspectingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ProspectingState {
+    type IxCols = ProspectingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ProspectingStateIxCols {
+            crumb_trail_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "crumb_trail_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

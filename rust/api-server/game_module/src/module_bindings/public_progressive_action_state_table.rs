@@ -146,3 +146,23 @@ impl<'ctx> PublicProgressiveActionStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PublicProgressiveActionState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait public_progressive_action_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PublicProgressiveActionState`.
+    fn public_progressive_action_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<PublicProgressiveActionState>;
+}
+
+impl public_progressive_action_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn public_progressive_action_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<PublicProgressiveActionState> {
+        __sdk::__query_builder::Table::new("public_progressive_action_state")
+    }
+}

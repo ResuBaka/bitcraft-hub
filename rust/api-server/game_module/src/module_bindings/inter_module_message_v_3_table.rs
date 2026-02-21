@@ -143,3 +143,19 @@ impl<'ctx> InterModuleMessageV3IdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InterModuleMessageV3`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait inter_module_message_v3QueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InterModuleMessageV3`.
+    fn inter_module_message_v3(&self) -> __sdk::__query_builder::Table<InterModuleMessageV3>;
+}
+
+impl inter_module_message_v3QueryTableAccess for __sdk::QueryTableAccessor {
+    fn inter_module_message_v3(&self) -> __sdk::__query_builder::Table<InterModuleMessageV3> {
+        __sdk::__query_builder::Table::new("inter_module_message_v3")
+    }
+}

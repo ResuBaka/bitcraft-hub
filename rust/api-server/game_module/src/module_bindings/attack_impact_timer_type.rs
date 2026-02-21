@@ -21,3 +21,47 @@ pub struct AttackImpactTimer {
 impl __sdk::InModule for AttackImpactTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AttackImpactTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct AttackImpactTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<AttackImpactTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<AttackImpactTimer, __sdk::ScheduleAt>,
+    pub attacker_entity_id: __sdk::__query_builder::Col<AttackImpactTimer, u64>,
+    pub defender_entity_id: __sdk::__query_builder::Col<AttackImpactTimer, u64>,
+    pub combat_action_id: __sdk::__query_builder::Col<AttackImpactTimer, i32>,
+    pub attacker_type: __sdk::__query_builder::Col<AttackImpactTimer, EntityType>,
+    pub defender_type: __sdk::__query_builder::Col<AttackImpactTimer, EntityType>,
+}
+
+impl __sdk::__query_builder::HasCols for AttackImpactTimer {
+    type Cols = AttackImpactTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AttackImpactTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            attacker_entity_id: __sdk::__query_builder::Col::new(table_name, "attacker_entity_id"),
+            defender_entity_id: __sdk::__query_builder::Col::new(table_name, "defender_entity_id"),
+            combat_action_id: __sdk::__query_builder::Col::new(table_name, "combat_action_id"),
+            attacker_type: __sdk::__query_builder::Col::new(table_name, "attacker_type"),
+            defender_type: __sdk::__query_builder::Col::new(table_name, "defender_type"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AttackImpactTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AttackImpactTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<AttackImpactTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AttackImpactTimer {
+    type IxCols = AttackImpactTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AttackImpactTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

@@ -15,3 +15,42 @@ pub struct MigrationAchievementsParams {
 impl __sdk::InModule for MigrationAchievementsParams {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `MigrationAchievementsParams`.
+///
+/// Provides typed access to columns for query building.
+pub struct MigrationAchievementsParamsCols {
+    pub id: __sdk::__query_builder::Col<MigrationAchievementsParams, i32>,
+    pub allow_destructive: __sdk::__query_builder::Col<MigrationAchievementsParams, bool>,
+    pub grant_if_already_owned: __sdk::__query_builder::Col<MigrationAchievementsParams, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for MigrationAchievementsParams {
+    type Cols = MigrationAchievementsParamsCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        MigrationAchievementsParamsCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            allow_destructive: __sdk::__query_builder::Col::new(table_name, "allow_destructive"),
+            grant_if_already_owned: __sdk::__query_builder::Col::new(
+                table_name,
+                "grant_if_already_owned",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `MigrationAchievementsParams`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct MigrationAchievementsParamsIxCols {
+    pub id: __sdk::__query_builder::IxCol<MigrationAchievementsParams, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for MigrationAchievementsParams {
+    type IxCols = MigrationAchievementsParamsIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        MigrationAchievementsParamsIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

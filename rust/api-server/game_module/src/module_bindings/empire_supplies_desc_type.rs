@@ -14,3 +14,37 @@ pub struct EmpireSuppliesDesc {
 impl __sdk::InModule for EmpireSuppliesDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireSuppliesDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireSuppliesDescCols {
+    pub cargo_id: __sdk::__query_builder::Col<EmpireSuppliesDesc, i32>,
+    pub energy: __sdk::__query_builder::Col<EmpireSuppliesDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireSuppliesDesc {
+    type Cols = EmpireSuppliesDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireSuppliesDescCols {
+            cargo_id: __sdk::__query_builder::Col::new(table_name, "cargo_id"),
+            energy: __sdk::__query_builder::Col::new(table_name, "energy"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireSuppliesDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireSuppliesDescIxCols {
+    pub cargo_id: __sdk::__query_builder::IxCol<EmpireSuppliesDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireSuppliesDesc {
+    type IxCols = EmpireSuppliesDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireSuppliesDescIxCols {
+            cargo_id: __sdk::__query_builder::IxCol::new(table_name, "cargo_id"),
+        }
+    }
+}

@@ -143,3 +143,22 @@ impl<'ctx> TeleportationEnergyStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TeleportationEnergyState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait teleportation_energy_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TeleportationEnergyState`.
+    fn teleportation_energy_state(&self)
+        -> __sdk::__query_builder::Table<TeleportationEnergyState>;
+}
+
+impl teleportation_energy_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn teleportation_energy_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<TeleportationEnergyState> {
+        __sdk::__query_builder::Table::new("teleportation_energy_state")
+    }
+}

@@ -17,3 +17,45 @@ pub struct LocationState {
 impl __sdk::InModule for LocationState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LocationState`.
+///
+/// Provides typed access to columns for query building.
+pub struct LocationStateCols {
+    pub entity_id: __sdk::__query_builder::Col<LocationState, u64>,
+    pub chunk_index: __sdk::__query_builder::Col<LocationState, u64>,
+    pub x: __sdk::__query_builder::Col<LocationState, i32>,
+    pub z: __sdk::__query_builder::Col<LocationState, i32>,
+    pub dimension: __sdk::__query_builder::Col<LocationState, u32>,
+}
+
+impl __sdk::__query_builder::HasCols for LocationState {
+    type Cols = LocationStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LocationStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            x: __sdk::__query_builder::Col::new(table_name, "x"),
+            z: __sdk::__query_builder::Col::new(table_name, "z"),
+            dimension: __sdk::__query_builder::Col::new(table_name, "dimension"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LocationState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LocationStateIxCols {
+    pub chunk_index: __sdk::__query_builder::IxCol<LocationState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<LocationState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LocationState {
+    type IxCols = LocationStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LocationStateIxCols {
+            chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

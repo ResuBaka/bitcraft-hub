@@ -19,3 +19,43 @@ pub struct RespawnResourceInChunkTimer {
 impl __sdk::InModule for RespawnResourceInChunkTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RespawnResourceInChunkTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct RespawnResourceInChunkTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<RespawnResourceInChunkTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<RespawnResourceInChunkTimer, __sdk::ScheduleAt>,
+    pub chunk_index: __sdk::__query_builder::Col<RespawnResourceInChunkTimer, u64>,
+    pub resource_clump_id: __sdk::__query_builder::Col<RespawnResourceInChunkTimer, i32>,
+    pub coord: __sdk::__query_builder::Col<RespawnResourceInChunkTimer, SmallHexTileMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for RespawnResourceInChunkTimer {
+    type Cols = RespawnResourceInChunkTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RespawnResourceInChunkTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            resource_clump_id: __sdk::__query_builder::Col::new(table_name, "resource_clump_id"),
+            coord: __sdk::__query_builder::Col::new(table_name, "coord"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RespawnResourceInChunkTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RespawnResourceInChunkTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<RespawnResourceInChunkTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RespawnResourceInChunkTimer {
+    type IxCols = RespawnResourceInChunkTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RespawnResourceInChunkTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

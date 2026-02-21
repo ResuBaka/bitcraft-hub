@@ -143,3 +143,19 @@ impl<'ctx> KnowledgePavingStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `KnowledgePavingState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait knowledge_paving_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `KnowledgePavingState`.
+    fn knowledge_paving_state(&self) -> __sdk::__query_builder::Table<KnowledgePavingState>;
+}
+
+impl knowledge_paving_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn knowledge_paving_state(&self) -> __sdk::__query_builder::Table<KnowledgePavingState> {
+        __sdk::__query_builder::Table::new("knowledge_paving_state")
+    }
+}

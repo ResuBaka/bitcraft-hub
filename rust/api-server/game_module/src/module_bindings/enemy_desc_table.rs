@@ -143,3 +143,19 @@ impl<'ctx> EnemyDescEnemyTypeUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnemyDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait enemy_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnemyDesc`.
+    fn enemy_desc(&self) -> __sdk::__query_builder::Table<EnemyDesc>;
+}
+
+impl enemy_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn enemy_desc(&self) -> __sdk::__query_builder::Table<EnemyDesc> {
+        __sdk::__query_builder::Table::new("enemy_desc")
+    }
+}

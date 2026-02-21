@@ -146,3 +146,23 @@ impl<'ctx> DroppedInventoryDespawnTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DroppedInventoryDespawnTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait dropped_inventory_despawn_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DroppedInventoryDespawnTimer`.
+    fn dropped_inventory_despawn_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<DroppedInventoryDespawnTimer>;
+}
+
+impl dropped_inventory_despawn_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn dropped_inventory_despawn_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<DroppedInventoryDespawnTimer> {
+        __sdk::__query_builder::Table::new("dropped_inventory_despawn_timer")
+    }
+}

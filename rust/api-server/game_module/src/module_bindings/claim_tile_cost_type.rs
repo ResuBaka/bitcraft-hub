@@ -14,3 +14,37 @@ pub struct ClaimTileCost {
 impl __sdk::InModule for ClaimTileCost {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimTileCost`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimTileCostCols {
+    pub tile_count: __sdk::__query_builder::Col<ClaimTileCost, i32>,
+    pub cost_per_tile: __sdk::__query_builder::Col<ClaimTileCost, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimTileCost {
+    type Cols = ClaimTileCostCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimTileCostCols {
+            tile_count: __sdk::__query_builder::Col::new(table_name, "tile_count"),
+            cost_per_tile: __sdk::__query_builder::Col::new(table_name, "cost_per_tile"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimTileCost`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimTileCostIxCols {
+    pub tile_count: __sdk::__query_builder::IxCol<ClaimTileCost, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimTileCost {
+    type IxCols = ClaimTileCostIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimTileCostIxCols {
+            tile_count: __sdk::__query_builder::IxCol::new(table_name, "tile_count"),
+        }
+    }
+}

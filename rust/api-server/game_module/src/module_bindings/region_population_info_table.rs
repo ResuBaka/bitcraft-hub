@@ -142,3 +142,19 @@ impl<'ctx> RegionPopulationInfoRegionIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `RegionPopulationInfo`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait region_population_infoQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `RegionPopulationInfo`.
+    fn region_population_info(&self) -> __sdk::__query_builder::Table<RegionPopulationInfo>;
+}
+
+impl region_population_infoQueryTableAccess for __sdk::QueryTableAccessor {
+    fn region_population_info(&self) -> __sdk::__query_builder::Table<RegionPopulationInfo> {
+        __sdk::__query_builder::Table::new("region_population_info")
+    }
+}

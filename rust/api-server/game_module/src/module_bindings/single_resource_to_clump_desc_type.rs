@@ -14,3 +14,39 @@ pub struct SingleResourceToClumpDesc {
 impl __sdk::InModule for SingleResourceToClumpDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `SingleResourceToClumpDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct SingleResourceToClumpDescCols {
+    pub resource_id: __sdk::__query_builder::Col<SingleResourceToClumpDesc, i32>,
+    pub clump_id: __sdk::__query_builder::Col<SingleResourceToClumpDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for SingleResourceToClumpDesc {
+    type Cols = SingleResourceToClumpDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        SingleResourceToClumpDescCols {
+            resource_id: __sdk::__query_builder::Col::new(table_name, "resource_id"),
+            clump_id: __sdk::__query_builder::Col::new(table_name, "clump_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `SingleResourceToClumpDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct SingleResourceToClumpDescIxCols {
+    pub clump_id: __sdk::__query_builder::IxCol<SingleResourceToClumpDesc, i32>,
+    pub resource_id: __sdk::__query_builder::IxCol<SingleResourceToClumpDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for SingleResourceToClumpDesc {
+    type IxCols = SingleResourceToClumpDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        SingleResourceToClumpDescIxCols {
+            clump_id: __sdk::__query_builder::IxCol::new(table_name, "clump_id"),
+            resource_id: __sdk::__query_builder::IxCol::new(table_name, "resource_id"),
+        }
+    }
+}

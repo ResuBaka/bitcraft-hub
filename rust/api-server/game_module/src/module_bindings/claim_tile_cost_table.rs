@@ -140,3 +140,19 @@ impl<'ctx> ClaimTileCostTileCountUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ClaimTileCost`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait claim_tile_costQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ClaimTileCost`.
+    fn claim_tile_cost(&self) -> __sdk::__query_builder::Table<ClaimTileCost>;
+}
+
+impl claim_tile_costQueryTableAccess for __sdk::QueryTableAccessor {
+    fn claim_tile_cost(&self) -> __sdk::__query_builder::Table<ClaimTileCost> {
+        __sdk::__query_builder::Table::new("claim_tile_cost")
+    }
+}

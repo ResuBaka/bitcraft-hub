@@ -140,3 +140,19 @@ impl<'ctx> AdminBroadcastVersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AdminBroadcast`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait admin_broadcastQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AdminBroadcast`.
+    fn admin_broadcast(&self) -> __sdk::__query_builder::Table<AdminBroadcast>;
+}
+
+impl admin_broadcastQueryTableAccess for __sdk::QueryTableAccessor {
+    fn admin_broadcast(&self) -> __sdk::__query_builder::Table<AdminBroadcast> {
+        __sdk::__query_builder::Table::new("admin_broadcast")
+    }
+}

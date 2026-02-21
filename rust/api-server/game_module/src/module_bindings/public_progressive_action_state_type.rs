@@ -15,3 +15,44 @@ pub struct PublicProgressiveActionState {
 impl __sdk::InModule for PublicProgressiveActionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PublicProgressiveActionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PublicProgressiveActionStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PublicProgressiveActionState, u64>,
+    pub building_entity_id: __sdk::__query_builder::Col<PublicProgressiveActionState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<PublicProgressiveActionState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for PublicProgressiveActionState {
+    type Cols = PublicProgressiveActionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PublicProgressiveActionStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PublicProgressiveActionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PublicProgressiveActionStateIxCols {
+    pub building_entity_id: __sdk::__query_builder::IxCol<PublicProgressiveActionState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<PublicProgressiveActionState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PublicProgressiveActionState {
+    type IxCols = PublicProgressiveActionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PublicProgressiveActionStateIxCols {
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

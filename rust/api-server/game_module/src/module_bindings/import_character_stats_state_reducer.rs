@@ -63,8 +63,8 @@ impl import_character_stats_state for super::RemoteReducers {
     fn on_import_character_stats_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<CharacterStatsState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportCharacterStatsStateCallbackId {
         ImportCharacterStatsStateCallbackId(self.imp.on_reducer(
             "import_character_stats_state",

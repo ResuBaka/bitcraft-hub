@@ -14,3 +14,37 @@ pub struct EnvironmentDebuffLoopTimer {
 impl __sdk::InModule for EnvironmentDebuffLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnvironmentDebuffLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnvironmentDebuffLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<EnvironmentDebuffLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<EnvironmentDebuffLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for EnvironmentDebuffLoopTimer {
+    type Cols = EnvironmentDebuffLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnvironmentDebuffLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnvironmentDebuffLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnvironmentDebuffLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<EnvironmentDebuffLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnvironmentDebuffLoopTimer {
+    type IxCols = EnvironmentDebuffLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnvironmentDebuffLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

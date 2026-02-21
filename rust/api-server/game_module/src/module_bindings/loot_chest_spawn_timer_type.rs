@@ -16,3 +16,41 @@ pub struct LootChestSpawnTimer {
 impl __sdk::InModule for LootChestSpawnTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LootChestSpawnTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct LootChestSpawnTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<LootChestSpawnTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<LootChestSpawnTimer, __sdk::ScheduleAt>,
+    pub building_spawn_id: __sdk::__query_builder::Col<LootChestSpawnTimer, i32>,
+    pub building_entity_id: __sdk::__query_builder::Col<LootChestSpawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for LootChestSpawnTimer {
+    type Cols = LootChestSpawnTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LootChestSpawnTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            building_spawn_id: __sdk::__query_builder::Col::new(table_name, "building_spawn_id"),
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LootChestSpawnTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LootChestSpawnTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<LootChestSpawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LootChestSpawnTimer {
+    type IxCols = LootChestSpawnTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LootChestSpawnTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

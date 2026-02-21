@@ -20,3 +20,62 @@ pub struct PlayerHousingState {
 impl __sdk::InModule for PlayerHousingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerHousingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerHousingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerHousingState, u64>,
+    pub entrance_building_entity_id: __sdk::__query_builder::Col<PlayerHousingState, u64>,
+    pub network_entity_id: __sdk::__query_builder::Col<PlayerHousingState, u64>,
+    pub exit_portal_entity_id: __sdk::__query_builder::Col<PlayerHousingState, u64>,
+    pub rank: __sdk::__query_builder::Col<PlayerHousingState, i32>,
+    pub locked_until: __sdk::__query_builder::Col<PlayerHousingState, __sdk::Timestamp>,
+    pub is_empty: __sdk::__query_builder::Col<PlayerHousingState, bool>,
+    pub region_index: __sdk::__query_builder::Col<PlayerHousingState, u8>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerHousingState {
+    type Cols = PlayerHousingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerHousingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            entrance_building_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "entrance_building_entity_id",
+            ),
+            network_entity_id: __sdk::__query_builder::Col::new(table_name, "network_entity_id"),
+            exit_portal_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "exit_portal_entity_id",
+            ),
+            rank: __sdk::__query_builder::Col::new(table_name, "rank"),
+            locked_until: __sdk::__query_builder::Col::new(table_name, "locked_until"),
+            is_empty: __sdk::__query_builder::Col::new(table_name, "is_empty"),
+            region_index: __sdk::__query_builder::Col::new(table_name, "region_index"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerHousingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerHousingStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerHousingState, u64>,
+    pub entrance_building_entity_id: __sdk::__query_builder::IxCol<PlayerHousingState, u64>,
+    pub network_entity_id: __sdk::__query_builder::IxCol<PlayerHousingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerHousingState {
+    type IxCols = PlayerHousingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerHousingStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            entrance_building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "entrance_building_entity_id",
+            ),
+            network_entity_id: __sdk::__query_builder::IxCol::new(table_name, "network_entity_id"),
+        }
+    }
+}

@@ -144,3 +144,19 @@ impl<'ctx> StagedPremiumServiceDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PremiumServiceDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_premium_service_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PremiumServiceDesc`.
+    fn staged_premium_service_desc(&self) -> __sdk::__query_builder::Table<PremiumServiceDesc>;
+}
+
+impl staged_premium_service_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_premium_service_desc(&self) -> __sdk::__query_builder::Table<PremiumServiceDesc> {
+        __sdk::__query_builder::Table::new("staged_premium_service_desc")
+    }
+}

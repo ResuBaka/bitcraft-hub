@@ -16,3 +16,41 @@ pub struct OnboardingState {
 impl __sdk::InModule for OnboardingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `OnboardingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct OnboardingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<OnboardingState, u64>,
+    pub completed_states: __sdk::__query_builder::Col<OnboardingState, Vec<u16>>,
+    pub current_quests: __sdk::__query_builder::Col<OnboardingState, Vec<u16>>,
+    pub completed_quests: __sdk::__query_builder::Col<OnboardingState, Vec<u16>>,
+}
+
+impl __sdk::__query_builder::HasCols for OnboardingState {
+    type Cols = OnboardingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        OnboardingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            completed_states: __sdk::__query_builder::Col::new(table_name, "completed_states"),
+            current_quests: __sdk::__query_builder::Col::new(table_name, "current_quests"),
+            completed_quests: __sdk::__query_builder::Col::new(table_name, "completed_quests"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `OnboardingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct OnboardingStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<OnboardingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for OnboardingState {
+    type IxCols = OnboardingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        OnboardingStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -16,3 +16,37 @@ pub struct EquipmentState {
 impl __sdk::InModule for EquipmentState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EquipmentState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EquipmentStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EquipmentState, u64>,
+    pub equipment_slots: __sdk::__query_builder::Col<EquipmentState, Vec<EquipmentSlot>>,
+}
+
+impl __sdk::__query_builder::HasCols for EquipmentState {
+    type Cols = EquipmentStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EquipmentStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            equipment_slots: __sdk::__query_builder::Col::new(table_name, "equipment_slots"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EquipmentState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EquipmentStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<EquipmentState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EquipmentState {
+    type IxCols = EquipmentStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EquipmentStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

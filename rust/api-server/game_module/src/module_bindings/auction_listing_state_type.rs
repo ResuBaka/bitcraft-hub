@@ -21,3 +21,53 @@ pub struct AuctionListingState {
 impl __sdk::InModule for AuctionListingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AuctionListingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct AuctionListingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<AuctionListingState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<AuctionListingState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<AuctionListingState, u64>,
+    pub item_id: __sdk::__query_builder::Col<AuctionListingState, i32>,
+    pub item_type: __sdk::__query_builder::Col<AuctionListingState, i32>,
+    pub price_threshold: __sdk::__query_builder::Col<AuctionListingState, i32>,
+    pub quantity: __sdk::__query_builder::Col<AuctionListingState, i32>,
+    pub timestamp: __sdk::__query_builder::Col<AuctionListingState, __sdk::Timestamp>,
+    pub stored_coins: __sdk::__query_builder::Col<AuctionListingState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for AuctionListingState {
+    type Cols = AuctionListingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AuctionListingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            item_id: __sdk::__query_builder::Col::new(table_name, "item_id"),
+            item_type: __sdk::__query_builder::Col::new(table_name, "item_type"),
+            price_threshold: __sdk::__query_builder::Col::new(table_name, "price_threshold"),
+            quantity: __sdk::__query_builder::Col::new(table_name, "quantity"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+            stored_coins: __sdk::__query_builder::Col::new(table_name, "stored_coins"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AuctionListingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AuctionListingStateIxCols {
+    pub claim_entity_id: __sdk::__query_builder::IxCol<AuctionListingState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<AuctionListingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AuctionListingState {
+    type IxCols = AuctionListingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AuctionListingStateIxCols {
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

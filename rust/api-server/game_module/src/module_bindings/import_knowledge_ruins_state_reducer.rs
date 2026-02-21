@@ -63,8 +63,8 @@ impl import_knowledge_ruins_state for super::RemoteReducers {
     fn on_import_knowledge_ruins_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeRuinsState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportKnowledgeRuinsStateCallbackId {
         ImportKnowledgeRuinsStateCallbackId(self.imp.on_reducer(
             "import_knowledge_ruins_state",

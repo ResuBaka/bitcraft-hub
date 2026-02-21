@@ -19,3 +19,55 @@ pub struct DimensionNetworkState {
 impl __sdk::InModule for DimensionNetworkState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DimensionNetworkState`.
+///
+/// Provides typed access to columns for query building.
+pub struct DimensionNetworkStateCols {
+    pub entity_id: __sdk::__query_builder::Col<DimensionNetworkState, u64>,
+    pub building_id: __sdk::__query_builder::Col<DimensionNetworkState, u64>,
+    pub collapse_respawn_timestamp: __sdk::__query_builder::Col<DimensionNetworkState, u64>,
+    pub rent_entity_id: __sdk::__query_builder::Col<DimensionNetworkState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<DimensionNetworkState, u64>,
+    pub entrance_dimension_id: __sdk::__query_builder::Col<DimensionNetworkState, u32>,
+    pub is_collapsed: __sdk::__query_builder::Col<DimensionNetworkState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for DimensionNetworkState {
+    type Cols = DimensionNetworkStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DimensionNetworkStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            collapse_respawn_timestamp: __sdk::__query_builder::Col::new(
+                table_name,
+                "collapse_respawn_timestamp",
+            ),
+            rent_entity_id: __sdk::__query_builder::Col::new(table_name, "rent_entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            entrance_dimension_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "entrance_dimension_id",
+            ),
+            is_collapsed: __sdk::__query_builder::Col::new(table_name, "is_collapsed"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DimensionNetworkState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DimensionNetworkStateIxCols {
+    pub building_id: __sdk::__query_builder::IxCol<DimensionNetworkState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<DimensionNetworkState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DimensionNetworkState {
+    type IxCols = DimensionNetworkStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DimensionNetworkStateIxCols {
+            building_id: __sdk::__query_builder::IxCol::new(table_name, "building_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

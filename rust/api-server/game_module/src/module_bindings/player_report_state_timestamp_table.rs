@@ -143,3 +143,23 @@ impl<'ctx> PlayerReportStateTimestampEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerReportStateTimestamp`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_report_state_timestampQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerReportStateTimestamp`.
+    fn player_report_state_timestamp(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerReportStateTimestamp>;
+}
+
+impl player_report_state_timestampQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_report_state_timestamp(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerReportStateTimestamp> {
+        __sdk::__query_builder::Table::new("player_report_state_timestamp")
+    }
+}

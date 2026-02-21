@@ -15,3 +15,41 @@ pub struct HideDeployableTimer {
 impl __sdk::InModule for HideDeployableTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `HideDeployableTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct HideDeployableTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<HideDeployableTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<HideDeployableTimer, __sdk::ScheduleAt>,
+    pub entity_id: __sdk::__query_builder::Col<HideDeployableTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for HideDeployableTimer {
+    type Cols = HideDeployableTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        HideDeployableTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `HideDeployableTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct HideDeployableTimerIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<HideDeployableTimer, u64>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<HideDeployableTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for HideDeployableTimer {
+    type IxCols = HideDeployableTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        HideDeployableTimerIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

@@ -16,3 +16,37 @@ pub struct KnowledgeResourcePlacementState {
 impl __sdk::InModule for KnowledgeResourcePlacementState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgeResourcePlacementState`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgeResourcePlacementStateCols {
+    pub entity_id: __sdk::__query_builder::Col<KnowledgeResourcePlacementState, u64>,
+    pub entries: __sdk::__query_builder::Col<KnowledgeResourcePlacementState, Vec<KnowledgeEntry>>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgeResourcePlacementState {
+    type Cols = KnowledgeResourcePlacementStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgeResourcePlacementStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            entries: __sdk::__query_builder::Col::new(table_name, "entries"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgeResourcePlacementState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgeResourcePlacementStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<KnowledgeResourcePlacementState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgeResourcePlacementState {
+    type IxCols = KnowledgeResourcePlacementStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgeResourcePlacementStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -15,3 +15,39 @@ pub struct Config {
 impl __sdk::InModule for Config {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `Config`.
+///
+/// Provides typed access to columns for query building.
+pub struct ConfigCols {
+    pub version: __sdk::__query_builder::Col<Config, i32>,
+    pub env: __sdk::__query_builder::Col<Config, String>,
+    pub agents_enabled: __sdk::__query_builder::Col<Config, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for Config {
+    type Cols = ConfigCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ConfigCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            env: __sdk::__query_builder::Col::new(table_name, "env"),
+            agents_enabled: __sdk::__query_builder::Col::new(table_name, "agents_enabled"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `Config`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ConfigIxCols {
+    pub version: __sdk::__query_builder::IxCol<Config, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for Config {
+    type IxCols = ConfigIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ConfigIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

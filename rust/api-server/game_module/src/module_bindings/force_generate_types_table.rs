@@ -102,3 +102,19 @@ pub(super) fn parse_table_update(
             .into()
     })
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ForceGenerateTypes`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait force_generate_typesQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ForceGenerateTypes`.
+    fn force_generate_types(&self) -> __sdk::__query_builder::Table<ForceGenerateTypes>;
+}
+
+impl force_generate_typesQueryTableAccess for __sdk::QueryTableAccessor {
+    fn force_generate_types(&self) -> __sdk::__query_builder::Table<ForceGenerateTypes> {
+        __sdk::__query_builder::Table::new("force_generate_types")
+    }
+}

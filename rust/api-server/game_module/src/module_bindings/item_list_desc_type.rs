@@ -17,3 +17,39 @@ pub struct ItemListDesc {
 impl __sdk::InModule for ItemListDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ItemListDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ItemListDescCols {
+    pub id: __sdk::__query_builder::Col<ItemListDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ItemListDesc, String>,
+    pub possibilities: __sdk::__query_builder::Col<ItemListDesc, Vec<ItemListPossibility>>,
+}
+
+impl __sdk::__query_builder::HasCols for ItemListDesc {
+    type Cols = ItemListDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ItemListDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            possibilities: __sdk::__query_builder::Col::new(table_name, "possibilities"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ItemListDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ItemListDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ItemListDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ItemListDesc {
+    type IxCols = ItemListDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ItemListDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

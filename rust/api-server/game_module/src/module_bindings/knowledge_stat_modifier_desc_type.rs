@@ -16,3 +16,43 @@ pub struct KnowledgeStatModifierDesc {
 impl __sdk::InModule for KnowledgeStatModifierDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgeStatModifierDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgeStatModifierDescCols {
+    pub secondary_knowledge_id: __sdk::__query_builder::Col<KnowledgeStatModifierDesc, i32>,
+    pub stats: __sdk::__query_builder::Col<KnowledgeStatModifierDesc, Vec<CsvStatEntry>>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgeStatModifierDesc {
+    type Cols = KnowledgeStatModifierDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgeStatModifierDescCols {
+            secondary_knowledge_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "secondary_knowledge_id",
+            ),
+            stats: __sdk::__query_builder::Col::new(table_name, "stats"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgeStatModifierDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgeStatModifierDescIxCols {
+    pub secondary_knowledge_id: __sdk::__query_builder::IxCol<KnowledgeStatModifierDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgeStatModifierDesc {
+    type IxCols = KnowledgeStatModifierDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgeStatModifierDescIxCols {
+            secondary_knowledge_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "secondary_knowledge_id",
+            ),
+        }
+    }
+}

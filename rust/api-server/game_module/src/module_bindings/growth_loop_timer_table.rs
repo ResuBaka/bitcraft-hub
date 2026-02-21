@@ -140,3 +140,19 @@ impl<'ctx> GrowthLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `GrowthLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait growth_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `GrowthLoopTimer`.
+    fn growth_loop_timer(&self) -> __sdk::__query_builder::Table<GrowthLoopTimer>;
+}
+
+impl growth_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn growth_loop_timer(&self) -> __sdk::__query_builder::Table<GrowthLoopTimer> {
+        __sdk::__query_builder::Table::new("growth_loop_timer")
+    }
+}

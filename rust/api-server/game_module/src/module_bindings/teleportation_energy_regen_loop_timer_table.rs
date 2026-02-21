@@ -151,3 +151,23 @@ impl<'ctx> TeleportationEnergyRegenLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TeleportationEnergyRegenLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait teleportation_energy_regen_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TeleportationEnergyRegenLoopTimer`.
+    fn teleportation_energy_regen_loop_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<TeleportationEnergyRegenLoopTimer>;
+}
+
+impl teleportation_energy_regen_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn teleportation_energy_regen_loop_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<TeleportationEnergyRegenLoopTimer> {
+        __sdk::__query_builder::Table::new("teleportation_energy_regen_loop_timer")
+    }
+}

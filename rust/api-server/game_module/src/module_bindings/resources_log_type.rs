@@ -22,3 +22,45 @@ pub struct ResourcesLog {
 impl __sdk::InModule for ResourcesLog {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourcesLog`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourcesLogCols {
+    pub version: __sdk::__query_builder::Col<ResourcesLog, i32>,
+    pub world_width: __sdk::__query_builder::Col<ResourcesLog, u64>,
+    pub world_height: __sdk::__query_builder::Col<ResourcesLog, u64>,
+    pub resource_clumps: __sdk::__query_builder::Col<ResourcesLog, Vec<ResourceClumpInfo>>,
+    pub resources: __sdk::__query_builder::Col<ResourcesLog, Vec<ResourceInfo>>,
+    pub random: __sdk::__query_builder::Col<ResourcesLog, CommonRng>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourcesLog {
+    type Cols = ResourcesLogCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourcesLogCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            world_width: __sdk::__query_builder::Col::new(table_name, "world_width"),
+            world_height: __sdk::__query_builder::Col::new(table_name, "world_height"),
+            resource_clumps: __sdk::__query_builder::Col::new(table_name, "resource_clumps"),
+            resources: __sdk::__query_builder::Col::new(table_name, "resources"),
+            random: __sdk::__query_builder::Col::new(table_name, "random"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourcesLog`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourcesLogIxCols {
+    pub version: __sdk::__query_builder::IxCol<ResourcesLog, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourcesLog {
+    type IxCols = ResourcesLogIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourcesLogIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

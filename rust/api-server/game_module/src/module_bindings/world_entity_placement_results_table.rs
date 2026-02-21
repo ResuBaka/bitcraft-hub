@@ -147,3 +147,23 @@ impl<'ctx> WorldEntityPlacementResultsEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `WorldEntityPlacementResults`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait world_entity_placement_resultsQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `WorldEntityPlacementResults`.
+    fn world_entity_placement_results(
+        &self,
+    ) -> __sdk::__query_builder::Table<WorldEntityPlacementResults>;
+}
+
+impl world_entity_placement_resultsQueryTableAccess for __sdk::QueryTableAccessor {
+    fn world_entity_placement_results(
+        &self,
+    ) -> __sdk::__query_builder::Table<WorldEntityPlacementResults> {
+        __sdk::__query_builder::Table::new("world_entity_placement_results")
+    }
+}

@@ -63,8 +63,8 @@ impl building_set_sign_text for super::RemoteReducers {
     fn on_building_set_sign_text(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &BuildingSetSignTextRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingSetSignTextCallbackId {
         BuildingSetSignTextCallbackId(self.imp.on_reducer(
             "building_set_sign_text",

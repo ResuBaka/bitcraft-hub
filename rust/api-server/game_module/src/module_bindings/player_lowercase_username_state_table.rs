@@ -179,3 +179,23 @@ impl<'ctx> PlayerLowercaseUsernameStateUsernameLowercaseUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerLowercaseUsernameState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_lowercase_username_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerLowercaseUsernameState`.
+    fn player_lowercase_username_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerLowercaseUsernameState>;
+}
+
+impl player_lowercase_username_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_lowercase_username_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerLowercaseUsernameState> {
+        __sdk::__query_builder::Table::new("player_lowercase_username_state")
+    }
+}

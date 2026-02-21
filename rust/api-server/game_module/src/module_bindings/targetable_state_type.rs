@@ -13,3 +13,35 @@ pub struct TargetableState {
 impl __sdk::InModule for TargetableState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TargetableState`.
+///
+/// Provides typed access to columns for query building.
+pub struct TargetableStateCols {
+    pub entity_id: __sdk::__query_builder::Col<TargetableState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for TargetableState {
+    type Cols = TargetableStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TargetableStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TargetableState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TargetableStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<TargetableState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TargetableState {
+    type IxCols = TargetableStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TargetableStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -50,8 +50,8 @@ pub trait cheat_compendium_place_enemy {
     fn on_cheat_compendium_place_enemy(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &CheatCompendiumEnemyPlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatCompendiumPlaceEnemyCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_compendium_place_enemy`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl cheat_compendium_place_enemy for super::RemoteReducers {
     fn on_cheat_compendium_place_enemy(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatCompendiumEnemyPlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatCompendiumPlaceEnemyCallbackId {
         CheatCompendiumPlaceEnemyCallbackId(self.imp.on_reducer(
             "cheat_compendium_place_enemy",

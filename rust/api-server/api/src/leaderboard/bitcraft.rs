@@ -5,7 +5,7 @@ use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QueryTrait};
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::time::Duration;
@@ -45,10 +45,16 @@ pub(crate) fn start_worker_experience_state(
                                     tracing::debug!("Processed Initial ExperienceState {}", data.len());
                                     let mut local_messages = Vec::with_capacity(batch_size + 10);
                                     let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
-                                        .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
+                                        .filter(::entity::experience_state::Column::Region.eq(database_name.to_string()))
                                         .all(&global_app_state.conn)
                                         .await
-                                        .map_or(vec![], |aa| aa)
+                                        .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole experience_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                         .into_par_iter()
                                         .map(|value| {
                                             let entity_id = value.entity_id;
@@ -106,9 +112,16 @@ pub(crate) fn start_worker_experience_state(
                                         insert_multiple_experience_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                     }
 
-                                    for chunk_ids in currently_known_experience_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    for chunk_ids in currently_known_experience_state.into_keys().collect::<Vec<_>>().chunks(100) {
+                                        let mut query = sea_query::Condition::any();
+                                        for chunk_id in chunk_ids {
+                                        let (entity_id,skill_id) = chunk_ids.first().unwrap().split_once(":").unwrap();
+                                            query = query.add(::entity::experience_state::Column::EntityId.eq(entity_id.parse::<i64>().unwrap())
+                                            .and(::entity::experience_state::Column::SkillId.eq(skill_id.parse::<i32>().unwrap())));
+                                        }
+
                                         let chunk_ids = chunk_ids.to_vec();
-                                        if let Err(error) = ::entity::experience_state::Entity::delete_many().filter(::entity::experience_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        if let Err(error) = ::entity::experience_state::Entity::delete_many().filter(query).exec(&global_app_state.conn).await {
                                             let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                             tracing::error!(ExperienceState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ExperienceState");
                                         }

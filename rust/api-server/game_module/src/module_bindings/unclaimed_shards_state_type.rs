@@ -14,3 +14,37 @@ pub struct UnclaimedShardsState {
 impl __sdk::InModule for UnclaimedShardsState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `UnclaimedShardsState`.
+///
+/// Provides typed access to columns for query building.
+pub struct UnclaimedShardsStateCols {
+    pub identity: __sdk::__query_builder::Col<UnclaimedShardsState, __sdk::Identity>,
+    pub shards: __sdk::__query_builder::Col<UnclaimedShardsState, u32>,
+}
+
+impl __sdk::__query_builder::HasCols for UnclaimedShardsState {
+    type Cols = UnclaimedShardsStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        UnclaimedShardsStateCols {
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+            shards: __sdk::__query_builder::Col::new(table_name, "shards"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `UnclaimedShardsState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct UnclaimedShardsStateIxCols {
+    pub identity: __sdk::__query_builder::IxCol<UnclaimedShardsState, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasIxCols for UnclaimedShardsState {
+    type IxCols = UnclaimedShardsStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        UnclaimedShardsStateIxCols {
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+        }
+    }
+}

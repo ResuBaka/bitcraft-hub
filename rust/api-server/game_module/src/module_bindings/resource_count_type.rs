@@ -14,3 +14,37 @@ pub struct ResourceCount {
 impl __sdk::InModule for ResourceCount {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourceCount`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourceCountCols {
+    pub resource_id: __sdk::__query_builder::Col<ResourceCount, i32>,
+    pub num_in_world: __sdk::__query_builder::Col<ResourceCount, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourceCount {
+    type Cols = ResourceCountCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourceCountCols {
+            resource_id: __sdk::__query_builder::Col::new(table_name, "resource_id"),
+            num_in_world: __sdk::__query_builder::Col::new(table_name, "num_in_world"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourceCount`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourceCountIxCols {
+    pub resource_id: __sdk::__query_builder::IxCol<ResourceCount, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourceCount {
+    type IxCols = ResourceCountIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourceCountIxCols {
+            resource_id: __sdk::__query_builder::IxCol::new(table_name, "resource_id"),
+        }
+    }
+}

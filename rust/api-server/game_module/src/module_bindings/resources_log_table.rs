@@ -143,3 +143,19 @@ impl<'ctx> ResourcesLogVersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourcesLog`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resources_logQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourcesLog`.
+    fn resources_log(&self) -> __sdk::__query_builder::Table<ResourcesLog>;
+}
+
+impl resources_logQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resources_log(&self) -> __sdk::__query_builder::Table<ResourcesLog> {
+        __sdk::__query_builder::Table::new("resources_log")
+    }
+}

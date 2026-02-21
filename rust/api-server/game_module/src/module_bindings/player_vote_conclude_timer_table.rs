@@ -143,3 +143,19 @@ impl<'ctx> PlayerVoteConcludeTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerVoteConcludeTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_vote_conclude_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerVoteConcludeTimer`.
+    fn player_vote_conclude_timer(&self) -> __sdk::__query_builder::Table<PlayerVoteConcludeTimer>;
+}
+
+impl player_vote_conclude_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_vote_conclude_timer(&self) -> __sdk::__query_builder::Table<PlayerVoteConcludeTimer> {
+        __sdk::__query_builder::Table::new("player_vote_conclude_timer")
+    }
+}

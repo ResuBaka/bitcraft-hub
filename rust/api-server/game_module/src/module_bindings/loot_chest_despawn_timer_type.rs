@@ -16,3 +16,44 @@ pub struct LootChestDespawnTimer {
 impl __sdk::InModule for LootChestDespawnTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LootChestDespawnTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct LootChestDespawnTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<LootChestDespawnTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<LootChestDespawnTimer, __sdk::ScheduleAt>,
+    pub loot_chest_entity_id: __sdk::__query_builder::Col<LootChestDespawnTimer, u64>,
+    pub should_respawn: __sdk::__query_builder::Col<LootChestDespawnTimer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for LootChestDespawnTimer {
+    type Cols = LootChestDespawnTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LootChestDespawnTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            loot_chest_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "loot_chest_entity_id",
+            ),
+            should_respawn: __sdk::__query_builder::Col::new(table_name, "should_respawn"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LootChestDespawnTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LootChestDespawnTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<LootChestDespawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LootChestDespawnTimer {
+    type IxCols = LootChestDespawnTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LootChestDespawnTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

@@ -173,3 +173,19 @@ impl<'ctx> HideDeployableTimerEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `HideDeployableTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait hide_deployable_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `HideDeployableTimer`.
+    fn hide_deployable_timer(&self) -> __sdk::__query_builder::Table<HideDeployableTimer>;
+}
+
+impl hide_deployable_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn hide_deployable_timer(&self) -> __sdk::__query_builder::Table<HideDeployableTimer> {
+        __sdk::__query_builder::Table::new("hide_deployable_timer")
+    }
+}

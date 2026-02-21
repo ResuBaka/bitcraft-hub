@@ -17,3 +17,47 @@ pub struct LostItemsState {
 impl __sdk::InModule for LostItemsState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LostItemsState`.
+///
+/// Provides typed access to columns for query building.
+pub struct LostItemsStateCols {
+    pub inventory_entity_id: __sdk::__query_builder::Col<LostItemsState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<LostItemsState, u64>,
+    pub location: __sdk::__query_builder::Col<LostItemsState, OffsetCoordinatesSmallMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for LostItemsState {
+    type Cols = LostItemsStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LostItemsStateCols {
+            inventory_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "inventory_entity_id",
+            ),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LostItemsState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LostItemsStateIxCols {
+    pub inventory_entity_id: __sdk::__query_builder::IxCol<LostItemsState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<LostItemsState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LostItemsState {
+    type IxCols = LostItemsStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LostItemsStateIxCols {
+            inventory_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "inventory_entity_id",
+            ),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

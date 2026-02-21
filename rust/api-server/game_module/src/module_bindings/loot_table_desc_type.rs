@@ -17,3 +17,39 @@ pub struct LootTableDesc {
 impl __sdk::InModule for LootTableDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LootTableDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct LootTableDescCols {
+    pub id: __sdk::__query_builder::Col<LootTableDesc, i32>,
+    pub loot_rarity: __sdk::__query_builder::Col<LootTableDesc, i32>,
+    pub loot_item_stacks: __sdk::__query_builder::Col<LootTableDesc, Vec<ProbabilisticItemStack>>,
+}
+
+impl __sdk::__query_builder::HasCols for LootTableDesc {
+    type Cols = LootTableDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LootTableDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            loot_rarity: __sdk::__query_builder::Col::new(table_name, "loot_rarity"),
+            loot_item_stacks: __sdk::__query_builder::Col::new(table_name, "loot_item_stacks"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LootTableDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LootTableDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<LootTableDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LootTableDesc {
+    type IxCols = LootTableDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LootTableDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

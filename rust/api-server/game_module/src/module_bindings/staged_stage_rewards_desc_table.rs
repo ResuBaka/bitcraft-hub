@@ -143,3 +143,19 @@ impl<'ctx> StagedStageRewardsDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `StageRewardsDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_stage_rewards_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `StageRewardsDesc`.
+    fn staged_stage_rewards_desc(&self) -> __sdk::__query_builder::Table<StageRewardsDesc>;
+}
+
+impl staged_stage_rewards_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_stage_rewards_desc(&self) -> __sdk::__query_builder::Table<StageRewardsDesc> {
+        __sdk::__query_builder::Table::new("staged_stage_rewards_desc")
+    }
+}

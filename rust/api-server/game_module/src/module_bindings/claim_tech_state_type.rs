@@ -17,3 +17,43 @@ pub struct ClaimTechState {
 impl __sdk::InModule for ClaimTechState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimTechState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimTechStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ClaimTechState, u64>,
+    pub learned: __sdk::__query_builder::Col<ClaimTechState, Vec<i32>>,
+    pub researching: __sdk::__query_builder::Col<ClaimTechState, i32>,
+    pub start_timestamp: __sdk::__query_builder::Col<ClaimTechState, __sdk::Timestamp>,
+    pub scheduled_id: __sdk::__query_builder::Col<ClaimTechState, Option<u64>>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimTechState {
+    type Cols = ClaimTechStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimTechStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            learned: __sdk::__query_builder::Col::new(table_name, "learned"),
+            researching: __sdk::__query_builder::Col::new(table_name, "researching"),
+            start_timestamp: __sdk::__query_builder::Col::new(table_name, "start_timestamp"),
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimTechState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimTechStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ClaimTechState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimTechState {
+    type IxCols = ClaimTechStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimTechStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

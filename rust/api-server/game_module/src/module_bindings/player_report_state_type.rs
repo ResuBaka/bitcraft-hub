@@ -24,3 +24,68 @@ pub struct PlayerReportState {
 impl __sdk::InModule for PlayerReportState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerReportState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerReportStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerReportState, u64>,
+    pub reporter_entity_id: __sdk::__query_builder::Col<PlayerReportState, u64>,
+    pub reported_player_entity_id: __sdk::__query_builder::Col<PlayerReportState, u64>,
+    pub reported_player_username: __sdk::__query_builder::Col<PlayerReportState, String>,
+    pub report_type: __sdk::__query_builder::Col<PlayerReportState, String>,
+    pub report_message: __sdk::__query_builder::Col<PlayerReportState, String>,
+    pub reported_chat_message:
+        __sdk::__query_builder::Col<PlayerReportState, Option<ChatMessageState>>,
+    pub chat_channel_context:
+        __sdk::__query_builder::Col<PlayerReportState, Option<Vec<ChatMessageState>>>,
+    pub chat_user_context:
+        __sdk::__query_builder::Col<PlayerReportState, Option<Vec<ChatMessageState>>>,
+    pub actioned: __sdk::__query_builder::Col<PlayerReportState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerReportState {
+    type Cols = PlayerReportStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerReportStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            reporter_entity_id: __sdk::__query_builder::Col::new(table_name, "reporter_entity_id"),
+            reported_player_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "reported_player_entity_id",
+            ),
+            reported_player_username: __sdk::__query_builder::Col::new(
+                table_name,
+                "reported_player_username",
+            ),
+            report_type: __sdk::__query_builder::Col::new(table_name, "report_type"),
+            report_message: __sdk::__query_builder::Col::new(table_name, "report_message"),
+            reported_chat_message: __sdk::__query_builder::Col::new(
+                table_name,
+                "reported_chat_message",
+            ),
+            chat_channel_context: __sdk::__query_builder::Col::new(
+                table_name,
+                "chat_channel_context",
+            ),
+            chat_user_context: __sdk::__query_builder::Col::new(table_name, "chat_user_context"),
+            actioned: __sdk::__query_builder::Col::new(table_name, "actioned"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerReportState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerReportStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerReportState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerReportState {
+    type IxCols = PlayerReportStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerReportStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

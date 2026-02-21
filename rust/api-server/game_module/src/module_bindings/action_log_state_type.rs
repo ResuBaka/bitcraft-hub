@@ -23,3 +23,53 @@ pub struct ActionLogState {
 impl __sdk::InModule for ActionLogState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ActionLogState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ActionLogStateCols {
+    pub id: __sdk::__query_builder::Col<ActionLogState, u64>,
+    pub object_entity_id: __sdk::__query_builder::Col<ActionLogState, u64>,
+    pub subject_entity_id: __sdk::__query_builder::Col<ActionLogState, u64>,
+    pub subject_name: __sdk::__query_builder::Col<ActionLogState, String>,
+    pub subject_type: __sdk::__query_builder::Col<ActionLogState, ActionLogSubjectType>,
+    pub data: __sdk::__query_builder::Col<ActionLogState, ActionLogData>,
+    pub timestamp: __sdk::__query_builder::Col<ActionLogState, __sdk::Timestamp>,
+    pub days_since_epoch: __sdk::__query_builder::Col<ActionLogState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ActionLogState {
+    type Cols = ActionLogStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ActionLogStateCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            object_entity_id: __sdk::__query_builder::Col::new(table_name, "object_entity_id"),
+            subject_entity_id: __sdk::__query_builder::Col::new(table_name, "subject_entity_id"),
+            subject_name: __sdk::__query_builder::Col::new(table_name, "subject_name"),
+            subject_type: __sdk::__query_builder::Col::new(table_name, "subject_type"),
+            data: __sdk::__query_builder::Col::new(table_name, "data"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+            days_since_epoch: __sdk::__query_builder::Col::new(table_name, "days_since_epoch"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ActionLogState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ActionLogStateIxCols {
+    pub days_since_epoch: __sdk::__query_builder::IxCol<ActionLogState, i32>,
+    pub id: __sdk::__query_builder::IxCol<ActionLogState, u64>,
+    pub object_entity_id: __sdk::__query_builder::IxCol<ActionLogState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ActionLogState {
+    type IxCols = ActionLogStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ActionLogStateIxCols {
+            days_since_epoch: __sdk::__query_builder::IxCol::new(table_name, "days_since_epoch"),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            object_entity_id: __sdk::__query_builder::IxCol::new(table_name, "object_entity_id"),
+        }
+    }
+}

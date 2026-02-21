@@ -142,3 +142,19 @@ impl<'ctx> TerrainChunkStateChunkIndexUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TerrainChunkState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait terrain_chunk_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TerrainChunkState`.
+    fn terrain_chunk_state(&self) -> __sdk::__query_builder::Table<TerrainChunkState>;
+}
+
+impl terrain_chunk_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn terrain_chunk_state(&self) -> __sdk::__query_builder::Table<TerrainChunkState> {
+        __sdk::__query_builder::Table::new("terrain_chunk_state")
+    }
+}

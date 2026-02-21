@@ -20,3 +20,52 @@ pub struct EmoteDesc {
 impl __sdk::InModule for EmoteDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmoteDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmoteDescCols {
+    pub id: __sdk::__query_builder::Col<EmoteDesc, i32>,
+    pub name: __sdk::__query_builder::Col<EmoteDesc, String>,
+    pub animation: __sdk::__query_builder::Col<EmoteDesc, String>,
+    pub duration: __sdk::__query_builder::Col<EmoteDesc, f32>,
+    pub key_code: __sdk::__query_builder::Col<EmoteDesc, String>,
+    pub command_line: __sdk::__query_builder::Col<EmoteDesc, String>,
+    pub allow_while_mounted: __sdk::__query_builder::Col<EmoteDesc, bool>,
+    pub allow_while_moving: __sdk::__query_builder::Col<EmoteDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for EmoteDesc {
+    type Cols = EmoteDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmoteDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            animation: __sdk::__query_builder::Col::new(table_name, "animation"),
+            duration: __sdk::__query_builder::Col::new(table_name, "duration"),
+            key_code: __sdk::__query_builder::Col::new(table_name, "key_code"),
+            command_line: __sdk::__query_builder::Col::new(table_name, "command_line"),
+            allow_while_mounted: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_while_mounted",
+            ),
+            allow_while_moving: __sdk::__query_builder::Col::new(table_name, "allow_while_moving"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmoteDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmoteDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<EmoteDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmoteDesc {
+    type IxCols = EmoteDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmoteDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

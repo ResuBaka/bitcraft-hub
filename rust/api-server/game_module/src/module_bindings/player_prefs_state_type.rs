@@ -14,3 +14,40 @@ pub struct PlayerPrefsState {
 impl __sdk::InModule for PlayerPrefsState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerPrefsState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerPrefsStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerPrefsState, u64>,
+    pub default_deployable_collectible_id: __sdk::__query_builder::Col<PlayerPrefsState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerPrefsState {
+    type Cols = PlayerPrefsStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerPrefsStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            default_deployable_collectible_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "default_deployable_collectible_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerPrefsState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerPrefsStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerPrefsState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerPrefsState {
+    type IxCols = PlayerPrefsStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerPrefsStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

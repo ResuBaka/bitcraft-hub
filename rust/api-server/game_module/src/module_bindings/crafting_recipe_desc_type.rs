@@ -42,3 +42,120 @@ pub struct CraftingRecipeDesc {
 impl __sdk::InModule for CraftingRecipeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CraftingRecipeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct CraftingRecipeDescCols {
+    pub id: __sdk::__query_builder::Col<CraftingRecipeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<CraftingRecipeDesc, String>,
+    pub time_requirement: __sdk::__query_builder::Col<CraftingRecipeDesc, f32>,
+    pub stamina_requirement: __sdk::__query_builder::Col<CraftingRecipeDesc, f32>,
+    pub tool_durability_lost: __sdk::__query_builder::Col<CraftingRecipeDesc, i32>,
+    pub building_requirement:
+        __sdk::__query_builder::Col<CraftingRecipeDesc, Option<BuildingRequirement>>,
+    pub level_requirements: __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<LevelRequirement>>,
+    pub tool_requirements: __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<ToolRequirement>>,
+    pub consumed_item_stacks: __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<InputItemStack>>,
+    pub discovery_triggers: __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<i32>>,
+    pub required_claim_tech_id: __sdk::__query_builder::Col<CraftingRecipeDesc, i32>,
+    pub full_discovery_score: __sdk::__query_builder::Col<CraftingRecipeDesc, i32>,
+    pub experience_per_progress:
+        __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<ExperienceStackF32>>,
+    pub crafted_item_stacks: __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<ItemStack>>,
+    pub actions_required: __sdk::__query_builder::Col<CraftingRecipeDesc, i32>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<CraftingRecipeDesc, i32>,
+    pub recipe_performance_id: __sdk::__query_builder::Col<CraftingRecipeDesc, i32>,
+    pub required_knowledges: __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<i32>>,
+    pub blocking_knowledges: __sdk::__query_builder::Col<CraftingRecipeDesc, Vec<i32>>,
+    pub hide_without_required_knowledge: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
+    pub hide_with_blocking_knowledges: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
+    pub allow_use_hands: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
+    pub is_passive: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for CraftingRecipeDesc {
+    type Cols = CraftingRecipeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CraftingRecipeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            time_requirement: __sdk::__query_builder::Col::new(table_name, "time_requirement"),
+            stamina_requirement: __sdk::__query_builder::Col::new(
+                table_name,
+                "stamina_requirement",
+            ),
+            tool_durability_lost: __sdk::__query_builder::Col::new(
+                table_name,
+                "tool_durability_lost",
+            ),
+            building_requirement: __sdk::__query_builder::Col::new(
+                table_name,
+                "building_requirement",
+            ),
+            level_requirements: __sdk::__query_builder::Col::new(table_name, "level_requirements"),
+            tool_requirements: __sdk::__query_builder::Col::new(table_name, "tool_requirements"),
+            consumed_item_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumed_item_stacks",
+            ),
+            discovery_triggers: __sdk::__query_builder::Col::new(table_name, "discovery_triggers"),
+            required_claim_tech_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_claim_tech_id",
+            ),
+            full_discovery_score: __sdk::__query_builder::Col::new(
+                table_name,
+                "full_discovery_score",
+            ),
+            experience_per_progress: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_progress",
+            ),
+            crafted_item_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "crafted_item_stacks",
+            ),
+            actions_required: __sdk::__query_builder::Col::new(table_name, "actions_required"),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
+            recipe_performance_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "recipe_performance_id",
+            ),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+            blocking_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "blocking_knowledges",
+            ),
+            hide_without_required_knowledge: __sdk::__query_builder::Col::new(
+                table_name,
+                "hide_without_required_knowledge",
+            ),
+            hide_with_blocking_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "hide_with_blocking_knowledges",
+            ),
+            allow_use_hands: __sdk::__query_builder::Col::new(table_name, "allow_use_hands"),
+            is_passive: __sdk::__query_builder::Col::new(table_name, "is_passive"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CraftingRecipeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CraftingRecipeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<CraftingRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CraftingRecipeDesc {
+    type IxCols = CraftingRecipeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CraftingRecipeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

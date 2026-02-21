@@ -19,3 +19,47 @@ pub struct WorldEntityPlacementResults {
 impl __sdk::InModule for WorldEntityPlacementResults {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WorldEntityPlacementResults`.
+///
+/// Provides typed access to columns for query building.
+pub struct WorldEntityPlacementResultsCols {
+    pub entity_id: __sdk::__query_builder::Col<WorldEntityPlacementResults, u64>,
+    pub timestamp: __sdk::__query_builder::Col<WorldEntityPlacementResults, i32>,
+    pub placements:
+        __sdk::__query_builder::Col<WorldEntityPlacementResults, Vec<WorldEntityPlacement>>,
+    pub dry_run: __sdk::__query_builder::Col<WorldEntityPlacementResults, bool>,
+    pub add_to_resources_log: __sdk::__query_builder::Col<WorldEntityPlacementResults, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for WorldEntityPlacementResults {
+    type Cols = WorldEntityPlacementResultsCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WorldEntityPlacementResultsCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+            placements: __sdk::__query_builder::Col::new(table_name, "placements"),
+            dry_run: __sdk::__query_builder::Col::new(table_name, "dry_run"),
+            add_to_resources_log: __sdk::__query_builder::Col::new(
+                table_name,
+                "add_to_resources_log",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WorldEntityPlacementResults`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WorldEntityPlacementResultsIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<WorldEntityPlacementResults, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WorldEntityPlacementResults {
+    type IxCols = WorldEntityPlacementResultsIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WorldEntityPlacementResultsIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

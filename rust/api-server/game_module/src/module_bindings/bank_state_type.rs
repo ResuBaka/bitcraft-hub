@@ -17,3 +17,44 @@ pub struct BankState {
 impl __sdk::InModule for BankState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BankState`.
+///
+/// Provides typed access to columns for query building.
+pub struct BankStateCols {
+    pub building_entity_id: __sdk::__query_builder::Col<BankState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<BankState, u64>,
+    pub coordinates: __sdk::__query_builder::Col<BankState, SmallHexTileMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for BankState {
+    type Cols = BankStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BankStateCols {
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            coordinates: __sdk::__query_builder::Col::new(table_name, "coordinates"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BankState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BankStateIxCols {
+    pub building_entity_id: __sdk::__query_builder::IxCol<BankState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::IxCol<BankState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BankState {
+    type IxCols = BankStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BankStateIxCols {
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+        }
+    }
+}

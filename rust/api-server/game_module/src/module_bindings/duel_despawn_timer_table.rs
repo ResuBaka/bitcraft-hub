@@ -140,3 +140,19 @@ impl<'ctx> DuelDespawnTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DuelDespawnTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait duel_despawn_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DuelDespawnTimer`.
+    fn duel_despawn_timer(&self) -> __sdk::__query_builder::Table<DuelDespawnTimer>;
+}
+
+impl duel_despawn_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn duel_despawn_timer(&self) -> __sdk::__query_builder::Table<DuelDespawnTimer> {
+        __sdk::__query_builder::Table::new("duel_despawn_timer")
+    }
+}

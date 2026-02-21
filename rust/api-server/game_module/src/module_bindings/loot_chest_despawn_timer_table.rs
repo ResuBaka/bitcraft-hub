@@ -143,3 +143,19 @@ impl<'ctx> LootChestDespawnTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LootChestDespawnTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait loot_chest_despawn_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LootChestDespawnTimer`.
+    fn loot_chest_despawn_timer(&self) -> __sdk::__query_builder::Table<LootChestDespawnTimer>;
+}
+
+impl loot_chest_despawn_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn loot_chest_despawn_timer(&self) -> __sdk::__query_builder::Table<LootChestDespawnTimer> {
+        __sdk::__query_builder::Table::new("loot_chest_despawn_timer")
+    }
+}

@@ -14,3 +14,37 @@ pub struct ServerIdentity {
 impl __sdk::InModule for ServerIdentity {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ServerIdentity`.
+///
+/// Provides typed access to columns for query building.
+pub struct ServerIdentityCols {
+    pub version: __sdk::__query_builder::Col<ServerIdentity, u8>,
+    pub identity: __sdk::__query_builder::Col<ServerIdentity, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasCols for ServerIdentity {
+    type Cols = ServerIdentityCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ServerIdentityCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ServerIdentity`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ServerIdentityIxCols {
+    pub version: __sdk::__query_builder::IxCol<ServerIdentity, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ServerIdentity {
+    type IxCols = ServerIdentityIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ServerIdentityIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

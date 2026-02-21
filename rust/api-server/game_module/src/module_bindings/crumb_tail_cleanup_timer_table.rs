@@ -143,3 +143,19 @@ impl<'ctx> CrumbTailCleanupTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CrumbTrailCleanupTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait crumb_tail_cleanup_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CrumbTrailCleanupTimer`.
+    fn crumb_tail_cleanup_timer(&self) -> __sdk::__query_builder::Table<CrumbTrailCleanupTimer>;
+}
+
+impl crumb_tail_cleanup_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn crumb_tail_cleanup_timer(&self) -> __sdk::__query_builder::Table<CrumbTrailCleanupTimer> {
+        __sdk::__query_builder::Table::new("crumb_tail_cleanup_timer")
+    }
+}

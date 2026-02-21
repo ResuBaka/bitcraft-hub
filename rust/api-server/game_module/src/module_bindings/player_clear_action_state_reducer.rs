@@ -61,13 +61,13 @@ pub trait player_clear_action_state {
     fn on_player_clear_action_state(
         &self,
         callback: impl FnMut(
-            &super::ReducerEventContext,
-            &u64,
-            &PlayerActionType,
-            &PlayerActionLayer,
-            &PlayerActionResult,
-        ) + Send
-        + 'static,
+                &super::ReducerEventContext,
+                &u64,
+                &PlayerActionType,
+                &PlayerActionLayer,
+                &PlayerActionResult,
+            ) + Send
+            + 'static,
     ) -> PlayerClearActionStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_player_clear_action_state`],
     /// causing it not to run in the future.
@@ -95,13 +95,13 @@ impl player_clear_action_state for super::RemoteReducers {
     fn on_player_clear_action_state(
         &self,
         mut callback: impl FnMut(
-            &super::ReducerEventContext,
-            &u64,
-            &PlayerActionType,
-            &PlayerActionLayer,
-            &PlayerActionResult,
-        ) + Send
-        + 'static,
+                &super::ReducerEventContext,
+                &u64,
+                &PlayerActionType,
+                &PlayerActionLayer,
+                &PlayerActionResult,
+            ) + Send
+            + 'static,
     ) -> PlayerClearActionStateCallbackId {
         PlayerClearActionStateCallbackId(self.imp.on_reducer(
             "player_clear_action_state",

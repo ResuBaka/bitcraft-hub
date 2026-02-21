@@ -16,3 +16,37 @@ pub struct ParametersPlayerMoveDesc {
 impl __sdk::InModule for ParametersPlayerMoveDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ParametersPlayerMoveDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ParametersPlayerMoveDescCols {
+    pub version: __sdk::__query_builder::Col<ParametersPlayerMoveDesc, i32>,
+    pub default_speed: __sdk::__query_builder::Col<ParametersPlayerMoveDesc, Vec<MovementSpeed>>,
+}
+
+impl __sdk::__query_builder::HasCols for ParametersPlayerMoveDesc {
+    type Cols = ParametersPlayerMoveDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ParametersPlayerMoveDescCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            default_speed: __sdk::__query_builder::Col::new(table_name, "default_speed"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ParametersPlayerMoveDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ParametersPlayerMoveDescIxCols {
+    pub version: __sdk::__query_builder::IxCol<ParametersPlayerMoveDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ParametersPlayerMoveDesc {
+    type IxCols = ParametersPlayerMoveDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ParametersPlayerMoveDescIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

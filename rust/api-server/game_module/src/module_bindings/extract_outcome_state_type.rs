@@ -16,3 +16,41 @@ pub struct ExtractOutcomeState {
 impl __sdk::InModule for ExtractOutcomeState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ExtractOutcomeState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ExtractOutcomeStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ExtractOutcomeState, u64>,
+    pub target_entity_id: __sdk::__query_builder::Col<ExtractOutcomeState, u64>,
+    pub last_timestamp: __sdk::__query_builder::Col<ExtractOutcomeState, __sdk::Timestamp>,
+    pub damage: __sdk::__query_builder::Col<ExtractOutcomeState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ExtractOutcomeState {
+    type Cols = ExtractOutcomeStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ExtractOutcomeStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            target_entity_id: __sdk::__query_builder::Col::new(table_name, "target_entity_id"),
+            last_timestamp: __sdk::__query_builder::Col::new(table_name, "last_timestamp"),
+            damage: __sdk::__query_builder::Col::new(table_name, "damage"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ExtractOutcomeState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ExtractOutcomeStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ExtractOutcomeState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ExtractOutcomeState {
+    type IxCols = ExtractOutcomeStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ExtractOutcomeStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

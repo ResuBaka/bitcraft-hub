@@ -16,3 +16,37 @@ pub struct IdentityRole {
 impl __sdk::InModule for IdentityRole {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `IdentityRole`.
+///
+/// Provides typed access to columns for query building.
+pub struct IdentityRoleCols {
+    pub identity: __sdk::__query_builder::Col<IdentityRole, __sdk::Identity>,
+    pub role: __sdk::__query_builder::Col<IdentityRole, Role>,
+}
+
+impl __sdk::__query_builder::HasCols for IdentityRole {
+    type Cols = IdentityRoleCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        IdentityRoleCols {
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+            role: __sdk::__query_builder::Col::new(table_name, "role"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `IdentityRole`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct IdentityRoleIxCols {
+    pub identity: __sdk::__query_builder::IxCol<IdentityRole, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasIxCols for IdentityRole {
+    type IxCols = IdentityRoleIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        IdentityRoleIxCols {
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+        }
+    }
+}

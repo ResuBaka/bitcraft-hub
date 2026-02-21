@@ -141,3 +141,19 @@ impl<'ctx> ParametersDescV2VersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ParametersDescV2`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait parameters_desc_v2QueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ParametersDescV2`.
+    fn parameters_desc_v2(&self) -> __sdk::__query_builder::Table<ParametersDescV2>;
+}
+
+impl parameters_desc_v2QueryTableAccess for __sdk::QueryTableAccessor {
+    fn parameters_desc_v2(&self) -> __sdk::__query_builder::Table<ParametersDescV2> {
+        __sdk::__query_builder::Table::new("parameters_desc_v2")
+    }
+}

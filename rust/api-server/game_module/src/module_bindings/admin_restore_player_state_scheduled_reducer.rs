@@ -48,8 +48,8 @@ pub trait admin_restore_player_state_scheduled {
     fn on_admin_restore_player_state_scheduled(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &AdminRestorePlayerStateTimer)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AdminRestorePlayerStateScheduledCallbackId;
     /// Cancel a callback previously registered by [`Self::on_admin_restore_player_state_scheduled`],
     /// causing it not to run in the future.
@@ -72,8 +72,8 @@ impl admin_restore_player_state_scheduled for super::RemoteReducers {
     fn on_admin_restore_player_state_scheduled(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &AdminRestorePlayerStateTimer)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AdminRestorePlayerStateScheduledCallbackId {
         AdminRestorePlayerStateScheduledCallbackId(self.imp.on_reducer(
             "admin_restore_player_state_scheduled",

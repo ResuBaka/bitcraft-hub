@@ -21,3 +21,54 @@ pub struct EnvironmentDebuffDesc {
 impl __sdk::InModule for EnvironmentDebuffDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnvironmentDebuffDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnvironmentDebuffDescCols {
+    pub buff_id: __sdk::__query_builder::Col<EnvironmentDebuffDesc, i32>,
+    pub resistance_type:
+        __sdk::__query_builder::Col<EnvironmentDebuffDesc, EnvironmentResistanceType>,
+    pub resistance_level: __sdk::__query_builder::Col<EnvironmentDebuffDesc, i32>,
+    pub ground_damage: __sdk::__query_builder::Col<EnvironmentDebuffDesc, i32>,
+    pub water_damage: __sdk::__query_builder::Col<EnvironmentDebuffDesc, i32>,
+    pub resistance_unmet_text: __sdk::__query_builder::Col<EnvironmentDebuffDesc, String>,
+    pub resistance_met_text: __sdk::__query_builder::Col<EnvironmentDebuffDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for EnvironmentDebuffDesc {
+    type Cols = EnvironmentDebuffDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnvironmentDebuffDescCols {
+            buff_id: __sdk::__query_builder::Col::new(table_name, "buff_id"),
+            resistance_type: __sdk::__query_builder::Col::new(table_name, "resistance_type"),
+            resistance_level: __sdk::__query_builder::Col::new(table_name, "resistance_level"),
+            ground_damage: __sdk::__query_builder::Col::new(table_name, "ground_damage"),
+            water_damage: __sdk::__query_builder::Col::new(table_name, "water_damage"),
+            resistance_unmet_text: __sdk::__query_builder::Col::new(
+                table_name,
+                "resistance_unmet_text",
+            ),
+            resistance_met_text: __sdk::__query_builder::Col::new(
+                table_name,
+                "resistance_met_text",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnvironmentDebuffDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnvironmentDebuffDescIxCols {
+    pub buff_id: __sdk::__query_builder::IxCol<EnvironmentDebuffDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnvironmentDebuffDesc {
+    type IxCols = EnvironmentDebuffDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnvironmentDebuffDescIxCols {
+            buff_id: __sdk::__query_builder::IxCol::new(table_name, "buff_id"),
+        }
+    }
+}

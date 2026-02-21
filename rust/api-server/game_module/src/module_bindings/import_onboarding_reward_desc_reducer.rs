@@ -72,8 +72,8 @@ impl import_onboarding_reward_desc for super::RemoteReducers {
     fn on_import_onboarding_reward_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<OnboardingRewardDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportOnboardingRewardDescCallbackId {
         ImportOnboardingRewardDescCallbackId(self.imp.on_reducer(
             "import_onboarding_reward_desc",

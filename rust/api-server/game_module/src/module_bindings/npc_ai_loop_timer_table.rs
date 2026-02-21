@@ -140,3 +140,19 @@ impl<'ctx> NpcAiLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `NpcAiLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait npc_ai_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `NpcAiLoopTimer`.
+    fn npc_ai_loop_timer(&self) -> __sdk::__query_builder::Table<NpcAiLoopTimer>;
+}
+
+impl npc_ai_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn npc_ai_loop_timer(&self) -> __sdk::__query_builder::Table<NpcAiLoopTimer> {
+        __sdk::__query_builder::Table::new("npc_ai_loop_timer")
+    }
+}

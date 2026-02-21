@@ -19,3 +19,63 @@ pub struct PortalState {
 impl __sdk::InModule for PortalState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PortalState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PortalStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PortalState, u64>,
+    pub target_building_entity_id: __sdk::__query_builder::Col<PortalState, u64>,
+    pub destination_x: __sdk::__query_builder::Col<PortalState, i32>,
+    pub destination_z: __sdk::__query_builder::Col<PortalState, i32>,
+    pub destination_dimension: __sdk::__query_builder::Col<PortalState, u32>,
+    pub enabled: __sdk::__query_builder::Col<PortalState, bool>,
+    pub allow_deployables: __sdk::__query_builder::Col<PortalState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for PortalState {
+    type Cols = PortalStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PortalStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            target_building_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "target_building_entity_id",
+            ),
+            destination_x: __sdk::__query_builder::Col::new(table_name, "destination_x"),
+            destination_z: __sdk::__query_builder::Col::new(table_name, "destination_z"),
+            destination_dimension: __sdk::__query_builder::Col::new(
+                table_name,
+                "destination_dimension",
+            ),
+            enabled: __sdk::__query_builder::Col::new(table_name, "enabled"),
+            allow_deployables: __sdk::__query_builder::Col::new(table_name, "allow_deployables"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PortalState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PortalStateIxCols {
+    pub destination_dimension: __sdk::__query_builder::IxCol<PortalState, u32>,
+    pub entity_id: __sdk::__query_builder::IxCol<PortalState, u64>,
+    pub target_building_entity_id: __sdk::__query_builder::IxCol<PortalState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PortalState {
+    type IxCols = PortalStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PortalStateIxCols {
+            destination_dimension: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "destination_dimension",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            target_building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "target_building_entity_id",
+            ),
+        }
+    }
+}

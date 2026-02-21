@@ -16,3 +16,37 @@ pub struct KnowledgeLoreState {
 impl __sdk::InModule for KnowledgeLoreState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgeLoreState`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgeLoreStateCols {
+    pub entity_id: __sdk::__query_builder::Col<KnowledgeLoreState, u64>,
+    pub entries: __sdk::__query_builder::Col<KnowledgeLoreState, Vec<KnowledgeEntry>>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgeLoreState {
+    type Cols = KnowledgeLoreStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgeLoreStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            entries: __sdk::__query_builder::Col::new(table_name, "entries"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgeLoreState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgeLoreStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<KnowledgeLoreState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgeLoreState {
+    type IxCols = KnowledgeLoreStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgeLoreStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

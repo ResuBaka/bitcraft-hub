@@ -14,3 +14,37 @@ pub struct SatiationState {
 impl __sdk::InModule for SatiationState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `SatiationState`.
+///
+/// Provides typed access to columns for query building.
+pub struct SatiationStateCols {
+    pub entity_id: __sdk::__query_builder::Col<SatiationState, u64>,
+    pub satiation: __sdk::__query_builder::Col<SatiationState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for SatiationState {
+    type Cols = SatiationStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        SatiationStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            satiation: __sdk::__query_builder::Col::new(table_name, "satiation"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `SatiationState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct SatiationStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<SatiationState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for SatiationState {
+    type IxCols = SatiationStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        SatiationStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

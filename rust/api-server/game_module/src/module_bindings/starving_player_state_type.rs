@@ -13,3 +13,35 @@ pub struct StarvingPlayerState {
 impl __sdk::InModule for StarvingPlayerState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `StarvingPlayerState`.
+///
+/// Provides typed access to columns for query building.
+pub struct StarvingPlayerStateCols {
+    pub entity_id: __sdk::__query_builder::Col<StarvingPlayerState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for StarvingPlayerState {
+    type Cols = StarvingPlayerStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        StarvingPlayerStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `StarvingPlayerState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct StarvingPlayerStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<StarvingPlayerState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for StarvingPlayerState {
+    type IxCols = StarvingPlayerStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        StarvingPlayerStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

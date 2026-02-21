@@ -142,3 +142,19 @@ impl<'ctx> AutoLogoutLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AutoLogoutLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait auto_logout_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AutoLogoutLoopTimer`.
+    fn auto_logout_loop_timer(&self) -> __sdk::__query_builder::Table<AutoLogoutLoopTimer>;
+}
+
+impl auto_logout_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn auto_logout_loop_timer(&self) -> __sdk::__query_builder::Table<AutoLogoutLoopTimer> {
+        __sdk::__query_builder::Table::new("auto_logout_loop_timer")
+    }
+}

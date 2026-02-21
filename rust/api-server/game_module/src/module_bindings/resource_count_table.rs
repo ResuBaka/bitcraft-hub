@@ -140,3 +140,19 @@ impl<'ctx> ResourceCountResourceIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourceCount`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resource_countQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourceCount`.
+    fn resource_count(&self) -> __sdk::__query_builder::Table<ResourceCount>;
+}
+
+impl resource_countQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resource_count(&self) -> __sdk::__query_builder::Table<ResourceCount> {
+        __sdk::__query_builder::Table::new("resource_count")
+    }
+}

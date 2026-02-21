@@ -19,3 +19,47 @@ pub struct HexiteExchangeEntryDesc {
 impl __sdk::InModule for HexiteExchangeEntryDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `HexiteExchangeEntryDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct HexiteExchangeEntryDescCols {
+    pub id: __sdk::__query_builder::Col<HexiteExchangeEntryDesc, i32>,
+    pub image_address: __sdk::__query_builder::Col<HexiteExchangeEntryDesc, String>,
+    pub shard_amount: __sdk::__query_builder::Col<HexiteExchangeEntryDesc, u32>,
+    pub base_shard_amount: __sdk::__query_builder::Col<HexiteExchangeEntryDesc, u32>,
+    pub name: __sdk::__query_builder::Col<HexiteExchangeEntryDesc, String>,
+    pub price: __sdk::__query_builder::Col<HexiteExchangeEntryDesc, f32>,
+    pub event_name: __sdk::__query_builder::Col<HexiteExchangeEntryDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for HexiteExchangeEntryDesc {
+    type Cols = HexiteExchangeEntryDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        HexiteExchangeEntryDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            image_address: __sdk::__query_builder::Col::new(table_name, "image_address"),
+            shard_amount: __sdk::__query_builder::Col::new(table_name, "shard_amount"),
+            base_shard_amount: __sdk::__query_builder::Col::new(table_name, "base_shard_amount"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            price: __sdk::__query_builder::Col::new(table_name, "price"),
+            event_name: __sdk::__query_builder::Col::new(table_name, "event_name"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `HexiteExchangeEntryDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct HexiteExchangeEntryDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<HexiteExchangeEntryDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for HexiteExchangeEntryDesc {
+    type IxCols = HexiteExchangeEntryDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        HexiteExchangeEntryDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

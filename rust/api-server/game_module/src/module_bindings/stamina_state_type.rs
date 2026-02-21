@@ -15,3 +15,43 @@ pub struct StaminaState {
 impl __sdk::InModule for StaminaState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `StaminaState`.
+///
+/// Provides typed access to columns for query building.
+pub struct StaminaStateCols {
+    pub entity_id: __sdk::__query_builder::Col<StaminaState, u64>,
+    pub last_stamina_decrease_timestamp:
+        __sdk::__query_builder::Col<StaminaState, __sdk::Timestamp>,
+    pub stamina: __sdk::__query_builder::Col<StaminaState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for StaminaState {
+    type Cols = StaminaStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        StaminaStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            last_stamina_decrease_timestamp: __sdk::__query_builder::Col::new(
+                table_name,
+                "last_stamina_decrease_timestamp",
+            ),
+            stamina: __sdk::__query_builder::Col::new(table_name, "stamina"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `StaminaState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct StaminaStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<StaminaState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for StaminaState {
+    type IxCols = StaminaStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        StaminaStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

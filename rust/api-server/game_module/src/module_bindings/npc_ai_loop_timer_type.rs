@@ -14,3 +14,37 @@ pub struct NpcAiLoopTimer {
 impl __sdk::InModule for NpcAiLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `NpcAiLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct NpcAiLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<NpcAiLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<NpcAiLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for NpcAiLoopTimer {
+    type Cols = NpcAiLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        NpcAiLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `NpcAiLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct NpcAiLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<NpcAiLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for NpcAiLoopTimer {
+    type IxCols = NpcAiLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        NpcAiLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

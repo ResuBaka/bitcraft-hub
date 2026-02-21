@@ -19,3 +19,43 @@ pub struct PlayerNotificationEvent {
 impl __sdk::InModule for PlayerNotificationEvent {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerNotificationEvent`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerNotificationEventCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PlayerNotificationEvent, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PlayerNotificationEvent, __sdk::ScheduleAt>,
+    pub player_entity_id: __sdk::__query_builder::Col<PlayerNotificationEvent, u64>,
+    pub message: __sdk::__query_builder::Col<PlayerNotificationEvent, String>,
+    pub severity: __sdk::__query_builder::Col<PlayerNotificationEvent, NotificationSeverity>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerNotificationEvent {
+    type Cols = PlayerNotificationEventCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerNotificationEventCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            message: __sdk::__query_builder::Col::new(table_name, "message"),
+            severity: __sdk::__query_builder::Col::new(table_name, "severity"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerNotificationEvent`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerNotificationEventIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<PlayerNotificationEvent, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerNotificationEvent {
+    type IxCols = PlayerNotificationEventIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerNotificationEventIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

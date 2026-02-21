@@ -14,3 +14,41 @@ pub struct InterModuleResponseMessageCounter {
 impl __sdk::InModule for InterModuleResponseMessageCounter {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InterModuleResponseMessageCounter`.
+///
+/// Provides typed access to columns for query building.
+pub struct InterModuleResponseMessageCounterCols {
+    pub dst_module_id: __sdk::__query_builder::Col<InterModuleResponseMessageCounter, u8>,
+    pub last_processed_message_id:
+        __sdk::__query_builder::Col<InterModuleResponseMessageCounter, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for InterModuleResponseMessageCounter {
+    type Cols = InterModuleResponseMessageCounterCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InterModuleResponseMessageCounterCols {
+            dst_module_id: __sdk::__query_builder::Col::new(table_name, "dst_module_id"),
+            last_processed_message_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "last_processed_message_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InterModuleResponseMessageCounter`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InterModuleResponseMessageCounterIxCols {
+    pub dst_module_id: __sdk::__query_builder::IxCol<InterModuleResponseMessageCounter, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InterModuleResponseMessageCounter {
+    type IxCols = InterModuleResponseMessageCounterIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InterModuleResponseMessageCounterIxCols {
+            dst_module_id: __sdk::__query_builder::IxCol::new(table_name, "dst_module_id"),
+        }
+    }
+}

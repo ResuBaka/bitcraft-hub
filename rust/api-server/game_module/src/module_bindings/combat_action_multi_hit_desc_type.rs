@@ -18,3 +18,47 @@ pub struct CombatActionMultiHitDesc {
 impl __sdk::InModule for CombatActionMultiHitDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CombatActionMultiHitDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct CombatActionMultiHitDescCols {
+    pub id: __sdk::__query_builder::Col<CombatActionMultiHitDesc, i32>,
+    pub area_footprint: __sdk::__query_builder::Col<CombatActionMultiHitDesc, Vec<FootprintTile>>,
+    pub max_secondary_targets: __sdk::__query_builder::Col<CombatActionMultiHitDesc, i32>,
+    pub secondary_target_multiplier: __sdk::__query_builder::Col<CombatActionMultiHitDesc, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for CombatActionMultiHitDesc {
+    type Cols = CombatActionMultiHitDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CombatActionMultiHitDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            area_footprint: __sdk::__query_builder::Col::new(table_name, "area_footprint"),
+            max_secondary_targets: __sdk::__query_builder::Col::new(
+                table_name,
+                "max_secondary_targets",
+            ),
+            secondary_target_multiplier: __sdk::__query_builder::Col::new(
+                table_name,
+                "secondary_target_multiplier",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CombatActionMultiHitDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CombatActionMultiHitDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<CombatActionMultiHitDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CombatActionMultiHitDesc {
+    type IxCols = CombatActionMultiHitDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CombatActionMultiHitDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

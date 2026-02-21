@@ -27,7 +27,7 @@ pub trait StagedKnowledgeStatModifierDescTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`StagedKnowledgeStatModifierDescTableHandle`], which mediates access to the table `staged_knowledge_stat_modifier_desc`.
     fn staged_knowledge_stat_modifier_desc(&self)
-    -> StagedKnowledgeStatModifierDescTableHandle<'_>;
+        -> StagedKnowledgeStatModifierDescTableHandle<'_>;
 }
 
 impl StagedKnowledgeStatModifierDescTableAccess for super::RemoteTables {
@@ -150,5 +150,25 @@ impl<'ctx> StagedKnowledgeStatModifierDescSecondaryKnowledgeIdUnique<'ctx> {
     /// if such a row is present in the client cache.
     pub fn find(&self, col_val: &i32) -> Option<KnowledgeStatModifierDesc> {
         self.imp.find(col_val)
+    }
+}
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `KnowledgeStatModifierDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_knowledge_stat_modifier_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `KnowledgeStatModifierDesc`.
+    fn staged_knowledge_stat_modifier_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<KnowledgeStatModifierDesc>;
+}
+
+impl staged_knowledge_stat_modifier_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_knowledge_stat_modifier_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<KnowledgeStatModifierDesc> {
+        __sdk::__query_builder::Table::new("staged_knowledge_stat_modifier_desc")
     }
 }

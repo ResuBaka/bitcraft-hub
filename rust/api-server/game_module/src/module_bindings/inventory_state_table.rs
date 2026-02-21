@@ -141,3 +141,19 @@ impl<'ctx> InventoryStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InventoryState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait inventory_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InventoryState`.
+    fn inventory_state(&self) -> __sdk::__query_builder::Table<InventoryState>;
+}
+
+impl inventory_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn inventory_state(&self) -> __sdk::__query_builder::Table<InventoryState> {
+        __sdk::__query_builder::Table::new("inventory_state")
+    }
+}

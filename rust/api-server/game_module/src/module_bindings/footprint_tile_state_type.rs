@@ -17,3 +17,41 @@ pub struct FootprintTileState {
 impl __sdk::InModule for FootprintTileState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `FootprintTileState`.
+///
+/// Provides typed access to columns for query building.
+pub struct FootprintTileStateCols {
+    pub entity_id: __sdk::__query_builder::Col<FootprintTileState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<FootprintTileState, u64>,
+    pub footprint_type: __sdk::__query_builder::Col<FootprintTileState, FootprintType>,
+}
+
+impl __sdk::__query_builder::HasCols for FootprintTileState {
+    type Cols = FootprintTileStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        FootprintTileStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            footprint_type: __sdk::__query_builder::Col::new(table_name, "footprint_type"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `FootprintTileState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct FootprintTileStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<FootprintTileState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<FootprintTileState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for FootprintTileState {
+    type IxCols = FootprintTileStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        FootprintTileStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

@@ -142,3 +142,19 @@ impl<'ctx> ResourceClumpDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourceClumpDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resource_clump_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourceClumpDesc`.
+    fn resource_clump_desc(&self) -> __sdk::__query_builder::Table<ResourceClumpDesc>;
+}
+
+impl resource_clump_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resource_clump_desc(&self) -> __sdk::__query_builder::Table<ResourceClumpDesc> {
+        __sdk::__query_builder::Table::new("resource_clump_desc")
+    }
+}

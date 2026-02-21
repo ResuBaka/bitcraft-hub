@@ -142,3 +142,19 @@ impl<'ctx> RegionConnectionInfoIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `RegionConnectionInfo`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait region_connection_infoQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `RegionConnectionInfo`.
+    fn region_connection_info(&self) -> __sdk::__query_builder::Table<RegionConnectionInfo>;
+}
+
+impl region_connection_infoQueryTableAccess for __sdk::QueryTableAccessor {
+    fn region_connection_info(&self) -> __sdk::__query_builder::Table<RegionConnectionInfo> {
+        __sdk::__query_builder::Table::new("region_connection_info")
+    }
+}

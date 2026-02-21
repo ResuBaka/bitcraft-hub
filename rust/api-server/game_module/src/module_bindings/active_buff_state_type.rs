@@ -16,3 +16,37 @@ pub struct ActiveBuffState {
 impl __sdk::InModule for ActiveBuffState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ActiveBuffState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ActiveBuffStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ActiveBuffState, u64>,
+    pub active_buffs: __sdk::__query_builder::Col<ActiveBuffState, Vec<ActiveBuff>>,
+}
+
+impl __sdk::__query_builder::HasCols for ActiveBuffState {
+    type Cols = ActiveBuffStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ActiveBuffStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            active_buffs: __sdk::__query_builder::Col::new(table_name, "active_buffs"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ActiveBuffState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ActiveBuffStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ActiveBuffState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ActiveBuffState {
+    type IxCols = ActiveBuffStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ActiveBuffStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

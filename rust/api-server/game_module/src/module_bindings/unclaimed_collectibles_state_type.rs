@@ -14,3 +14,37 @@ pub struct UnclaimedCollectiblesState {
 impl __sdk::InModule for UnclaimedCollectiblesState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `UnclaimedCollectiblesState`.
+///
+/// Provides typed access to columns for query building.
+pub struct UnclaimedCollectiblesStateCols {
+    pub identity: __sdk::__query_builder::Col<UnclaimedCollectiblesState, __sdk::Identity>,
+    pub collectibles: __sdk::__query_builder::Col<UnclaimedCollectiblesState, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for UnclaimedCollectiblesState {
+    type Cols = UnclaimedCollectiblesStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        UnclaimedCollectiblesStateCols {
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+            collectibles: __sdk::__query_builder::Col::new(table_name, "collectibles"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `UnclaimedCollectiblesState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct UnclaimedCollectiblesStateIxCols {
+    pub identity: __sdk::__query_builder::IxCol<UnclaimedCollectiblesState, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasIxCols for UnclaimedCollectiblesState {
+    type IxCols = UnclaimedCollectiblesStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        UnclaimedCollectiblesStateIxCols {
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+        }
+    }
+}

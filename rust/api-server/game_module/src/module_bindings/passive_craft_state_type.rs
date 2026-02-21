@@ -21,3 +21,54 @@ pub struct PassiveCraftState {
 impl __sdk::InModule for PassiveCraftState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PassiveCraftState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PassiveCraftStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PassiveCraftState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<PassiveCraftState, u64>,
+    pub recipe_id: __sdk::__query_builder::Col<PassiveCraftState, i32>,
+    pub building_entity_id: __sdk::__query_builder::Col<PassiveCraftState, u64>,
+    pub timestamp: __sdk::__query_builder::Col<PassiveCraftState, __sdk::Timestamp>,
+    pub status: __sdk::__query_builder::Col<PassiveCraftState, PassiveCraftStatus>,
+    pub slot: __sdk::__query_builder::Col<PassiveCraftState, Option<u32>>,
+}
+
+impl __sdk::__query_builder::HasCols for PassiveCraftState {
+    type Cols = PassiveCraftStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PassiveCraftStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            recipe_id: __sdk::__query_builder::Col::new(table_name, "recipe_id"),
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+            status: __sdk::__query_builder::Col::new(table_name, "status"),
+            slot: __sdk::__query_builder::Col::new(table_name, "slot"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PassiveCraftState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PassiveCraftStateIxCols {
+    pub building_entity_id: __sdk::__query_builder::IxCol<PassiveCraftState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<PassiveCraftState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<PassiveCraftState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PassiveCraftState {
+    type IxCols = PassiveCraftStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PassiveCraftStateIxCols {
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

@@ -61,8 +61,8 @@ impl claim_rename for super::RemoteReducers {
     fn on_claim_rename(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRenameRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimRenameCallbackId {
         ClaimRenameCallbackId(self.imp.on_reducer(
             "claim_rename",

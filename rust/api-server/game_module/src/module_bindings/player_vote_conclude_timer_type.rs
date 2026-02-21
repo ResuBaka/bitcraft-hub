@@ -15,3 +15,39 @@ pub struct PlayerVoteConcludeTimer {
 impl __sdk::InModule for PlayerVoteConcludeTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerVoteConcludeTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerVoteConcludeTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PlayerVoteConcludeTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PlayerVoteConcludeTimer, __sdk::ScheduleAt>,
+    pub vote_entity_id: __sdk::__query_builder::Col<PlayerVoteConcludeTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerVoteConcludeTimer {
+    type Cols = PlayerVoteConcludeTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerVoteConcludeTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            vote_entity_id: __sdk::__query_builder::Col::new(table_name, "vote_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerVoteConcludeTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerVoteConcludeTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<PlayerVoteConcludeTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerVoteConcludeTimer {
+    type IxCols = PlayerVoteConcludeTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerVoteConcludeTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

@@ -140,3 +140,19 @@ impl<'ctx> StagedWeaponDescItemIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `WeaponDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_weapon_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `WeaponDesc`.
+    fn staged_weapon_desc(&self) -> __sdk::__query_builder::Table<WeaponDesc>;
+}
+
+impl staged_weapon_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_weapon_desc(&self) -> __sdk::__query_builder::Table<WeaponDesc> {
+        __sdk::__query_builder::Table::new("staged_weapon_desc")
+    }
+}

@@ -19,3 +19,56 @@ pub struct ElevatorDesc {
 impl __sdk::InModule for ElevatorDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ElevatorDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ElevatorDescCols {
+    pub building_id: __sdk::__query_builder::Col<ElevatorDesc, i32>,
+    pub max_cliff_height: __sdk::__query_builder::Col<ElevatorDesc, u32>,
+    pub speed: __sdk::__query_builder::Col<ElevatorDesc, f32>,
+    pub usable_with_deployable: __sdk::__query_builder::Col<ElevatorDesc, bool>,
+    pub top_platform_address: __sdk::__query_builder::Col<ElevatorDesc, String>,
+    pub basket_address: __sdk::__query_builder::Col<ElevatorDesc, String>,
+    pub bottom_platform_address: __sdk::__query_builder::Col<ElevatorDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for ElevatorDesc {
+    type Cols = ElevatorDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ElevatorDescCols {
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            max_cliff_height: __sdk::__query_builder::Col::new(table_name, "max_cliff_height"),
+            speed: __sdk::__query_builder::Col::new(table_name, "speed"),
+            usable_with_deployable: __sdk::__query_builder::Col::new(
+                table_name,
+                "usable_with_deployable",
+            ),
+            top_platform_address: __sdk::__query_builder::Col::new(
+                table_name,
+                "top_platform_address",
+            ),
+            basket_address: __sdk::__query_builder::Col::new(table_name, "basket_address"),
+            bottom_platform_address: __sdk::__query_builder::Col::new(
+                table_name,
+                "bottom_platform_address",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ElevatorDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ElevatorDescIxCols {
+    pub building_id: __sdk::__query_builder::IxCol<ElevatorDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ElevatorDesc {
+    type IxCols = ElevatorDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ElevatorDescIxCols {
+            building_id: __sdk::__query_builder::IxCol::new(table_name, "building_id"),
+        }
+    }
+}

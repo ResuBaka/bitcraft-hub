@@ -16,3 +16,41 @@ pub struct PlayerRegionTransferEvent {
 impl __sdk::InModule for PlayerRegionTransferEvent {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerRegionTransferEvent`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerRegionTransferEventCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PlayerRegionTransferEvent, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PlayerRegionTransferEvent, __sdk::ScheduleAt>,
+    pub player_entity_id: __sdk::__query_builder::Col<PlayerRegionTransferEvent, u64>,
+    pub new_region_index: __sdk::__query_builder::Col<PlayerRegionTransferEvent, u8>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerRegionTransferEvent {
+    type Cols = PlayerRegionTransferEventCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerRegionTransferEventCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            new_region_index: __sdk::__query_builder::Col::new(table_name, "new_region_index"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerRegionTransferEvent`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerRegionTransferEventIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<PlayerRegionTransferEvent, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerRegionTransferEvent {
+    type IxCols = PlayerRegionTransferEventIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerRegionTransferEventIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

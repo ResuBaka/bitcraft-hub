@@ -17,3 +17,43 @@ pub struct AdminBroadcast {
 impl __sdk::InModule for AdminBroadcast {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AdminBroadcast`.
+///
+/// Provides typed access to columns for query building.
+pub struct AdminBroadcastCols {
+    pub version: __sdk::__query_builder::Col<AdminBroadcast, i32>,
+    pub title: __sdk::__query_builder::Col<AdminBroadcast, String>,
+    pub message: __sdk::__query_builder::Col<AdminBroadcast, String>,
+    pub sign_out: __sdk::__query_builder::Col<AdminBroadcast, bool>,
+    pub timestamp: __sdk::__query_builder::Col<AdminBroadcast, __sdk::Timestamp>,
+}
+
+impl __sdk::__query_builder::HasCols for AdminBroadcast {
+    type Cols = AdminBroadcastCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AdminBroadcastCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            title: __sdk::__query_builder::Col::new(table_name, "title"),
+            message: __sdk::__query_builder::Col::new(table_name, "message"),
+            sign_out: __sdk::__query_builder::Col::new(table_name, "sign_out"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AdminBroadcast`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AdminBroadcastIxCols {
+    pub version: __sdk::__query_builder::IxCol<AdminBroadcast, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AdminBroadcast {
+    type IxCols = AdminBroadcastIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AdminBroadcastIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

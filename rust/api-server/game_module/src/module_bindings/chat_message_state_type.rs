@@ -20,3 +20,53 @@ pub struct ChatMessageState {
 impl __sdk::InModule for ChatMessageState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ChatMessageState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ChatMessageStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ChatMessageState, u64>,
+    pub username: __sdk::__query_builder::Col<ChatMessageState, String>,
+    pub title_id: __sdk::__query_builder::Col<ChatMessageState, i32>,
+    pub channel_id: __sdk::__query_builder::Col<ChatMessageState, i32>,
+    pub target_id: __sdk::__query_builder::Col<ChatMessageState, u64>,
+    pub text: __sdk::__query_builder::Col<ChatMessageState, String>,
+    pub timestamp: __sdk::__query_builder::Col<ChatMessageState, i32>,
+    pub owner_entity_id: __sdk::__query_builder::Col<ChatMessageState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for ChatMessageState {
+    type Cols = ChatMessageStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ChatMessageStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            username: __sdk::__query_builder::Col::new(table_name, "username"),
+            title_id: __sdk::__query_builder::Col::new(table_name, "title_id"),
+            channel_id: __sdk::__query_builder::Col::new(table_name, "channel_id"),
+            target_id: __sdk::__query_builder::Col::new(table_name, "target_id"),
+            text: __sdk::__query_builder::Col::new(table_name, "text"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ChatMessageState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ChatMessageStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ChatMessageState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<ChatMessageState, u64>,
+    pub target_id: __sdk::__query_builder::IxCol<ChatMessageState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ChatMessageState {
+    type IxCols = ChatMessageStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ChatMessageStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+            target_id: __sdk::__query_builder::IxCol::new(table_name, "target_id"),
+        }
+    }
+}

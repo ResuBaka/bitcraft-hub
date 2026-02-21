@@ -16,3 +16,38 @@ pub struct PartialExperienceState {
 impl __sdk::InModule for PartialExperienceState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PartialExperienceState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PartialExperienceStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PartialExperienceState, u64>,
+    pub experience_stacks:
+        __sdk::__query_builder::Col<PartialExperienceState, Vec<ExperienceStackF32>>,
+}
+
+impl __sdk::__query_builder::HasCols for PartialExperienceState {
+    type Cols = PartialExperienceStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PartialExperienceStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            experience_stacks: __sdk::__query_builder::Col::new(table_name, "experience_stacks"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PartialExperienceState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PartialExperienceStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PartialExperienceState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PartialExperienceState {
+    type IxCols = PartialExperienceStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PartialExperienceStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

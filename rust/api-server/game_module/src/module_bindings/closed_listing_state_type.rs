@@ -19,3 +19,45 @@ pub struct ClosedListingState {
 impl __sdk::InModule for ClosedListingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClosedListingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClosedListingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ClosedListingState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<ClosedListingState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<ClosedListingState, u64>,
+    pub item_stack: __sdk::__query_builder::Col<ClosedListingState, ItemStack>,
+    pub timestamp: __sdk::__query_builder::Col<ClosedListingState, __sdk::Timestamp>,
+}
+
+impl __sdk::__query_builder::HasCols for ClosedListingState {
+    type Cols = ClosedListingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClosedListingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            item_stack: __sdk::__query_builder::Col::new(table_name, "item_stack"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClosedListingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClosedListingStateIxCols {
+    pub claim_entity_id: __sdk::__query_builder::IxCol<ClosedListingState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<ClosedListingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClosedListingState {
+    type IxCols = ClosedListingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClosedListingStateIxCols {
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

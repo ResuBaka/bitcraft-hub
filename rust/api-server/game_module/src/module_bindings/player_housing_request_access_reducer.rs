@@ -50,8 +50,8 @@ pub trait player_housing_request_access {
     fn on_player_housing_request_access(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingRequestAccessRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerHousingRequestAccessCallbackId;
     /// Cancel a callback previously registered by [`Self::on_player_housing_request_access`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl player_housing_request_access for super::RemoteReducers {
     fn on_player_housing_request_access(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingRequestAccessRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerHousingRequestAccessCallbackId {
         PlayerHousingRequestAccessCallbackId(self.imp.on_reducer(
             "player_housing_request_access",

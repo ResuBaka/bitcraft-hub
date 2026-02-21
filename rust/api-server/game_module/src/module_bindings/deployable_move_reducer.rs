@@ -61,8 +61,8 @@ impl deployable_move for super::RemoteReducers {
     fn on_deployable_move(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableMoveRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DeployableMoveCallbackId {
         DeployableMoveCallbackId(self.imp.on_reducer(
             "deployable_move",

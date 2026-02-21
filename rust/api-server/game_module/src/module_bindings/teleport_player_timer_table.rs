@@ -144,3 +144,19 @@ impl<'ctx> TeleportPlayerTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TeleportPlayerTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait teleport_player_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TeleportPlayerTimer`.
+    fn teleport_player_timer(&self) -> __sdk::__query_builder::Table<TeleportPlayerTimer>;
+}
+
+impl teleport_player_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn teleport_player_timer(&self) -> __sdk::__query_builder::Table<TeleportPlayerTimer> {
+        __sdk::__query_builder::Table::new("teleport_player_timer")
+    }
+}

@@ -61,8 +61,8 @@ impl cheat_grant_knowledge for super::RemoteReducers {
     fn on_cheat_grant_knowledge(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatGrantKnowledgeRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatGrantKnowledgeCallbackId {
         CheatGrantKnowledgeCallbackId(self.imp.on_reducer(
             "cheat_grant_knowledge",

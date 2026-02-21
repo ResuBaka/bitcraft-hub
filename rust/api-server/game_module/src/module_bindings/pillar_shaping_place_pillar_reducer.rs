@@ -50,8 +50,8 @@ pub trait pillar_shaping_place_pillar {
     fn on_pillar_shaping_place_pillar(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingPlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PillarShapingPlacePillarCallbackId;
     /// Cancel a callback previously registered by [`Self::on_pillar_shaping_place_pillar`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl pillar_shaping_place_pillar for super::RemoteReducers {
     fn on_pillar_shaping_place_pillar(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingPlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PillarShapingPlacePillarCallbackId {
         PillarShapingPlacePillarCallbackId(self.imp.on_reducer(
             "pillar_shaping_place_pillar",

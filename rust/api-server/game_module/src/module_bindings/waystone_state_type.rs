@@ -17,3 +17,44 @@ pub struct WaystoneState {
 impl __sdk::InModule for WaystoneState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WaystoneState`.
+///
+/// Provides typed access to columns for query building.
+pub struct WaystoneStateCols {
+    pub building_entity_id: __sdk::__query_builder::Col<WaystoneState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<WaystoneState, u64>,
+    pub coordinates: __sdk::__query_builder::Col<WaystoneState, SmallHexTileMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for WaystoneState {
+    type Cols = WaystoneStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WaystoneStateCols {
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            coordinates: __sdk::__query_builder::Col::new(table_name, "coordinates"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WaystoneState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WaystoneStateIxCols {
+    pub building_entity_id: __sdk::__query_builder::IxCol<WaystoneState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::IxCol<WaystoneState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WaystoneState {
+    type IxCols = WaystoneStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WaystoneStateIxCols {
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+        }
+    }
+}

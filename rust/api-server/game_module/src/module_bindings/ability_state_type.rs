@@ -19,3 +19,43 @@ pub struct AbilityState {
 impl __sdk::InModule for AbilityState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AbilityState`.
+///
+/// Provides typed access to columns for query building.
+pub struct AbilityStateCols {
+    pub entity_id: __sdk::__query_builder::Col<AbilityState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<AbilityState, u64>,
+    pub ability: __sdk::__query_builder::Col<AbilityState, AbilityType>,
+    pub cooldown: __sdk::__query_builder::Col<AbilityState, ActionCooldown>,
+}
+
+impl __sdk::__query_builder::HasCols for AbilityState {
+    type Cols = AbilityStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AbilityStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            ability: __sdk::__query_builder::Col::new(table_name, "ability"),
+            cooldown: __sdk::__query_builder::Col::new(table_name, "cooldown"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AbilityState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AbilityStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<AbilityState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<AbilityState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AbilityState {
+    type IxCols = AbilityStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AbilityStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

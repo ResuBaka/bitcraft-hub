@@ -19,3 +19,45 @@ pub struct AlertState {
 impl __sdk::InModule for AlertState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AlertState`.
+///
+/// Provides typed access to columns for query building.
+pub struct AlertStateCols {
+    pub entity_id: __sdk::__query_builder::Col<AlertState, u64>,
+    pub player_entity_id: __sdk::__query_builder::Col<AlertState, u64>,
+    pub target_entity_id: __sdk::__query_builder::Col<AlertState, u64>,
+    pub end_timestamp: __sdk::__query_builder::Col<AlertState, __sdk::Timestamp>,
+    pub alert_type: __sdk::__query_builder::Col<AlertState, AlertType>,
+}
+
+impl __sdk::__query_builder::HasCols for AlertState {
+    type Cols = AlertStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AlertStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            target_entity_id: __sdk::__query_builder::Col::new(table_name, "target_entity_id"),
+            end_timestamp: __sdk::__query_builder::Col::new(table_name, "end_timestamp"),
+            alert_type: __sdk::__query_builder::Col::new(table_name, "alert_type"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AlertState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AlertStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<AlertState, u64>,
+    pub player_entity_id: __sdk::__query_builder::IxCol<AlertState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AlertState {
+    type IxCols = AlertStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AlertStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::IxCol::new(table_name, "player_entity_id"),
+        }
+    }
+}

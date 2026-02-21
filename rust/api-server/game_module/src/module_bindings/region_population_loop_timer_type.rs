@@ -14,3 +14,37 @@ pub struct RegionPopulationLoopTimer {
 impl __sdk::InModule for RegionPopulationLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RegionPopulationLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct RegionPopulationLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<RegionPopulationLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<RegionPopulationLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for RegionPopulationLoopTimer {
+    type Cols = RegionPopulationLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RegionPopulationLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RegionPopulationLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RegionPopulationLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<RegionPopulationLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RegionPopulationLoopTimer {
+    type IxCols = RegionPopulationLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RegionPopulationLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

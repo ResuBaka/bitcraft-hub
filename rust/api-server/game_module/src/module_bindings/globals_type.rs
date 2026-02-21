@@ -16,3 +16,41 @@ pub struct Globals {
 impl __sdk::InModule for Globals {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `Globals`.
+///
+/// Provides typed access to columns for query building.
+pub struct GlobalsCols {
+    pub version: __sdk::__query_builder::Col<Globals, i32>,
+    pub entity_pk_counter: __sdk::__query_builder::Col<Globals, u64>,
+    pub dimension_counter: __sdk::__query_builder::Col<Globals, u32>,
+    pub region_index: __sdk::__query_builder::Col<Globals, u8>,
+}
+
+impl __sdk::__query_builder::HasCols for Globals {
+    type Cols = GlobalsCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        GlobalsCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            entity_pk_counter: __sdk::__query_builder::Col::new(table_name, "entity_pk_counter"),
+            dimension_counter: __sdk::__query_builder::Col::new(table_name, "dimension_counter"),
+            region_index: __sdk::__query_builder::Col::new(table_name, "region_index"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `Globals`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct GlobalsIxCols {
+    pub version: __sdk::__query_builder::IxCol<Globals, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for Globals {
+    type IxCols = GlobalsIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        GlobalsIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

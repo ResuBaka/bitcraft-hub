@@ -175,3 +175,23 @@ impl<'ctx> DimensionDescriptionStateDimensionIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DimensionDescriptionState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait dimension_description_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DimensionDescriptionState`.
+    fn dimension_description_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<DimensionDescriptionState>;
+}
+
+impl dimension_description_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn dimension_description_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<DimensionDescriptionState> {
+        __sdk::__query_builder::Table::new("dimension_description_state")
+    }
+}

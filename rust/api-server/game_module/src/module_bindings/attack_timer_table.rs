@@ -141,3 +141,19 @@ impl<'ctx> AttackTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AttackTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait attack_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AttackTimer`.
+    fn attack_timer(&self) -> __sdk::__query_builder::Table<AttackTimer>;
+}
+
+impl attack_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn attack_timer(&self) -> __sdk::__query_builder::Table<AttackTimer> {
+        __sdk::__query_builder::Table::new("attack_timer")
+    }
+}

@@ -140,3 +140,19 @@ impl<'ctx> BuffTypeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BuffTypeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait buff_type_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BuffTypeDesc`.
+    fn buff_type_desc(&self) -> __sdk::__query_builder::Table<BuffTypeDesc>;
+}
+
+impl buff_type_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn buff_type_desc(&self) -> __sdk::__query_builder::Table<BuffTypeDesc> {
+        __sdk::__query_builder::Table::new("buff_type_desc")
+    }
+}

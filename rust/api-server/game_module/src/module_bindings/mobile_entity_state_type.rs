@@ -24,3 +24,61 @@ pub struct MobileEntityState {
 impl __sdk::InModule for MobileEntityState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `MobileEntityState`.
+///
+/// Provides typed access to columns for query building.
+pub struct MobileEntityStateCols {
+    pub entity_id: __sdk::__query_builder::Col<MobileEntityState, u64>,
+    pub chunk_index: __sdk::__query_builder::Col<MobileEntityState, u64>,
+    pub timestamp: __sdk::__query_builder::Col<MobileEntityState, u64>,
+    pub location_x: __sdk::__query_builder::Col<MobileEntityState, i32>,
+    pub location_z: __sdk::__query_builder::Col<MobileEntityState, i32>,
+    pub destination_x: __sdk::__query_builder::Col<MobileEntityState, i32>,
+    pub destination_z: __sdk::__query_builder::Col<MobileEntityState, i32>,
+    pub dimension: __sdk::__query_builder::Col<MobileEntityState, u32>,
+    pub is_running: __sdk::__query_builder::Col<MobileEntityState, bool>,
+    pub _pad1: __sdk::__query_builder::Col<MobileEntityState, u8>,
+    pub _pad2: __sdk::__query_builder::Col<MobileEntityState, u8>,
+    pub _pad3: __sdk::__query_builder::Col<MobileEntityState, u8>,
+}
+
+impl __sdk::__query_builder::HasCols for MobileEntityState {
+    type Cols = MobileEntityStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        MobileEntityStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+            location_x: __sdk::__query_builder::Col::new(table_name, "location_x"),
+            location_z: __sdk::__query_builder::Col::new(table_name, "location_z"),
+            destination_x: __sdk::__query_builder::Col::new(table_name, "destination_x"),
+            destination_z: __sdk::__query_builder::Col::new(table_name, "destination_z"),
+            dimension: __sdk::__query_builder::Col::new(table_name, "dimension"),
+            is_running: __sdk::__query_builder::Col::new(table_name, "is_running"),
+            _pad1: __sdk::__query_builder::Col::new(table_name, "_pad1"),
+            _pad2: __sdk::__query_builder::Col::new(table_name, "_pad2"),
+            _pad3: __sdk::__query_builder::Col::new(table_name, "_pad3"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `MobileEntityState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct MobileEntityStateIxCols {
+    pub chunk_index: __sdk::__query_builder::IxCol<MobileEntityState, u64>,
+    pub dimension: __sdk::__query_builder::IxCol<MobileEntityState, u32>,
+    pub entity_id: __sdk::__query_builder::IxCol<MobileEntityState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for MobileEntityState {
+    type IxCols = MobileEntityStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        MobileEntityStateIxCols {
+            chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+            dimension: __sdk::__query_builder::IxCol::new(table_name, "dimension"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

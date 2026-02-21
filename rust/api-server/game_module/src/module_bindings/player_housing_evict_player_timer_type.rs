@@ -16,3 +16,43 @@ pub struct PlayerHousingEvictPlayerTimer {
 impl __sdk::InModule for PlayerHousingEvictPlayerTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerHousingEvictPlayerTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerHousingEvictPlayerTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PlayerHousingEvictPlayerTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PlayerHousingEvictPlayerTimer, __sdk::ScheduleAt>,
+    pub building_entity_id: __sdk::__query_builder::Col<PlayerHousingEvictPlayerTimer, u64>,
+    pub player_entity_id: __sdk::__query_builder::Col<PlayerHousingEvictPlayerTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerHousingEvictPlayerTimer {
+    type Cols = PlayerHousingEvictPlayerTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerHousingEvictPlayerTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerHousingEvictPlayerTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerHousingEvictPlayerTimerIxCols {
+    pub player_entity_id: __sdk::__query_builder::IxCol<PlayerHousingEvictPlayerTimer, u64>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<PlayerHousingEvictPlayerTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerHousingEvictPlayerTimer {
+    type IxCols = PlayerHousingEvictPlayerTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerHousingEvictPlayerTimerIxCols {
+            player_entity_id: __sdk::__query_builder::IxCol::new(table_name, "player_entity_id"),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

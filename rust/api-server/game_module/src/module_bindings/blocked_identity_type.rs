@@ -13,3 +13,35 @@ pub struct BlockedIdentity {
 impl __sdk::InModule for BlockedIdentity {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BlockedIdentity`.
+///
+/// Provides typed access to columns for query building.
+pub struct BlockedIdentityCols {
+    pub identity: __sdk::__query_builder::Col<BlockedIdentity, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasCols for BlockedIdentity {
+    type Cols = BlockedIdentityCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BlockedIdentityCols {
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BlockedIdentity`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BlockedIdentityIxCols {
+    pub identity: __sdk::__query_builder::IxCol<BlockedIdentity, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BlockedIdentity {
+    type IxCols = BlockedIdentityIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BlockedIdentityIxCols {
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+        }
+    }
+}

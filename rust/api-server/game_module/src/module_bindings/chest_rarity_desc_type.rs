@@ -17,3 +17,39 @@ pub struct ChestRarityDesc {
 impl __sdk::InModule for ChestRarityDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ChestRarityDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ChestRarityDescCols {
+    pub id: __sdk::__query_builder::Col<ChestRarityDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ChestRarityDesc, String>,
+    pub loot_rarities: __sdk::__query_builder::Col<ChestRarityDesc, Vec<ChestLootRarity>>,
+}
+
+impl __sdk::__query_builder::HasCols for ChestRarityDesc {
+    type Cols = ChestRarityDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ChestRarityDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            loot_rarities: __sdk::__query_builder::Col::new(table_name, "loot_rarities"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ChestRarityDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ChestRarityDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ChestRarityDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ChestRarityDesc {
+    type IxCols = ChestRarityDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ChestRarityDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

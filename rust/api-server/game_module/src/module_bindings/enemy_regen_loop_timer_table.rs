@@ -142,3 +142,19 @@ impl<'ctx> EnemyRegenLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnemyRegenLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait enemy_regen_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnemyRegenLoopTimer`.
+    fn enemy_regen_loop_timer(&self) -> __sdk::__query_builder::Table<EnemyRegenLoopTimer>;
+}
+
+impl enemy_regen_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn enemy_regen_loop_timer(&self) -> __sdk::__query_builder::Table<EnemyRegenLoopTimer> {
+        __sdk::__query_builder::Table::new("enemy_regen_loop_timer")
+    }
+}

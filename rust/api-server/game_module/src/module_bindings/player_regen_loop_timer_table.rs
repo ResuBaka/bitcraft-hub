@@ -142,3 +142,19 @@ impl<'ctx> PlayerRegenLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerRegenLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_regen_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerRegenLoopTimer`.
+    fn player_regen_loop_timer(&self) -> __sdk::__query_builder::Table<PlayerRegenLoopTimer>;
+}
+
+impl player_regen_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_regen_loop_timer(&self) -> __sdk::__query_builder::Table<PlayerRegenLoopTimer> {
+        __sdk::__query_builder::Table::new("player_regen_loop_timer")
+    }
+}

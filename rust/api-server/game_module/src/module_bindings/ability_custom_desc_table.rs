@@ -143,3 +143,19 @@ impl<'ctx> AbilityCustomDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AbilityCustomDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait ability_custom_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AbilityCustomDesc`.
+    fn ability_custom_desc(&self) -> __sdk::__query_builder::Table<AbilityCustomDesc>;
+}
+
+impl ability_custom_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn ability_custom_desc(&self) -> __sdk::__query_builder::Table<AbilityCustomDesc> {
+        __sdk::__query_builder::Table::new("ability_custom_desc")
+    }
+}

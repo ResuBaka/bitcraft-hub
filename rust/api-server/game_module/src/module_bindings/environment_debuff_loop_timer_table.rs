@@ -143,3 +143,23 @@ impl<'ctx> EnvironmentDebuffLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnvironmentDebuffLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait environment_debuff_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnvironmentDebuffLoopTimer`.
+    fn environment_debuff_loop_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<EnvironmentDebuffLoopTimer>;
+}
+
+impl environment_debuff_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn environment_debuff_loop_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<EnvironmentDebuffLoopTimer> {
+        __sdk::__query_builder::Table::new("environment_debuff_loop_timer")
+    }
+}

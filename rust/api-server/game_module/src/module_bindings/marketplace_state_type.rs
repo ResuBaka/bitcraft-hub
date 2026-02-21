@@ -17,3 +17,44 @@ pub struct MarketplaceState {
 impl __sdk::InModule for MarketplaceState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `MarketplaceState`.
+///
+/// Provides typed access to columns for query building.
+pub struct MarketplaceStateCols {
+    pub building_entity_id: __sdk::__query_builder::Col<MarketplaceState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<MarketplaceState, u64>,
+    pub coordinates: __sdk::__query_builder::Col<MarketplaceState, SmallHexTileMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for MarketplaceState {
+    type Cols = MarketplaceStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        MarketplaceStateCols {
+            building_entity_id: __sdk::__query_builder::Col::new(table_name, "building_entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            coordinates: __sdk::__query_builder::Col::new(table_name, "coordinates"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `MarketplaceState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct MarketplaceStateIxCols {
+    pub building_entity_id: __sdk::__query_builder::IxCol<MarketplaceState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::IxCol<MarketplaceState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for MarketplaceState {
+    type IxCols = MarketplaceStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        MarketplaceStateIxCols {
+            building_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "building_entity_id",
+            ),
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+        }
+    }
+}

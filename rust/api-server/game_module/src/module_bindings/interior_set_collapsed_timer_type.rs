@@ -16,3 +16,44 @@ pub struct InteriorSetCollapsedTimer {
 impl __sdk::InModule for InteriorSetCollapsedTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorSetCollapsedTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorSetCollapsedTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<InteriorSetCollapsedTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<InteriorSetCollapsedTimer, __sdk::ScheduleAt>,
+    pub dimension_network_entity_id: __sdk::__query_builder::Col<InteriorSetCollapsedTimer, u64>,
+    pub is_collapsed: __sdk::__query_builder::Col<InteriorSetCollapsedTimer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorSetCollapsedTimer {
+    type Cols = InteriorSetCollapsedTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorSetCollapsedTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            dimension_network_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "dimension_network_entity_id",
+            ),
+            is_collapsed: __sdk::__query_builder::Col::new(table_name, "is_collapsed"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorSetCollapsedTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorSetCollapsedTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<InteriorSetCollapsedTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorSetCollapsedTimer {
+    type IxCols = InteriorSetCollapsedTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorSetCollapsedTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

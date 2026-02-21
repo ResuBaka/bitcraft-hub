@@ -140,3 +140,19 @@ impl<'ctx> GrowthStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `GrowthState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait growth_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `GrowthState`.
+    fn growth_state(&self) -> __sdk::__query_builder::Table<GrowthState>;
+}
+
+impl growth_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn growth_state(&self) -> __sdk::__query_builder::Table<GrowthState> {
+        __sdk::__query_builder::Table::new("growth_state")
+    }
+}

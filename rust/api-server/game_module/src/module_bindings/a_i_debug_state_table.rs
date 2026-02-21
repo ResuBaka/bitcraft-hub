@@ -141,3 +141,19 @@ impl<'ctx> AIDebugStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AiDebugState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait a_i_debug_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AiDebugState`.
+    fn a_i_debug_state(&self) -> __sdk::__query_builder::Table<AiDebugState>;
+}
+
+impl a_i_debug_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn a_i_debug_state(&self) -> __sdk::__query_builder::Table<AiDebugState> {
+        __sdk::__query_builder::Table::new("a_i_debug_state")
+    }
+}

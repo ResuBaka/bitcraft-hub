@@ -142,3 +142,19 @@ impl<'ctx> TravelerTaskStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TravelerTaskState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait traveler_task_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TravelerTaskState`.
+    fn traveler_task_state(&self) -> __sdk::__query_builder::Table<TravelerTaskState>;
+}
+
+impl traveler_task_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn traveler_task_state(&self) -> __sdk::__query_builder::Table<TravelerTaskState> {
+        __sdk::__query_builder::Table::new("traveler_task_state")
+    }
+}

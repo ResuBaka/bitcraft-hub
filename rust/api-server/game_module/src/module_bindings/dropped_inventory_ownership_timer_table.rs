@@ -146,3 +146,23 @@ impl<'ctx> DroppedInventoryOwnershipTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DroppedInventoryOwnershipTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait dropped_inventory_ownership_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DroppedInventoryOwnershipTimer`.
+    fn dropped_inventory_ownership_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<DroppedInventoryOwnershipTimer>;
+}
+
+impl dropped_inventory_ownership_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn dropped_inventory_ownership_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<DroppedInventoryOwnershipTimer> {
+        __sdk::__query_builder::Table::new("dropped_inventory_ownership_timer")
+    }
+}

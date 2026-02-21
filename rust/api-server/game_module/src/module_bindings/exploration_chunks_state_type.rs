@@ -15,3 +15,42 @@ pub struct ExplorationChunksState {
 impl __sdk::InModule for ExplorationChunksState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ExplorationChunksState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ExplorationChunksStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ExplorationChunksState, u64>,
+    pub bitmap: __sdk::__query_builder::Col<ExplorationChunksState, Vec<u64>>,
+    pub explored_chunks_count: __sdk::__query_builder::Col<ExplorationChunksState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ExplorationChunksState {
+    type Cols = ExplorationChunksStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ExplorationChunksStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            bitmap: __sdk::__query_builder::Col::new(table_name, "bitmap"),
+            explored_chunks_count: __sdk::__query_builder::Col::new(
+                table_name,
+                "explored_chunks_count",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ExplorationChunksState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ExplorationChunksStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ExplorationChunksState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ExplorationChunksState {
+    type IxCols = ExplorationChunksStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ExplorationChunksStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

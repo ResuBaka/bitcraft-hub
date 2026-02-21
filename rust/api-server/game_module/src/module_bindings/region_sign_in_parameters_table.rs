@@ -143,3 +143,19 @@ impl<'ctx> RegionSignInParametersRegionIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `RegionSignInParameters`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait region_sign_in_parametersQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `RegionSignInParameters`.
+    fn region_sign_in_parameters(&self) -> __sdk::__query_builder::Table<RegionSignInParameters>;
+}
+
+impl region_sign_in_parametersQueryTableAccess for __sdk::QueryTableAccessor {
+    fn region_sign_in_parameters(&self) -> __sdk::__query_builder::Table<RegionSignInParameters> {
+        __sdk::__query_builder::Table::new("region_sign_in_parameters")
+    }
+}

@@ -143,3 +143,19 @@ impl<'ctx> PlayerReportStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerReportState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_report_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerReportState`.
+    fn player_report_state(&self) -> __sdk::__query_builder::Table<PlayerReportState>;
+}
+
+impl player_report_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_report_state(&self) -> __sdk::__query_builder::Table<PlayerReportState> {
+        __sdk::__query_builder::Table::new("player_report_state")
+    }
+}

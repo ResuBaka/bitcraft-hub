@@ -19,3 +19,55 @@ pub struct QuestChainState {
 impl __sdk::InModule for QuestChainState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `QuestChainState`.
+///
+/// Provides typed access to columns for query building.
+pub struct QuestChainStateCols {
+    pub entity_id: __sdk::__query_builder::Col<QuestChainState, u64>,
+    pub player_entity_id: __sdk::__query_builder::Col<QuestChainState, u64>,
+    pub quest_chain_desc_id: __sdk::__query_builder::Col<QuestChainState, i32>,
+    pub stage_id: __sdk::__query_builder::Col<QuestChainState, i32>,
+    pub is_active: __sdk::__query_builder::Col<QuestChainState, bool>,
+    pub completed: __sdk::__query_builder::Col<QuestChainState, bool>,
+    pub stage_rewards_awarded: __sdk::__query_builder::Col<QuestChainState, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for QuestChainState {
+    type Cols = QuestChainStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        QuestChainStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            quest_chain_desc_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "quest_chain_desc_id",
+            ),
+            stage_id: __sdk::__query_builder::Col::new(table_name, "stage_id"),
+            is_active: __sdk::__query_builder::Col::new(table_name, "is_active"),
+            completed: __sdk::__query_builder::Col::new(table_name, "completed"),
+            stage_rewards_awarded: __sdk::__query_builder::Col::new(
+                table_name,
+                "stage_rewards_awarded",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `QuestChainState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct QuestChainStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<QuestChainState, u64>,
+    pub player_entity_id: __sdk::__query_builder::IxCol<QuestChainState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for QuestChainState {
+    type IxCols = QuestChainStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        QuestChainStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            player_entity_id: __sdk::__query_builder::IxCol::new(table_name, "player_entity_id"),
+        }
+    }
+}

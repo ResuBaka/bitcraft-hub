@@ -14,3 +14,37 @@ pub struct BuildingNicknameState {
 impl __sdk::InModule for BuildingNicknameState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingNicknameState`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingNicknameStateCols {
+    pub entity_id: __sdk::__query_builder::Col<BuildingNicknameState, u64>,
+    pub nickname: __sdk::__query_builder::Col<BuildingNicknameState, String>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingNicknameState {
+    type Cols = BuildingNicknameStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingNicknameStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            nickname: __sdk::__query_builder::Col::new(table_name, "nickname"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingNicknameState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingNicknameStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<BuildingNicknameState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingNicknameState {
+    type IxCols = BuildingNicknameStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingNicknameStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

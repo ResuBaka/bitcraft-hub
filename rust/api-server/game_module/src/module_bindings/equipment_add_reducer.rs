@@ -61,8 +61,8 @@ impl equipment_add for super::RemoteReducers {
     fn on_equipment_add(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerEquipmentAddRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EquipmentAddCallbackId {
         EquipmentAddCallbackId(self.imp.on_reducer(
             "equipment_add",

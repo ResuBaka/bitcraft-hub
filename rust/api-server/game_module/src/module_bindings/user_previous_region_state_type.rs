@@ -19,3 +19,50 @@ pub struct UserPreviousRegionState {
 impl __sdk::InModule for UserPreviousRegionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `UserPreviousRegionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct UserPreviousRegionStateCols {
+    pub identity: __sdk::__query_builder::Col<UserPreviousRegionState, __sdk::Identity>,
+    pub previous_region_location:
+        __sdk::__query_builder::Col<UserPreviousRegionState, FloatHexTileMessage>,
+    pub with_vehicle: __sdk::__query_builder::Col<UserPreviousRegionState, bool>,
+    pub allow_cancel: __sdk::__query_builder::Col<UserPreviousRegionState, bool>,
+    pub teleport_energy_cost: __sdk::__query_builder::Col<UserPreviousRegionState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for UserPreviousRegionState {
+    type Cols = UserPreviousRegionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        UserPreviousRegionStateCols {
+            identity: __sdk::__query_builder::Col::new(table_name, "identity"),
+            previous_region_location: __sdk::__query_builder::Col::new(
+                table_name,
+                "previous_region_location",
+            ),
+            with_vehicle: __sdk::__query_builder::Col::new(table_name, "with_vehicle"),
+            allow_cancel: __sdk::__query_builder::Col::new(table_name, "allow_cancel"),
+            teleport_energy_cost: __sdk::__query_builder::Col::new(
+                table_name,
+                "teleport_energy_cost",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `UserPreviousRegionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct UserPreviousRegionStateIxCols {
+    pub identity: __sdk::__query_builder::IxCol<UserPreviousRegionState, __sdk::Identity>,
+}
+
+impl __sdk::__query_builder::HasIxCols for UserPreviousRegionState {
+    type IxCols = UserPreviousRegionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        UserPreviousRegionStateIxCols {
+            identity: __sdk::__query_builder::IxCol::new(table_name, "identity"),
+        }
+    }
+}

@@ -14,3 +14,37 @@ pub struct EmpireExpansionState {
 impl __sdk::InModule for EmpireExpansionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireExpansionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireExpansionStateCols {
+    pub chunk_index: __sdk::__query_builder::Col<EmpireExpansionState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::Col<EmpireExpansionState, Vec<u64>>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireExpansionState {
+    type Cols = EmpireExpansionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireExpansionStateCols {
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            empire_entity_id: __sdk::__query_builder::Col::new(table_name, "empire_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireExpansionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireExpansionStateIxCols {
+    pub chunk_index: __sdk::__query_builder::IxCol<EmpireExpansionState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireExpansionState {
+    type IxCols = EmpireExpansionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireExpansionStateIxCols {
+            chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+        }
+    }
+}

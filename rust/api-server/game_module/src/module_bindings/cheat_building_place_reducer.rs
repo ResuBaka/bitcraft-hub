@@ -47,8 +47,8 @@ pub trait cheat_building_place {
     fn on_cheat_building_place(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSitePlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatBuildingPlaceCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_building_place`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl cheat_building_place for super::RemoteReducers {
     fn on_cheat_building_place(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSitePlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatBuildingPlaceCallbackId {
         CheatBuildingPlaceCallbackId(self.imp.on_reducer(
             "cheat_building_place",

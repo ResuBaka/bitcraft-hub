@@ -143,3 +143,19 @@ impl<'ctx> IdentityRoleIdentityUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `IdentityRole`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait identity_roleQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `IdentityRole`.
+    fn identity_role(&self) -> __sdk::__query_builder::Table<IdentityRole>;
+}
+
+impl identity_roleQueryTableAccess for __sdk::QueryTableAccessor {
+    fn identity_role(&self) -> __sdk::__query_builder::Table<IdentityRole> {
+        __sdk::__query_builder::Table::new("identity_role")
+    }
+}

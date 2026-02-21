@@ -14,3 +14,40 @@ pub struct InteriorCollapseTriggerState {
 impl __sdk::InModule for InteriorCollapseTriggerState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorCollapseTriggerState`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorCollapseTriggerStateCols {
+    pub entity_id: __sdk::__query_builder::Col<InteriorCollapseTriggerState, u64>,
+    pub dimension_network_entity_id: __sdk::__query_builder::Col<InteriorCollapseTriggerState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorCollapseTriggerState {
+    type Cols = InteriorCollapseTriggerStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorCollapseTriggerStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            dimension_network_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "dimension_network_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorCollapseTriggerState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorCollapseTriggerStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<InteriorCollapseTriggerState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorCollapseTriggerState {
+    type IxCols = InteriorCollapseTriggerStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorCollapseTriggerStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

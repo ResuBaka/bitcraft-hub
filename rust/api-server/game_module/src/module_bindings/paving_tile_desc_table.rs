@@ -143,3 +143,19 @@ impl<'ctx> PavingTileDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PavingTileDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait paving_tile_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PavingTileDesc`.
+    fn paving_tile_desc(&self) -> __sdk::__query_builder::Table<PavingTileDesc>;
+}
+
+impl paving_tile_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn paving_tile_desc(&self) -> __sdk::__query_builder::Table<PavingTileDesc> {
+        __sdk::__query_builder::Table::new("paving_tile_desc")
+    }
+}

@@ -15,3 +15,47 @@ pub struct InteriorPlayerCountState {
 impl __sdk::InModule for InteriorPlayerCountState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorPlayerCountState`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorPlayerCountStateCols {
+    pub entity_id: __sdk::__query_builder::Col<InteriorPlayerCountState, u64>,
+    pub dimension_network_entity_id: __sdk::__query_builder::Col<InteriorPlayerCountState, u64>,
+    pub player_count: __sdk::__query_builder::Col<InteriorPlayerCountState, u32>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorPlayerCountState {
+    type Cols = InteriorPlayerCountStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorPlayerCountStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            dimension_network_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "dimension_network_entity_id",
+            ),
+            player_count: __sdk::__query_builder::Col::new(table_name, "player_count"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorPlayerCountState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorPlayerCountStateIxCols {
+    pub dimension_network_entity_id: __sdk::__query_builder::IxCol<InteriorPlayerCountState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<InteriorPlayerCountState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorPlayerCountState {
+    type IxCols = InteriorPlayerCountStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorPlayerCountStateIxCols {
+            dimension_network_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "dimension_network_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

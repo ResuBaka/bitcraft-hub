@@ -50,8 +50,8 @@ pub trait cheat_toggle_active_collectible {
     fn on_cheat_toggle_active_collectible(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &CheatToggleActiveCollectibleRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatToggleActiveCollectibleCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_toggle_active_collectible`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl cheat_toggle_active_collectible for super::RemoteReducers {
     fn on_cheat_toggle_active_collectible(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatToggleActiveCollectibleRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CheatToggleActiveCollectibleCallbackId {
         CheatToggleActiveCollectibleCallbackId(self.imp.on_reducer(
             "cheat_toggle_active_collectible",

@@ -14,3 +14,39 @@ pub struct PlayerUsernameState {
 impl __sdk::InModule for PlayerUsernameState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerUsernameState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerUsernameStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerUsernameState, u64>,
+    pub username: __sdk::__query_builder::Col<PlayerUsernameState, String>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerUsernameState {
+    type Cols = PlayerUsernameStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerUsernameStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            username: __sdk::__query_builder::Col::new(table_name, "username"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerUsernameState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerUsernameStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerUsernameState, u64>,
+    pub username: __sdk::__query_builder::IxCol<PlayerUsernameState, String>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerUsernameState {
+    type IxCols = PlayerUsernameStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerUsernameStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            username: __sdk::__query_builder::IxCol::new(table_name, "username"),
+        }
+    }
+}

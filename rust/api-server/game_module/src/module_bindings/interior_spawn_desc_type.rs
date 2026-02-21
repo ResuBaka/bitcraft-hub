@@ -32,3 +32,71 @@ pub struct InteriorSpawnDesc {
 impl __sdk::InModule for InteriorSpawnDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorSpawnDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorSpawnDescCols {
+    pub id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub name: __sdk::__query_builder::Col<InteriorSpawnDesc, String>,
+    pub interior_instance_id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub spawn_x: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub spawn_z: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub direction: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub spawn_type: __sdk::__query_builder::Col<InteriorSpawnDesc, InteriorSpawnType>,
+    pub building_id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub paving_id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub loot_chests: __sdk::__query_builder::Col<InteriorSpawnDesc, Vec<i32>>,
+    pub resource_clump_id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub enemy_type: __sdk::__query_builder::Col<InteriorSpawnDesc, EnemyType>,
+    pub traveler_type: __sdk::__query_builder::Col<InteriorSpawnDesc, NpcType>,
+    pub traveler_ruin_entity_id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
+    pub respawn: __sdk::__query_builder::Col<InteriorSpawnDesc, bool>,
+    pub collapse_trigger: __sdk::__query_builder::Col<InteriorSpawnDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorSpawnDesc {
+    type Cols = InteriorSpawnDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorSpawnDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            interior_instance_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "interior_instance_id",
+            ),
+            spawn_x: __sdk::__query_builder::Col::new(table_name, "spawn_x"),
+            spawn_z: __sdk::__query_builder::Col::new(table_name, "spawn_z"),
+            direction: __sdk::__query_builder::Col::new(table_name, "direction"),
+            spawn_type: __sdk::__query_builder::Col::new(table_name, "spawn_type"),
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            paving_id: __sdk::__query_builder::Col::new(table_name, "paving_id"),
+            loot_chests: __sdk::__query_builder::Col::new(table_name, "loot_chests"),
+            resource_clump_id: __sdk::__query_builder::Col::new(table_name, "resource_clump_id"),
+            enemy_type: __sdk::__query_builder::Col::new(table_name, "enemy_type"),
+            traveler_type: __sdk::__query_builder::Col::new(table_name, "traveler_type"),
+            traveler_ruin_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "traveler_ruin_entity_id",
+            ),
+            respawn: __sdk::__query_builder::Col::new(table_name, "respawn"),
+            collapse_trigger: __sdk::__query_builder::Col::new(table_name, "collapse_trigger"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorSpawnDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorSpawnDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<InteriorSpawnDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorSpawnDesc {
+    type IxCols = InteriorSpawnDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorSpawnDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

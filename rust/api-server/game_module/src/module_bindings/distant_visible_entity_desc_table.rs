@@ -144,3 +144,23 @@ impl<'ctx> DistantVisibleEntityDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DistantVisibleEntityDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait distant_visible_entity_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DistantVisibleEntityDesc`.
+    fn distant_visible_entity_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<DistantVisibleEntityDesc>;
+}
+
+impl distant_visible_entity_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn distant_visible_entity_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<DistantVisibleEntityDesc> {
+        __sdk::__query_builder::Table::new("distant_visible_entity_desc")
+    }
+}

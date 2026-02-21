@@ -143,3 +143,23 @@ impl<'ctx> ModerationActionLogEntryEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ModerationActionLogEntry`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait moderation_action_log_entryQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ModerationActionLogEntry`.
+    fn moderation_action_log_entry(
+        &self,
+    ) -> __sdk::__query_builder::Table<ModerationActionLogEntry>;
+}
+
+impl moderation_action_log_entryQueryTableAccess for __sdk::QueryTableAccessor {
+    fn moderation_action_log_entry(
+        &self,
+    ) -> __sdk::__query_builder::Table<ModerationActionLogEntry> {
+        __sdk::__query_builder::Table::new("moderation_action_log_entry")
+    }
+}

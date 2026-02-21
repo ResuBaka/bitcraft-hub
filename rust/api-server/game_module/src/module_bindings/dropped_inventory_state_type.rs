@@ -15,3 +15,41 @@ pub struct DroppedInventoryState {
 impl __sdk::InModule for DroppedInventoryState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DroppedInventoryState`.
+///
+/// Provides typed access to columns for query building.
+pub struct DroppedInventoryStateCols {
+    pub entity_id: __sdk::__query_builder::Col<DroppedInventoryState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<DroppedInventoryState, u64>,
+    pub active_timer_id: __sdk::__query_builder::Col<DroppedInventoryState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for DroppedInventoryState {
+    type Cols = DroppedInventoryStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DroppedInventoryStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            active_timer_id: __sdk::__query_builder::Col::new(table_name, "active_timer_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DroppedInventoryState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DroppedInventoryStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<DroppedInventoryState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<DroppedInventoryState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DroppedInventoryState {
+    type IxCols = DroppedInventoryStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DroppedInventoryStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

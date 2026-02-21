@@ -16,3 +16,41 @@ pub struct WindParamsDesc {
 impl __sdk::InModule for WindParamsDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WindParamsDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct WindParamsDescCols {
+    pub id: __sdk::__query_builder::Col<WindParamsDesc, i32>,
+    pub scale: __sdk::__query_builder::Col<WindParamsDesc, f64>,
+    pub weight: __sdk::__query_builder::Col<WindParamsDesc, f64>,
+    pub cycle_sec: __sdk::__query_builder::Col<WindParamsDesc, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for WindParamsDesc {
+    type Cols = WindParamsDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WindParamsDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            scale: __sdk::__query_builder::Col::new(table_name, "scale"),
+            weight: __sdk::__query_builder::Col::new(table_name, "weight"),
+            cycle_sec: __sdk::__query_builder::Col::new(table_name, "cycle_sec"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WindParamsDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WindParamsDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<WindParamsDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WindParamsDesc {
+    type IxCols = WindParamsDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WindParamsDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

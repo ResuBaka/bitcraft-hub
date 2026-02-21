@@ -140,3 +140,19 @@ impl<'ctx> LocationStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LocationState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait location_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LocationState`.
+    fn location_state(&self) -> __sdk::__query_builder::Table<LocationState>;
+}
+
+impl location_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn location_state(&self) -> __sdk::__query_builder::Table<LocationState> {
+        __sdk::__query_builder::Table::new("location_state")
+    }
+}

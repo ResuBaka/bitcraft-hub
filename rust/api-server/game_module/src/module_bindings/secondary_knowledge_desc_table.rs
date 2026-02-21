@@ -143,3 +143,19 @@ impl<'ctx> SecondaryKnowledgeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `SecondaryKnowledgeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait secondary_knowledge_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `SecondaryKnowledgeDesc`.
+    fn secondary_knowledge_desc(&self) -> __sdk::__query_builder::Table<SecondaryKnowledgeDesc>;
+}
+
+impl secondary_knowledge_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn secondary_knowledge_desc(&self) -> __sdk::__query_builder::Table<SecondaryKnowledgeDesc> {
+        __sdk::__query_builder::Table::new("secondary_knowledge_desc")
+    }
+}

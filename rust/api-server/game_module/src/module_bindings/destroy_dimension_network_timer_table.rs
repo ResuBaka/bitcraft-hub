@@ -147,3 +147,23 @@ impl<'ctx> DestroyDimensionNetworkTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DestroyDimensionNetworkTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait destroy_dimension_network_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DestroyDimensionNetworkTimer`.
+    fn destroy_dimension_network_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<DestroyDimensionNetworkTimer>;
+}
+
+impl destroy_dimension_network_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn destroy_dimension_network_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<DestroyDimensionNetworkTimer> {
+        __sdk::__query_builder::Table::new("destroy_dimension_network_timer")
+    }
+}

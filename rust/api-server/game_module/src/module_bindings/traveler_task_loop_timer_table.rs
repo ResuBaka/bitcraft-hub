@@ -143,3 +143,19 @@ impl<'ctx> TravelerTaskLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TravelerTaskLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait traveler_task_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TravelerTaskLoopTimer`.
+    fn traveler_task_loop_timer(&self) -> __sdk::__query_builder::Table<TravelerTaskLoopTimer>;
+}
+
+impl traveler_task_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn traveler_task_loop_timer(&self) -> __sdk::__query_builder::Table<TravelerTaskLoopTimer> {
+        __sdk::__query_builder::Table::new("traveler_task_loop_timer")
+    }
+}

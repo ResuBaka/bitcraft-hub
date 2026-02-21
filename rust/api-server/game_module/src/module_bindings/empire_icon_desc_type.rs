@@ -15,3 +15,39 @@ pub struct EmpireIconDesc {
 impl __sdk::InModule for EmpireIconDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireIconDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireIconDescCols {
+    pub id: __sdk::__query_builder::Col<EmpireIconDesc, i32>,
+    pub icon_unicode: __sdk::__query_builder::Col<EmpireIconDesc, String>,
+    pub is_shape: __sdk::__query_builder::Col<EmpireIconDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireIconDesc {
+    type Cols = EmpireIconDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireIconDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            icon_unicode: __sdk::__query_builder::Col::new(table_name, "icon_unicode"),
+            is_shape: __sdk::__query_builder::Col::new(table_name, "is_shape"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireIconDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireIconDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<EmpireIconDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireIconDesc {
+    type IxCols = EmpireIconDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireIconDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

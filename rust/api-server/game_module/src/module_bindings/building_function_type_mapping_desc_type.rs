@@ -14,3 +14,37 @@ pub struct BuildingFunctionTypeMappingDesc {
 impl __sdk::InModule for BuildingFunctionTypeMappingDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingFunctionTypeMappingDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingFunctionTypeMappingDescCols {
+    pub type_id: __sdk::__query_builder::Col<BuildingFunctionTypeMappingDesc, i32>,
+    pub desc_ids: __sdk::__query_builder::Col<BuildingFunctionTypeMappingDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingFunctionTypeMappingDesc {
+    type Cols = BuildingFunctionTypeMappingDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingFunctionTypeMappingDescCols {
+            type_id: __sdk::__query_builder::Col::new(table_name, "type_id"),
+            desc_ids: __sdk::__query_builder::Col::new(table_name, "desc_ids"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingFunctionTypeMappingDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingFunctionTypeMappingDescIxCols {
+    pub type_id: __sdk::__query_builder::IxCol<BuildingFunctionTypeMappingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingFunctionTypeMappingDesc {
+    type IxCols = BuildingFunctionTypeMappingDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingFunctionTypeMappingDescIxCols {
+            type_id: __sdk::__query_builder::IxCol::new(table_name, "type_id"),
+        }
+    }
+}

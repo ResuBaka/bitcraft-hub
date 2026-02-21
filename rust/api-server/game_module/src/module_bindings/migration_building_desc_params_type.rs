@@ -14,3 +14,41 @@ pub struct MigrationBuildingDescParams {
 impl __sdk::InModule for MigrationBuildingDescParams {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `MigrationBuildingDescParams`.
+///
+/// Provides typed access to columns for query building.
+pub struct MigrationBuildingDescParamsCols {
+    pub id: __sdk::__query_builder::Col<MigrationBuildingDescParams, i32>,
+    pub allow_building_health_change:
+        __sdk::__query_builder::Col<MigrationBuildingDescParams, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for MigrationBuildingDescParams {
+    type Cols = MigrationBuildingDescParamsCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        MigrationBuildingDescParamsCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            allow_building_health_change: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_building_health_change",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `MigrationBuildingDescParams`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct MigrationBuildingDescParamsIxCols {
+    pub id: __sdk::__query_builder::IxCol<MigrationBuildingDescParams, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for MigrationBuildingDescParams {
+    type IxCols = MigrationBuildingDescParamsIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        MigrationBuildingDescParamsIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

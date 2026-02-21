@@ -16,3 +16,45 @@ pub struct ThreatState {
 impl __sdk::InModule for ThreatState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ThreatState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ThreatStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ThreatState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<ThreatState, u64>,
+    pub target_entity_id: __sdk::__query_builder::Col<ThreatState, u64>,
+    pub threat: __sdk::__query_builder::Col<ThreatState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for ThreatState {
+    type Cols = ThreatStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ThreatStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            target_entity_id: __sdk::__query_builder::Col::new(table_name, "target_entity_id"),
+            threat: __sdk::__query_builder::Col::new(table_name, "threat"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ThreatState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ThreatStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ThreatState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<ThreatState, u64>,
+    pub target_entity_id: __sdk::__query_builder::IxCol<ThreatState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ThreatState {
+    type IxCols = ThreatStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ThreatStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+            target_entity_id: __sdk::__query_builder::IxCol::new(table_name, "target_entity_id"),
+        }
+    }
+}

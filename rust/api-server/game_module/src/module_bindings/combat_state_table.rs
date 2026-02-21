@@ -141,3 +141,19 @@ impl<'ctx> CombatStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CombatState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait combat_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CombatState`.
+    fn combat_state(&self) -> __sdk::__query_builder::Table<CombatState>;
+}
+
+impl combat_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn combat_state(&self) -> __sdk::__query_builder::Table<CombatState> {
+        __sdk::__query_builder::Table::new("combat_state")
+    }
+}

@@ -156,3 +156,23 @@ impl<'ctx> StagedResourcePlacementRecipeDescV2IdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourcePlacementRecipeDescV2`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_resource_placement_recipe_desc_v2QueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourcePlacementRecipeDescV2`.
+    fn staged_resource_placement_recipe_desc_v2(
+        &self,
+    ) -> __sdk::__query_builder::Table<ResourcePlacementRecipeDescV2>;
+}
+
+impl staged_resource_placement_recipe_desc_v2QueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_resource_placement_recipe_desc_v2(
+        &self,
+    ) -> __sdk::__query_builder::Table<ResourcePlacementRecipeDescV2> {
+        __sdk::__query_builder::Table::new("staged_resource_placement_recipe_desc_v2")
+    }
+}

@@ -144,3 +144,23 @@ impl<'ctx> ItemConversionRecipeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ItemConversionRecipeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait item_conversion_recipe_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ItemConversionRecipeDesc`.
+    fn item_conversion_recipe_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<ItemConversionRecipeDesc>;
+}
+
+impl item_conversion_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn item_conversion_recipe_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<ItemConversionRecipeDesc> {
+        __sdk::__query_builder::Table::new("item_conversion_recipe_desc")
+    }
+}

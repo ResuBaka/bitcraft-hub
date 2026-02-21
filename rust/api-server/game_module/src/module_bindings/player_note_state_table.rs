@@ -140,3 +140,19 @@ impl<'ctx> PlayerNoteStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerNoteState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_note_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerNoteState`.
+    fn player_note_state(&self) -> __sdk::__query_builder::Table<PlayerNoteState>;
+}
+
+impl player_note_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_note_state(&self) -> __sdk::__query_builder::Table<PlayerNoteState> {
+        __sdk::__query_builder::Table::new("player_note_state")
+    }
+}

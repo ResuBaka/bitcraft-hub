@@ -22,3 +22,49 @@ pub struct PremiumServiceDesc {
 impl __sdk::InModule for PremiumServiceDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PremiumServiceDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PremiumServiceDescCols {
+    pub id: __sdk::__query_builder::Col<PremiumServiceDesc, i32>,
+    pub name: __sdk::__query_builder::Col<PremiumServiceDesc, String>,
+    pub description: __sdk::__query_builder::Col<PremiumServiceDesc, String>,
+    pub image_address: __sdk::__query_builder::Col<PremiumServiceDesc, String>,
+    pub service_type: __sdk::__query_builder::Col<PremiumServiceDesc, PremiumServiceType>,
+    pub price: __sdk::__query_builder::Col<PremiumServiceDesc, u32>,
+    pub base_price: __sdk::__query_builder::Col<PremiumServiceDesc, u32>,
+    pub is_enabled: __sdk::__query_builder::Col<PremiumServiceDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for PremiumServiceDesc {
+    type Cols = PremiumServiceDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PremiumServiceDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            image_address: __sdk::__query_builder::Col::new(table_name, "image_address"),
+            service_type: __sdk::__query_builder::Col::new(table_name, "service_type"),
+            price: __sdk::__query_builder::Col::new(table_name, "price"),
+            base_price: __sdk::__query_builder::Col::new(table_name, "base_price"),
+            is_enabled: __sdk::__query_builder::Col::new(table_name, "is_enabled"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PremiumServiceDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PremiumServiceDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<PremiumServiceDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PremiumServiceDesc {
+    type IxCols = PremiumServiceDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PremiumServiceDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

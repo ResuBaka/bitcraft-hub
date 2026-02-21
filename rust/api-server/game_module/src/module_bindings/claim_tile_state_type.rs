@@ -14,3 +14,39 @@ pub struct ClaimTileState {
 impl __sdk::InModule for ClaimTileState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimTileState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimTileStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ClaimTileState, u64>,
+    pub claim_id: __sdk::__query_builder::Col<ClaimTileState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimTileState {
+    type Cols = ClaimTileStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimTileStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            claim_id: __sdk::__query_builder::Col::new(table_name, "claim_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimTileState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimTileStateIxCols {
+    pub claim_id: __sdk::__query_builder::IxCol<ClaimTileState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<ClaimTileState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimTileState {
+    type IxCols = ClaimTileStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimTileStateIxCols {
+            claim_id: __sdk::__query_builder::IxCol::new(table_name, "claim_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

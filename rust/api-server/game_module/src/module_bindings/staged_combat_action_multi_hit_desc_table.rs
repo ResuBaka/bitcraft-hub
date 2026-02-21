@@ -144,3 +144,23 @@ impl<'ctx> StagedCombatActionMultiHitDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CombatActionMultiHitDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_combat_action_multi_hit_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CombatActionMultiHitDesc`.
+    fn staged_combat_action_multi_hit_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<CombatActionMultiHitDesc>;
+}
+
+impl staged_combat_action_multi_hit_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_combat_action_multi_hit_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<CombatActionMultiHitDesc> {
+        __sdk::__query_builder::Table::new("staged_combat_action_multi_hit_desc")
+    }
+}

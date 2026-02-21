@@ -22,3 +22,47 @@ pub struct QuestChainDesc {
 impl __sdk::InModule for QuestChainDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `QuestChainDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct QuestChainDescCols {
+    pub id: __sdk::__query_builder::Col<QuestChainDesc, i32>,
+    pub name: __sdk::__query_builder::Col<QuestChainDesc, String>,
+    pub is_hint: __sdk::__query_builder::Col<QuestChainDesc, bool>,
+    pub stages: __sdk::__query_builder::Col<QuestChainDesc, Vec<i32>>,
+    pub requirements: __sdk::__query_builder::Col<QuestChainDesc, Vec<QuestRequirement>>,
+    pub rewards: __sdk::__query_builder::Col<QuestChainDesc, Vec<QuestReward>>,
+    pub implicit_rewards: __sdk::__query_builder::Col<QuestChainDesc, Vec<QuestReward>>,
+}
+
+impl __sdk::__query_builder::HasCols for QuestChainDesc {
+    type Cols = QuestChainDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        QuestChainDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            is_hint: __sdk::__query_builder::Col::new(table_name, "is_hint"),
+            stages: __sdk::__query_builder::Col::new(table_name, "stages"),
+            requirements: __sdk::__query_builder::Col::new(table_name, "requirements"),
+            rewards: __sdk::__query_builder::Col::new(table_name, "rewards"),
+            implicit_rewards: __sdk::__query_builder::Col::new(table_name, "implicit_rewards"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `QuestChainDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct QuestChainDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<QuestChainDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for QuestChainDesc {
+    type IxCols = QuestChainDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        QuestChainDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

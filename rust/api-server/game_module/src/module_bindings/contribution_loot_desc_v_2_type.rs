@@ -17,3 +17,48 @@ pub struct ContributionLootDescV2 {
 impl __sdk::InModule for ContributionLootDescV2 {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ContributionLootDescV2`.
+///
+/// Provides typed access to columns for query building.
+pub struct ContributionLootDescV2Cols {
+    pub id: __sdk::__query_builder::Col<ContributionLootDescV2, i32>,
+    pub enemy_type_id: __sdk::__query_builder::Col<ContributionLootDescV2, i32>,
+    pub item_list_id: __sdk::__query_builder::Col<ContributionLootDescV2, i32>,
+    pub minimum_contribution: __sdk::__query_builder::Col<ContributionLootDescV2, i32>,
+    pub weighted: __sdk::__query_builder::Col<ContributionLootDescV2, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for ContributionLootDescV2 {
+    type Cols = ContributionLootDescV2Cols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ContributionLootDescV2Cols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            enemy_type_id: __sdk::__query_builder::Col::new(table_name, "enemy_type_id"),
+            item_list_id: __sdk::__query_builder::Col::new(table_name, "item_list_id"),
+            minimum_contribution: __sdk::__query_builder::Col::new(
+                table_name,
+                "minimum_contribution",
+            ),
+            weighted: __sdk::__query_builder::Col::new(table_name, "weighted"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ContributionLootDescV2`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ContributionLootDescV2IxCols {
+    pub enemy_type_id: __sdk::__query_builder::IxCol<ContributionLootDescV2, i32>,
+    pub id: __sdk::__query_builder::IxCol<ContributionLootDescV2, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ContributionLootDescV2 {
+    type IxCols = ContributionLootDescV2IxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ContributionLootDescV2IxCols {
+            enemy_type_id: __sdk::__query_builder::IxCol::new(table_name, "enemy_type_id"),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

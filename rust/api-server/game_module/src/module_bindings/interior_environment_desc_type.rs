@@ -28,3 +28,83 @@ pub struct InteriorEnvironmentDesc {
 impl __sdk::InModule for InteriorEnvironmentDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorEnvironmentDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorEnvironmentDescCols {
+    pub id: __sdk::__query_builder::Col<InteriorEnvironmentDesc, i32>,
+    pub name: __sdk::__query_builder::Col<InteriorEnvironmentDesc, String>,
+    pub skybox_material: __sdk::__query_builder::Col<InteriorEnvironmentDesc, String>,
+    pub realtime_shadow_color: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u32>,
+    pub lighting_source: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u8>,
+    pub lighting_skybox_intensity: __sdk::__query_builder::Col<InteriorEnvironmentDesc, f32>,
+    pub lighting_gradient_sky_color: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u32>,
+    pub lighting_gradient_equator_color: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u32>,
+    pub lighting_gradient_ground_color: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u32>,
+    pub lighting_color_ambient_color: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u32>,
+    pub fog_enable: __sdk::__query_builder::Col<InteriorEnvironmentDesc, bool>,
+    pub fog_color: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u32>,
+    pub fog_mode: __sdk::__query_builder::Col<InteriorEnvironmentDesc, u8>,
+    pub fog_density: __sdk::__query_builder::Col<InteriorEnvironmentDesc, f32>,
+    pub fog_start_distance: __sdk::__query_builder::Col<InteriorEnvironmentDesc, f32>,
+    pub fog_end_distance: __sdk::__query_builder::Col<InteriorEnvironmentDesc, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorEnvironmentDesc {
+    type Cols = InteriorEnvironmentDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorEnvironmentDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            skybox_material: __sdk::__query_builder::Col::new(table_name, "skybox_material"),
+            realtime_shadow_color: __sdk::__query_builder::Col::new(
+                table_name,
+                "realtime_shadow_color",
+            ),
+            lighting_source: __sdk::__query_builder::Col::new(table_name, "lighting_source"),
+            lighting_skybox_intensity: __sdk::__query_builder::Col::new(
+                table_name,
+                "lighting_skybox_intensity",
+            ),
+            lighting_gradient_sky_color: __sdk::__query_builder::Col::new(
+                table_name,
+                "lighting_gradient_sky_color",
+            ),
+            lighting_gradient_equator_color: __sdk::__query_builder::Col::new(
+                table_name,
+                "lighting_gradient_equator_color",
+            ),
+            lighting_gradient_ground_color: __sdk::__query_builder::Col::new(
+                table_name,
+                "lighting_gradient_ground_color",
+            ),
+            lighting_color_ambient_color: __sdk::__query_builder::Col::new(
+                table_name,
+                "lighting_color_ambient_color",
+            ),
+            fog_enable: __sdk::__query_builder::Col::new(table_name, "fog_enable"),
+            fog_color: __sdk::__query_builder::Col::new(table_name, "fog_color"),
+            fog_mode: __sdk::__query_builder::Col::new(table_name, "fog_mode"),
+            fog_density: __sdk::__query_builder::Col::new(table_name, "fog_density"),
+            fog_start_distance: __sdk::__query_builder::Col::new(table_name, "fog_start_distance"),
+            fog_end_distance: __sdk::__query_builder::Col::new(table_name, "fog_end_distance"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorEnvironmentDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorEnvironmentDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<InteriorEnvironmentDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorEnvironmentDesc {
+    type IxCols = InteriorEnvironmentDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorEnvironmentDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

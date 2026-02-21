@@ -14,3 +14,37 @@ pub struct GrowthLoopTimer {
 impl __sdk::InModule for GrowthLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `GrowthLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct GrowthLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<GrowthLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<GrowthLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for GrowthLoopTimer {
+    type Cols = GrowthLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        GrowthLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `GrowthLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct GrowthLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<GrowthLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for GrowthLoopTimer {
+    type IxCols = GrowthLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        GrowthLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

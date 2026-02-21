@@ -22,3 +22,56 @@ pub struct PremiumItemDesc {
 impl __sdk::InModule for PremiumItemDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PremiumItemDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PremiumItemDescCols {
+    pub id: __sdk::__query_builder::Col<PremiumItemDesc, i32>,
+    pub name: __sdk::__query_builder::Col<PremiumItemDesc, String>,
+    pub description: __sdk::__query_builder::Col<PremiumItemDesc, String>,
+    pub image_address: __sdk::__query_builder::Col<PremiumItemDesc, String>,
+    pub collectible_desc_id: __sdk::__query_builder::Col<PremiumItemDesc, i32>,
+    pub price: __sdk::__query_builder::Col<PremiumItemDesc, u32>,
+    pub base_price: __sdk::__query_builder::Col<PremiumItemDesc, u32>,
+    pub is_enabled: __sdk::__query_builder::Col<PremiumItemDesc, bool>,
+    pub quantity: __sdk::__query_builder::Col<PremiumItemDesc, u32>,
+    pub sorting_priority: __sdk::__query_builder::Col<PremiumItemDesc, u16>,
+}
+
+impl __sdk::__query_builder::HasCols for PremiumItemDesc {
+    type Cols = PremiumItemDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PremiumItemDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            image_address: __sdk::__query_builder::Col::new(table_name, "image_address"),
+            collectible_desc_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "collectible_desc_id",
+            ),
+            price: __sdk::__query_builder::Col::new(table_name, "price"),
+            base_price: __sdk::__query_builder::Col::new(table_name, "base_price"),
+            is_enabled: __sdk::__query_builder::Col::new(table_name, "is_enabled"),
+            quantity: __sdk::__query_builder::Col::new(table_name, "quantity"),
+            sorting_priority: __sdk::__query_builder::Col::new(table_name, "sorting_priority"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PremiumItemDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PremiumItemDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<PremiumItemDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PremiumItemDesc {
+    type IxCols = PremiumItemDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PremiumItemDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

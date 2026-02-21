@@ -144,3 +144,19 @@ impl<'ctx> PlayerNotificationEventScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerNotificationEvent`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_notification_eventQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerNotificationEvent`.
+    fn player_notification_event(&self) -> __sdk::__query_builder::Table<PlayerNotificationEvent>;
+}
+
+impl player_notification_eventQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_notification_event(&self) -> __sdk::__query_builder::Table<PlayerNotificationEvent> {
+        __sdk::__query_builder::Table::new("player_notification_event")
+    }
+}

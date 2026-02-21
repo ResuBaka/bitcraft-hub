@@ -18,3 +18,45 @@ pub struct GlobalSearchState {
 impl __sdk::InModule for GlobalSearchState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `GlobalSearchState`.
+///
+/// Provides typed access to columns for query building.
+pub struct GlobalSearchStateCols {
+    pub entity_id: __sdk::__query_builder::Col<GlobalSearchState, u64>,
+    pub found_entity_id: __sdk::__query_builder::Col<GlobalSearchState, u64>,
+    pub found_entity_name: __sdk::__query_builder::Col<GlobalSearchState, String>,
+    pub x: __sdk::__query_builder::Col<GlobalSearchState, i32>,
+    pub z: __sdk::__query_builder::Col<GlobalSearchState, i32>,
+    pub timestamp: __sdk::__query_builder::Col<GlobalSearchState, __sdk::Timestamp>,
+}
+
+impl __sdk::__query_builder::HasCols for GlobalSearchState {
+    type Cols = GlobalSearchStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        GlobalSearchStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            found_entity_id: __sdk::__query_builder::Col::new(table_name, "found_entity_id"),
+            found_entity_name: __sdk::__query_builder::Col::new(table_name, "found_entity_name"),
+            x: __sdk::__query_builder::Col::new(table_name, "x"),
+            z: __sdk::__query_builder::Col::new(table_name, "z"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `GlobalSearchState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct GlobalSearchStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<GlobalSearchState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for GlobalSearchState {
+    type IxCols = GlobalSearchStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        GlobalSearchStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

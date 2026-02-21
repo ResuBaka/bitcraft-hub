@@ -16,3 +16,44 @@ pub struct HealthState {
 impl __sdk::InModule for HealthState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `HealthState`.
+///
+/// Provides typed access to columns for query building.
+pub struct HealthStateCols {
+    pub entity_id: __sdk::__query_builder::Col<HealthState, u64>,
+    pub last_health_decrease_timestamp: __sdk::__query_builder::Col<HealthState, __sdk::Timestamp>,
+    pub health: __sdk::__query_builder::Col<HealthState, f32>,
+    pub died_timestamp: __sdk::__query_builder::Col<HealthState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for HealthState {
+    type Cols = HealthStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        HealthStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            last_health_decrease_timestamp: __sdk::__query_builder::Col::new(
+                table_name,
+                "last_health_decrease_timestamp",
+            ),
+            health: __sdk::__query_builder::Col::new(table_name, "health"),
+            died_timestamp: __sdk::__query_builder::Col::new(table_name, "died_timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `HealthState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct HealthStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<HealthState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for HealthState {
+    type IxCols = HealthStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        HealthStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

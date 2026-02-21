@@ -207,3 +207,19 @@ impl<'ctx> EmpireStateNameUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EmpireState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait empire_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EmpireState`.
+    fn empire_state(&self) -> __sdk::__query_builder::Table<EmpireState>;
+}
+
+impl empire_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn empire_state(&self) -> __sdk::__query_builder::Table<EmpireState> {
+        __sdk::__query_builder::Table::new("empire_state")
+    }
+}

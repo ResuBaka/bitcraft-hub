@@ -21,3 +21,54 @@ pub struct EnemyScalingDesc {
 impl __sdk::InModule for EnemyScalingDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnemyScalingDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnemyScalingDescCols {
+    pub id: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub enemy_type_id: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub required_players_count: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub scaled_armor_bonus: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub strength_bonus: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub accuracy_bonus: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub evasion_bonus: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub min_damage_bonus: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+    pub max_damage_bonus: __sdk::__query_builder::Col<EnemyScalingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for EnemyScalingDesc {
+    type Cols = EnemyScalingDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnemyScalingDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            enemy_type_id: __sdk::__query_builder::Col::new(table_name, "enemy_type_id"),
+            required_players_count: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_players_count",
+            ),
+            scaled_armor_bonus: __sdk::__query_builder::Col::new(table_name, "scaled_armor_bonus"),
+            strength_bonus: __sdk::__query_builder::Col::new(table_name, "strength_bonus"),
+            accuracy_bonus: __sdk::__query_builder::Col::new(table_name, "accuracy_bonus"),
+            evasion_bonus: __sdk::__query_builder::Col::new(table_name, "evasion_bonus"),
+            min_damage_bonus: __sdk::__query_builder::Col::new(table_name, "min_damage_bonus"),
+            max_damage_bonus: __sdk::__query_builder::Col::new(table_name, "max_damage_bonus"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnemyScalingDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnemyScalingDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<EnemyScalingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnemyScalingDesc {
+    type IxCols = EnemyScalingDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnemyScalingDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

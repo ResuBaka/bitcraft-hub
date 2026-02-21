@@ -14,3 +14,37 @@ pub struct DayNightLoopTimer {
 impl __sdk::InModule for DayNightLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DayNightLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct DayNightLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<DayNightLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<DayNightLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for DayNightLoopTimer {
+    type Cols = DayNightLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DayNightLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DayNightLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DayNightLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<DayNightLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DayNightLoopTimer {
+    type IxCols = DayNightLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DayNightLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

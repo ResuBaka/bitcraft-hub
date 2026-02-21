@@ -142,3 +142,19 @@ impl<'ctx> ResourceHealthStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourceHealthState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resource_health_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourceHealthState`.
+    fn resource_health_state(&self) -> __sdk::__query_builder::Table<ResourceHealthState>;
+}
+
+impl resource_health_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resource_health_state(&self) -> __sdk::__query_builder::Table<ResourceHealthState> {
+        __sdk::__query_builder::Table::new("resource_health_state")
+    }
+}

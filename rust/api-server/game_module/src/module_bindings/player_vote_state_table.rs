@@ -142,3 +142,19 @@ impl<'ctx> PlayerVoteStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerVoteState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_vote_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerVoteState`.
+    fn player_vote_state(&self) -> __sdk::__query_builder::Table<PlayerVoteState>;
+}
+
+impl player_vote_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_vote_state(&self) -> __sdk::__query_builder::Table<PlayerVoteState> {
+        __sdk::__query_builder::Table::new("player_vote_state")
+    }
+}

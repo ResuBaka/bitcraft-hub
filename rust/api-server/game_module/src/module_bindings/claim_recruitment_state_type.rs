@@ -18,3 +18,48 @@ pub struct ClaimRecruitmentState {
 impl __sdk::InModule for ClaimRecruitmentState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimRecruitmentState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimRecruitmentStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ClaimRecruitmentState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<ClaimRecruitmentState, u64>,
+    pub remaining_stock: __sdk::__query_builder::Col<ClaimRecruitmentState, i32>,
+    pub required_skill_id: __sdk::__query_builder::Col<ClaimRecruitmentState, i32>,
+    pub required_skill_level: __sdk::__query_builder::Col<ClaimRecruitmentState, i32>,
+    pub required_approval: __sdk::__query_builder::Col<ClaimRecruitmentState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimRecruitmentState {
+    type Cols = ClaimRecruitmentStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimRecruitmentStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            remaining_stock: __sdk::__query_builder::Col::new(table_name, "remaining_stock"),
+            required_skill_id: __sdk::__query_builder::Col::new(table_name, "required_skill_id"),
+            required_skill_level: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_skill_level",
+            ),
+            required_approval: __sdk::__query_builder::Col::new(table_name, "required_approval"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimRecruitmentState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimRecruitmentStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ClaimRecruitmentState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimRecruitmentState {
+    type IxCols = ClaimRecruitmentStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimRecruitmentStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

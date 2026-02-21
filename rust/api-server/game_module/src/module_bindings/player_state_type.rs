@@ -22,3 +22,55 @@ pub struct PlayerState {
 impl __sdk::InModule for PlayerState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerStateCols {
+    pub teleport_location: __sdk::__query_builder::Col<PlayerState, TeleportLocation>,
+    pub entity_id: __sdk::__query_builder::Col<PlayerState, u64>,
+    pub time_played: __sdk::__query_builder::Col<PlayerState, i32>,
+    pub session_start_timestamp: __sdk::__query_builder::Col<PlayerState, i32>,
+    pub time_signed_in: __sdk::__query_builder::Col<PlayerState, i32>,
+    pub sign_in_timestamp: __sdk::__query_builder::Col<PlayerState, i32>,
+    pub signed_in: __sdk::__query_builder::Col<PlayerState, bool>,
+    pub traveler_tasks_expiration: __sdk::__query_builder::Col<PlayerState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerState {
+    type Cols = PlayerStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerStateCols {
+            teleport_location: __sdk::__query_builder::Col::new(table_name, "teleport_location"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            time_played: __sdk::__query_builder::Col::new(table_name, "time_played"),
+            session_start_timestamp: __sdk::__query_builder::Col::new(
+                table_name,
+                "session_start_timestamp",
+            ),
+            time_signed_in: __sdk::__query_builder::Col::new(table_name, "time_signed_in"),
+            sign_in_timestamp: __sdk::__query_builder::Col::new(table_name, "sign_in_timestamp"),
+            signed_in: __sdk::__query_builder::Col::new(table_name, "signed_in"),
+            traveler_tasks_expiration: __sdk::__query_builder::Col::new(
+                table_name,
+                "traveler_tasks_expiration",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerState {
+    type IxCols = PlayerStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

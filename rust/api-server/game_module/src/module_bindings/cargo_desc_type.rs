@@ -37,3 +37,97 @@ pub struct CargoDesc {
 impl __sdk::InModule for CargoDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `CargoDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct CargoDescCols {
+    pub id: __sdk::__query_builder::Col<CargoDesc, i32>,
+    pub name: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub description: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub volume: __sdk::__query_builder::Col<CargoDesc, i32>,
+    pub secondary_knowledge_id: __sdk::__query_builder::Col<CargoDesc, i32>,
+    pub model_asset_name: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub icon_asset_name: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub carried_model_asset_name: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub pick_up_animation_start: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub pick_up_animation_end: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub drop_animation_start: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub drop_animation_end: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub pick_up_time: __sdk::__query_builder::Col<CargoDesc, f32>,
+    pub place_time: __sdk::__query_builder::Col<CargoDesc, f32>,
+    pub animator_state: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub movement_modifier: __sdk::__query_builder::Col<CargoDesc, f32>,
+    pub blocks_path: __sdk::__query_builder::Col<CargoDesc, bool>,
+    pub on_destroy_yield_cargos: __sdk::__query_builder::Col<CargoDesc, Vec<i32>>,
+    pub despawn_time: __sdk::__query_builder::Col<CargoDesc, f32>,
+    pub tier: __sdk::__query_builder::Col<CargoDesc, i32>,
+    pub tag: __sdk::__query_builder::Col<CargoDesc, String>,
+    pub rarity: __sdk::__query_builder::Col<CargoDesc, Rarity>,
+    pub not_pickupable: __sdk::__query_builder::Col<CargoDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for CargoDesc {
+    type Cols = CargoDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        CargoDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            volume: __sdk::__query_builder::Col::new(table_name, "volume"),
+            secondary_knowledge_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "secondary_knowledge_id",
+            ),
+            model_asset_name: __sdk::__query_builder::Col::new(table_name, "model_asset_name"),
+            icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
+            carried_model_asset_name: __sdk::__query_builder::Col::new(
+                table_name,
+                "carried_model_asset_name",
+            ),
+            pick_up_animation_start: __sdk::__query_builder::Col::new(
+                table_name,
+                "pick_up_animation_start",
+            ),
+            pick_up_animation_end: __sdk::__query_builder::Col::new(
+                table_name,
+                "pick_up_animation_end",
+            ),
+            drop_animation_start: __sdk::__query_builder::Col::new(
+                table_name,
+                "drop_animation_start",
+            ),
+            drop_animation_end: __sdk::__query_builder::Col::new(table_name, "drop_animation_end"),
+            pick_up_time: __sdk::__query_builder::Col::new(table_name, "pick_up_time"),
+            place_time: __sdk::__query_builder::Col::new(table_name, "place_time"),
+            animator_state: __sdk::__query_builder::Col::new(table_name, "animator_state"),
+            movement_modifier: __sdk::__query_builder::Col::new(table_name, "movement_modifier"),
+            blocks_path: __sdk::__query_builder::Col::new(table_name, "blocks_path"),
+            on_destroy_yield_cargos: __sdk::__query_builder::Col::new(
+                table_name,
+                "on_destroy_yield_cargos",
+            ),
+            despawn_time: __sdk::__query_builder::Col::new(table_name, "despawn_time"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            tag: __sdk::__query_builder::Col::new(table_name, "tag"),
+            rarity: __sdk::__query_builder::Col::new(table_name, "rarity"),
+            not_pickupable: __sdk::__query_builder::Col::new(table_name, "not_pickupable"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `CargoDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct CargoDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<CargoDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for CargoDesc {
+    type IxCols = CargoDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        CargoDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

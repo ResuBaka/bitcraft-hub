@@ -140,3 +140,19 @@ impl<'ctx> ActionBarStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ActionBarState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait action_bar_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ActionBarState`.
+    fn action_bar_state(&self) -> __sdk::__query_builder::Table<ActionBarState>;
+}
+
+impl action_bar_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn action_bar_state(&self) -> __sdk::__query_builder::Table<ActionBarState> {
+        __sdk::__query_builder::Table::new("action_bar_state")
+    }
+}

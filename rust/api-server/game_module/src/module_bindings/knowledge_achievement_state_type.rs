@@ -16,3 +16,37 @@ pub struct KnowledgeAchievementState {
 impl __sdk::InModule for KnowledgeAchievementState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgeAchievementState`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgeAchievementStateCols {
+    pub entity_id: __sdk::__query_builder::Col<KnowledgeAchievementState, u64>,
+    pub entries: __sdk::__query_builder::Col<KnowledgeAchievementState, Vec<KnowledgeEntry>>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgeAchievementState {
+    type Cols = KnowledgeAchievementStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgeAchievementStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            entries: __sdk::__query_builder::Col::new(table_name, "entries"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgeAchievementState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgeAchievementStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<KnowledgeAchievementState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgeAchievementState {
+    type IxCols = KnowledgeAchievementStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgeAchievementStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

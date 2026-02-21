@@ -144,3 +144,19 @@ impl<'ctx> StagedPillarShapingDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PillarShapingDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_pillar_shaping_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PillarShapingDesc`.
+    fn staged_pillar_shaping_desc(&self) -> __sdk::__query_builder::Table<PillarShapingDesc>;
+}
+
+impl staged_pillar_shaping_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_pillar_shaping_desc(&self) -> __sdk::__query_builder::Table<PillarShapingDesc> {
+        __sdk::__query_builder::Table::new("staged_pillar_shaping_desc")
+    }
+}

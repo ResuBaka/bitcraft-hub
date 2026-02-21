@@ -142,3 +142,19 @@ impl<'ctx> BuildingRepairsDescCargoIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BuildingRepairsDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait building_repairs_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BuildingRepairsDesc`.
+    fn building_repairs_desc(&self) -> __sdk::__query_builder::Table<BuildingRepairsDesc>;
+}
+
+impl building_repairs_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn building_repairs_desc(&self) -> __sdk::__query_builder::Table<BuildingRepairsDesc> {
+        __sdk::__query_builder::Table::new("building_repairs_desc")
+    }
+}

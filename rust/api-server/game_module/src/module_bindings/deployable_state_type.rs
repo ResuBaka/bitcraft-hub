@@ -19,3 +19,54 @@ pub struct DeployableState {
 impl __sdk::InModule for DeployableState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DeployableState`.
+///
+/// Provides typed access to columns for query building.
+pub struct DeployableStateCols {
+    pub entity_id: __sdk::__query_builder::Col<DeployableState, u64>,
+    pub owner_id: __sdk::__query_builder::Col<DeployableState, u64>,
+    pub claim_entity_id: __sdk::__query_builder::Col<DeployableState, u64>,
+    pub direction: __sdk::__query_builder::Col<DeployableState, i32>,
+    pub deployable_description_id: __sdk::__query_builder::Col<DeployableState, i32>,
+    pub nickname: __sdk::__query_builder::Col<DeployableState, String>,
+    pub hidden: __sdk::__query_builder::Col<DeployableState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for DeployableState {
+    type Cols = DeployableStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DeployableStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_id: __sdk::__query_builder::Col::new(table_name, "owner_id"),
+            claim_entity_id: __sdk::__query_builder::Col::new(table_name, "claim_entity_id"),
+            direction: __sdk::__query_builder::Col::new(table_name, "direction"),
+            deployable_description_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "deployable_description_id",
+            ),
+            nickname: __sdk::__query_builder::Col::new(table_name, "nickname"),
+            hidden: __sdk::__query_builder::Col::new(table_name, "hidden"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DeployableState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DeployableStateIxCols {
+    pub claim_entity_id: __sdk::__query_builder::IxCol<DeployableState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<DeployableState, u64>,
+    pub owner_id: __sdk::__query_builder::IxCol<DeployableState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DeployableState {
+    type IxCols = DeployableStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DeployableStateIxCols {
+            claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_id: __sdk::__query_builder::IxCol::new(table_name, "owner_id"),
+        }
+    }
+}

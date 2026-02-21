@@ -142,3 +142,19 @@ impl<'ctx> EnemyScalingStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnemyScalingState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait enemy_scaling_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnemyScalingState`.
+    fn enemy_scaling_state(&self) -> __sdk::__query_builder::Table<EnemyScalingState>;
+}
+
+impl enemy_scaling_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn enemy_scaling_state(&self) -> __sdk::__query_builder::Table<EnemyScalingState> {
+        __sdk::__query_builder::Table::new("enemy_scaling_state")
+    }
+}

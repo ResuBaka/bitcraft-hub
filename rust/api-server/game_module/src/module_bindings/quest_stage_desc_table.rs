@@ -141,3 +141,19 @@ impl<'ctx> QuestStageDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `QuestStageDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait quest_stage_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `QuestStageDesc`.
+    fn quest_stage_desc(&self) -> __sdk::__query_builder::Table<QuestStageDesc>;
+}
+
+impl quest_stage_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn quest_stage_desc(&self) -> __sdk::__query_builder::Table<QuestStageDesc> {
+        __sdk::__query_builder::Table::new("quest_stage_desc")
+    }
+}

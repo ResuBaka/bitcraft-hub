@@ -23,3 +23,51 @@ pub struct ResourceSpawnTimer {
 impl __sdk::InModule for ResourceSpawnTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourceSpawnTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourceSpawnTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<ResourceSpawnTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<ResourceSpawnTimer, __sdk::ScheduleAt>,
+    pub entity_id: __sdk::__query_builder::Col<ResourceSpawnTimer, Option<u64>>,
+    pub resource_id: __sdk::__query_builder::Col<ResourceSpawnTimer, i32>,
+    pub coordinates: __sdk::__query_builder::Col<ResourceSpawnTimer, SmallHexTileMessage>,
+    pub direction_index: __sdk::__query_builder::Col<ResourceSpawnTimer, i32>,
+    pub health: __sdk::__query_builder::Col<ResourceSpawnTimer, i32>,
+    pub check_buildings: __sdk::__query_builder::Col<ResourceSpawnTimer, bool>,
+    pub check_resources: __sdk::__query_builder::Col<ResourceSpawnTimer, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourceSpawnTimer {
+    type Cols = ResourceSpawnTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourceSpawnTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            resource_id: __sdk::__query_builder::Col::new(table_name, "resource_id"),
+            coordinates: __sdk::__query_builder::Col::new(table_name, "coordinates"),
+            direction_index: __sdk::__query_builder::Col::new(table_name, "direction_index"),
+            health: __sdk::__query_builder::Col::new(table_name, "health"),
+            check_buildings: __sdk::__query_builder::Col::new(table_name, "check_buildings"),
+            check_resources: __sdk::__query_builder::Col::new(table_name, "check_resources"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourceSpawnTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourceSpawnTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<ResourceSpawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourceSpawnTimer {
+    type IxCols = ResourceSpawnTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourceSpawnTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

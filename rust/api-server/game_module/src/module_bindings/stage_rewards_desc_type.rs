@@ -17,3 +17,39 @@ pub struct StageRewardsDesc {
 impl __sdk::InModule for StageRewardsDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `StageRewardsDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct StageRewardsDescCols {
+    pub id: __sdk::__query_builder::Col<StageRewardsDesc, i32>,
+    pub chain_desc_id: __sdk::__query_builder::Col<StageRewardsDesc, i32>,
+    pub rewards: __sdk::__query_builder::Col<StageRewardsDesc, Vec<ItemStack>>,
+}
+
+impl __sdk::__query_builder::HasCols for StageRewardsDesc {
+    type Cols = StageRewardsDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        StageRewardsDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            chain_desc_id: __sdk::__query_builder::Col::new(table_name, "chain_desc_id"),
+            rewards: __sdk::__query_builder::Col::new(table_name, "rewards"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `StageRewardsDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct StageRewardsDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<StageRewardsDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for StageRewardsDesc {
+    type IxCols = StageRewardsDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        StageRewardsDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

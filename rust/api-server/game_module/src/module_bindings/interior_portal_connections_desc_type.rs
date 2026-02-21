@@ -17,3 +17,50 @@ pub struct InteriorPortalConnectionsDesc {
 impl __sdk::InModule for InteriorPortalConnectionsDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorPortalConnectionsDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorPortalConnectionsDescCols {
+    pub id: __sdk::__query_builder::Col<InteriorPortalConnectionsDesc, i32>,
+    pub entrance_spawn_id: __sdk::__query_builder::Col<InteriorPortalConnectionsDesc, i32>,
+    pub entrance_portal_id: __sdk::__query_builder::Col<InteriorPortalConnectionsDesc, i32>,
+    pub exit_spawn_id: __sdk::__query_builder::Col<InteriorPortalConnectionsDesc, i32>,
+    pub exit_portal_id: __sdk::__query_builder::Col<InteriorPortalConnectionsDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorPortalConnectionsDesc {
+    type Cols = InteriorPortalConnectionsDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorPortalConnectionsDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            entrance_spawn_id: __sdk::__query_builder::Col::new(table_name, "entrance_spawn_id"),
+            entrance_portal_id: __sdk::__query_builder::Col::new(table_name, "entrance_portal_id"),
+            exit_spawn_id: __sdk::__query_builder::Col::new(table_name, "exit_spawn_id"),
+            exit_portal_id: __sdk::__query_builder::Col::new(table_name, "exit_portal_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorPortalConnectionsDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorPortalConnectionsDescIxCols {
+    pub entrance_portal_id: __sdk::__query_builder::IxCol<InteriorPortalConnectionsDesc, i32>,
+    pub entrance_spawn_id: __sdk::__query_builder::IxCol<InteriorPortalConnectionsDesc, i32>,
+    pub id: __sdk::__query_builder::IxCol<InteriorPortalConnectionsDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorPortalConnectionsDesc {
+    type IxCols = InteriorPortalConnectionsDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorPortalConnectionsDescIxCols {
+            entrance_portal_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "entrance_portal_id",
+            ),
+            entrance_spawn_id: __sdk::__query_builder::IxCol::new(table_name, "entrance_spawn_id"),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

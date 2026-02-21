@@ -14,3 +14,37 @@ pub struct WindDbgDesc {
 impl __sdk::InModule for WindDbgDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `WindDbgDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct WindDbgDescCols {
+    pub id: __sdk::__query_builder::Col<WindDbgDesc, i32>,
+    pub time_multiplier: __sdk::__query_builder::Col<WindDbgDesc, f64>,
+}
+
+impl __sdk::__query_builder::HasCols for WindDbgDesc {
+    type Cols = WindDbgDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        WindDbgDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            time_multiplier: __sdk::__query_builder::Col::new(table_name, "time_multiplier"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `WindDbgDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct WindDbgDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<WindDbgDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for WindDbgDesc {
+    type IxCols = WindDbgDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        WindDbgDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

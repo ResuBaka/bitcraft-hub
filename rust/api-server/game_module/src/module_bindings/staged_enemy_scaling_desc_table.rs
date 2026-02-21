@@ -142,3 +142,19 @@ impl<'ctx> StagedEnemyScalingDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnemyScalingDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_enemy_scaling_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnemyScalingDesc`.
+    fn staged_enemy_scaling_desc(&self) -> __sdk::__query_builder::Table<EnemyScalingDesc>;
+}
+
+impl staged_enemy_scaling_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_enemy_scaling_desc(&self) -> __sdk::__query_builder::Table<EnemyScalingDesc> {
+        __sdk::__query_builder::Table::new("staged_enemy_scaling_desc")
+    }
+}

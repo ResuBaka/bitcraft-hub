@@ -14,3 +14,40 @@ pub struct BarterStallState {
 impl __sdk::InModule for BarterStallState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BarterStallState`.
+///
+/// Provides typed access to columns for query building.
+pub struct BarterStallStateCols {
+    pub entity_id: __sdk::__query_builder::Col<BarterStallState, u64>,
+    pub market_mode_enabled: __sdk::__query_builder::Col<BarterStallState, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for BarterStallState {
+    type Cols = BarterStallStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BarterStallStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            market_mode_enabled: __sdk::__query_builder::Col::new(
+                table_name,
+                "market_mode_enabled",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BarterStallState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BarterStallStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<BarterStallState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BarterStallState {
+    type IxCols = BarterStallStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BarterStallStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

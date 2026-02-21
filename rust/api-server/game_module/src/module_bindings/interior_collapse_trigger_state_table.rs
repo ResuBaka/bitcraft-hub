@@ -146,3 +146,23 @@ impl<'ctx> InteriorCollapseTriggerStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InteriorCollapseTriggerState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait interior_collapse_trigger_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InteriorCollapseTriggerState`.
+    fn interior_collapse_trigger_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<InteriorCollapseTriggerState>;
+}
+
+impl interior_collapse_trigger_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn interior_collapse_trigger_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<InteriorCollapseTriggerState> {
+        __sdk::__query_builder::Table::new("interior_collapse_trigger_state")
+    }
+}

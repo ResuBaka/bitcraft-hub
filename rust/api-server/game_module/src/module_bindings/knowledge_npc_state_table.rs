@@ -143,3 +143,19 @@ impl<'ctx> KnowledgeNpcStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `KnowledgeNpcState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait knowledge_npc_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `KnowledgeNpcState`.
+    fn knowledge_npc_state(&self) -> __sdk::__query_builder::Table<KnowledgeNpcState>;
+}
+
+impl knowledge_npc_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn knowledge_npc_state(&self) -> __sdk::__query_builder::Table<KnowledgeNpcState> {
+        __sdk::__query_builder::Table::new("knowledge_npc_state")
+    }
+}

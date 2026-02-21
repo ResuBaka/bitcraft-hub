@@ -142,3 +142,19 @@ impl<'ctx> ExtractOutcomeStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ExtractOutcomeState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait extract_outcome_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ExtractOutcomeState`.
+    fn extract_outcome_state(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState>;
+}
+
+impl extract_outcome_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn extract_outcome_state(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState> {
+        __sdk::__query_builder::Table::new("extract_outcome_state")
+    }
+}

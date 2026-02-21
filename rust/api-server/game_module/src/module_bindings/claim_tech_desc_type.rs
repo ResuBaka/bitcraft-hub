@@ -25,3 +25,58 @@ pub struct ClaimTechDesc {
 impl __sdk::InModule for ClaimTechDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ClaimTechDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ClaimTechDescCols {
+    pub id: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub description: __sdk::__query_builder::Col<ClaimTechDesc, String>,
+    pub tier: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub supplies_cost: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub research_time: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub requirements: __sdk::__query_builder::Col<ClaimTechDesc, Vec<i32>>,
+    pub input: __sdk::__query_builder::Col<ClaimTechDesc, Vec<ItemStack>>,
+    pub members: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub area: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub supplies: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub xp_to_mint_hex_coin: __sdk::__query_builder::Col<ClaimTechDesc, u32>,
+}
+
+impl __sdk::__query_builder::HasCols for ClaimTechDesc {
+    type Cols = ClaimTechDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ClaimTechDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            supplies_cost: __sdk::__query_builder::Col::new(table_name, "supplies_cost"),
+            research_time: __sdk::__query_builder::Col::new(table_name, "research_time"),
+            requirements: __sdk::__query_builder::Col::new(table_name, "requirements"),
+            input: __sdk::__query_builder::Col::new(table_name, "input"),
+            members: __sdk::__query_builder::Col::new(table_name, "members"),
+            area: __sdk::__query_builder::Col::new(table_name, "area"),
+            supplies: __sdk::__query_builder::Col::new(table_name, "supplies"),
+            xp_to_mint_hex_coin: __sdk::__query_builder::Col::new(
+                table_name,
+                "xp_to_mint_hex_coin",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ClaimTechDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ClaimTechDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ClaimTechDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ClaimTechDesc {
+    type IxCols = ClaimTechDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ClaimTechDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

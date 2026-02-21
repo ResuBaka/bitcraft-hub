@@ -15,3 +15,39 @@ pub struct RegionPopulationInfo {
 impl __sdk::InModule for RegionPopulationInfo {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `RegionPopulationInfo`.
+///
+/// Provides typed access to columns for query building.
+pub struct RegionPopulationInfoCols {
+    pub region_id: __sdk::__query_builder::Col<RegionPopulationInfo, u8>,
+    pub signed_in_players: __sdk::__query_builder::Col<RegionPopulationInfo, u32>,
+    pub players_in_queue: __sdk::__query_builder::Col<RegionPopulationInfo, u32>,
+}
+
+impl __sdk::__query_builder::HasCols for RegionPopulationInfo {
+    type Cols = RegionPopulationInfoCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        RegionPopulationInfoCols {
+            region_id: __sdk::__query_builder::Col::new(table_name, "region_id"),
+            signed_in_players: __sdk::__query_builder::Col::new(table_name, "signed_in_players"),
+            players_in_queue: __sdk::__query_builder::Col::new(table_name, "players_in_queue"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `RegionPopulationInfo`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct RegionPopulationInfoIxCols {
+    pub region_id: __sdk::__query_builder::IxCol<RegionPopulationInfo, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for RegionPopulationInfo {
+    type IxCols = RegionPopulationInfoIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        RegionPopulationInfoIxCols {
+            region_id: __sdk::__query_builder::IxCol::new(table_name, "region_id"),
+        }
+    }
+}

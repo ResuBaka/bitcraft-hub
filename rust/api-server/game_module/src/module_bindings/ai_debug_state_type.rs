@@ -20,3 +20,48 @@ pub struct AiDebugState {
 impl __sdk::InModule for AiDebugState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AiDebugState`.
+///
+/// Provides typed access to columns for query building.
+pub struct AiDebugStateCols {
+    pub entity_id: __sdk::__query_builder::Col<AiDebugState, u64>,
+    pub target_entity_id: __sdk::__query_builder::Col<AiDebugState, u64>,
+    pub current_destination: __sdk::__query_builder::Col<AiDebugState, OffsetCoordinatesFloat>,
+    pub current_position: __sdk::__query_builder::Col<AiDebugState, OffsetCoordinatesFloat>,
+    pub target_position: __sdk::__query_builder::Col<AiDebugState, OffsetCoordinatesFloat>,
+    pub dp: __sdk::__query_builder::Col<AiDebugState, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for AiDebugState {
+    type Cols = AiDebugStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AiDebugStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            target_entity_id: __sdk::__query_builder::Col::new(table_name, "target_entity_id"),
+            current_destination: __sdk::__query_builder::Col::new(
+                table_name,
+                "current_destination",
+            ),
+            current_position: __sdk::__query_builder::Col::new(table_name, "current_position"),
+            target_position: __sdk::__query_builder::Col::new(table_name, "target_position"),
+            dp: __sdk::__query_builder::Col::new(table_name, "dp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AiDebugState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AiDebugStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<AiDebugState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AiDebugState {
+    type IxCols = AiDebugStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AiDebugStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

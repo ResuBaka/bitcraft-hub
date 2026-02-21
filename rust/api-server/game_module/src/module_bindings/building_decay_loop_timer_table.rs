@@ -143,3 +143,19 @@ impl<'ctx> BuildingDecayLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BuildingDecayLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait building_decay_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BuildingDecayLoopTimer`.
+    fn building_decay_loop_timer(&self) -> __sdk::__query_builder::Table<BuildingDecayLoopTimer>;
+}
+
+impl building_decay_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn building_decay_loop_timer(&self) -> __sdk::__query_builder::Table<BuildingDecayLoopTimer> {
+        __sdk::__query_builder::Table::new("building_decay_loop_timer")
+    }
+}

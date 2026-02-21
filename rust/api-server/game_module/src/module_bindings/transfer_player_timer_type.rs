@@ -21,3 +21,50 @@ pub struct TransferPlayerTimer {
 impl __sdk::InModule for TransferPlayerTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TransferPlayerTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct TransferPlayerTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<TransferPlayerTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<TransferPlayerTimer, __sdk::ScheduleAt>,
+    pub entity_id: __sdk::__query_builder::Col<TransferPlayerTimer, u64>,
+    pub destination: __sdk::__query_builder::Col<TransferPlayerTimer, FloatHexTileMessage>,
+    pub new_region_index: __sdk::__query_builder::Col<TransferPlayerTimer, u8>,
+    pub with_vehicle: __sdk::__query_builder::Col<TransferPlayerTimer, bool>,
+    pub teleport_energy_cost: __sdk::__query_builder::Col<TransferPlayerTimer, f32>,
+}
+
+impl __sdk::__query_builder::HasCols for TransferPlayerTimer {
+    type Cols = TransferPlayerTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TransferPlayerTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            destination: __sdk::__query_builder::Col::new(table_name, "destination"),
+            new_region_index: __sdk::__query_builder::Col::new(table_name, "new_region_index"),
+            with_vehicle: __sdk::__query_builder::Col::new(table_name, "with_vehicle"),
+            teleport_energy_cost: __sdk::__query_builder::Col::new(
+                table_name,
+                "teleport_energy_cost",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TransferPlayerTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TransferPlayerTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<TransferPlayerTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TransferPlayerTimer {
+    type IxCols = TransferPlayerTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TransferPlayerTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

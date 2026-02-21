@@ -21,3 +21,64 @@ pub struct ModerationActionLogEntry {
 impl __sdk::InModule for ModerationActionLogEntry {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ModerationActionLogEntry`.
+///
+/// Provides typed access to columns for query building.
+pub struct ModerationActionLogEntryCols {
+    pub entity_id: __sdk::__query_builder::Col<ModerationActionLogEntry, u64>,
+    pub report_entity_id: __sdk::__query_builder::Col<ModerationActionLogEntry, u64>,
+    pub reported_player_entity_id: __sdk::__query_builder::Col<ModerationActionLogEntry, u64>,
+    pub admin_name: __sdk::__query_builder::Col<ModerationActionLogEntry, String>,
+    pub reported_player_username: __sdk::__query_builder::Col<ModerationActionLogEntry, String>,
+    pub action_type: __sdk::__query_builder::Col<ModerationActionLogEntry, String>,
+    pub moderation_notice: __sdk::__query_builder::Col<ModerationActionLogEntry, String>,
+    pub details: __sdk::__query_builder::Col<ModerationActionLogEntry, String>,
+    pub timestamp: __sdk::__query_builder::Col<ModerationActionLogEntry, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ModerationActionLogEntry {
+    type Cols = ModerationActionLogEntryCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ModerationActionLogEntryCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            report_entity_id: __sdk::__query_builder::Col::new(table_name, "report_entity_id"),
+            reported_player_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "reported_player_entity_id",
+            ),
+            admin_name: __sdk::__query_builder::Col::new(table_name, "admin_name"),
+            reported_player_username: __sdk::__query_builder::Col::new(
+                table_name,
+                "reported_player_username",
+            ),
+            action_type: __sdk::__query_builder::Col::new(table_name, "action_type"),
+            moderation_notice: __sdk::__query_builder::Col::new(table_name, "moderation_notice"),
+            details: __sdk::__query_builder::Col::new(table_name, "details"),
+            timestamp: __sdk::__query_builder::Col::new(table_name, "timestamp"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ModerationActionLogEntry`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ModerationActionLogEntryIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ModerationActionLogEntry, u64>,
+    pub report_entity_id: __sdk::__query_builder::IxCol<ModerationActionLogEntry, u64>,
+    pub reported_player_entity_id: __sdk::__query_builder::IxCol<ModerationActionLogEntry, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ModerationActionLogEntry {
+    type IxCols = ModerationActionLogEntryIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ModerationActionLogEntryIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            report_entity_id: __sdk::__query_builder::IxCol::new(table_name, "report_entity_id"),
+            reported_player_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "reported_player_entity_id",
+            ),
+        }
+    }
+}

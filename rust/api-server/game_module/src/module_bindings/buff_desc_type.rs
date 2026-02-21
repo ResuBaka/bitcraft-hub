@@ -27,3 +27,60 @@ pub struct BuffDesc {
 impl __sdk::InModule for BuffDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuffDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuffDescCols {
+    pub id: __sdk::__query_builder::Col<BuffDesc, i32>,
+    pub buff_type_id: __sdk::__query_builder::Col<BuffDesc, i32>,
+    pub description: __sdk::__query_builder::Col<BuffDesc, String>,
+    pub priority: __sdk::__query_builder::Col<BuffDesc, i32>,
+    pub duration: __sdk::__query_builder::Col<BuffDesc, i32>,
+    pub warn_time: __sdk::__query_builder::Col<BuffDesc, f32>,
+    pub online_timestamp: __sdk::__query_builder::Col<BuffDesc, bool>,
+    pub beneficial: __sdk::__query_builder::Col<BuffDesc, bool>,
+    pub icon_asset_name: __sdk::__query_builder::Col<BuffDesc, String>,
+    pub stats: __sdk::__query_builder::Col<BuffDesc, Vec<CsvStatEntry>>,
+    pub vfx: __sdk::__query_builder::Col<BuffDesc, String>,
+    pub vfx_attachment_point: __sdk::__query_builder::Col<BuffDesc, VfxAttachmentPoint>,
+}
+
+impl __sdk::__query_builder::HasCols for BuffDesc {
+    type Cols = BuffDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuffDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            buff_type_id: __sdk::__query_builder::Col::new(table_name, "buff_type_id"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            priority: __sdk::__query_builder::Col::new(table_name, "priority"),
+            duration: __sdk::__query_builder::Col::new(table_name, "duration"),
+            warn_time: __sdk::__query_builder::Col::new(table_name, "warn_time"),
+            online_timestamp: __sdk::__query_builder::Col::new(table_name, "online_timestamp"),
+            beneficial: __sdk::__query_builder::Col::new(table_name, "beneficial"),
+            icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
+            stats: __sdk::__query_builder::Col::new(table_name, "stats"),
+            vfx: __sdk::__query_builder::Col::new(table_name, "vfx"),
+            vfx_attachment_point: __sdk::__query_builder::Col::new(
+                table_name,
+                "vfx_attachment_point",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuffDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuffDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<BuffDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuffDesc {
+    type IxCols = BuffDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuffDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

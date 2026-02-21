@@ -144,3 +144,19 @@ impl<'ctx> EmpireNotificationDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EmpireNotificationDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait empire_notification_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EmpireNotificationDesc`.
+    fn empire_notification_desc(&self) -> __sdk::__query_builder::Table<EmpireNotificationDesc>;
+}
+
+impl empire_notification_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn empire_notification_desc(&self) -> __sdk::__query_builder::Table<EmpireNotificationDesc> {
+        __sdk::__query_builder::Table::new("empire_notification_desc")
+    }
+}

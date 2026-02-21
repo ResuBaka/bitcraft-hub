@@ -159,3 +159,23 @@ impl<'ctx> ClaimLocalSupplySecurityThresholdStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ClaimLocalSupplySecurityThresholdState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait claim_local_supply_security_threshold_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ClaimLocalSupplySecurityThresholdState`.
+    fn claim_local_supply_security_threshold_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<ClaimLocalSupplySecurityThresholdState>;
+}
+
+impl claim_local_supply_security_threshold_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn claim_local_supply_security_threshold_state(
+        &self,
+    ) -> __sdk::__query_builder::Table<ClaimLocalSupplySecurityThresholdState> {
+        __sdk::__query_builder::Table::new("claim_local_supply_security_threshold_state")
+    }
+}

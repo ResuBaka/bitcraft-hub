@@ -140,3 +140,19 @@ impl<'ctx> StagedAlertDescAlertTypeUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AlertDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_alert_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AlertDesc`.
+    fn staged_alert_desc(&self) -> __sdk::__query_builder::Table<AlertDesc>;
+}
+
+impl staged_alert_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_alert_desc(&self) -> __sdk::__query_builder::Table<AlertDesc> {
+        __sdk::__query_builder::Table::new("staged_alert_desc")
+    }
+}

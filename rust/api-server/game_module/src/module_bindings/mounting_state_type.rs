@@ -15,3 +15,47 @@ pub struct MountingState {
 impl __sdk::InModule for MountingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `MountingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct MountingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<MountingState, u64>,
+    pub deployable_entity_id: __sdk::__query_builder::Col<MountingState, u64>,
+    pub deployable_slot: __sdk::__query_builder::Col<MountingState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for MountingState {
+    type Cols = MountingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        MountingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            deployable_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "deployable_entity_id",
+            ),
+            deployable_slot: __sdk::__query_builder::Col::new(table_name, "deployable_slot"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `MountingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct MountingStateIxCols {
+    pub deployable_entity_id: __sdk::__query_builder::IxCol<MountingState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<MountingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for MountingState {
+    type IxCols = MountingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        MountingStateIxCols {
+            deployable_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "deployable_entity_id",
+            ),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

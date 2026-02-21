@@ -140,3 +140,19 @@ impl<'ctx> ServerIdentityVersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ServerIdentity`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait server_identityQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ServerIdentity`.
+    fn server_identity(&self) -> __sdk::__query_builder::Table<ServerIdentity>;
+}
+
+impl server_identityQueryTableAccess for __sdk::QueryTableAccessor {
+    fn server_identity(&self) -> __sdk::__query_builder::Table<ServerIdentity> {
+        __sdk::__query_builder::Table::new("server_identity")
+    }
+}

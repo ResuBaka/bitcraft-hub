@@ -37,7 +37,7 @@ pub trait building_set_nickname {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_building_set_nickname`] callbacks.
     fn building_set_nickname(&self, request: PlayerBuildingSetNicknameRequest)
-    -> __sdk::Result<()>;
+        -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `building_set_nickname`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -48,8 +48,8 @@ pub trait building_set_nickname {
     fn on_building_set_nickname(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerBuildingSetNicknameRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingSetNicknameCallbackId;
     /// Cancel a callback previously registered by [`Self::on_building_set_nickname`],
     /// causing it not to run in the future.
@@ -67,8 +67,8 @@ impl building_set_nickname for super::RemoteReducers {
     fn on_building_set_nickname(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBuildingSetNicknameRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingSetNicknameCallbackId {
         BuildingSetNicknameCallbackId(self.imp.on_reducer(
             "building_set_nickname",

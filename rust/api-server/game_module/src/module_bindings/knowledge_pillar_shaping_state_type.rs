@@ -16,3 +16,37 @@ pub struct KnowledgePillarShapingState {
 impl __sdk::InModule for KnowledgePillarShapingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgePillarShapingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgePillarShapingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<KnowledgePillarShapingState, u64>,
+    pub entries: __sdk::__query_builder::Col<KnowledgePillarShapingState, Vec<KnowledgeEntry>>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgePillarShapingState {
+    type Cols = KnowledgePillarShapingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgePillarShapingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            entries: __sdk::__query_builder::Col::new(table_name, "entries"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgePillarShapingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgePillarShapingStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<KnowledgePillarShapingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgePillarShapingState {
+    type IxCols = KnowledgePillarShapingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgePillarShapingStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

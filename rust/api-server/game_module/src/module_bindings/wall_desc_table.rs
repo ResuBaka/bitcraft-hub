@@ -140,3 +140,19 @@ impl<'ctx> WallDescBuildingIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `WallDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait wall_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `WallDesc`.
+    fn wall_desc(&self) -> __sdk::__query_builder::Table<WallDesc>;
+}
+
+impl wall_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn wall_desc(&self) -> __sdk::__query_builder::Table<WallDesc> {
+        __sdk::__query_builder::Table::new("wall_desc")
+    }
+}

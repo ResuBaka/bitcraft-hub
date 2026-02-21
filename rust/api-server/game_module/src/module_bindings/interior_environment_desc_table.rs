@@ -143,3 +143,19 @@ impl<'ctx> InteriorEnvironmentDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InteriorEnvironmentDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait interior_environment_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InteriorEnvironmentDesc`.
+    fn interior_environment_desc(&self) -> __sdk::__query_builder::Table<InteriorEnvironmentDesc>;
+}
+
+impl interior_environment_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn interior_environment_desc(&self) -> __sdk::__query_builder::Table<InteriorEnvironmentDesc> {
+        __sdk::__query_builder::Table::new("interior_environment_desc")
+    }
+}

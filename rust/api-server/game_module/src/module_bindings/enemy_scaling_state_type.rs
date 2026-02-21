@@ -14,3 +14,37 @@ pub struct EnemyScalingState {
 impl __sdk::InModule for EnemyScalingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EnemyScalingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct EnemyScalingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<EnemyScalingState, u64>,
+    pub enemy_scaling_id: __sdk::__query_builder::Col<EnemyScalingState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for EnemyScalingState {
+    type Cols = EnemyScalingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EnemyScalingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            enemy_scaling_id: __sdk::__query_builder::Col::new(table_name, "enemy_scaling_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EnemyScalingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EnemyScalingStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<EnemyScalingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EnemyScalingState {
+    type IxCols = EnemyScalingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EnemyScalingStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

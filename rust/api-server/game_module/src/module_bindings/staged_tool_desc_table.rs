@@ -140,3 +140,19 @@ impl<'ctx> StagedToolDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ToolDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_tool_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ToolDesc`.
+    fn staged_tool_desc(&self) -> __sdk::__query_builder::Table<ToolDesc>;
+}
+
+impl staged_tool_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_tool_desc(&self) -> __sdk::__query_builder::Table<ToolDesc> {
+        __sdk::__query_builder::Table::new("staged_tool_desc")
+    }
+}

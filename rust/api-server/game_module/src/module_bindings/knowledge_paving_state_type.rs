@@ -16,3 +16,37 @@ pub struct KnowledgePavingState {
 impl __sdk::InModule for KnowledgePavingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgePavingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgePavingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<KnowledgePavingState, u64>,
+    pub entries: __sdk::__query_builder::Col<KnowledgePavingState, Vec<KnowledgeEntry>>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgePavingState {
+    type Cols = KnowledgePavingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgePavingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            entries: __sdk::__query_builder::Col::new(table_name, "entries"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgePavingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgePavingStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<KnowledgePavingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgePavingState {
+    type IxCols = KnowledgePavingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgePavingStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

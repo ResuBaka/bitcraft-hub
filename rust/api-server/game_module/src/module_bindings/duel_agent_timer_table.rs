@@ -140,3 +140,19 @@ impl<'ctx> DuelAgentTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DuelAgentTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait duel_agent_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DuelAgentTimer`.
+    fn duel_agent_timer(&self) -> __sdk::__query_builder::Table<DuelAgentTimer>;
+}
+
+impl duel_agent_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn duel_agent_timer(&self) -> __sdk::__query_builder::Table<DuelAgentTimer> {
+        __sdk::__query_builder::Table::new("duel_agent_timer")
+    }
+}

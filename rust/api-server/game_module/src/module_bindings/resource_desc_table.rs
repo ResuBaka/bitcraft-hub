@@ -143,3 +143,19 @@ impl<'ctx> ResourceDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResourceDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait resource_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResourceDesc`.
+    fn resource_desc(&self) -> __sdk::__query_builder::Table<ResourceDesc>;
+}
+
+impl resource_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn resource_desc(&self) -> __sdk::__query_builder::Table<ResourceDesc> {
+        __sdk::__query_builder::Table::new("resource_desc")
+    }
+}

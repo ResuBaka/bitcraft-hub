@@ -142,3 +142,19 @@ impl<'ctx> CollectStatsTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CollectStatsTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait collect_stats_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CollectStatsTimer`.
+    fn collect_stats_timer(&self) -> __sdk::__query_builder::Table<CollectStatsTimer>;
+}
+
+impl collect_stats_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn collect_stats_timer(&self) -> __sdk::__query_builder::Table<CollectStatsTimer> {
+        __sdk::__query_builder::Table::new("collect_stats_timer")
+    }
+}

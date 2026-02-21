@@ -24,3 +24,61 @@ pub struct PathfindingDesc {
 impl __sdk::InModule for PathfindingDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PathfindingDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PathfindingDescCols {
+    pub id: __sdk::__query_builder::Col<PathfindingDesc, i32>,
+    pub can_walk_on_land: __sdk::__query_builder::Col<PathfindingDesc, bool>,
+    pub can_swim: __sdk::__query_builder::Col<PathfindingDesc, bool>,
+    pub requires_transitions: __sdk::__query_builder::Col<PathfindingDesc, bool>,
+    pub min_water_depth: __sdk::__query_builder::Col<PathfindingDesc, i32>,
+    pub max_water_depth: __sdk::__query_builder::Col<PathfindingDesc, i32>,
+    pub max_swim_height_delta: __sdk::__query_builder::Col<PathfindingDesc, i32>,
+    pub avoid_light: __sdk::__query_builder::Col<PathfindingDesc, bool>,
+    pub climb_up_options:
+        __sdk::__query_builder::Col<PathfindingDesc, Vec<PathfindingTraversalOption>>,
+    pub climb_down_options:
+        __sdk::__query_builder::Col<PathfindingDesc, Vec<PathfindingTraversalOption>>,
+}
+
+impl __sdk::__query_builder::HasCols for PathfindingDesc {
+    type Cols = PathfindingDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PathfindingDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            can_walk_on_land: __sdk::__query_builder::Col::new(table_name, "can_walk_on_land"),
+            can_swim: __sdk::__query_builder::Col::new(table_name, "can_swim"),
+            requires_transitions: __sdk::__query_builder::Col::new(
+                table_name,
+                "requires_transitions",
+            ),
+            min_water_depth: __sdk::__query_builder::Col::new(table_name, "min_water_depth"),
+            max_water_depth: __sdk::__query_builder::Col::new(table_name, "max_water_depth"),
+            max_swim_height_delta: __sdk::__query_builder::Col::new(
+                table_name,
+                "max_swim_height_delta",
+            ),
+            avoid_light: __sdk::__query_builder::Col::new(table_name, "avoid_light"),
+            climb_up_options: __sdk::__query_builder::Col::new(table_name, "climb_up_options"),
+            climb_down_options: __sdk::__query_builder::Col::new(table_name, "climb_down_options"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PathfindingDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PathfindingDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<PathfindingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PathfindingDesc {
+    type IxCols = PathfindingDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PathfindingDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

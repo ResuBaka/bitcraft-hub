@@ -148,3 +148,19 @@ impl<'ctx> StagedExtractionRecipeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ExtractionRecipeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_extraction_recipe_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ExtractionRecipeDesc`.
+    fn staged_extraction_recipe_desc(&self) -> __sdk::__query_builder::Table<ExtractionRecipeDesc>;
+}
+
+impl staged_extraction_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_extraction_recipe_desc(&self) -> __sdk::__query_builder::Table<ExtractionRecipeDesc> {
+        __sdk::__query_builder::Table::new("staged_extraction_recipe_desc")
+    }
+}

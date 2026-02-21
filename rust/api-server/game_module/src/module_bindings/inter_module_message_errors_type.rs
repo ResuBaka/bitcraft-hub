@@ -15,3 +15,39 @@ pub struct InterModuleMessageErrors {
 impl __sdk::InModule for InterModuleMessageErrors {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InterModuleMessageErrors`.
+///
+/// Provides typed access to columns for query building.
+pub struct InterModuleMessageErrorsCols {
+    pub sender_module_id: __sdk::__query_builder::Col<InterModuleMessageErrors, u8>,
+    pub message_id: __sdk::__query_builder::Col<InterModuleMessageErrors, u64>,
+    pub error: __sdk::__query_builder::Col<InterModuleMessageErrors, String>,
+}
+
+impl __sdk::__query_builder::HasCols for InterModuleMessageErrors {
+    type Cols = InterModuleMessageErrorsCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InterModuleMessageErrorsCols {
+            sender_module_id: __sdk::__query_builder::Col::new(table_name, "sender_module_id"),
+            message_id: __sdk::__query_builder::Col::new(table_name, "message_id"),
+            error: __sdk::__query_builder::Col::new(table_name, "error"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InterModuleMessageErrors`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InterModuleMessageErrorsIxCols {
+    pub sender_module_id: __sdk::__query_builder::IxCol<InterModuleMessageErrors, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InterModuleMessageErrors {
+    type IxCols = InterModuleMessageErrorsIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InterModuleMessageErrorsIxCols {
+            sender_module_id: __sdk::__query_builder::IxCol::new(table_name, "sender_module_id"),
+        }
+    }
+}

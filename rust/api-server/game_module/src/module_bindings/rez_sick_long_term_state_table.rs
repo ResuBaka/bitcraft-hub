@@ -142,3 +142,19 @@ impl<'ctx> RezSickLongTermStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `RezSickLongTermState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait rez_sick_long_term_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `RezSickLongTermState`.
+    fn rez_sick_long_term_state(&self) -> __sdk::__query_builder::Table<RezSickLongTermState>;
+}
+
+impl rez_sick_long_term_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn rez_sick_long_term_state(&self) -> __sdk::__query_builder::Table<RezSickLongTermState> {
+        __sdk::__query_builder::Table::new("rez_sick_long_term_state")
+    }
+}

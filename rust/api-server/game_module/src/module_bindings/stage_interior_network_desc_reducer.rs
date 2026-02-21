@@ -63,8 +63,8 @@ impl stage_interior_network_desc for super::RemoteReducers {
     fn on_stage_interior_network_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorNetworkDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageInteriorNetworkDescCallbackId {
         StageInteriorNetworkDescCallbackId(self.imp.on_reducer(
             "stage_interior_network_desc",

@@ -146,3 +146,23 @@ impl<'ctx> AdminRestorePlayerStateTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AdminRestorePlayerStateTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait admin_restore_player_state_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AdminRestorePlayerStateTimer`.
+    fn admin_restore_player_state_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<AdminRestorePlayerStateTimer>;
+}
+
+impl admin_restore_player_state_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn admin_restore_player_state_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<AdminRestorePlayerStateTimer> {
+        __sdk::__query_builder::Table::new("admin_restore_player_state_timer")
+    }
+}

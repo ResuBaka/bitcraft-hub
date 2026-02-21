@@ -142,3 +142,19 @@ impl<'ctx> LocationCacheVersionUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LocationCache`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait location_cacheQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LocationCache`.
+    fn location_cache(&self) -> __sdk::__query_builder::Table<LocationCache>;
+}
+
+impl location_cacheQueryTableAccess for __sdk::QueryTableAccessor {
+    fn location_cache(&self) -> __sdk::__query_builder::Table<LocationCache> {
+        __sdk::__query_builder::Table::new("location_cache")
+    }
+}

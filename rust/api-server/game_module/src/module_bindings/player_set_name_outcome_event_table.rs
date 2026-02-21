@@ -143,3 +143,23 @@ impl<'ctx> PlayerSetNameOutcomeEventScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerSetNameOutcomeEvent`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_set_name_outcome_eventQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerSetNameOutcomeEvent`.
+    fn player_set_name_outcome_event(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerSetNameOutcomeEvent>;
+}
+
+impl player_set_name_outcome_eventQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_set_name_outcome_event(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerSetNameOutcomeEvent> {
+        __sdk::__query_builder::Table::new("player_set_name_outcome_event")
+    }
+}

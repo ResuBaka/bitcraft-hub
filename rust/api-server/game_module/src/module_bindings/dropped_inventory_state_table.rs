@@ -142,3 +142,19 @@ impl<'ctx> DroppedInventoryStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `DroppedInventoryState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait dropped_inventory_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `DroppedInventoryState`.
+    fn dropped_inventory_state(&self) -> __sdk::__query_builder::Table<DroppedInventoryState>;
+}
+
+impl dropped_inventory_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn dropped_inventory_state(&self) -> __sdk::__query_builder::Table<DroppedInventoryState> {
+        __sdk::__query_builder::Table::new("dropped_inventory_state")
+    }
+}

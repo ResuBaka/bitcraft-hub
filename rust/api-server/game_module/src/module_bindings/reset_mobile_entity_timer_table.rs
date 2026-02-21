@@ -145,3 +145,19 @@ impl<'ctx> ResetMobileEntityTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ResetMobileEntityTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait reset_mobile_entity_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ResetMobileEntityTimer`.
+    fn reset_mobile_entity_timer(&self) -> __sdk::__query_builder::Table<ResetMobileEntityTimer>;
+}
+
+impl reset_mobile_entity_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn reset_mobile_entity_timer(&self) -> __sdk::__query_builder::Table<ResetMobileEntityTimer> {
+        __sdk::__query_builder::Table::new("reset_mobile_entity_timer")
+    }
+}

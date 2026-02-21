@@ -19,3 +19,49 @@ pub struct InteriorNetworkDesc {
 impl __sdk::InModule for InteriorNetworkDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorNetworkDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorNetworkDescCols {
+    pub building_id: __sdk::__query_builder::Col<InteriorNetworkDesc, i32>,
+    pub dimension_type: __sdk::__query_builder::Col<InteriorNetworkDesc, DimensionType>,
+    pub trigger_collapse_time: __sdk::__query_builder::Col<InteriorNetworkDesc, u32>,
+    pub respawn_time: __sdk::__query_builder::Col<InteriorNetworkDesc, u32>,
+    pub child_interior_instances: __sdk::__query_builder::Col<InteriorNetworkDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorNetworkDesc {
+    type Cols = InteriorNetworkDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorNetworkDescCols {
+            building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
+            dimension_type: __sdk::__query_builder::Col::new(table_name, "dimension_type"),
+            trigger_collapse_time: __sdk::__query_builder::Col::new(
+                table_name,
+                "trigger_collapse_time",
+            ),
+            respawn_time: __sdk::__query_builder::Col::new(table_name, "respawn_time"),
+            child_interior_instances: __sdk::__query_builder::Col::new(
+                table_name,
+                "child_interior_instances",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorNetworkDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorNetworkDescIxCols {
+    pub building_id: __sdk::__query_builder::IxCol<InteriorNetworkDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorNetworkDesc {
+    type IxCols = InteriorNetworkDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorNetworkDescIxCols {
+            building_id: __sdk::__query_builder::IxCol::new(table_name, "building_id"),
+        }
+    }
+}

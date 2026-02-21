@@ -17,3 +17,43 @@ pub struct ResourceClumpDesc {
 impl __sdk::InModule for ResourceClumpDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourceClumpDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourceClumpDescCols {
+    pub id: __sdk::__query_builder::Col<ResourceClumpDesc, i32>,
+    pub resource_id: __sdk::__query_builder::Col<ResourceClumpDesc, Vec<i32>>,
+    pub x: __sdk::__query_builder::Col<ResourceClumpDesc, Vec<i32>>,
+    pub z: __sdk::__query_builder::Col<ResourceClumpDesc, Vec<i32>>,
+    pub direction: __sdk::__query_builder::Col<ResourceClumpDesc, Vec<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourceClumpDesc {
+    type Cols = ResourceClumpDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourceClumpDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            resource_id: __sdk::__query_builder::Col::new(table_name, "resource_id"),
+            x: __sdk::__query_builder::Col::new(table_name, "x"),
+            z: __sdk::__query_builder::Col::new(table_name, "z"),
+            direction: __sdk::__query_builder::Col::new(table_name, "direction"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourceClumpDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourceClumpDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ResourceClumpDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourceClumpDesc {
+    type IxCols = ResourceClumpDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourceClumpDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

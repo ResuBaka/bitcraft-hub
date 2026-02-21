@@ -26,3 +26,66 @@ pub struct ItemConversionRecipeDesc {
 impl __sdk::InModule for ItemConversionRecipeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ItemConversionRecipeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ItemConversionRecipeDescCols {
+    pub id: __sdk::__query_builder::Col<ItemConversionRecipeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ItemConversionRecipeDesc, String>,
+    pub time_cost: __sdk::__query_builder::Col<ItemConversionRecipeDesc, u32>,
+    pub stamina_cost: __sdk::__query_builder::Col<ItemConversionRecipeDesc, u32>,
+    pub location_context: __sdk::__query_builder::Col<ItemConversionRecipeDesc, i32>,
+    pub string_context: __sdk::__query_builder::Col<ItemConversionRecipeDesc, String>,
+    pub output_item: __sdk::__query_builder::Col<ItemConversionRecipeDesc, Option<ItemStack>>,
+    pub input_items: __sdk::__query_builder::Col<ItemConversionRecipeDesc, Vec<ItemStack>>,
+    pub required_equipment_id: __sdk::__query_builder::Col<ItemConversionRecipeDesc, i32>,
+    pub required_equipment_tier: __sdk::__query_builder::Col<ItemConversionRecipeDesc, i32>,
+    pub allow_use_hands: __sdk::__query_builder::Col<ItemConversionRecipeDesc, bool>,
+    pub recipe_performance_id: __sdk::__query_builder::Col<ItemConversionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for ItemConversionRecipeDesc {
+    type Cols = ItemConversionRecipeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ItemConversionRecipeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            time_cost: __sdk::__query_builder::Col::new(table_name, "time_cost"),
+            stamina_cost: __sdk::__query_builder::Col::new(table_name, "stamina_cost"),
+            location_context: __sdk::__query_builder::Col::new(table_name, "location_context"),
+            string_context: __sdk::__query_builder::Col::new(table_name, "string_context"),
+            output_item: __sdk::__query_builder::Col::new(table_name, "output_item"),
+            input_items: __sdk::__query_builder::Col::new(table_name, "input_items"),
+            required_equipment_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_equipment_id",
+            ),
+            required_equipment_tier: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_equipment_tier",
+            ),
+            allow_use_hands: __sdk::__query_builder::Col::new(table_name, "allow_use_hands"),
+            recipe_performance_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "recipe_performance_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ItemConversionRecipeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ItemConversionRecipeDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ItemConversionRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ItemConversionRecipeDesc {
+    type IxCols = ItemConversionRecipeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ItemConversionRecipeDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

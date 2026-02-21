@@ -143,3 +143,19 @@ impl<'ctx> EnvironmentDebuffDescBuffIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EnvironmentDebuffDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait environment_debuff_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EnvironmentDebuffDesc`.
+    fn environment_debuff_desc(&self) -> __sdk::__query_builder::Table<EnvironmentDebuffDesc>;
+}
+
+impl environment_debuff_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn environment_debuff_desc(&self) -> __sdk::__query_builder::Table<EnvironmentDebuffDesc> {
+        __sdk::__query_builder::Table::new("environment_debuff_desc")
+    }
+}

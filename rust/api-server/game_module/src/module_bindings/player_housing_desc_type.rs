@@ -16,3 +16,50 @@ pub struct PlayerHousingDesc {
 impl __sdk::InModule for PlayerHousingDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerHousingDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerHousingDescCols {
+    pub secondary_knowledge_id: __sdk::__query_builder::Col<PlayerHousingDesc, i32>,
+    pub rank: __sdk::__query_builder::Col<PlayerHousingDesc, i32>,
+    pub name: __sdk::__query_builder::Col<PlayerHousingDesc, String>,
+    pub template_building_id: __sdk::__query_builder::Col<PlayerHousingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerHousingDesc {
+    type Cols = PlayerHousingDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerHousingDescCols {
+            secondary_knowledge_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "secondary_knowledge_id",
+            ),
+            rank: __sdk::__query_builder::Col::new(table_name, "rank"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            template_building_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "template_building_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerHousingDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerHousingDescIxCols {
+    pub secondary_knowledge_id: __sdk::__query_builder::IxCol<PlayerHousingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerHousingDesc {
+    type IxCols = PlayerHousingDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerHousingDescIxCols {
+            secondary_knowledge_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "secondary_knowledge_id",
+            ),
+        }
+    }
+}

@@ -21,3 +21,50 @@ pub struct TerraformRecipeDesc {
 impl __sdk::InModule for TerraformRecipeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TerraformRecipeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct TerraformRecipeDescCols {
+    pub difference: __sdk::__query_builder::Col<TerraformRecipeDesc, i16>,
+    pub actions_count: __sdk::__query_builder::Col<TerraformRecipeDesc, i32>,
+    pub tool_requirement: __sdk::__query_builder::Col<TerraformRecipeDesc, Option<ToolRequirement>>,
+    pub stamina_per_action: __sdk::__query_builder::Col<TerraformRecipeDesc, f32>,
+    pub time_per_action: __sdk::__query_builder::Col<TerraformRecipeDesc, f32>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<TerraformRecipeDesc, i32>,
+    pub recipe_performance_id: __sdk::__query_builder::Col<TerraformRecipeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for TerraformRecipeDesc {
+    type Cols = TerraformRecipeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TerraformRecipeDescCols {
+            difference: __sdk::__query_builder::Col::new(table_name, "difference"),
+            actions_count: __sdk::__query_builder::Col::new(table_name, "actions_count"),
+            tool_requirement: __sdk::__query_builder::Col::new(table_name, "tool_requirement"),
+            stamina_per_action: __sdk::__query_builder::Col::new(table_name, "stamina_per_action"),
+            time_per_action: __sdk::__query_builder::Col::new(table_name, "time_per_action"),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
+            recipe_performance_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "recipe_performance_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TerraformRecipeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TerraformRecipeDescIxCols {
+    pub difference: __sdk::__query_builder::IxCol<TerraformRecipeDesc, i16>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TerraformRecipeDesc {
+    type IxCols = TerraformRecipeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TerraformRecipeDescIxCols {
+            difference: __sdk::__query_builder::IxCol::new(table_name, "difference"),
+        }
+    }
+}

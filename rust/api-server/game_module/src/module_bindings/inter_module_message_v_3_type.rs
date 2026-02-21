@@ -17,3 +17,39 @@ pub struct InterModuleMessageV3 {
 impl __sdk::InModule for InterModuleMessageV3 {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InterModuleMessageV3`.
+///
+/// Provides typed access to columns for query building.
+pub struct InterModuleMessageV3Cols {
+    pub id: __sdk::__query_builder::Col<InterModuleMessageV3, u64>,
+    pub to: __sdk::__query_builder::Col<InterModuleMessageV3, u8>,
+    pub contents: __sdk::__query_builder::Col<InterModuleMessageV3, MessageContentsV3>,
+}
+
+impl __sdk::__query_builder::HasCols for InterModuleMessageV3 {
+    type Cols = InterModuleMessageV3Cols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InterModuleMessageV3Cols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            to: __sdk::__query_builder::Col::new(table_name, "to"),
+            contents: __sdk::__query_builder::Col::new(table_name, "contents"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InterModuleMessageV3`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InterModuleMessageV3IxCols {
+    pub id: __sdk::__query_builder::IxCol<InterModuleMessageV3, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InterModuleMessageV3 {
+    type IxCols = InterModuleMessageV3IxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InterModuleMessageV3IxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

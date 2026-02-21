@@ -28,3 +28,61 @@ pub struct PlayerActionState {
 impl __sdk::InModule for PlayerActionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerActionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerActionStateCols {
+    pub auto_id: __sdk::__query_builder::Col<PlayerActionState, u64>,
+    pub chunk_index: __sdk::__query_builder::Col<PlayerActionState, u64>,
+    pub entity_id: __sdk::__query_builder::Col<PlayerActionState, u64>,
+    pub start_time: __sdk::__query_builder::Col<PlayerActionState, u64>,
+    pub duration: __sdk::__query_builder::Col<PlayerActionState, u64>,
+    pub target: __sdk::__query_builder::Col<PlayerActionState, Option<u64>>,
+    pub recipe_id: __sdk::__query_builder::Col<PlayerActionState, Option<i32>>,
+    pub action_type: __sdk::__query_builder::Col<PlayerActionState, PlayerActionType>,
+    pub layer: __sdk::__query_builder::Col<PlayerActionState, PlayerActionLayer>,
+    pub last_action_result: __sdk::__query_builder::Col<PlayerActionState, PlayerActionResult>,
+    pub client_cancel: __sdk::__query_builder::Col<PlayerActionState, bool>,
+    pub _pad: __sdk::__query_builder::Col<PlayerActionState, u32>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerActionState {
+    type Cols = PlayerActionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerActionStateCols {
+            auto_id: __sdk::__query_builder::Col::new(table_name, "auto_id"),
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            start_time: __sdk::__query_builder::Col::new(table_name, "start_time"),
+            duration: __sdk::__query_builder::Col::new(table_name, "duration"),
+            target: __sdk::__query_builder::Col::new(table_name, "target"),
+            recipe_id: __sdk::__query_builder::Col::new(table_name, "recipe_id"),
+            action_type: __sdk::__query_builder::Col::new(table_name, "action_type"),
+            layer: __sdk::__query_builder::Col::new(table_name, "layer"),
+            last_action_result: __sdk::__query_builder::Col::new(table_name, "last_action_result"),
+            client_cancel: __sdk::__query_builder::Col::new(table_name, "client_cancel"),
+            _pad: __sdk::__query_builder::Col::new(table_name, "_pad"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerActionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerActionStateIxCols {
+    pub auto_id: __sdk::__query_builder::IxCol<PlayerActionState, u64>,
+    pub chunk_index: __sdk::__query_builder::IxCol<PlayerActionState, u64>,
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerActionState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerActionState {
+    type IxCols = PlayerActionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerActionStateIxCols {
+            auto_id: __sdk::__query_builder::IxCol::new(table_name, "auto_id"),
+            chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -23,3 +23,60 @@ pub struct TerrainChunkState {
 impl __sdk::InModule for TerrainChunkState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TerrainChunkState`.
+///
+/// Provides typed access to columns for query building.
+pub struct TerrainChunkStateCols {
+    pub chunk_index: __sdk::__query_builder::Col<TerrainChunkState, u64>,
+    pub chunk_x: __sdk::__query_builder::Col<TerrainChunkState, i32>,
+    pub chunk_z: __sdk::__query_builder::Col<TerrainChunkState, i32>,
+    pub dimension: __sdk::__query_builder::Col<TerrainChunkState, u32>,
+    pub biomes: __sdk::__query_builder::Col<TerrainChunkState, Vec<u32>>,
+    pub biome_density: __sdk::__query_builder::Col<TerrainChunkState, Vec<u32>>,
+    pub elevations: __sdk::__query_builder::Col<TerrainChunkState, Vec<i16>>,
+    pub water_levels: __sdk::__query_builder::Col<TerrainChunkState, Vec<i16>>,
+    pub water_body_types: __sdk::__query_builder::Col<TerrainChunkState, Vec<u8>>,
+    pub zoning_types: __sdk::__query_builder::Col<TerrainChunkState, Vec<u8>>,
+    pub original_elevations: __sdk::__query_builder::Col<TerrainChunkState, Vec<i16>>,
+}
+
+impl __sdk::__query_builder::HasCols for TerrainChunkState {
+    type Cols = TerrainChunkStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TerrainChunkStateCols {
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+            chunk_x: __sdk::__query_builder::Col::new(table_name, "chunk_x"),
+            chunk_z: __sdk::__query_builder::Col::new(table_name, "chunk_z"),
+            dimension: __sdk::__query_builder::Col::new(table_name, "dimension"),
+            biomes: __sdk::__query_builder::Col::new(table_name, "biomes"),
+            biome_density: __sdk::__query_builder::Col::new(table_name, "biome_density"),
+            elevations: __sdk::__query_builder::Col::new(table_name, "elevations"),
+            water_levels: __sdk::__query_builder::Col::new(table_name, "water_levels"),
+            water_body_types: __sdk::__query_builder::Col::new(table_name, "water_body_types"),
+            zoning_types: __sdk::__query_builder::Col::new(table_name, "zoning_types"),
+            original_elevations: __sdk::__query_builder::Col::new(
+                table_name,
+                "original_elevations",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TerrainChunkState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TerrainChunkStateIxCols {
+    pub chunk_index: __sdk::__query_builder::IxCol<TerrainChunkState, u64>,
+    pub dimension: __sdk::__query_builder::IxCol<TerrainChunkState, u32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TerrainChunkState {
+    type IxCols = TerrainChunkStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TerrainChunkStateIxCols {
+            chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+            dimension: __sdk::__query_builder::IxCol::new(table_name, "dimension"),
+        }
+    }
+}

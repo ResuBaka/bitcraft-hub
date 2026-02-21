@@ -16,3 +16,41 @@ pub struct EmpireRankDesc {
 impl __sdk::InModule for EmpireRankDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireRankDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireRankDescCols {
+    pub rank: __sdk::__query_builder::Col<EmpireRankDesc, i32>,
+    pub title: __sdk::__query_builder::Col<EmpireRankDesc, String>,
+    pub max_count: __sdk::__query_builder::Col<EmpireRankDesc, Option<i32>>,
+    pub permissions: __sdk::__query_builder::Col<EmpireRankDesc, Vec<bool>>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireRankDesc {
+    type Cols = EmpireRankDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireRankDescCols {
+            rank: __sdk::__query_builder::Col::new(table_name, "rank"),
+            title: __sdk::__query_builder::Col::new(table_name, "title"),
+            max_count: __sdk::__query_builder::Col::new(table_name, "max_count"),
+            permissions: __sdk::__query_builder::Col::new(table_name, "permissions"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireRankDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireRankDescIxCols {
+    pub rank: __sdk::__query_builder::IxCol<EmpireRankDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireRankDesc {
+    type IxCols = EmpireRankDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireRankDescIxCols {
+            rank: __sdk::__query_builder::IxCol::new(table_name, "rank"),
+        }
+    }
+}

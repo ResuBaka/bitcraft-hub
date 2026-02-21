@@ -16,3 +16,41 @@ pub struct SingleResourceClumpInfo {
 impl __sdk::InModule for SingleResourceClumpInfo {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `SingleResourceClumpInfo`.
+///
+/// Provides typed access to columns for query building.
+pub struct SingleResourceClumpInfoCols {
+    pub clump_id: __sdk::__query_builder::Col<SingleResourceClumpInfo, i32>,
+    pub resource_clump_info:
+        __sdk::__query_builder::Col<SingleResourceClumpInfo, ResourceClumpInfo>,
+}
+
+impl __sdk::__query_builder::HasCols for SingleResourceClumpInfo {
+    type Cols = SingleResourceClumpInfoCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        SingleResourceClumpInfoCols {
+            clump_id: __sdk::__query_builder::Col::new(table_name, "clump_id"),
+            resource_clump_info: __sdk::__query_builder::Col::new(
+                table_name,
+                "resource_clump_info",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `SingleResourceClumpInfo`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct SingleResourceClumpInfoIxCols {
+    pub clump_id: __sdk::__query_builder::IxCol<SingleResourceClumpInfo, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for SingleResourceClumpInfo {
+    type IxCols = SingleResourceClumpInfoIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        SingleResourceClumpInfoIxCols {
+            clump_id: __sdk::__query_builder::IxCol::new(table_name, "clump_id"),
+        }
+    }
+}

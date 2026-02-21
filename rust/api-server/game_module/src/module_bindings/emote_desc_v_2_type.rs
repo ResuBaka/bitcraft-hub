@@ -23,3 +23,66 @@ pub struct EmoteDescV2 {
 impl __sdk::InModule for EmoteDescV2 {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmoteDescV2`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmoteDescV2Cols {
+    pub id: __sdk::__query_builder::Col<EmoteDescV2, i32>,
+    pub name: __sdk::__query_builder::Col<EmoteDescV2, String>,
+    pub animation: __sdk::__query_builder::Col<EmoteDescV2, String>,
+    pub duration: __sdk::__query_builder::Col<EmoteDescV2, f32>,
+    pub key_code: __sdk::__query_builder::Col<EmoteDescV2, String>,
+    pub command_line: __sdk::__query_builder::Col<EmoteDescV2, String>,
+    pub allow_while_mounted: __sdk::__query_builder::Col<EmoteDescV2, bool>,
+    pub allow_while_moving: __sdk::__query_builder::Col<EmoteDescV2, bool>,
+    pub enabled_by_collectible_id: __sdk::__query_builder::Col<EmoteDescV2, i32>,
+    pub tool_type: __sdk::__query_builder::Col<EmoteDescV2, i32>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<EmoteDescV2, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for EmoteDescV2 {
+    type Cols = EmoteDescV2Cols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmoteDescV2Cols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            animation: __sdk::__query_builder::Col::new(table_name, "animation"),
+            duration: __sdk::__query_builder::Col::new(table_name, "duration"),
+            key_code: __sdk::__query_builder::Col::new(table_name, "key_code"),
+            command_line: __sdk::__query_builder::Col::new(table_name, "command_line"),
+            allow_while_mounted: __sdk::__query_builder::Col::new(
+                table_name,
+                "allow_while_mounted",
+            ),
+            allow_while_moving: __sdk::__query_builder::Col::new(table_name, "allow_while_moving"),
+            enabled_by_collectible_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "enabled_by_collectible_id",
+            ),
+            tool_type: __sdk::__query_builder::Col::new(table_name, "tool_type"),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmoteDescV2`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmoteDescV2IxCols {
+    pub enabled_by_collectible_id: __sdk::__query_builder::IxCol<EmoteDescV2, i32>,
+    pub id: __sdk::__query_builder::IxCol<EmoteDescV2, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmoteDescV2 {
+    type IxCols = EmoteDescV2IxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmoteDescV2IxCols {
+            enabled_by_collectible_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "enabled_by_collectible_id",
+            ),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

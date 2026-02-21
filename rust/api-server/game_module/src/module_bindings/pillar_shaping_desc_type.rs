@@ -29,3 +29,77 @@ pub struct PillarShapingDesc {
 impl __sdk::InModule for PillarShapingDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PillarShapingDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct PillarShapingDescCols {
+    pub id: __sdk::__query_builder::Col<PillarShapingDesc, i32>,
+    pub name: __sdk::__query_builder::Col<PillarShapingDesc, String>,
+    pub consumed_item_stacks: __sdk::__query_builder::Col<PillarShapingDesc, Vec<InputItemStack>>,
+    pub input_cargo_id: __sdk::__query_builder::Col<PillarShapingDesc, i32>,
+    pub input_cargo_discovery_score: __sdk::__query_builder::Col<PillarShapingDesc, i32>,
+    pub experience_per_progress:
+        __sdk::__query_builder::Col<PillarShapingDesc, Vec<ExperienceStackF32>>,
+    pub discovery_triggers: __sdk::__query_builder::Col<PillarShapingDesc, Vec<i32>>,
+    pub required_knowledges: __sdk::__query_builder::Col<PillarShapingDesc, Vec<i32>>,
+    pub full_discovery_score: __sdk::__query_builder::Col<PillarShapingDesc, i32>,
+    pub duration: __sdk::__query_builder::Col<PillarShapingDesc, f32>,
+    pub prefab_address: __sdk::__query_builder::Col<PillarShapingDesc, String>,
+    pub tier: __sdk::__query_builder::Col<PillarShapingDesc, i32>,
+    pub icon_address: __sdk::__query_builder::Col<PillarShapingDesc, String>,
+    pub description: __sdk::__query_builder::Col<PillarShapingDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for PillarShapingDesc {
+    type Cols = PillarShapingDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PillarShapingDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            consumed_item_stacks: __sdk::__query_builder::Col::new(
+                table_name,
+                "consumed_item_stacks",
+            ),
+            input_cargo_id: __sdk::__query_builder::Col::new(table_name, "input_cargo_id"),
+            input_cargo_discovery_score: __sdk::__query_builder::Col::new(
+                table_name,
+                "input_cargo_discovery_score",
+            ),
+            experience_per_progress: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_progress",
+            ),
+            discovery_triggers: __sdk::__query_builder::Col::new(table_name, "discovery_triggers"),
+            required_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "required_knowledges",
+            ),
+            full_discovery_score: __sdk::__query_builder::Col::new(
+                table_name,
+                "full_discovery_score",
+            ),
+            duration: __sdk::__query_builder::Col::new(table_name, "duration"),
+            prefab_address: __sdk::__query_builder::Col::new(table_name, "prefab_address"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            icon_address: __sdk::__query_builder::Col::new(table_name, "icon_address"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PillarShapingDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PillarShapingDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<PillarShapingDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PillarShapingDesc {
+    type IxCols = PillarShapingDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PillarShapingDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

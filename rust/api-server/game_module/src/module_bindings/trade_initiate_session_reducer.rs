@@ -50,8 +50,8 @@ pub trait trade_initiate_session {
     fn on_trade_initiate_session(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeInitiateSessionRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TradeInitiateSessionCallbackId;
     /// Cancel a callback previously registered by [`Self::on_trade_initiate_session`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl trade_initiate_session for super::RemoteReducers {
     fn on_trade_initiate_session(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeInitiateSessionRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TradeInitiateSessionCallbackId {
         TradeInitiateSessionCallbackId(self.imp.on_reducer(
             "trade_initiate_session",

@@ -143,3 +143,19 @@ impl<'ctx> StagedLootTableDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LootTableDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_loot_table_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LootTableDesc`.
+    fn staged_loot_table_desc(&self) -> __sdk::__query_builder::Table<LootTableDesc>;
+}
+
+impl staged_loot_table_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_loot_table_desc(&self) -> __sdk::__query_builder::Table<LootTableDesc> {
+        __sdk::__query_builder::Table::new("staged_loot_table_desc")
+    }
+}

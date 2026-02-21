@@ -141,3 +141,19 @@ impl<'ctx> VaultStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `VaultState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait vault_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `VaultState`.
+    fn vault_state(&self) -> __sdk::__query_builder::Table<VaultState>;
+}
+
+impl vault_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn vault_state(&self) -> __sdk::__query_builder::Table<VaultState> {
+        __sdk::__query_builder::Table::new("vault_state")
+    }
+}

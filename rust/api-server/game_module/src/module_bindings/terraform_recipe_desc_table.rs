@@ -143,3 +143,19 @@ impl<'ctx> TerraformRecipeDescDifferenceUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TerraformRecipeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait terraform_recipe_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TerraformRecipeDesc`.
+    fn terraform_recipe_desc(&self) -> __sdk::__query_builder::Table<TerraformRecipeDesc>;
+}
+
+impl terraform_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn terraform_recipe_desc(&self) -> __sdk::__query_builder::Table<TerraformRecipeDesc> {
+        __sdk::__query_builder::Table::new("terraform_recipe_desc")
+    }
+}

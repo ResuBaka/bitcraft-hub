@@ -143,3 +143,19 @@ impl<'ctx> OnboardingRewardDescStateIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `OnboardingRewardDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait onboarding_reward_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `OnboardingRewardDesc`.
+    fn onboarding_reward_desc(&self) -> __sdk::__query_builder::Table<OnboardingRewardDesc>;
+}
+
+impl onboarding_reward_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn onboarding_reward_desc(&self) -> __sdk::__query_builder::Table<OnboardingRewardDesc> {
+        __sdk::__query_builder::Table::new("onboarding_reward_desc")
+    }
+}

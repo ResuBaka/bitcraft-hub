@@ -14,3 +14,37 @@ pub struct BuildingDecayLoopTimer {
 impl __sdk::InModule for BuildingDecayLoopTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuildingDecayLoopTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuildingDecayLoopTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<BuildingDecayLoopTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<BuildingDecayLoopTimer, __sdk::ScheduleAt>,
+}
+
+impl __sdk::__query_builder::HasCols for BuildingDecayLoopTimer {
+    type Cols = BuildingDecayLoopTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuildingDecayLoopTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuildingDecayLoopTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuildingDecayLoopTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<BuildingDecayLoopTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuildingDecayLoopTimer {
+    type IxCols = BuildingDecayLoopTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuildingDecayLoopTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

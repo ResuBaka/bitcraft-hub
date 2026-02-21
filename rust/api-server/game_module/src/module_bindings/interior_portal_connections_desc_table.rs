@@ -146,3 +146,23 @@ impl<'ctx> InteriorPortalConnectionsDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InteriorPortalConnectionsDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait interior_portal_connections_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InteriorPortalConnectionsDesc`.
+    fn interior_portal_connections_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<InteriorPortalConnectionsDesc>;
+}
+
+impl interior_portal_connections_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn interior_portal_connections_desc(
+        &self,
+    ) -> __sdk::__query_builder::Table<InteriorPortalConnectionsDesc> {
+        __sdk::__query_builder::Table::new("interior_portal_connections_desc")
+    }
+}

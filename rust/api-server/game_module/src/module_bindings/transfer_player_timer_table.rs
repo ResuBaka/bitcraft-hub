@@ -143,3 +143,19 @@ impl<'ctx> TransferPlayerTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `TransferPlayerTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait transfer_player_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `TransferPlayerTimer`.
+    fn transfer_player_timer(&self) -> __sdk::__query_builder::Table<TransferPlayerTimer>;
+}
+
+impl transfer_player_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn transfer_player_timer(&self) -> __sdk::__query_builder::Table<TransferPlayerTimer> {
+        __sdk::__query_builder::Table::new("transfer_player_timer")
+    }
+}

@@ -16,3 +16,37 @@ pub struct DungeonState {
 impl __sdk::InModule for DungeonState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DungeonState`.
+///
+/// Provides typed access to columns for query building.
+pub struct DungeonStateCols {
+    pub entity_id: __sdk::__query_builder::Col<DungeonState, u64>,
+    pub location: __sdk::__query_builder::Col<DungeonState, OffsetCoordinatesSmallMessage>,
+}
+
+impl __sdk::__query_builder::HasCols for DungeonState {
+    type Cols = DungeonStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DungeonStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            location: __sdk::__query_builder::Col::new(table_name, "location"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DungeonState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DungeonStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<DungeonState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DungeonState {
+    type IxCols = DungeonStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DungeonStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -17,3 +17,61 @@ pub struct PlayerUseElevatorTimer {
 impl __sdk::InModule for PlayerUseElevatorTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerUseElevatorTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerUseElevatorTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<PlayerUseElevatorTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<PlayerUseElevatorTimer, __sdk::ScheduleAt>,
+    pub player_entity_id: __sdk::__query_builder::Col<PlayerUseElevatorTimer, u64>,
+    pub origin_platform_entity_id: __sdk::__query_builder::Col<PlayerUseElevatorTimer, u64>,
+    pub destination_platform_entity_id: __sdk::__query_builder::Col<PlayerUseElevatorTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerUseElevatorTimer {
+    type Cols = PlayerUseElevatorTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerUseElevatorTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            player_entity_id: __sdk::__query_builder::Col::new(table_name, "player_entity_id"),
+            origin_platform_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "origin_platform_entity_id",
+            ),
+            destination_platform_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "destination_platform_entity_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerUseElevatorTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerUseElevatorTimerIxCols {
+    pub destination_platform_entity_id: __sdk::__query_builder::IxCol<PlayerUseElevatorTimer, u64>,
+    pub origin_platform_entity_id: __sdk::__query_builder::IxCol<PlayerUseElevatorTimer, u64>,
+    pub player_entity_id: __sdk::__query_builder::IxCol<PlayerUseElevatorTimer, u64>,
+    pub scheduled_id: __sdk::__query_builder::IxCol<PlayerUseElevatorTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerUseElevatorTimer {
+    type IxCols = PlayerUseElevatorTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerUseElevatorTimerIxCols {
+            destination_platform_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "destination_platform_entity_id",
+            ),
+            origin_platform_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "origin_platform_entity_id",
+            ),
+            player_entity_id: __sdk::__query_builder::IxCol::new(table_name, "player_entity_id"),
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

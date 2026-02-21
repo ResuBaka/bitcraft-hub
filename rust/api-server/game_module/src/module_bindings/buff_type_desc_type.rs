@@ -15,3 +15,41 @@ pub struct BuffTypeDesc {
 impl __sdk::InModule for BuffTypeDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `BuffTypeDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct BuffTypeDescCols {
+    pub id: __sdk::__query_builder::Col<BuffTypeDesc, i32>,
+    pub name: __sdk::__query_builder::Col<BuffTypeDesc, String>,
+    pub category: __sdk::__query_builder::Col<BuffTypeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for BuffTypeDesc {
+    type Cols = BuffTypeDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        BuffTypeDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            category: __sdk::__query_builder::Col::new(table_name, "category"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `BuffTypeDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct BuffTypeDescIxCols {
+    pub category: __sdk::__query_builder::IxCol<BuffTypeDesc, i32>,
+    pub id: __sdk::__query_builder::IxCol<BuffTypeDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for BuffTypeDesc {
+    type IxCols = BuffTypeDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        BuffTypeDescIxCols {
+            category: __sdk::__query_builder::IxCol::new(table_name, "category"),
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

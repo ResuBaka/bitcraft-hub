@@ -142,3 +142,19 @@ impl<'ctx> StarvingPlayerStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `StarvingPlayerState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait starving_player_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `StarvingPlayerState`.
+    fn starving_player_state(&self) -> __sdk::__query_builder::Table<StarvingPlayerState>;
+}
+
+impl starving_player_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn starving_player_state(&self) -> __sdk::__query_builder::Table<StarvingPlayerState> {
+        __sdk::__query_builder::Table::new("starving_player_state")
+    }
+}

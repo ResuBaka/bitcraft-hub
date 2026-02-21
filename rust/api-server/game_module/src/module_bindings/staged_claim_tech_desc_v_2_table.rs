@@ -144,3 +144,19 @@ impl<'ctx> StagedClaimTechDescV2IdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `ClaimTechDescV2`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_claim_tech_desc_v2QueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `ClaimTechDescV2`.
+    fn staged_claim_tech_desc_v2(&self) -> __sdk::__query_builder::Table<ClaimTechDescV2>;
+}
+
+impl staged_claim_tech_desc_v2QueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_claim_tech_desc_v2(&self) -> __sdk::__query_builder::Table<ClaimTechDescV2> {
+        __sdk::__query_builder::Table::new("staged_claim_tech_desc_v2")
+    }
+}

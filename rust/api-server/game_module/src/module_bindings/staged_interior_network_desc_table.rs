@@ -144,3 +144,19 @@ impl<'ctx> StagedInteriorNetworkDescBuildingIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `InteriorNetworkDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_interior_network_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `InteriorNetworkDesc`.
+    fn staged_interior_network_desc(&self) -> __sdk::__query_builder::Table<InteriorNetworkDesc>;
+}
+
+impl staged_interior_network_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_interior_network_desc(&self) -> __sdk::__query_builder::Table<InteriorNetworkDesc> {
+        __sdk::__query_builder::Table::new("staged_interior_network_desc")
+    }
+}

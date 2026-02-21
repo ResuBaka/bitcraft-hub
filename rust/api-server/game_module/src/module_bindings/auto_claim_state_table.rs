@@ -140,3 +140,19 @@ impl<'ctx> AutoClaimStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AutoClaimState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait auto_claim_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AutoClaimState`.
+    fn auto_claim_state(&self) -> __sdk::__query_builder::Table<AutoClaimState>;
+}
+
+impl auto_claim_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn auto_claim_state(&self) -> __sdk::__query_builder::Table<AutoClaimState> {
+        __sdk::__query_builder::Table::new("auto_claim_state")
+    }
+}

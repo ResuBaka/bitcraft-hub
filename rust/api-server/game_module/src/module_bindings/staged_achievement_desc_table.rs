@@ -142,3 +142,19 @@ impl<'ctx> StagedAchievementDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `AchievementDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_achievement_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `AchievementDesc`.
+    fn staged_achievement_desc(&self) -> __sdk::__query_builder::Table<AchievementDesc>;
+}
+
+impl staged_achievement_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_achievement_desc(&self) -> __sdk::__query_builder::Table<AchievementDesc> {
+        __sdk::__query_builder::Table::new("staged_achievement_desc")
+    }
+}

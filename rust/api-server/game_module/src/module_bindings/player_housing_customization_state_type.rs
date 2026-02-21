@@ -15,3 +15,45 @@ pub struct PlayerHousingCustomizationState {
 impl __sdk::InModule for PlayerHousingCustomizationState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PlayerHousingCustomizationState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PlayerHousingCustomizationStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PlayerHousingCustomizationState, u64>,
+    pub wall_collectible_id: __sdk::__query_builder::Col<PlayerHousingCustomizationState, i32>,
+    pub floor_collectible_id: __sdk::__query_builder::Col<PlayerHousingCustomizationState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for PlayerHousingCustomizationState {
+    type Cols = PlayerHousingCustomizationStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PlayerHousingCustomizationStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            wall_collectible_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "wall_collectible_id",
+            ),
+            floor_collectible_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "floor_collectible_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PlayerHousingCustomizationState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PlayerHousingCustomizationStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PlayerHousingCustomizationState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PlayerHousingCustomizationState {
+    type IxCols = PlayerHousingCustomizationStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PlayerHousingCustomizationStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

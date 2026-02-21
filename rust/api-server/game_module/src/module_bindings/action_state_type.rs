@@ -18,3 +18,43 @@ pub struct ActionState {
 impl __sdk::InModule for ActionState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ActionState`.
+///
+/// Provides typed access to columns for query building.
+pub struct ActionStateCols {
+    pub entity_id: __sdk::__query_builder::Col<ActionState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<ActionState, u64>,
+    pub action_id: __sdk::__query_builder::Col<ActionState, i32>,
+    pub cooldown: __sdk::__query_builder::Col<ActionState, ActionCooldown>,
+}
+
+impl __sdk::__query_builder::HasCols for ActionState {
+    type Cols = ActionStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ActionStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+            action_id: __sdk::__query_builder::Col::new(table_name, "action_id"),
+            cooldown: __sdk::__query_builder::Col::new(table_name, "cooldown"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ActionState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ActionStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<ActionState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<ActionState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ActionState {
+    type IxCols = ActionStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ActionStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
+        }
+    }
+}

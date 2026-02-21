@@ -140,3 +140,19 @@ impl<'ctx> StagedBiomeDescBiomeTypeUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `BiomeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait staged_biome_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `BiomeDesc`.
+    fn staged_biome_desc(&self) -> __sdk::__query_builder::Table<BiomeDesc>;
+}
+
+impl staged_biome_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn staged_biome_desc(&self) -> __sdk::__query_builder::Table<BiomeDesc> {
+        __sdk::__query_builder::Table::new("staged_biome_desc")
+    }
+}

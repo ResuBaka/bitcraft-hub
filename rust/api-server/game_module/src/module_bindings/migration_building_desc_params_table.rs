@@ -146,3 +146,23 @@ impl<'ctx> MigrationBuildingDescParamsIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `MigrationBuildingDescParams`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait migration_building_desc_paramsQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `MigrationBuildingDescParams`.
+    fn migration_building_desc_params(
+        &self,
+    ) -> __sdk::__query_builder::Table<MigrationBuildingDescParams>;
+}
+
+impl migration_building_desc_paramsQueryTableAccess for __sdk::QueryTableAccessor {
+    fn migration_building_desc_params(
+        &self,
+    ) -> __sdk::__query_builder::Table<MigrationBuildingDescParams> {
+        __sdk::__query_builder::Table::new("migration_building_desc_params")
+    }
+}

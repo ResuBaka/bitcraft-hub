@@ -36,3 +36,79 @@ pub struct ResourceDesc {
 impl __sdk::InModule for ResourceDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `ResourceDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct ResourceDescCols {
+    pub id: __sdk::__query_builder::Col<ResourceDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ResourceDesc, String>,
+    pub description: __sdk::__query_builder::Col<ResourceDesc, String>,
+    pub flattenable: __sdk::__query_builder::Col<ResourceDesc, bool>,
+    pub max_health: __sdk::__query_builder::Col<ResourceDesc, i32>,
+    pub ignore_damage: __sdk::__query_builder::Col<ResourceDesc, bool>,
+    pub despawn_time: __sdk::__query_builder::Col<ResourceDesc, f32>,
+    pub model_asset_name: __sdk::__query_builder::Col<ResourceDesc, String>,
+    pub icon_asset_name: __sdk::__query_builder::Col<ResourceDesc, String>,
+    pub on_destroy_yield: __sdk::__query_builder::Col<ResourceDesc, Vec<ItemStack>>,
+    pub on_destroy_yield_resource_id: __sdk::__query_builder::Col<ResourceDesc, i32>,
+    pub spawn_priority: __sdk::__query_builder::Col<ResourceDesc, i32>,
+    pub footprint: __sdk::__query_builder::Col<ResourceDesc, Vec<FootprintTile>>,
+    pub tier: __sdk::__query_builder::Col<ResourceDesc, i32>,
+    pub tag: __sdk::__query_builder::Col<ResourceDesc, String>,
+    pub rarity: __sdk::__query_builder::Col<ResourceDesc, Rarity>,
+    pub compendium_entry: __sdk::__query_builder::Col<ResourceDesc, bool>,
+    pub enemy_params_id: __sdk::__query_builder::Col<ResourceDesc, Vec<i32>>,
+    pub scheduled_respawn_time: __sdk::__query_builder::Col<ResourceDesc, f32>,
+    pub not_respawning: __sdk::__query_builder::Col<ResourceDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasCols for ResourceDesc {
+    type Cols = ResourceDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        ResourceDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            flattenable: __sdk::__query_builder::Col::new(table_name, "flattenable"),
+            max_health: __sdk::__query_builder::Col::new(table_name, "max_health"),
+            ignore_damage: __sdk::__query_builder::Col::new(table_name, "ignore_damage"),
+            despawn_time: __sdk::__query_builder::Col::new(table_name, "despawn_time"),
+            model_asset_name: __sdk::__query_builder::Col::new(table_name, "model_asset_name"),
+            icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
+            on_destroy_yield: __sdk::__query_builder::Col::new(table_name, "on_destroy_yield"),
+            on_destroy_yield_resource_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "on_destroy_yield_resource_id",
+            ),
+            spawn_priority: __sdk::__query_builder::Col::new(table_name, "spawn_priority"),
+            footprint: __sdk::__query_builder::Col::new(table_name, "footprint"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            tag: __sdk::__query_builder::Col::new(table_name, "tag"),
+            rarity: __sdk::__query_builder::Col::new(table_name, "rarity"),
+            compendium_entry: __sdk::__query_builder::Col::new(table_name, "compendium_entry"),
+            enemy_params_id: __sdk::__query_builder::Col::new(table_name, "enemy_params_id"),
+            scheduled_respawn_time: __sdk::__query_builder::Col::new(
+                table_name,
+                "scheduled_respawn_time",
+            ),
+            not_respawning: __sdk::__query_builder::Col::new(table_name, "not_respawning"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `ResourceDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct ResourceDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<ResourceDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for ResourceDesc {
+    type IxCols = ResourceDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        ResourceDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

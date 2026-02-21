@@ -22,3 +22,48 @@ pub struct TravelerTaskDesc {
 impl __sdk::InModule for TravelerTaskDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TravelerTaskDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct TravelerTaskDescCols {
+    pub id: __sdk::__query_builder::Col<TravelerTaskDesc, i32>,
+    pub level_requirement: __sdk::__query_builder::Col<TravelerTaskDesc, CappedLevelRequirement>,
+    pub required_items: __sdk::__query_builder::Col<TravelerTaskDesc, Vec<ItemStack>>,
+    pub rewarded_items: __sdk::__query_builder::Col<TravelerTaskDesc, Vec<ItemStack>>,
+    pub rewarded_experience: __sdk::__query_builder::Col<TravelerTaskDesc, ExperienceStackF32>,
+    pub description: __sdk::__query_builder::Col<TravelerTaskDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for TravelerTaskDesc {
+    type Cols = TravelerTaskDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TravelerTaskDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            level_requirement: __sdk::__query_builder::Col::new(table_name, "level_requirement"),
+            required_items: __sdk::__query_builder::Col::new(table_name, "required_items"),
+            rewarded_items: __sdk::__query_builder::Col::new(table_name, "rewarded_items"),
+            rewarded_experience: __sdk::__query_builder::Col::new(
+                table_name,
+                "rewarded_experience",
+            ),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TravelerTaskDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TravelerTaskDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<TravelerTaskDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TravelerTaskDesc {
+    type IxCols = TravelerTaskDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TravelerTaskDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

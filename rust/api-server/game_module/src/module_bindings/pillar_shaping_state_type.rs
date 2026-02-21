@@ -14,3 +14,37 @@ pub struct PillarShapingState {
 impl __sdk::InModule for PillarShapingState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `PillarShapingState`.
+///
+/// Provides typed access to columns for query building.
+pub struct PillarShapingStateCols {
+    pub entity_id: __sdk::__query_builder::Col<PillarShapingState, u64>,
+    pub pillar_type_id: __sdk::__query_builder::Col<PillarShapingState, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for PillarShapingState {
+    type Cols = PillarShapingStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        PillarShapingStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            pillar_type_id: __sdk::__query_builder::Col::new(table_name, "pillar_type_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `PillarShapingState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct PillarShapingStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<PillarShapingState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for PillarShapingState {
+    type IxCols = PillarShapingStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        PillarShapingStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

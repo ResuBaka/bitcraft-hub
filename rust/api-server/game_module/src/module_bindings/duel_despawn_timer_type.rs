@@ -15,3 +15,39 @@ pub struct DuelDespawnTimer {
 impl __sdk::InModule for DuelDespawnTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `DuelDespawnTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct DuelDespawnTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<DuelDespawnTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<DuelDespawnTimer, __sdk::ScheduleAt>,
+    pub entity_id: __sdk::__query_builder::Col<DuelDespawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for DuelDespawnTimer {
+    type Cols = DuelDespawnTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        DuelDespawnTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `DuelDespawnTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct DuelDespawnTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<DuelDespawnTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for DuelDespawnTimer {
+    type IxCols = DuelDespawnTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        DuelDespawnTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

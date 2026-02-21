@@ -248,3 +248,19 @@ impl<'ctx> PlayerUseElevatorTimerDestinationPlatformEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerUseElevatorTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_use_elevator_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerUseElevatorTimer`.
+    fn player_use_elevator_timer(&self) -> __sdk::__query_builder::Table<PlayerUseElevatorTimer>;
+}
+
+impl player_use_elevator_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_use_elevator_timer(&self) -> __sdk::__query_builder::Table<PlayerUseElevatorTimer> {
+        __sdk::__query_builder::Table::new("player_use_elevator_timer")
+    }
+}

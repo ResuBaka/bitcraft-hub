@@ -140,3 +140,19 @@ impl<'ctx> PavedTileStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PavedTileState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait paved_tile_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PavedTileState`.
+    fn paved_tile_state(&self) -> __sdk::__query_builder::Table<PavedTileState>;
+}
+
+impl paved_tile_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn paved_tile_state(&self) -> __sdk::__query_builder::Table<PavedTileState> {
+        __sdk::__query_builder::Table::new("paved_tile_state")
+    }
+}

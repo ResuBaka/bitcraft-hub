@@ -50,8 +50,8 @@ pub trait player_set_default_deployable {
     fn on_player_set_default_deployable(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerSetDefaultDeployableRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerSetDefaultDeployableCallbackId;
     /// Cancel a callback previously registered by [`Self::on_player_set_default_deployable`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl player_set_default_deployable for super::RemoteReducers {
     fn on_player_set_default_deployable(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerSetDefaultDeployableRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerSetDefaultDeployableCallbackId {
         PlayerSetDefaultDeployableCallbackId(self.imp.on_reducer(
             "player_set_default_deployable",

@@ -50,8 +50,8 @@ pub trait acquire_knowledge_from_entities {
     fn on_acquire_knowledge_from_entities(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerAcquireKnowledgeFromEntitiesRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AcquireKnowledgeFromEntitiesCallbackId;
     /// Cancel a callback previously registered by [`Self::on_acquire_knowledge_from_entities`],
     /// causing it not to run in the future.
@@ -73,11 +73,9 @@ impl acquire_knowledge_from_entities for super::RemoteReducers {
     }
     fn on_acquire_knowledge_from_entities(
         &self,
-        mut callback: impl FnMut(
-            &super::ReducerEventContext,
-            &PlayerAcquireKnowledgeFromEntitiesRequest,
-        ) + Send
-        + 'static,
+        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerAcquireKnowledgeFromEntitiesRequest)
+            + Send
+            + 'static,
     ) -> AcquireKnowledgeFromEntitiesCallbackId {
         AcquireKnowledgeFromEntitiesCallbackId(self.imp.on_reducer(
             "acquire_knowledge_from_entities",

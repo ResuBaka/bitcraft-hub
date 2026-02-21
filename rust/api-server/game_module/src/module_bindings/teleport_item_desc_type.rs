@@ -15,3 +15,39 @@ pub struct TeleportItemDesc {
 impl __sdk::InModule for TeleportItemDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `TeleportItemDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct TeleportItemDescCols {
+    pub id: __sdk::__query_builder::Col<TeleportItemDesc, i32>,
+    pub name: __sdk::__query_builder::Col<TeleportItemDesc, String>,
+    pub buff_id: __sdk::__query_builder::Col<TeleportItemDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for TeleportItemDesc {
+    type Cols = TeleportItemDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        TeleportItemDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
+            buff_id: __sdk::__query_builder::Col::new(table_name, "buff_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `TeleportItemDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct TeleportItemDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<TeleportItemDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for TeleportItemDesc {
+    type IxCols = TeleportItemDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        TeleportItemDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

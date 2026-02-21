@@ -50,8 +50,8 @@ pub trait claim_set_purchase_supply_price {
     fn on_claim_set_purchase_supply_price(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &ClaimSetPurchaseSupplyPriceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimSetPurchaseSupplyPriceCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_set_purchase_supply_price`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl claim_set_purchase_supply_price for super::RemoteReducers {
     fn on_claim_set_purchase_supply_price(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &ClaimSetPurchaseSupplyPriceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimSetPurchaseSupplyPriceCallbackId {
         ClaimSetPurchaseSupplyPriceCallbackId(self.imp.on_reducer(
             "claim_set_purchase_supply_price",

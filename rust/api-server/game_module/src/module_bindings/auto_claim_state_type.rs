@@ -14,3 +14,37 @@ pub struct AutoClaimState {
 impl __sdk::InModule for AutoClaimState {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AutoClaimState`.
+///
+/// Provides typed access to columns for query building.
+pub struct AutoClaimStateCols {
+    pub entity_id: __sdk::__query_builder::Col<AutoClaimState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::Col<AutoClaimState, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for AutoClaimState {
+    type Cols = AutoClaimStateCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AutoClaimStateCols {
+            entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::Col::new(table_name, "owner_entity_id"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AutoClaimState`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AutoClaimStateIxCols {
+    pub entity_id: __sdk::__query_builder::IxCol<AutoClaimState, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AutoClaimState {
+    type IxCols = AutoClaimStateIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AutoClaimStateIxCols {
+            entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+        }
+    }
+}

@@ -147,3 +147,23 @@ impl<'ctx> RespawnResourceInChunkTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `RespawnResourceInChunkTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait respawn_resource_in_chunk_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `RespawnResourceInChunkTimer`.
+    fn respawn_resource_in_chunk_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<RespawnResourceInChunkTimer>;
+}
+
+impl respawn_resource_in_chunk_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn respawn_resource_in_chunk_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<RespawnResourceInChunkTimer> {
+        __sdk::__query_builder::Table::new("respawn_resource_in_chunk_timer")
+    }
+}

@@ -61,8 +61,8 @@ impl portal_enter for super::RemoteReducers {
     fn on_portal_enter(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPortalEnterRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PortalEnterCallbackId {
         PortalEnterCallbackId(self.imp.on_reducer(
             "portal_enter",

@@ -146,3 +146,23 @@ impl<'ctx> PlayerHousingIncomeLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerHousingIncomeLoopTimer`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_housing_income_loop_timerQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerHousingIncomeLoopTimer`.
+    fn player_housing_income_loop_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerHousingIncomeLoopTimer>;
+}
+
+impl player_housing_income_loop_timerQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_housing_income_loop_timer(
+        &self,
+    ) -> __sdk::__query_builder::Table<PlayerHousingIncomeLoopTimer> {
+        __sdk::__query_builder::Table::new("player_housing_income_loop_timer")
+    }
+}

@@ -15,3 +15,39 @@ pub struct AdminClearResourceTimer {
 impl __sdk::InModule for AdminClearResourceTimer {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `AdminClearResourceTimer`.
+///
+/// Provides typed access to columns for query building.
+pub struct AdminClearResourceTimerCols {
+    pub scheduled_id: __sdk::__query_builder::Col<AdminClearResourceTimer, u64>,
+    pub scheduled_at: __sdk::__query_builder::Col<AdminClearResourceTimer, __sdk::ScheduleAt>,
+    pub chunk_index: __sdk::__query_builder::Col<AdminClearResourceTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasCols for AdminClearResourceTimer {
+    type Cols = AdminClearResourceTimerCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        AdminClearResourceTimerCols {
+            scheduled_id: __sdk::__query_builder::Col::new(table_name, "scheduled_id"),
+            scheduled_at: __sdk::__query_builder::Col::new(table_name, "scheduled_at"),
+            chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `AdminClearResourceTimer`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct AdminClearResourceTimerIxCols {
+    pub scheduled_id: __sdk::__query_builder::IxCol<AdminClearResourceTimer, u64>,
+}
+
+impl __sdk::__query_builder::HasIxCols for AdminClearResourceTimer {
+    type IxCols = AdminClearResourceTimerIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        AdminClearResourceTimerIxCols {
+            scheduled_id: __sdk::__query_builder::IxCol::new(table_name, "scheduled_id"),
+        }
+    }
+}

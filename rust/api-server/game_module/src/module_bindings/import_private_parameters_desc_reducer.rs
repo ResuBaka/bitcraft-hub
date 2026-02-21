@@ -72,8 +72,8 @@ impl import_private_parameters_desc for super::RemoteReducers {
     fn on_import_private_parameters_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PrivateParametersDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportPrivateParametersDescCallbackId {
         ImportPrivateParametersDescCallbackId(self.imp.on_reducer(
             "import_private_parameters_desc",

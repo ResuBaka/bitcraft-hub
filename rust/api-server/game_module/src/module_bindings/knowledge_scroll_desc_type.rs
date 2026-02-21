@@ -20,3 +20,54 @@ pub struct KnowledgeScrollDesc {
 impl __sdk::InModule for KnowledgeScrollDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `KnowledgeScrollDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct KnowledgeScrollDescCols {
+    pub item_id: __sdk::__query_builder::Col<KnowledgeScrollDesc, i32>,
+    pub scroll_type: __sdk::__query_builder::Col<KnowledgeScrollDesc, i32>,
+    pub secondary_knowledge_id: __sdk::__query_builder::Col<KnowledgeScrollDesc, i32>,
+    pub known_by_default: __sdk::__query_builder::Col<KnowledgeScrollDesc, bool>,
+    pub auto_collect: __sdk::__query_builder::Col<KnowledgeScrollDesc, bool>,
+    pub title: __sdk::__query_builder::Col<KnowledgeScrollDesc, String>,
+    pub tag: __sdk::__query_builder::Col<KnowledgeScrollDesc, String>,
+    pub content: __sdk::__query_builder::Col<KnowledgeScrollDesc, String>,
+}
+
+impl __sdk::__query_builder::HasCols for KnowledgeScrollDesc {
+    type Cols = KnowledgeScrollDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        KnowledgeScrollDescCols {
+            item_id: __sdk::__query_builder::Col::new(table_name, "item_id"),
+            scroll_type: __sdk::__query_builder::Col::new(table_name, "scroll_type"),
+            secondary_knowledge_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "secondary_knowledge_id",
+            ),
+            known_by_default: __sdk::__query_builder::Col::new(table_name, "known_by_default"),
+            auto_collect: __sdk::__query_builder::Col::new(table_name, "auto_collect"),
+            title: __sdk::__query_builder::Col::new(table_name, "title"),
+            tag: __sdk::__query_builder::Col::new(table_name, "tag"),
+            content: __sdk::__query_builder::Col::new(table_name, "content"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `KnowledgeScrollDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct KnowledgeScrollDescIxCols {
+    pub item_id: __sdk::__query_builder::IxCol<KnowledgeScrollDesc, i32>,
+    pub known_by_default: __sdk::__query_builder::IxCol<KnowledgeScrollDesc, bool>,
+}
+
+impl __sdk::__query_builder::HasIxCols for KnowledgeScrollDesc {
+    type IxCols = KnowledgeScrollDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        KnowledgeScrollDescIxCols {
+            item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
+            known_by_default: __sdk::__query_builder::IxCol::new(table_name, "known_by_default"),
+        }
+    }
+}

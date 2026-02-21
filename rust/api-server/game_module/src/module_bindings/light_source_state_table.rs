@@ -140,3 +140,19 @@ impl<'ctx> LightSourceStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `LightSourceState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait light_source_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `LightSourceState`.
+    fn light_source_state(&self) -> __sdk::__query_builder::Table<LightSourceState>;
+}
+
+impl light_source_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn light_source_state(&self) -> __sdk::__query_builder::Table<LightSourceState> {
+        __sdk::__query_builder::Table::new("light_source_state")
+    }
+}

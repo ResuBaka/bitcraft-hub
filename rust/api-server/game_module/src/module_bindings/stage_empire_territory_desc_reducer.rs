@@ -63,8 +63,8 @@ impl stage_empire_territory_desc for super::RemoteReducers {
     fn on_stage_empire_territory_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EmpireTerritoryDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageEmpireTerritoryDescCallbackId {
         StageEmpireTerritoryDescCallbackId(self.imp.on_reducer(
             "stage_empire_territory_desc",

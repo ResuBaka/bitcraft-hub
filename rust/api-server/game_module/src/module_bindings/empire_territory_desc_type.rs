@@ -16,3 +16,44 @@ pub struct EmpireTerritoryDesc {
 impl __sdk::InModule for EmpireTerritoryDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `EmpireTerritoryDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct EmpireTerritoryDescCols {
+    pub id: __sdk::__query_builder::Col<EmpireTerritoryDesc, u8>,
+    pub chunks: __sdk::__query_builder::Col<EmpireTerritoryDesc, u16>,
+    pub ranks: __sdk::__query_builder::Col<EmpireTerritoryDesc, Vec<u8>>,
+    pub crown_collectible_id: __sdk::__query_builder::Col<EmpireTerritoryDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for EmpireTerritoryDesc {
+    type Cols = EmpireTerritoryDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        EmpireTerritoryDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            chunks: __sdk::__query_builder::Col::new(table_name, "chunks"),
+            ranks: __sdk::__query_builder::Col::new(table_name, "ranks"),
+            crown_collectible_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "crown_collectible_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `EmpireTerritoryDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct EmpireTerritoryDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<EmpireTerritoryDesc, u8>,
+}
+
+impl __sdk::__query_builder::HasIxCols for EmpireTerritoryDesc {
+    type IxCols = EmpireTerritoryDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        EmpireTerritoryDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

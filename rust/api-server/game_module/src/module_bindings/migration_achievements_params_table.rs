@@ -146,3 +146,23 @@ impl<'ctx> MigrationAchievementsParamsIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `MigrationAchievementsParams`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait migration_achievements_paramsQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `MigrationAchievementsParams`.
+    fn migration_achievements_params(
+        &self,
+    ) -> __sdk::__query_builder::Table<MigrationAchievementsParams>;
+}
+
+impl migration_achievements_paramsQueryTableAccess for __sdk::QueryTableAccessor {
+    fn migration_achievements_params(
+        &self,
+    ) -> __sdk::__query_builder::Table<MigrationAchievementsParams> {
+        __sdk::__query_builder::Table::new("migration_achievements_params")
+    }
+}

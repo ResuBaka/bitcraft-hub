@@ -145,3 +145,19 @@ impl<'ctx> PlayerHousingDescSecondaryKnowledgeIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `PlayerHousingDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait player_housing_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `PlayerHousingDesc`.
+    fn player_housing_desc(&self) -> __sdk::__query_builder::Table<PlayerHousingDesc>;
+}
+
+impl player_housing_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn player_housing_desc(&self) -> __sdk::__query_builder::Table<PlayerHousingDesc> {
+        __sdk::__query_builder::Table::new("player_housing_desc")
+    }
+}

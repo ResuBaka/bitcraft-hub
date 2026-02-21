@@ -148,3 +148,19 @@ impl<'ctx> CraftingRecipeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `CraftingRecipeDesc`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait crafting_recipe_descQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `CraftingRecipeDesc`.
+    fn crafting_recipe_desc(&self) -> __sdk::__query_builder::Table<CraftingRecipeDesc>;
+}
+
+impl crafting_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {
+    fn crafting_recipe_desc(&self) -> __sdk::__query_builder::Table<CraftingRecipeDesc> {
+        __sdk::__query_builder::Table::new("crafting_recipe_desc")
+    }
+}

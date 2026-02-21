@@ -28,3 +28,74 @@ pub struct InteriorInstanceDesc {
 impl __sdk::InModule for InteriorInstanceDesc {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `InteriorInstanceDesc`.
+///
+/// Provides typed access to columns for query building.
+pub struct InteriorInstanceDescCols {
+    pub id: __sdk::__query_builder::Col<InteriorInstanceDesc, i32>,
+    pub interior_shape_id: __sdk::__query_builder::Col<InteriorInstanceDesc, i32>,
+    pub tier: __sdk::__query_builder::Col<InteriorInstanceDesc, i32>,
+    pub biome: __sdk::__query_builder::Col<InteriorInstanceDesc, u8>,
+    pub rentable: __sdk::__query_builder::Col<InteriorInstanceDesc, bool>,
+    pub generate_walls_mesh: __sdk::__query_builder::Col<InteriorInstanceDesc, bool>,
+    pub generate_floor_mesh: __sdk::__query_builder::Col<InteriorInstanceDesc, bool>,
+    pub default_lighting: __sdk::__query_builder::Col<InteriorInstanceDesc, bool>,
+    pub interior_model: __sdk::__query_builder::Col<InteriorInstanceDesc, String>,
+    pub wall_material: __sdk::__query_builder::Col<InteriorInstanceDesc, String>,
+    pub floor_material: __sdk::__query_builder::Col<InteriorInstanceDesc, String>,
+    pub min_zoom: __sdk::__query_builder::Col<InteriorInstanceDesc, f32>,
+    pub max_zoom: __sdk::__query_builder::Col<InteriorInstanceDesc, f32>,
+    pub min_angle: __sdk::__query_builder::Col<InteriorInstanceDesc, f32>,
+    pub max_angle: __sdk::__query_builder::Col<InteriorInstanceDesc, f32>,
+    pub intertior_environment_id: __sdk::__query_builder::Col<InteriorInstanceDesc, Option<i32>>,
+}
+
+impl __sdk::__query_builder::HasCols for InteriorInstanceDesc {
+    type Cols = InteriorInstanceDescCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        InteriorInstanceDescCols {
+            id: __sdk::__query_builder::Col::new(table_name, "id"),
+            interior_shape_id: __sdk::__query_builder::Col::new(table_name, "interior_shape_id"),
+            tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            biome: __sdk::__query_builder::Col::new(table_name, "biome"),
+            rentable: __sdk::__query_builder::Col::new(table_name, "rentable"),
+            generate_walls_mesh: __sdk::__query_builder::Col::new(
+                table_name,
+                "generate_walls_mesh",
+            ),
+            generate_floor_mesh: __sdk::__query_builder::Col::new(
+                table_name,
+                "generate_floor_mesh",
+            ),
+            default_lighting: __sdk::__query_builder::Col::new(table_name, "default_lighting"),
+            interior_model: __sdk::__query_builder::Col::new(table_name, "interior_model"),
+            wall_material: __sdk::__query_builder::Col::new(table_name, "wall_material"),
+            floor_material: __sdk::__query_builder::Col::new(table_name, "floor_material"),
+            min_zoom: __sdk::__query_builder::Col::new(table_name, "min_zoom"),
+            max_zoom: __sdk::__query_builder::Col::new(table_name, "max_zoom"),
+            min_angle: __sdk::__query_builder::Col::new(table_name, "min_angle"),
+            max_angle: __sdk::__query_builder::Col::new(table_name, "max_angle"),
+            intertior_environment_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "intertior_environment_id",
+            ),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `InteriorInstanceDesc`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct InteriorInstanceDescIxCols {
+    pub id: __sdk::__query_builder::IxCol<InteriorInstanceDesc, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for InteriorInstanceDesc {
+    type IxCols = InteriorInstanceDescIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        InteriorInstanceDescIxCols {
+            id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+        }
+    }
+}

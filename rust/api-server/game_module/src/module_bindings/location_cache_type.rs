@@ -25,3 +25,57 @@ pub struct LocationCache {
 impl __sdk::InModule for LocationCache {
     type Module = super::RemoteModule;
 }
+
+/// Column accessor struct for the table `LocationCache`.
+///
+/// Provides typed access to columns for query building.
+pub struct LocationCacheCols {
+    pub version: __sdk::__query_builder::Col<LocationCache, i32>,
+    pub trading_post_locations:
+        __sdk::__query_builder::Col<LocationCache, Vec<SmallHexTileMessage>>,
+    pub all_ruins: __sdk::__query_builder::Col<LocationCache, Vec<RuinsEntityValuePair>>,
+    pub traveler_ruins: __sdk::__query_builder::Col<LocationCache, Vec<RuinsEntityValuePair>>,
+    pub spawn_locations: __sdk::__query_builder::Col<LocationCache, Vec<SmallHexTileMessage>>,
+    pub biome_chunks: __sdk::__query_builder::Col<LocationCache, Vec<f32>>,
+    pub region_max_x: __sdk::__query_builder::Col<LocationCache, i32>,
+    pub region_max_z: __sdk::__query_builder::Col<LocationCache, i32>,
+    pub region_min_x: __sdk::__query_builder::Col<LocationCache, i32>,
+    pub region_min_z: __sdk::__query_builder::Col<LocationCache, i32>,
+}
+
+impl __sdk::__query_builder::HasCols for LocationCache {
+    type Cols = LocationCacheCols;
+    fn cols(table_name: &'static str) -> Self::Cols {
+        LocationCacheCols {
+            version: __sdk::__query_builder::Col::new(table_name, "version"),
+            trading_post_locations: __sdk::__query_builder::Col::new(
+                table_name,
+                "trading_post_locations",
+            ),
+            all_ruins: __sdk::__query_builder::Col::new(table_name, "all_ruins"),
+            traveler_ruins: __sdk::__query_builder::Col::new(table_name, "traveler_ruins"),
+            spawn_locations: __sdk::__query_builder::Col::new(table_name, "spawn_locations"),
+            biome_chunks: __sdk::__query_builder::Col::new(table_name, "biome_chunks"),
+            region_max_x: __sdk::__query_builder::Col::new(table_name, "region_max_x"),
+            region_max_z: __sdk::__query_builder::Col::new(table_name, "region_max_z"),
+            region_min_x: __sdk::__query_builder::Col::new(table_name, "region_min_x"),
+            region_min_z: __sdk::__query_builder::Col::new(table_name, "region_min_z"),
+        }
+    }
+}
+
+/// Indexed column accessor struct for the table `LocationCache`.
+///
+/// Provides typed access to indexed columns for query building.
+pub struct LocationCacheIxCols {
+    pub version: __sdk::__query_builder::IxCol<LocationCache, i32>,
+}
+
+impl __sdk::__query_builder::HasIxCols for LocationCache {
+    type IxCols = LocationCacheIxCols;
+    fn ix_cols(table_name: &'static str) -> Self::IxCols {
+        LocationCacheIxCols {
+            version: __sdk::__query_builder::IxCol::new(table_name, "version"),
+        }
+    }
+}

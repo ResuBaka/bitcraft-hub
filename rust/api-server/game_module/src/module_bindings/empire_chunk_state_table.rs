@@ -140,3 +140,19 @@ impl<'ctx> EmpireChunkStateChunkIndexUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+
+#[allow(non_camel_case_types)]
+/// Extension trait for query builder access to the table `EmpireChunkState`.
+///
+/// Implemented for [`__sdk::QueryTableAccessor`].
+pub trait empire_chunk_stateQueryTableAccess {
+    #[allow(non_snake_case)]
+    /// Get a query builder for the table `EmpireChunkState`.
+    fn empire_chunk_state(&self) -> __sdk::__query_builder::Table<EmpireChunkState>;
+}
+
+impl empire_chunk_stateQueryTableAccess for __sdk::QueryTableAccessor {
+    fn empire_chunk_state(&self) -> __sdk::__query_builder::Table<EmpireChunkState> {
+        __sdk::__query_builder::Table::new("empire_chunk_state")
+    }
+}
