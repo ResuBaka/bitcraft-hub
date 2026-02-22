@@ -10,15 +10,15 @@ use entity::inventory::{
 use entity::{cargo_desc, inventory, inventory_changelog, item_desc};
 use futures::TryStreamExt;
 use log::error;
-use sea_orm::EntityTrait;
+use sea_orm::{EntityTrait, Statement, ConnectionTrait};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use service::Query as QueryCore;
 use std::collections::HashMap;
 use std::fs::File;
 use std::ops::AddAssign;
 use std::sync::Arc;
 use ts_rs::TS;
+use sea_orm::sqlx::types::chrono::{DateTime, Utc};
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
@@ -41,6 +41,10 @@ pub(crate) fn get_routes() -> AppRouter {
         .route(
             "/inventory/all_inventory_stats",
             axum_codec::routing::get(all_inventory_stats).into(),
+        )
+        .route(
+            "/inventory/stats_snapshots",
+            axum_codec::routing::get(list_snapshots).into(),
         )
 }
 
@@ -259,7 +263,8 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     }))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct AllInventoryStatsResponse {
     items: Vec<(i64, Option<::entity::item_desc::Model>)>,
     cargo: Vec<(i64, Option<::entity::cargo_desc::Model>)>,
@@ -376,14 +381,168 @@ pub(crate) async fn all_inventory_stats(
     }))
 }
 
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct SnapshotRow {
+    #[ts(type = "string")]
+    pub id: i64,
+    #[ts(type = "string")]
+    pub ts: DateTime<Utc>,
+    pub items: HashMap<String, i64>,
+    pub cargo: HashMap<String, i64>,
+}
+
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct SnapshotChartData {
+    pub date: String,
+    #[serde(flatten)]
+    pub items: HashMap<String, i64>,
+}
+
+
+
+pub(crate) async fn snapshot_now_direct(state: &crate::AppState) -> Result<(), String> {
+    use entity::item_desc;
+    use entity::cargo_desc;
+    use futures::TryStreamExt;
+
+    tracing::info!("Starting inventory stats snapshot...");
+
+    // Phase 1: Fast accumulation loop - simple integer addition in L1 cache
+    // Using separate maps keeps hot data small and cache-friendly
+    let mut item_qtys: HashMap<i32, i64> = HashMap::new();
+    let mut cargo_qtys: HashMap<i32, i64> = HashMap::new();
+    let mut processed_count = 0;
+
+    let mut stream = entity::inventory::Entity::find()
+        .stream(&state.conn)
+        .await
+        .map_err(|e| {
+            error!("Error fetching inventories: {e:?}");
+            format!("Error fetching inventories: {e:?}")
+        })?;
+
+    tracing::info!("Fetching inventories from database...");
+
+    // Hot loop: minimal operations, sequential patterns for cache prefetching
+    while let Some(inventory) = stream.try_next().await.map_err(|e| {
+        error!("Error reading inventory: {e:?}");
+        format!("Error reading inventory: {e:?}")
+    })? {
+        for pocket in &inventory.pockets {
+            if let Some(contents) = pocket.contents.as_ref() {
+                let qty = contents.quantity as i64;
+                if contents.item_type == ItemType::Item {
+                    *item_qtys.entry(contents.item_id).or_insert(0) += qty;
+                } else {
+                    *cargo_qtys.entry(contents.item_id).or_insert(0) += qty;
+                }
+            }
+        }
+        processed_count += 1;
+    }
+
+    tracing::info!("Processed {processed_count} inventories");
+
+    // Phase 2: Single-pass lookup and JSON building with good cache locality
+    // Process items first, then cargo - keeps access patterns sequential
+    let mut snapshot_obj: HashMap<String, i64> = HashMap::new();
+    
+    for (item_id, qty) in item_qtys.iter() {
+        if let Some(desc) = state.item_desc.get(item_id) {
+            snapshot_obj.insert(desc.name.clone(), *qty);
+        }
+    }
+
+    for (cargo_id, qty) in cargo_qtys.iter() {
+        if let Some(desc) = state.cargo_desc.get(cargo_id) {
+            snapshot_obj.insert(desc.name.clone(), *qty);
+        }
+    }
+
+    tracing::info!("Snapshot JSON contains {} items/cargo entries", snapshot_obj.len());
+
+    // Phase 3: Serialization
+    tracing::info!("Serializing snapshot to string...");
+    let snapshot_str = serde_json::to_string(&snapshot_obj)
+        .map_err(|e| format!("Error serializing snapshot: {e:?}"))?;
+    tracing::info!("Snapshot string size: {} bytes", snapshot_str.len());
+
+    // Escape single quotes for SQL
+    let snapshot_str = snapshot_str.replace("'", "''");
+
+    tracing::info!("Inserting snapshot into database...");
+    let sql = format!(
+        "INSERT INTO inventory_stats_snapshots (ts, items) VALUES (now(), '{}'::jsonb);",
+        snapshot_str
+    );
+
+    state
+        .conn
+        .execute(Statement::from_string(state.conn.get_database_backend(), sql))
+        .await
+        .map_err(|e| {
+            error!("Error inserting snapshot: {e:?}");
+            format!("Error inserting snapshot: {e:?}")
+        })?;
+
+    tracing::info!("Snapshot successfully inserted into database!");
+
+    Ok(())
+}
+
+pub(crate) async fn list_snapshots(
+    state: State<AppState>,
+) -> Result<axum_codec::Codec<Vec<SnapshotChartData>>, (StatusCode, &'static str)> {
+    let db = &state.conn;
+
+    let query = "SELECT ts, items FROM inventory_stats_snapshots ORDER BY ts ASC LIMIT 100".to_string();
+
+    let rows: Vec<_> = db
+        .query_all(Statement::from_string(db.get_database_backend(), query))
+        .await
+        .map_err(|e| {
+            error!("Error listing snapshots: {e:?}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+        })?;
+
+    let mut out: Vec<SnapshotChartData> = Vec::new();
+
+    for row in rows.into_iter() {
+        let ts: DateTime<Utc> = row.try_get::<DateTime<Utc>>("", "ts").unwrap();
+        let items: sea_orm::prelude::Json = row.try_get::<sea_orm::prelude::Json>("", "items").unwrap();
+
+        let date = ts.format("%Y-%m-%d").to_string();
+
+        let chart_items: HashMap<String, i64> = serde_json::from_value(items).unwrap_or_default();
+
+        out.push(SnapshotChartData {
+            date,
+            items: chart_items,
+        });
+    }
+
+    Ok(axum_codec::Codec(out))
+}
+
 #[allow(dead_code)]
 pub(crate) async fn load_inventory_state_from_file(
     storage_path: &std::path::Path,
 ) -> anyhow::Result<Vec<inventory::Model>> {
     let item_file = File::open(storage_path.join("State/InventoryState.json"))?;
-    let inventory: Value = serde_json::from_reader(&item_file)?;
-    let inventory: Vec<inventory::Model> =
-        serde_json::from_value(inventory.get(0).unwrap().get("rows").unwrap().clone())?;
+    
+    #[derive(Deserialize)]
+    struct InventoryFileRow {
+        rows: Vec<inventory::Model>,
+    }
+    
+    let mut inventory_file: Vec<InventoryFileRow> = serde_json::from_reader(&item_file)?;
+    let inventory = if !inventory_file.is_empty() {
+        inventory_file.remove(0).rows
+    } else {
+        Vec::new()
+    };
 
     Ok(inventory)
 }
