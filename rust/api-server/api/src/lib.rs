@@ -93,6 +93,65 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     state.fill_state_from_db().await;
 
+    // Spawn daily snapshot task (runs once per day at UTC midnight)
+    {
+        let snapshot_state = state.clone();
+        tokio::spawn(async move {
+            use chrono::{Duration as ChronoDuration, Utc};
+            use sea_orm::{ConnectionTrait, Statement};
+            use tokio::time::{sleep, Duration};
+            loop {
+                let now = Utc::now();
+                let mut should_snapshot = true;
+
+                let query = "SELECT MAX(ts) as max_ts FROM inventory_stats_snapshots";
+                match snapshot_state
+                    .conn
+                    .query_one(Statement::from_string(
+                        snapshot_state.conn.get_database_backend(),
+                        query.to_string(),
+                    ))
+                    .await
+                {
+                    Ok(Some(row)) => {
+                        if let Ok(Some(ts)) = row.try_get::<Option<chrono::DateTime<Utc>>>("", "max_ts") {
+                            if ts.date_naive() == now.date_naive() {
+                                should_snapshot = false;
+                            }
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        tracing::error!("Failed to query last snapshot time: {e:?}");
+                    }
+                }
+
+                if should_snapshot {
+                    match inventory::snapshot_now_direct(&snapshot_state).await {
+                        Ok(_) => {
+                            tracing::info!("Created daily inventory snapshot");
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to create daily inventory snapshot: {e:?}");
+                        }
+                    }
+                }
+
+                let now = Utc::now();
+                let tomorrow = (now.date_naive() + ChronoDuration::days(1)).and_hms_opt(0, 0, 0).unwrap_or_else(|| now.date_naive().and_hms_opt(0, 0, 0).unwrap());
+                let next = chrono::DateTime::<Utc>::from_naive_utc_and_offset(tomorrow, Utc);
+                let dur = next.signed_duration_since(now);
+                let dur = if dur.num_seconds() > 0 {
+                    Duration::from_secs(dur.num_seconds() as u64)
+                } else {
+                    Duration::from_secs(60)
+                };
+
+                sleep(dur).await;
+            }
+        });
+    }
+
     let server_url = config.server_url();
 
     let server_url = if server_url.is_err() {

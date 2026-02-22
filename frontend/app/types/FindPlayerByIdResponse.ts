@@ -15,7 +15,7 @@ export type FindPlayerByIdResponse = {
   sign_in_timestamp: number;
   signed_in: boolean;
   traveler_tasks_expiration: number;
-  traveler_tasks: { [key in number]?: Array<TravelerTaskState> };
+  traveler_tasks: { [key in number]: Array<TravelerTaskState> };
   username: string;
   deployables: Array<VaultStateCollectibleWithDesc>;
   claim_id: bigint | null;

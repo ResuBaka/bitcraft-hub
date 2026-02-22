@@ -32,9 +32,10 @@ if (route.query.tier) {
   tier.value = parseInt(route.query.tier);
 }
 
-const { data: allDesc, pending } = await useLazyFetchMsPack<ItemsAndCargollResponse>(() => {
-  return `/api/bitcraft/itemsAndCargo/all`;
-});
+const { data: allDesc, pending } =
+  await useLazyFetchMsPack<ItemsAndCargollResponse>(() => {
+    return `/api/bitcraft/itemsAndCargo/all`;
+  });
 
 const { data: snapshotsData, refresh: reloadSnapshots } =
   await useLazyFetchMsPack<SnapshotChartData[]>(() => {
@@ -42,8 +43,6 @@ const { data: snapshotsData, refresh: reloadSnapshots } =
   });
 
 const snapshots = computed(() => snapshotsData.value ?? []);
-
-
 
 await reloadSnapshots();
 
@@ -70,15 +69,15 @@ const items = computed(() => {
         vals.push([qty, item]);
       }
     }
-    
+
     vals.sort((a, b) => Number(b[0]) - Number(a[0]));
 
     const searchStr = debouncedSearch.value?.trim().toLowerCase();
-    
+
     if (!searchStr) {
       return vals.slice(0, 19);
     }
-    
+
     const filtered = vals.filter((value: any) => {
       if (Array.isArray(value) && value[1]?.name) {
         const nameLower = value[1].name.toLowerCase();
@@ -94,7 +93,7 @@ const items = computed(() => {
       }
       return false;
     });
-    
+
     return filtered.slice(0, 48);
   } catch (e) {
     return [];
@@ -114,15 +113,15 @@ const cargo = computed(() => {
         vals.push([qty, item]);
       }
     }
-    
+
     vals.sort((a, b) => Number(b[0]) - Number(a[0]));
 
     const searchStr = debouncedSearch.value?.trim().toLowerCase();
-    
+
     if (!searchStr) {
       return vals.slice(0, 19);
     }
-    
+
     const filtered = vals.filter((value: any) => {
       if (Array.isArray(value) && value[1]?.name) {
         const nameLower = value[1].name.toLowerCase();
@@ -221,7 +220,7 @@ const categories = computed(() => {
 
   if (searchStr) {
     const exactMatch = keys.find((key) => allCat[key].lowerName === searchStr);
-    
+
     if (exactMatch) {
       keys = [exactMatch];
     } else {

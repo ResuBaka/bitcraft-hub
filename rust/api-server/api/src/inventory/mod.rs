@@ -461,21 +461,23 @@ pub(crate) async fn snapshot_now_direct(state: &crate::AppState) -> Result<(), S
         }
     }
 
-    tracing::info!("Snapshot JSON contains {} items/cargo entries", snapshot_obj.len());
+    // Phase 3: Build INSERT query for individual rows
+    // It's a hypertable, so bulk inserts are best.
+    if snapshot_obj.is_empty() {
+        tracing::info!("No items to snapshot.");
+        return Ok(());
+    }
 
-    // Phase 3: Serialization
-    tracing::info!("Serializing snapshot to string...");
-    let snapshot_str = serde_json::to_string(&snapshot_obj)
-        .map_err(|e| format!("Error serializing snapshot: {e:?}"))?;
-    tracing::info!("Snapshot string size: {} bytes", snapshot_str.len());
+    let mut values_str = String::new();
+    for (name, qty) in snapshot_obj {
+        values_str.push_str(&format!("(now(), '{}', {}),", name.replace("'", "''"), qty));
+    }
+    values_str.pop(); // remove trailing comma
 
-    // Escape single quotes for SQL
-    let snapshot_str = snapshot_str.replace("'", "''");
-
-    tracing::info!("Inserting snapshot into database...");
+    tracing::info!("Inserting snapshot rows into database...");
     let sql = format!(
-        "INSERT INTO inventory_stats_snapshots (ts, items) VALUES (now(), '{}'::jsonb);",
-        snapshot_str
+        "INSERT INTO inventory_stats_snapshots (ts, item_name, quantity) VALUES {};",
+        values_str
     );
 
     state
@@ -497,7 +499,7 @@ pub(crate) async fn list_snapshots(
 ) -> Result<axum_codec::Codec<Vec<SnapshotChartData>>, (StatusCode, &'static str)> {
     let db = &state.conn;
 
-    let query = "SELECT ts, items FROM inventory_stats_snapshots ORDER BY ts ASC LIMIT 100".to_string();
+    let query = "SELECT ts, jsonb_object_agg(item_name, quantity) as items FROM inventory_stats_snapshots GROUP BY ts ORDER BY ts ASC LIMIT 100".to_string();
 
     let rows: Vec<_> = db
         .query_all(Statement::from_string(db.get_database_backend(), query))

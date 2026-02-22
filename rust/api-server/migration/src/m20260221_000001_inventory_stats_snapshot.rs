@@ -25,8 +25,13 @@ impl MigrationTrait for Migration {
                             .default(Expr::cust("now()")),
                     )
                     .col(
-                        ColumnDef::new(InventoryStatsSnapshots::Items)
-                            .json()
+                        ColumnDef::new(InventoryStatsSnapshots::ItemName)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(InventoryStatsSnapshots::Quantity)
+                            .big_integer()
                             .not_null(),
                     )
                     .to_owned(),
@@ -81,5 +86,6 @@ enum InventoryStatsSnapshots {
     Table,
     Id,
     Ts,
-    Items,
+    ItemName,
+    Quantity,
 }

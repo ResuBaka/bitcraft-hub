@@ -5,8 +5,8 @@ import type { ItemDesc } from "./ItemDesc";
 import type { ItemListDesc } from "./ItemListDesc";
 
 export type RecipesAllResponse = {
-  recipes: { [key in number]?: CraftingRecipe };
-  cargo_desc: { [key in number]?: CargoDesc };
-  item_desc: { [key in number]?: ItemDesc };
-  item_list_desc: { [key in number]?: ItemListDesc };
+  recipes: { [key in number]: CraftingRecipe };
+  cargo_desc: { [key in number]: CargoDesc };
+  item_desc: { [key in number]: ItemDesc };
+  item_list_desc: { [key in number]: ItemListDesc };
 };

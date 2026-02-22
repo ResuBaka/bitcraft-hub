@@ -3,6 +3,6 @@
 export type SnapshotRow = {
   id: string;
   ts: string;
-  items: { [key in string]?: bigint };
-  cargo: { [key in string]?: bigint };
+  items: { [key in string]: bigint };
+  cargo: { [key in string]: bigint };
 };
