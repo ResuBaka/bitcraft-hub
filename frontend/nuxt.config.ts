@@ -18,6 +18,7 @@ export default defineNuxtConfig({
     // '@artmizu/nuxt-prometheus',
     'vuetify-nuxt-module',
     '@pinia/nuxt',
+    'nuxt-charts'
   ],
   css: ['@/assets/css/custom.scss'],
   vuetify: {
