@@ -73,6 +73,7 @@ impl __sdk::__query_builder::HasCols for BuffDesc {
 ///
 /// Provides typed access to indexed columns for query building.
 pub struct BuffDescIxCols {
+    pub buff_type_id: __sdk::__query_builder::IxCol<BuffDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<BuffDesc, i32>,
 }
 
@@ -80,6 +81,7 @@ impl __sdk::__query_builder::HasIxCols for BuffDesc {
     type IxCols = BuffDescIxCols;
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         BuffDescIxCols {
+            buff_type_id: __sdk::__query_builder::IxCol::new(table_name, "buff_type_id"),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
         }
     }

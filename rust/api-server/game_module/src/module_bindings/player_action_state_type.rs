@@ -22,7 +22,10 @@ pub struct PlayerActionState {
     pub layer: PlayerActionLayer,
     pub last_action_result: PlayerActionResult,
     pub client_cancel: bool,
-    pub pad: u32,
+    pub was_consumed: bool,
+    pub pad_1: u8,
+    pub pad_2: u8,
+    pub pad_3: u8,
 }
 
 impl __sdk::InModule for PlayerActionState {
@@ -44,7 +47,10 @@ pub struct PlayerActionStateCols {
     pub layer: __sdk::__query_builder::Col<PlayerActionState, PlayerActionLayer>,
     pub last_action_result: __sdk::__query_builder::Col<PlayerActionState, PlayerActionResult>,
     pub client_cancel: __sdk::__query_builder::Col<PlayerActionState, bool>,
-    pub _pad: __sdk::__query_builder::Col<PlayerActionState, u32>,
+    pub was_consumed: __sdk::__query_builder::Col<PlayerActionState, bool>,
+    pub _pad1: __sdk::__query_builder::Col<PlayerActionState, u8>,
+    pub _pad2: __sdk::__query_builder::Col<PlayerActionState, u8>,
+    pub _pad3: __sdk::__query_builder::Col<PlayerActionState, u8>,
 }
 
 impl __sdk::__query_builder::HasCols for PlayerActionState {
@@ -62,7 +68,10 @@ impl __sdk::__query_builder::HasCols for PlayerActionState {
             layer: __sdk::__query_builder::Col::new(table_name, "layer"),
             last_action_result: __sdk::__query_builder::Col::new(table_name, "last_action_result"),
             client_cancel: __sdk::__query_builder::Col::new(table_name, "client_cancel"),
-            _pad: __sdk::__query_builder::Col::new(table_name, "_pad"),
+            was_consumed: __sdk::__query_builder::Col::new(table_name, "was_consumed"),
+            _pad1: __sdk::__query_builder::Col::new(table_name, "_pad1"),
+            _pad2: __sdk::__query_builder::Col::new(table_name, "_pad2"),
+            _pad3: __sdk::__query_builder::Col::new(table_name, "_pad3"),
         }
     }
 }

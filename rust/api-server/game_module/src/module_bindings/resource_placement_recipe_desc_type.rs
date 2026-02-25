@@ -26,7 +26,7 @@ pub struct ResourcePlacementRecipeDesc {
     pub experience_per_progress: Vec<ExperienceStackF32>,
     pub discovery_triggers: Vec<i32>,
     pub required_knowledges: Vec<i32>,
-    pub required_claim_tech_id: i32,
+    pub required_claim_tech_ids: Vec<i32>,
     pub required_biomes: Vec<Biome>,
     pub full_discovery_score: i32,
     pub tool_mesh_index: i32,
@@ -62,7 +62,7 @@ pub struct ResourcePlacementRecipeDescCols {
         __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, Vec<ExperienceStackF32>>,
     pub discovery_triggers: __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, Vec<i32>>,
     pub required_knowledges: __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, Vec<i32>>,
-    pub required_claim_tech_id: __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, i32>,
+    pub required_claim_tech_ids: __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, Vec<i32>>,
     pub required_biomes: __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, Vec<Biome>>,
     pub full_discovery_score: __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, i32>,
     pub tool_mesh_index: __sdk::__query_builder::Col<ResourcePlacementRecipeDesc, i32>,
@@ -107,9 +107,9 @@ impl __sdk::__query_builder::HasCols for ResourcePlacementRecipeDesc {
                 table_name,
                 "required_knowledges",
             ),
-            required_claim_tech_id: __sdk::__query_builder::Col::new(
+            required_claim_tech_ids: __sdk::__query_builder::Col::new(
                 table_name,
-                "required_claim_tech_id",
+                "required_claim_tech_ids",
             ),
             required_biomes: __sdk::__query_builder::Col::new(table_name, "required_biomes"),
             full_discovery_score: __sdk::__query_builder::Col::new(

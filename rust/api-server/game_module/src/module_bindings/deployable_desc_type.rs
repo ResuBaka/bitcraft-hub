@@ -21,6 +21,8 @@ pub struct DeployableDesc {
     pub pathfinding_id: i32,
     pub movement_type: MovementType,
     pub can_enter_portals: bool,
+    pub can_auto_follow: bool,
+    pub affected_by_wind: f32,
     pub speed: Vec<MovementSpeed>,
     pub use_player_speed_modifier: bool,
     pub placeable_on_land: bool,
@@ -41,6 +43,8 @@ pub struct DeployableDesc {
     pub allow_emote_while_passenger: bool,
     pub experience_per_progress: Vec<ExperienceStackF32>,
     pub mounting_radius: f32,
+    pub radius: f32,
+    pub allow_hunting: bool,
 }
 
 impl __sdk::InModule for DeployableDesc {
@@ -59,6 +63,8 @@ pub struct DeployableDescCols {
     pub pathfinding_id: __sdk::__query_builder::Col<DeployableDesc, i32>,
     pub movement_type: __sdk::__query_builder::Col<DeployableDesc, MovementType>,
     pub can_enter_portals: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub can_auto_follow: __sdk::__query_builder::Col<DeployableDesc, bool>,
+    pub affected_by_wind: __sdk::__query_builder::Col<DeployableDesc, f32>,
     pub speed: __sdk::__query_builder::Col<DeployableDesc, Vec<MovementSpeed>>,
     pub use_player_speed_modifier: __sdk::__query_builder::Col<DeployableDesc, bool>,
     pub placeable_on_land: __sdk::__query_builder::Col<DeployableDesc, bool>,
@@ -81,6 +87,8 @@ pub struct DeployableDescCols {
     pub experience_per_progress:
         __sdk::__query_builder::Col<DeployableDesc, Vec<ExperienceStackF32>>,
     pub mounting_radius: __sdk::__query_builder::Col<DeployableDesc, f32>,
+    pub radius: __sdk::__query_builder::Col<DeployableDesc, f32>,
+    pub allow_hunting: __sdk::__query_builder::Col<DeployableDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for DeployableDesc {
@@ -98,6 +106,8 @@ impl __sdk::__query_builder::HasCols for DeployableDesc {
             pathfinding_id: __sdk::__query_builder::Col::new(table_name, "pathfinding_id"),
             movement_type: __sdk::__query_builder::Col::new(table_name, "movement_type"),
             can_enter_portals: __sdk::__query_builder::Col::new(table_name, "can_enter_portals"),
+            can_auto_follow: __sdk::__query_builder::Col::new(table_name, "can_auto_follow"),
+            affected_by_wind: __sdk::__query_builder::Col::new(table_name, "affected_by_wind"),
             speed: __sdk::__query_builder::Col::new(table_name, "speed"),
             use_player_speed_modifier: __sdk::__query_builder::Col::new(
                 table_name,
@@ -142,6 +152,8 @@ impl __sdk::__query_builder::HasCols for DeployableDesc {
                 "experience_per_progress",
             ),
             mounting_radius: __sdk::__query_builder::Col::new(table_name, "mounting_radius"),
+            radius: __sdk::__query_builder::Col::new(table_name, "radius"),
+            allow_hunting: __sdk::__query_builder::Col::new(table_name, "allow_hunting"),
         }
     }
 }

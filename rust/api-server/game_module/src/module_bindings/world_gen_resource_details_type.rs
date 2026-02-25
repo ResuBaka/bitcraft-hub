@@ -14,7 +14,7 @@ pub struct WorldGenResourceDetails {
     pub land_elevation_range: WorldGenVector2Int,
     pub spawns_in_water: bool,
     pub water_depth_range: WorldGenVector2Int,
-    pub spawns_on_uneven_terrain: bool,
+    pub max_elevation_delta: i32,
 }
 
 impl __sdk::InModule for WorldGenResourceDetails {

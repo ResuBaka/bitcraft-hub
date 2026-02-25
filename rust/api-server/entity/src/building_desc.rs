@@ -35,6 +35,7 @@ pub struct Model {
     pub show_in_compendium: bool,
     pub is_ruins: bool,
     pub not_deconstructible: bool,
+    pub destroy_on_unclaim: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -55,7 +56,6 @@ pub struct Function {
     pub cargo_slot_size: i32,
     pub trade_orders: i32,
     pub allowed_item_id_per_slot: Vec<i32>,
-    pub buff_ids: Vec<i32>,
     pub concurrent_crafts_per_player: i32,
     pub terraform: bool,
     pub housing_slots: i32,
@@ -76,7 +76,6 @@ impl From<BuildingFunction> for Function {
             cargo_slot_size: value.cargo_slot_size,
             trade_orders: value.trade_orders,
             allowed_item_id_per_slot: value.allowed_item_id_per_slot,
-            buff_ids: value.buff_ids,
             concurrent_crafts_per_player: value.concurrent_crafts_per_player,
             terraform: value.terraform,
             housing_slots: value.housing_slots,
@@ -170,6 +169,7 @@ impl From<BuildingDesc> for Model {
             show_in_compendium: value.show_in_compendium,
             is_ruins: value.is_ruins,
             not_deconstructible: value.not_deconstructible,
+            destroy_on_unclaim: value.destroy_on_unclaim,
         }
     }
 }

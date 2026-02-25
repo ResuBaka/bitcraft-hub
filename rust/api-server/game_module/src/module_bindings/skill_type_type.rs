@@ -51,6 +51,8 @@ pub enum SkillType {
     LoreKeeper,
 
     Sailing,
+
+    HexiteGathering,
 }
 
 impl __sdk::InModule for SkillType {

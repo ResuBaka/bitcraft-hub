@@ -4,12 +4,12 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::claim_tech_desc_v_2_type::ClaimTechDescV2;
+use super::claim_tech_desc_type::ClaimTechDesc;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct ImportClaimTechDescArgs {
-    pub records: Vec<ClaimTechDescV2>,
+    pub records: Vec<ClaimTechDesc>,
 }
 
 impl From<ImportClaimTechDescArgs> for super::Reducer {
@@ -36,7 +36,7 @@ pub trait import_claim_tech_desc {
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_import_claim_tech_desc`] callbacks.
-    fn import_claim_tech_desc(&self, records: Vec<ClaimTechDescV2>) -> __sdk::Result<()>;
+    fn import_claim_tech_desc(&self, records: Vec<ClaimTechDesc>) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `import_claim_tech_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -46,7 +46,7 @@ pub trait import_claim_tech_desc {
     /// to cancel the callback.
     fn on_import_claim_tech_desc(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<ClaimTechDescV2>) + Send + 'static,
+        callback: impl FnMut(&super::ReducerEventContext, &Vec<ClaimTechDesc>) + Send + 'static,
     ) -> ImportClaimTechDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_claim_tech_desc`],
     /// causing it not to run in the future.
@@ -54,7 +54,7 @@ pub trait import_claim_tech_desc {
 }
 
 impl import_claim_tech_desc for super::RemoteReducers {
-    fn import_claim_tech_desc(&self, records: Vec<ClaimTechDescV2>) -> __sdk::Result<()> {
+    fn import_claim_tech_desc(&self, records: Vec<ClaimTechDesc>) -> __sdk::Result<()> {
         self.imp.call_reducer(
             "import_claim_tech_desc",
             ImportClaimTechDescArgs { records },
@@ -62,7 +62,7 @@ impl import_claim_tech_desc for super::RemoteReducers {
     }
     fn on_import_claim_tech_desc(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ClaimTechDescV2>) + Send + 'static,
+        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ClaimTechDesc>) + Send + 'static,
     ) -> ImportClaimTechDescCallbackId {
         ImportClaimTechDescCallbackId(self.imp.on_reducer(
             "import_claim_tech_desc",

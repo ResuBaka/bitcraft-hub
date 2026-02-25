@@ -11,9 +11,9 @@ pub struct QuestChainState {
     pub player_entity_id: u64,
     pub quest_chain_desc_id: i32,
     pub stage_id: i32,
-    pub is_active: bool,
     pub completed: bool,
     pub stage_rewards_awarded: Vec<i32>,
+    pub tracked: bool,
 }
 
 impl __sdk::InModule for QuestChainState {
@@ -28,9 +28,9 @@ pub struct QuestChainStateCols {
     pub player_entity_id: __sdk::__query_builder::Col<QuestChainState, u64>,
     pub quest_chain_desc_id: __sdk::__query_builder::Col<QuestChainState, i32>,
     pub stage_id: __sdk::__query_builder::Col<QuestChainState, i32>,
-    pub is_active: __sdk::__query_builder::Col<QuestChainState, bool>,
     pub completed: __sdk::__query_builder::Col<QuestChainState, bool>,
     pub stage_rewards_awarded: __sdk::__query_builder::Col<QuestChainState, Vec<i32>>,
+    pub tracked: __sdk::__query_builder::Col<QuestChainState, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for QuestChainState {
@@ -44,12 +44,12 @@ impl __sdk::__query_builder::HasCols for QuestChainState {
                 "quest_chain_desc_id",
             ),
             stage_id: __sdk::__query_builder::Col::new(table_name, "stage_id"),
-            is_active: __sdk::__query_builder::Col::new(table_name, "is_active"),
             completed: __sdk::__query_builder::Col::new(table_name, "completed"),
             stage_rewards_awarded: __sdk::__query_builder::Col::new(
                 table_name,
                 "stage_rewards_awarded",
             ),
+            tracked: __sdk::__query_builder::Col::new(table_name, "tracked"),
         }
     }
 }

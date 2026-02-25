@@ -26,7 +26,7 @@ pub struct ConstructionRecipeDesc {
     pub experience_per_progress: Vec<ExperienceStackF32>,
     pub discovery_triggers: Vec<i32>,
     pub required_knowledges: Vec<i32>,
-    pub required_claim_tech_id: i32,
+    pub required_claim_tech_ids: Vec<i32>,
     pub full_discovery_score: i32,
     pub tool_mesh_index: i32,
     pub building_description_id: i32,
@@ -63,7 +63,7 @@ pub struct ConstructionRecipeDescCols {
         __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<ExperienceStackF32>>,
     pub discovery_triggers: __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<i32>>,
     pub required_knowledges: __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<i32>>,
-    pub required_claim_tech_id: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
+    pub required_claim_tech_ids: __sdk::__query_builder::Col<ConstructionRecipeDesc, Vec<i32>>,
     pub full_discovery_score: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
     pub tool_mesh_index: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
     pub building_description_id: __sdk::__query_builder::Col<ConstructionRecipeDesc, i32>,
@@ -109,9 +109,9 @@ impl __sdk::__query_builder::HasCols for ConstructionRecipeDesc {
                 table_name,
                 "required_knowledges",
             ),
-            required_claim_tech_id: __sdk::__query_builder::Col::new(
+            required_claim_tech_ids: __sdk::__query_builder::Col::new(
                 table_name,
-                "required_claim_tech_id",
+                "required_claim_tech_ids",
             ),
             full_discovery_score: __sdk::__query_builder::Col::new(
                 table_name,

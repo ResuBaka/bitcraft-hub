@@ -70,6 +70,7 @@ impl __sdk::__query_builder::HasCols for ProjectSiteState {
 /// Provides typed access to indexed columns for query building.
 pub struct ProjectSiteStateIxCols {
     pub entity_id: __sdk::__query_builder::IxCol<ProjectSiteState, u64>,
+    pub owner_id: __sdk::__query_builder::IxCol<ProjectSiteState, u64>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ProjectSiteState {
@@ -77,6 +78,7 @@ impl __sdk::__query_builder::HasIxCols for ProjectSiteState {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ProjectSiteStateIxCols {
             entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_id: __sdk::__query_builder::IxCol::new(table_name, "owner_id"),
         }
     }
 }

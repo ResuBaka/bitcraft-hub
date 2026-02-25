@@ -14,6 +14,7 @@ pub struct DeployableCollectibleState {
     pub collectible_id: i32,
     pub deployable_desc_id: i32,
     pub location: Option<OffsetCoordinatesSmallMessage>,
+    pub auto_follow: bool,
 }
 
 impl __sdk::InModule for DeployableCollectibleState {
@@ -32,6 +33,7 @@ pub struct DeployableCollectibleStateCols {
         DeployableCollectibleState,
         Option<OffsetCoordinatesSmallMessage>,
     >,
+    pub auto_follow: __sdk::__query_builder::Col<DeployableCollectibleState, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for DeployableCollectibleState {
@@ -46,6 +48,7 @@ impl __sdk::__query_builder::HasCols for DeployableCollectibleState {
             collectible_id: __sdk::__query_builder::Col::new(table_name, "collectible_id"),
             deployable_desc_id: __sdk::__query_builder::Col::new(table_name, "deployable_desc_id"),
             location: __sdk::__query_builder::Col::new(table_name, "location"),
+            auto_follow: __sdk::__query_builder::Col::new(table_name, "auto_follow"),
         }
     }
 }

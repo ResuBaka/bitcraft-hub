@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::empire_owner_type_type::EmpireOwnerType;
 use super::offset_coordinates_small_message_type::OffsetCoordinatesSmallMessage;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
@@ -16,6 +17,8 @@ pub struct EmpireState {
     pub nobility_threshold: i32,
     pub num_claims: i32,
     pub location: OffsetCoordinatesSmallMessage,
+    pub empire_currency_treasury: u32,
+    pub owner_type: EmpireOwnerType,
 }
 
 impl __sdk::InModule for EmpireState {
@@ -33,6 +36,8 @@ pub struct EmpireStateCols {
     pub nobility_threshold: __sdk::__query_builder::Col<EmpireState, i32>,
     pub num_claims: __sdk::__query_builder::Col<EmpireState, i32>,
     pub location: __sdk::__query_builder::Col<EmpireState, OffsetCoordinatesSmallMessage>,
+    pub empire_currency_treasury: __sdk::__query_builder::Col<EmpireState, u32>,
+    pub owner_type: __sdk::__query_builder::Col<EmpireState, EmpireOwnerType>,
 }
 
 impl __sdk::__query_builder::HasCols for EmpireState {
@@ -49,6 +54,11 @@ impl __sdk::__query_builder::HasCols for EmpireState {
             nobility_threshold: __sdk::__query_builder::Col::new(table_name, "nobility_threshold"),
             num_claims: __sdk::__query_builder::Col::new(table_name, "num_claims"),
             location: __sdk::__query_builder::Col::new(table_name, "location"),
+            empire_currency_treasury: __sdk::__query_builder::Col::new(
+                table_name,
+                "empire_currency_treasury",
+            ),
+            owner_type: __sdk::__query_builder::Col::new(table_name, "owner_type"),
         }
     }
 }

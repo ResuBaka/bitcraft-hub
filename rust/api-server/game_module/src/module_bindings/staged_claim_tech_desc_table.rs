@@ -3,6 +3,7 @@
 
 #![allow(unused, clippy::all)]
 use super::claim_tech_desc_type::ClaimTechDesc;
+use super::claim_tech_type_type::ClaimTechType;
 use super::item_stack_type::ItemStack;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 

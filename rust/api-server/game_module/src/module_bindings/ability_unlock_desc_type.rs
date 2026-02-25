@@ -17,6 +17,7 @@ pub struct AbilityUnlockDesc {
     pub required_claim_tech_id: i32,
     pub required_knowledges: Vec<i32>,
     pub blocking_knowledges: Vec<i32>,
+    pub show_in_progression: bool,
 }
 
 impl __sdk::InModule for AbilityUnlockDesc {
@@ -34,6 +35,7 @@ pub struct AbilityUnlockDescCols {
     pub required_claim_tech_id: __sdk::__query_builder::Col<AbilityUnlockDesc, i32>,
     pub required_knowledges: __sdk::__query_builder::Col<AbilityUnlockDesc, Vec<i32>>,
     pub blocking_knowledges: __sdk::__query_builder::Col<AbilityUnlockDesc, Vec<i32>>,
+    pub show_in_progression: __sdk::__query_builder::Col<AbilityUnlockDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for AbilityUnlockDesc {
@@ -59,6 +61,10 @@ impl __sdk::__query_builder::HasCols for AbilityUnlockDesc {
                 table_name,
                 "blocking_knowledges",
             ),
+            show_in_progression: __sdk::__query_builder::Col::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }
@@ -69,6 +75,7 @@ impl __sdk::__query_builder::HasCols for AbilityUnlockDesc {
 pub struct AbilityUnlockDescIxCols {
     pub ability_type_enum_id: __sdk::__query_builder::IxCol<AbilityUnlockDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<AbilityUnlockDesc, i32>,
+    pub show_in_progression: __sdk::__query_builder::IxCol<AbilityUnlockDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for AbilityUnlockDesc {
@@ -80,6 +87,10 @@ impl __sdk::__query_builder::HasIxCols for AbilityUnlockDesc {
                 "ability_type_enum_id",
             ),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            show_in_progression: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }

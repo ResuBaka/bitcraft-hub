@@ -75,7 +75,6 @@ impl __sdk::__query_builder::HasCols for DeconstructionRecipeDesc {
 ///
 /// Provides typed access to indexed columns for query building.
 pub struct DeconstructionRecipeDescIxCols {
-    pub consumed_building: __sdk::__query_builder::IxCol<DeconstructionRecipeDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<DeconstructionRecipeDesc, i32>,
 }
 
@@ -83,7 +82,6 @@ impl __sdk::__query_builder::HasIxCols for DeconstructionRecipeDesc {
     type IxCols = DeconstructionRecipeDescIxCols;
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         DeconstructionRecipeDescIxCols {
-            consumed_building: __sdk::__query_builder::IxCol::new(table_name, "consumed_building"),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
         }
     }

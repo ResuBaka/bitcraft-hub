@@ -12,6 +12,7 @@ pub struct EmpirePlayerDataState {
     pub rank: u8,
     pub donated_shards: u32,
     pub noble: Option<__sdk::Timestamp>,
+    pub donated_empire_currency: u32,
 }
 
 impl __sdk::InModule for EmpirePlayerDataState {
@@ -27,6 +28,7 @@ pub struct EmpirePlayerDataStateCols {
     pub rank: __sdk::__query_builder::Col<EmpirePlayerDataState, u8>,
     pub donated_shards: __sdk::__query_builder::Col<EmpirePlayerDataState, u32>,
     pub noble: __sdk::__query_builder::Col<EmpirePlayerDataState, Option<__sdk::Timestamp>>,
+    pub donated_empire_currency: __sdk::__query_builder::Col<EmpirePlayerDataState, u32>,
 }
 
 impl __sdk::__query_builder::HasCols for EmpirePlayerDataState {
@@ -38,6 +40,10 @@ impl __sdk::__query_builder::HasCols for EmpirePlayerDataState {
             rank: __sdk::__query_builder::Col::new(table_name, "rank"),
             donated_shards: __sdk::__query_builder::Col::new(table_name, "donated_shards"),
             noble: __sdk::__query_builder::Col::new(table_name, "noble"),
+            donated_empire_currency: __sdk::__query_builder::Col::new(
+                table_name,
+                "donated_empire_currency",
+            ),
         }
     }
 }

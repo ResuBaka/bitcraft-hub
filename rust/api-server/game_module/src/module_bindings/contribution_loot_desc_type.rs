@@ -11,6 +11,7 @@ pub struct ContributionLootDesc {
     pub enemy_type_id: i32,
     pub item_list_id: i32,
     pub minimum_contribution: i32,
+    pub weighted: bool,
 }
 
 impl __sdk::InModule for ContributionLootDesc {
@@ -25,6 +26,7 @@ pub struct ContributionLootDescCols {
     pub enemy_type_id: __sdk::__query_builder::Col<ContributionLootDesc, i32>,
     pub item_list_id: __sdk::__query_builder::Col<ContributionLootDesc, i32>,
     pub minimum_contribution: __sdk::__query_builder::Col<ContributionLootDesc, i32>,
+    pub weighted: __sdk::__query_builder::Col<ContributionLootDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for ContributionLootDesc {
@@ -38,6 +40,7 @@ impl __sdk::__query_builder::HasCols for ContributionLootDesc {
                 table_name,
                 "minimum_contribution",
             ),
+            weighted: __sdk::__query_builder::Col::new(table_name, "weighted"),
         }
     }
 }

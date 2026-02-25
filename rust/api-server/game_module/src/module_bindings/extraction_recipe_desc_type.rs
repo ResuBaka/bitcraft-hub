@@ -18,6 +18,7 @@ pub struct ExtractionRecipeDesc {
     pub cargo_id: i32,
     pub discovery_triggers: Vec<i32>,
     pub required_knowledges: Vec<i32>,
+    pub blocking_knowledges: Vec<i32>,
     pub time_requirement: f32,
     pub stamina_requirement: f32,
     pub tool_durability_lost: i32,
@@ -31,6 +32,8 @@ pub struct ExtractionRecipeDesc {
     pub verb_phrase: String,
     pub tool_mesh_index: i32,
     pub recipe_performance_id: i32,
+    pub empire_rank_requirement: Option<i32>,
+    pub show_in_progression: bool,
 }
 
 impl __sdk::InModule for ExtractionRecipeDesc {
@@ -46,6 +49,7 @@ pub struct ExtractionRecipeDescCols {
     pub cargo_id: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
     pub discovery_triggers: __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<i32>>,
     pub required_knowledges: __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<i32>>,
+    pub blocking_knowledges: __sdk::__query_builder::Col<ExtractionRecipeDesc, Vec<i32>>,
     pub time_requirement: __sdk::__query_builder::Col<ExtractionRecipeDesc, f32>,
     pub stamina_requirement: __sdk::__query_builder::Col<ExtractionRecipeDesc, f32>,
     pub tool_durability_lost: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
@@ -63,6 +67,8 @@ pub struct ExtractionRecipeDescCols {
     pub verb_phrase: __sdk::__query_builder::Col<ExtractionRecipeDesc, String>,
     pub tool_mesh_index: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
     pub recipe_performance_id: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
+    pub empire_rank_requirement: __sdk::__query_builder::Col<ExtractionRecipeDesc, Option<i32>>,
+    pub show_in_progression: __sdk::__query_builder::Col<ExtractionRecipeDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
@@ -76,6 +82,10 @@ impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
             required_knowledges: __sdk::__query_builder::Col::new(
                 table_name,
                 "required_knowledges",
+            ),
+            blocking_knowledges: __sdk::__query_builder::Col::new(
+                table_name,
+                "blocking_knowledges",
             ),
             time_requirement: __sdk::__query_builder::Col::new(table_name, "time_requirement"),
             stamina_requirement: __sdk::__query_builder::Col::new(
@@ -108,6 +118,14 @@ impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
                 table_name,
                 "recipe_performance_id",
             ),
+            empire_rank_requirement: __sdk::__query_builder::Col::new(
+                table_name,
+                "empire_rank_requirement",
+            ),
+            show_in_progression: __sdk::__query_builder::Col::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }
@@ -117,6 +135,8 @@ impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct ExtractionRecipeDescIxCols {
     pub id: __sdk::__query_builder::IxCol<ExtractionRecipeDesc, i32>,
+    pub resource_id: __sdk::__query_builder::IxCol<ExtractionRecipeDesc, i32>,
+    pub show_in_progression: __sdk::__query_builder::IxCol<ExtractionRecipeDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ExtractionRecipeDesc {
@@ -124,6 +144,11 @@ impl __sdk::__query_builder::HasIxCols for ExtractionRecipeDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ExtractionRecipeDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            resource_id: __sdk::__query_builder::IxCol::new(table_name, "resource_id"),
+            show_in_progression: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }

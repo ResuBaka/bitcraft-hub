@@ -17,6 +17,8 @@ pub struct QuestChainDesc {
     pub requirements: Vec<QuestRequirement>,
     pub rewards: Vec<QuestReward>,
     pub implicit_rewards: Vec<QuestReward>,
+    pub unstartable: bool,
+    pub is_secret: bool,
 }
 
 impl __sdk::InModule for QuestChainDesc {
@@ -34,6 +36,8 @@ pub struct QuestChainDescCols {
     pub requirements: __sdk::__query_builder::Col<QuestChainDesc, Vec<QuestRequirement>>,
     pub rewards: __sdk::__query_builder::Col<QuestChainDesc, Vec<QuestReward>>,
     pub implicit_rewards: __sdk::__query_builder::Col<QuestChainDesc, Vec<QuestReward>>,
+    pub unstartable: __sdk::__query_builder::Col<QuestChainDesc, bool>,
+    pub is_secret: __sdk::__query_builder::Col<QuestChainDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for QuestChainDesc {
@@ -47,6 +51,8 @@ impl __sdk::__query_builder::HasCols for QuestChainDesc {
             requirements: __sdk::__query_builder::Col::new(table_name, "requirements"),
             rewards: __sdk::__query_builder::Col::new(table_name, "rewards"),
             implicit_rewards: __sdk::__query_builder::Col::new(table_name, "implicit_rewards"),
+            unstartable: __sdk::__query_builder::Col::new(table_name, "unstartable"),
+            is_secret: __sdk::__query_builder::Col::new(table_name, "is_secret"),
         }
     }
 }

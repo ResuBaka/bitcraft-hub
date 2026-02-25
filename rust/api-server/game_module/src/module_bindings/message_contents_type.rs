@@ -6,10 +6,14 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 use super::admin_broadcast_message_msg_type::AdminBroadcastMessageMsg;
 use super::claim_create_empire_settlement_msg_type::ClaimCreateEmpireSettlementMsg;
+use super::claim_set_name_msg_type::ClaimSetNameMsg;
 use super::delete_empire_msg_type::DeleteEmpireMsg;
+use super::empire_add_currency_msg_type::EmpireAddCurrencyMsg;
 use super::empire_claim_join_msg_type::EmpireClaimJoinMsg;
 use super::empire_collect_hexite_capsule_msg_type::EmpireCollectHexiteCapsuleMsg;
 use super::empire_create_building_msg_type::EmpireCreateBuildingMsg;
+use super::empire_create_msg_type::EmpireCreateMsg;
+use super::empire_donate_item_msg_type::EmpireDonateItemMsg;
 use super::empire_queue_supplies_msg_type::EmpireQueueSuppliesMsg;
 use super::empire_remove_crown_msg_type::EmpireRemoveCrownMsg;
 use super::empire_resupply_node_msg_type::EmpireResupplyNodeMsg;
@@ -19,6 +23,7 @@ use super::empire_update_emperor_crown_msg_type::EmpireUpdateEmperorCrownMsg;
 use super::global_delete_empire_building_msg_type::GlobalDeleteEmpireBuildingMsg;
 use super::grant_hub_item_msg_type::GrantHubItemMsg;
 use super::inter_module_table_updates_type::InterModuleTableUpdates;
+use super::npc_place_watchtowers_msg_type::NpcPlaceWatchtowersMsg;
 use super::on_claim_members_changed_msg_type::OnClaimMembersChangedMsg;
 use super::on_deployable_recovered_msg_type::OnDeployableRecoveredMsg;
 use super::on_empire_building_deleted_msg_type::OnEmpireBuildingDeletedMsg;
@@ -30,6 +35,8 @@ use super::player_create_msg_type::PlayerCreateMsg;
 use super::player_skip_queue_msg_type::PlayerSkipQueueMsg;
 use super::recover_deployable_msg_type::RecoverDeployableMsg;
 use super::region_destroy_siege_engine_msg_type::RegionDestroySiegeEngineMsg;
+use super::replace_identity_msg_type::ReplaceIdentityMsg;
+use super::restore_skills_msg_type::RestoreSkillsMsg;
 use super::sign_player_out_msg_type::SignPlayerOutMsg;
 use super::transfer_player_housing_msg_type::TransferPlayerHousingMsg;
 use super::transfer_player_msg_type::TransferPlayerMsg;
@@ -66,6 +73,10 @@ pub enum MessageContents {
 
     EmpireResupplyNode(EmpireResupplyNodeMsg),
 
+    EmpireDonateItem(EmpireDonateItemMsg),
+
+    EmpireCreate(EmpireCreateMsg),
+
     EmpireCollectHexiteCapsule(EmpireCollectHexiteCapsuleMsg),
 
     EmpireStartSiege(EmpireStartSiegeMsg),
@@ -86,6 +97,8 @@ pub enum MessageContents {
 
     EmpireRemoveCrown(EmpireRemoveCrownMsg),
 
+    EmpireAddCurrency(EmpireAddCurrencyMsg),
+
     SignPlayerOut(SignPlayerOutMsg),
 
     AdminBroadcastMessage(AdminBroadcastMessageMsg),
@@ -97,6 +110,14 @@ pub enum MessageContents {
     RecoverDeployable(RecoverDeployableMsg),
 
     OnDeployableRecovered(OnDeployableRecoveredMsg),
+
+    ReplaceIdentity(ReplaceIdentityMsg),
+
+    ClaimSetName(ClaimSetNameMsg),
+
+    RestoreSkills(RestoreSkillsMsg),
+
+    NpcPlaceWatchtowers(NpcPlaceWatchtowersMsg),
 }
 
 impl __sdk::InModule for MessageContents {

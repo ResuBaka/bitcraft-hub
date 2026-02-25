@@ -4,14 +4,17 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::claim_tech_type_type::ClaimTechType;
 use super::item_stack_type::ItemStack;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub struct ClaimTechDesc {
     pub id: i32,
+    pub name: String,
     pub description: String,
     pub tier: i32,
+    pub tech_type: ClaimTechType,
     pub supplies_cost: i32,
     pub research_time: i32,
     pub requirements: Vec<i32>,
@@ -20,6 +23,7 @@ pub struct ClaimTechDesc {
     pub area: i32,
     pub supplies: i32,
     pub xp_to_mint_hex_coin: u32,
+    pub unlocks_techs: Vec<i32>,
 }
 
 impl __sdk::InModule for ClaimTechDesc {
@@ -31,8 +35,10 @@ impl __sdk::InModule for ClaimTechDesc {
 /// Provides typed access to columns for query building.
 pub struct ClaimTechDescCols {
     pub id: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub name: __sdk::__query_builder::Col<ClaimTechDesc, String>,
     pub description: __sdk::__query_builder::Col<ClaimTechDesc, String>,
     pub tier: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
+    pub tech_type: __sdk::__query_builder::Col<ClaimTechDesc, ClaimTechType>,
     pub supplies_cost: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
     pub research_time: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
     pub requirements: __sdk::__query_builder::Col<ClaimTechDesc, Vec<i32>>,
@@ -41,6 +47,7 @@ pub struct ClaimTechDescCols {
     pub area: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
     pub supplies: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
     pub xp_to_mint_hex_coin: __sdk::__query_builder::Col<ClaimTechDesc, u32>,
+    pub unlocks_techs: __sdk::__query_builder::Col<ClaimTechDesc, Vec<i32>>,
 }
 
 impl __sdk::__query_builder::HasCols for ClaimTechDesc {
@@ -48,8 +55,10 @@ impl __sdk::__query_builder::HasCols for ClaimTechDesc {
     fn cols(table_name: &'static str) -> Self::Cols {
         ClaimTechDescCols {
             id: __sdk::__query_builder::Col::new(table_name, "id"),
+            name: __sdk::__query_builder::Col::new(table_name, "name"),
             description: __sdk::__query_builder::Col::new(table_name, "description"),
             tier: __sdk::__query_builder::Col::new(table_name, "tier"),
+            tech_type: __sdk::__query_builder::Col::new(table_name, "tech_type"),
             supplies_cost: __sdk::__query_builder::Col::new(table_name, "supplies_cost"),
             research_time: __sdk::__query_builder::Col::new(table_name, "research_time"),
             requirements: __sdk::__query_builder::Col::new(table_name, "requirements"),
@@ -61,6 +70,7 @@ impl __sdk::__query_builder::HasCols for ClaimTechDesc {
                 table_name,
                 "xp_to_mint_hex_coin",
             ),
+            unlocks_techs: __sdk::__query_builder::Col::new(table_name, "unlocks_techs"),
         }
     }
 }

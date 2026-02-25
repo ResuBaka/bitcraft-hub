@@ -3,7 +3,7 @@
 
 #![allow(unused, clippy::all)]
 use super::movement_speed_type::MovementSpeed;
-use super::parameters_desc_v_2_type::ParametersDescV2;
+use super::parameters_desc_type::ParametersDesc;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 /// Table handle for the table `staged_parameters_desc`.
@@ -15,7 +15,7 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 /// but to directly chain method calls,
 /// like `ctx.db.staged_parameters_desc().on_insert(...)`.
 pub struct StagedParametersDescTableHandle<'ctx> {
-    imp: __sdk::TableHandle<ParametersDescV2>,
+    imp: __sdk::TableHandle<ParametersDesc>,
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
@@ -34,7 +34,7 @@ impl StagedParametersDescTableAccess for super::RemoteTables {
         StagedParametersDescTableHandle {
             imp: self
                 .imp
-                .get_table::<ParametersDescV2>("staged_parameters_desc"),
+                .get_table::<ParametersDesc>("staged_parameters_desc"),
             ctx: std::marker::PhantomData,
         }
     }
@@ -44,13 +44,13 @@ pub struct StagedParametersDescInsertCallbackId(__sdk::CallbackId);
 pub struct StagedParametersDescDeleteCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::Table for StagedParametersDescTableHandle<'ctx> {
-    type Row = ParametersDescV2;
+    type Row = ParametersDesc;
     type EventContext = super::EventContext;
 
     fn count(&self) -> u64 {
         self.imp.count()
     }
-    fn iter(&self) -> impl Iterator<Item = ParametersDescV2> + '_ {
+    fn iter(&self) -> impl Iterator<Item = ParametersDesc> + '_ {
         self.imp.iter()
     }
 
@@ -83,7 +83,7 @@ impl<'ctx> __sdk::Table for StagedParametersDescTableHandle<'ctx> {
 
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<ParametersDescV2>("staged_parameters_desc");
+    let _table = client_cache.get_or_make_table::<ParametersDesc>("staged_parameters_desc");
     _table.add_unique_constraint::<i32>("version", |row| &row.version);
 }
 pub struct StagedParametersDescUpdateCallbackId(__sdk::CallbackId);
@@ -106,9 +106,9 @@ impl<'ctx> __sdk::TableWithPrimaryKey for StagedParametersDescTableHandle<'ctx> 
 #[doc(hidden)]
 pub(super) fn parse_table_update(
     raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<ParametersDescV2>> {
+) -> __sdk::Result<__sdk::TableUpdate<ParametersDesc>> {
     __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<ParametersDescV2>", "TableUpdate")
+        __sdk::InternalError::failed_parse("TableUpdate<ParametersDesc>", "TableUpdate")
             .with_cause(e)
             .into()
     })
@@ -122,7 +122,7 @@ pub(super) fn parse_table_update(
 /// but to directly chain method calls,
 /// like `ctx.db.staged_parameters_desc().version().find(...)`.
 pub struct StagedParametersDescVersionUnique<'ctx> {
-    imp: __sdk::UniqueConstraintHandle<ParametersDescV2, i32>,
+    imp: __sdk::UniqueConstraintHandle<ParametersDesc, i32>,
     phantom: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
@@ -139,23 +139,23 @@ impl<'ctx> StagedParametersDescTableHandle<'ctx> {
 impl<'ctx> StagedParametersDescVersionUnique<'ctx> {
     /// Find the subscribed row whose `version` column value is equal to `col_val`,
     /// if such a row is present in the client cache.
-    pub fn find(&self, col_val: &i32) -> Option<ParametersDescV2> {
+    pub fn find(&self, col_val: &i32) -> Option<ParametersDesc> {
         self.imp.find(col_val)
     }
 }
 
 #[allow(non_camel_case_types)]
-/// Extension trait for query builder access to the table `ParametersDescV2`.
+/// Extension trait for query builder access to the table `ParametersDesc`.
 ///
 /// Implemented for [`__sdk::QueryTableAccessor`].
 pub trait staged_parameters_descQueryTableAccess {
     #[allow(non_snake_case)]
-    /// Get a query builder for the table `ParametersDescV2`.
-    fn staged_parameters_desc(&self) -> __sdk::__query_builder::Table<ParametersDescV2>;
+    /// Get a query builder for the table `ParametersDesc`.
+    fn staged_parameters_desc(&self) -> __sdk::__query_builder::Table<ParametersDesc>;
 }
 
 impl staged_parameters_descQueryTableAccess for __sdk::QueryTableAccessor {
-    fn staged_parameters_desc(&self) -> __sdk::__query_builder::Table<ParametersDescV2> {
+    fn staged_parameters_desc(&self) -> __sdk::__query_builder::Table<ParametersDesc> {
         __sdk::__query_builder::Table::new("staged_parameters_desc")
     }
 }

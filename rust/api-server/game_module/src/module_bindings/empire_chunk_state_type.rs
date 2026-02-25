@@ -8,7 +8,8 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 #[sats(crate = __lib)]
 pub struct EmpireChunkState {
     pub chunk_index: u64,
-    pub empire_entity_id: Vec<u64>,
+    pub empire_entity_id: u64,
+    pub watchtower_entity_id: u64,
 }
 
 impl __sdk::InModule for EmpireChunkState {
@@ -20,7 +21,8 @@ impl __sdk::InModule for EmpireChunkState {
 /// Provides typed access to columns for query building.
 pub struct EmpireChunkStateCols {
     pub chunk_index: __sdk::__query_builder::Col<EmpireChunkState, u64>,
-    pub empire_entity_id: __sdk::__query_builder::Col<EmpireChunkState, Vec<u64>>,
+    pub empire_entity_id: __sdk::__query_builder::Col<EmpireChunkState, u64>,
+    pub watchtower_entity_id: __sdk::__query_builder::Col<EmpireChunkState, u64>,
 }
 
 impl __sdk::__query_builder::HasCols for EmpireChunkState {
@@ -29,6 +31,10 @@ impl __sdk::__query_builder::HasCols for EmpireChunkState {
         EmpireChunkStateCols {
             chunk_index: __sdk::__query_builder::Col::new(table_name, "chunk_index"),
             empire_entity_id: __sdk::__query_builder::Col::new(table_name, "empire_entity_id"),
+            watchtower_entity_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "watchtower_entity_id",
+            ),
         }
     }
 }
@@ -38,6 +44,8 @@ impl __sdk::__query_builder::HasCols for EmpireChunkState {
 /// Provides typed access to indexed columns for query building.
 pub struct EmpireChunkStateIxCols {
     pub chunk_index: __sdk::__query_builder::IxCol<EmpireChunkState, u64>,
+    pub empire_entity_id: __sdk::__query_builder::IxCol<EmpireChunkState, u64>,
+    pub watchtower_entity_id: __sdk::__query_builder::IxCol<EmpireChunkState, u64>,
 }
 
 impl __sdk::__query_builder::HasIxCols for EmpireChunkState {
@@ -45,6 +53,11 @@ impl __sdk::__query_builder::HasIxCols for EmpireChunkState {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         EmpireChunkStateIxCols {
             chunk_index: __sdk::__query_builder::IxCol::new(table_name, "chunk_index"),
+            empire_entity_id: __sdk::__query_builder::IxCol::new(table_name, "empire_entity_id"),
+            watchtower_entity_id: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "watchtower_entity_id",
+            ),
         }
     }
 }

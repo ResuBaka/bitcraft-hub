@@ -23,7 +23,7 @@ pub struct SpawnInfo {
     pub spawns_in_water: bool,
     pub water_depth_min: i16,
     pub water_depth_max: i16,
-    pub spawns_on_uneven_terrain: bool,
+    pub max_elevation_delta: i32,
 }
 
 impl __sdk::InModule for SpawnInfo {

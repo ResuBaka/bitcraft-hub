@@ -37,6 +37,7 @@ pub struct CraftingRecipeDesc {
     pub hide_with_blocking_knowledges: bool,
     pub allow_use_hands: bool,
     pub is_passive: bool,
+    pub show_in_progression: bool,
 }
 
 impl __sdk::InModule for CraftingRecipeDesc {
@@ -72,6 +73,7 @@ pub struct CraftingRecipeDescCols {
     pub hide_with_blocking_knowledges: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
     pub allow_use_hands: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
     pub is_passive: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
+    pub show_in_progression: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for CraftingRecipeDesc {
@@ -140,6 +142,10 @@ impl __sdk::__query_builder::HasCols for CraftingRecipeDesc {
             ),
             allow_use_hands: __sdk::__query_builder::Col::new(table_name, "allow_use_hands"),
             is_passive: __sdk::__query_builder::Col::new(table_name, "is_passive"),
+            show_in_progression: __sdk::__query_builder::Col::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }

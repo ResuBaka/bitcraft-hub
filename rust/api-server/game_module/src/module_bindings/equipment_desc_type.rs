@@ -23,6 +23,7 @@ pub struct EquipmentDesc {
     pub stats: Vec<CsvStatEntry>,
     pub required_achievements: Vec<i32>,
     pub required_knowledges: Vec<i32>,
+    pub show_in_progression: bool,
 }
 
 impl __sdk::InModule for EquipmentDesc {
@@ -43,6 +44,7 @@ pub struct EquipmentDescCols {
     pub stats: __sdk::__query_builder::Col<EquipmentDesc, Vec<CsvStatEntry>>,
     pub required_achievements: __sdk::__query_builder::Col<EquipmentDesc, Vec<i32>>,
     pub required_knowledges: __sdk::__query_builder::Col<EquipmentDesc, Vec<i32>>,
+    pub show_in_progression: __sdk::__query_builder::Col<EquipmentDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for EquipmentDesc {
@@ -67,6 +69,10 @@ impl __sdk::__query_builder::HasCols for EquipmentDesc {
                 table_name,
                 "required_knowledges",
             ),
+            show_in_progression: __sdk::__query_builder::Col::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }
@@ -76,6 +82,7 @@ impl __sdk::__query_builder::HasCols for EquipmentDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct EquipmentDescIxCols {
     pub item_id: __sdk::__query_builder::IxCol<EquipmentDesc, i32>,
+    pub show_in_progression: __sdk::__query_builder::IxCol<EquipmentDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for EquipmentDesc {
@@ -83,6 +90,10 @@ impl __sdk::__query_builder::HasIxCols for EquipmentDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         EquipmentDescIxCols {
             item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
+            show_in_progression: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }

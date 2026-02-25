@@ -18,7 +18,6 @@ pub struct BuildingFunction {
     pub cargo_slot_size: i32,
     pub trade_orders: i32,
     pub allowed_item_id_per_slot: Vec<i32>,
-    pub buff_ids: Vec<i32>,
     pub concurrent_crafts_per_player: i32,
     pub terraform: bool,
     pub housing_slots: i32,

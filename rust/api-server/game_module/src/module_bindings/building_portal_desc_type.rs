@@ -11,6 +11,7 @@ pub struct BuildingPortalDesc {
     pub name: String,
     pub building_id: i32,
     pub allow_deployables: bool,
+    pub enemy_lock: bool,
     pub pos_x: i32,
     pub pos_z: i32,
 }
@@ -27,6 +28,7 @@ pub struct BuildingPortalDescCols {
     pub name: __sdk::__query_builder::Col<BuildingPortalDesc, String>,
     pub building_id: __sdk::__query_builder::Col<BuildingPortalDesc, i32>,
     pub allow_deployables: __sdk::__query_builder::Col<BuildingPortalDesc, bool>,
+    pub enemy_lock: __sdk::__query_builder::Col<BuildingPortalDesc, bool>,
     pub pos_x: __sdk::__query_builder::Col<BuildingPortalDesc, i32>,
     pub pos_z: __sdk::__query_builder::Col<BuildingPortalDesc, i32>,
 }
@@ -39,6 +41,7 @@ impl __sdk::__query_builder::HasCols for BuildingPortalDesc {
             name: __sdk::__query_builder::Col::new(table_name, "name"),
             building_id: __sdk::__query_builder::Col::new(table_name, "building_id"),
             allow_deployables: __sdk::__query_builder::Col::new(table_name, "allow_deployables"),
+            enemy_lock: __sdk::__query_builder::Col::new(table_name, "enemy_lock"),
             pos_x: __sdk::__query_builder::Col::new(table_name, "pos_x"),
             pos_z: __sdk::__query_builder::Col::new(table_name, "pos_z"),
         }

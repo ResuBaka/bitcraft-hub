@@ -11,12 +11,12 @@ pub struct PremiumItemDesc {
     pub name: String,
     pub description: String,
     pub image_address: String,
-    pub collectible_desc_id: i32,
+    pub collectible_ids: Vec<i32>,
     pub price: u32,
     pub base_price: u32,
-    pub is_enabled: bool,
     pub quantity: u32,
     pub sorting_priority: u16,
+    pub is_enabled: bool,
 }
 
 impl __sdk::InModule for PremiumItemDesc {
@@ -31,12 +31,12 @@ pub struct PremiumItemDescCols {
     pub name: __sdk::__query_builder::Col<PremiumItemDesc, String>,
     pub description: __sdk::__query_builder::Col<PremiumItemDesc, String>,
     pub image_address: __sdk::__query_builder::Col<PremiumItemDesc, String>,
-    pub collectible_desc_id: __sdk::__query_builder::Col<PremiumItemDesc, i32>,
+    pub collectible_ids: __sdk::__query_builder::Col<PremiumItemDesc, Vec<i32>>,
     pub price: __sdk::__query_builder::Col<PremiumItemDesc, u32>,
     pub base_price: __sdk::__query_builder::Col<PremiumItemDesc, u32>,
-    pub is_enabled: __sdk::__query_builder::Col<PremiumItemDesc, bool>,
     pub quantity: __sdk::__query_builder::Col<PremiumItemDesc, u32>,
     pub sorting_priority: __sdk::__query_builder::Col<PremiumItemDesc, u16>,
+    pub is_enabled: __sdk::__query_builder::Col<PremiumItemDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for PremiumItemDesc {
@@ -47,15 +47,12 @@ impl __sdk::__query_builder::HasCols for PremiumItemDesc {
             name: __sdk::__query_builder::Col::new(table_name, "name"),
             description: __sdk::__query_builder::Col::new(table_name, "description"),
             image_address: __sdk::__query_builder::Col::new(table_name, "image_address"),
-            collectible_desc_id: __sdk::__query_builder::Col::new(
-                table_name,
-                "collectible_desc_id",
-            ),
+            collectible_ids: __sdk::__query_builder::Col::new(table_name, "collectible_ids"),
             price: __sdk::__query_builder::Col::new(table_name, "price"),
             base_price: __sdk::__query_builder::Col::new(table_name, "base_price"),
-            is_enabled: __sdk::__query_builder::Col::new(table_name, "is_enabled"),
             quantity: __sdk::__query_builder::Col::new(table_name, "quantity"),
             sorting_priority: __sdk::__query_builder::Col::new(table_name, "sorting_priority"),
+            is_enabled: __sdk::__query_builder::Col::new(table_name, "is_enabled"),
         }
     }
 }

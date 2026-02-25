@@ -15,6 +15,9 @@ pub struct EmoteDesc {
     pub command_line: String,
     pub allow_while_mounted: bool,
     pub allow_while_moving: bool,
+    pub enabled_by_collectible_id: i32,
+    pub tool_type: i32,
+    pub tool_mesh_index: i32,
 }
 
 impl __sdk::InModule for EmoteDesc {
@@ -33,6 +36,9 @@ pub struct EmoteDescCols {
     pub command_line: __sdk::__query_builder::Col<EmoteDesc, String>,
     pub allow_while_mounted: __sdk::__query_builder::Col<EmoteDesc, bool>,
     pub allow_while_moving: __sdk::__query_builder::Col<EmoteDesc, bool>,
+    pub enabled_by_collectible_id: __sdk::__query_builder::Col<EmoteDesc, i32>,
+    pub tool_type: __sdk::__query_builder::Col<EmoteDesc, i32>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<EmoteDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasCols for EmoteDesc {
@@ -50,6 +56,12 @@ impl __sdk::__query_builder::HasCols for EmoteDesc {
                 "allow_while_mounted",
             ),
             allow_while_moving: __sdk::__query_builder::Col::new(table_name, "allow_while_moving"),
+            enabled_by_collectible_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "enabled_by_collectible_id",
+            ),
+            tool_type: __sdk::__query_builder::Col::new(table_name, "tool_type"),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
         }
     }
 }

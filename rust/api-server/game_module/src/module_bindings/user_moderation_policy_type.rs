@@ -14,6 +14,8 @@ pub enum UserModerationPolicy {
 
     BlockChat,
 
+    PermanentBlockChat,
+
     BlockConstruct,
 }
 

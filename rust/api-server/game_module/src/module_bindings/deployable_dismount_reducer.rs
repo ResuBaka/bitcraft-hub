@@ -4,18 +4,20 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::player_deployable_dismount_request_type::PlayerDeployableDismountRequest;
+use super::offset_coordinates_float_type::OffsetCoordinatesFloat;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct DeployableDismountArgs {
-    pub request: PlayerDeployableDismountRequest,
+    pub coordinates: OffsetCoordinatesFloat,
+    pub deployable_coordinates: OffsetCoordinatesFloat,
 }
 
 impl From<DeployableDismountArgs> for super::Reducer {
     fn from(args: DeployableDismountArgs) -> Self {
         Self::DeployableDismount {
-            request: args.request,
+            coordinates: args.coordinates,
+            deployable_coordinates: args.deployable_coordinates,
         }
     }
 }
@@ -36,7 +38,11 @@ pub trait deployable_dismount {
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_deployable_dismount`] callbacks.
-    fn deployable_dismount(&self, request: PlayerDeployableDismountRequest) -> __sdk::Result<()>;
+    fn deployable_dismount(
+        &self,
+        coordinates: OffsetCoordinatesFloat,
+        deployable_coordinates: OffsetCoordinatesFloat,
+    ) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `deployable_dismount`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -46,7 +52,7 @@ pub trait deployable_dismount {
     /// to cancel the callback.
     fn on_deployable_dismount(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableDismountRequest)
+        callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesFloat, &OffsetCoordinatesFloat)
             + Send
             + 'static,
     ) -> DeployableDismountCallbackId;
@@ -56,13 +62,22 @@ pub trait deployable_dismount {
 }
 
 impl deployable_dismount for super::RemoteReducers {
-    fn deployable_dismount(&self, request: PlayerDeployableDismountRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("deployable_dismount", DeployableDismountArgs { request })
+    fn deployable_dismount(
+        &self,
+        coordinates: OffsetCoordinatesFloat,
+        deployable_coordinates: OffsetCoordinatesFloat,
+    ) -> __sdk::Result<()> {
+        self.imp.call_reducer(
+            "deployable_dismount",
+            DeployableDismountArgs {
+                coordinates,
+                deployable_coordinates,
+            },
+        )
     }
     fn on_deployable_dismount(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableDismountRequest)
+        mut callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesFloat, &OffsetCoordinatesFloat)
             + Send
             + 'static,
     ) -> DeployableDismountCallbackId {
@@ -73,7 +88,11 @@ impl deployable_dismount for super::RemoteReducers {
                 let super::ReducerEventContext {
                     event:
                         __sdk::ReducerEvent {
-                            reducer: super::Reducer::DeployableDismount { request },
+                            reducer:
+                                super::Reducer::DeployableDismount {
+                                    coordinates,
+                                    deployable_coordinates,
+                                },
                             ..
                         },
                     ..
@@ -81,7 +100,7 @@ impl deployable_dismount for super::RemoteReducers {
                 else {
                     unreachable!()
                 };
-                callback(ctx, request)
+                callback(ctx, coordinates, deployable_coordinates)
             }),
         ))
     }

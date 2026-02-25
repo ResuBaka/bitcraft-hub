@@ -10,12 +10,11 @@ use super::user_moderation_policy_type::UserModerationPolicy;
 #[sats(crate = __lib)]
 pub struct UserModerationState {
     pub entity_id: u64,
-    pub target_entity_id: u64,
-    pub created_by_entity_id: u64,
+    pub target_identity: __sdk::Identity,
+    pub created_by_identity: __sdk::Identity,
     pub user_moderation_policy: UserModerationPolicy,
     pub created_time: __sdk::Timestamp,
     pub expiration_time: __sdk::Timestamp,
-    pub duration_ms: u64,
 }
 
 impl __sdk::InModule for UserModerationState {
@@ -27,13 +26,12 @@ impl __sdk::InModule for UserModerationState {
 /// Provides typed access to columns for query building.
 pub struct UserModerationStateCols {
     pub entity_id: __sdk::__query_builder::Col<UserModerationState, u64>,
-    pub target_entity_id: __sdk::__query_builder::Col<UserModerationState, u64>,
-    pub created_by_entity_id: __sdk::__query_builder::Col<UserModerationState, u64>,
+    pub target_identity: __sdk::__query_builder::Col<UserModerationState, __sdk::Identity>,
+    pub created_by_identity: __sdk::__query_builder::Col<UserModerationState, __sdk::Identity>,
     pub user_moderation_policy:
         __sdk::__query_builder::Col<UserModerationState, UserModerationPolicy>,
     pub created_time: __sdk::__query_builder::Col<UserModerationState, __sdk::Timestamp>,
     pub expiration_time: __sdk::__query_builder::Col<UserModerationState, __sdk::Timestamp>,
-    pub duration_ms: __sdk::__query_builder::Col<UserModerationState, u64>,
 }
 
 impl __sdk::__query_builder::HasCols for UserModerationState {
@@ -41,10 +39,10 @@ impl __sdk::__query_builder::HasCols for UserModerationState {
     fn cols(table_name: &'static str) -> Self::Cols {
         UserModerationStateCols {
             entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
-            target_entity_id: __sdk::__query_builder::Col::new(table_name, "target_entity_id"),
-            created_by_entity_id: __sdk::__query_builder::Col::new(
+            target_identity: __sdk::__query_builder::Col::new(table_name, "target_identity"),
+            created_by_identity: __sdk::__query_builder::Col::new(
                 table_name,
-                "created_by_entity_id",
+                "created_by_identity",
             ),
             user_moderation_policy: __sdk::__query_builder::Col::new(
                 table_name,
@@ -52,7 +50,6 @@ impl __sdk::__query_builder::HasCols for UserModerationState {
             ),
             created_time: __sdk::__query_builder::Col::new(table_name, "created_time"),
             expiration_time: __sdk::__query_builder::Col::new(table_name, "expiration_time"),
-            duration_ms: __sdk::__query_builder::Col::new(table_name, "duration_ms"),
         }
     }
 }
@@ -62,7 +59,7 @@ impl __sdk::__query_builder::HasCols for UserModerationState {
 /// Provides typed access to indexed columns for query building.
 pub struct UserModerationStateIxCols {
     pub entity_id: __sdk::__query_builder::IxCol<UserModerationState, u64>,
-    pub target_entity_id: __sdk::__query_builder::IxCol<UserModerationState, u64>,
+    pub target_identity: __sdk::__query_builder::IxCol<UserModerationState, __sdk::Identity>,
 }
 
 impl __sdk::__query_builder::HasIxCols for UserModerationState {
@@ -70,7 +67,7 @@ impl __sdk::__query_builder::HasIxCols for UserModerationState {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         UserModerationStateIxCols {
             entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
-            target_entity_id: __sdk::__query_builder::IxCol::new(table_name, "target_entity_id"),
+            target_identity: __sdk::__query_builder::IxCol::new(table_name, "target_identity"),
         }
     }
 }

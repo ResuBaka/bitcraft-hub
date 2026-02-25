@@ -4,12 +4,12 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::construction_recipe_desc_v_2_type::ConstructionRecipeDescV2;
+use super::construction_recipe_desc_type::ConstructionRecipeDesc;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct ImportConstructionRecipeDescArgs {
-    pub records: Vec<ConstructionRecipeDescV2>,
+    pub records: Vec<ConstructionRecipeDesc>,
 }
 
 impl From<ImportConstructionRecipeDescArgs> for super::Reducer {
@@ -38,7 +38,7 @@ pub trait import_construction_recipe_desc {
     ///  and its status can be observed by listening for [`Self::on_import_construction_recipe_desc`] callbacks.
     fn import_construction_recipe_desc(
         &self,
-        records: Vec<ConstructionRecipeDescV2>,
+        records: Vec<ConstructionRecipeDesc>,
     ) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `import_construction_recipe_desc`.
     ///
@@ -49,9 +49,7 @@ pub trait import_construction_recipe_desc {
     /// to cancel the callback.
     fn on_import_construction_recipe_desc(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<ConstructionRecipeDescV2>)
-            + Send
-            + 'static,
+        callback: impl FnMut(&super::ReducerEventContext, &Vec<ConstructionRecipeDesc>) + Send + 'static,
     ) -> ImportConstructionRecipeDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_construction_recipe_desc`],
     /// causing it not to run in the future.
@@ -64,7 +62,7 @@ pub trait import_construction_recipe_desc {
 impl import_construction_recipe_desc for super::RemoteReducers {
     fn import_construction_recipe_desc(
         &self,
-        records: Vec<ConstructionRecipeDescV2>,
+        records: Vec<ConstructionRecipeDesc>,
     ) -> __sdk::Result<()> {
         self.imp.call_reducer(
             "import_construction_recipe_desc",
@@ -73,7 +71,7 @@ impl import_construction_recipe_desc for super::RemoteReducers {
     }
     fn on_import_construction_recipe_desc(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ConstructionRecipeDescV2>)
+        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ConstructionRecipeDesc>)
             + Send
             + 'static,
     ) -> ImportConstructionRecipeDescCallbackId {

@@ -33,6 +33,7 @@ pub struct BuildingDesc {
     pub show_in_compendium: bool,
     pub is_ruins: bool,
     pub not_deconstructible: bool,
+    pub destroy_on_unclaim: bool,
 }
 
 impl __sdk::InModule for BuildingDesc {
@@ -65,6 +66,7 @@ pub struct BuildingDescCols {
     pub show_in_compendium: __sdk::__query_builder::Col<BuildingDesc, bool>,
     pub is_ruins: __sdk::__query_builder::Col<BuildingDesc, bool>,
     pub not_deconstructible: __sdk::__query_builder::Col<BuildingDesc, bool>,
+    pub destroy_on_unclaim: __sdk::__query_builder::Col<BuildingDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for BuildingDesc {
@@ -102,6 +104,7 @@ impl __sdk::__query_builder::HasCols for BuildingDesc {
                 table_name,
                 "not_deconstructible",
             ),
+            destroy_on_unclaim: __sdk::__query_builder::Col::new(table_name, "destroy_on_unclaim"),
         }
     }
 }

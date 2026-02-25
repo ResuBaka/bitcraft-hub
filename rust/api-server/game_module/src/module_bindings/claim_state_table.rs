@@ -85,6 +85,7 @@ pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::Remote
     _table.add_unique_constraint::<u64>("owner_building_entity_id", |row| {
         &row.owner_building_entity_id
     });
+    _table.add_unique_constraint::<String>("name", |row| &row.name);
 }
 pub struct ClaimStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -172,6 +173,36 @@ impl<'ctx> ClaimStateOwnerBuildingEntityIdUnique<'ctx> {
     /// Find the subscribed row whose `owner_building_entity_id` column value is equal to `col_val`,
     /// if such a row is present in the client cache.
     pub fn find(&self, col_val: &u64) -> Option<ClaimState> {
+        self.imp.find(col_val)
+    }
+}
+
+/// Access to the `name` unique index on the table `claim_state`,
+/// which allows point queries on the field of the same name
+/// via the [`ClaimStateNameUnique::find`] method.
+///
+/// Users are encouraged not to explicitly reference this type,
+/// but to directly chain method calls,
+/// like `ctx.db.claim_state().name().find(...)`.
+pub struct ClaimStateNameUnique<'ctx> {
+    imp: __sdk::UniqueConstraintHandle<ClaimState, String>,
+    phantom: std::marker::PhantomData<&'ctx super::RemoteTables>,
+}
+
+impl<'ctx> ClaimStateTableHandle<'ctx> {
+    /// Get a handle on the `name` unique index on the table `claim_state`.
+    pub fn name(&self) -> ClaimStateNameUnique<'ctx> {
+        ClaimStateNameUnique {
+            imp: self.imp.get_unique_constraint::<String>("name"),
+            phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'ctx> ClaimStateNameUnique<'ctx> {
+    /// Find the subscribed row whose `name` column value is equal to `col_val`,
+    /// if such a row is present in the client cache.
+    pub fn find(&self, col_val: &String) -> Option<ClaimState> {
         self.imp.find(col_val)
     }
 }

@@ -11,6 +11,8 @@ pub enum HubItemType {
     HexiteShards,
 
     Collectible,
+
+    PremiumItem,
 }
 
 impl __sdk::InModule for HubItemType {

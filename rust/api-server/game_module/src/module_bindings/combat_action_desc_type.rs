@@ -14,10 +14,11 @@ pub struct CombatActionDesc {
     pub id: i32,
     pub learned_by_player: bool,
     pub range: u32,
-    pub max_range: u32,
+    pub max_range: f32,
     pub auto_cast: bool,
     pub weapon_type_requirements: Vec<i32>,
     pub lead_in_time: f32,
+    pub inaction_time: f32,
     pub can_move_during_lead_in: bool,
     pub cooldown: f32,
     pub global_cooldown: f32,
@@ -40,6 +41,8 @@ pub struct CombatActionDesc {
     pub self_threat_against_enemies: f32,
     pub base_threat: f32,
     pub threat_per_damage: f32,
+    pub is_self_targeting: bool,
+    pub is_taunt_action: bool,
 }
 
 impl __sdk::InModule for CombatActionDesc {
@@ -54,10 +57,11 @@ pub struct CombatActionDescCols {
     pub id: __sdk::__query_builder::Col<CombatActionDesc, i32>,
     pub learned_by_player: __sdk::__query_builder::Col<CombatActionDesc, bool>,
     pub range: __sdk::__query_builder::Col<CombatActionDesc, u32>,
-    pub max_range: __sdk::__query_builder::Col<CombatActionDesc, u32>,
+    pub max_range: __sdk::__query_builder::Col<CombatActionDesc, f32>,
     pub auto_cast: __sdk::__query_builder::Col<CombatActionDesc, bool>,
     pub weapon_type_requirements: __sdk::__query_builder::Col<CombatActionDesc, Vec<i32>>,
     pub lead_in_time: __sdk::__query_builder::Col<CombatActionDesc, f32>,
+    pub inaction_time: __sdk::__query_builder::Col<CombatActionDesc, f32>,
     pub can_move_during_lead_in: __sdk::__query_builder::Col<CombatActionDesc, bool>,
     pub cooldown: __sdk::__query_builder::Col<CombatActionDesc, f32>,
     pub global_cooldown: __sdk::__query_builder::Col<CombatActionDesc, f32>,
@@ -80,6 +84,8 @@ pub struct CombatActionDescCols {
     pub self_threat_against_enemies: __sdk::__query_builder::Col<CombatActionDesc, f32>,
     pub base_threat: __sdk::__query_builder::Col<CombatActionDesc, f32>,
     pub threat_per_damage: __sdk::__query_builder::Col<CombatActionDesc, f32>,
+    pub is_self_targeting: __sdk::__query_builder::Col<CombatActionDesc, bool>,
+    pub is_taunt_action: __sdk::__query_builder::Col<CombatActionDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for CombatActionDesc {
@@ -97,6 +103,7 @@ impl __sdk::__query_builder::HasCols for CombatActionDesc {
                 "weapon_type_requirements",
             ),
             lead_in_time: __sdk::__query_builder::Col::new(table_name, "lead_in_time"),
+            inaction_time: __sdk::__query_builder::Col::new(table_name, "inaction_time"),
             can_move_during_lead_in: __sdk::__query_builder::Col::new(
                 table_name,
                 "can_move_during_lead_in",
@@ -143,6 +150,8 @@ impl __sdk::__query_builder::HasCols for CombatActionDesc {
             ),
             base_threat: __sdk::__query_builder::Col::new(table_name, "base_threat"),
             threat_per_damage: __sdk::__query_builder::Col::new(table_name, "threat_per_damage"),
+            is_self_targeting: __sdk::__query_builder::Col::new(table_name, "is_self_targeting"),
+            is_taunt_action: __sdk::__query_builder::Col::new(table_name, "is_taunt_action"),
         }
     }
 }

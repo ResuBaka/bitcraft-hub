@@ -8,6 +8,7 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 #[sats(crate = __lib)]
 pub struct PlayerSettingsState {
     pub entity_id: u64,
+    pub fill_player_inventory: bool,
     pub fill_deployable_inventory_first: bool,
 }
 
@@ -20,6 +21,7 @@ impl __sdk::InModule for PlayerSettingsState {
 /// Provides typed access to columns for query building.
 pub struct PlayerSettingsStateCols {
     pub entity_id: __sdk::__query_builder::Col<PlayerSettingsState, u64>,
+    pub fill_player_inventory: __sdk::__query_builder::Col<PlayerSettingsState, bool>,
     pub fill_deployable_inventory_first: __sdk::__query_builder::Col<PlayerSettingsState, bool>,
 }
 
@@ -28,6 +30,10 @@ impl __sdk::__query_builder::HasCols for PlayerSettingsState {
     fn cols(table_name: &'static str) -> Self::Cols {
         PlayerSettingsStateCols {
             entity_id: __sdk::__query_builder::Col::new(table_name, "entity_id"),
+            fill_player_inventory: __sdk::__query_builder::Col::new(
+                table_name,
+                "fill_player_inventory",
+            ),
             fill_deployable_inventory_first: __sdk::__query_builder::Col::new(
                 table_name,
                 "fill_deployable_inventory_first",

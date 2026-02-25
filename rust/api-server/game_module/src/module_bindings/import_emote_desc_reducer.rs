@@ -4,12 +4,12 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::emote_desc_v_2_type::EmoteDescV2;
+use super::emote_desc_type::EmoteDesc;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct ImportEmoteDescArgs {
-    pub records: Vec<EmoteDescV2>,
+    pub records: Vec<EmoteDesc>,
 }
 
 impl From<ImportEmoteDescArgs> for super::Reducer {
@@ -36,7 +36,7 @@ pub trait import_emote_desc {
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_import_emote_desc`] callbacks.
-    fn import_emote_desc(&self, records: Vec<EmoteDescV2>) -> __sdk::Result<()>;
+    fn import_emote_desc(&self, records: Vec<EmoteDesc>) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `import_emote_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -46,7 +46,7 @@ pub trait import_emote_desc {
     /// to cancel the callback.
     fn on_import_emote_desc(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<EmoteDescV2>) + Send + 'static,
+        callback: impl FnMut(&super::ReducerEventContext, &Vec<EmoteDesc>) + Send + 'static,
     ) -> ImportEmoteDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_emote_desc`],
     /// causing it not to run in the future.
@@ -54,13 +54,13 @@ pub trait import_emote_desc {
 }
 
 impl import_emote_desc for super::RemoteReducers {
-    fn import_emote_desc(&self, records: Vec<EmoteDescV2>) -> __sdk::Result<()> {
+    fn import_emote_desc(&self, records: Vec<EmoteDesc>) -> __sdk::Result<()> {
         self.imp
             .call_reducer("import_emote_desc", ImportEmoteDescArgs { records })
     }
     fn on_import_emote_desc(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EmoteDescV2>) + Send + 'static,
+        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EmoteDesc>) + Send + 'static,
     ) -> ImportEmoteDescCallbackId {
         ImportEmoteDescCallbackId(self.imp.on_reducer(
             "import_emote_desc",

@@ -31,6 +31,7 @@ pub struct ResourceDesc {
     pub enemy_params_id: Vec<i32>,
     pub scheduled_respawn_time: f32,
     pub not_respawning: bool,
+    pub show_time_left: bool,
 }
 
 impl __sdk::InModule for ResourceDesc {
@@ -61,6 +62,7 @@ pub struct ResourceDescCols {
     pub enemy_params_id: __sdk::__query_builder::Col<ResourceDesc, Vec<i32>>,
     pub scheduled_respawn_time: __sdk::__query_builder::Col<ResourceDesc, f32>,
     pub not_respawning: __sdk::__query_builder::Col<ResourceDesc, bool>,
+    pub show_time_left: __sdk::__query_builder::Col<ResourceDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for ResourceDesc {
@@ -93,6 +95,7 @@ impl __sdk::__query_builder::HasCols for ResourceDesc {
                 "scheduled_respawn_time",
             ),
             not_respawning: __sdk::__query_builder::Col::new(table_name, "not_respawning"),
+            show_time_left: __sdk::__query_builder::Col::new(table_name, "show_time_left"),
         }
     }
 }

@@ -4,6 +4,8 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::ability_state_type::AbilityState;
+use super::action_bar_state_type::ActionBarState;
 use super::action_state_type::ActionState;
 use super::active_buff_state_type::ActiveBuffState;
 use super::attack_outcome_state_type::AttackOutcomeState;
@@ -43,8 +45,10 @@ use super::onboarding_state_type::OnboardingState;
 use super::player_action_state_type::PlayerActionState;
 use super::player_housing_state_type::PlayerHousingState;
 use super::player_prefs_state_type::PlayerPrefsState;
+use super::player_settings_state_type::PlayerSettingsState;
 use super::player_state_type::PlayerState;
 use super::player_username_state_type::PlayerUsernameState;
+use super::quest_chain_state_type::QuestChainState;
 use super::satiation_state_type::SatiationState;
 use super::stamina_state_type::StaminaState;
 use super::teleportation_energy_state_type::TeleportationEnergyState;
@@ -99,6 +103,8 @@ pub struct TransferPlayerMsg {
     pub combat_state: CombatState,
     pub action_state: Vec<ActionState>,
     pub toolbar_state: Vec<ToolbarState>,
+    pub ability_state: Vec<AbilityState>,
+    pub action_bar_state: Vec<ActionBarState>,
     pub attack_outcome_state: AttackOutcomeState,
     pub vault_state: VaultState,
     pub exploration_chunks_state: ExplorationChunksState,
@@ -111,6 +117,8 @@ pub struct TransferPlayerMsg {
     pub traveler_task_states: Vec<TravelerTaskState>,
     pub extract_outcome_state: ExtractOutcomeState,
     pub undeployed_deployable_states: Vec<DeployableState>,
+    pub player_settings_state: Option<PlayerSettingsState>,
+    pub quest_chain_states: Vec<QuestChainState>,
 }
 
 impl __sdk::InModule for TransferPlayerMsg {
