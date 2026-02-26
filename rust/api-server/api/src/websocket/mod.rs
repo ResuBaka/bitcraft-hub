@@ -628,8 +628,9 @@ async fn connect_to_db_logic(
         "traveler_task_desc",
         "traveler_task_state",
         // "trade_order_state",
-        "buy_order_state",
-        "sell_order_state",
+        // @todo this only temp until it can get fixed
+        // "buy_order_state",
+        // "sell_order_state",
         "npc_desc",
         "interior_network_desc",
         "dimension_description_state",
