@@ -596,15 +596,29 @@ pub(crate) async fn player_leaderboard(
             .get(&skill.id)
             .unwrap()
             .get_rank(player_id);
-        let total_experience = state
-            .ranking_system
-            .skill_leaderboards
-            .get(&skill.id)
-            .unwrap()
-            .scores
-            .get(&player_id)
-            .unwrap()
-            .clone();
+        let total_experience = if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().scores.get(&player_id) {
+            a.clone()
+        } else {
+            let db = state.conn.clone();
+            let (entrie, rank) = Query::get_experience_state_player_by_skill_id(
+                &db,
+                skill.id,
+                player_id,
+                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
+            )
+                .await
+                .map_err(|error| {
+                    error!("Error: {error}");
+
+                    (StatusCode::INTERNAL_SERVER_ERROR, "")
+                })?;
+
+            let entry = entrie.unwrap();
+
+            state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().update(player_id.clone(), entry.experience as i64);
+
+            entry.experience as i64
+        };
 
         results.push((
             skill.name.clone(),
