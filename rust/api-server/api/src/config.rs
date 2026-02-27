@@ -3,6 +3,8 @@ use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use tracing::Level;
 
+pub(crate) type TechTierResearchMap = std::collections::HashMap<i32, i32>;
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(default)]
 pub(crate) struct Config {
@@ -16,10 +18,22 @@ pub(crate) struct Config {
     pub(crate) origins: AllowedOriginConfig,
     #[serde(alias = "liveupdatesws")]
     pub(crate) live_updates_ws: bool,
+    pub(crate) tech_tier_research_map: TechTierResearchMap,
 }
 
 impl Default for Config {
     fn default() -> Self {
+        let mut tech_tier_research_map = std::collections::HashMap::new();
+        tech_tier_research_map.insert(200, 2);
+        tech_tier_research_map.insert(300, 3);
+        tech_tier_research_map.insert(400, 4);
+        tech_tier_research_map.insert(500, 5);
+        tech_tier_research_map.insert(600, 6);
+        tech_tier_research_map.insert(700, 7);
+        tech_tier_research_map.insert(800, 8);
+        tech_tier_research_map.insert(900, 9);
+        tech_tier_research_map.insert(1000, 10);
+
         Self {
             host: "localhost".to_string(),
             port: 8000,
@@ -29,6 +43,7 @@ impl Default for Config {
             spacetimedb: SpacetimeDbConfig::default(),
             origins: AllowedOriginConfig::default(),
             live_updates_ws: false,
+            tech_tier_research_map,
         }
     }
 }

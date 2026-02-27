@@ -228,22 +228,6 @@ pub(crate) async fn get_claim(
         }
     }
 
-    let tier_upgrades = state
-        .claim_tech_desc
-        .iter()
-        .filter_map(|desc| {
-            if desc.description.starts_with("Tier ") {
-                return Some(desc.to_owned());
-            };
-
-            None
-        })
-        .collect::<Vec<claim_tech_desc::Model>>();
-    let tier_upgrades_ids = tier_upgrades
-        .iter()
-        .map(|desc| desc.id)
-        .collect::<Vec<i32>>();
-
     let mut claim = {
         let claim_tech_state = claim_tech_states
             .iter()
@@ -304,10 +288,7 @@ pub(crate) async fn get_claim(
 
         match claim_tech_state {
             Some(claim_tech_state) => {
-                claim.running_upgrade = tier_upgrades
-                    .iter()
-                    .find(|desc| desc.id == claim_tech_state.researching)
-                    .cloned();
+                claim.running_upgrade = if let Some(_) = state.tech_tier_research_map.get(&claim_tech_state.researching) { Some(state.claim_tech_desc.get(&claim_tech_state.researching).unwrap().value().clone()) } else { None };
                 claim.running_upgrade_started = Some(claim_tech_state.start_timestamp.clone());
                 let learned: Vec<i32> = claim_tech_state.learned.clone();
                 claim.upgrades = learned
@@ -317,15 +298,12 @@ pub(crate) async fn get_claim(
                     .collect::<Vec<claim_tech_desc::Model>>();
                 let found_tiers = learned
                     .iter()
-                    .filter(|id| tier_upgrades_ids.contains(&(**id)))
+                    .filter(|id| state.tech_tier_research_map.contains_key(&(**id)))
                     .copied()
                     .collect::<Vec<i32>>();
 
                 if !found_tiers.is_empty() {
-                    claim.tier = tier_upgrades
-                        .iter()
-                        .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1]))
-                        .map(|desc| desc.tier);
+                    claim.tier = Some(state.tech_tier_research_map.get(&found_tiers[found_tiers.len() - 1]).unwrap().clone());
                 } else {
                     claim.tier = Some(1);
                 }
@@ -731,15 +709,6 @@ pub(crate) async fn list_claims(
     let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
         .await
         .expect("Cannot find claim tech descs");
-    let tier_upgrades = claim_tech_descs
-        .iter()
-        .filter(|desc| desc.description.starts_with("Tier "))
-        .cloned()
-        .collect::<Vec<claim_tech_desc::Model>>();
-    let tier_upgrades_ids = tier_upgrades
-        .iter()
-        .map(|desc| desc.id)
-        .collect::<Vec<i32>>();
 
     let claims = claims
         .into_iter()
@@ -805,10 +774,7 @@ pub(crate) async fn list_claims(
 
             match claim_tech_state {
                 Some(claim_tech_state) => {
-                    claim_description.running_upgrade = tier_upgrades
-                        .iter()
-                        .find(|desc| desc.id == claim_tech_state.researching)
-                        .cloned();
+                    claim_description.running_upgrade = if let Some(_) = state.tech_tier_research_map.get(&claim_tech_state.researching) { Some(state.claim_tech_desc.get(&claim_tech_state.researching).unwrap().value().clone()) } else { None };
                     let learned: Vec<i32> = claim_tech_state.learned.clone();
                     claim_description.upgrades = learned
                         .iter()
@@ -822,15 +788,12 @@ pub(crate) async fn list_claims(
                         .collect::<Vec<claim_tech_desc::Model>>();
                     let found_tiers = learned
                         .iter()
-                        .filter(|id| tier_upgrades_ids.contains(&(**id)))
+                        .filter(|id| state.tech_tier_research_map.contains_key(&(**id)))
                         .cloned()
                         .collect::<Vec<i32>>();
 
                     if !found_tiers.is_empty() {
-                        claim_description.tier = tier_upgrades
-                            .iter()
-                            .find(|desc| desc.id == (found_tiers[found_tiers.len() - 1]))
-                            .map(|desc| desc.tier);
+                        claim_description.tier = Some(state.tech_tier_research_map.get(&found_tiers[found_tiers.len() - 1]).unwrap().clone());
                     } else {
                         claim_description.tier = Some(1);
                     }

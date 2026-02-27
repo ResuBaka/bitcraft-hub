@@ -32,7 +32,7 @@ mod user_state;
 mod vault_state;
 mod websocket;
 
-use crate::config::Config;
+use crate::config::{Config, TechTierResearchMap};
 use crate::leaderboard::{
     EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY, EXCLUDED_USERS_FROM_LEADERBOARD,
     Leaderboard, RankingSystem,
@@ -89,7 +89,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessages>();
 
-    let state = AppState::new(database_connection.clone(), tx.clone());
+    let state = AppState::new(database_connection.clone(), tx.clone(), config.tech_tier_research_map.clone());
 
     state.fill_state_from_db().await;
 
@@ -497,6 +497,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
 
 #[derive(Clone)]
 struct AppState {
+    tech_tier_research_map: TechTierResearchMap,
     conn: DatabaseConnection,
     tx: UnboundedSender<WebSocketMessages>,
     connection_state: Arc<dashmap::DashMap<String, bool>>,
@@ -540,7 +541,7 @@ struct AppState {
 }
 
 impl AppState {
-    fn new(conn: DatabaseConnection, tx: UnboundedSender<WebSocketMessages>) -> Self {
+    fn new(conn: DatabaseConnection, tx: UnboundedSender<WebSocketMessages>, tech_tier_research_map: TechTierResearchMap) -> Self {
         let metrics_registry = prometheus::Registry::new();
 
         metrics_registry
@@ -548,6 +549,7 @@ impl AppState {
             .unwrap();
 
         Self {
+            tech_tier_research_map,
             conn,
             tx,
             metrics_registry,
