@@ -128,12 +128,13 @@ const length = computed(() => {
   return 0;
 });
 
-const theme = useTheme();
+const colorMode = useColorMode();
 
 const computedClass = computed(() => {
+  const isDark = colorMode.value == "dark";
   return {
-    "bg-surface-light": theme.global.current.value.dark,
-    "bg-grey-lighten-3": !theme.global.current.value.dark,
+    "bg-surface-light": isDark,
+    "bg-grey-lighten-3": !isDark,
   };
 });
 
@@ -184,65 +185,65 @@ useSeoMeta({
 </script>
 
 <template>
-  <v-container fluid>
-    <v-row>
-      <v-col cols="10">
-        <v-text-field
-            v-model="search"
-            label="Search"
-            outlined
-            dense
-            clearable
-        ></v-text-field>
-      </v-col>
-      <v-col cols="2">
-        <v-checkbox
-            v-model="showOnlyOnlinePlayers"
-            label="Show only online Player"
-        ></v-checkbox>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col>
-        <v-progress-linear
-            color="yellow-darken-2"
-            indeterminate
-            :active="pending"
-        ></v-progress-linear>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col cols="12" md="6" lg="3" xl="2" v-for="player in currentPlayers" :key="player.entity_id.toString()">
-        <v-card>
-          <template v-slot:title>
-            <nuxt-link :class="`text-decoration-none font-weight-black ${player.signed_in ? 'text-green' : 'text-high-emphasis'}`"
-                       :to="{ name: 'players-id', params: { id: player.entity_id.toString() } }"
-            >{{ player.username }}
-            </nuxt-link>
-          </template>
-          <v-card-text :class="computedClass">
-            <v-table :class="computedClass" density="compact">
-              <tbody>
-              <tr style='text-align: right'>
-                <th>Played:</th>
-                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_played) }}</td>
-              </tr>
-              <tr style='text-align: right'>
-                <th>Signed in:</th>
-                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>
-              </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12">
-        <v-pagination
-            @update:model-value="changePage"
-            v-model="page"
-            :length="length"
-        ></v-pagination>
-      </v-col>
-    </v-row>
-  </v-container>
+<!--  <v-container fluid>-->
+<!--    <v-row>-->
+<!--      <v-col cols="10">-->
+<!--        <v-text-field-->
+<!--            v-model="search"-->
+<!--            label="Search"-->
+<!--            outlined-->
+<!--            dense-->
+<!--            clearable-->
+<!--        ></v-text-field>-->
+<!--      </v-col>-->
+<!--      <v-col cols="2">-->
+<!--        <v-checkbox-->
+<!--            v-model="showOnlyOnlinePlayers"-->
+<!--            label="Show only online Player"-->
+<!--        ></v-checkbox>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--    <v-row>-->
+<!--      <v-col>-->
+<!--        <v-progress-linear-->
+<!--            color="yellow-darken-2"-->
+<!--            indeterminate-->
+<!--            :active="pending"-->
+<!--        ></v-progress-linear>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--    <v-row>-->
+<!--      <v-col cols="12" md="6" lg="3" xl="2" v-for="player in currentPlayers" :key="player.entity_id.toString()">-->
+<!--        <v-card>-->
+<!--          <template v-slot:title>-->
+<!--            <nuxt-link :class="`text-decoration-none font-weight-black ${player.signed_in ? 'text-green' : 'text-high-emphasis'}`"-->
+<!--                       :to="{ name: 'players-id', params: { id: player.entity_id.toString() } }"-->
+<!--            >{{ player.username }}-->
+<!--            </nuxt-link>-->
+<!--          </template>-->
+<!--          <v-card-text :class="computedClass">-->
+<!--            <v-table :class="computedClass" density="compact">-->
+<!--              <tbody>-->
+<!--              <tr style='text-align: right'>-->
+<!--                <th>Played:</th>-->
+<!--                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_played) }}</td>-->
+<!--              </tr>-->
+<!--              <tr style='text-align: right'>-->
+<!--                <th>Signed in:</th>-->
+<!--                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>-->
+<!--              </tr>-->
+<!--              </tbody>-->
+<!--            </v-table>-->
+<!--          </v-card-text>-->
+<!--        </v-card>-->
+<!--      </v-col>-->
+<!--      <v-col cols="12">-->
+<!--        <v-pagination-->
+<!--            @update:model-value="changePage"-->
+<!--            v-model="page"-->
+<!--            :length="length"-->
+<!--        ></v-pagination>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--  </v-container>-->
 </template>

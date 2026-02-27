@@ -754,59 +754,59 @@ useSeoMeta({
 </script>
 
 <template>
-  <v-container fluid>
-     <v-card>
-      <v-card-text>
-         <v-row>
-          <v-col>
-            <autocomplete-claim @model_changed="(item) => claimId=item" />
-          </v-col>
-          <v-col>
-             <autocomplete-user @model_changed="(item) => playerId=item" />
-          </v-col>
-          <v-col>
-            <v-number-input
-            v-model="amount"
-            :reverse="false"
-            controlVariant="default"
-            label="Number of finalized item you want"
-            :hideInput="false"
-            :inset="false"
-          />
-          </v-col>
-        </v-row>
-        <v-list>
-          <template v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">
-            <v-card-title>Items needed to finish the work</v-card-title>
-            <v-row>
-              <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">
+<!--  <v-container fluid>-->
+<!--     <v-card>-->
+<!--      <v-card-text>-->
+<!--         <v-row>-->
+<!--          <v-col>-->
+<!--            <autocomplete-claim @model_changed="(item) => claimId=item" />-->
+<!--          </v-col>-->
+<!--          <v-col>-->
+<!--             <autocomplete-user @model_changed="(item) => playerId=item" />-->
+<!--          </v-col>-->
+<!--          <v-col>-->
+<!--            <v-number-input-->
+<!--            v-model="amount"-->
+<!--            :reverse="false"-->
+<!--            controlVariant="default"-->
+<!--            label="Number of finalized item you want"-->
+<!--            :hideInput="false"-->
+<!--            :inset="false"-->
+<!--          />-->
+<!--          </v-col>-->
+<!--        </v-row>-->
+<!--        <v-list>-->
+<!--          <template v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">-->
+<!--            <v-card-title>Items needed to finish the work</v-card-title>-->
+<!--            <v-row>-->
+<!--              <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">-->
 
-                <v-col v-if="type === 'Cargo' || type === 'Item'"  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">
-                  <gethering-shop-list
-                      :type="type"
-                      :id="+id"
-                      :quantity="quantity"
-                      :item_desc="allRecipiesFetch.item_desc"
-                      :cargo_desc="allRecipiesFetch.cargo_desc" />
-                </v-col>
-              </template>
-            </v-row>
-            <v-divider class="pb-3 mt-3" thickness="5"/>
-          </template>
-          <template v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined && pannelIndexs[0] !== undefined">
-            <v-card-title>Recipe Tree</v-card-title>
-            <recusive-crafting-recipe
-              :item="recipeInfo.items"
-              :item_desc="allRecipiesFetch.item_desc"
-              :cargo_desc="allRecipiesFetch.cargo_desc"
-              :item_list_desc="allRecipiesFetch.item_list_desc"
-              :resource-effort-map="resourceEffortMap"
-              :pannel_indexs="pannelIndexs[0]"
-            />
-          </template>
+<!--                <v-col v-if="type === 'Cargo' || type === 'Item'"  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">-->
+<!--                  <gethering-shop-list-->
+<!--                      :type="type"-->
+<!--                      :id="+id"-->
+<!--                      :quantity="quantity"-->
+<!--                      :item_desc="allRecipiesFetch.item_desc"-->
+<!--                      :cargo_desc="allRecipiesFetch.cargo_desc" />-->
+<!--                </v-col>-->
+<!--              </template>-->
+<!--            </v-row>-->
+<!--            <v-divider class="pb-3 mt-3" thickness="5"/>-->
+<!--          </template>-->
+<!--          <template v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined && pannelIndexs[0] !== undefined">-->
+<!--            <v-card-title>Recipe Tree</v-card-title>-->
+<!--            <recusive-crafting-recipe-->
+<!--              :item="recipeInfo.items"-->
+<!--              :item_desc="allRecipiesFetch.item_desc"-->
+<!--              :cargo_desc="allRecipiesFetch.cargo_desc"-->
+<!--              :item_list_desc="allRecipiesFetch.item_list_desc"-->
+<!--              :resource-effort-map="resourceEffortMap"-->
+<!--              :pannel_indexs="pannelIndexs[0]"-->
+<!--            />-->
+<!--          </template>-->
 
-        </v-list>
-    </v-card-text>
-  </v-card> 
-</v-container>  
+<!--        </v-list>-->
+<!--    </v-card-text>-->
+<!--  </v-card> -->
+<!--</v-container>  -->
 </template>

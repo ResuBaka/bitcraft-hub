@@ -52,19 +52,19 @@ const pockets = computed(() => {
 </script>
 
 <template>
-  <v-card>
-    <v-card-title>Tool Belt</v-card-title>
-    <v-card-text>
-      <v-row>
-        <v-col cols=4 v-for="pocket in pockets" :key="pocket.id">
-          <v-list-item>
-            <v-list-item-title>{{ pocket.title }}</v-list-item-title>
-            <v-list-item-subtitle :class="pocket.class">{{ pocket.displayName }}</v-list-item-subtitle>
-          </v-list-item>
-        </v-col>
-      </v-row>
-    </v-card-text>
-  </v-card>
+<!--  <v-card>-->
+<!--    <v-card-title>Tool Belt</v-card-title>-->
+<!--    <v-card-text>-->
+<!--      <v-row>-->
+<!--        <v-col cols=4 v-for="pocket in pockets" :key="pocket.id">-->
+<!--          <v-list-item>-->
+<!--            <v-list-item-title>{{ pocket.title }}</v-list-item-title>-->
+<!--            <v-list-item-subtitle :class="pocket.class">{{ pocket.displayName }}</v-list-item-subtitle>-->
+<!--          </v-list-item>-->
+<!--        </v-col>-->
+<!--      </v-row>-->
+<!--    </v-card-text>-->
+<!--  </v-card>-->
 </template>
 
 <style scoped>

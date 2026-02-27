@@ -93,75 +93,75 @@ useSeoMeta({
 </script>
 
 <template>
-  <v-container fluid>
-    <v-row>
-      <v-col>
-        <v-text-field
-            v-model="debouncedSearch"
-            label="Search"
-            outlined
-            dense
-            clearable
-        ></v-text-field>
-      </v-col>
+<!--  <v-container fluid>-->
+<!--    <v-row>-->
 <!--      <v-col>-->
-<!--        <v-autocomplete-->
-<!--            v-model="tag"-->
-<!--            :items="metaData?.tags || []"-->
-<!--            label="Tag"-->
+<!--        <v-text-field-->
+<!--            v-model="debouncedSearch"-->
+<!--            label="Search"-->
 <!--            outlined-->
 <!--            dense-->
 <!--            clearable-->
-<!--        ></v-autocomplete>-->
+<!--        ></v-text-field>-->
 <!--      </v-col>-->
-<!--      <v-col>-->
-<!--        <v-select-->
-<!--            v-model="tier"-->
-<!--            :items="metaData?.tiers || []"-->
-<!--            label="Tier"-->
-<!--            outlined-->
-<!--            dense-->
-<!--            clearable-->
-<!--        ></v-select>-->
-<!--      </v-col>-->
-    </v-row>
+<!--&lt;!&ndash;      <v-col>&ndash;&gt;-->
+<!--&lt;!&ndash;        <v-autocomplete&ndash;&gt;-->
+<!--&lt;!&ndash;            v-model="tag"&ndash;&gt;-->
+<!--&lt;!&ndash;            :items="metaData?.tags || []"&ndash;&gt;-->
+<!--&lt;!&ndash;            label="Tag"&ndash;&gt;-->
+<!--&lt;!&ndash;            outlined&ndash;&gt;-->
+<!--&lt;!&ndash;            dense&ndash;&gt;-->
+<!--&lt;!&ndash;            clearable&ndash;&gt;-->
+<!--&lt;!&ndash;        ></v-autocomplete>&ndash;&gt;-->
+<!--&lt;!&ndash;      </v-col>&ndash;&gt;-->
+<!--&lt;!&ndash;      <v-col>&ndash;&gt;-->
+<!--&lt;!&ndash;        <v-select&ndash;&gt;-->
+<!--&lt;!&ndash;            v-model="tier"&ndash;&gt;-->
+<!--&lt;!&ndash;            :items="metaData?.tiers || []"&ndash;&gt;-->
+<!--&lt;!&ndash;            label="Tier"&ndash;&gt;-->
+<!--&lt;!&ndash;            outlined&ndash;&gt;-->
+<!--&lt;!&ndash;            dense&ndash;&gt;-->
+<!--&lt;!&ndash;            clearable&ndash;&gt;-->
+<!--&lt;!&ndash;        ></v-select>&ndash;&gt;-->
+<!--&lt;!&ndash;      </v-col>&ndash;&gt;-->
+<!--    </v-row>-->
 
-    <v-row>
-      <v-col>
-        <v-progress-linear
-            color="yellow-darken-2"
-            indeterminate
-            :active="pending"
-        ></v-progress-linear>
-      </v-col>
-    </v-row>
-    <template v-if="data">
-      <v-row>
-        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in items" :key="`item:${item[1].id}`">
-          {{ numberFormat.format(item[0]) }} <b>{{ item[1].name }}</b> {{ item[1].rarity }} {{ item[1].tier > 0 ? item[1].tier : '' }}
-        </v-col>
-      </v-row>
-      <v-divider class="mt-5 pb-5"  thickness="10" />
-      <v-row>
-        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in cargo" :key="`cargo:${item[1].id}`">
-          {{ numberFormat.format(item[0]) }} <b>{{ item[1].name }}</b> {{ item[1].rarity }} {{ item[1].tier > 0 ? item[1].tier : '' }}
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col cols="12">
-          <v-pagination
-              @update:model-value="changePage"
-              v-model="page"
-              :length="data?.pages || 0"
-          ></v-pagination>
-        </v-col>
-      </v-row>
-    </template>
-    <template v-else>
-      <v-empty-state
-       headline="No items found"
-       text="Try changing your search criteria"
-      ></v-empty-state>
-    </template>
-  </v-container>
+<!--    <v-row>-->
+<!--      <v-col>-->
+<!--        <v-progress-linear-->
+<!--            color="yellow-darken-2"-->
+<!--            indeterminate-->
+<!--            :active="pending"-->
+<!--        ></v-progress-linear>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--    <template v-if="data">-->
+<!--      <v-row>-->
+<!--        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in items" :key="`item:${item[1].id}`">-->
+<!--          {{ numberFormat.format(item[0]) }} <b>{{ item[1].name }}</b> {{ item[1].rarity }} {{ item[1].tier > 0 ? item[1].tier : '' }}-->
+<!--        </v-col>-->
+<!--      </v-row>-->
+<!--      <v-divider class="mt-5 pb-5"  thickness="10" />-->
+<!--      <v-row>-->
+<!--        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in cargo" :key="`cargo:${item[1].id}`">-->
+<!--          {{ numberFormat.format(item[0]) }} <b>{{ item[1].name }}</b> {{ item[1].rarity }} {{ item[1].tier > 0 ? item[1].tier : '' }}-->
+<!--        </v-col>-->
+<!--      </v-row>-->
+<!--      <v-row>-->
+<!--        <v-col cols="12">-->
+<!--          <v-pagination-->
+<!--              @update:model-value="changePage"-->
+<!--              v-model="page"-->
+<!--              :length="data?.pages || 0"-->
+<!--          ></v-pagination>-->
+<!--        </v-col>-->
+<!--      </v-row>-->
+<!--    </template>-->
+<!--    <template v-else>-->
+<!--      <v-empty-state-->
+<!--       headline="No items found"-->
+<!--       text="Try changing your search criteria"-->
+<!--      ></v-empty-state>-->
+<!--    </template>-->
+<!--  </v-container>-->
 </template>

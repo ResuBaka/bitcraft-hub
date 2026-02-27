@@ -225,42 +225,42 @@ const miningEffort = computed(() => {
 });
 </script>
 <template>
-    <v-list-item v-if="item.deleted === undefined && desc !== undefined">
-        <v-badge :content="displayQuantity" location="right" class="align-start" offset-x="-10">
-          <v-list-item-title class="align-content-center">Name: {{ desc.name }}</v-list-item-title>
-          <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>
-        </v-badge>
-            <div v-if="miningEffort !== undefined" class="text--secondary mt-1">Mining effort (avg attempts): {{ Intl.NumberFormat().format(Math.round(miningEffort)) }} </div>
-          <template  v-if="item?.children?.length === 1">
-            <v-list-item-subtitle v-if="item.children[0] !== undefined">Actions required: {{ displayActionsString }} </v-list-item-subtitle>
-            <div v-if="miningEffort !== undefined" class="text--secondary">Attempts per unit: {{ (miningEffort).toFixed(2) }}</div>
-        <template v-if="item.children[0] !== undefined">
-                <template v-for="(recipe_item, index) in item.children[0].children" :key="index">
-            <recusive-crafting-recipe 
-              v-if="getChildPannel(index) !== undefined"
-              :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" :item_list_desc="item_list_desc" :resource-effort-map="resourceEffortMap"
-              :pannel_indexs="getChildPannel(index)!" ></recusive-crafting-recipe>
-          </template>
-        </template>
-      </template>
-      <template  v-else>
-        <v-list-item-subtitle v-if="item.children">
-          Actions required: {{ displayActionsString }} (Total recipes: {{ item.children.length }})
-        </v-list-item-subtitle>
-        <div v-if="miningEffort !== undefined" class="text--secondary">Attempts per unit: {{ (miningEffort).toFixed(2) }}</div>
-        <v-expansion-panels v-model="openedRecipePanels" multiple>
-          <v-expansion-panel v-for="(recipe, index) in item.children" :key="index"
-            :title="`[Recipe ${index + 1}] ${getDesc(recipe.children[0]).name} (Total: ${Intl.NumberFormat().format(getRecipeTotalActions(recipe, index))} Step: ${Intl.NumberFormat().format(recipe.shadow_actions_required)})`">
-            <v-expansion-panel-text>
-                <template v-for="(recipe_item, index2) in recipe.children" :key="index2">
-                  <recusive-crafting-recipe 
-                    v-if="getChildPannelMulti(index, index2) !== undefined"
-                    :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" :item_list_desc="item_list_desc" :resource-effort-map="resourceEffortMap"
-                    :pannel_indexs="getChildPannelMulti(index, index2)!"  ></recusive-crafting-recipe>
-                </template>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-      </v-expansion-panels>
-    </template>
-    </v-list-item>
+<!--    <v-list-item v-if="item.deleted === undefined && desc !== undefined">-->
+<!--        <v-badge :content="displayQuantity" location="right" class="align-start" offset-x="-10">-->
+<!--          <v-list-item-title class="align-content-center">Name: {{ desc.name }}</v-list-item-title>-->
+<!--          <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>-->
+<!--        </v-badge>-->
+<!--            <div v-if="miningEffort !== undefined" class="text&#45;&#45;secondary mt-1">Mining effort (avg attempts): {{ Intl.NumberFormat().format(Math.round(miningEffort)) }} </div>-->
+<!--          <template  v-if="item?.children?.length === 1">-->
+<!--            <v-list-item-subtitle v-if="item.children[0] !== undefined">Actions required: {{ displayActionsString }} </v-list-item-subtitle>-->
+<!--            <div v-if="miningEffort !== undefined" class="text&#45;&#45;secondary">Attempts per unit: {{ (miningEffort).toFixed(2) }}</div>-->
+<!--        <template v-if="item.children[0] !== undefined">-->
+<!--                <template v-for="(recipe_item, index) in item.children[0].children" :key="index">-->
+<!--            <recusive-crafting-recipe -->
+<!--              v-if="getChildPannel(index) !== undefined"-->
+<!--              :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" :item_list_desc="item_list_desc" :resource-effort-map="resourceEffortMap"-->
+<!--              :pannel_indexs="getChildPannel(index)!" ></recusive-crafting-recipe>-->
+<!--          </template>-->
+<!--        </template>-->
+<!--      </template>-->
+<!--      <template  v-else>-->
+<!--        <v-list-item-subtitle v-if="item.children">-->
+<!--          Actions required: {{ displayActionsString }} (Total recipes: {{ item.children.length }})-->
+<!--        </v-list-item-subtitle>-->
+<!--        <div v-if="miningEffort !== undefined" class="text&#45;&#45;secondary">Attempts per unit: {{ (miningEffort).toFixed(2) }}</div>-->
+<!--        <v-expansion-panels v-model="openedRecipePanels" multiple>-->
+<!--          <v-expansion-panel v-for="(recipe, index) in item.children" :key="index"-->
+<!--            :title="`[Recipe ${index + 1}] ${getDesc(recipe.children[0]).name} (Total: ${Intl.NumberFormat().format(getRecipeTotalActions(recipe, index))} Step: ${Intl.NumberFormat().format(recipe.shadow_actions_required)})`">-->
+<!--            <v-expansion-panel-text>-->
+<!--                <template v-for="(recipe_item, index2) in recipe.children" :key="index2">-->
+<!--                  <recusive-crafting-recipe -->
+<!--                    v-if="getChildPannelMulti(index, index2) !== undefined"-->
+<!--                    :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" :item_list_desc="item_list_desc" :resource-effort-map="resourceEffortMap"-->
+<!--                    :pannel_indexs="getChildPannelMulti(index, index2)!"  ></recusive-crafting-recipe>-->
+<!--                </template>-->
+<!--            </v-expansion-panel-text>-->
+<!--          </v-expansion-panel>-->
+<!--      </v-expansion-panels>-->
+<!--    </template>-->
+<!--    </v-list-item>-->
 </template>

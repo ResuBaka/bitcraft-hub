@@ -91,36 +91,36 @@ useSeoMeta({
 </script>
 
 <template>
-  <v-container fluid>
-    <v-row>
-      <v-col>
-        <v-text-field
-            v-model="search"
-            label="Search"
-            outlined
-            dense
-            clearable
-        ></v-text-field>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col>
-        <v-pagination
-            @update:model-value="changePage"
-            v-model="page"
-            :length="length"
-        ></v-pagination>
-        <v-progress-linear
-            color="yellow-darken-2"
-            indeterminate
-            :active="pending"
-        ></v-progress-linear>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col cols="12" md="4" v-for="building in currentBuildings" :key="building.id">
-        <bitcraft-building-card :building="building"></bitcraft-building-card>
-      </v-col>
-    </v-row>
-  </v-container>
+<!--  <v-container fluid>-->
+<!--    <v-row>-->
+<!--      <v-col>-->
+<!--        <v-text-field-->
+<!--            v-model="search"-->
+<!--            label="Search"-->
+<!--            outlined-->
+<!--            dense-->
+<!--            clearable-->
+<!--        ></v-text-field>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--    <v-row>-->
+<!--      <v-col>-->
+<!--        <v-pagination-->
+<!--            @update:model-value="changePage"-->
+<!--            v-model="page"-->
+<!--            :length="length"-->
+<!--        ></v-pagination>-->
+<!--        <v-progress-linear-->
+<!--            color="yellow-darken-2"-->
+<!--            indeterminate-->
+<!--            :active="pending"-->
+<!--        ></v-progress-linear>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--    <v-row>-->
+<!--      <v-col cols="12" md="4" v-for="building in currentBuildings" :key="building.id">-->
+<!--        <bitcraft-building-card :building="building"></bitcraft-building-card>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--  </v-container>-->
 </template>

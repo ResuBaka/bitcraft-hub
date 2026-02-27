@@ -31,12 +31,12 @@ const stippedName = computed<string>(() => {
 </script>
 
 <template>
-  <template v-if="!imagedErrored">
-    <v-img @error="imagedErrored = true" :src="iconUrl(item).url" :height="height" :width="width" :cover="false" v-bind="$attrs"></v-img>
-  </template>
-  <template v-else-if="!skipErrorText">
-    {{ stippedName.split(" ").map(part => part.charAt(0)).join("") }}
-  </template>
+<!--  <template v-if="!imagedErrored">-->
+<!--    <v-img @error="imagedErrored = true" :src="iconUrl(item).url" :height="height" :width="width" :cover="false" v-bind="$attrs"></v-img>-->
+<!--  </template>-->
+<!--  <template v-else-if="!skipErrorText">-->
+<!--    {{ stippedName.split(" ").map(part => part.charAt(0)).join("") }}-->
+<!--  </template>-->
 </template>
 
 <style scoped>

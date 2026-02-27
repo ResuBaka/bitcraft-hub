@@ -148,54 +148,54 @@ const backgroundColorRow = ({ index }: { index: number }) => {
 
 
 <template>
-<v-data-table density="compact" :headers="headersChanges" :items="items" :row-props="backgroundColorRow">
-            <template v-slot:item.user="{ item } ">
-               <template v-if="item.user_id !== null">
-                    {{ getUsername(item.user_id) }}
-               </template>
-            </template>
-            <template v-slot:item.timestamp="{ item }">
-              {{ nDate.format(Date.parse(item.timestamp)) }}
-            </template>
-            <template v-slot:item.timestamp_diff="{ item }">
-              <v-tooltip :text="`UTC ${ nUTCData.format(Date.parse(item.timestamp)) }`" location="top">
-                <template v-slot:activator="{ props }">
-                  <div v-bind="props" >{{ timeAgo( Date.parse(item.timestamp)) }} </div>
-                </template>
-              </v-tooltip>
-            </template>
-            <template v-slot:item.diff="{ item }">
-              <template v-if="item.type_of_change === 'Remove' && item.old_item_id !== null && item.old_item_type !== null">
-                <v-icon color="red">mdi-delete-empty</v-icon>
-                <b>-{{ item.old_item_quantity }}</b> {{ getItemOrCargoName(item.old_item_id,item.old_item_type) }}
-              </template>
-              <template v-if="item.type_of_change === 'Add' && item.new_item_id !== null && item.new_item_type !== null">
-                <v-icon color="green">mdi-plus</v-icon>
-                <b>{{ item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type)  }}
-              </template>
-              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity > item.new_item_quantity">
-                <v-icon color="green">mdi-arrow-up-bold-outline</v-icon>
-                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}
-              </template>
-              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity < item.new_item_quantity">
-                <v-icon color="red">mdi-arrow-down-bold-outline</v-icon>
-                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{  getItemOrCargoName(item.new_item_id,item.new_item_type)  }}
-              </template>
-              <template v-if="item.type_of_change === 'AddAndRemove' && item.new_item_id !== null && item.new_item_type !== null"><b class="text-red">{{ getItemOrCargoName(item.old_item_id,item.old_item_type)  }}</b>
-                <v-icon color="pink">mdi-swap-horizontal</v-icon>
-                <b class="text-green">{{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}</b></template>
-            </template>
-            <template v-slot:item.diff.old="{item } ">
-              <template v-if="item.old_item_id !== null && item.old_item_quantity">{{ item.old_item_quantity }}</template>
-            </template>
-            <template v-slot:item.diff.new="{item }">
-              <template v-if="item.old_item_quantity !== null && item.new_item_quantity !== null">
-                <div :class="{ 'text-red': item.old_item_quantity - item.new_item_quantity < 0, 'text-green': item.old_item_quantity - item.new_item_quantity > 0 }">
-                  {{ item.new_item_quantity }}
-                </div>
-              </template>
-            </template>
-          </v-data-table>
+<!--<v-data-table density="compact" :headers="headersChanges" :items="items" :row-props="backgroundColorRow">-->
+<!--            <template v-slot:item.user="{ item } ">-->
+<!--               <template v-if="item.user_id !== null">-->
+<!--                    {{ getUsername(item.user_id) }}-->
+<!--               </template>-->
+<!--            </template>-->
+<!--            <template v-slot:item.timestamp="{ item }">-->
+<!--              {{ nDate.format(Date.parse(item.timestamp)) }}-->
+<!--            </template>-->
+<!--            <template v-slot:item.timestamp_diff="{ item }">-->
+<!--              <v-tooltip :text="`UTC ${ nUTCData.format(Date.parse(item.timestamp)) }`" location="top">-->
+<!--                <template v-slot:activator="{ props }">-->
+<!--                  <div v-bind="props" >{{ timeAgo( Date.parse(item.timestamp)) }} </div>-->
+<!--                </template>-->
+<!--              </v-tooltip>-->
+<!--            </template>-->
+<!--            <template v-slot:item.diff="{ item }">-->
+<!--              <template v-if="item.type_of_change === 'Remove' && item.old_item_id !== null && item.old_item_type !== null">-->
+<!--                <v-icon color="red">mdi-delete-empty</v-icon>-->
+<!--                <b>-{{ item.old_item_quantity }}</b> {{ getItemOrCargoName(item.old_item_id,item.old_item_type) }}-->
+<!--              </template>-->
+<!--              <template v-if="item.type_of_change === 'Add' && item.new_item_id !== null && item.new_item_type !== null">-->
+<!--                <v-icon color="green">mdi-plus</v-icon>-->
+<!--                <b>{{ item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type)  }}-->
+<!--              </template>-->
+<!--              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity > item.new_item_quantity">-->
+<!--                <v-icon color="green">mdi-arrow-up-bold-outline</v-icon>-->
+<!--                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}-->
+<!--              </template>-->
+<!--              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity < item.new_item_quantity">-->
+<!--                <v-icon color="red">mdi-arrow-down-bold-outline</v-icon>-->
+<!--                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{  getItemOrCargoName(item.new_item_id,item.new_item_type)  }}-->
+<!--              </template>-->
+<!--              <template v-if="item.type_of_change === 'AddAndRemove' && item.new_item_id !== null && item.new_item_type !== null"><b class="text-red">{{ getItemOrCargoName(item.old_item_id,item.old_item_type)  }}</b>-->
+<!--                <v-icon color="pink">mdi-swap-horizontal</v-icon>-->
+<!--                <b class="text-green">{{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}</b></template>-->
+<!--            </template>-->
+<!--            <template v-slot:item.diff.old="{item } ">-->
+<!--              <template v-if="item.old_item_id !== null && item.old_item_quantity">{{ item.old_item_quantity }}</template>-->
+<!--            </template>-->
+<!--            <template v-slot:item.diff.new="{item }">-->
+<!--              <template v-if="item.old_item_quantity !== null && item.new_item_quantity !== null">-->
+<!--                <div :class="{ 'text-red': item.old_item_quantity - item.new_item_quantity < 0, 'text-green': item.old_item_quantity - item.new_item_quantity > 0 }">-->
+<!--                  {{ item.new_item_quantity }}-->
+<!--                </div>-->
+<!--              </template>-->
+<!--            </template>-->
+<!--          </v-data-table>-->
 </template>
 
 <style scoped>

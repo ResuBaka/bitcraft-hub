@@ -385,60 +385,60 @@ watch(itemsAndCargo, (val) => {
 </script>
 
 <template>
-  <v-container fluid>
-    <v-row>
-      <v-col>
-        <v-autocomplete
-            v-model="search"
-            :items="selectValues"
-            multiple
-            label="Search"
-            outlined
-            dense
-            clearable
-        ></v-autocomplete>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col cols="2">
-        <v-treeview
-            v-model:selected="tree"
-            :items="items"
-            class="flex-1-0"
-            false-icon="mdi-bookmark-outline"
-            indeterminate-icon="mdi-bookmark-minus"
-            item-title="name"
-            item-value="cal_id"
-            select-strategy="classic"
-            true-icon="mdi-bookmark"
-            return-object
-            selectable
-        ></v-treeview>
-      </v-col>
-      <v-col>
-        <v-card
-            title="Sell Orders"
-            flat
-        >
-          <v-data-table
-              :headers="sellHeaders"
-              :items="sellOrders"
-              :sort-by="[{ key: 'price_threshold', order: 'asc' },]"
-          ></v-data-table>
-        </v-card>
-      </v-col>
-      <v-col>
-        <v-card
-            title="Buy Orders"
-            flat
-        >
-          <v-data-table
-              :headers="buyHeaders"
-              :items="buyOrders"
-              :sort-by="[{ key: 'price_threshold', order: 'desc' },]"
-          ></v-data-table>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+<!--  <v-container fluid>-->
+<!--    <v-row>-->
+<!--      <v-col>-->
+<!--        <v-autocomplete-->
+<!--            v-model="search"-->
+<!--            :items="selectValues"-->
+<!--            multiple-->
+<!--            label="Search"-->
+<!--            outlined-->
+<!--            dense-->
+<!--            clearable-->
+<!--        ></v-autocomplete>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--    <v-row>-->
+<!--      <v-col cols="2">-->
+<!--        <v-treeview-->
+<!--            v-model:selected="tree"-->
+<!--            :items="items"-->
+<!--            class="flex-1-0"-->
+<!--            false-icon="mdi-bookmark-outline"-->
+<!--            indeterminate-icon="mdi-bookmark-minus"-->
+<!--            item-title="name"-->
+<!--            item-value="cal_id"-->
+<!--            select-strategy="classic"-->
+<!--            true-icon="mdi-bookmark"-->
+<!--            return-object-->
+<!--            selectable-->
+<!--        ></v-treeview>-->
+<!--      </v-col>-->
+<!--      <v-col>-->
+<!--        <v-card-->
+<!--            title="Sell Orders"-->
+<!--            flat-->
+<!--        >-->
+<!--          <v-data-table-->
+<!--              :headers="sellHeaders"-->
+<!--              :items="sellOrders"-->
+<!--              :sort-by="[{ key: 'price_threshold', order: 'asc' },]"-->
+<!--          ></v-data-table>-->
+<!--        </v-card>-->
+<!--      </v-col>-->
+<!--      <v-col>-->
+<!--        <v-card-->
+<!--            title="Buy Orders"-->
+<!--            flat-->
+<!--        >-->
+<!--          <v-data-table-->
+<!--              :headers="buyHeaders"-->
+<!--              :items="buyOrders"-->
+<!--              :sort-by="[{ key: 'price_threshold', order: 'desc' },]"-->
+<!--          ></v-data-table>-->
+<!--        </v-card>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--  </v-container>-->
 </template>
