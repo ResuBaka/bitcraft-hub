@@ -1,20 +1,21 @@
 <script setup lang="ts">
-import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
-import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
-import AutocompleteItem from "~/components/Bitcraft/autocomplete/AutocompleteItem.vue";
-import InventoryChanges from "~/components/Bitcraft/InventoryChanges.vue";
-import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
-import { watchThrottled } from "@vueuse/shared";
 import { useNow } from "@vueuse/core";
-import { registerWebsocketMessageHandler } from "~/composables/websocket";
+import { watchThrottled } from "@vueuse/shared";
 import { toast } from "vuetify-sonner";
-import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
+import AutocompleteItem from "~/components/Bitcraft/autocomplete/AutocompleteItem.vue";
+import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
+import InventoryChanges from "~/components/Bitcraft/InventoryChanges.vue";
+import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
+import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
+import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
+import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
+import type { ClaimTechDesc } from "~/types/ClaimTechDesc";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
-import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
-import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
+import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 
 const {
   public: { iconDomain },
@@ -124,7 +125,7 @@ registerWebsocketMessageHandler(
   "ClaimLocalState",
   [`claim_local_state.${route.params.id}`],
   (message) => {
-    if (message.entity_id == route.params.id) {
+    if (message.entity_id === route.params.id) {
       if (claimFetch.value) {
         claimFetch.value.num_tiles = message.num_tiles;
         claimFetch.value.supplies = message.supplies;
@@ -412,6 +413,72 @@ const onlinePlayersCount = computed(() => {
 
 const now = useNow({ interval: 1000, controls: true });
 
+const claimTier = computed(() => claimFetch.value?.tier ?? 1);
+
+const upgradesSorted = computed<ClaimTechDesc[]>(() => {
+  if (!claimFetch.value?.upgrades?.length) {
+    return [];
+  }
+
+  return claimFetch.value.upgrades
+    .filter((upgrade) => upgrade.tech_type !== "TierUpgrade")
+    .sort((a, b) => {
+      if (a.tier !== b.tier) {
+        return a.tier - b.tier;
+      }
+
+      return a.description.localeCompare(b.description);
+    });
+});
+
+const upgradesByTier = computed(() => {
+  const tiers = new Map<number, ClaimTechDesc[]>();
+
+  upgradesSorted.value.forEach((upgrade) => {
+    const tier = upgrade.tier ?? 1;
+    const list = tiers.get(tier) ?? [];
+    list.push(upgrade);
+    tiers.set(tier, list);
+  });
+
+  return Array.from(tiers.entries()).sort((a, b) => a[0] - b[0]);
+});
+
+const isUpgradeLocked = (upgrade: ClaimTechDesc) => {
+  return claimTier.value < upgrade.tier;
+};
+
+const unlockedUpgradesCount = computed(() => {
+  return upgradesSorted.value.filter((upgrade) => !isUpgradeLocked(upgrade))
+    .length;
+});
+
+const learnedUpgradesSet = computed(() => {
+  return new Set(claimFetch.value?.learned_upgrades ?? []);
+});
+
+const isUpgradeLearned = (upgrade: ClaimTechDesc) => {
+  return learnedUpgradesSet.value.has(upgrade.id);
+};
+
+const upgradeNameById = computed(() => {
+  const map = new Map<number, string>();
+  upgradesSorted.value.forEach((upgrade) => {
+    map.set(upgrade.id, upgrade.name);
+  });
+  return map;
+});
+
+const unlocksTechNames = (upgrade: ClaimTechDesc) => {
+  if (!upgrade.unlocks_techs?.length) {
+    return [];
+  }
+
+  return upgrade.unlocks_techs.map((id) => {
+    return upgradeNameById.value.get(id) ?? `#${id}`;
+  });
+};
+
 const researchEnded = computed(() => {
   return new Date(
     new Date(
@@ -578,6 +645,7 @@ watchThrottled(
             </v-tab>
             <v-tab value="buildings">Buildings ({{ buildings.length || 0 }})</v-tab>
             <v-tab value="leaderboards">Leaderboards</v-tab>
+            <v-tab value="upgrades">Upgrades ({{ upgradesSorted.length || 0 }})</v-tab>
             <v-tab value="inventory_changelogs">Inventory Changes ({{ InventoryChangelogFetch?.length || 0 }})</v-tab>
             <v-tab value="traveler_tasks">Traveler Tasks</v-tab>
           </v-tabs>
@@ -1242,6 +1310,108 @@ watchThrottled(
               <v-tabs-window-item value="leaderboards">
                 <leaderboard-claim :claim-id="claim?.entity_id"></leaderboard-claim>
               </v-tabs-window-item>
+              <v-tabs-window-item value="upgrades">
+                <v-row class="mb-2">
+                  <v-col cols="12" md="4">
+                    <v-card variant="tonal" class="pa-3">
+                      <div class="text-caption text-medium-emphasis">Claim Tier</div>
+                      <div class="text-h6 font-weight-bold">T{{ claimTier }}</div>
+                    </v-card>
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-card variant="tonal" class="pa-3">
+                      <div class="text-caption text-medium-emphasis">Unlocked Upgrades</div>
+                      <div class="text-h6 font-weight-bold">
+                        {{ unlockedUpgradesCount }} / {{ upgradesSorted.length || 0 }}
+                      </div>
+                    </v-card>
+                  </v-col>
+                  <v-col cols="12" md="4" v-if="claimFetch?.running_upgrade">
+                    <v-card variant="tonal" class="pa-3">
+                      <div class="text-caption text-medium-emphasis">Currently Researching</div>
+                      <div class="text-h6 font-weight-bold">
+                        {{ claimFetch?.running_upgrade?.description }}
+                      </div>
+                    </v-card>
+                  </v-col>
+                </v-row>
+                <v-row v-for="[tier, upgrades] in upgradesByTier" :key="tier" class="mb-6">
+                  <v-col cols="12">
+                    <div class="d-flex align-center justify-space-between">
+                      <div class="text-subtitle-1 font-weight-bold">Tier {{ tier }}</div>
+                      <v-chip size="small" class="font-weight-bold" variant="tonal">
+                        {{ upgrades.length }} upgrades
+                      </v-chip>
+                    </div>
+                    <v-divider class="mt-2"></v-divider>
+                  </v-col>
+                  <v-col
+                    v-for="upgrade in upgrades"
+                    :key="upgrade.id"
+                    cols="12"
+                    md="6"
+                    lg="4"
+                  >
+                    <v-card
+                      variant="outlined"
+                      class="upgrade-card"
+                      :class="{ 'upgrade-card--locked': isUpgradeLocked(upgrade) }"
+                    >
+                      <v-card-title class="d-flex align-start justify-space-between gap-2">
+                        <span class="upgrade-title text-subtitle-1 font-weight-bold">
+                          {{ upgrade.name }}
+                        </span>
+                        <v-chip size="small" class="font-weight-bold" variant="tonal">
+                          T{{ upgrade.tier }}
+                        </v-chip>
+                      </v-card-title>
+                      <v-card-text>
+                        <div class="upgrade-meta text-caption text-medium-emphasis">
+                          {{ upgrade.description }}
+                        </div>
+                        <div class="upgrade-meta text-caption text-medium-emphasis">
+                          Type: {{ upgrade.tech_type }}
+                        </div>
+                        <div
+                          v-if="upgrade.unlocks_techs?.length"
+                          class="upgrade-meta text-caption text-medium-emphasis"
+                        >
+                          Unlocks techs: {{ unlocksTechNames(upgrade).join(", ") }}
+                        </div>
+                        <div class="d-flex align-center mt-2">
+                          <v-chip
+                            v-if="isUpgradeLocked(upgrade)"
+                            color="grey"
+                            size="small"
+                            variant="tonal"
+                            class="font-weight-bold"
+                          >
+                            Requires Claim Tier {{ upgrade.tier }}
+                          </v-chip>
+                          <v-chip
+                            v-else-if="isUpgradeLearned(upgrade)"
+                            color="primary"
+                            size="small"
+                            variant="tonal"
+                            class="font-weight-bold"
+                          >
+                            Learned
+                          </v-chip>
+                          <v-chip
+                            v-else
+                            color="success"
+                            size="small"
+                            variant="tonal"
+                            class="font-weight-bold"
+                          >
+                            Available
+                          </v-chip>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </v-tabs-window-item>
               <v-tabs-window-item value="inventory_changelogs">
                 <v-card>
                   <v-card-title>Changes</v-card-title>
@@ -1412,5 +1582,19 @@ watchThrottled(
   font-weight: 800;
   color: rgb(var(--v-theme-on-surface));
   text-shadow: 0px 0px 3px rgb(var(--v-theme-surface));
+}
+
+.upgrade-card {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.upgrade-card--locked {
+  opacity: 0.6;
+}
+
+.upgrade-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
 }
 </style>

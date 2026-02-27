@@ -2,6 +2,6 @@
 import type { AuctionListingState } from "./AuctionListingState";
 
 export type MarketOrdersResponse = {
-  buy_orders: { [key in string]?: Array<AuctionListingState> };
-  sell_orders: { [key in string]?: Array<AuctionListingState> };
+  buy_orders: { [key in string]: Array<AuctionListingState> };
+  sell_orders: { [key in string]: Array<AuctionListingState> };
 };

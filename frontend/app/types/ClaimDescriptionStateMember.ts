@@ -11,6 +11,6 @@ export type ClaimDescriptionStateMember = {
   officer_permission: boolean;
   co_owner_permission: boolean;
   online_state: OnlineState;
-  skills_ranks: { [key in string]?: LeaderboardSkill } | null;
+  skills_ranks: { [key in string]: LeaderboardSkill } | null;
   inventory: ResolvedInventory | null;
 };

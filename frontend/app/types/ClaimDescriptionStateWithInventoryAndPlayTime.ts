@@ -15,7 +15,7 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   region: string;
   supplies: number;
   building_maintenance: number;
-  members: { [key in bigint]?: ClaimDescriptionStateMember };
+  members: { [key in bigint]: ClaimDescriptionStateMember };
   num_tiles: number;
   extensions: number;
   neutral: boolean;
@@ -26,11 +26,12 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   running_upgrade_started: Timestamp | null;
   tier: number | null;
   upgrades: Array<ClaimTechDesc>;
-  inventorys: { [key in string]?: Array<ExpendedRefrence> };
-  traveler_tasks: { [key in string]?: { [key in number]?: Array<bigint> } };
+  learned_upgrades: Array<number>;
+  inventorys: { [key in string]: Array<ExpendedRefrence> };
+  traveler_tasks: { [key in string]: { [key in number]: Array<bigint> } };
   traveler_player_tasks: {
-    [key in string]?: {
-      [key in bigint]?: { [key in number]?: Array<TravelerTaskState> };
+    [key in string]: {
+      [key in bigint]: { [key in number]: Array<TravelerTaskState> };
     };
   };
   time_signed_in: bigint;

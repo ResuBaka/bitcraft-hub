@@ -92,6 +92,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub running_upgrade_started: Option<entity::shared::timestamp::Timestamp>,
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
+    pub learned_upgrades: Vec<i32>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
     pub traveler_tasks: HashMap<String, HashMap<i32, Vec<i64>>>,
     pub traveler_player_tasks:
@@ -228,94 +229,95 @@ pub(crate) async fn get_claim(
         }
     }
 
-    let mut claim = {
-        let claim_tech_state = claim_tech_states
-            .iter()
-            .find(|state| state.entity_id == claim.entity_id);
 
-        let claim_local_state = state.claim_local_state.get(&(claim.entity_id as u64));
+    let claim_tech_state = claim_tech_states
+        .iter()
+        .find(|state| state.entity_id == claim.entity_id);
 
-        let claim_member_state = state
-            .claim_member_state
-            .get(&(claim.entity_id as u64))
-            .map_or(vec![], |claim_members| {
-                claim_members
-                    .iter()
-                    .map(|member| ClaimDescriptionStateMember {
-                        entity_id: member.player_entity_id,
-                        user_name: member.user_name.clone(),
-                        inventory_permission: member.inventory_permission,
-                        build_permission: member.build_permission,
-                        officer_permission: member.officer_permission,
-                        co_owner_permission: member.co_owner_permission,
-                        online_state: OnlineState::Offline,
-                        skills_ranks: Some(BTreeMap::new()),
-                        inventory: None,
-                    })
-                    .collect()
-            });
+    let claim_local_state = state.claim_local_state.get(&(claim.entity_id as u64));
 
-        let mut claim = ClaimDescriptionState {
-            entity_id: claim.entity_id,
-            owner_player_entity_id: claim.owner_player_entity_id,
-            owner_building_entity_id: claim.owner_building_entity_id,
-            name: claim.name,
-            supplies: 0,
-            building_maintenance: 0.0,
-            members: claim_member_state,
-            num_tiles: 0,
-            extensions: 0,
-            neutral: false,
-            location: Default::default(),
-            treasury: 0,
-            region: claim.region,
-            running_upgrade: None,
-            running_upgrade_started: None,
-            tier: None,
-            upgrades: vec![],
-            xp_gained_since_last_coin_minting: 0,
-        };
+    let claim_member_state = state
+        .claim_member_state
+        .get(&(claim.entity_id as u64))
+        .map_or(vec![], |claim_members| {
+            claim_members
+                .iter()
+                .map(|member| ClaimDescriptionStateMember {
+                    entity_id: member.player_entity_id,
+                    user_name: member.user_name.clone(),
+                    inventory_permission: member.inventory_permission,
+                    build_permission: member.build_permission,
+                    officer_permission: member.officer_permission,
+                    co_owner_permission: member.co_owner_permission,
+                    online_state: OnlineState::Offline,
+                    skills_ranks: Some(BTreeMap::new()),
+                    inventory: None,
+                })
+                .collect()
+        });
 
-        if let Some(claim_local_state) = claim_local_state {
-            claim.supplies = claim_local_state.supplies;
-            claim.building_maintenance = claim_local_state.building_maintenance;
-            claim.num_tiles = claim_local_state.num_tiles;
-            claim.treasury = claim_local_state.treasury;
-            claim.location = claim_local_state.location.clone();
-            claim.xp_gained_since_last_coin_minting =
-                claim_local_state.xp_gained_since_last_coin_minting;
-        }
+    let mut claim = ClaimDescriptionState {
+        entity_id: claim.entity_id,
+        owner_player_entity_id: claim.owner_player_entity_id,
+        owner_building_entity_id: claim.owner_building_entity_id,
+        name: claim.name,
+        supplies: 0,
+        building_maintenance: 0.0,
+        members: claim_member_state,
+        num_tiles: 0,
+        extensions: 0,
+        neutral: false,
+        location: Default::default(),
+        treasury: 0,
+        region: claim.region,
+        running_upgrade: None,
+        running_upgrade_started: None,
+        tier: None,
+        upgrades: vec![],
+        xp_gained_since_last_coin_minting: 0,
+    };
 
-        match claim_tech_state {
-            Some(claim_tech_state) => {
-                claim.running_upgrade = if let Some(_) = state.tech_tier_research_map.get(&claim_tech_state.researching) { Some(state.claim_tech_desc.get(&claim_tech_state.researching).unwrap().value().clone()) } else { None };
-                claim.running_upgrade_started = Some(claim_tech_state.start_timestamp.clone());
-                let learned: Vec<i32> = claim_tech_state.learned.clone();
-                claim.upgrades = learned
-                    .iter()
-                    .filter_map(|id| state.claim_tech_desc.iter().find(|desc| desc.id == (*id)))
-                    .map(|desc| desc.clone())
-                    .collect::<Vec<claim_tech_desc::Model>>();
-                let found_tiers = learned
-                    .iter()
-                    .filter(|id| state.tech_tier_research_map.contains_key(&(**id)))
-                    .copied()
-                    .collect::<Vec<i32>>();
+    let mut all_upgrades = state
+        .claim_tech_desc
+        .iter()
+        .map(|entry| entry.value().clone())
+        .collect::<Vec<claim_tech_desc::Model>>();
+    all_upgrades.sort_by_key(|desc| desc.id);
+    claim.upgrades = all_upgrades;
 
-                if !found_tiers.is_empty() {
-                    claim.tier = Some(state.tech_tier_research_map.get(&found_tiers[found_tiers.len() - 1]).unwrap().clone());
-                } else {
-                    claim.tier = Some(1);
-                }
-            }
-            None => {
-                claim.running_upgrade = None;
-                claim.upgrades = vec![];
+    if let Some(claim_local_state) = claim_local_state {
+        claim.supplies = claim_local_state.supplies;
+        claim.building_maintenance = claim_local_state.building_maintenance;
+        claim.num_tiles = claim_local_state.num_tiles;
+        claim.treasury = claim_local_state.treasury;
+        claim.location = claim_local_state.location.clone();
+        claim.xp_gained_since_last_coin_minting =
+            claim_local_state.xp_gained_since_last_coin_minting;
+    }
+
+    let mut learned_upgrades = Vec::new();
+
+    match claim_tech_state {
+        Some(claim_tech_state) => {
+            claim.running_upgrade = if let Some(_) = state.tech_tier_research_map.get(&claim_tech_state.researching) { Some(state.claim_tech_desc.get(&claim_tech_state.researching).unwrap().value().clone()) } else { None };
+            claim.running_upgrade_started = Some(claim_tech_state.start_timestamp.clone());
+            learned_upgrades = claim_tech_state.learned.clone();
+            let found_tiers = learned_upgrades
+                .iter()
+                .filter(|id| state.tech_tier_research_map.contains_key(&(**id)))
+                .copied()
+                .collect::<Vec<i32>>();
+
+            if !found_tiers.is_empty() {
+                claim.tier = Some(state.tech_tier_research_map.get(&found_tiers[found_tiers.len() - 1]).unwrap().clone());
+            } else {
                 claim.tier = Some(1);
             }
-        };
-
-        claim
+        }
+        None => {
+            claim.running_upgrade = None;
+            claim.tier = Some(1);
+        }
     };
 
     if state.skill_desc.is_empty() {
@@ -537,6 +539,7 @@ pub(crate) async fn get_claim(
         xp_gained_since_last_coin_minting: claim.xp_gained_since_last_coin_minting,
         tier: claim.tier,
         upgrades: claim.upgrades,
+        learned_upgrades,
         inventorys: HashMap::new(),
         traveler_tasks: HashMap::new(),
         traveler_player_tasks: HashMap::new(),
