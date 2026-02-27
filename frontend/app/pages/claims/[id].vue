@@ -348,7 +348,19 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
   return result;
 };
 
-let tab = ref(null);
+const validTabs = new Set([
+  "members",
+  "building_items",
+  "player_items",
+  "player_offline_items",
+  "buildings",
+  "leaderboards",
+  "upgrades",
+  "inventory_changelogs",
+  "traveler_tasks",
+]);
+
+let tab = ref("members");
 
 let memberSearch = ref<string | null>(null);
 let showOnlyOnlineMembers = ref(false);
@@ -529,6 +541,32 @@ watchThrottled(
     InventoryChangelogRefresh();
   },
   { throttle: 50 },
+);
+
+watch(
+  () => route.hash,
+  (hash) => {
+    const next = hash?.replace(/^#/, "");
+    if (next && validTabs.has(next) && tab.value !== next) {
+      tab.value = next;
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  tab,
+  (value) => {
+    if (!value || !validTabs.has(value)) {
+      return;
+    }
+
+    const nextHash = `#${value}`;
+    if (route.hash !== nextHash) {
+      router.replace({ hash: nextHash });
+    }
+  },
+  { immediate: true },
 );
 </script>
 
