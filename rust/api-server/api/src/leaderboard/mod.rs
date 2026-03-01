@@ -584,7 +584,7 @@ pub(crate) async fn player_leaderboard(
     if !has_player {
         tracing::warn!(player_id, "Player leaderboard with no player");
 
-        return Err((StatusCode::NOT_FOUND, "Not found"))
+        return Err((StatusCode::NOT_FOUND, "Not found"));
     };
 
     let mut leaderboard_result: BTreeMap<String, RankType> = BTreeMap::new();
@@ -604,7 +604,14 @@ pub(crate) async fn player_leaderboard(
             .get(&skill.id)
             .unwrap()
             .get_rank(player_id);
-        let skill_exp = if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().scores.get(&player_id) {
+        let skill_exp = if let Some(a) = state
+            .ranking_system
+            .skill_leaderboards
+            .get(&skill.id)
+            .unwrap()
+            .scores
+            .get(&player_id)
+        {
             a.clone()
         } else {
             let db = state.conn.clone();
@@ -614,19 +621,28 @@ pub(crate) async fn player_leaderboard(
                 player_id,
                 Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             )
-                .await
-                .map_err(|error| {
-                    error!("Error: {error}");
+            .await
+            .map_err(|error| {
+                error!("Error: {error}");
 
-                    (StatusCode::INTERNAL_SERVER_ERROR, "")
-                })?;
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?;
 
             if let Some(result) = entrie {
-                state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().update(player_id.clone(), result.experience as i64);
+                state
+                    .ranking_system
+                    .skill_leaderboards
+                    .get(&skill.id)
+                    .unwrap()
+                    .update(player_id.clone(), result.experience as i64);
 
                 result.experience as i64
             } else {
-                tracing::warn!(player_id, skill_id = skill.id, "Could not find player skill experience");
+                tracing::warn!(
+                    player_id,
+                    skill_id = skill.id,
+                    "Could not find player skill experience"
+                );
 
                 0
             }

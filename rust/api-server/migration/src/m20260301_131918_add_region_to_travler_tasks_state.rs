@@ -7,11 +7,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .truncate_table(
-                Table::truncate()
-                    .table(TravelerTaskState::Table)
-                    .to_owned(),
-            )
+            .truncate_table(Table::truncate().table(TravelerTaskState::Table).to_owned())
             .await?;
         if !manager
             .has_column(

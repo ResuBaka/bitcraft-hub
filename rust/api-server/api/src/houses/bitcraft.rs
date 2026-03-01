@@ -5,9 +5,7 @@ use game_module::module_bindings::{
     PortalState,
 };
 use migration::{OnConflict, sea_query};
-use sea_orm::{
-    DbErr, EntityTrait, IntoActiveModel, ModelTrait,
-};
+use sea_orm::{DbErr, EntityTrait, IntoActiveModel, ModelTrait};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;

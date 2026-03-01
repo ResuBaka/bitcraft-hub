@@ -229,7 +229,6 @@ pub(crate) async fn get_claim(
         }
     }
 
-
     let claim_tech_state = claim_tech_states
         .iter()
         .find(|state| state.entity_id == claim.entity_id);
@@ -299,7 +298,21 @@ pub(crate) async fn get_claim(
 
     match claim_tech_state {
         Some(claim_tech_state) => {
-            claim.running_upgrade = if let Some(_) = state.tech_tier_research_map.get(&claim_tech_state.researching) { Some(state.claim_tech_desc.get(&claim_tech_state.researching).unwrap().value().clone()) } else { None };
+            claim.running_upgrade = if let Some(_) = state
+                .tech_tier_research_map
+                .get(&claim_tech_state.researching)
+            {
+                Some(
+                    state
+                        .claim_tech_desc
+                        .get(&claim_tech_state.researching)
+                        .unwrap()
+                        .value()
+                        .clone(),
+                )
+            } else {
+                None
+            };
             claim.running_upgrade_started = Some(claim_tech_state.start_timestamp.clone());
             learned_upgrades = claim_tech_state.learned.clone();
             let found_tiers = learned_upgrades
@@ -309,7 +322,13 @@ pub(crate) async fn get_claim(
                 .collect::<Vec<i32>>();
 
             if !found_tiers.is_empty() {
-                claim.tier = Some(state.tech_tier_research_map.get(&found_tiers[found_tiers.len() - 1]).unwrap().clone());
+                claim.tier = Some(
+                    state
+                        .tech_tier_research_map
+                        .get(&found_tiers[found_tiers.len() - 1])
+                        .unwrap()
+                        .clone(),
+                );
             } else {
                 claim.tier = Some(1);
             }
@@ -777,7 +796,21 @@ pub(crate) async fn list_claims(
 
             match claim_tech_state {
                 Some(claim_tech_state) => {
-                    claim_description.running_upgrade = if let Some(_) = state.tech_tier_research_map.get(&claim_tech_state.researching) { Some(state.claim_tech_desc.get(&claim_tech_state.researching).unwrap().value().clone()) } else { None };
+                    claim_description.running_upgrade = if let Some(_) = state
+                        .tech_tier_research_map
+                        .get(&claim_tech_state.researching)
+                    {
+                        Some(
+                            state
+                                .claim_tech_desc
+                                .get(&claim_tech_state.researching)
+                                .unwrap()
+                                .value()
+                                .clone(),
+                        )
+                    } else {
+                        None
+                    };
                     let learned: Vec<i32> = claim_tech_state.learned.clone();
                     claim_description.upgrades = learned
                         .iter()
@@ -796,7 +829,13 @@ pub(crate) async fn list_claims(
                         .collect::<Vec<i32>>();
 
                     if !found_tiers.is_empty() {
-                        claim_description.tier = Some(state.tech_tier_research_map.get(&found_tiers[found_tiers.len() - 1]).unwrap().clone());
+                        claim_description.tier = Some(
+                            state
+                                .tech_tier_research_map
+                                .get(&found_tiers[found_tiers.len() - 1])
+                                .unwrap()
+                                .clone(),
+                        );
                     } else {
                         claim_description.tier = Some(1);
                     }

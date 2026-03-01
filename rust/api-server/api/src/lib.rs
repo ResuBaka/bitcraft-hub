@@ -89,7 +89,11 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessages>();
 
-    let state = AppState::new(database_connection.clone(), tx.clone(), config.tech_tier_research_map.clone());
+    let state = AppState::new(
+        database_connection.clone(),
+        tx.clone(),
+        config.tech_tier_research_map.clone(),
+    );
 
     state.fill_state_from_db().await;
 
@@ -458,9 +462,10 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
             get(|State(app_state): State<AppState>| async move {
                 let encoder = prometheus::TextEncoder::new();
 
-                metrics::gauge!("database_connection_pool_idle").set(app_state.conn.get_postgres_connection_pool().num_idle() as f64);
-                metrics::gauge!("database_connection_pool_total").set(app_state.conn.get_postgres_connection_pool().size() as f64);
-
+                metrics::gauge!("database_connection_pool_idle")
+                    .set(app_state.conn.get_postgres_connection_pool().num_idle() as f64);
+                metrics::gauge!("database_connection_pool_total")
+                    .set(app_state.conn.get_postgres_connection_pool().size() as f64);
 
                 let metric_families = app_state.metrics_registry.gather();
                 let prometheus_body = encoder.encode_to_string(&metric_families);
@@ -541,7 +546,11 @@ struct AppState {
 }
 
 impl AppState {
-    fn new(conn: DatabaseConnection, tx: UnboundedSender<WebSocketMessages>, tech_tier_research_map: TechTierResearchMap) -> Self {
+    fn new(
+        conn: DatabaseConnection,
+        tx: UnboundedSender<WebSocketMessages>,
+        tech_tier_research_map: TechTierResearchMap,
+    ) -> Self {
         let metrics_registry = prometheus::Registry::new();
 
         metrics_registry
