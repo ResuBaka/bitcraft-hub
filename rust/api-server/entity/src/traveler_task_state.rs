@@ -19,6 +19,7 @@ pub struct Model {
     pub task_id: i32,
     #[sea_orm(indexed)]
     pub completed: bool,
+    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -26,14 +27,40 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<TravelerTaskState> for Model {
-    fn from(value: TravelerTaskState) -> Self {
-        Model {
+pub struct ModelBuilder {
+    pub entity_id: i64,
+    pub player_entity_id: i64,
+    pub traveler_id: i32,
+    pub task_id: i32,
+    pub completed: bool,
+    pub region: String,
+}
+
+impl ModelBuilder {
+    pub fn new(value: game_module::module_bindings::TravelerTaskState) -> Self {
+        ModelBuilder {
             entity_id: value.entity_id as i64,
             player_entity_id: value.player_entity_id as i64,
             traveler_id: value.traveler_id,
             task_id: value.task_id,
             completed: value.completed,
+            region: String::new(),
+        }
+    }
+
+    pub fn with_region(mut self, region: String) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn build(self) -> Model {
+        Model {
+            entity_id: self.entity_id,
+            player_entity_id: self.player_entity_id,
+            traveler_id: self.traveler_id,
+            task_id: self.task_id,
+            completed: self.completed,
+            region: self.region,
         }
     }
 }

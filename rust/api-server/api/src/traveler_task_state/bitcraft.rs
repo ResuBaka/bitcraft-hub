@@ -22,6 +22,7 @@ pub(crate) fn start_worker_traveler_task_state(
                     ::entity::traveler_task_state::Column::TravelerId,
                     ::entity::traveler_task_state::Column::TaskId,
                     ::entity::traveler_task_state::Column::Completed,
+                    ::entity::traveler_task_state::Column::Region,
                 ])
                 .to_owned();
 
@@ -48,18 +49,25 @@ pub(crate) fn start_worker_traveler_task_state(
                     _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
                         for msg in buffer {
                             match msg {
-                                SpacetimeUpdateMessages::Initial { data, .. } => {
+                                SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                     let mut local_messages = Vec::with_capacity(batch_size + 10);
                                     let mut currently_known_traveler_task_state = ::entity::traveler_task_state::Entity::find()
+                                        .filter(::entity::traveler_task_state::Column::Region.eq(database_name.to_string()))
                                         .all(&global_app_state.conn)
                                         .await
-                                        .map_or(vec![], |aa| aa)
+                                        .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole traveler_task_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                         .into_iter()
                                         .map(|value| (value.entity_id, value))
                                         .collect::<HashMap<_, _>>();
 
                                     for model in data.into_iter().map(|value| {
-                                        let model: ::entity::traveler_task_state::Model = value.into();
+                                        let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
                                         model
                                     }) {
@@ -92,8 +100,8 @@ pub(crate) fn start_worker_traveler_task_state(
                                         }
                                     }
                                 }
-                                SpacetimeUpdateMessages::Insert { new, .. } => {
-                                    let model: ::entity::traveler_task_state::Model = new.into();
+                                SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                     let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
 
@@ -106,8 +114,8 @@ pub(crate) fn start_worker_traveler_task_state(
                                             .await;
                                     }
                                 }
-                                SpacetimeUpdateMessages::Update { new, .. } => {
-                                    let model: ::entity::traveler_task_state::Model = new.into();
+                                SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                     let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
 
@@ -125,7 +133,7 @@ pub(crate) fn start_worker_traveler_task_state(
                                     }
                                 }
                                 SpacetimeUpdateMessages::Remove { delete, .. } => {
-                                    let model: ::entity::traveler_task_state::Model = delete.into();
+                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(delete).build();
                                     let id = model.entity_id;
                                     let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskStateDelete(model.clone()));
 
