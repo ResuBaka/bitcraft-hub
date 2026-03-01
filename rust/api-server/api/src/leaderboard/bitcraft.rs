@@ -186,67 +186,70 @@ pub(crate) fn start_worker_experience_state(
                                 }
                                 SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
                                     let id = new.entity_id as i64;
-
-                                    let mut new_level_vec = vec![];
-
                                     let mut new_total_exp = 0;
                                     let mut new_total_level = 0;
                                     new.experience_stacks.iter().for_each(|es| {
                                         new_total_exp.add_assign(es.quantity as i64);
                                         let new_level = experience_to_level(es.quantity as i64);
                                         new_total_level.add_assign(new_level);
-                                        new_level_vec.push((
-                                            es.clone(),
-                                            new_level,
-                                        ));
-
-                                        let model = ::entity::experience_state::Model {
-                                            entity_id: id,
-                                            skill_id: es.skill_id,
-                                            experience: es.quantity,
-                                            region: database_name.to_string()
-                                        };
-
-                                        if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
-                                            messages.remove(index);
-                                        }
-                                        messages.push(model.into_active_model());
                                     });
 
                                     let mut old_total_exp = 0;
                                     let mut old_total_level = 0;
-                                    for es in old.experience_stacks.iter() {
+                                    for (index, es) in old.experience_stacks.iter().enumerate() {
                                         old_total_exp.add_assign(es.quantity as i64);
                                         let old_level =
                                             experience_to_level(es.quantity as i64);
                                         old_total_level.add_assign(old_level);
 
-                                        let new_level = new_level_vec.iter().find(|new_level| new_level.0.skill_id.eq(&es.skill_id));
-                                        let skill_name = global_app_state.skill_desc.get(&(es.skill_id as i64));
-
-                                        if let Some(skill) = skill_name {
-                                            if let Some(new_level) = new_level {
+                                        let new_skill = if let Some(new_skill) = new.experience_stacks.get(index) {
+                                            if new_skill.skill_id == es.skill_id {
+                                                Some(new_skill)
+                                            } else {
+                                                new.experience_stacks.iter().find(|new_level| new_level.skill_id.eq(&es.skill_id))
+                                            }
+                                        } else {
+                                            new.experience_stacks.iter().find(|new_level| new_level.skill_id.eq(&es.skill_id))
+                                        };
+                                        if let Some(new_skill) = new_skill {
+                                            let new_level = experience_to_level(new_skill.quantity as i64);
+                                            if let Some(skill) = global_app_state.skill_desc.get(&(es.skill_id as i64)) {
                                                 let skill_name = skill.to_owned().name;
-                                                if old_level != new_level.1 {
-
+                                                if old_level != new_level {
                                                     let _ = global_app_state.tx.send(WebSocketMessages::Level {
-                                                        level: new_level.1 as u64,
+                                                        level: new_level as u64,
                                                         skill_name: skill_name.clone(),
                                                         user_id: id,
                                                     });
                                                 }
+                                            }
 
-                                                if new_level.0.quantity > es.quantity {
+                                            if new_skill.quantity > es.quantity {
+                                                let model = ::entity::experience_state::Model {
+                                                    entity_id: id,
+                                                    skill_id: es.skill_id,
+                                                    experience: es.quantity,
+                                                    region: database_name.to_string()
+                                                };
+
+                                                if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
+                                                    messages.remove(index);
+                                                }
+                                                messages.push(model.into_active_model());
+
+                                                if let Some(skill) = global_app_state.skill_desc.get(&(es.skill_id as i64)) {
                                                     if skill.skill_category != 0 {
+                                                        let skill_name = skill.to_owned().name;
+
                                                         let mut prev_rank = None;
                                                         let mut post_rank;
                                                         if let Some(skill_leaderboard) = global_app_state.ranking_system.skill_leaderboards.get_mut(&(es.skill_id as i64)) {
                                                             prev_rank = skill_leaderboard.get_rank(new.entity_id as i64);
-                                                            skill_leaderboard.update(new.entity_id as i64, new_level.0.quantity as i64);
+                                                            skill_leaderboard.update(new.entity_id as i64, new_skill.quantity as i64);
                                                             post_rank = skill_leaderboard.get_rank(new.entity_id as i64);
                                                         } else {
                                                             global_app_state.ranking_system.skill_leaderboards.insert(es.skill_id as i64, Leaderboard::default());
-                                                            global_app_state.ranking_system.skill_leaderboards.get_mut(&(es.skill_id as i64)).unwrap().update(new.entity_id as i64, new_level.0.quantity as i64);
+                                                            global_app_state.ranking_system.skill_leaderboards.get_mut(&(es.skill_id as i64)).unwrap().update(new.entity_id as i64, new_skill.quantity as i64);
                                                             post_rank = global_app_state.ranking_system.skill_leaderboards.get_mut(&(es.skill_id as i64)).unwrap().get_rank(new.entity_id as i64);
                                                         }
 
@@ -266,10 +269,9 @@ pub(crate) fn start_worker_experience_state(
                                                                 tracing::error!("Skill EXP {skill_name} no rank?");
                                                             }
                                                         }
-
                                                         let _ = global_app_state.tx.send(WebSocketMessages::Experience {
-                                                            level: new_level.1 as u64,
-                                                            experience: new_level.0.quantity as u64,
+                                                            level: new_level as u64,
+                                                            experience: new_skill.quantity as u64,
                                                             rank: post_rank.unwrap_or_else(|| 0) as u64,
                                                             skill_name,
                                                             user_id: id,
