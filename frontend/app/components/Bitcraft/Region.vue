@@ -9,10 +9,10 @@ const props = defineProps<{
 
 <template>
   <template v-if="configStore.show_region_as_number">
-    {{ region.replace("bitcraft-", "") }}
+    {{ region.replace("bitcraft-live-", "") }}
   </template>
   <template v-else>
-    {{ regions[region.replace("bitcraft-", "")] }}
+    {{ regions[region.replace("bitcraft-live-", "")] }}
   </template>
 </template>
 
