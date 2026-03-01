@@ -77,6 +77,41 @@ const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
   },
 );
 
+const travelerTaskRows = computed(() => {
+  if (!itemsAndCargoAllFetch.value) {
+    return [];
+  }
+
+  const playersMap = claimFetch.value?.traveler_tasks?.players ?? {};
+  return Object.entries(playersMap).map(([taskId, players]) => {
+    const taskKey = Number(taskId);
+    const task = trevelerTasksFetch.value?.[taskKey];
+    const requiredItems = task?.required_items ?? [];
+    const itemNames = requiredItems
+      .map((requiredItem) => {
+        if (requiredItem.item_type === "Item") {
+          return itemsAndCargoAllFetch.value?.item_desc?.[requiredItem.item_id]
+            ?.name;
+        }
+        if (requiredItem.item_type === "Cargo") {
+          return itemsAndCargoAllFetch.value?.cargo_desc?.[requiredItem.item_id]
+            ?.name;
+        }
+        return undefined;
+      })
+      .filter((name): name is string => Boolean(name));
+    const npcName = task?.description?.split(" ")[0] ?? "";
+    return {
+      task_id: taskKey,
+      players,
+      items: requiredItems,
+      name: itemNames.join(", "),
+      npc_name: npcName,
+      player_count: players.length,
+    };
+  });
+});
+
 const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
   useFetchMsPack<InventoryChangelog[]>(
     () => {
@@ -1478,6 +1513,9 @@ watch(
                 {
                   title: 'Items',
                   key: 'items',
+                  sortable: false,
+                  width: '240px',
+                  minWidth: '240px',
                   cellProps: {
                     class: 'font-weight-black'
                   }
@@ -1485,6 +1523,9 @@ watch(
                 {
                   title: 'Name',
                   key: 'name',
+                  sortable: true,
+                  width: '280px',
+                  minWidth: '280px',
                   cellProps: {
                     class: 'font-weight-black'
                   }
@@ -1492,6 +1533,9 @@ watch(
                  {
                   title: 'NPC Name',
                   key: 'npc_name',
+                  sortable: true,
+                  width: '160px',
+                  minWidth: '160px',
                   cellProps: {
                     class: 'font-weight-black'
                   }
@@ -1499,6 +1543,9 @@ watch(
                  {
                   title: 'Player Count',
                   key: 'player_count',
+                  sortable: true,
+                  width: '140px',
+                  minWidth: '140px',
                   cellProps: {
                     class: 'font-weight-black'
                   }
@@ -1506,18 +1553,21 @@ watch(
                 {
                   title: 'User Names',
                   key: 'users',
+                  sortable: false,
+                  width: '260px',
+                  minWidth: '260px',
                   cellProps: {
                     class: 'font-weight-black'
                   }
                 },
                 ]"
-                    :items="Object.entries(claimFetch?.traveler_tasks?.players) || {}"
+                    :items="travelerTaskRows"
                     :items-per-page="15"
                     class="elevation-1"
 
                 >
                   <template #item.items="{ item }">
-                    <template v-for="shownItem of trevelerTasksFetch[item[0]]?.required_items ">
+                    <template v-for="shownItem of item.items">
                       <v-badge :content="Intl.NumberFormat().format(shownItem.quantity)" location="right"
                                class="align-start">
                         <template v-if="shownItem.item_type == 'Item'">
@@ -1534,9 +1584,9 @@ watch(
                     </template>
                   </template>
                   <template #item.name="{ item }">
-                    <template v-for="shownItem of trevelerTasksFetch[item[0]]?.required_items ">
+                    <template v-for="shownItem of item.items">
                       <div class="align-center"
-                           :class="`text-${tierToColor[shownItem.item_type == 'Item' ? itemsAndCargoAllFetch.item_desc[shownItem.item_id].tier : itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].tier]}`">
+                            :class="`text-${tierToColor[shownItem.item_type == 'Item' ? itemsAndCargoAllFetch.item_desc[shownItem.item_id].tier : itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].tier]}`">
                         <template v-if="shownItem.item_type == 'Item'">
                           {{ itemsAndCargoAllFetch.item_desc[shownItem.item_id].name }}
                         </template>
@@ -1548,13 +1598,13 @@ watch(
                   </template>
 
                   <template #item.npc_name="{ value, item }">
-                    {{ trevelerTasksFetch[item[0]].description.split(" ")[0] }}
+                    {{ item.npc_name }}
                   </template>
                   <template #item.player_count="{ value, item }">
-                    {{ item[1].length }}
+                    {{ item.player_count }}
                   </template>
                   <template #item.users="{ value, item }">
-                    <template v-for="playerId of item[1]">
+                    <template v-for="playerId of item.players">
                       <nuxt-link :class="`text-decoration-none`" :to="{ name: 'players-id', params: { id: playerId } }">
                         {{ claimFetch.members[playerId]?.user_name }}
                       </nuxt-link>
