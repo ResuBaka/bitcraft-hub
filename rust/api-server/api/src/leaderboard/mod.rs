@@ -579,6 +579,14 @@ pub(crate) async fn player_leaderboard(
             (StatusCode::INTERNAL_SERVER_ERROR, "")
         })?;
 
+    let has_player = state.player_state.contains_key(&player_id);
+
+    if !has_player {
+        tracing::warn!(player_id, "Player leaderboard with no player");
+
+        return Err((StatusCode::NOT_FOUND, "Not found"))
+    };
+
     let mut leaderboard_result: BTreeMap<String, RankType> = BTreeMap::new();
 
     let mut results = vec![];
