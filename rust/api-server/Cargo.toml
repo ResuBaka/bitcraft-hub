@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.90.0"
 
-#[profile.release]
+[profile.release]
+debug = 1
 #opt-level = 3
 #lto = true
 
