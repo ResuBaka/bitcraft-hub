@@ -596,11 +596,11 @@ pub(crate) async fn player_leaderboard(
             .get(&skill.id)
             .unwrap()
             .get_rank(player_id);
-        let total_experience = if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().scores.get(&player_id) {
+        let skill_exp = if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().scores.get(&player_id) {
             a.clone()
         } else {
             let db = state.conn.clone();
-            let (entrie, rank) = Query::get_experience_state_player_by_skill_id(
+            let (entrie, _rank) = Query::get_experience_state_player_by_skill_id(
                 &db,
                 skill.id,
                 player_id,
@@ -613,11 +613,15 @@ pub(crate) async fn player_leaderboard(
                     (StatusCode::INTERNAL_SERVER_ERROR, "")
                 })?;
 
-            let entry = entrie.unwrap();
+            if let Some(result) = entrie {
+                state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().update(player_id.clone(), result.experience as i64);
 
-            state.ranking_system.skill_leaderboards.get(&skill.id).unwrap().update(player_id.clone(), entry.experience as i64);
+                result.experience as i64
+            } else {
+                tracing::warn!(player_id, skill_id = skill.id, "Could not find player skill experience");
 
-            entry.experience as i64
+                0
+            }
         };
 
         results.push((
@@ -625,8 +629,8 @@ pub(crate) async fn player_leaderboard(
             RankType::Skill(LeaderboardSkill {
                 player_id: player_id.clone(),
                 player_name,
-                experience: total_experience as i32,
-                level: experience_to_level(total_experience),
+                experience: skill_exp as i32,
+                level: experience_to_level(skill_exp),
                 rank: rank.unwrap() as u64,
             }),
         ));
