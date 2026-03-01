@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use game_module::module_bindings::LocationState;
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait};
+use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;

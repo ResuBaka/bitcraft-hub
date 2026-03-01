@@ -180,7 +180,7 @@ pub(crate) fn start_worker_player_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, event } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 

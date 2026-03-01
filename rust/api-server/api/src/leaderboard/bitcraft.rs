@@ -5,7 +5,7 @@ use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QueryTrait};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::time::Duration;
@@ -115,9 +115,9 @@ pub(crate) fn start_worker_experience_state(
                                     for chunk_ids in currently_known_experience_state.into_keys().collect::<Vec<_>>().chunks(100) {
                                         let mut query = sea_query::Condition::any();
                                         for chunk_id in chunk_ids {
-                                        let (entity_id,skill_id) = chunk_ids.first().unwrap().split_once(":").unwrap();
+                                            let (entity_id,skill_id) = chunk_id.split_once(":").unwrap();
                                             query = query.add(::entity::experience_state::Column::EntityId.eq(entity_id.parse::<i64>().unwrap())
-                                            .and(::entity::experience_state::Column::SkillId.eq(skill_id.parse::<i32>().unwrap())));
+                                                .and(::entity::experience_state::Column::SkillId.eq(skill_id.parse::<i32>().unwrap())));
                                         }
 
                                         let chunk_ids = chunk_ids.to_vec();
@@ -239,7 +239,7 @@ pub(crate) fn start_worker_experience_state(
                                                 if new_level.0.quantity > es.quantity {
                                                     if skill.skill_category != 0 {
                                                         let mut prev_rank = None;
-                                                        let mut post_rank = None;
+                                                        let mut post_rank;
                                                         if let Some(skill_leaderboard) = global_app_state.ranking_system.skill_leaderboards.get_mut(&(es.skill_id as i64)) {
                                                             prev_rank = skill_leaderboard.get_rank(new.entity_id as i64);
                                                             skill_leaderboard.update(new.entity_id as i64, new_level.0.quantity as i64);
