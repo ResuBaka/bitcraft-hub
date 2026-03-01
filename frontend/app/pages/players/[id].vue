@@ -8,8 +8,6 @@ import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardRespons
 import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
 import type { InventorysResponse } from "~/types/InventorysResponse";
 import type { HouseResponse } from "~/types/HouseResponse";
-import type { HouseInventoriesResponse } from "~/types/HouseInventoriesResponse";
-import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { RankType } from "~/types/RankType";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 
@@ -480,7 +478,7 @@ const skillToToolIndex = {
   Masonry: 2,
   Mining: 3,
   Scholar: 12,
-  Slayer: 14,
+  Slayer: 15,
   Smithing: 4,
   Tailoring: 7,
 };
