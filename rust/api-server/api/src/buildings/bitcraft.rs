@@ -43,7 +43,13 @@ pub(crate) fn start_worker_building_state(
                                     .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole building_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -231,7 +237,13 @@ pub(crate) fn start_worker_building_desc(
                                 let mut currently_known_building_desc = ::entity::building_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole building_desc state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.id, value))
                                     .collect::<HashMap<_, _>>();
@@ -380,7 +392,13 @@ pub(crate) fn start_worker_building_nickname_state(
                                     .filter(::entity::building_nickname_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole building_nickname_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();

@@ -6,6 +6,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use crossbeam_skiplist::SkipSet;
 use dashmap::DashMap;
+use dashmap::mapref::one::Ref;
 use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
@@ -179,11 +180,20 @@ pub struct LeaderboardEntry {
     pub xp: i64,
 }
 
+pub(crate) struct BucketDistribution {
+    pub(crate) bucket: i64,
+    pub(crate) min_xp: i64,
+    pub(crate) max_xp: i64,
+    pub(crate) count: usize,
+}
+
 pub(super) struct Leaderboard {
     // DashMap handles concurrent ID -> XP lookups
     scores: DashMap<i64, i64>,
     // RwLock protects the sorted order for ranking
     sorted_ranks: SkipSet<(i64, i64)>,
+    // Bucketed counts for faster rank lookups
+    bucket_counts: DashMap<i64, usize>,
 }
 
 impl Default for Leaderboard {
@@ -191,11 +201,112 @@ impl Default for Leaderboard {
         Self {
             scores: DashMap::new(),
             sorted_ranks: SkipSet::new(),
+            bucket_counts: DashMap::new(),
         }
     }
 }
 
 impl Leaderboard {
+    const BUCKET_RANGES: [(i64, i64); 5] = [
+        (50_000, 1_000),
+        (250_000, 5_000),
+        (1_000_000, 25_000),
+        (5_000_000, 100_000),
+        (i64::MAX, 500_000),
+    ];
+
+    fn bucket_for(xp: i64) -> i64 {
+        let normalized = xp.max(0);
+        let mut range_start = 0i64;
+        let mut offset = 0i64;
+
+        for (range_max, bucket_size) in Self::BUCKET_RANGES.iter() {
+            if *range_max == i64::MAX {
+                let idx_in_range = (normalized - range_start) / *bucket_size;
+                return offset + idx_in_range;
+            }
+
+            if normalized <= *range_max {
+                let idx_in_range = (normalized - range_start) / *bucket_size;
+                return offset + idx_in_range;
+            }
+
+            let range_len = range_max - range_start + 1;
+            let buckets_in_range = (range_len + bucket_size - 1) / bucket_size;
+            offset += buckets_in_range;
+            range_start = range_max + 1;
+        }
+
+        offset
+    }
+
+    fn bucket_bounds(bucket: i64) -> (i64, i64) {
+        let mut range_start = 0i64;
+        let mut offset = 0i64;
+
+        for (range_max, bucket_size) in Self::BUCKET_RANGES.iter() {
+            if *range_max == i64::MAX {
+                let idx_in_range = bucket - offset;
+                let min = range_start + (idx_in_range * *bucket_size);
+                let max = min + *bucket_size - 1;
+                return (min, max);
+            }
+
+            let range_len = range_max - range_start + 1;
+            let buckets_in_range = (range_len + bucket_size - 1) / bucket_size;
+
+            if bucket < offset + buckets_in_range {
+                let idx_in_range = bucket - offset;
+                let min = range_start + (idx_in_range * *bucket_size);
+                let max = min + *bucket_size - 1;
+                return (min, max);
+            }
+
+            offset += buckets_in_range;
+            range_start = range_max + 1;
+        }
+
+        (0, 0)
+    }
+
+    pub(crate) fn bucket_distribution(&self) -> Vec<BucketDistribution> {
+        let mut buckets: Vec<BucketDistribution> = self
+            .bucket_counts
+            .iter()
+            .map(|entry| {
+                let bucket = *entry.key();
+                let (min_xp, max_xp) = Self::bucket_bounds(bucket);
+
+                BucketDistribution {
+                    bucket,
+                    min_xp,
+                    max_xp,
+                    count: *entry.value(),
+                }
+            })
+            .collect();
+
+        buckets.sort_by_key(|bucket| bucket.bucket);
+        buckets
+    }
+
+    fn increment_bucket(&self, bucket: i64) {
+        let mut entry = self.bucket_counts.entry(bucket).or_insert(0);
+        *entry += 1;
+    }
+
+    fn decrement_bucket(&self, bucket: i64) {
+        if let Some(mut entry) = self.bucket_counts.get_mut(&bucket) {
+            if *entry > 0 {
+                *entry -= 1;
+            }
+            if *entry == 0 {
+                drop(entry);
+                self.bucket_counts.remove(&bucket);
+            }
+        }
+    }
+
     pub(super) fn update(&self, user_id: i64, new_xp: i64) {
         // 1. Get or initialize current score
         let mut current_xp_ref = self.scores.entry(user_id).or_insert(0);
@@ -207,32 +318,69 @@ impl Leaderboard {
 
         // 2. If it's an update, remove the old entry from the sorted set
         if old_xp != new_xp || self.sorted_ranks.contains(&(old_xp, user_id)) {
-            self.sorted_ranks.remove(&(old_xp, user_id));
+            if self.sorted_ranks.remove(&(old_xp, user_id)).is_some() {
+                self.decrement_bucket(Self::bucket_for(old_xp));
+            }
         }
 
         // 3. Update both structures
         *current_xp_ref = new_xp;
         self.sorted_ranks.insert((new_xp, user_id));
+        self.increment_bucket(Self::bucket_for(new_xp));
+    }
+
+    pub(super) fn has(&self, user_id: &i64) -> bool {
+        self.scores.contains_key(user_id)
+    }
+
+    pub(super) fn get_value<'a>(&self, user_id: &i64) -> Option<i64> {
+        if let Some(xp) = self.scores.get(user_id) {
+            Some(*xp)
+        } else {
+            None
+        }
     }
 
     pub(super) fn get_rank(&self, user_id: i64) -> Option<usize> {
-        self.sorted_ranks
+        let xp = self.scores.get(&user_id).map(|entry| *entry.value())?;
+        let bucket = Self::bucket_for(xp);
+        let (bucket_min, bucket_max) = Self::bucket_bounds(bucket);
+
+        let higher_count: usize = self
+            .bucket_counts
             .iter()
+            .filter(|entry| *entry.key() > bucket)
+            .map(|entry| *entry.value())
+            .sum();
+
+        let mut within_bucket_rank = 0usize;
+        let mut found = false;
+        for entry in self
+            .sorted_ranks
+            .range((bucket_min, i64::MIN)..=(bucket_max, i64::MAX))
             .rev()
-            .position(|entry| entry.value().1 == user_id)
-            .map(|p| p + 1)
+        {
+            within_bucket_rank += 1;
+            if entry.value().1 == user_id {
+                found = true;
+                break;
+            }
+        }
+
+        if found {
+            Some(higher_count + within_bucket_rank)
+        } else {
+            None
+        }
     }
 
     pub(super) fn remove(&self, user_id: i64) {
-        let xp = self
-            .sorted_ranks
-            .iter()
-            .rev()
-            .find(|entry| entry.value().1 == user_id)
-            .map(|p| p.0);
+        let xp = self.scores.get(&user_id).map(|entry| *entry.value());
 
         if let Some(x) = xp {
-            self.sorted_ranks.remove(&(x, user_id));
+            if self.sorted_ranks.remove(&(x, user_id)).is_some() {
+                self.decrement_bucket(Self::bucket_for(x));
+            }
         }
     }
 

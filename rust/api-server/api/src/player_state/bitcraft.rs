@@ -44,7 +44,13 @@ pub(crate) fn start_worker_player_state(
                                     .filter(::entity::player_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole player_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -52,13 +58,8 @@ pub(crate) fn start_worker_player_state(
                                 let mut online = 0;
                                 let mut offline = 0;
 
-
-
                                 for model in data.into_iter().map(|value| {
                                     let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
-                                    global_app_state.player_state.insert(model.entity_id, model.clone());
-                                    global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
-                                    global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
 
                                     if model.signed_in {
                                         online += 1;
@@ -73,11 +74,17 @@ pub(crate) fn start_worker_player_state(
                                         Entry::Occupied(entry) => {
                                             let existing_model = entry.get();
                                             if &model != existing_model {
+                                                global_app_state.player_state.insert(model.entity_id, model.clone());
+                                                global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
+                                                global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
                                                 local_messages.push(model.into_active_model());
                                             }
                                             entry.remove();
                                         }
                                         Entry::Vacant(_entry) => {
+                                            global_app_state.player_state.insert(model.entity_id, model.clone());
+                                            global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
+                                            global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
                                             local_messages.push(model.into_active_model());
                                         }
                                     }
@@ -278,7 +285,13 @@ pub(crate) fn start_worker_player_username_state(
                                     .filter(::entity::player_username_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole player_username_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();

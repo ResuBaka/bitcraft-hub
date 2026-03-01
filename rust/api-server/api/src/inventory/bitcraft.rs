@@ -73,7 +73,13 @@ pub(crate) fn start_worker_inventory_state(
                                         .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
                                         .all(&global_app_state.conn)
                                         .await
-                                        .map_or(vec![], |aa| aa)
+                                        .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole inventory state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                         .into_iter()
                                         .map(|value| (value.entity_id, value))
                                         .collect::<HashMap<_, _>>();

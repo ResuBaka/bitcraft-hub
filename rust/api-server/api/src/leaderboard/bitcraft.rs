@@ -76,15 +76,19 @@ pub(crate) fn start_worker_experience_state(
                                                 }
                                             }).collect();
 
-                                        global_app_state.ranking_system.global_leaderboard.update(value.entity_id as i64, total_exp);
+                                        if let Some(xp) = global_app_state.ranking_system.global_leaderboard.get_value(&(value.entity_id as i64)) {
+                                            if xp != total_exp {
+                                                global_app_state.ranking_system.global_leaderboard.update(value.entity_id as i64, total_exp);
 
-                                        let mut xp_per_hour = 0;
-                                        if let Some(player_state) = global_app_state.player_state.get(&(value.entity_id as i64)) {
-                                            if player_state.time_signed_in >= 3600 {
-                                                xp_per_hour = total_exp / (player_state.time_signed_in as i64/ 3600);
+                                                let mut xp_per_hour = 0;
+                                                if let Some(player_state) = global_app_state.player_state.get(&(value.entity_id as i64)) {
+                                                    if player_state.time_signed_in >= 3600 {
+                                                        xp_per_hour = total_exp / (player_state.time_signed_in as i64/ 3600);
+                                                    }
+                                                }
+                                                global_app_state.ranking_system.xp_per_hour.update(value.entity_id as i64, xp_per_hour);
                                             }
                                         }
-                                        global_app_state.ranking_system.xp_per_hour.update(value.entity_id as i64, xp_per_hour);
 
                                         model
                                     }).collect::<Vec<_>>() {
@@ -94,6 +98,10 @@ pub(crate) fn start_worker_experience_state(
                                             Entry::Occupied(entry) => {
                                                 let existing_model = entry.get();
                                                 if &model != existing_model {
+                                                    if let Some(skill_leaderboard) = global_app_state.ranking_system.skill_leaderboards.get_mut(&(model.skill_id as i64)) {
+                                                        skill_leaderboard.update(model.entity_id as i64, model.experience as i64);
+                                                    }
+
                                                     local_messages.push(model.into_active_model());
                                                 }
                                                 entry.remove();

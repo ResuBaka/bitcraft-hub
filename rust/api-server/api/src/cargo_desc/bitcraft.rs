@@ -57,7 +57,13 @@ pub(crate) fn start_worker_cargo_desc(
                                 let mut currently_known_cargo_desc = ::entity::cargo_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole cargo_desc state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.id, value))
                                     .collect::<HashMap<_, _>>();

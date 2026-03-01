@@ -55,7 +55,13 @@ pub(crate) fn start_worker_collectible_desc(
                                 let mut currently_known_collectible_desc = ::entity::collectible_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole collectible_desc state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.id, value))
                                     .collect::<HashMap<_, _>>();

@@ -66,7 +66,7 @@ use spacetimedb_sdk::Identity;
 use spacetimedb_sdk::unstable::CLIENT_METRICS;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 use std::ops::{AddAssign, SubAssign};
 use std::process::exit;
 use std::sync::Arc;
@@ -472,13 +472,75 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
                 let metrics_body = prometheus.render();
                 collector.collect();
 
+                let mut leaderboard_buckets = String::new();
+                let _ = writeln!(
+                    leaderboard_buckets,
+                    "# HELP leaderboard_bucket_count Bucket distribution for leaderboards"
+                );
+                let _ = writeln!(
+                    leaderboard_buckets,
+                    "# TYPE leaderboard_bucket_count gauge"
+                );
+
+                let append_bucket_metrics = |output: &mut String,
+                                             name: &str,
+                                             board: &Leaderboard| {
+                    for bucket in board.bucket_distribution() {
+                        let _ = writeln!(
+                            output,
+                            "leaderboard_bucket_count{{leaderboard=\"{name}\",bucket=\"{}\",min_xp=\"{}\",max_xp=\"{}\"}} {}",
+                            bucket.bucket,
+                            bucket.min_xp,
+                            bucket.max_xp,
+                            bucket.count
+                        );
+                    }
+                };
+
+                append_bucket_metrics(
+                    &mut leaderboard_buckets,
+                    "global_experience",
+                    &app_state.ranking_system.global_leaderboard,
+                );
+                append_bucket_metrics(
+                    &mut leaderboard_buckets,
+                    "level",
+                    &app_state.ranking_system.level_leaderboard,
+                );
+                append_bucket_metrics(
+                    &mut leaderboard_buckets,
+                    "xp_per_hour",
+                    &app_state.ranking_system.xp_per_hour,
+                );
+                append_bucket_metrics(
+                    &mut leaderboard_buckets,
+                    "time_played",
+                    &app_state.ranking_system.time_played,
+                );
+                append_bucket_metrics(
+                    &mut leaderboard_buckets,
+                    "time_signed_in",
+                    &app_state.ranking_system.time_signed_in,
+                );
+
+                for entry in app_state.ranking_system.skill_leaderboards.iter() {
+                    let skill_id = entry.key();
+                    append_bucket_metrics(
+                        &mut leaderboard_buckets,
+                        &format!("skill_{skill_id}"),
+                        entry.value(),
+                    );
+                }
+
                 if let Err(err) = prometheus_body {
                     error!("Error: {:?}", err);
 
                     Err((StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"))
                 } else {
                     let prometheus_body = prometheus_body.unwrap();
-                    Ok(format!("{metrics_body}\n{prometheus_body}"))
+                    Ok(format!(
+                        "{metrics_body}\n{prometheus_body}\n{leaderboard_buckets}"
+                    ))
                 }
             }),
         )

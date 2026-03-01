@@ -43,7 +43,13 @@ pub(crate) fn start_worker_claim_state(
                                     .filter(::entity::claim_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole claim_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -207,7 +213,13 @@ pub(crate) fn start_worker_claim_local_state(
                                         .filter(::entity::claim_local_state::Column::Region.eq(database_name.to_string()))
                                         .all(&global_app_state.conn)
                                         .await
-                                        .map_or(vec![], |aa| aa)
+                                        .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole claim_local_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                         .into_iter()
                                         .map(|value| (value.entity_id, value))
                                         .collect::<HashMap<_, _>>();
@@ -395,7 +407,13 @@ pub(crate) fn start_worker_claim_member_state(
                                     .filter(::entity::claim_member_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole claim_member_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -560,7 +578,13 @@ pub(crate) fn start_worker_claim_tech_state(
                                     .filter(::entity::claim_tech_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole claim_tech_state state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -722,7 +746,13 @@ pub(crate) fn start_worker_claim_tech_desc(
                                 let mut currently_known_claim_tech_desc = ::entity::claim_tech_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or(vec![], |aa| aa)
+                                    .map_or_else(|error| {
+                                            tracing::error!(
+                                                error = error.to_string(),
+                                                "Error while query whole claim_tech_desc state"
+                                            );
+                                            vec![]
+                                        },|aa| aa)
                                     .into_iter()
                                     .map(|value| (value.id, value))
                                     .collect::<HashMap<_, _>>();
