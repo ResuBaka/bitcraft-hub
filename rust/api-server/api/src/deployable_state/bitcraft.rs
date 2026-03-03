@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::deployable_state;
 use game_module::module_bindings::DeployableState;
 use migration::{OnConflict, sea_query};
@@ -36,6 +36,7 @@ pub(crate) fn start_worker_deployable_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("deployable_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

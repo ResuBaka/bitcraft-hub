@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::{
     DimensionDescriptionState, InteriorNetworkDesc, PermissionState, PlayerHousingState,
     PortalState,
@@ -38,6 +38,7 @@ pub(crate) fn start_worker_interior_network_desc(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("interior_network_desc", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -181,6 +182,7 @@ pub(crate) fn start_worker_dimension_description_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("dimension_description_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -322,6 +324,7 @@ pub(crate) fn start_worker_player_housing_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("player_housing_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -460,6 +463,7 @@ pub(crate) fn start_worker_permission_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("permission_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -597,6 +601,7 @@ pub(crate) fn start_worker_portal_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("portal_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

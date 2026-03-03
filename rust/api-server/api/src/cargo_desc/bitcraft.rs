@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::cargo_desc;
 use game_module::module_bindings::CargoDesc;
 use migration::{OnConflict, sea_query};
@@ -51,6 +51,7 @@ pub(crate) fn start_worker_cargo_desc(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("cargo_desc", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

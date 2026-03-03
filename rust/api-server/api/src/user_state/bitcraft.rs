@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::UserState;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -9,6 +9,7 @@ pub(crate) fn start_worker_user_state(
 ) {
     tokio::spawn(async move {
         while let Some(update) = rx.recv().await {
+            record_worker_received("user_state", 1);
             match update {
                 SpacetimeUpdateMessages::Initial { data, .. } => {
                     for item in data {

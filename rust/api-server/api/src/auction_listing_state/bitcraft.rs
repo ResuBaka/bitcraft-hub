@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
 use game_module::module_bindings::AuctionListingState;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
@@ -36,6 +36,7 @@ pub(crate) fn start_worker_sell_order_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("sell_order_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 data.into_par_iter().for_each(|value| {
@@ -223,6 +224,7 @@ pub(crate) fn start_worker_buy_order_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("buy_order_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 data.into_par_iter().for_each(|value| {

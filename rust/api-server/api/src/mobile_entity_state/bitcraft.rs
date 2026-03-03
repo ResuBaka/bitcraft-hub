@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::WebSocketMessages;
+use crate::websocket::{WebSocketMessages, record_worker_received};
 use entity::mobile_entity_state;
 use game_module::module_bindings::MobileEntityState;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -13,6 +13,7 @@ pub(crate) fn start_worker_mobile_entity_state(
             let mut buffer = Vec::with_capacity(4000);
 
             let _count = rx.recv_many(&mut buffer, 4000).await;
+            record_worker_received("mobile_entity_state", buffer.len());
             for msg in buffer {
                 match msg {
                     crate::websocket::SpacetimeUpdateMessages::Initial {

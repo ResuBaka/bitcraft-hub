@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::TravelerTaskDesc;
 use migration::{OnConflict, sea_query};
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
@@ -35,6 +35,7 @@ pub(crate) fn start_worker_traveler_task_desc(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("traveler_task_desc", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

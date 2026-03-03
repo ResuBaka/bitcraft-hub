@@ -1,6 +1,6 @@
 use crate::AppState;
 use crate::leaderboard::{Leaderboard, experience_to_level};
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
@@ -39,6 +39,7 @@ pub(crate) fn start_worker_experience_state(
 
                 tokio::select! {
                     _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
+                        record_worker_received("experience_state", buffer.len());
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {

@@ -467,6 +467,8 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
                 metrics::gauge!("database_connection_pool_total")
                     .set(app_state.conn.get_postgres_connection_pool().size() as f64);
 
+                record_app_state_metrics(&app_state);
+
                 let metric_families = app_state.metrics_registry.gather();
                 let prometheus_body = encoder.encode_to_string(&metric_families);
                 let metrics_body = prometheus.render();
@@ -560,6 +562,104 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         .layer(CompressionLayer::new())
         .route_layer(middleware::from_fn(track_metrics))
         .with_state(state)
+}
+
+fn record_app_state_metrics(app_state: &AppState) {
+    metrics::gauge!("app_state_cache_size", &[("cache", "mobile_entity_state")])
+        .set(app_state.mobile_entity_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "player_state")])
+        .set(app_state.player_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "claim_member_state")])
+        .set(app_state.claim_member_state.len() as f64);
+    metrics::gauge!(
+        "app_state_cache_size",
+        &[("cache", "claim_member_state_total")]
+    )
+    .set(
+        app_state
+            .claim_member_state
+            .iter()
+            .map(|entry| entry.value().len())
+            .sum::<usize>() as f64,
+    );
+    metrics::gauge!(
+        "app_state_cache_size",
+        &[("cache", "player_to_claim_id_cache")]
+    )
+    .set(app_state.player_to_claim_id_cache.len() as f64);
+    metrics::gauge!(
+        "app_state_cache_size",
+        &[("cache", "player_to_claim_id_cache_total")]
+    )
+    .set(
+        app_state
+            .player_to_claim_id_cache
+            .iter()
+            .map(|entry| entry.value().len())
+            .sum::<usize>() as f64,
+    );
+    metrics::gauge!("app_state_cache_size", &[("cache", "claim_local_state")])
+        .set(app_state.claim_local_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "claim_state")])
+        .set(app_state.claim_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "claim_tile_state")])
+        .set(app_state.claim_tile_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "player_action_state")])
+        .set(app_state.player_action_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "crafting_recipe_desc")])
+        .set(app_state.crafting_recipe_desc.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "claim_tech_desc")])
+        .set(app_state.claim_tech_desc.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "item_tags")])
+        .set(app_state.item_tags.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "item_tiers")])
+        .set(app_state.item_tiers.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "item_desc")])
+        .set(app_state.item_desc.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "item_list_desc")])
+        .set(app_state.item_list_desc.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "skill_desc")])
+        .set(app_state.skill_desc.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "cargo_desc")])
+        .set(app_state.cargo_desc.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "cargo_tags")])
+        .set(app_state.cargo_tags.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "cargo_tiers")])
+        .set(app_state.cargo_tiers.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "building_desc")])
+        .set(app_state.building_desc.len() as f64);
+    metrics::gauge!(
+        "app_state_cache_size",
+        &[("cache", "building_nickname_state")]
+    )
+    .set(app_state.building_nickname_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "action_state")])
+        .set(app_state.action_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "action_state_total")]).set(
+        app_state
+            .action_state
+            .iter()
+            .map(|entry| entry.value().len())
+            .sum::<usize>() as f64,
+    );
+    metrics::gauge!("app_state_cache_size", &[("cache", "location_state")])
+        .set(app_state.location_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "connected_user_map")])
+        .set(app_state.connected_user_map.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "traveler_task_desc")])
+        .set(app_state.traveler_task_desc.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "user_state")])
+        .set(app_state.user_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "trade_order_state")])
+        .set(app_state.trade_order_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "deployable_state")])
+        .set(app_state.deployable_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "buy_order_state")])
+        .set(app_state.buy_order_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "sell_order_state")])
+        .set(app_state.sell_order_state.len() as f64);
+    metrics::gauge!("app_state_cache_size", &[("cache", "npc_desc")])
+        .set(app_state.npc_desc.len() as f64);
 }
 
 #[derive(Clone)]

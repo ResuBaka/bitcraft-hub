@@ -1,6 +1,6 @@
 use crate::AppState;
 use crate::inventory::resolve_pocket;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
 use chrono::DateTime;
 
 use entity::inventory::ResolvedInventory;
@@ -64,6 +64,7 @@ pub(crate) fn start_worker_inventory_state(
 
                 tokio::select! {
                     _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
+                        record_worker_received("inventory_state", buffer.len());
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {

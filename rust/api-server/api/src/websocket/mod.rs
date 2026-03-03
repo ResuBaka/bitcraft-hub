@@ -51,6 +51,42 @@ use tokio::time::Instant;
 
 use ts_rs::TS;
 
+fn send_worker_message<T>(
+    worker_name: &str,
+    tx: &UnboundedSender<SpacetimeUpdateMessages<T>>,
+    message: SpacetimeUpdateMessages<T>,
+) {
+    metrics::counter!(
+        "worker_queue_sent_total",
+        &[("worker", worker_name.to_string())]
+    )
+    .increment(1);
+    if tx.send(message).is_err() {
+        metrics::counter!(
+            "worker_queue_send_errors_total",
+            &[("worker", worker_name.to_string())]
+        )
+        .increment(1);
+    }
+}
+
+pub(crate) fn record_worker_received(worker_name: &str, count: usize) {
+    if count == 0 {
+        return;
+    }
+
+    metrics::counter!(
+        "worker_queue_received_total",
+        &[("worker", worker_name.to_string())]
+    )
+    .increment(count as u64);
+    metrics::gauge!(
+        "worker_queue_receive_batch_size",
+        &[("worker", worker_name.to_string())]
+    )
+    .set(count as f64);
+}
+
 fn connect_to_db(
     global_app_state: AppState,
     token: String,
@@ -140,7 +176,7 @@ fn on_connect_error(_ctx: &ErrorContext, err: Error) {
 }
 
 macro_rules! setup_spacetime_db_listeners {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $worker_name:expr) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
         let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
@@ -158,14 +194,16 @@ macro_rules! setup_spacetime_db_listeners {
             // Use $state_type for the old and new parameters
             move |_ctx: &EventContext, old: &$state_type, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_update).increment(1);
-                temp_tx
-                    .send(SpacetimeUpdateMessages::Update {
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Update {
                         event: None,
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
-                    })
-                    .unwrap();
+                    },
+                );
             },
         );
 
@@ -186,13 +224,15 @@ macro_rules! setup_spacetime_db_listeners {
                     return;
                 }
 
-                temp_tx
-                    .send(SpacetimeUpdateMessages::Insert {
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Insert {
                         event: None,
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
-                    })
-                    .unwrap();
+                    },
+                );
             },
         );
 
@@ -208,20 +248,22 @@ macro_rules! setup_spacetime_db_listeners {
             // Use $state_type for the new parameter
             move |_ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
-                temp_tx
-                    .send(SpacetimeUpdateMessages::Remove {
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Remove {
                         event: None,
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
-                    })
-                    .unwrap();
+                    },
+                );
             },
         );
     };
 }
 
 macro_rules! setup_spacetime_db_listeners_event {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr) => {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $worker_name:expr) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
         let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
@@ -239,14 +281,16 @@ macro_rules! setup_spacetime_db_listeners_event {
             // Use $state_type for the old and new parameters
             move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_update).increment(1);
-                temp_tx
-                    .send(SpacetimeUpdateMessages::Update {
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Update {
                         event: Some(ctx.event.clone()),
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
-                    })
-                    .unwrap();
+                    },
+                );
             },
         );
 
@@ -267,13 +311,15 @@ macro_rules! setup_spacetime_db_listeners_event {
                     return;
                 }
 
-                temp_tx
-                    .send(SpacetimeUpdateMessages::Insert {
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Insert {
                         event: Some(ctx.event.clone()),
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
-                    })
-                    .unwrap();
+                    },
+                );
             },
         );
 
@@ -289,13 +335,15 @@ macro_rules! setup_spacetime_db_listeners_event {
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
-                temp_tx
-                    .send(SpacetimeUpdateMessages::Remove {
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Remove {
                         event: Some(ctx.event.clone()),
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
-                    })
-                    .unwrap();
+                    },
+                );
             },
         );
     };
@@ -393,97 +441,152 @@ async fn connect_to_db_logic(
         mobile_entity_state,
         mobile_entity_state_tx,
         MobileEntityState,
-        database
+        database,
+        "mobile_entity_state"
     );
-    setup_spacetime_db_listeners!(ctx, player_state, player_state_tx, PlayerState, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        player_state,
+        player_state_tx,
+        PlayerState,
+        database,
+        "player_state"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         player_username_state,
         player_username_state_tx,
         PlayerUsernameState,
-        database
+        database,
+        "player_username_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         experience_state,
         experience_state_tx,
         ExperienceState,
-        database
+        database,
+        "experience_state"
     );
     setup_spacetime_db_listeners_event!(
         ctx,
         inventory_state,
         inventory_state_tx,
         InventoryState,
-        database
+        database,
+        "inventory_state"
     );
-    setup_spacetime_db_listeners!(ctx, item_desc, item_desc_tx, ItemDesc, database);
-    setup_spacetime_db_listeners!(ctx, cargo_desc, cargo_desc_tx, CargoDesc, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        item_desc,
+        item_desc_tx,
+        ItemDesc,
+        database,
+        "item_desc"
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        cargo_desc,
+        cargo_desc_tx,
+        CargoDesc,
+        database,
+        "cargo_desc"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         vault_state,
         vault_state_collectibles_tx,
         VaultState,
-        database
+        database,
+        "vault_state"
     );
-    setup_spacetime_db_listeners!(ctx, claim_state, claim_state_tx, ClaimState, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        claim_state,
+        claim_state_tx,
+        ClaimState,
+        database,
+        "claim_state"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         deployable_state,
         deployable_state_tx,
         DeployableState,
-        database
+        database,
+        "deployable_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         claim_local_state,
         claim_local_state_tx,
         ClaimLocalState,
-        database
+        database,
+        "claim_local_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         claim_member_state,
         claim_member_state_tx,
         ClaimMemberState,
-        database
+        database,
+        "claim_member_state"
     );
-    setup_spacetime_db_listeners!(ctx, skill_desc, skill_desc_tx, SkillDesc, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        skill_desc,
+        skill_desc_tx,
+        SkillDesc,
+        database,
+        "skill_desc"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         claim_tech_state,
         claim_tech_state_tx,
         ClaimTechState,
-        database
+        database,
+        "claim_tech_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         claim_tech_desc,
         claim_tech_desc_tx,
         ClaimTechDesc,
-        database
+        database,
+        "claim_tech_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
         building_state,
         building_state_tx,
         BuildingState,
-        database
+        database,
+        "building_state"
     );
-    setup_spacetime_db_listeners!(ctx, building_desc, building_desc_tx, BuildingDesc, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        building_desc,
+        building_desc_tx,
+        BuildingDesc,
+        database,
+        "building_desc"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         location_state,
         location_state_tx,
         LocationState,
-        database
+        database,
+        "location_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         building_nickname_state,
         building_nickname_state_tx,
         BuildingNicknameState,
-        database
+        database,
+        "building_nickname_state"
     );
 
     setup_spacetime_db_listeners!(
@@ -491,103 +594,138 @@ async fn connect_to_db_logic(
         crafting_recipe_desc,
         crafting_recipe_desc_tx,
         CraftingRecipeDesc,
-        database
+        database,
+        "crafting_recipe_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
         item_list_desc,
         item_list_desc_tx,
         ItemListDesc,
-        database
+        database,
+        "item_list_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
         traveler_task_desc,
         traveler_task_desc_tx,
         TravelerTaskDesc,
-        database
+        database,
+        "traveler_task_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
         traveler_task_state,
         traveler_task_state_tx,
         TravelerTaskState,
-        database
+        database,
+        "traveler_task_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         trade_order_state,
         trade_order_state_tx,
         TradeOrderState,
-        database
+        database,
+        "trade_order_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         sell_order_state,
         sell_order_state_tx,
         AuctionListingState,
-        database
+        database,
+        "sell_order_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         buy_order_state,
         buy_order_state_tx,
         AuctionListingState,
-        database
+        database,
+        "buy_order_state"
     );
-    setup_spacetime_db_listeners!(ctx, npc_desc, npc_desc_tx, NpcDesc, database);
+    setup_spacetime_db_listeners!(ctx, npc_desc, npc_desc_tx, NpcDesc, database, "npc_desc");
 
-    setup_spacetime_db_listeners!(ctx, user_state, user_state_tx, UserState, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        user_state,
+        user_state_tx,
+        UserState,
+        database,
+        "user_state"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         collectible_desc,
         collectible_desc_tx,
         CollectibleDesc,
-        database
+        database,
+        "collectible_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
         interior_network_desc,
         interior_network_desc_tx,
         InteriorNetworkDesc,
-        database
+        database,
+        "interior_network_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
         dimension_description_state,
         dimension_description_state_tx,
         DimensionDescriptionState,
-        database
+        database,
+        "dimension_description_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         player_housing_state,
         player_housing_state_tx,
         PlayerHousingState,
-        database
+        database,
+        "player_housing_state"
     );
     setup_spacetime_db_listeners!(
         ctx,
         permission_state,
         permission_state_tx,
         PermissionState,
-        database
+        database,
+        "permission_state"
     );
-    setup_spacetime_db_listeners!(ctx, portal_state, portal_state_tx, PortalState, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        portal_state,
+        portal_state_tx,
+        PortalState,
+        database,
+        "portal_state"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         location_state,
         location_state_tx,
         LocationState,
-        database
+        database,
+        "location_state"
     );
-    setup_spacetime_db_listeners!(ctx, resource_desc, resource_desc_tx, ResourceDesc, database);
+    setup_spacetime_db_listeners!(
+        ctx,
+        resource_desc,
+        resource_desc_tx,
+        ResourceDesc,
+        database,
+        "resource_desc"
+    );
     setup_spacetime_db_listeners!(
         ctx,
         extraction_recipe_desc,
         extraction_recipe_desc_tx,
         ExtractionRecipeDesc,
-        database
+        database,
+        "extraction_recipe_desc"
     );
 
     let tables_to_subscribe = vec![
@@ -688,336 +826,659 @@ async fn connect_to_db_logic(
             tracing::debug!("Handle Subscription response");
             let database_name_arc: Arc<String> = Arc::new(tmp_database);
 
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "cargo_desc".to_string())]
+            )
+            .set(ctx.db.cargo_desc().iter().count() as f64);
+
             let tmp_database_name_arc = database_name_arc.clone();
             let cargo_desc = ctx.db.cargo_desc().iter().collect::<Vec<_>>();
             if !cargo_desc.is_empty() {
-                let _ = tmp_cargo_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: cargo_desc,
-                });
+                send_worker_message(
+                    "cargo_desc",
+                    &tmp_cargo_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: cargo_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "player_username_state".to_string())]
+            )
+            .set(ctx.db.player_username_state().iter().count() as f64);
             let player_username_state = ctx.db.player_username_state().iter().collect::<Vec<_>>();
             if !player_username_state.is_empty() {
-                let _ = tmp_player_username_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: player_username_state,
-                });
+                send_worker_message(
+                    "player_username_state",
+                    &tmp_player_username_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: player_username_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "claim_local_state".to_string())]
+            )
+            .set(ctx.db.claim_local_state().iter().count() as f64);
             let claim_local_state = ctx.db.claim_local_state().iter().collect::<Vec<_>>();
             if !claim_local_state.is_empty() {
-                let _ = tmp_claim_local_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: claim_local_state,
-                });
+                send_worker_message(
+                    "claim_local_state",
+                    &tmp_claim_local_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: claim_local_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "claim_state".to_string())]
+            )
+            .set(ctx.db.claim_state().iter().count() as f64);
             let claim_state = ctx.db.claim_state().iter().collect::<Vec<_>>();
             if !claim_state.is_empty() {
-                let _ = tmp_claim_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: claim_state,
-                });
+                send_worker_message(
+                    "claim_state",
+                    &tmp_claim_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: claim_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "deployable_state".to_string())]
+            )
+            .set(ctx.db.deployable_state().iter().count() as f64);
             let deployable_state = ctx.db.deployable_state().iter().collect::<Vec<_>>();
             if !deployable_state.is_empty() {
-                let _ = tmp_deployable_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: deployable_state,
-                });
+                send_worker_message(
+                    "deployable_state",
+                    &tmp_deployable_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: deployable_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "item_desc".to_string())]
+            )
+            .set(ctx.db.item_desc().iter().count() as f64);
             let item_desc = ctx.db.item_desc().iter().collect::<Vec<_>>();
             if !item_desc.is_empty() {
-                let _ = tmp_item_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: item_desc,
-                });
+                send_worker_message(
+                    "item_desc",
+                    &tmp_item_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: item_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "skill_desc".to_string())]
+            )
+            .set(ctx.db.skill_desc().iter().count() as f64);
             let skill_desc = ctx.db.skill_desc().iter().collect::<Vec<_>>();
             if !skill_desc.is_empty() {
-                let _ = tmp_skill_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: skill_desc,
-                });
+                send_worker_message(
+                    "skill_desc",
+                    &tmp_skill_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: skill_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "building_desc".to_string())]
+            )
+            .set(ctx.db.building_desc().iter().count() as f64);
             let building_desc = ctx.db.building_desc().iter().collect::<Vec<_>>();
             if !building_desc.is_empty() {
-                let _ = tmp_building_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: building_desc,
-                });
+                send_worker_message(
+                    "building_desc",
+                    &tmp_building_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: building_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "claim_tech_desc".to_string())]
+            )
+            .set(ctx.db.claim_tech_desc().iter().count() as f64);
             let claim_tech_desc = ctx.db.claim_tech_desc().iter().collect::<Vec<_>>();
             if !claim_tech_desc.is_empty() {
-                let _ = tmp_claim_tech_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: claim_tech_desc,
-                });
+                send_worker_message(
+                    "claim_tech_desc",
+                    &tmp_claim_tech_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: claim_tech_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "crafting_recipe_desc".to_string())]
+            )
+            .set(ctx.db.crafting_recipe_desc().iter().count() as f64);
             let crafting_recipe_desc = ctx.db.crafting_recipe_desc().iter().collect::<Vec<_>>();
             if !crafting_recipe_desc.is_empty() {
-                let _ = tmp_crafting_recipe_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: crafting_recipe_desc,
-                });
+                send_worker_message(
+                    "crafting_recipe_desc",
+                    &tmp_crafting_recipe_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: crafting_recipe_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "item_list_desc".to_string())]
+            )
+            .set(ctx.db.item_list_desc().iter().count() as f64);
             let item_list_desc = ctx.db.item_list_desc().iter().collect::<Vec<_>>();
             if !item_list_desc.is_empty() {
-                let _ = tmp_item_list_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: item_list_desc,
-                });
+                send_worker_message(
+                    "item_list_desc",
+                    &tmp_item_list_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: item_list_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "traveler_task_desc".to_string())]
+            )
+            .set(ctx.db.traveler_task_desc().iter().count() as f64);
             let traveler_task_desc = ctx.db.traveler_task_desc().iter().collect::<Vec<_>>();
             if !traveler_task_desc.is_empty() {
-                let _ = tmp_traveler_task_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: traveler_task_desc,
-                });
+                send_worker_message(
+                    "traveler_task_desc",
+                    &tmp_traveler_task_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: traveler_task_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "npc_desc".to_string())]
+            )
+            .set(ctx.db.npc_desc().iter().count() as f64);
             let npc_desc = ctx.db.npc_desc().iter().collect::<Vec<_>>();
             if !npc_desc.is_empty() {
-                let _ = tmp_npc_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: npc_desc,
-                });
+                send_worker_message(
+                    "npc_desc",
+                    &tmp_npc_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: npc_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
-            let resource_desc = ctx.db.resource_desc().iter().collect::<Vec<_>>();
-            if !resource_desc.is_empty() {
-                let _ = tmp_resource_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: resource_desc,
-                });
-            }
-
-            let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "extraction_recipe_desc".to_string())]
+            )
+            .set(ctx.db.extraction_recipe_desc().iter().count() as f64);
             let extraction_recipe_desc = ctx.db.extraction_recipe_desc().iter().collect::<Vec<_>>();
             if !extraction_recipe_desc.is_empty() {
-                let _ = tmp_extraction_recipe_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: extraction_recipe_desc,
-                });
+                send_worker_message(
+                    "extraction_recipe_desc",
+                    &tmp_extraction_recipe_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: extraction_recipe_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "inventory_state".to_string())]
+            )
+            .set(ctx.db.inventory_state().iter().count() as f64);
             let inventory_state = ctx.db.inventory_state().iter().collect::<Vec<_>>();
             if !inventory_state.is_empty() {
-                let _ = tmp_inventory_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: inventory_state,
-                });
+                send_worker_message(
+                    "inventory_state",
+                    &tmp_inventory_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: inventory_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "claim_member_state".to_string())]
+            )
+            .set(ctx.db.claim_member_state().iter().count() as f64);
             let claim_member_state = ctx.db.claim_member_state().iter().collect::<Vec<_>>();
             if !claim_member_state.is_empty() {
-                let _ = tmp_claim_member_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: claim_member_state,
-                });
+                send_worker_message(
+                    "claim_member_state",
+                    &tmp_claim_member_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: claim_member_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "experience_state".to_string())]
+            )
+            .set(ctx.db.experience_state().iter().count() as f64);
             let experience_state = ctx.db.experience_state().iter().collect::<Vec<_>>();
             if !experience_state.is_empty() {
-                let _ = tmp_experience_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: experience_state,
-                });
+                send_worker_message(
+                    "experience_state",
+                    &tmp_experience_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: experience_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "mobile_entity_state".to_string())]
+            )
+            .set(ctx.db.mobile_entity_state().iter().count() as f64);
             let mobile_entity_state = ctx.db.mobile_entity_state().iter().collect::<Vec<_>>();
             if !mobile_entity_state.is_empty() {
-                let _ = tmp_mobile_entity_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: mobile_entity_state,
-                });
+                send_worker_message(
+                    "mobile_entity_state",
+                    &tmp_mobile_entity_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: mobile_entity_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "player_state".to_string())]
+            )
+            .set(ctx.db.player_state().iter().count() as f64);
             let player_state = ctx.db.player_state().iter().collect::<Vec<_>>();
             if !player_state.is_empty() {
-                let _ = tmp_player_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: player_state,
-                });
+                send_worker_message(
+                    "player_state",
+                    &tmp_player_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: player_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "vault_state".to_string())]
+            )
+            .set(ctx.db.vault_state().iter().count() as f64);
             let vault_state = ctx.db.vault_state().iter().collect::<Vec<_>>();
             if !vault_state.is_empty() {
-                let _ = tmp_vault_state_collectibles_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: vault_state,
-                });
+                send_worker_message(
+                    "vault_state",
+                    &tmp_vault_state_collectibles_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: vault_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "claim_tech_state".to_string())]
+            )
+            .set(ctx.db.claim_tech_state().iter().count() as f64);
             let claim_tech_state = ctx.db.claim_tech_state().iter().collect::<Vec<_>>();
             if !claim_tech_state.is_empty() {
-                let _ = tmp_claim_tech_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: claim_tech_state,
-                });
+                send_worker_message(
+                    "claim_tech_state",
+                    &tmp_claim_tech_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: claim_tech_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "building_state".to_string())]
+            )
+            .set(ctx.db.building_state().iter().count() as f64);
             let building_state = ctx.db.building_state().iter().collect::<Vec<_>>();
             if !building_state.is_empty() {
-                let _ = tmp_building_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: building_state,
-                });
+                send_worker_message(
+                    "building_state",
+                    &tmp_building_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: building_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "location_state".to_string())]
+            )
+            .set(ctx.db.location_state().iter().count() as f64);
             let location_state = ctx.db.location_state().iter().collect::<Vec<_>>();
             if !location_state.is_empty() {
-                let _ = tmp_location_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: location_state,
-                });
+                send_worker_message(
+                    "location_state",
+                    &tmp_location_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: location_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "building_nickname_state".to_string())]
+            )
+            .set(ctx.db.building_nickname_state().iter().count() as f64);
             let building_nickname_state =
                 ctx.db.building_nickname_state().iter().collect::<Vec<_>>();
             if !building_nickname_state.is_empty() {
-                let _ = tmp_building_nickname_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: building_nickname_state,
-                });
+                send_worker_message(
+                    "building_nickname_state",
+                    &tmp_building_nickname_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: building_nickname_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "traveler_task_state".to_string())]
+            )
+            .set(ctx.db.traveler_task_state().iter().count() as f64);
             let traveler_task_state = ctx.db.traveler_task_state().iter().collect::<Vec<_>>();
             if !traveler_task_state.is_empty() {
-                let _ = tmp_traveler_task_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: traveler_task_state,
-                });
+                send_worker_message(
+                    "traveler_task_state",
+                    &tmp_traveler_task_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: traveler_task_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "trade_order_state".to_string())]
+            )
+            .set(ctx.db.trade_order_state().iter().count() as f64);
             let trade_order_state = ctx.db.trade_order_state().iter().collect::<Vec<_>>();
             if !trade_order_state.is_empty() {
-                let _ = tmp_trade_order_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: trade_order_state,
-                });
+                send_worker_message(
+                    "trade_order_state",
+                    &tmp_trade_order_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: trade_order_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "user_state".to_string())]
+            )
+            .set(ctx.db.user_state().iter().count() as f64);
             let user_state = ctx.db.user_state().iter().collect::<Vec<_>>();
             if !user_state.is_empty() {
-                let _ = tmp_user_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: user_state,
-                });
+                send_worker_message(
+                    "user_state",
+                    &tmp_user_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: user_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "sell_order_state".to_string())]
+            )
+            .set(ctx.db.sell_order_state().iter().count() as f64);
             let sell_order_state = ctx.db.sell_order_state().iter().collect::<Vec<_>>();
             if !sell_order_state.is_empty() {
-                let _ = tmp_sell_order_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: sell_order_state,
-                });
+                send_worker_message(
+                    "sell_order_state",
+                    &tmp_sell_order_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: sell_order_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "buy_order_state".to_string())]
+            )
+            .set(ctx.db.buy_order_state().iter().count() as f64);
             let buy_order_state = ctx.db.buy_order_state().iter().collect::<Vec<_>>();
             if !buy_order_state.is_empty() {
-                let _ = tmp_buy_order_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: buy_order_state,
-                });
+                send_worker_message(
+                    "buy_order_state",
+                    &tmp_buy_order_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: buy_order_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "collectible_desc".to_string())]
+            )
+            .set(ctx.db.collectible_desc().iter().count() as f64);
             let collectible_desc = ctx.db.collectible_desc().iter().collect::<Vec<_>>();
             if !collectible_desc.is_empty() {
-                let _ = tmp_collectible_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: collectible_desc,
-                });
+                send_worker_message(
+                    "collectible_desc",
+                    &tmp_collectible_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: collectible_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "interior_network_desc".to_string())]
+            )
+            .set(ctx.db.interior_network_desc().iter().count() as f64);
             let interior_network_desc = ctx.db.interior_network_desc().iter().collect::<Vec<_>>();
             if !interior_network_desc.is_empty() {
-                let _ = tmp_interior_network_desc_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: interior_network_desc,
-                });
+                send_worker_message(
+                    "interior_network_desc",
+                    &tmp_interior_network_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: interior_network_desc,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "dimension_description_state".to_string())]
+            )
+            .set(ctx.db.dimension_description_state().iter().count() as f64);
             let dimension_description_state = ctx
                 .db
                 .dimension_description_state()
                 .iter()
                 .collect::<Vec<_>>();
             if !dimension_description_state.is_empty() {
-                let _ = tmp_dimension_description_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: dimension_description_state,
-                });
+                send_worker_message(
+                    "dimension_description_state",
+                    &tmp_dimension_description_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: dimension_description_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "player_housing_state".to_string())]
+            )
+            .set(ctx.db.player_housing_state().iter().count() as f64);
             let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
             if !player_housing_state.is_empty() {
-                let _ = tmp_player_housing_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: player_housing_state,
-                });
+                send_worker_message(
+                    "player_housing_state",
+                    &tmp_player_housing_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: player_housing_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "permission_state".to_string())]
+            )
+            .set(ctx.db.permission_state().iter().count() as f64);
             let permission_state = ctx.db.permission_state().iter().collect::<Vec<_>>();
             if !permission_state.is_empty() {
-                let _ = tmp_permission_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: permission_state,
-                });
+                send_worker_message(
+                    "permission_state",
+                    &tmp_permission_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: permission_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "portal_state".to_string())]
+            )
+            .set(ctx.db.portal_state().iter().count() as f64);
             let portal_state = ctx.db.portal_state().iter().collect::<Vec<_>>();
             if !portal_state.is_empty() {
-                let _ = tmp_portal_state_tx.send(SpacetimeUpdateMessages::Initial {
-                    database_name: tmp_database_name_arc.clone(),
-                    data: portal_state,
-                });
+                send_worker_message(
+                    "portal_state",
+                    &tmp_portal_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: portal_state,
+                    },
+                );
             }
 
             let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "resource_desc".to_string())]
+            )
+            .set(ctx.db.resource_desc().iter().count() as f64);
+            let resource_desc = ctx.db.resource_desc().iter().collect::<Vec<_>>();
+            if !resource_desc.is_empty() {
+                send_worker_message(
+                    "resource_desc",
+                    &tmp_resource_desc_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: resource_desc,
+                    },
+                );
+            }
 
             // for resource_desc in ctx.db.user_state().iter() {
             //     if resource_desc.entity_id == 504403158285774600 {

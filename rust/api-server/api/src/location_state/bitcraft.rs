@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::LocationState;
 use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait};
 use std::time::Duration;
@@ -50,6 +50,7 @@ pub(crate) fn start_worker_location_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("location_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

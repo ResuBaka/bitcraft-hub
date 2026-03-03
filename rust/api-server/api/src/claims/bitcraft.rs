@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
 use entity::{claim_local_state, claim_member_state, claim_state, claim_tech_state};
 use game_module::module_bindings::{
     ClaimLocalState, ClaimMemberState, ClaimState, ClaimTechDesc, ClaimTechState,
@@ -36,6 +36,7 @@ pub(crate) fn start_worker_claim_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("claim_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -205,6 +206,7 @@ pub(crate) fn start_worker_claim_local_state(
 
                 tokio::select! {
                     _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
+                        record_worker_received("claim_local_state", buffer.len());
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
@@ -400,6 +402,7 @@ pub(crate) fn start_worker_claim_member_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("claim_member_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -571,6 +574,7 @@ pub(crate) fn start_worker_claim_tech_state(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("claim_tech_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -740,6 +744,7 @@ pub(crate) fn start_worker_claim_tech_desc(
             loop {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
+                        record_worker_received("claim_tech_desc", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

@@ -4,8 +4,9 @@ use game_module::module_bindings::{BuildingDesc, BuildingFunction};
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
 #[sea_orm(table_name = "building_desc")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -43,7 +44,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize, TS)]
 pub struct Function {
     pub function_type: i32,
     pub level: i32,
@@ -84,7 +85,7 @@ impl From<BuildingFunction> for Function {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize, TS)]
 pub struct FootprintTile {
     pub x: i32,
     pub z: i32,
@@ -101,7 +102,7 @@ impl From<game_module::module_bindings::FootprintTile> for FootprintTile {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize, TS)]
 pub enum FootprintType {
     Hitbox,
     Walkable,
@@ -174,7 +175,7 @@ impl From<BuildingDesc> for Model {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Eq, Hash, Deserialize, Serialize, TS)]
 pub enum BuildingInteractionLevel {
     None,
     Claim,

@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
 use game_module::module_bindings::TravelerTaskState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
@@ -47,6 +47,7 @@ pub(crate) fn start_worker_traveler_task_state(
 
                 tokio::select! {
                     _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
+                        record_worker_received("traveler_task_state", buffer.len());
                         for msg in buffer {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
