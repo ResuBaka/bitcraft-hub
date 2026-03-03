@@ -56,6 +56,12 @@ const tierPlayers = ref<number | null>(null);
 const rarityPlayersOffline = ref<string | null>(null);
 const tierPlayersOffline = ref<number | null>(null);
 
+const rarityPlayersTools = ref<string | null>(null);
+const tierPlayersTools = ref<number | null>(null);
+
+const rarityPlayersOfflineTools = ref<string | null>(null);
+const tierPlayersOfflineTools = ref<number | null>(null);
+
 const tmpPage = (route.query.page as string) ?? null;
 
 const tierToColor = useTierColor();
@@ -329,6 +335,62 @@ const inventorysPlayersOffline = computed(() => {
   );
 });
 
+const inventoryPlayersToolsSearch = ref<string | null>("");
+
+const inventorysPlayersTools = computed(() => {
+  if (!claimFetch.value?.tool_inventorys?.players?.length) {
+    return [];
+  }
+
+  if (
+    !inventoryPlayersToolsSearch.value &&
+    !rarityPlayersTools.value &&
+    !tierPlayersTools.value
+  ) {
+    return claimFetch.value?.tool_inventorys?.players;
+  }
+
+  return claimFetch.value?.tool_inventorys?.players.filter(
+    (inventory) =>
+      (!rarityPlayersTools.value ||
+        inventory.item.rarity === rarityPlayersTools.value) &&
+      (!tierPlayersTools.value ||
+        inventory.item.tier === tierPlayersTools.value) &&
+      (!inventoryPlayersToolsSearch.value ||
+        inventory.item.name
+          .toLowerCase()
+          .includes(inventoryPlayersToolsSearch.value.toLowerCase())),
+  );
+});
+
+const inventoryPlayersOfflineToolsSearch = ref<string | null>("");
+
+const inventorysPlayersOfflineTools = computed(() => {
+  if (!claimFetch.value?.tool_inventorys?.players_offline?.length) {
+    return [];
+  }
+
+  if (
+    !inventoryPlayersOfflineToolsSearch.value &&
+    !rarityPlayersOfflineTools.value &&
+    !tierPlayersOfflineTools.value
+  ) {
+    return claimFetch.value?.tool_inventorys?.players_offline;
+  }
+
+  return claimFetch.value?.tool_inventorys?.players_offline.filter(
+    (inventory) =>
+      (!rarityPlayersOfflineTools.value ||
+        inventory.item.rarity === rarityPlayersOfflineTools.value) &&
+      (!tierPlayersOfflineTools.value ||
+        inventory.item.tier === tierPlayersOfflineTools.value) &&
+      (!inventoryPlayersOfflineToolsSearch.value ||
+        inventory.item.name
+          .toLowerCase()
+          .includes(inventoryPlayersOfflineToolsSearch.value.toLowerCase())),
+  );
+});
+
 const sortMembersLevelRaw = (a: any, b: any) => {
   return (b?.level || 0) - (a?.level || 0);
 };
@@ -394,7 +456,9 @@ const validTabs = new Set([
   "members",
   "building_items",
   "player_items",
+  "player_tools",
   "player_offline_items",
+  "player_offline_tools",
   "buildings",
   "leaderboards",
   "upgrades",
@@ -557,9 +621,13 @@ const bankOwnerLink = (location: InventoryLocationEntry) => {
 const openItemLocationModal = (
   inventory: ExpendedRefrence,
   section: string,
+  source: "inventory" | "tool" = "inventory",
 ) => {
   selectedInventoryItem.value = inventory;
-  const locations = claimFetch.value?.inventory_locations?.[section] ?? [];
+  const locations =
+    source === "tool"
+      ? (claimFetch.value?.tool_inventory_locations?.[section] ?? [])
+      : (claimFetch.value?.inventory_locations?.[section] ?? []);
   selectedInventoryLocation.value =
     locations.find(
       (entry) =>
@@ -790,8 +858,13 @@ watch(
             <v-tab value="members">Members</v-tab>
             <v-tab value="building_items">Building items ({{ inventorysBuildings.length || 0 }})</v-tab>
             <v-tab value="player_items">Player items ({{ inventorysPlayers.length || 0 }})</v-tab>
+            <v-tab value="player_tools">Player tools ({{ inventorysPlayersTools.length || 0 }})</v-tab>
             <v-tab value="player_offline_items">Player Offline items ({{
                 inventorysPlayersOffline.length || 0
+              }})
+            </v-tab>
+            <v-tab value="player_offline_tools">Player Offline tools ({{
+                inventorysPlayersOfflineTools.length || 0
               }})
             </v-tab>
             <v-tab value="buildings">Buildings ({{ buildings.length || 0 }})</v-tab>
@@ -1319,6 +1392,108 @@ watch(
                 </v-row>
               </v-tabs-window-item>
 
+              <v-tabs-window-item value="player_tools">
+                <v-row>
+                  <v-col>
+                    <v-text-field
+                        v-model="inventoryPlayersToolsSearch"
+                        label="Search"
+                        outlined
+                        dense
+                        clearable
+                    ></v-text-field>
+                  </v-col>
+                  <v-col>
+                    <v-autocomplete
+                        v-model="tierPlayersTools"
+                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"
+                        label="Tier"
+                        outlined
+                        dense
+                        clearable
+                    ></v-autocomplete>
+                  </v-col>
+                  <v-col>
+                    <v-select
+                        v-model="rarityPlayersTools"
+                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"
+                        label="Rarity"
+                        outlined
+                        dense
+                        clearable
+                    ></v-select>
+                  </v-col>
+                </v-row>
+                <v-row class="ma-0">
+                  <v-data-iterator :items="inventorysPlayersTools" :items-per-page="52" class="w-100">
+                    <template v-slot:default="{ items }">
+                      <v-row class="ma-0">
+                        <template
+                            v-for="(inventory, i) in items"
+                            :key="i"
+                        >
+                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">
+                            <v-sheet
+                                border
+                                rounded
+                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"
+                                elevation="2"
+                                @click="openItemLocationModal(inventory.raw, 'players', 'tool')"
+                            >
+                              <v-tooltip activator="parent" location="top" transition="fade-transition">
+                                <div class="text-center">
+                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">
+                                    {{ inventory.raw.item.name }}
+                                  </div>
+                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>
+                                </div>
+                              </v-tooltip>
+
+                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
+                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
+                                {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}
+                              </div>
+                              <div class="item-icon text-h6 font-weight-black">
+                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />
+                              </div>
+
+                              <div class="quantity-badge">
+                                {{ inventory.raw.quantity }}
+                              </div>
+                            </v-sheet>
+                          </v-col>
+                        </template>
+                      </v-row>
+                    </template>
+                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">
+                      <div class="d-flex align-center justify-center pa-4">
+                        <v-btn
+                            :disabled="page === 1"
+                            density="comfortable"
+                            icon="mdi-arrow-left"
+                            variant="tonal"
+                            rounded
+                            @click="prevPage"
+                        ></v-btn>
+
+                        <div class="mx-2 text-caption">
+                          Page {{ page }} of {{ pageCount }}
+                        </div>
+
+                        <v-btn
+                            :disabled="page >= pageCount"
+                            density="comfortable"
+                            icon="mdi-arrow-right"
+                            variant="tonal"
+                            rounded
+                            @click="nextPage"
+                        ></v-btn>
+                      </div>
+                    </template>
+                  </v-data-iterator>
+                </v-row>
+              </v-tabs-window-item>
+
               <v-tabs-window-item value="player_offline_items">
                 <v-row>
                   <v-col>
@@ -1366,6 +1541,108 @@ watch(
                                 class="inventory-slot-box d-flex align-center justify-center position-relative has-content"
                                 elevation="2"
                                 @click="openItemLocationModal(inventory.raw, 'players_offline')"
+                            >
+                              <v-tooltip activator="parent" location="top" transition="fade-transition">
+                                <div class="text-center">
+                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">
+                                    {{ inventory.raw.item.name }}
+                                  </div>
+                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>
+                                </div>
+                              </v-tooltip>
+
+                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
+                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
+                                {{ inventory.raw.item.name }}
+                              </div>
+                              <div class="item-icon text-h6 font-weight-black">
+                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />
+                              </div>
+
+                              <div class="quantity-badge">
+                                {{ inventory.raw.quantity }}
+                              </div>
+                            </v-sheet>
+                          </v-col>
+                        </template>
+                      </v-row>
+                    </template>
+                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">
+                      <div class="d-flex align-center justify-center pa-4">
+                        <v-btn
+                            :disabled="page === 1"
+                            density="comfortable"
+                            icon="mdi-arrow-left"
+                            variant="tonal"
+                            rounded
+                            @click="prevPage"
+                        ></v-btn>
+
+                        <div class="mx-2 text-caption">
+                          Page {{ page }} of {{ pageCount }}
+                        </div>
+
+                        <v-btn
+                            :disabled="page >= pageCount"
+                            density="comfortable"
+                            icon="mdi-arrow-right"
+                            variant="tonal"
+                            rounded
+                            @click="nextPage"
+                        ></v-btn>
+                      </div>
+                    </template>
+                  </v-data-iterator>
+                </v-row>
+              </v-tabs-window-item>
+
+              <v-tabs-window-item value="player_offline_tools">
+                <v-row>
+                  <v-col>
+                    <v-text-field
+                        v-model="inventoryPlayersOfflineToolsSearch"
+                        label="Search"
+                        outlined
+                        dense
+                        clearable
+                    ></v-text-field>
+                  </v-col>
+                  <v-col>
+                    <v-autocomplete
+                        v-model="tierPlayersOfflineTools"
+                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players_offline?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"
+                        label="Tier"
+                        outlined
+                        dense
+                        clearable
+                    ></v-autocomplete>
+                  </v-col>
+                  <v-col>
+                    <v-select
+                        v-model="rarityPlayersOfflineTools"
+                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players_offline?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"
+                        label="Rarity"
+                        outlined
+                        dense
+                        clearable
+                    ></v-select>
+                  </v-col>
+                </v-row>
+                <v-row class="ma-0">
+                  <v-data-iterator :items="inventorysPlayersOfflineTools" :items-per-page="52" class="w-100">
+                    <template v-slot:default="{ items }">
+                      <v-row class="ma-0 min-w-max">
+                        <template
+                            v-for="(inventory, i) in items"
+                            :key="i"
+                        >
+                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">
+                            <v-sheet
+                                border
+                                rounded
+                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"
+                                elevation="2"
+                                @click="openItemLocationModal(inventory.raw, 'players_offline', 'tool')"
                             >
                               <v-tooltip activator="parent" location="top" transition="fade-transition">
                                 <div class="text-center">

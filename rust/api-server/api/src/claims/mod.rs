@@ -95,6 +95,8 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub learned_upgrades: Vec<i32>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
     pub inventory_locations: HashMap<String, Vec<InventoryItemLocation>>,
+    pub tool_inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
+    pub tool_inventory_locations: HashMap<String, Vec<InventoryItemLocation>>,
     pub traveler_tasks: HashMap<String, HashMap<i32, Vec<i64>>>,
     pub traveler_player_tasks:
         HashMap<String, HashMap<i64, HashMap<i32, Vec<entity::traveler_task_state::Model>>>>,
@@ -184,8 +186,15 @@ pub(crate) async fn get_claim_tiles(
 type ClaimLeaderboardTasks =
     Vec<JoinHandle<Result<(String, Vec<LeaderboardSkill>), (StatusCode, &'static str)>>>;
 
-type FlatInventoryTasks =
-    Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>, Vec<InventoryItemLocation>)>>>;
+struct InventoryJobResult {
+    key: String,
+    inventorys: Vec<ExpendedRefrence>,
+    locations: Vec<InventoryItemLocation>,
+    tool_inventorys: Option<Vec<ExpendedRefrence>>,
+    tool_locations: Option<Vec<InventoryItemLocation>>,
+}
+
+type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<InventoryJobResult>>>;
 type FlatTravelerTasks = Vec<JoinHandle<anyhow::Result<(String, HashMap<i32, Vec<i64>>)>>>;
 
 pub(crate) async fn get_claim_inventory_change_log(
@@ -596,6 +605,8 @@ pub(crate) async fn get_claim(
         learned_upgrades,
         inventorys: HashMap::new(),
         inventory_locations: HashMap::new(),
+        tool_inventorys: HashMap::new(),
+        tool_inventory_locations: HashMap::new(),
         traveler_tasks: HashMap::new(),
         traveler_player_tasks: HashMap::new(),
         time_signed_in: total_time_signed_in,
@@ -637,6 +648,8 @@ pub(crate) async fn get_claim(
     jobs.push(tokio::spawn(async move {
         let offline_players_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_offline_ids_local).await?;
+        let (offline_players_inventories, offline_players_tool_inventories) =
+            split_tool_inventories(offline_players_inventories);
         let inventory_locations = get_inventory_locations(
             offline_players_inventories.clone(),
             &tmp_item_desc,
@@ -649,11 +662,28 @@ pub(crate) async fn get_claim(
             get_merged_inventories(offline_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_offline_players_inventories.sort_by(inventory_sort_by);
 
-        Ok((
-            "players_offline".to_string(),
-            merged_offline_players_inventories,
-            inventory_locations,
-        ))
+        let tool_locations = get_inventory_locations(
+            offline_players_tool_inventories.clone(),
+            &tmp_item_desc,
+            &tmp_cargo_desc,
+            &member_names_local,
+            &building_desc_map_local,
+            &building_names_local,
+        );
+        let mut merged_offline_players_tool_inventories = get_merged_inventories(
+            offline_players_tool_inventories,
+            &tmp_item_desc,
+            &tmp_cargo_desc,
+        );
+        merged_offline_players_tool_inventories.sort_by(inventory_sort_by);
+
+        Ok(InventoryJobResult {
+            key: "players_offline".to_string(),
+            inventorys: merged_offline_players_inventories,
+            locations: inventory_locations,
+            tool_inventorys: Some(merged_offline_players_tool_inventories),
+            tool_locations: Some(tool_locations),
+        })
     }));
 
     let conn: sea_orm::DatabaseConnection = state.conn.clone();
@@ -693,11 +723,13 @@ pub(crate) async fn get_claim(
             get_merged_inventories(claim_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_claim_inventories.sort_by(inventory_sort_by);
 
-        Ok((
-            "buildings".to_string(),
-            merged_claim_inventories,
-            inventory_locations,
-        ))
+        Ok(InventoryJobResult {
+            key: "buildings".to_string(),
+            inventorys: merged_claim_inventories,
+            locations: inventory_locations,
+            tool_inventorys: None,
+            tool_locations: None,
+        })
     }));
 
     let conn = state.conn.clone();
@@ -710,6 +742,8 @@ pub(crate) async fn get_claim(
     jobs.push(tokio::spawn(async move {
         let online_players_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_online_ids_local).await?;
+        let (online_players_inventories, online_players_tool_inventories) =
+            split_tool_inventories(online_players_inventories);
         let inventory_locations = get_inventory_locations(
             online_players_inventories.clone(),
             &tmp_item_desc,
@@ -722,11 +756,28 @@ pub(crate) async fn get_claim(
             get_merged_inventories(online_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_online_players_inventories.sort_by(inventory_sort_by);
 
-        Ok((
-            "players".to_string(),
-            merged_online_players_inventories,
-            inventory_locations,
-        ))
+        let tool_locations = get_inventory_locations(
+            online_players_tool_inventories.clone(),
+            &tmp_item_desc,
+            &tmp_cargo_desc,
+            &member_names_local,
+            &building_desc_map_local,
+            &building_names_local,
+        );
+        let mut merged_online_players_tool_inventories = get_merged_inventories(
+            online_players_tool_inventories,
+            &tmp_item_desc,
+            &tmp_cargo_desc,
+        );
+        merged_online_players_tool_inventories.sort_by(inventory_sort_by);
+
+        Ok(InventoryJobResult {
+            key: "players".to_string(),
+            inventorys: merged_online_players_inventories,
+            locations: inventory_locations,
+            tool_inventorys: Some(merged_online_players_tool_inventories),
+            tool_locations: Some(tool_locations),
+        })
     }));
 
     let conn: sea_orm::DatabaseConnection = state.conn.clone();
@@ -755,11 +806,23 @@ pub(crate) async fn get_claim(
 
         let job = finished_job.unwrap();
 
-        if let Ok((key, value, locations)) = job {
-            claim.inventorys.insert(key.parse().unwrap(), value);
+        if let Ok(job) = job {
+            claim
+                .inventorys
+                .insert(job.key.parse().unwrap(), job.inventorys);
             claim
                 .inventory_locations
-                .insert(key.parse().unwrap(), locations);
+                .insert(job.key.parse().unwrap(), job.locations);
+            if let (Some(tool_inventorys), Some(tool_locations)) =
+                (job.tool_inventorys, job.tool_locations)
+            {
+                claim
+                    .tool_inventorys
+                    .insert(job.key.parse().unwrap(), tool_inventorys);
+                claim
+                    .tool_inventory_locations
+                    .insert(job.key.parse().unwrap(), tool_locations);
+            }
         }
     }
 
@@ -796,6 +859,23 @@ fn inventory_sort_by(a: &ExpendedRefrence, b: &ExpendedRefrence) -> Ordering {
     } else {
         b_tier.cmp(&a_tier)
     }
+}
+
+fn split_tool_inventories(
+    inventorys: Vec<inventory::Model>,
+) -> (Vec<inventory::Model>, Vec<inventory::Model>) {
+    let mut standard_inventories = Vec::new();
+    let mut tool_inventories = Vec::new();
+
+    for inventory in inventorys {
+        if inventory.inventory_index == 1 {
+            tool_inventories.push(inventory);
+        } else {
+            standard_inventories.push(inventory);
+        }
+    }
+
+    (standard_inventories, tool_inventories)
 }
 
 #[derive(Deserialize)]

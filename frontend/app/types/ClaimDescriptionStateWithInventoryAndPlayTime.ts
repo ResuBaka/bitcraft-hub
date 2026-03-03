@@ -30,6 +30,8 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   learned_upgrades: Array<number>;
   inventorys: { [key in string]: Array<ExpendedRefrence> };
   inventory_locations: { [key in string]: Array<InventoryItemLocation> };
+  tool_inventorys: { [key in string]: Array<ExpendedRefrence> };
+  tool_inventory_locations: { [key in string]: Array<InventoryItemLocation> };
   traveler_tasks: { [key in string]: { [key in number]: Array<bigint> } };
   traveler_player_tasks: {
     [key in string]: {
