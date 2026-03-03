@@ -3,6 +3,7 @@ import type { BuildingState } from "./BuildingState";
 import type { ClaimDescriptionStateMember } from "./ClaimDescriptionStateMember";
 import type { ClaimTechDesc } from "./ClaimTechDesc";
 import type { ExpendedRefrence } from "./ExpendedRefrence";
+import type { InventoryItemLocation } from "./InventoryItemLocation";
 import type { Location } from "./Location";
 import type { Timestamp } from "./Timestamp";
 import type { TravelerTaskState } from "./TravelerTaskState";
@@ -28,6 +29,7 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   upgrades: Array<ClaimTechDesc>;
   learned_upgrades: Array<number>;
   inventorys: { [key in string]: Array<ExpendedRefrence> };
+  inventory_locations: { [key in string]: Array<InventoryItemLocation> };
   traveler_tasks: { [key in string]: { [key in number]: Array<bigint> } };
   traveler_player_tasks: {
     [key in string]: {

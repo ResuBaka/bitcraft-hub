@@ -9,7 +9,7 @@ use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use entity::inventory::{ExpendedRefrence, ItemExpended, ResolvedInventory};
+use entity::inventory::{ExpendedRefrence, ItemExpended, ItemType, ResolvedInventory};
 use entity::shared::location::Location;
 use entity::{
     building_state, cargo_desc, claim_tech_desc, inventory, inventory_changelog, item_desc,
@@ -94,11 +94,45 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub learned_upgrades: Vec<i32>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
+    pub inventory_locations: HashMap<String, Vec<InventoryItemLocation>>,
     pub traveler_tasks: HashMap<String, HashMap<i32, Vec<i64>>>,
     pub traveler_player_tasks:
         HashMap<String, HashMap<i64, HashMap<i32, Vec<entity::traveler_task_state::Model>>>>,
     pub time_signed_in: u64,
     pub building_states: Vec<building_state::Model>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) enum InventoryOwnerType {
+    Player,
+    Building,
+    Unknown,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct InventoryLocationEntry {
+    pub inventory_entity_id: i64,
+    pub owner_entity_id: i64,
+    pub player_owner_entity_id: i64,
+    pub inventory_index: i32,
+    pub cargo_index: i32,
+    pub owner_type: InventoryOwnerType,
+    pub owner_name: Option<String>,
+    pub building_name: Option<String>,
+    pub building_description_id: Option<i32>,
+    pub quantity: i32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct InventoryItemLocation {
+    pub item_id: i32,
+    pub item: ItemExpended,
+    pub item_type: ItemType,
+    pub durability: Option<i32>,
+    pub locations: Vec<InventoryLocationEntry>,
 }
 
 #[derive(Serialize, Deserialize, TS)]
@@ -150,7 +184,8 @@ pub(crate) async fn get_claim_tiles(
 type ClaimLeaderboardTasks =
     Vec<JoinHandle<Result<(String, Vec<LeaderboardSkill>), (StatusCode, &'static str)>>>;
 
-type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>)>>>;
+type FlatInventoryTasks =
+    Vec<JoinHandle<anyhow::Result<(String, Vec<ExpendedRefrence>, Vec<InventoryItemLocation>)>>>;
 type FlatTravelerTasks = Vec<JoinHandle<anyhow::Result<(String, HashMap<i32, Vec<i64>>)>>>;
 
 pub(crate) async fn get_claim_inventory_change_log(
@@ -560,6 +595,7 @@ pub(crate) async fn get_claim(
         upgrades: claim.upgrades,
         learned_upgrades,
         inventorys: HashMap::new(),
+        inventory_locations: HashMap::new(),
         traveler_tasks: HashMap::new(),
         traveler_player_tasks: HashMap::new(),
         time_signed_in: total_time_signed_in,
@@ -568,13 +604,47 @@ pub(crate) async fn get_claim(
 
     let mut jobs: FlatInventoryTasks = vec![];
     let mut traveler_task_jobs: FlatTravelerTasks = vec![];
+    let member_names: HashMap<i64, String> = claim
+        .members
+        .values()
+        .map(|member| (member.entity_id, member.user_name.clone()))
+        .collect();
+    let building_desc_map: HashMap<i64, i32> = claim
+        .building_states
+        .iter()
+        .map(|building| (building.entity_id, building.building_description_id))
+        .collect();
+    let building_names: HashMap<i64, String> = claim
+        .building_states
+        .iter()
+        .filter_map(|building| {
+            if let Some(nickname) = state.building_nickname_state.get(&building.entity_id) {
+                return Some((building.entity_id, nickname.nickname.clone()));
+            }
+            let desc_id = building_desc_map.get(&building.entity_id)?;
+            let desc = state.building_desc.get(&(*desc_id as i64))?;
+            Some((building.entity_id, desc.name.clone()))
+        })
+        .collect();
+
     let conn: sea_orm::DatabaseConnection = state.conn.clone();
     let tmp_item_desc = state.item_desc.clone();
     let tmp_cargo_desc = state.cargo_desc.clone();
     let player_offline_ids_local = player_offline_ids.clone();
+    let member_names_local = member_names.clone();
+    let building_desc_map_local = building_desc_map.clone();
+    let building_names_local = building_names.clone();
     jobs.push(tokio::spawn(async move {
         let offline_players_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_offline_ids_local).await?;
+        let inventory_locations = get_inventory_locations(
+            offline_players_inventories.clone(),
+            &tmp_item_desc,
+            &tmp_cargo_desc,
+            &member_names_local,
+            &building_desc_map_local,
+            &building_names_local,
+        );
         let mut merged_offline_players_inventories =
             get_merged_inventories(offline_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_offline_players_inventories.sort_by(inventory_sort_by);
@@ -582,6 +652,7 @@ pub(crate) async fn get_claim(
         Ok((
             "players_offline".to_string(),
             merged_offline_players_inventories,
+            inventory_locations,
         ))
     }));
 
@@ -604,28 +675,58 @@ pub(crate) async fn get_claim(
     let conn = state.conn.clone();
     let tmp_item_desc = state.item_desc.clone();
     let tmp_cargo_desc = state.cargo_desc.clone();
+    let member_names_local = member_names.clone();
+    let building_desc_map_local = building_desc_map.clone();
+    let building_names_local = building_names.clone();
     jobs.push(tokio::spawn(async move {
         let claim_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, building_inventories_ids).await?;
+        let inventory_locations = get_inventory_locations(
+            claim_inventories.clone(),
+            &tmp_item_desc,
+            &tmp_cargo_desc,
+            &member_names_local,
+            &building_desc_map_local,
+            &building_names_local,
+        );
         let mut merged_claim_inventories =
             get_merged_inventories(claim_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_claim_inventories.sort_by(inventory_sort_by);
 
-        Ok(("buildings".to_string(), merged_claim_inventories))
+        Ok((
+            "buildings".to_string(),
+            merged_claim_inventories,
+            inventory_locations,
+        ))
     }));
 
     let conn = state.conn.clone();
     let tmp_item_desc = state.item_desc.clone();
     let tmp_cargo_desc = state.cargo_desc.clone();
     let player_online_ids_local = player_online_ids.clone();
+    let member_names_local = member_names.clone();
+    let building_desc_map_local = building_desc_map.clone();
+    let building_names_local = building_names.clone();
     jobs.push(tokio::spawn(async move {
         let online_players_inventories =
             QueryCore::get_inventorys_by_owner_entity_ids(&conn, player_online_ids_local).await?;
+        let inventory_locations = get_inventory_locations(
+            online_players_inventories.clone(),
+            &tmp_item_desc,
+            &tmp_cargo_desc,
+            &member_names_local,
+            &building_desc_map_local,
+            &building_names_local,
+        );
         let mut merged_online_players_inventories =
             get_merged_inventories(online_players_inventories, &tmp_item_desc, &tmp_cargo_desc);
         merged_online_players_inventories.sort_by(inventory_sort_by);
 
-        Ok(("players".to_string(), merged_online_players_inventories))
+        Ok((
+            "players".to_string(),
+            merged_online_players_inventories,
+            inventory_locations,
+        ))
     }));
 
     let conn: sea_orm::DatabaseConnection = state.conn.clone();
@@ -654,8 +755,11 @@ pub(crate) async fn get_claim(
 
         let job = finished_job.unwrap();
 
-        if let Ok((key, value)) = job {
+        if let Ok((key, value, locations)) = job {
             claim.inventorys.insert(key.parse().unwrap(), value);
+            claim
+                .inventory_locations
+                .insert(key.parse().unwrap(), locations);
         }
     }
 
@@ -891,4 +995,98 @@ pub(crate) fn get_merged_inventories(
     }
 
     hashmap.into_values().collect()
+}
+
+pub(crate) fn get_inventory_locations(
+    inventorys: Vec<inventory::Model>,
+    items: &Arc<dashmap::DashMap<i32, item_desc::Model>>,
+    cargos: &Arc<dashmap::DashMap<i32, cargo_desc::Model>>,
+    member_names: &HashMap<i64, String>,
+    building_desc_map: &HashMap<i64, i32>,
+    building_names: &HashMap<i64, String>,
+) -> Vec<InventoryItemLocation> {
+    struct ItemLocationsBuilder {
+        item_id: i32,
+        item: ItemExpended,
+        item_type: ItemType,
+        durability: Option<i32>,
+        locations: HashMap<i64, InventoryLocationEntry>,
+    }
+
+    let mut items_map: HashMap<(i32, ItemType), ItemLocationsBuilder> = HashMap::new();
+
+    for inventory in inventorys {
+        for pocket in inventory.pockets {
+            let resolved = resolve_contents(&pocket.contents, items, cargos);
+
+            if resolved.is_none() {
+                continue;
+            }
+
+            let resolved = resolved.unwrap();
+            let key = (resolved.item_id, resolved.item_type.clone());
+            let owner_type = if building_desc_map.contains_key(&inventory.owner_entity_id) {
+                InventoryOwnerType::Building
+            } else if member_names.contains_key(&inventory.owner_entity_id) {
+                InventoryOwnerType::Player
+            } else {
+                InventoryOwnerType::Unknown
+            };
+            let owner_name = match owner_type {
+                InventoryOwnerType::Player => member_names.get(&inventory.owner_entity_id).cloned(),
+                _ => None,
+            };
+            let building_name = match owner_type {
+                InventoryOwnerType::Building => {
+                    building_names.get(&inventory.owner_entity_id).cloned()
+                }
+                _ => None,
+            };
+            let building_description_id =
+                building_desc_map.get(&inventory.owner_entity_id).copied();
+
+            let entry = items_map
+                .entry(key)
+                .or_insert_with(|| ItemLocationsBuilder {
+                    item_id: resolved.item_id,
+                    item: resolved.item.clone(),
+                    item_type: resolved.item_type.clone(),
+                    durability: resolved.durability,
+                    locations: HashMap::new(),
+                });
+
+            let location_entry = entry
+                .locations
+                .entry(inventory.entity_id)
+                .or_insert_with(|| InventoryLocationEntry {
+                    inventory_entity_id: inventory.entity_id,
+                    owner_entity_id: inventory.owner_entity_id,
+                    player_owner_entity_id: inventory.player_owner_entity_id,
+                    inventory_index: inventory.inventory_index,
+                    cargo_index: inventory.cargo_index,
+                    owner_type: owner_type.clone(),
+                    owner_name: owner_name.clone(),
+                    building_name: building_name.clone(),
+                    building_description_id,
+                    quantity: 0,
+                });
+
+            location_entry.quantity += resolved.quantity;
+        }
+    }
+
+    items_map
+        .into_values()
+        .map(|entry| {
+            let mut locations = entry.locations.into_values().collect::<Vec<_>>();
+            locations.sort_by(|a, b| b.quantity.cmp(&a.quantity));
+            InventoryItemLocation {
+                item_id: entry.item_id,
+                item: entry.item,
+                item_type: entry.item_type,
+                durability: entry.durability,
+                locations,
+            }
+        })
+        .collect()
 }

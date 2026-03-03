@@ -12,7 +12,10 @@ import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
 import type { ClaimTechDesc } from "~/types/ClaimTechDesc";
+import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
+import type { InventoryItemLocation } from "~/types/InventoryItemLocation";
+import type { InventoryLocationEntry } from "~/types/InventoryLocationEntry";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
@@ -39,6 +42,10 @@ const router = useRouter();
 
 const player_id = ref<bigint | null>();
 const item_object = ref<ItemCargo | undefined>();
+
+const locationModalOpen = ref(false);
+const selectedInventoryItem = ref<ExpendedRefrence | null>(null);
+const selectedInventoryLocation = ref<InventoryItemLocation | null>(null);
 
 const rarityBuildings = ref<string | null>(null);
 const tierBuildings = ref<number | null>(null);
@@ -490,6 +497,77 @@ const upgradesByTier = computed(() => {
 
   return Array.from(tiers.entries()).sort((a, b) => a[0] - b[0]);
 });
+
+const selectedLocationEntries = computed<InventoryLocationEntry[]>(() => {
+  return selectedInventoryLocation.value?.locations ?? [];
+});
+
+const getPlayerNameById = (playerId: bigint) => {
+  const key = playerId.toString();
+  const member =
+    claimFetch.value?.members?.[key] ??
+    (claimFetch.value?.members as Record<string, any>)?.[
+      playerId as unknown as string
+    ];
+  return member?.user_name ?? `#${key}`;
+};
+
+const isBankLocation = (location: InventoryLocationEntry) => {
+  const buildingName = location.building_name ?? location.owner_name ?? "";
+  return location.owner_type === "Building" && buildingName.includes("Bank");
+};
+
+const formatLocationOwner = (location: InventoryLocationEntry) => {
+  const ownerId = location.owner_entity_id.toString();
+  const fallbackName = location.owner_name ?? `#${ownerId}`;
+
+  if (location.owner_type === "Player") {
+    const playerName =
+      location.owner_name ?? getPlayerNameById(location.owner_entity_id);
+    return `Player: ${playerName}`;
+  }
+
+  if (location.owner_type === "Building") {
+    const buildingName = location.building_name ?? fallbackName;
+    return `Building: ${buildingName}`;
+  }
+
+  return `Unknown: ${fallbackName}`;
+};
+
+const locationOwnerLink = (location: InventoryLocationEntry) => {
+  const ownerId = location.owner_entity_id.toString();
+
+  if (location.owner_type === "Player") {
+    return { name: "players-id", params: { id: ownerId } };
+  }
+
+  if (location.owner_type === "Building") {
+    return { name: "buildings-id", params: { id: ownerId } };
+  }
+
+  return null;
+};
+
+const bankOwnerLink = (location: InventoryLocationEntry) => {
+  const playerId = location.player_owner_entity_id.toString();
+  return { name: "players-id", params: { id: playerId } };
+};
+
+const openItemLocationModal = (
+  inventory: ExpendedRefrence,
+  section: string,
+) => {
+  selectedInventoryItem.value = inventory;
+  const locations = claimFetch.value?.inventory_locations?.[section] ?? [];
+  selectedInventoryLocation.value =
+    locations.find(
+      (entry) =>
+        entry.item_id === inventory.item_id &&
+        entry.item_type === inventory.item_type,
+    ) ?? null;
+  locationModalOpen.value = true;
+};
 
 const isUpgradeLocked = (upgrade: ClaimTechDesc) => {
   return claimTier.value < upgrade.tier;
@@ -1081,8 +1159,9 @@ watch(
                             <v-sheet
                                 border
                                 rounded
-                                class="inventory-slot-box d-flex align-center justify-center position-relative"
+                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"
                                 elevation="2"
+                                @click="openItemLocationModal(inventory.raw, 'buildings')"
                             >
                               <v-tooltip activator="parent" location="top" transition="fade-transition">
                                 <div class="text-center">
@@ -1182,29 +1261,30 @@ watch(
                             <v-sheet
                                 border
                                 rounded
-                                class="inventory-slot-box d-flex align-center justify-center position-relative"
+                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"
                                 elevation="2"
+                                @click="openItemLocationModal(inventory.raw, 'players')"
                             >
-                                <v-tooltip activator="parent" location="top" transition="fade-transition">
-                                  <div class="text-center">
-                                    <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">
-                                      {{ inventory.raw.item.name }}
-                                    </div>
-                                    <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>
+                              <v-tooltip activator="parent" location="top" transition="fade-transition">
+                                <div class="text-center">
+                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">
+                                    {{ inventory.raw.item.name }}
                                   </div>
-                                </v-tooltip>
+                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>
+                                </div>
+                              </v-tooltip>
 
-                                <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
-                                <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
-                                  {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}
-                                </div>
-                                <div class="item-icon text-h6 font-weight-black">
-                                  <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />
-                                </div>
+                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
+                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
+                                {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}
+                              </div>
+                              <div class="item-icon text-h6 font-weight-black">
+                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />
+                              </div>
 
-                                <div class="quantity-badge">
-                                  {{ inventory.raw.quantity }}
-                                </div>
+                              <div class="quantity-badge">
+                                {{ inventory.raw.quantity }}
+                              </div>
                             </v-sheet>
                           </v-col>
                         </template>
@@ -1283,8 +1363,9 @@ watch(
                             <v-sheet
                                 border
                                 rounded
-                                class="inventory-slot-box d-flex align-center justify-center position-relative"
+                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"
                                 elevation="2"
+                                @click="openItemLocationModal(inventory.raw, 'players_offline')"
                             >
                               <v-tooltip activator="parent" location="top" transition="fade-transition">
                                 <div class="text-center">
@@ -1621,6 +1702,71 @@ watch(
       </v-col>
     </v-row>
   </v-container>
+  <v-dialog v-model="locationModalOpen" max-width="520">
+    <v-card>
+      <v-card-title class="d-flex align-center justify-space-between">
+        <span>Item location</span>
+        <v-btn icon="mdi-close" variant="text" @click="locationModalOpen = false"></v-btn>
+      </v-card-title>
+      <v-card-text>
+        <div class="d-flex align-center mb-4">
+          <inventory-img
+            v-if="selectedInventoryItem"
+            width="48"
+            height="48"
+            skip-error-text
+            :item="selectedInventoryItem.item"
+          />
+          <div class="ml-3">
+            <div class="font-weight-bold">
+              {{ selectedInventoryItem?.item.name }}
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              Quantity: {{ selectedInventoryItem?.quantity }}
+            </div>
+          </div>
+        </div>
+
+        <v-divider class="mb-3"></v-divider>
+
+        <div v-if="selectedLocationEntries.length === 0" class="text-medium-emphasis">
+          No location data available for this item.
+        </div>
+        <v-list v-else density="compact">
+          <v-list-item
+            v-for="location in selectedLocationEntries"
+            :key="`${location.owner_entity_id}-${location.inventory_index}-${location.cargo_index}`"
+          >
+            <v-list-item-title class="font-weight-bold">
+              <template v-if="locationOwnerLink(location)">
+                <nuxt-link
+                  class="text-decoration-none"
+                  :to="locationOwnerLink(location)"
+                >
+                  {{ formatLocationOwner(location) }}
+                </nuxt-link>
+              </template>
+              <template v-else>
+                {{ formatLocationOwner(location) }}
+              </template>
+            </v-list-item-title>
+            <v-list-item-subtitle>
+              <template v-if="isBankLocation(location)">
+                <nuxt-link
+                  class="text-decoration-none"
+                  :to="bankOwnerLink(location)"
+                >
+                  Bank owner: {{ getPlayerNameById(location.player_owner_entity_id) }}
+                </nuxt-link>
+                |
+              </template>
+              Quantity: {{ location.quantity }} | Inventory: {{ location.inventory_index }} | Slot: {{ location.cargo_index }}
+            </v-list-item-subtitle>
+          </v-list-item>
+        </v-list>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
