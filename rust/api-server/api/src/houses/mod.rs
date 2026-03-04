@@ -420,7 +420,7 @@ async fn get_building_entity_ids_in_dimension(
     dim_id: i64,
 ) -> Result<Vec<i64>, (StatusCode, &'static str)> {
     // dimension_id is only unique within a region
-    let region: String = format!("bitcraft-{}", house.region_index);
+    let region: String = format!("bitcraft-live-{}", house.region_index);
 
     let locations = ::entity::location_state::Entity::find()
         .filter(::entity::location_state::Column::Dimension.eq(dim_id))
