@@ -9,12 +9,15 @@ pub(crate) fn start_worker_mobile_entity_state(
     mut rx: UnboundedReceiver<crate::websocket::SpacetimeUpdateMessages<MobileEntityState>>,
 ) {
     tokio::spawn(async move {
+        let mut buffer = Vec::with_capacity(500);
         loop {
-            let mut buffer = Vec::with_capacity(4000);
-
-            let _count = rx.recv_many(&mut buffer, 4000).await;
-            record_worker_received("mobile_entity_state", buffer.len());
-            for msg in buffer {
+            buffer.clear();
+            let count = rx.recv_many(&mut buffer, 500).await;
+            if count == 0 {
+                break;
+            }
+            record_worker_received("mobile_entity_state", count);
+            for msg in buffer.drain(..) {
                 match msg {
                     crate::websocket::SpacetimeUpdateMessages::Initial {
                         data,
@@ -79,7 +82,7 @@ pub(crate) fn start_worker_mobile_entity_state(
                 }
             }
 
-            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
         }
     });
 }

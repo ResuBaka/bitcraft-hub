@@ -66,6 +66,16 @@ const tmpPage = (route.query.page as string) ?? null;
 
 const tierToColor = useTierColor();
 
+const raritySortOrder = new Map([
+  ["Mythic", 6],
+  ["Legendary", 5],
+  ["Epic", 4],
+  ["Rare", 3],
+  ["Uncommon", 2],
+  ["Common", 1],
+  ["Default", 0],
+]);
+
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
@@ -347,20 +357,40 @@ const inventorysPlayersTools = computed(() => {
     !rarityPlayersTools.value &&
     !tierPlayersTools.value
   ) {
-    return claimFetch.value?.tool_inventorys?.players;
+    return claimFetch.value?.tool_inventorys?.players.slice().sort((a, b) => {
+      if (a.item.tier !== b.item.tier) {
+        return b.item.tier - a.item.tier;
+      }
+
+      return (
+        (raritySortOrder.get(b.item.rarity) ?? 0) -
+        (raritySortOrder.get(a.item.rarity) ?? 0)
+      );
+    });
   }
 
-  return claimFetch.value?.tool_inventorys?.players.filter(
-    (inventory) =>
-      (!rarityPlayersTools.value ||
-        inventory.item.rarity === rarityPlayersTools.value) &&
-      (!tierPlayersTools.value ||
-        inventory.item.tier === tierPlayersTools.value) &&
-      (!inventoryPlayersToolsSearch.value ||
-        inventory.item.name
-          .toLowerCase()
-          .includes(inventoryPlayersToolsSearch.value.toLowerCase())),
-  );
+  return claimFetch.value?.tool_inventorys?.players
+    .filter(
+      (inventory) =>
+        (!rarityPlayersTools.value ||
+          inventory.item.rarity === rarityPlayersTools.value) &&
+        (!tierPlayersTools.value ||
+          inventory.item.tier === tierPlayersTools.value) &&
+        (!inventoryPlayersToolsSearch.value ||
+          inventory.item.name
+            .toLowerCase()
+            .includes(inventoryPlayersToolsSearch.value.toLowerCase())),
+    )
+    .sort((a, b) => {
+      if (a.item.tier !== b.item.tier) {
+        return b.item.tier - a.item.tier;
+      }
+
+      return (
+        (raritySortOrder.get(b.item.rarity) ?? 0) -
+        (raritySortOrder.get(a.item.rarity) ?? 0)
+      );
+    });
 });
 
 const inventoryPlayersOfflineToolsSearch = ref<string | null>("");
@@ -375,20 +405,42 @@ const inventorysPlayersOfflineTools = computed(() => {
     !rarityPlayersOfflineTools.value &&
     !tierPlayersOfflineTools.value
   ) {
-    return claimFetch.value?.tool_inventorys?.players_offline;
+    return claimFetch.value?.tool_inventorys?.players_offline
+      .slice()
+      .sort((a, b) => {
+        if (a.item.tier !== b.item.tier) {
+          return b.item.tier - a.item.tier;
+        }
+
+        return (
+          (raritySortOrder.get(b.item.rarity) ?? 0) -
+          (raritySortOrder.get(a.item.rarity) ?? 0)
+        );
+      });
   }
 
-  return claimFetch.value?.tool_inventorys?.players_offline.filter(
-    (inventory) =>
-      (!rarityPlayersOfflineTools.value ||
-        inventory.item.rarity === rarityPlayersOfflineTools.value) &&
-      (!tierPlayersOfflineTools.value ||
-        inventory.item.tier === tierPlayersOfflineTools.value) &&
-      (!inventoryPlayersOfflineToolsSearch.value ||
-        inventory.item.name
-          .toLowerCase()
-          .includes(inventoryPlayersOfflineToolsSearch.value.toLowerCase())),
-  );
+  return claimFetch.value?.tool_inventorys?.players_offline
+    .filter(
+      (inventory) =>
+        (!rarityPlayersOfflineTools.value ||
+          inventory.item.rarity === rarityPlayersOfflineTools.value) &&
+        (!tierPlayersOfflineTools.value ||
+          inventory.item.tier === tierPlayersOfflineTools.value) &&
+        (!inventoryPlayersOfflineToolsSearch.value ||
+          inventory.item.name
+            .toLowerCase()
+            .includes(inventoryPlayersOfflineToolsSearch.value.toLowerCase())),
+    )
+    .sort((a, b) => {
+      if (a.item.tier !== b.item.tier) {
+        return b.item.tier - a.item.tier;
+      }
+
+      return (
+        (raritySortOrder.get(b.item.rarity) ?? 0) -
+        (raritySortOrder.get(a.item.rarity) ?? 0)
+      );
+    });
 });
 
 const sortMembersLevelRaw = (a: any, b: any) => {
@@ -1655,7 +1707,7 @@ watch(
 
                               <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>
                               <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">
-                                {{ inventory.raw.item.name }}
+                                {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}
                               </div>
                               <div class="item-icon text-h6 font-weight-black">
                                 <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />

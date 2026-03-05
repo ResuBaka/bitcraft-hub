@@ -197,17 +197,18 @@ pub(crate) fn start_worker_claim_local_state(
             let mut messages = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
+            let mut buffer = Vec::with_capacity(batch_size + 10);
 
             loop {
-                let mut buffer = vec![];
+                buffer.clear();
                 let fill_buffer_with = batch_size
                     .saturating_sub(buffer.len())
                     .saturating_sub(messages.len());
 
                 tokio::select! {
-                    _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
-                        record_worker_received("claim_local_state", buffer.len());
-                        for msg in buffer {
+                    count = rx.recv_many(&mut buffer, fill_buffer_with) => {
+                        record_worker_received("claim_local_state", count);
+                        for msg in buffer.drain(..) {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                     let mut local_messages = Vec::with_capacity(batch_size + 10);

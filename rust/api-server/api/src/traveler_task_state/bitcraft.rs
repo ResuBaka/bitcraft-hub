@@ -31,9 +31,10 @@ pub(crate) fn start_worker_traveler_task_state(
             let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
+            let mut buffer = Vec::with_capacity(batch_size + 10);
 
             loop {
-                let mut buffer = vec![];
+                buffer.clear();
 
                 let fill_buffer_with = if messages.len() > messages_delete.len() {
                     batch_size
@@ -46,9 +47,9 @@ pub(crate) fn start_worker_traveler_task_state(
                 };
 
                 tokio::select! {
-                    _count = rx.recv_many(&mut buffer, fill_buffer_with) => {
-                        record_worker_received("traveler_task_state", buffer.len());
-                        for msg in buffer {
+                    count = rx.recv_many(&mut buffer, fill_buffer_with) => {
+                        record_worker_received("traveler_task_state", count);
+                        for msg in buffer.drain(..) {
                             match msg {
                                 SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                     let mut local_messages = Vec::with_capacity(batch_size + 10);
