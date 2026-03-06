@@ -28,6 +28,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -92,7 +93,9 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                 let models = raw_model.to_model_collectibles(database_name.to_string());
 
                                 for model in models {
-
+                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                        messages_delete.remove(index);
+                                    }
                                     if let Some(index) = messages.iter().position(|value: &::entity::vault_state_collectibles::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
@@ -108,7 +111,9 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
                                 let models = raw_model.to_model_collectibles(database_name.to_string());
                                 for model in models {
-
+                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                        messages_delete.remove(index);
+                                    }
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
@@ -130,9 +135,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                         messages.remove(index);
                                     }
 
-                                    if let Err(error) = model.delete(&global_app_state.conn).await {
-                                        tracing::error!(VaultState = id, error = error.to_string(), "Could not delete VaultState");
-                                    }
+                                    messages_delete.push(id);
                                 }
 
                                 tracing::debug!("VaultState::Remove");
@@ -161,8 +164,24 @@ pub(crate) fn start_worker_vault_state_collectibles(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::vault_state_collectibles::Entity::delete_many()
+                        .filter(::entity::vault_state_collectibles::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(VaultState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete VaultState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

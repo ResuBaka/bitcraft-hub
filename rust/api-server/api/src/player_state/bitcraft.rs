@@ -31,6 +31,7 @@ pub(crate) fn start_worker_player_state(
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
             let mut ids = vec![];
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -121,6 +122,10 @@ pub(crate) fn start_worker_player_state(
                                 global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
                                 global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
+
                                 metrics::gauge!("players_current_state", &[
                                     ("online", model.signed_in.to_string()),
                                     ("region", database_name.to_string())
@@ -179,6 +184,10 @@ pub(crate) fn start_worker_player_state(
                                     }
                                 }
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
+
                                 let _ = global_app_state.tx.send(WebSocketMessages::PlayerState(model.clone()));
 
                                 ids.push(model.entity_id);
@@ -207,11 +216,10 @@ pub(crate) fn start_worker_player_state(
                                     ("region", database_name.to_string())
                                 ]).decrement(1);
 
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(PlayerState = id, error = error.to_string(), "Could not delete PlayerState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("PlayerState::Remove");
                             }
                         }
                     }
@@ -233,8 +241,25 @@ pub(crate) fn start_worker_player_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("PlayerState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::player_state::Entity::delete_many()
+                        .filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(PlayerState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -273,6 +298,7 @@ pub(crate) fn start_worker_player_username_state(
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
             let mut ids = vec![];
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -335,6 +361,9 @@ pub(crate) fn start_worker_player_username_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 ids.push(model.entity_id);
                                 messages.push(model.into_active_model());
 
@@ -344,6 +373,9 @@ pub(crate) fn start_worker_player_username_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 ids.push(model.entity_id);
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
@@ -360,11 +392,10 @@ pub(crate) fn start_worker_player_username_state(
                                     }
                                 }
 
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(PlayerUsernameState = id, error = error.to_string(), "Could not delete PlayerUsernameState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("PlayerUsernameState::Remove");
                             }
                         }
                     }
@@ -391,8 +422,25 @@ pub(crate) fn start_worker_player_username_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("PlayerUsernameState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::player_username_state::Entity::delete_many()
+                        .filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(PlayerUsernameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerUsernameState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

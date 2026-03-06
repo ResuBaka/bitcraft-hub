@@ -30,6 +30,7 @@ pub(crate) fn start_worker_deployable_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -94,6 +95,9 @@ pub(crate) fn start_worker_deployable_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 global_app_state.deployable_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -102,6 +106,9 @@ pub(crate) fn start_worker_deployable_state(
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 global_app_state.deployable_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -115,12 +122,10 @@ pub(crate) fn start_worker_deployable_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(DeployableState = id, error = error.to_string(), "Could not delete DeployableState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("DeployableState::Remove");
                             }
                         }
                     }
@@ -142,8 +147,25 @@ pub(crate) fn start_worker_deployable_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("DeployableState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::deployable_state::Entity::delete_many()
+                        .filter(::entity::deployable_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(DeployableState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DeployableState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

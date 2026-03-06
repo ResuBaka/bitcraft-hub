@@ -28,6 +28,7 @@ pub(crate) fn start_worker_experience_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete: Vec<(i64, i32)> = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
             let mut buffer = Vec::with_capacity(batch_size + 10);
@@ -150,6 +151,9 @@ pub(crate) fn start_worker_experience_state(
                                             region: database_name.to_string()
                                         };
 
+                                        if let Some(index) = messages_delete.iter().position(|value| value.0 == id && value.1 == es.skill_id) {
+                                            messages_delete.remove(index);
+                                        }
                                         if let Some(index) = messages.iter().position(|value: &::entity::experience_state::ActiveModel| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
                                             messages.remove(index);
                                         }
@@ -242,6 +246,9 @@ pub(crate) fn start_worker_experience_state(
                                                     region: database_name.to_string()
                                                 };
 
+                                                if let Some(index) = messages_delete.iter().position(|value| value.0 == id && value.1 == es.skill_id) {
+                                                    messages_delete.remove(index);
+                                                }
                                                 if let Some(index) = messages.iter().position(|value| value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id) {
                                                     messages.remove(index);
                                                 }
@@ -376,13 +383,11 @@ pub(crate) fn start_worker_experience_state(
                                     }).collect::<Vec<_>>();
 
                                     for es in vec_es {
-                                        // global_app_state.ranking_system.global_leaderboard.remove(es.entity_id);
-
-                                        if let Err(error) = es.delete(&global_app_state.conn).await {
-                                            tracing::error!(ExperienceState = id, error = error.to_string(), "Could not delete ExperienceState");
-                                        }
+                                        messages_delete.push((es.entity_id, es.skill_id));
                                     }
-                                    tracing::debug!("ExperienceState::Remove");
+                                    if messages_delete.len() >= batch_size {
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -407,8 +412,35 @@ pub(crate) fn start_worker_experience_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("ExperienceState::Remove");
+                for chunk_ids in messages_delete.chunks(100) {
+                    let mut query = sea_query::Condition::any();
+                    for (entity_id, skill_id) in chunk_ids {
+                        query = query.add(
+                            ::entity::experience_state::Column::EntityId.eq(*entity_id)
+                                .and(::entity::experience_state::Column::SkillId.eq(*skill_id))
+                        );
+                    }
+
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::experience_state::Entity::delete_many()
+                        .filter(query)
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> = chunk_ids
+                            .iter()
+                            .map(|(entity_id, skill_id)| format!("{}:{}", entity_id, skill_id))
+                            .collect();
+                        tracing::error!(ExperienceState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ExperienceState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 tracing::warn!(
                     "Shutting down ExperienceState worker as there no messages and rx is closed"
                 );

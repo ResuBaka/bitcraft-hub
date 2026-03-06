@@ -43,6 +43,7 @@ pub(crate) fn start_worker_crafting_recipe_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -106,6 +107,9 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                                 let model: ::entity::crafting_recipe::Model = new.into();
 
                                 global_app_state.crafting_recipe_desc.insert(model.id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -114,6 +118,9 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::crafting_recipe::Model = new.into();
                                 global_app_state.crafting_recipe_desc.insert(model.id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
@@ -129,12 +136,10 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                                 }
 
                                 global_app_state.crafting_recipe_desc.remove(&id);
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(CraftingRecipeDesc = id, error = error.to_string(), "Could not delete BuildingNicknameState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("CraftingRecipeDesc::Remove");
                             }
                         }
                     }
@@ -160,8 +165,25 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("CraftingRecipeDesc::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::crafting_recipe::Entity::delete_many()
+                        .filter(::entity::crafting_recipe::Column::Id.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(CraftingRecipeDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete CraftingRecipeDesc");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

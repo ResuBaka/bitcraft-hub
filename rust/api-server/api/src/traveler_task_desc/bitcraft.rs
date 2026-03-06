@@ -29,6 +29,7 @@ pub(crate) fn start_worker_traveler_task_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -91,6 +92,9 @@ pub(crate) fn start_worker_traveler_task_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::traveler_task_desc::Model = new.into();
                                 global_app_state.traveler_task_desc.insert(model.id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
 
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
@@ -100,6 +104,9 @@ pub(crate) fn start_worker_traveler_task_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::traveler_task_desc::Model = new.into();
                                 global_app_state.traveler_task_desc.insert(model.id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
 
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
@@ -113,10 +120,10 @@ pub(crate) fn start_worker_traveler_task_desc(
                                 if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(TravelerTaskDesc = id, error = error.to_string(), "Could not delete TravelerTaskDesc");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-                                tracing::debug!("TravelerTaskDesc::Remove");
                             }
                         }
                     }
@@ -134,7 +141,24 @@ pub(crate) fn start_worker_traveler_task_desc(
                     .await;
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                tracing::debug!("TravelerTaskDesc::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::traveler_task_desc::Entity::delete_many()
+                        .filter(::entity::traveler_task_desc::Column::Id.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(TravelerTaskDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete TravelerTaskDesc");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

@@ -30,6 +30,7 @@ pub(crate) fn start_worker_building_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -102,6 +103,9 @@ pub(crate) fn start_worker_building_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::building_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -115,6 +119,9 @@ pub(crate) fn start_worker_building_state(
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -132,12 +139,10 @@ pub(crate) fn start_worker_building_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(BuildingState = id, error = error.to_string(), "Could not delete BuildingState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("BuildingState::Remove");
                             }
                         }
                     }
@@ -168,8 +173,25 @@ pub(crate) fn start_worker_building_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("BuildingState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::building_state::Entity::delete_many()
+                        .filter(::entity::building_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(BuildingState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -226,6 +248,7 @@ pub(crate) fn start_worker_building_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -289,6 +312,9 @@ pub(crate) fn start_worker_building_desc(
                                 let model: ::entity::building_desc::Model = new.into();
 
                                 global_app_state.building_desc.insert(model.id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -297,6 +323,9 @@ pub(crate) fn start_worker_building_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::building_desc::Model = new.into();
                                 global_app_state.building_desc.insert(model.id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
@@ -312,12 +341,10 @@ pub(crate) fn start_worker_building_desc(
                                 }
 
                                 global_app_state.building_desc.remove(&id);
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(BuildingDesc = id, error = error.to_string(), "Could not delete BuildingDesc");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("BuildingDesc::Remove");
                             }
                         }
                     }
@@ -342,8 +369,25 @@ pub(crate) fn start_worker_building_desc(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("BuildingDesc::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::building_desc::Entity::delete_many()
+                        .filter(::entity::building_desc::Column::Id.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(BuildingDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingDesc");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -381,6 +425,7 @@ pub(crate) fn start_worker_building_nickname_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -445,7 +490,9 @@ pub(crate) fn start_worker_building_nickname_state(
                                 let model: ::entity::building_nickname_state::Model = ::entity::building_nickname_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                 global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
-
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -454,6 +501,9 @@ pub(crate) fn start_worker_building_nickname_state(
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::building_nickname_state::Model = ::entity::building_nickname_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 global_app_state.building_nickname_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
 
                                 if messages.len() >= batch_size {
@@ -469,12 +519,10 @@ pub(crate) fn start_worker_building_nickname_state(
                                 }
 
                                 global_app_state.building_nickname_state.remove(&id);
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(BuildingNicknameState = id, error = error.to_string(), "Could not delete BuildingNicknameState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("BuildingNicknameState::Remove");
                             }
                         }
                     }
@@ -503,8 +551,25 @@ pub(crate) fn start_worker_building_nickname_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("BuildingNicknameState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::building_nickname_state::Entity::delete_many()
+                        .filter(::entity::building_nickname_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(BuildingNicknameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingNicknameState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

@@ -30,6 +30,7 @@ pub(crate) fn start_worker_claim_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -94,6 +95,9 @@ pub(crate) fn start_worker_claim_state(
                                 let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
                                 global_app_state.claim_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -104,6 +108,10 @@ pub(crate) fn start_worker_claim_state(
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
+                                }
+
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
                                 }
 
                                 global_app_state.claim_state.insert(model.entity_id, model.clone());
@@ -121,11 +129,10 @@ pub(crate) fn start_worker_claim_state(
                                 }
 
                                 global_app_state.claim_state.remove(&id);
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ClaimState = id, error = error.to_string(), "Could not delete ClaimState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("ClaimState::Remove");
                             }
                         }
                     }
@@ -146,8 +153,25 @@ pub(crate) fn start_worker_claim_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("ClaimState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::claim_state::Entity::delete_many()
+                        .filter(::entity::claim_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(ClaimState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -195,6 +219,7 @@ pub(crate) fn start_worker_claim_local_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
             let mut buffer = Vec::with_capacity(batch_size + 10);
@@ -273,6 +298,10 @@ pub(crate) fn start_worker_claim_local_state(
                                     let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                     global_app_state.claim_local_state.insert(org_id, model.clone());
 
+                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                        messages_delete.remove(index);
+                                    }
+
                                     if let Some(index) = messages.iter().position(|value: &::entity::claim_local_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
@@ -299,6 +328,9 @@ pub(crate) fn start_worker_claim_local_state(
 
                                     global_app_state.claim_local_state.insert(org_id, model.clone());
 
+                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                        messages_delete.remove(index);
+                                    }
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
                                     }
@@ -322,12 +354,10 @@ pub(crate) fn start_worker_claim_local_state(
                                         messages.remove(index);
                                     }
                                     global_app_state.claim_local_state.remove(&(model.entity_id as u64));
-
-                                    if let Err(error) = model.delete(&global_app_state.conn).await {
-                                        tracing::error!(ClaimLocalState = id, error = error.to_string(), "Could not delete ClaimLocalState");
+                                    messages_delete.push(id);
+                                    if messages_delete.len() >= batch_size {
+                                        break;
                                     }
-
-                                    tracing::debug!("ClaimLocalState::Remove");
                                 }
                             }
                         }
@@ -351,8 +381,25 @@ pub(crate) fn start_worker_claim_local_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("ClaimLocalState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::claim_local_state::Entity::delete_many()
+                        .filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(ClaimLocalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimLocalState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -398,6 +445,7 @@ pub(crate) fn start_worker_claim_member_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
             loop {
@@ -465,6 +513,9 @@ pub(crate) fn start_worker_claim_member_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -475,6 +526,10 @@ pub(crate) fn start_worker_claim_member_state(
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
+                                }
+
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
                                 }
 
                                 messages.push(model.into_active_model());
@@ -491,12 +546,10 @@ pub(crate) fn start_worker_claim_member_state(
                                 }
 
                                 global_app_state.remove_claim_member(model.clone());
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ClaimMemberState = id, error = error.to_string(), "Could not delete ClaimMemberState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("ClaimMemberState::Remove");
                             }
                         }
                     }
@@ -518,8 +571,25 @@ pub(crate) fn start_worker_claim_member_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("ClaimMemberState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::claim_member_state::Entity::delete_many()
+                        .filter(::entity::claim_member_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(ClaimMemberState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimMemberState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -569,6 +639,7 @@ pub(crate) fn start_worker_claim_tech_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -631,6 +702,9 @@ pub(crate) fn start_worker_claim_tech_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::claim_tech_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -643,6 +717,9 @@ pub(crate) fn start_worker_claim_tech_state(
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::claim_tech_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -659,12 +736,10 @@ pub(crate) fn start_worker_claim_tech_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ClaimTechState = id, error = error.to_string(), "Could not delete ClaimTechState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("ClaimTechState::Remove");
                             }
                         }
                     }
@@ -690,8 +765,25 @@ pub(crate) fn start_worker_claim_tech_state(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("ClaimTechState::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::claim_tech_state::Entity::delete_many()
+                        .filter(::entity::claim_tech_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(ClaimTechState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimTechState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -739,6 +831,7 @@ pub(crate) fn start_worker_claim_tech_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -800,6 +893,9 @@ pub(crate) fn start_worker_claim_tech_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::claim_tech_desc::Model = new.into();
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -807,6 +903,9 @@ pub(crate) fn start_worker_claim_tech_desc(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::claim_tech_desc::Model = new.into();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -819,12 +918,10 @@ pub(crate) fn start_worker_claim_tech_desc(
                                 if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ClaimTechDesc = id, error = error.to_string(), "Could not delete ClaimTechDesc");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("ClaimTechDesc::Remove");
                             }
                         }
                     }
@@ -845,11 +942,29 @@ pub(crate) fn start_worker_claim_tech_desc(
                     messages.len()
                 );
 
-                // Your batch processing logic here
+                insert_multiple_claim_tech_desc(&global_app_state, &on_conflict, &mut messages)
+                    .await;
+            }
+
+            if !messages_delete.is_empty() {
+                tracing::debug!("ClaimTechDesc::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::claim_tech_desc::Entity::delete_many()
+                        .filter(::entity::claim_tech_desc::Column::Id.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(ClaimTechDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimTechDesc");
+                    }
+                }
+                messages_delete.clear();
             }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

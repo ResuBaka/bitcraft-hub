@@ -5,7 +5,7 @@ use game_module::module_bindings::{
     PortalState,
 };
 use migration::{OnConflict, sea_query};
-use sea_orm::{DbErr, EntityTrait, IntoActiveModel, ModelTrait};
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -32,6 +32,7 @@ pub(crate) fn start_worker_interior_network_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -76,6 +77,9 @@ pub(crate) fn start_worker_interior_network_desc(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model = ::entity::interior_network_desc::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.building_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::interior_network_desc::ActiveModel| value.building_id.as_ref() == &model.building_id) {
                                     messages.remove(index);
                                 }
@@ -86,6 +90,9 @@ pub(crate) fn start_worker_interior_network_desc(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::interior_network_desc::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.building_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value| value.building_id.as_ref() == &model.building_id) {
                                     messages.remove(index);
                                 }
@@ -99,8 +106,9 @@ pub(crate) fn start_worker_interior_network_desc(
                                 if let Some(index) = messages.iter().position(|value| value.building_id.as_ref() == &model.building_id) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(error = error.to_string(), "Could not delete InteriorNetworkDesc");
+                                messages_delete.push(model.building_id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -126,7 +134,23 @@ pub(crate) fn start_worker_interior_network_desc(
                 }
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::interior_network_desc::Entity::delete_many()
+                        .filter(::entity::interior_network_desc::Column::BuildingId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(InteriorNetworkDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete InteriorNetworkDesc");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -176,6 +200,7 @@ pub(crate) fn start_worker_dimension_description_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -220,6 +245,9 @@ pub(crate) fn start_worker_dimension_description_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model = ::entity::dimension_description_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::dimension_description_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -230,6 +258,9 @@ pub(crate) fn start_worker_dimension_description_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::dimension_description_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -243,8 +274,9 @@ pub(crate) fn start_worker_dimension_description_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(error = error.to_string(), "Could not delete DimensionDescriptionState");
+                                messages_delete.push(model.entity_id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -266,7 +298,23 @@ pub(crate) fn start_worker_dimension_description_state(
                 }
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::dimension_description_state::Entity::delete_many()
+                        .filter(::entity::dimension_description_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(DimensionDescriptionState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DimensionDescriptionState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -318,6 +366,7 @@ pub(crate) fn start_worker_player_housing_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -362,6 +411,9 @@ pub(crate) fn start_worker_player_housing_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model = ::entity::player_housing_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::player_housing_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -372,6 +424,9 @@ pub(crate) fn start_worker_player_housing_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::player_housing_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -385,8 +440,9 @@ pub(crate) fn start_worker_player_housing_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(error = error.to_string(), "Could not delete PlayerHousingState");
+                                messages_delete.push(model.entity_id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -408,7 +464,23 @@ pub(crate) fn start_worker_player_housing_state(
                 }
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::player_housing_state::Entity::delete_many()
+                        .filter(::entity::player_housing_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(PlayerHousingState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerHousingState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -457,6 +529,7 @@ pub(crate) fn start_worker_permission_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -501,6 +574,9 @@ pub(crate) fn start_worker_permission_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model = ::entity::permission_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::permission_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -511,6 +587,9 @@ pub(crate) fn start_worker_permission_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::permission_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -524,8 +603,9 @@ pub(crate) fn start_worker_permission_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(error = error.to_string(), "Could not delete PermissionState");
+                                messages_delete.push(model.entity_id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -544,7 +624,23 @@ pub(crate) fn start_worker_permission_state(
                 }
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::permission_state::Entity::delete_many()
+                        .filter(::entity::permission_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(PermissionState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PermissionState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
@@ -595,6 +691,7 @@ pub(crate) fn start_worker_portal_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -639,6 +736,9 @@ pub(crate) fn start_worker_portal_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::portal_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -649,6 +749,9 @@ pub(crate) fn start_worker_portal_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -662,8 +765,9 @@ pub(crate) fn start_worker_portal_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(error = error.to_string(), "Could not delete PortalState");
+                                messages_delete.push(model.entity_id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -685,7 +789,23 @@ pub(crate) fn start_worker_portal_state(
                 }
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::portal_state::Entity::delete_many()
+                        .filter(::entity::portal_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(PortalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PortalState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

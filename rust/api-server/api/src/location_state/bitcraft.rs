@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::LocationState;
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -44,6 +44,7 @@ pub(crate) fn start_worker_location_state(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -79,6 +80,9 @@ pub(crate) fn start_worker_location_state(
                                 let model = ::entity::location_state::ModelBuilder::new(new)
                                     .with_region(database_name.to_string())
                                     .build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::location_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                   messages.remove(index);
                                 }
@@ -89,6 +93,9 @@ pub(crate) fn start_worker_location_state(
                                 let model = ::entity::location_state::ModelBuilder::new(new)
                                     .with_region(database_name.to_string())
                                     .build();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value: &::entity::location_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                   messages.remove(index);
                                 }
@@ -102,9 +109,8 @@ pub(crate) fn start_worker_location_state(
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(error = error.to_string(), "Could not delete LocationState");
-                                }
+                                messages_delete.push(model.entity_id);
+                                if messages_delete.len() >= batch_size { break; }
                             }
                         }
                     }
@@ -122,7 +128,23 @@ pub(crate) fn start_worker_location_state(
                 }
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::location_state::Entity::delete_many()
+                        .filter(::entity::location_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(LocationState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete LocationState");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

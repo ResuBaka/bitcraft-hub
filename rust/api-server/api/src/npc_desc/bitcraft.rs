@@ -31,6 +31,7 @@ pub(crate) fn start_worker_npc_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -93,6 +94,9 @@ pub(crate) fn start_worker_npc_desc(
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::npc_desc::Model = new.into();
                                 global_app_state.npc_desc.insert(model.npc_type, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.npc_type) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -101,6 +105,9 @@ pub(crate) fn start_worker_npc_desc(
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::npc_desc::Model = new.into();
                                 global_app_state.npc_desc.insert(model.npc_type, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.npc_type) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -113,10 +120,10 @@ pub(crate) fn start_worker_npc_desc(
                                 if let Some(index) = messages.iter().position(|value| value.npc_type.as_ref() == &model.npc_type) {
                                     messages.remove(index);
                                 }
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(NpcDesc = id, error = error.to_string(), "Could not delete NpcDesc");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-                                tracing::debug!("NpcDesc::Remove");
                             }
                         }
                     }
@@ -133,7 +140,24 @@ pub(crate) fn start_worker_npc_desc(
                 insert_multiple_npc_desc(&global_app_state, &on_conflict, &mut messages).await;
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                tracing::debug!("NpcDesc::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::npc_desc::Entity::delete_many()
+                        .filter(::entity::npc_desc::Column::NpcType.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(NpcDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete NpcDesc");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

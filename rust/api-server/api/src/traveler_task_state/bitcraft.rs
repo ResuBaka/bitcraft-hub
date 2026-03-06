@@ -186,9 +186,10 @@ pub(crate) fn start_worker_traveler_task_state(
                         );
                     }
                 }
+                messages_delete.clear();
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

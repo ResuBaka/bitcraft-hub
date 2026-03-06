@@ -25,6 +25,7 @@ pub(crate) fn start_worker_item_list_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -88,6 +89,9 @@ pub(crate) fn start_worker_item_list_desc(
                                 let model: ::entity::item_list_desc::Model = new.into();
 
                                 global_app_state.item_list_desc.insert(model.id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -97,6 +101,9 @@ pub(crate) fn start_worker_item_list_desc(
                                 let model: ::entity::item_list_desc::Model = new.into();
                                 global_app_state.item_list_desc.insert(model.id, model.clone());
 
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
                                     messages.remove(index);
                                 }
@@ -116,12 +123,10 @@ pub(crate) fn start_worker_item_list_desc(
                                 }
 
                                 global_app_state.item_list_desc.remove(&id);
-
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ItemListDesc = id, error = error.to_string(), "Could not delete BuildingNicknameState");
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
-
-                                tracing::debug!("ItemListDesc::Remove");
                             }
                         }
                     }
@@ -146,8 +151,25 @@ pub(crate) fn start_worker_item_list_desc(
                 // Your batch processing logic here
             }
 
+            if !messages_delete.is_empty() {
+                tracing::debug!("ItemListDesc::Remove");
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::item_list_desc::Entity::delete_many()
+                        .filter(::entity::item_list_desc::Column::Id.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(ItemListDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ItemListDesc");
+                    }
+                }
+                messages_delete.clear();
+            }
+
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }

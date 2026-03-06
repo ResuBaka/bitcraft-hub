@@ -2,7 +2,7 @@ use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::extraction_recipe_desc;
 use migration::OnConflict;
-use sea_orm::{EntityTrait, IntoActiveModel, ModelTrait, sea_query};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, sea_query};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -29,6 +29,7 @@ pub(crate) fn start_worker_extraction_recipe_desc(
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
+            let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
 
@@ -54,6 +55,9 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                             }
                             SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model: ::entity::extraction_recipe_desc::Model = new.into();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -61,6 +65,9 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                             }
                             SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model: ::entity::extraction_recipe_desc::Model = new.into();
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.id) {
+                                    messages_delete.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -69,8 +76,12 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                             SpacetimeUpdateMessages::Remove { delete,.. } => {
                                 let model: ::entity::extraction_recipe_desc::Model = delete.into();
                                 let id = model.id;
-                                if let Err(error) = model.delete(&global_app_state.conn).await {
-                                    tracing::error!(ExtractionRecipeDesc = id, error = error.to_string(), "Could not delete ExtractionRecipeDesc");
+                                if let Some(index) = messages.iter().position(|value| value.id.as_ref() == &model.id) {
+                                    messages.remove(index);
+                                }
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -88,7 +99,23 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                 insert_multiple(&global_app_state, &on_conflict, &mut messages).await;
             }
 
-            if messages.is_empty() && rx.is_closed() {
+            if !messages_delete.is_empty() {
+                for chunk_ids in messages_delete.chunks(1000) {
+                    let chunk_ids = chunk_ids.to_vec();
+                    if let Err(error) = ::entity::extraction_recipe_desc::Entity::delete_many()
+                        .filter(::entity::extraction_recipe_desc::Column::Id.is_in(chunk_ids.clone()))
+                        .exec(&global_app_state.conn)
+                        .await
+                    {
+                        let chunk_ids_str: Vec<String> =
+                            chunk_ids.iter().map(|id| id.to_string()).collect();
+                        tracing::error!(ExtractionRecipeDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ExtractionRecipeDesc");
+                    }
+                }
+                messages_delete.clear();
+            }
+
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
                 break;
             }
         }
