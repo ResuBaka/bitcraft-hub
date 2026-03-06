@@ -48,7 +48,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
-
+use spacetimedb_sdk::__codegen::Reducer;
 use ts_rs::TS;
 
 fn send_worker_message<T>(
@@ -182,17 +182,23 @@ macro_rules! setup_spacetime_db_listeners {
         let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
 
         let temp_tx = $tx_channel.clone();
-        let labels_update: [(&'static str, Cow<'static, str>); 3] = [
-            ("table", Cow::Borrowed(table_name_str)),
-            // Clone the runtime string for this specific label set
-            ("database", Cow::Owned(database_name_runtime_string.clone())),
-            ("type", Cow::Borrowed("update")),
-        ];
-
+        let labels_database_name_update = database_name_runtime_string.clone();
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
-            move |_ctx: &EventContext, old: &$state_type, new: &$state_type| {
+            move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_update: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone the runtime string for this specific label set
+                    ("database", Cow::Owned(labels_database_name_update.clone())),
+                    ("type", Cow::Borrowed("update")),
+                    ("reducer", reducer_name),
+                ];
                 metrics::counter!("game_message_events", &labels_update).increment(1);
                 send_worker_message(
                     $worker_name,
@@ -208,16 +214,23 @@ macro_rules! setup_spacetime_db_listeners {
         );
 
         let temp_tx = $tx_channel.clone();
-        let labels_insert: [(&'static str, Cow<'static, str>); 3] = [
-            ("table", Cow::Borrowed(table_name_str)),
-            // Clone again for this label set
-            ("database", Cow::Owned(database_name_runtime_string.clone())),
-            ("type", Cow::Borrowed("insert")),
-        ];
+        let labels_database_name_insert = database_name_runtime_string.clone();
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_insert(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_insert: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone again for this label set
+                    ("database", Cow::Owned(labels_database_name_insert.clone())),
+                    ("type", Cow::Borrowed("insert")),
+                    ("reducer", reducer_name),
+                ];
                 metrics::counter!("game_message_events", &labels_insert).increment(1);
 
                 if let Event::SubscribeApplied = ctx.event {
@@ -237,16 +250,23 @@ macro_rules! setup_spacetime_db_listeners {
         );
 
         let temp_tx = $tx_channel.clone();
-        let labels_delete: [(&'static str, Cow<'static, str>); 3] = [
-            ("table", Cow::Borrowed(table_name_str)),
-            // Clone for the final label set
-            ("database", Cow::Owned(database_name_runtime_string.clone())),
-            ("type", Cow::Borrowed("delete")),
-        ];
+        let labels_database_name_delete = database_name_runtime_string.clone();
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
-            move |_ctx: &EventContext, new: &$state_type| {
+            move |ctx: &EventContext, new: &$state_type| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_delete: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone for the final label set
+                    ("database", Cow::Owned(labels_database_name_delete.clone())),
+                    ("type", Cow::Borrowed("delete")),
+                    ("reducer", reducer_name),
+                ];
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
                 send_worker_message(
                     $worker_name,
@@ -269,17 +289,23 @@ macro_rules! setup_spacetime_db_listeners_event {
         let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
 
         let temp_tx = $tx_channel.clone();
-        let labels_update: [(&'static str, Cow<'static, str>); 3] = [
-            ("table", Cow::Borrowed(table_name_str)),
-            // Clone the runtime string for this specific label set
-            ("database", Cow::Owned(database_name_runtime_string.clone())),
-            ("type", Cow::Borrowed("update")),
-        ];
-
+        let labels_database_name_update = database_name_runtime_string.clone();
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
             move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_update: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone the runtime string for this specific label set
+                    ("database", Cow::Owned(labels_database_name_update.clone())),
+                    ("type", Cow::Borrowed("update")),
+                    ("reducer", reducer_name),
+                ];
                 metrics::counter!("game_message_events", &labels_update).increment(1);
                 send_worker_message(
                     $worker_name,
@@ -295,16 +321,23 @@ macro_rules! setup_spacetime_db_listeners_event {
         );
 
         let temp_tx = $tx_channel.clone();
-        let labels_insert: [(&'static str, Cow<'static, str>); 3] = [
-            ("table", Cow::Borrowed(table_name_str)),
-            // Clone again for this label set
-            ("database", Cow::Owned(database_name_runtime_string.clone())),
-            ("type", Cow::Borrowed("insert")),
-        ];
+        let labels_database_name_insert = database_name_runtime_string.clone();
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_insert(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_insert: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone again for this label set
+                    ("database", Cow::Owned(labels_database_name_insert.clone())),
+                    ("type", Cow::Borrowed("insert")),
+                    ("reducer", reducer_name),
+                ];
                 metrics::counter!("game_message_events", &labels_insert).increment(1);
 
                 if let Event::SubscribeApplied = ctx.event {
@@ -324,16 +357,23 @@ macro_rules! setup_spacetime_db_listeners_event {
         );
 
         let temp_tx = $tx_channel.clone();
-        let labels_delete: [(&'static str, Cow<'static, str>); 3] = [
-            ("table", Cow::Borrowed(table_name_str)),
-            // Clone for the final label set
-            ("database", Cow::Owned(database_name_runtime_string.clone())),
-            ("type", Cow::Borrowed("delete")),
-        ];
+        let labels_database_name_delete = database_name_runtime_string.clone();
         let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_delete: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone for the final label set
+                    ("database", Cow::Owned(labels_database_name_delete.clone())),
+                    ("type", Cow::Borrowed("delete")),
+                    ("reducer", reducer_name),
+                ];
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
                 send_worker_message(
                     $worker_name,
@@ -1998,18 +2038,18 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         database_name: Arc<String>,
     },
     Insert {
-        event: Option<__sdk::Event<Reducer>>,
+        event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         new: T,
         database_name: Arc<String>,
     },
     Update {
-        event: Option<__sdk::Event<Reducer>>,
+        event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         old: T,
         new: T,
         database_name: Arc<String>,
     },
     Remove {
-        event: Option<__sdk::Event<Reducer>>,
+        event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         delete: T,
         database_name: Arc<String>,
     },
