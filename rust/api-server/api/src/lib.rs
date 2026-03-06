@@ -168,31 +168,57 @@ pub(crate) async fn create_db_connection(config: &Config) -> anyhow::Result<Data
             .split_whitespace()
             .take(4)
             .collect::<Vec<&str>>();
+        let table = extract_table_name(&arg.statement.sql).unwrap_or_else(|| "UNKNOWN".to_string());
 
         let labels = if let Some(possible_query_type) = first_parts.first() {
             if possible_query_type.eq(&"SELECT") || possible_query_type.eq(&"select") {
                 let method = "SELECT".to_string();
-                [("method", method), ("failed", arg.failed.to_string())]
+                [
+                    ("method", method),
+                    ("failed", arg.failed.to_string()),
+                    ("table", table),
+                ]
             } else if possible_query_type.eq(&"UPDATE") || possible_query_type.eq(&"update") {
                 let method = "UPDATE".to_string();
-                [("method", method), ("failed", arg.failed.to_string())]
+                [
+                    ("method", method),
+                    ("failed", arg.failed.to_string()),
+                    ("table", table),
+                ]
             } else if possible_query_type.eq(&"INSERT") || possible_query_type.eq(&"insert") {
                 let method = "INSERT".to_string();
-                [("method", method), ("failed", arg.failed.to_string())]
+                [
+                    ("method", method),
+                    ("failed", arg.failed.to_string()),
+                    ("table", table),
+                ]
             } else if possible_query_type.eq(&"ALTER") || possible_query_type.eq(&"alter") {
                 let method = "ALTER".to_string();
-                [("method", method), ("failed", arg.failed.to_string())]
+                [
+                    ("method", method),
+                    ("failed", arg.failed.to_string()),
+                    ("table", table),
+                ]
             } else if possible_query_type.eq(&"CREATE") || possible_query_type.eq(&"create") {
                 let method = "CREATE".to_string();
-                [("method", method), ("failed", arg.failed.to_string())]
+                [
+                    ("method", method),
+                    ("failed", arg.failed.to_string()),
+                    ("table", table),
+                ]
             } else if possible_query_type.eq(&"DELETE") || possible_query_type.eq(&"delete") {
                 let method = "DELETE".to_string();
-                [("method", method), ("failed", arg.failed.to_string())]
+                [
+                    ("method", method),
+                    ("failed", arg.failed.to_string()),
+                    ("table", table),
+                ]
             } else {
                 tracing::info!("Could not find type for {possible_query_type}");
                 [
                     ("method", "UNKNOWN".to_string()),
                     ("failed", arg.failed.to_string()),
+                    ("table", table),
                 ]
             }
         } else {
@@ -200,6 +226,7 @@ pub(crate) async fn create_db_connection(config: &Config) -> anyhow::Result<Data
             [
                 ("method", "UNKNOWN".to_string()),
                 ("failed", arg.failed.to_string()),
+                ("table", table),
             ]
         };
 
@@ -210,6 +237,29 @@ pub(crate) async fn create_db_connection(config: &Config) -> anyhow::Result<Data
     connection.ping().await?;
 
     Ok(connection)
+}
+
+fn extract_table_name(sql: &str) -> Option<String> {
+    let tokens: Vec<&str> = sql.split_whitespace().collect();
+    let mut find_next = |keyword: &str| -> Option<&str> {
+        tokens
+            .iter()
+            .position(|token| token.eq_ignore_ascii_case(keyword))
+            .and_then(|index| tokens.get(index + 1).copied())
+    };
+
+    let candidate = find_next("from")
+        .or_else(|| find_next("into"))
+        .or_else(|| find_next("update"))
+        .or_else(|| find_next("table"));
+
+    candidate.map(|token| {
+        let token = token
+            .trim_matches(|c: char| c == ';' || c == ',' || c == ')' || c == '(')
+            .trim_matches(|c: char| c == '"' || c == '`' || c == '[' || c == ']');
+        let token = token.split('(').next().unwrap_or(token);
+        token.to_string()
+    })
 }
 
 #[derive(Deserialize)]
