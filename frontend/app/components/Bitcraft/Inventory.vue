@@ -53,107 +53,107 @@ watchThrottled(
 </script>
 
 <template>
-  <template v-if="inventory">
-    <div v-bind="$attrs">
-      <v-card class="mb-5" elevation="2" >
-        <v-list-item class="pa-4">
-          <template #title>
-            <span class="text-h6">Inventory: </span>
-            <strong class="text-secondary">{{ inventory.nickname || inventory.entity_id.toString() }}</strong>
-            <template v-if="inventory.claim">
-              &nbsp;
-              <span class="text-h6">Claim: </span>
-              <nuxt-link class="text-primary text-decoration-none text-high-emphasis font-weight-black"
-                         :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id } }"
-              >
-                <strong>{{ inventory.claim.name }} (<bitcraft-region :region="inventory.claim.region" />)</strong>
-              </nuxt-link>
+<!--  <template v-if="inventory">-->
+<!--    <div v-bind="$attrs">-->
+<!--      <v-card class="mb-5" elevation="2" >-->
+<!--        <v-list-item class="pa-4">-->
+<!--          <template #title>-->
+<!--            <span class="text-h6">Inventory: </span>-->
+<!--            <strong class="text-secondary">{{ inventory.nickname || inventory.entity_id.toString() }}</strong>-->
+<!--            <template v-if="inventory.claim">-->
+<!--              &nbsp;-->
+<!--              <span class="text-h6">Claim: </span>-->
+<!--              <nuxt-link class="text-primary text-decoration-none text-high-emphasis font-weight-black"-->
+<!--                         :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id } }"-->
+<!--              >-->
+<!--                <strong>{{ inventory.claim.name }} (<bitcraft-region :region="inventory.claim.region" />)</strong>-->
+<!--              </nuxt-link>-->
 
-            </template>
-          </template>
-          <template #append>
-            <v-checkbox v-model="showChangelog" label="Show Changelog" hide-details density="compact"></v-checkbox>
-          </template>
-          <template #subtitle>
-                Item: {{ itemPockets.filter(p => !!p.contents).length }}/{{ itemPockets.length }}
-                Cargo: {{ cargoPockets.filter(p => !!p.contents).length }}/{{ cargoPockets.length }}
-          </template>
-        </v-list-item>
+<!--            </template>-->
+<!--          </template>-->
+<!--          <template #append>-->
+<!--            <v-checkbox v-model="showChangelog" label="Show Changelog" hide-details density="compact"></v-checkbox>-->
+<!--          </template>-->
+<!--          <template #subtitle>-->
+<!--                Item: {{ itemPockets.filter(p => !!p.contents).length }}/{{ itemPockets.length }}-->
+<!--                Cargo: {{ cargoPockets.filter(p => !!p.contents).length }}/{{ cargoPockets.length }}-->
+<!--          </template>-->
+<!--        </v-list-item>-->
 
-        <v-divider></v-divider>
+<!--        <v-divider></v-divider>-->
 
-        <v-card-text>
+<!--        <v-card-text>-->
 
 
-          <v-row dense class="inventory-container pa-2 rounded-lg">
-            <v-col
-                v-for="(pocket, index) in inventory.pockets.filter(pocket => !!pocket.contents)"
-                :key="index"
-                cols="4"
-                sm="4"
-                md="3"
-                xl="1"
-                lg="2"
-                class="d-flex justify-center"
-            >
-              <v-sheet
-                  border
-                  rounded
-                  class="inventory-slot-box d-flex align-center justify-center position-relative border-lg"
-                  :class="`bg-color-tier-${pocket.contents.item.tier} border-color-rarity-${pocket.contents.item.rarity.toLowerCase()}`"
-                  :elevation="pocket.contents ? 2 : 0"
-              >
-                <template v-if="pocket.contents">
-                  <v-tooltip activator="parent" location="top" transition="fade-transition">
-                    <div class="text-center">
-                      <div :class="`font-weight-bold text-${getTierColor(pocket.contents.item.tier)} text-uppercase`">
-                        {{ pocket.contents.item.name }}
-                      </div>
-                      <div class="text-caption">Rarity: {{ pocket.contents.item.rarity }}</div>
-                    </div>
-                  </v-tooltip>
+<!--          <v-row dense class="inventory-container pa-2 rounded-lg">-->
+<!--            <v-col-->
+<!--                v-for="(pocket, index) in inventory.pockets.filter(pocket => !!pocket.contents)"-->
+<!--                :key="index"-->
+<!--                cols="4"-->
+<!--                sm="4"-->
+<!--                md="3"-->
+<!--                xl="1"-->
+<!--                lg="2"-->
+<!--                class="d-flex justify-center"-->
+<!--            >-->
+<!--              <v-sheet-->
+<!--                  border-->
+<!--                  rounded-->
+<!--                  class="inventory-slot-box d-flex align-center justify-center position-relative border-lg"-->
+<!--                  :class="`bg-color-tier-${pocket.contents.item.tier} border-color-rarity-${pocket.contents.item.rarity.toLowerCase()}`"-->
+<!--                  :elevation="pocket.contents ? 2 : 0"-->
+<!--              >-->
+<!--                <template v-if="pocket.contents">-->
+<!--                  <v-tooltip activator="parent" location="top" transition="fade-transition">-->
+<!--                    <div class="text-center">-->
+<!--                      <div :class="`font-weight-bold text-${getTierColor(pocket.contents.item.tier)} text-uppercase`">-->
+<!--                        {{ pocket.contents.item.name }}-->
+<!--                      </div>-->
+<!--                      <div class="text-caption">Rarity: {{ pocket.contents.item.rarity }}</div>-->
+<!--                    </div>-->
+<!--                  </v-tooltip>-->
 
-                  <div class="tier-label" :class="`text-${getTierColor(pocket.contents.item.tier)}`">
-                    T{{ pocket.contents.item.tier }}
-                  </div>
+<!--                  <div class="tier-label" :class="`text-${getTierColor(pocket.contents.item.tier)}`">-->
+<!--                    T{{ pocket.contents.item.tier }}-->
+<!--                  </div>-->
 
-                  <div class="item-icon text-h6 font-weight-black">
-                    <inventory-img :item="pocket.contents.item" />
-                  </div>
+<!--                  <div class="item-icon text-h6 font-weight-black">-->
+<!--                    <inventory-img :item="pocket.contents.item" />-->
+<!--                  </div>-->
 
-                  <div class="quantity-badge">
-                    {{ pocket.contents.quantity }}/{{ pocket.volume / (pocket.contents.item.volume == 0 ? 1 : pocket.contents.item.volume) }}
-                  </div>
-                </template>
+<!--                  <div class="quantity-badge">-->
+<!--                    {{ pocket.contents.quantity }}/{{ pocket.volume / (pocket.contents.item.volume == 0 ? 1 : pocket.contents.item.volume) }}-->
+<!--                  </div>-->
+<!--                </template>-->
 
-                <template v-else>
-                  <v-icon icon="mdi-dots-grid" color="disabled" size="small" opacity="0.2"></v-icon>
-                </template>
-              </v-sheet>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
+<!--                <template v-else>-->
+<!--                  <v-icon icon="mdi-dots-grid" color="disabled" size="small" opacity="0.2"></v-icon>-->
+<!--                </template>-->
+<!--              </v-sheet>-->
+<!--            </v-col>-->
+<!--          </v-row>-->
+<!--        </v-card-text>-->
+<!--      </v-card>-->
 
-      <v-fade-transition>
-        <v-card v-if="showChangelog" class="mt-4 shadow-lg">
-          <v-card-title class="bg-grey-lighten-4">History & Changes</v-card-title>
-          <v-card-text class="pt-4">
-            <v-row dense>
-              <v-col cols="12" sm="6">
-                <autocomplete-user @model_changed="(item) => playerId = item" />
-              </v-col>
-              <v-col cols="12" sm="6">
-                <autocomplete-item @model_changed="(item) => itemObject = item" />
-              </v-col>
-            </v-row>
-            <v-divider class="my-4"></v-divider>
-            <inventory-changes :items="InventoryChangesFetch" />
-          </v-card-text>
-        </v-card>
-      </v-fade-transition>
-    </div>
-  </template>
+<!--      <v-fade-transition>-->
+<!--        <v-card v-if="showChangelog" class="mt-4 shadow-lg">-->
+<!--          <v-card-title class="bg-grey-lighten-4">History & Changes</v-card-title>-->
+<!--          <v-card-text class="pt-4">-->
+<!--            <v-row dense>-->
+<!--              <v-col cols="12" sm="6">-->
+<!--                <autocomplete-user @model_changed="(item) => playerId = item" />-->
+<!--              </v-col>-->
+<!--              <v-col cols="12" sm="6">-->
+<!--                <autocomplete-item @model_changed="(item) => itemObject = item" />-->
+<!--              </v-col>-->
+<!--            </v-row>-->
+<!--            <v-divider class="my-4"></v-divider>-->
+<!--            <inventory-changes :items="InventoryChangesFetch" />-->
+<!--          </v-card-text>-->
+<!--        </v-card>-->
+<!--      </v-fade-transition>-->
+<!--    </div>-->
+<!--  </template>-->
 </template>
 
 <style scoped>

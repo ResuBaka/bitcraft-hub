@@ -113,69 +113,69 @@ useSeoMeta({
 </script>
 
 <template>
-  <v-container fluid>
-    <v-row>
-      <v-col>
-        <v-text-field
-            v-model="debouncedSearch"
-            label="Search"
-            outlined
-            dense
-            clearable
-        ></v-text-field>
-      </v-col>
-      <v-col>
-        <v-autocomplete
-            v-model="tag"
-            :items="metaData?.tags || []"
-            label="Tag"
-            outlined
-            dense
-            clearable
-        ></v-autocomplete>
-      </v-col>
-      <v-col>
-        <v-select
-            v-model="tier"
-            :items="metaData?.tiers || []"
-            label="Tier"
-            outlined
-            dense
-            clearable
-        ></v-select>
-      </v-col>
-    </v-row>
+<!--  <v-container fluid>-->
+<!--    <v-row>-->
+<!--      <v-col>-->
+<!--        <v-text-field-->
+<!--            v-model="debouncedSearch"-->
+<!--            label="Search"-->
+<!--            outlined-->
+<!--            dense-->
+<!--            clearable-->
+<!--        ></v-text-field>-->
+<!--      </v-col>-->
+<!--      <v-col>-->
+<!--        <v-autocomplete-->
+<!--            v-model="tag"-->
+<!--            :items="metaData?.tags || []"-->
+<!--            label="Tag"-->
+<!--            outlined-->
+<!--            dense-->
+<!--            clearable-->
+<!--        ></v-autocomplete>-->
+<!--      </v-col>-->
+<!--      <v-col>-->
+<!--        <v-select-->
+<!--            v-model="tier"-->
+<!--            :items="metaData?.tiers || []"-->
+<!--            label="Tier"-->
+<!--            outlined-->
+<!--            dense-->
+<!--            clearable-->
+<!--        ></v-select>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
 
-    <v-row>
-      <v-col>
-        <v-progress-linear
-            color="yellow-darken-2"
-            indeterminate
-            :active="pending"
-        ></v-progress-linear>
-      </v-col>
-    </v-row>
-    <template v-if="data">
-      <v-row>
-        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in data.items.filter(i => !i.name.includes('Package'))" :key="item.id">
-          <bitcraft-card-item :item="item"></bitcraft-card-item>
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col cols="12">
-          <v-pagination
-              @update:model-value="changePage"
-              v-model="page"
-              :length="data?.pages || 0"
-          ></v-pagination>
-        </v-col>
-      </v-row>
-    </template>
-    <template v-else>
-      <v-empty-state
-       headline="No items found"
-       text="Try changing your search criteria"
-      ></v-empty-state>
-    </template>
-  </v-container>
+<!--    <v-row>-->
+<!--      <v-col>-->
+<!--        <v-progress-linear-->
+<!--            color="yellow-darken-2"-->
+<!--            indeterminate-->
+<!--            :active="pending"-->
+<!--        ></v-progress-linear>-->
+<!--      </v-col>-->
+<!--    </v-row>-->
+<!--    <template v-if="data">-->
+<!--      <v-row>-->
+<!--        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in data.items.filter(i => !i.name.includes('Package'))" :key="item.id">-->
+<!--          <bitcraft-card-item :item="item"></bitcraft-card-item>-->
+<!--        </v-col>-->
+<!--      </v-row>-->
+<!--      <v-row>-->
+<!--        <v-col cols="12">-->
+<!--          <v-pagination-->
+<!--              @update:model-value="changePage"-->
+<!--              v-model="page"-->
+<!--              :length="data?.pages || 0"-->
+<!--          ></v-pagination>-->
+<!--        </v-col>-->
+<!--      </v-row>-->
+<!--    </template>-->
+<!--    <template v-else>-->
+<!--      <v-empty-state-->
+<!--       headline="No items found"-->
+<!--       text="Try changing your search criteria"-->
+<!--      ></v-empty-state>-->
+<!--    </template>-->
+<!--  </v-container>-->
 </template>

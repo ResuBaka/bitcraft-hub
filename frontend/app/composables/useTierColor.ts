@@ -1,8 +1,8 @@
 export const useTierColor = () => {
-  const theme = useTheme();
+  const colorMode = useColorMode();
   let colorEffect = "";
 
-  if (theme.global.current.value.dark) {
+  if (colorMode.value == "dark") {
   } else {
     colorEffect = "-darken-1";
   }

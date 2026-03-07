@@ -1,8 +1,8 @@
 export const levelToColor = (level: number) => {
-  const theme = useTheme();
+  const colorMode = useColorMode();
   let colorEffect = "";
 
-  if (theme.global.current.value.dark) {
+  if (colorMode.value == "dark") {
   } else {
     colorEffect = "-darken-4";
   }
@@ -40,8 +40,8 @@ export const levelToColor = (level: number) => {
 };
 
 export const getTierColor = (tier: number) => {
-  const theme = useTheme();
-  const colorEffect = theme.global.current.value.dark ? "" : "-darken-4";
+  const colorMode = useColorMode();
+  const colorEffect = colorMode.value == "dark" ? "" : "-darken-4";
   const colors: Record<number, string> = {
     1: `grey${colorEffect}`,
     2: `orange${colorEffect}`,

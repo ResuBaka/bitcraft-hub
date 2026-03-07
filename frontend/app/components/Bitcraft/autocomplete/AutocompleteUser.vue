@@ -51,17 +51,17 @@ watchThrottled(
 </script>
 
 <template>
-    <v-autocomplete
-                    @update:model-value="(item) => $emit('model_changed', item)"
-                    @update:search="(item) => $emit('search_changed', item)"
-                    v-model="player_id"
-                    v-model:search="player"
-                    :items="playerData?.players || []"
-                    item-title="username"
-                    item-value ="entity_id"
-                    label="player"
-                    outlined
-                    dense
-                    clearable
-                />
+<!--    <v-autocomplete-->
+<!--                    @update:model-value="(item) => $emit('model_changed', item)"-->
+<!--                    @update:search="(item) => $emit('search_changed', item)"-->
+<!--                    v-model="player_id"-->
+<!--                    v-model:search="player"-->
+<!--                    :items="playerData?.players || []"-->
+<!--                    item-title="username"-->
+<!--                    item-value ="entity_id"-->
+<!--                    label="player"-->
+<!--                    outlined-->
+<!--                    dense-->
+<!--                    clearable-->
+<!--                />-->
 </template>
