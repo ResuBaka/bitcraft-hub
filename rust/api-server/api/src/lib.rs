@@ -14,6 +14,9 @@ mod inventory;
 mod item_list_desc;
 mod items;
 mod items_and_cargo;
+#[cfg(feature = "bench")]
+pub mod leaderboard;
+#[cfg(not(feature = "bench"))]
 mod leaderboard;
 mod location_state;
 mod locations;

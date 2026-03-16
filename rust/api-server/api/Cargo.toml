@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.0"
 
+[features]
+bench = []
+
 [dependencies]
 sea-orm = { workspace = true }
 tokio = { workspace = true }
@@ -44,3 +47,11 @@ chrono =  { workspace = true }
 sea-orm-cli =  { workspace = true }
 crossbeam-skiplist = { version = "0.1.3" }
 jemalloc_pprof = "0.8.2"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "leaderboard_get_rank"
+harness = false
+required-features = ["bench"]

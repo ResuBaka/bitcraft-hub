@@ -10,6 +10,7 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
+use std::sync::RwLock;
 use std::sync::LazyLock;
 use ts_rs::TS;
 
@@ -192,7 +193,9 @@ pub(super) struct Leaderboard {
     // RwLock protects the sorted order for ranking
     sorted_ranks: SkipSet<(i64, i64)>,
     // Bucketed counts for faster rank lookups
-    bucket_counts: DashMap<i64, usize>,
+    bucket_counts: RwLock<BTreeMap<i64, usize>>,
+    // Exact XP counts to avoid scanning full buckets
+    xp_counts: RwLock<BTreeMap<i64, usize>>,
 }
 
 impl Default for Leaderboard {
@@ -200,7 +203,8 @@ impl Default for Leaderboard {
         Self {
             scores: DashMap::new(),
             sorted_ranks: SkipSet::new(),
-            bucket_counts: DashMap::new(),
+            bucket_counts: RwLock::new(BTreeMap::new()),
+            xp_counts: RwLock::new(BTreeMap::new()),
         }
     }
 }
@@ -269,39 +273,66 @@ impl Leaderboard {
     }
 
     pub(crate) fn bucket_distribution(&self) -> Vec<BucketDistribution> {
-        let mut buckets: Vec<BucketDistribution> = self
+        let bucket_counts = self
             .bucket_counts
+            .read()
+            .expect("bucket_counts lock poisoned");
+
+        bucket_counts
             .iter()
-            .map(|entry| {
-                let bucket = *entry.key();
-                let (min_xp, max_xp) = Self::bucket_bounds(bucket);
+            .map(|(bucket, count)| {
+                let (min_xp, max_xp) = Self::bucket_bounds(*bucket);
 
                 BucketDistribution {
-                    bucket,
+                    bucket: *bucket,
                     min_xp,
                     max_xp,
-                    count: *entry.value(),
+                    count: *count,
                 }
             })
-            .collect();
-
-        buckets.sort_by_key(|bucket| bucket.bucket);
-        buckets
+            .collect()
     }
 
     fn increment_bucket(&self, bucket: i64) {
-        let mut entry = self.bucket_counts.entry(bucket).or_insert(0);
-        *entry += 1;
+        let mut bucket_counts = self
+            .bucket_counts
+            .write()
+            .expect("bucket_counts lock poisoned");
+        *bucket_counts.entry(bucket).or_insert(0) += 1;
     }
 
     fn decrement_bucket(&self, bucket: i64) {
-        if let Some(mut entry) = self.bucket_counts.get_mut(&bucket) {
+        let mut bucket_counts = self
+            .bucket_counts
+            .write()
+            .expect("bucket_counts lock poisoned");
+
+        if let Some(entry) = bucket_counts.get_mut(&bucket) {
             if *entry > 0 {
                 *entry -= 1;
             }
+
             if *entry == 0 {
-                drop(entry);
-                self.bucket_counts.remove(&bucket);
+                bucket_counts.remove(&bucket);
+            }
+        }
+    }
+
+    fn increment_xp_count(&self, xp: i64) {
+        let mut xp_counts = self.xp_counts.write().expect("xp_counts lock poisoned");
+        *xp_counts.entry(xp).or_insert(0) += 1;
+    }
+
+    fn decrement_xp_count(&self, xp: i64) {
+        let mut xp_counts = self.xp_counts.write().expect("xp_counts lock poisoned");
+
+        if let Some(entry) = xp_counts.get_mut(&xp) {
+            if *entry > 0 {
+                *entry -= 1;
+            }
+
+            if *entry == 0 {
+                xp_counts.remove(&xp);
             }
         }
     }
@@ -319,6 +350,7 @@ impl Leaderboard {
         if old_xp != new_xp || self.sorted_ranks.contains(&(old_xp, user_id)) {
             if self.sorted_ranks.remove(&(old_xp, user_id)).is_some() {
                 self.decrement_bucket(Self::bucket_for(old_xp));
+                self.decrement_xp_count(old_xp);
             }
         }
 
@@ -326,6 +358,7 @@ impl Leaderboard {
         *current_xp_ref = new_xp;
         self.sorted_ranks.insert((new_xp, user_id));
         self.increment_bucket(Self::bucket_for(new_xp));
+        self.increment_xp_count(new_xp);
     }
 
     pub(super) fn has(&self, user_id: &i64) -> bool {
@@ -343,34 +376,54 @@ impl Leaderboard {
     pub(super) fn get_rank(&self, user_id: i64) -> Option<usize> {
         let xp = self.scores.get(&user_id).map(|entry| *entry.value())?;
         let bucket = Self::bucket_for(xp);
-        let (bucket_min, bucket_max) = Self::bucket_bounds(bucket);
+        let (_, bucket_max) = Self::bucket_bounds(bucket);
 
-        let higher_count: usize = self
+        let bucket_counts = self
             .bucket_counts
-            .iter()
-            .filter(|entry| *entry.key() > bucket)
-            .map(|entry| *entry.value())
+            .read()
+            .expect("bucket_counts lock poisoned");
+        let higher_count: usize = bucket_counts
+            .range((bucket + 1)..)
+            .map(|(_, count)| *count)
             .sum();
+        if !bucket_counts.contains_key(&bucket) {
+            return None;
+        }
+        drop(bucket_counts);
 
-        let mut within_bucket_rank = 0usize;
+        let xp_counts = self.xp_counts.read().expect("xp_counts lock poisoned");
+        let above_same_bucket_higher_xp: usize = if xp >= bucket_max {
+            0
+        } else {
+            xp_counts
+                .range((xp + 1)..=bucket_max)
+                .map(|(_, count)| *count)
+                .sum()
+        };
+        let same_xp_count = *xp_counts.get(&xp)?;
+        drop(xp_counts);
+
+        let key = (xp, user_id);
+        let mut tie_rank_from_top = 0usize;
         let mut found = false;
-        for entry in self
-            .sorted_ranks
-            .range((bucket_min, i64::MIN)..=(bucket_max, i64::MAX))
-            .rev()
-        {
-            within_bucket_rank += 1;
-            if entry.value().1 == user_id {
+
+        for entry in self.sorted_ranks.range(key..=(xp, i64::MAX)).rev() {
+            tie_rank_from_top += 1;
+            if *entry.value() == key {
                 found = true;
                 break;
             }
         }
 
-        if found {
-            Some(higher_count + within_bucket_rank)
-        } else {
-            None
+        if !found {
+            return None;
         }
+
+        if tie_rank_from_top > same_xp_count {
+            return None;
+        }
+
+        Some(higher_count + above_same_bucket_higher_xp + tie_rank_from_top)
     }
 
     pub(super) fn remove(&self, user_id: i64) {
@@ -379,6 +432,7 @@ impl Leaderboard {
         if let Some(x) = xp {
             if self.sorted_ranks.remove(&(x, user_id)).is_some() {
                 self.decrement_bucket(Self::bucket_for(x));
+                self.decrement_xp_count(x);
             }
         }
     }
@@ -400,6 +454,42 @@ impl Leaderboard {
                 }
             })
             .collect()
+    }
+}
+
+#[cfg(feature = "bench")]
+pub struct LeaderboardBenchHarness {
+    leaderboard: Leaderboard,
+    user_ids: Vec<i64>,
+}
+
+#[cfg(feature = "bench")]
+impl LeaderboardBenchHarness {
+    pub fn new(player_count: usize) -> Self {
+        let leaderboard = Leaderboard::default();
+        let mut user_ids = Vec::with_capacity(player_count);
+
+        for idx in 0..player_count {
+            let user_id = (idx as i64) + 1;
+            let xp = (idx as i64) * 137 + ((idx as i64) % 53) * 17;
+            leaderboard.update(user_id, xp);
+            user_ids.push(user_id);
+        }
+
+        Self {
+            leaderboard,
+            user_ids,
+        }
+    }
+
+    pub fn user_at_percentile(&self, percentile: usize) -> i64 {
+        let max_idx = self.user_ids.len().saturating_sub(1);
+        let idx = ((max_idx as u128) * (percentile.min(100) as u128) / 100u128) as usize;
+        self.user_ids[idx]
+    }
+
+    pub fn get_rank(&self, user_id: i64) -> Option<usize> {
+        self.leaderboard.get_rank(user_id)
     }
 }
 
@@ -815,21 +905,35 @@ pub(crate) async fn player_leaderboard(
         ));
     }
 
-    let rank = state.ranking_system.global_leaderboard.get_rank(player_id);
-    let total_experience = state
+    let rank = if let Some (rank) = state.ranking_system.global_leaderboard.get_rank(player_id) {
+        rank
+    } else {
+        tracing::warn!(player_id,"Could not find total experience rank for player");
+
+        0
+    };
+
+    let total_experience = if let Some (total_experience) = state
         .ranking_system
         .global_leaderboard
         .scores
-        .get(&player_id);
+        .get(&player_id) {
+        total_experience.value().clone()
+    } else {
+        tracing::warn!(player_id, "Could not find total experience xp for player");
+
+        0
+    };
+
 
     results.push((
         "Experience".to_string(),
         RankType::Experience(LeaderboardExperience {
             player_id,
             player_name: None,
-            experience: total_experience.unwrap().value().clone(),
+            experience: total_experience,
             experience_per_hour: 0,
-            rank: rank.unwrap() as u64,
+            rank: rank as u64,
         }),
     ));
 
