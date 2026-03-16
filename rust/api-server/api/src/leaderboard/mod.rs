@@ -10,8 +10,8 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
-use std::sync::RwLock;
 use std::sync::LazyLock;
+use std::sync::RwLock;
 use ts_rs::TS;
 
 #[macro_export]
@@ -276,7 +276,7 @@ impl Leaderboard {
         let bucket_counts = self
             .bucket_counts
             .read()
-            .expect("bucket_counts lock poisoned");
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         bucket_counts
             .iter()
@@ -297,7 +297,7 @@ impl Leaderboard {
         let mut bucket_counts = self
             .bucket_counts
             .write()
-            .expect("bucket_counts lock poisoned");
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         *bucket_counts.entry(bucket).or_insert(0) += 1;
     }
 
@@ -305,7 +305,7 @@ impl Leaderboard {
         let mut bucket_counts = self
             .bucket_counts
             .write()
-            .expect("bucket_counts lock poisoned");
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if let Some(entry) = bucket_counts.get_mut(&bucket) {
             if *entry > 0 {
@@ -319,12 +319,18 @@ impl Leaderboard {
     }
 
     fn increment_xp_count(&self, xp: i64) {
-        let mut xp_counts = self.xp_counts.write().expect("xp_counts lock poisoned");
+        let mut xp_counts = self
+            .xp_counts
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         *xp_counts.entry(xp).or_insert(0) += 1;
     }
 
     fn decrement_xp_count(&self, xp: i64) {
-        let mut xp_counts = self.xp_counts.write().expect("xp_counts lock poisoned");
+        let mut xp_counts = self
+            .xp_counts
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if let Some(entry) = xp_counts.get_mut(&xp) {
             if *entry > 0 {
@@ -381,7 +387,7 @@ impl Leaderboard {
         let bucket_counts = self
             .bucket_counts
             .read()
-            .expect("bucket_counts lock poisoned");
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let higher_count: usize = bucket_counts
             .range((bucket + 1)..)
             .map(|(_, count)| *count)
@@ -391,7 +397,10 @@ impl Leaderboard {
         }
         drop(bucket_counts);
 
-        let xp_counts = self.xp_counts.read().expect("xp_counts lock poisoned");
+        let xp_counts = self
+            .xp_counts
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let above_same_bucket_higher_xp: usize = if xp >= bucket_max {
             0
         } else {
