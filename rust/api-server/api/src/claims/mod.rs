@@ -157,7 +157,7 @@ pub(crate) struct ClaimDescriptionStateMember {
     pub officer_permission: bool,
     pub co_owner_permission: bool,
     pub online_state: OnlineState,
-    pub skills_ranks: Option<BTreeMap<String, LeaderboardSkill>>,
+    pub skills_ranks: Option<BTreeMap<String, i32>>,
     pub inventory: Option<ResolvedInventory>,
 }
 
@@ -246,15 +246,19 @@ pub(crate) async fn get_claim(
     axum_codec::Codec<ClaimDescriptionStateWithInventoryAndPlayTime>,
     (StatusCode, &'static str),
 > {
-    let claim = QueryCore::find_claim_state(&state.conn, id as i64)
-        .await
-        .expect("Cannot find posts in page");
+    let mut claim = match state.claim_state.get(&(id as i64)) {
+        Some(claim) => claim.clone(),
+        None => {
+            let claim = QueryCore::find_claim_state(&state.conn, id as i64)
+                .await
+                .expect("Cannot find posts in page");
+            if claim.is_none() {
+                return Err((StatusCode::NOT_FOUND, "Claim not found"));
+            }
 
-    if claim.is_none() {
-        return Err((StatusCode::NOT_FOUND, "Claim not found"));
-    }
-
-    let claim = claim.unwrap();
+            claim.unwrap()
+        }
+    };
 
     let claim_tech_states =
         QueryCore::find_claim_tech_state_by_ids(&state.conn, vec![claim.entity_id])
@@ -397,69 +401,60 @@ pub(crate) async fn get_claim(
         }
     }
 
-    let mut tasks: ClaimLeaderboardTasks = vec![];
-    let player_ids = claim
-        .members
-        .iter()
-        .map(|member| member.entity_id)
-        .collect::<Vec<i64>>();
-
-    for skill in state.skill_desc.iter() {
-        if skill.name == "ANY" {
-            continue;
-        }
-
-        if skill.name == "Lore Keeper" {
-            continue;
-        }
-
-        if skill.name == "Trading" {
-            continue;
-        }
-
-        if skill.name == "Taming" {
-            continue;
-        }
-
-        if skill.name == "Exploration" {
-            continue;
-        }
-
-        let db = state.conn.clone();
-        let player_ids = player_ids.clone();
-
-        let skill_id = skill.id;
-        let skill_name = skill.name.clone();
-        tasks.push(tokio::spawn(async move {
-            let mut leaderboard: Vec<LeaderboardSkill> = Vec::new();
-            let entries = service::Query::get_experience_state_player_ids_by_skill_id(
-                &db,
-                skill_id,
-                player_ids,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            )
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
-
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
-
-            for (i, entry) in entries.into_iter().enumerate() {
-                let rank = i + 1;
-                let player_name = None;
-
-                leaderboard.push(LeaderboardSkill {
-                    player_id: entry.entity_id,
-                    player_name,
-                    experience: entry.experience,
-                    level: experience_to_level(entry.experience as i64),
-                    rank: rank as u64,
-                });
+    for member in claim.members.iter_mut() {
+        for skill in state.skill_desc.iter() {
+            if skill.skill_category == 0 {
+                continue;
             }
 
-            Ok((skill_name, leaderboard))
-        }));
+            let level = if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id) {
+                if let Some(a) = a.scores.get(&member.entity_id) {
+                    experience_to_level(a.clone())
+                } else {
+                    let db = state.conn.clone();
+                    let (entrie, _rank) = service::Query::get_experience_state_player_by_skill_id(
+                        &db,
+                        skill.id,
+                        member.entity_id,
+                        Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
+                    )
+                    .await
+                    .map_err(|error| {
+                        error!("Error: {error}");
+
+                        (StatusCode::INTERNAL_SERVER_ERROR, "")
+                    })?;
+
+                    if let Some(result) = entrie {
+                        state
+                            .ranking_system
+                            .skill_leaderboards
+                            .get(&skill.id)
+                            .unwrap()
+                            .update(member.entity_id.clone(), result.experience as i64);
+
+                        experience_to_level(result.experience as i64)
+                    } else {
+                        tracing::warn!(
+                            member.entity_id,
+                            skill_id = skill.id,
+                            "Could not find player skill experience"
+                        );
+
+                        0
+                    }
+                }
+            } else {
+                continue;
+            };
+
+            if member.skills_ranks.is_none() {
+                member.skills_ranks = Some(BTreeMap::new());
+            }
+
+            let skills_ranks = member.skills_ranks.as_mut().unwrap();
+            skills_ranks.insert(skill.name.clone(), level);
+        }
     }
     for member in &mut claim.members {
         let (inventorys, _num_pages) = QueryCore::find_inventory_by_owner_entity_ids_and_index(
@@ -487,39 +482,6 @@ pub(crate) async fn get_claim(
                 nickname: None,
                 claim: None,
             });
-        }
-    }
-
-    let results = futures::future::join_all(tasks).await;
-
-    for result in results {
-        if let Err(err) = result {
-            error!("Error: {err:?}");
-            continue;
-        }
-
-        let result = result.unwrap();
-
-        if let Err(err) = result {
-            error!("Error: {err:?}");
-            continue;
-        }
-
-        let (key, value) = result?;
-
-        for member in &mut claim.members {
-            let leaderboard = value
-                .iter()
-                .find(|entry| entry.player_id == member.entity_id);
-
-            if let Some(leaderboard) = leaderboard {
-                if member.skills_ranks.is_none() {
-                    member.skills_ranks = Some(BTreeMap::new());
-                }
-
-                let skills_ranks = member.skills_ranks.as_mut().unwrap();
-                skills_ranks.insert(key.clone(), leaderboard.clone());
-            }
         }
     }
 

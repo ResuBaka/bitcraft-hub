@@ -84,7 +84,9 @@ pub async fn list_players(
             let player_username = player_usernames
                 .iter()
                 .find(|player_username| player_username.entity_id == player.entity_id)
-                .unwrap();
+                .map_or("".into(), |player_username| {
+                    player_username.username.clone()
+                });
 
             player_state::PlayerStateMerged {
                 entity_id: player.entity_id as u64,
@@ -95,7 +97,7 @@ pub async fn list_players(
                 signed_in: player.signed_in,
                 traveler_tasks_expiration: player.traveler_tasks_expiration,
                 teleport_location: player.teleport_location,
-                username: player_username.username.clone(),
+                username: player_username,
             }
         })
         .collect::<Vec<player_state::PlayerStateMerged>>();

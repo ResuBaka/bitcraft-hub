@@ -3,7 +3,7 @@ use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::item_list_desc;
 use game_module::module_bindings::ItemListDesc;
 use migration::{OnConflict, sea_query};
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -162,7 +162,11 @@ pub(crate) fn start_worker_item_list_desc(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(ItemListDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ItemListDesc");
+                        tracing::error!(
+                            ItemListDesc = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete ItemListDesc"
+                        );
                     }
                 }
                 messages_delete.clear();

@@ -94,6 +94,15 @@ export default defineNuxtConfig({
     experimental: {
       enableNativePlugin: true,
     },
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        '@antfu/utils',
+        '@vueuse/shared',
+        'msgpackr/unpack',
+      ]
+    },
     $server: {
       build: {
         target: 'esnext',

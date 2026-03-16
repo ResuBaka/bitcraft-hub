@@ -39,6 +39,7 @@ use crate::user_state::bitcraft::start_worker_user_state;
 use crate::vault_state::bitcraft::start_worker_vault_state_collectibles;
 use game_module::module_bindings::*;
 use serde::{Deserialize, Serialize};
+use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Table, TableWithPrimaryKey, credentials,
@@ -48,7 +49,6 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
-use spacetimedb_sdk::__codegen::Reducer;
 use ts_rs::TS;
 
 fn send_worker_message<T>(
@@ -807,8 +807,8 @@ async fn connect_to_db_logic(
         "traveler_task_state",
         // "trade_order_state",
         // @todo this only temp until it can get fixed
-        // "buy_order_state",
-        // "sell_order_state",
+        "buy_order_state",
+        "sell_order_state",
         "npc_desc",
         "interior_network_desc",
         "dimension_description_state",
@@ -1671,7 +1671,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
                 let tmp_building_state_tx = building_state_tx.clone();
                 let tmp_building_desc_tx = building_desc_tx.clone();
-                let tmp_location_state_tx = location_state_tx.clone();
                 let tmp_building_nickname_state_tx = building_nickname_state_tx.clone();
                 let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone();
                 let tmp_item_list_desc_tx = item_list_desc_tx.clone();

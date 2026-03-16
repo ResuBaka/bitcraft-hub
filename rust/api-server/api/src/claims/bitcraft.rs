@@ -6,7 +6,7 @@ use game_module::module_bindings::{
 };
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, TryIntoModel};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, TryIntoModel};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -164,7 +164,11 @@ pub(crate) fn start_worker_claim_state(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(ClaimState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimState");
+                        tracing::error!(
+                            ClaimState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete ClaimState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -222,142 +226,134 @@ pub(crate) fn start_worker_claim_local_state(
             let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
-            let mut buffer = Vec::with_capacity(batch_size + 10);
 
             loop {
-                buffer.clear();
-                let fill_buffer_with = batch_size
-                    .saturating_sub(buffer.len())
-                    .saturating_sub(messages.len());
-
                 tokio::select! {
-                    count = rx.recv_many(&mut buffer, fill_buffer_with) => {
-                        record_worker_received("claim_local_state", count);
-                        for msg in buffer.drain(..) {
-                            match msg {
-                                SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                    let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                    let mut currently_known_claim_local_state = ::entity::claim_local_state::Entity::find()
-                                        .filter(::entity::claim_local_state::Column::Region.eq(database_name.to_string()))
-                                        .all(&global_app_state.conn)
-                                        .await
-                                        .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole claim_local_state state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
-                                        .into_iter()
-                                        .map(|value| (value.entity_id, value))
-                                        .collect::<HashMap<_, _>>();
+                    Some(msg) = rx.recv() => {
+                        record_worker_received("claim_local_state", 1);
+                        match msg {
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
+                                let mut currently_known_claim_local_state = ::entity::claim_local_state::Entity::find()
+                                    .filter(::entity::claim_local_state::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole claim_local_state state"
+                                        );
+                                        vec![]
+                                    },|aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
 
-                                    for model in data.into_iter().map(|value| {
-                                        let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
-                                        model
-                                    }) {
-                                        let org_id = model.entity_id;
-                                        global_app_state.claim_local_state.insert(org_id as u64, model.clone());
-                                        let _ = global_app_state.tx
-                                            .send(WebSocketMessages::ClaimLocalState(
-                                                model.clone(),
-                                            ));
+                                    model
+                                }) {
+                                    let org_id = model.entity_id;
+                                    global_app_state.claim_local_state.insert(org_id as u64, model.clone());
+                                    let _ = global_app_state.tx
+                                        .send(WebSocketMessages::ClaimLocalState(
+                                            model.clone(),
+                                        ));
 
-                                        use std::collections::hash_map::Entry;
-                                        match currently_known_claim_local_state.entry(model.entity_id) {
-                                            Entry::Occupied(entry) => {
-                                                let existing_model = entry.get();
-                                                if &model != existing_model {
-                                                    local_messages.push(model.into_active_model());
-                                                }
-                                                entry.remove();
-                                            }
-                                            Entry::Vacant(_entry) => {
+                                    use std::collections::hash_map::Entry;
+                                    match currently_known_claim_local_state.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
                                                 local_messages.push(model.into_active_model());
                                             }
+                                            entry.remove();
                                         }
-                                        if local_messages.len() >= batch_size {
-                                           insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                        }
-                                    };
-                                    if !local_messages.is_empty() {
-                                        insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    }
-
-                                    for chunk_ids in currently_known_claim_local_state.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                        let chunk_ids = chunk_ids.to_vec();
-                                        if let Err(error) = ::entity::claim_local_state::Entity::delete_many().filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
-                                            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                            tracing::error!(ClaimLocalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimLocalState");
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
                                         }
                                     }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                 }
-                                SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                    let org_id = new.entity_id;
-                                    let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
-                                    global_app_state.claim_local_state.insert(org_id, model.clone());
 
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-
-                                    if let Some(index) = messages.iter().position(|value: &::entity::claim_local_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
-                                    messages.push(model.clone().into_active_model());
-
-                                    let _ = global_app_state.tx
-                                        .send(WebSocketMessages::ClaimLocalState(
-                                            model,
-                                        ));
-
-                                    if messages.len() >= batch_size {
-                                        insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut messages)
-                                            .await;
+                                for chunk_ids in currently_known_claim_local_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::claim_local_state::Entity::delete_many().filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(ClaimLocalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimLocalState");
                                     }
                                 }
-                                SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
-                                    let org_id = new.entity_id;
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let org_id = new.entity_id;
+                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                global_app_state.claim_local_state.insert(org_id, model.clone());
 
-                                    if (old.treasury + 1) == new.treasury {
-                                        metrics::counter!("claim_treasury_hex_production_count", &[("region", database_name.to_string()), ("claim_id", org_id.to_string())]).increment(1);
-                                    }
-
-                                    let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
-
-                                    global_app_state.claim_local_state.insert(org_id, model.clone());
-
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
-                                    messages.push(model.clone().into_active_model());
-
-                                    let _ = global_app_state.tx
-                                        .send(WebSocketMessages::ClaimLocalState(
-                                            model,
-                                        ));
-
-                                    if messages.len() >= batch_size {
-                                        insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut messages)
-                                            .await;
-                                    }
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
                                 }
-                                SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                    let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
-                                    let id = model.entity_id;
 
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
-                                    global_app_state.claim_local_state.remove(&(model.entity_id as u64));
-                                    messages_delete.push(id);
-                                    if messages_delete.len() >= batch_size {
-                                        break;
-                                    }
+                                if let Some(index) = messages.iter().position(|value: &::entity::claim_local_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                messages.push(model.clone().into_active_model());
+
+                                let _ = global_app_state.tx
+                                    .send(WebSocketMessages::ClaimLocalState(
+                                        model,
+                                    ));
+
+                                if messages.len() >= batch_size {
+                                    insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut messages)
+                                        .await;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
+                                let org_id = new.entity_id;
+
+                                if (old.treasury + 1) == new.treasury {
+                                    metrics::counter!("claim_treasury_hex_production_count", &[("region", database_name.to_string()), ("claim_id", org_id.to_string())]).increment(1);
+                                }
+
+                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+
+                                global_app_state.claim_local_state.insert(org_id, model.clone());
+
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                messages.push(model.clone().into_active_model());
+
+                                let _ = global_app_state.tx
+                                    .send(WebSocketMessages::ClaimLocalState(
+                                        model,
+                                    ));
+
+                                if messages.len() >= batch_size {
+                                    insert_multiple_claim_local_state(&global_app_state, &on_conflict, &mut messages)
+                                        .await;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let id = model.entity_id;
+
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                global_app_state.claim_local_state.remove(&(model.entity_id as u64));
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -386,13 +382,19 @@ pub(crate) fn start_worker_claim_local_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::claim_local_state::Entity::delete_many()
-                        .filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(ClaimLocalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimLocalState");
+                        tracing::error!(
+                            ClaimLocalState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete ClaimLocalState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -576,13 +578,19 @@ pub(crate) fn start_worker_claim_member_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::claim_member_state::Entity::delete_many()
-                        .filter(::entity::claim_member_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::claim_member_state::Column::EntityId.is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(ClaimMemberState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimMemberState");
+                        tracing::error!(
+                            ClaimMemberState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete ClaimMemberState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -770,13 +778,19 @@ pub(crate) fn start_worker_claim_tech_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::claim_tech_state::Entity::delete_many()
-                        .filter(::entity::claim_tech_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::claim_tech_state::Column::EntityId.is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(ClaimTechState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimTechState");
+                        tracing::error!(
+                            ClaimTechState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete ClaimTechState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -957,7 +971,11 @@ pub(crate) fn start_worker_claim_tech_desc(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(ClaimTechDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimTechDesc");
+                        tracing::error!(
+                            ClaimTechDesc = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete ClaimTechDesc"
+                        );
                     }
                 }
                 messages_delete.clear();

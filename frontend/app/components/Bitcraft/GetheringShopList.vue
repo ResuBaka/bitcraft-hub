@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import type { CargoDesc } from "~/types/CargoDesc";
@@ -12,21 +11,48 @@ const props = defineProps<{
   cargo_desc: { [key in number]?: CargoDesc };
 }>();
 const desc = computed(() => {
-  let desc;
+  let desc: ItemDesc | CargoDesc | undefined;
 
-  if (props.type == "Item") {
+  if (props.type === "Item") {
     desc = props.item_desc[props.id];
   } else {
     desc = props.cargo_desc[props.id];
   }
   return desc;
 });
+
+const iconUrl = computed(() => {
+  const iconName = desc.value?.icon_asset_name;
+  if (!iconName) return null;
+  const icon = iconAssetUrlNameRandom(iconName);
+  return icon.show ? icon.url : null;
+});
 </script>
 <template>
-<!--    <v-list-item v-if="desc !== undefined" >-->
-<!--      <v-badge :content="Intl.NumberFormat().format(quantity)" location="right" class="align-start" offset-x="-10">-->
-<!--        <v-list-item-title class="align-content-center">{{ desc.name }}</v-list-item-title>-->
-<!--        <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="type == 'Item' ? 75 : 128"></v-img>-->
-<!--      </v-badge>-->
-<!--    </v-list-item>-->
+  <div
+    v-if="desc"
+    class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white/70 p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900/40"
+  >
+    <div
+      class="flex h-12 w-12 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+    >
+      <img
+        v-if="iconUrl"
+        :src="iconUrl"
+        :alt="desc.name"
+        class="h-10 w-10 object-contain"
+        loading="lazy"
+      />
+      <UIcon v-else name="i-lucide-box" class="h-5 w-5 text-gray-400" />
+    </div>
+    <div class="flex-1">
+      <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        {{ desc.name }}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">{{ type }} #{{ id }}</p>
+    </div>
+    <UBadge color="neutral" variant="soft">
+      {{ Intl.NumberFormat().format(quantity) }}
+    </UBadge>
+  </div>
 </template>

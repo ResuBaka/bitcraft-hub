@@ -55,7 +55,8 @@ pub(crate) struct ItemsAndCargoResponse {
     pages: u64,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct MetaResponse {
     tags: Vec<String>,
     tiers: Vec<i64>,
@@ -264,10 +265,12 @@ pub(crate) async fn list_items_and_cargo(
         }
     });
 
-    let items = match merged_items_and_cargo.len() {
-        x if x > end => merged_items_and_cargo[start..end].to_vec(),
-        x if x < end => merged_items_and_cargo[start..].to_vec(),
-        _ => vec![],
+    let total_items = merged_items_and_cargo.len();
+    let items = if start >= total_items {
+        vec![]
+    } else {
+        let end = end.min(total_items);
+        merged_items_and_cargo[start..end].to_vec()
     };
 
     merged_tiers.sort();

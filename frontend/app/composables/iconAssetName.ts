@@ -30,14 +30,11 @@ export const iconAssetUrlName = <T = any>(
   const {
     public: { iconDomain },
   } = useRuntimeConfig();
-  assetPath = assetPath.replace("Other/GeneratedIcons", "");
 
   const matches = assetPath.match(multipleIconsRegex);
   if (!matches || !iconDomain) {
     return {
-      url: `${iconDomain}${
-        iconDomain.endsWith("/") ? "" : "/"
-      }${assetPath}.png`,
+      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
       show: !!iconDomain,
     };
   }
@@ -54,7 +51,7 @@ export const iconAssetUrlName = <T = any>(
     extraArgs,
   );
 
-  result.url = url.endsWith(".png") ? url : `${url}.png`;
+  result.url = url.endsWith(".webp") ? url : `${url}.webp`;
   if (amount) {
     result.amount = amount;
   }
@@ -81,7 +78,7 @@ const internalIconDeciderFunction = <T = any | undefined>(
 
   const { url, amount } = deciderFunctionToUse(base, options, extraArgs);
 
-  result.url = url.endsWith(".png") ? url : `${url}.png`;
+  result.url = url.endsWith(".webp") ? url : `${url}.webp`;
   if (amount) {
     result.amount = amount;
   }
@@ -97,13 +94,10 @@ export const iconAssetUrlNameAmount = (
     public: { iconDomain },
   } = useRuntimeConfig();
   const matches = assetPath.match(multipleIconsRegex);
-  assetPath = assetPath.replace("Other/GeneratedIcons", "");
 
   if (!matches || !iconDomain) {
     return {
-      url: `${iconDomain}${
-        iconDomain.endsWith("/") ? "" : "/"
-      }${assetPath}.png`,
+      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
       show: !!iconDomain,
     };
   }
@@ -156,7 +150,7 @@ export const iconAssetUrlNameAmount = (
     localExtraArgs,
   );
 
-  result.url = url.endsWith(".png") ? url : `${url}.png`;
+  result.url = url.endsWith(".webp") ? url : `${url}.webp`;
   if (amount) {
     result.amount = amount;
   }
@@ -172,22 +166,15 @@ export const iconAssetUrlNameRandom = (assetPath: string): IconAssetUrl => {
     public: { iconDomain },
   } = useRuntimeConfig();
 
-  assetPath = assetPath.replace("Other/GeneratedIcons", "");
-
   const matches = assetPath.match(multipleIconsRegex);
   if (!matches || !iconDomain) {
     return {
-      url: `${iconDomain}${
-        iconDomain.endsWith("/") ? "" : "/"
-      }${assetPath}.png`,
+      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
       show: !!iconDomain,
     };
   }
 
-  const deciderFunctionToUse = (
-    base: string,
-    options: string[],
-  ): IconDeciderFunctionResult => {
+  const deciderFunctionToUse = (base: string, options: string[]): IconDeciderFunctionResult => {
     const randomIndex = Math.floor(Math.random() * options.length);
     return {
       url: `${base}${options[randomIndex]}`,
@@ -225,9 +212,7 @@ export const iconAssetUrlNameAll = (assetPath: string): IconAssetUrlAll => {
     return {
       icons: [
         {
-          url: `${iconDomain}${
-            iconDomain.endsWith("/") ? "" : "/"
-          }${assetPath}.png`,
+          url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
         },
       ],
       show: !!iconDomain,
@@ -241,9 +226,7 @@ export const iconAssetUrlNameAll = (assetPath: string): IconAssetUrlAll => {
 
   for (let i = 0; i < options.length; i++) {
     icons.push({
-      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${base}${options[
-        i
-      ].trim()}`,
+      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${base}${options[i].trim()}`,
     });
   }
 

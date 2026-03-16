@@ -1,24 +1,14 @@
 export const useTierColor = () => {
-  const colorMode = useColorMode();
-  let colorEffect = "";
-
-  if (colorMode.value == "dark") {
-  } else {
-    colorEffect = "-darken-1";
-  }
-
-  const colors = {
-    1: `grey${colorEffect}`,
-    2: `orange${colorEffect}`,
-    3: `green${colorEffect}`,
-    4: `blue${colorEffect}`,
-    5: `purple${colorEffect}`,
-    6: `red${colorEffect}`,
-    7: `yellow${colorEffect}`,
-    8: `cyan${colorEffect}`,
-    9: `blue-grey${colorEffect}`,
-    10: `lime-accent-4`,
-  };
-
-  return colors;
+  return {
+    1: "text-tier-1",
+    2: "text-tier-2",
+    3: "text-tier-3",
+    4: "text-tier-4",
+    5: "text-tier-5",
+    6: "text-tier-6",
+    7: "text-tier-7",
+    8: "text-tier-8",
+    9: "text-tier-9",
+    10: "text-tier-10",
+  } as const;
 };

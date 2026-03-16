@@ -2,7 +2,7 @@ use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, sea_query};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -252,7 +252,11 @@ pub(crate) fn start_worker_player_state(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(PlayerState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerState");
+                        tracing::error!(
+                            PlayerState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete PlayerState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -427,13 +431,20 @@ pub(crate) fn start_worker_player_username_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::player_username_state::Entity::delete_many()
-                        .filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::player_username_state::Column::EntityId
+                                .is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(PlayerUsernameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerUsernameState");
+                        tracing::error!(
+                            PlayerUsernameState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete PlayerUsernameState"
+                        );
                     }
                 }
                 messages_delete.clear();

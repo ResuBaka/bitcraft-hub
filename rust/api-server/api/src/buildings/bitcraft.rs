@@ -4,7 +4,7 @@ use entity::building_state::ActiveModel;
 use game_module::module_bindings::{BuildingDesc, BuildingNicknameState, BuildingState};
 use migration::{OnConflict, sea_query};
 use sea_orm::{
-    ColumnTrait, DbErr, EntityTrait, InsertResult, IntoActiveModel, ModelTrait, QueryFilter,
+    ColumnTrait, DbErr, EntityTrait, InsertResult, IntoActiveModel, QueryFilter,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -184,7 +184,11 @@ pub(crate) fn start_worker_building_state(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(BuildingState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingState");
+                        tracing::error!(
+                            BuildingState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete BuildingState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -380,7 +384,11 @@ pub(crate) fn start_worker_building_desc(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(BuildingDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingDesc");
+                        tracing::error!(
+                            BuildingDesc = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete BuildingDesc"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -556,13 +564,20 @@ pub(crate) fn start_worker_building_nickname_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::building_nickname_state::Entity::delete_many()
-                        .filter(::entity::building_nickname_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::building_nickname_state::Column::EntityId
+                                .is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(BuildingNicknameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingNicknameState");
+                        tracing::error!(
+                            BuildingNicknameState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete BuildingNicknameState"
+                        );
                     }
                 }
                 messages_delete.clear();

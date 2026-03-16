@@ -8,7 +8,7 @@
 // @todo theme check
 // const mq = window.matchMedia("(prefers-color-scheme: dark)");
 // const html = document.documentElement;
-// const configStore = useConfigStore();
+const configStore = useConfigStore();
 // const colorMode = useColorMode();
 //
 // const themeSwitch = (e) => {
@@ -56,4 +56,3 @@
 //   },
 // );
 </script>
-

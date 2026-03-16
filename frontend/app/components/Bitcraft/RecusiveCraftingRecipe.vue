@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { computed, ref, watch } from "vue";
+import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import type {
   objectWithChildren,
   PannelIndexs,
@@ -21,9 +21,11 @@ const props = defineProps<{
   resourceEffortMap?: { [resourceId: number]: ResourceEffort };
   pannel_indexs: PannelIndexs;
 }>();
-function getDesc(item: any) {
-  let desc;
-  if (item.type == "Item") {
+
+defineOptions({ name: "RecusiveCraftingRecipe" });
+function getDesc(item: objectWithChildren) {
+  let desc: ItemDesc | CargoDesc | undefined;
+  if (item.type === "Item") {
     desc = props.item_desc[item.id];
   } else {
     desc = props.cargo_desc[item.id];
@@ -31,8 +33,8 @@ function getDesc(item: any) {
   return desc;
 }
 const desc = computed(() => {
-  let desc;
-  if (props.item.type == "Item") {
+  let desc: ItemDesc | CargoDesc | undefined;
+  if (props.item.type === "Item") {
     desc = props.item_desc[props.item.id];
   } else {
     desc = props.cargo_desc[props.item.id];
@@ -48,10 +50,7 @@ function getChildPannelMulti(parentIndex: number, childIndex: number) {
   return props.pannel_indexs?.children?.[parentIndex]?.children?.[childIndex];
 }
 
-const getItemTotalActions = (
-  item: objectWithChildren,
-  pIndex: PannelIndexs,
-): number => {
+const getItemTotalActions = (item: objectWithChildren, pIndex: PannelIndexs): number => {
   if (!item.children || item.children.length === 0) return 0;
 
   const recipeIdx = pIndex.pannels;
@@ -74,10 +73,7 @@ const getItemTotalActions = (
   return total;
 };
 
-const getRecipeTotalActions = (
-  recipe: RecipeWithChildren,
-  recipeIdx: number,
-): number => {
+const getRecipeTotalActions = (recipe: RecipeWithChildren, recipeIdx: number): number => {
   let total = recipe.shadow_actions_required;
 
   const recipeMeta = props.pannel_indexs.children[recipeIdx];
@@ -98,12 +94,11 @@ const totalActions = computed(() => {
   return getItemTotalActions(props.item, props.pannel_indexs);
 });
 
-const openedRecipePanels = ref<number[]>([]);
+const openedRecipePanels = ref<string | undefined>(undefined);
 watch(
   openedRecipePanels,
   (v) => {
-    const last = v.length > 0 ? v[v.length - 1] : null;
-    if (last !== null) props.pannel_indexs.pannels = last;
+    if (v !== undefined) props.pannel_indexs.pannels = Number(v);
   },
   { deep: true },
 );
@@ -113,8 +108,7 @@ const displayActions = computed(() => {
   if (totalActions.value && totalActions.value > 0) return totalActions.value;
 
   // If multiple probability-backed alternatives exist, use weighted avg
-  if (hasMultipleAlternatives.value && avgTotalActions.value > 0)
-    return avgTotalActions.value;
+  if (hasMultipleAlternatives.value && avgTotalActions.value > 0) return avgTotalActions.value;
 
   // Fallback: if there are recipes, use the first recipe total or shadow actions
   if (props.item.children && props.item.children.length > 0) {
@@ -168,8 +162,7 @@ function getRecipeProbability(recipe: any): number {
       const list = props.item_list_desc[listId];
       for (const possibility of list.possibilities || []) {
         const found = (possibility.items || []).find(
-          (it: any) =>
-            it.item_id === produced.id && it.item_type === produced.type,
+          (it: any) => it.item_id === produced.id && it.item_type === produced.type,
         );
         if (found) return possibility.probability || 0;
       }
@@ -214,6 +207,38 @@ const displayQuantity = computed(() => {
     : Intl.NumberFormat().format(q);
 });
 
+const iconUrl = computed(() => {
+  const iconName = desc.value?.icon_asset_name;
+  if (!iconName) return null;
+  const icon = iconAssetUrlNameRandom(iconName);
+  return icon.show ? icon.url : null;
+});
+
+const iconLoadError = ref(false);
+
+watch(iconUrl, () => {
+  iconLoadError.value = false;
+});
+
+const handleIconError = () => {
+  iconLoadError.value = true;
+};
+
+const recipeAccordionItems = computed(() => {
+  if (!props.item.children || props.item.children.length === 0) return [];
+  return props.item.children.map((recipe, index) => {
+    const produced = getDesc(recipe.children?.[0]);
+    const total = Intl.NumberFormat().format(getRecipeTotalActions(recipe, index));
+    const step = Intl.NumberFormat().format(recipe.shadow_actions_required || 0);
+    return {
+      label: `[Recipe ${index + 1}] ${produced?.name ?? "Unknown"} (Total: ${total} Step: ${step})`,
+      value: String(index),
+      recipe,
+      index,
+    };
+  });
+});
+
 function getMiningEffortForItem(itemId: number) {
   // For now, return undefined as we need resource data to calculate this
   // This would need to be calculated based on which resources produce this item
@@ -225,42 +250,98 @@ const miningEffort = computed(() => {
 });
 </script>
 <template>
-<!--    <v-list-item v-if="item.deleted === undefined && desc !== undefined">-->
-<!--        <v-badge :content="displayQuantity" location="right" class="align-start" offset-x="-10">-->
-<!--          <v-list-item-title class="align-content-center">Name: {{ desc.name }}</v-list-item-title>-->
-<!--          <v-img :src="iconAssetUrlNameRandom(desc.icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>-->
-<!--        </v-badge>-->
-<!--            <div v-if="miningEffort !== undefined" class="text&#45;&#45;secondary mt-1">Mining effort (avg attempts): {{ Intl.NumberFormat().format(Math.round(miningEffort)) }} </div>-->
-<!--          <template  v-if="item?.children?.length === 1">-->
-<!--            <v-list-item-subtitle v-if="item.children[0] !== undefined">Actions required: {{ displayActionsString }} </v-list-item-subtitle>-->
-<!--            <div v-if="miningEffort !== undefined" class="text&#45;&#45;secondary">Attempts per unit: {{ (miningEffort).toFixed(2) }}</div>-->
-<!--        <template v-if="item.children[0] !== undefined">-->
-<!--                <template v-for="(recipe_item, index) in item.children[0].children" :key="index">-->
-<!--            <recusive-crafting-recipe -->
-<!--              v-if="getChildPannel(index) !== undefined"-->
-<!--              :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" :item_list_desc="item_list_desc" :resource-effort-map="resourceEffortMap"-->
-<!--              :pannel_indexs="getChildPannel(index)!" ></recusive-crafting-recipe>-->
-<!--          </template>-->
-<!--        </template>-->
-<!--      </template>-->
-<!--      <template  v-else>-->
-<!--        <v-list-item-subtitle v-if="item.children">-->
-<!--          Actions required: {{ displayActionsString }} (Total recipes: {{ item.children.length }})-->
-<!--        </v-list-item-subtitle>-->
-<!--        <div v-if="miningEffort !== undefined" class="text&#45;&#45;secondary">Attempts per unit: {{ (miningEffort).toFixed(2) }}</div>-->
-<!--        <v-expansion-panels v-model="openedRecipePanels" multiple>-->
-<!--          <v-expansion-panel v-for="(recipe, index) in item.children" :key="index"-->
-<!--            :title="`[Recipe ${index + 1}] ${getDesc(recipe.children[0]).name} (Total: ${Intl.NumberFormat().format(getRecipeTotalActions(recipe, index))} Step: ${Intl.NumberFormat().format(recipe.shadow_actions_required)})`">-->
-<!--            <v-expansion-panel-text>-->
-<!--                <template v-for="(recipe_item, index2) in recipe.children" :key="index2">-->
-<!--                  <recusive-crafting-recipe -->
-<!--                    v-if="getChildPannelMulti(index, index2) !== undefined"-->
-<!--                    :item="recipe_item" :item_desc="item_desc" :cargo_desc="cargo_desc" :item_list_desc="item_list_desc" :resource-effort-map="resourceEffortMap"-->
-<!--                    :pannel_indexs="getChildPannelMulti(index, index2)!"  ></recusive-crafting-recipe>-->
-<!--                </template>-->
-<!--            </v-expansion-panel-text>-->
-<!--          </v-expansion-panel>-->
-<!--      </v-expansion-panels>-->
-<!--    </template>-->
-<!--    </v-list-item>-->
+  <div v-if="item.deleted !== true && desc" class="flex flex-col gap-3">
+    <div
+      class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white/70 p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900/40"
+    >
+      <div
+        class="flex h-14 w-14 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+      >
+        <img
+          v-if="iconUrl && !iconLoadError"
+          :src="iconUrl"
+          :alt="desc.name"
+          class="h-12 w-12 object-contain"
+          loading="lazy"
+          @error="handleIconError"
+        />
+        <UIcon v-else name="i-lucide-box" class="h-6 w-6 text-gray-400" />
+      </div>
+      <div class="flex-1">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="space-y-1">
+            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ desc.name }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Actions required: {{ displayActionsString }}
+              <span v-if="item.children?.length > 1" class="text-gray-400">
+                (Total recipes: {{ item.children.length }})
+              </span>
+            </p>
+            <p v-if="miningEffort !== undefined" class="text-xs text-gray-500 dark:text-gray-400">
+              Mining effort (avg attempts):
+              {{ Intl.NumberFormat().format(Math.round(miningEffort)) }}
+            </p>
+          </div>
+          <UBadge color="neutral" variant="soft">
+            {{ displayQuantity }}
+          </UBadge>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="item.children?.length === 1"
+      class="border-l border-gray-200 pl-4 dark:border-gray-800"
+    >
+      <div class="flex flex-col gap-3">
+        <template
+          v-for="(recipe_item, index) in item.children[0].children"
+          :key="`${recipe_item.type}-${recipe_item.id}-${index}`"
+        >
+          <RecusiveCraftingRecipe
+            v-if="getChildPannel(index)"
+            :item="recipe_item"
+            :item_desc="item_desc"
+            :cargo_desc="cargo_desc"
+            :item_list_desc="item_list_desc"
+            :resource-effort-map="resourceEffortMap"
+            :pannel_indexs="getChildPannel(index)!"
+          />
+        </template>
+      </div>
+    </div>
+
+    <div
+      v-else-if="item.children?.length"
+      class="border-l border-gray-200 pl-4 dark:border-gray-800"
+    >
+      <UAccordion
+        v-model="openedRecipePanels"
+        type="single"
+        :collapsible="false"
+        :items="recipeAccordionItems"
+        value-key="value"
+        label-key="label"
+      >
+        <template #content="{ item: recipeItem }">
+          <div class="flex flex-col gap-3 py-2">
+            <template
+              v-for="(recipe_item, index2) in recipeItem.recipe?.children || []"
+              :key="`${recipe_item.type}-${recipe_item.id}-${index2}`"
+            >
+              <RecusiveCraftingRecipe
+                v-if="getChildPannelMulti(recipeItem.index, index2)"
+                :item="recipe_item"
+                :item_desc="item_desc"
+                :cargo_desc="cargo_desc"
+                :item_list_desc="item_list_desc"
+                :resource-effort-map="resourceEffortMap"
+                :pannel_indexs="getChildPannelMulti(recipeItem.index, index2)!"
+              />
+            </template>
+          </div>
+        </template>
+      </UAccordion>
+    </div>
+  </div>
 </template>

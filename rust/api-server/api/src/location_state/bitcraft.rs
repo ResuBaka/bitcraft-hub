@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::LocationState;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -138,7 +138,11 @@ pub(crate) fn start_worker_location_state(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(LocationState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete LocationState");
+                        tracing::error!(
+                            LocationState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete LocationState"
+                        );
                     }
                 }
                 messages_delete.clear();

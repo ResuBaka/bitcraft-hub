@@ -98,15 +98,13 @@ pub(crate) async fn find_claim_description(
     state: State<AppState>,
     Path(id): Path<u64>,
 ) -> Result<axum_codec::Codec<building_desc::Model>, (StatusCode, &'static str)> {
-    let posts = QueryCore::find_building_desc_by_id(&state.conn, id as i64)
-        .await
-        .expect("Cannot find posts in page");
+    let building_desc = state.building_desc.get(&(id as i64));
 
-    if posts.is_none() {
+    if building_desc.is_none() {
         return Err((StatusCode::NOT_FOUND, "BuildingDesc not found"));
     }
 
-    Ok(axum_codec::Codec(posts.unwrap()))
+    Ok(axum_codec::Codec(building_desc.unwrap().to_owned()))
 }
 
 #[derive(Serialize, Deserialize, TS)]

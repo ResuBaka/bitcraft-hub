@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
+import { useDelayedPending } from "~/utils";
 
 const page = ref(1);
-const perPage = 24;
+const perPage = 20;
 
 const search = ref<string | null>("");
 
@@ -58,6 +59,8 @@ const {
   },
 );
 
+const showPending = useDelayedPending(pending, 150);
+
 const changePage = (value: number) => {
   page.value = value;
   router.push({
@@ -100,42 +103,41 @@ useSeoMeta({
 </script>
 
 <template>
-<!--  <v-container fluid>-->
-<!--    <v-row>-->
-<!--      <v-col>-->
-<!--        <v-text-field-->
-<!--            v-model="search"-->
-<!--            label="Search"-->
-<!--            outlined-->
-<!--            dense-->
-<!--            clearable-->
-<!--        ></v-text-field>-->
-<!--      </v-col>-->
-<!--      <v-col sm="3" md="2">-->
-<!--        <v-checkbox-->
-<!--            v-model="showEmptySupplies"-->
-<!--            label="Show Empty Supplies"-->
-<!--        ></v-checkbox>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row>-->
-<!--      <v-col>-->
-<!--        <v-pagination-->
-<!--            @update:model-value="changePage"-->
-<!--            v-model="page"-->
-<!--            :length="length"-->
-<!--        ></v-pagination>-->
-<!--        <v-progress-linear-->
-<!--            color="yellow-darken-2"-->
-<!--            indeterminate-->
-<!--            :active="pending"-->
-<!--        ></v-progress-linear>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row>-->
-<!--      <v-col cols="12" md="6" lg="4" xl="3" xxl="2" v-for="claim in currentClaims" :key="claim.entity_id">-->
-<!--        <bitcraft-card-claim :claim="claim"></bitcraft-card-claim>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--  </v-container>-->
+  <UContainer class="py-6 max-w-none">
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Claims</h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400">List of all the Claims in the game</p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <UInput
+            v-model="search"
+            placeholder="Search claims"
+            icon="i-heroicons-magnifying-glass"
+            class="w-full sm:w-64"
+          />
+          <UCheckbox v-model="showEmptySupplies" label="Show empty supplies" />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <div class="flex justify-center">
+          <UPagination
+            v-model:page="page"
+            :total="claims?.total ?? 0"
+            :items-per-page="perPage"
+            :disabled="showPending"
+            :sibling-count="4"
+            @update:page="changePage"
+          />
+        </div>
+        <UProgress v-if="showPending" animation="carousel" />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <bitcraft-card-claim v-for="claim in currentClaims" :key="claim.entity_id" :claim="claim" />
+      </div>
+    </div>
+  </UContainer>
 </template>

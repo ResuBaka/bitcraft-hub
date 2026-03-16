@@ -36,6 +36,7 @@ RUN bun run build
 FROM base-alpine AS release
 COPY --from=prerelease --exclude=node_modules --chown=bun:bun /usr/src/app/ .
 
+RUN apk add ca-certificates
 # run the app
 USER bun
 EXPOSE 3000/tcp

@@ -241,7 +241,7 @@ pub(crate) async fn create_db_connection(config: &Config) -> anyhow::Result<Data
 
 fn extract_table_name(sql: &str) -> Option<String> {
     let tokens: Vec<&str> = sql.split_whitespace().collect();
-    let mut find_next = |keyword: &str| -> Option<&str> {
+    let find_next = |keyword: &str| -> Option<&str> {
         tokens
             .iter()
             .position(|token| token.eq_ignore_ascii_case(keyword))
@@ -430,30 +430,66 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 }
 
 async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<WebSocketMessages>) {
-    while let Some(message) = rx.recv().await {
-        if message.topics().is_none() {
-            continue;
+    let mut buffer = Vec::with_capacity(500);
+
+    loop {
+        buffer.shrink_to(500);
+        let count = rx.recv_many(&mut buffer, 500).await;
+        if count == 0 {
+            break;
         }
+        for message in buffer.drain(..) {
+            if message.topics().is_none() {
+                continue;
+            }
 
-        let topics = message.topics().unwrap();
-        let mut senders: Vec<AsyncSender<WebSocketMessages>> = vec![];
+            let topics = message.topics().unwrap();
+            let mut senders: Vec<AsyncSender<WebSocketMessages>> = vec![];
 
-        for (topic_name, topic_id) in topics {
-            senders.extend(
-                state
-                    .clients_state
-                    .clients_listen_to_topic(&topic_name, topic_id)
-                    .await,
-            );
-        }
+            for (topic_name, topic_id) in topics {
+                senders.extend(
+                    state
+                        .clients_state
+                        .clients_listen_to_topic(&topic_name, topic_id)
+                        .await,
+                );
+            }
 
-        for sender in senders {
-            let _ = sender.send(message.clone()).await;
+            futures::future::join_all(senders.into_iter().map(|sender| {
+                let message = message.clone();
+                async move {
+                    let _ = sender.send(message).await;
+                }
+            }))
+            .await;
         }
     }
 }
 
 pub(crate) type AppRouter = Router<AppState>;
+
+pub async fn handle_get_heap() -> Result<impl IntoResponse, (StatusCode, String)> {
+    let mut prof_ctl = jemalloc_pprof::PROF_CTL.as_ref().unwrap().lock().await;
+    require_profiling_activated(&prof_ctl)?;
+    let pprof = prof_ctl
+        .dump_pprof()
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+    Ok(pprof)
+}
+
+/// Checks whether jemalloc profiling is activated an returns an error response if not.
+fn require_profiling_activated(
+    prof_ctl: &jemalloc_pprof::JemallocProfCtl,
+) -> Result<(), (StatusCode, String)> {
+    if prof_ctl.activated() && false {
+        Ok(())
+    } else {
+        Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "heap profiling not activated".into(),
+        ))
+    }
+}
 
 fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) -> Router {
     let desc_router = Router::new()
@@ -471,6 +507,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
     collector.describe();
 
     Router::new()
+        .route("/debug/pprof/heap", get(handle_get_heap))
         .route("/websocket", any(websocket_handler))
         // .route(
         //     "/locations",

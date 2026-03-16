@@ -4,7 +4,7 @@ use entity::deployable_state;
 use game_module::module_bindings::DeployableState;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -152,13 +152,19 @@ pub(crate) fn start_worker_deployable_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::deployable_state::Entity::delete_many()
-                        .filter(::entity::deployable_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::deployable_state::Column::EntityId.is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(DeployableState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DeployableState");
+                        tracing::error!(
+                            DeployableState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete DeployableState"
+                        );
                     }
                 }
                 messages_delete.clear();

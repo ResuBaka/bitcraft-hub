@@ -1,22 +1,12 @@
 <script setup lang="ts">
-import type { BuildingDescRow } from "~/modules/bitcraft/gamestate/buildingDesc";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import type { BuildingDescRow } from "~/modules/bitcraft/gamestate/buildingDesc";
 
-const imagedErrored = ref(false);
+const imageErrored = ref(false);
 
 const { building } = defineProps<{
   building: BuildingDescRow;
 }>();
-const colorMode = useColorMode();
-
-const computedClass = computed(() => {
-  const isDark = colorMode.value == "dark";
-
-  return {
-    "bg-surface-light": isDark,
-    "bg-grey-lighten-3": !isDark,
-  };
-});
 
 const iconUrl = computed(() => {
   if (!building.icon_asset_name) {
@@ -28,40 +18,52 @@ const iconUrl = computed(() => {
 
   return iconAssetUrlNameRandom(building.icon_asset_name);
 });
+
+const tier = computed(() => building.functions[0]?.level ?? "-");
 </script>
 
 <template>
-<!--  <v-card>-->
-<!--    <v-card-item>-->
-<!--      <template #prepend v-if="iconUrl.show && imagedErrored !== true">-->
-<!--        <v-img @error="imagedErrored = true" :src="iconUrl.url" height="50" width="50"></v-img>-->
-<!--      </template>-->
-<!--      <v-card-title>-->
-<!--        <nuxt-link-->
-<!--            class="text-decoration-none text-high-emphasis font-weight-black"-->
-<!--            :to="{ name: 'buildings-id', params: { id: building.id } }"-->
-<!--        >-->
-<!--          {{ building.name }} ({{ building.count }})-->
-<!--        </nuxt-link>-->
-<!--      </v-card-title>-->
-<!--    </v-card-item>-->
-<!--    <v-card-text :class="computedClass" class="pb-1">-->
-<!--      <v-table density="compact" :class="computedClass">-->
-<!--        <tbody>-->
-<!--        <tr>-->
-<!--          <th>Tier:</th>-->
-<!--          <td>{{ building.functions[0]?.level }}</td>-->
-<!--        </tr>-->
-<!--        <tr>-->
-<!--          <th>Description:</th>-->
-<!--          <td>{{ building.description }}</td>-->
-<!--        </tr>-->
-<!--        </tbody>-->
-<!--      </v-table>-->
-<!--    </v-card-text>-->
-<!--  </v-card>-->
+  <UCard :ui="{ header: 'p-4', body: 'p-4' }">
+    <template #header>
+      <div class="flex items-start gap-3">
+        <div
+          class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+        >
+          <img
+            v-if="iconUrl.show && imageErrored !== true"
+            :src="iconUrl.url"
+            :alt="building.name"
+            class="h-13 w-13 object-contain"
+            loading="lazy"
+            @error="imageErrored = true"
+          />
+          <UIcon v-else name="i-lucide-hammer" class="h-6 w-6 text-gray-400" />
+        </div>
+
+        <div class="min-w-0">
+          <NuxtLink
+            class="text-base font-black text-gray-900 hover:underline dark:text-gray-100"
+            :to="{ name: 'buildings-id', params: { id: building.id } }"
+          >
+            {{ building.name }} ({{ building.count }})
+          </NuxtLink>
+        </div>
+      </div>
+    </template>
+
+    <div class="grid gap-2 text-sm">
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-semibold text-gray-700 dark:text-gray-300">Tier</span>
+        <span class="text-gray-600 dark:text-gray-400">{{ tier }}</span>
+      </div>
+      <div class="flex items-start justify-between gap-3">
+        <span class="font-semibold text-gray-700 dark:text-gray-300">Description</span>
+        <span class="max-w-[70%] text-right text-gray-600 dark:text-gray-400">
+          {{ building.description || "-" }}
+        </span>
+      </div>
+    </div>
+  </UCard>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watchDebounced, watchThrottled } from "@vueuse/shared";
 import type { PlayersResponse } from "~/types/PlayersResponse";
+import { useDelayedPending } from "~/utils";
 
 const page = ref(1);
 const perPage = 6 * 5;
@@ -79,6 +80,8 @@ const {
   },
 );
 
+const showPending = useDelayedPending(pending, 150);
+
 const changePage = (value: number) => {
   page.value = value;
   router.push({
@@ -96,6 +99,8 @@ watchThrottled(
     if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
       page.value = 1;
     }
+
+    refresh();
   },
   { throttle: 50 },
 );
@@ -108,6 +113,7 @@ watchDebounced(
     }
 
     search.value = debouncedSearch.value;
+    refresh();
   },
   { debounce: 100, maxWait: 200 },
 );
@@ -116,26 +122,14 @@ const currentPlayers = computed(() => {
   return players.value?.players ?? [];
 });
 
-const length = computed(() => {
-  if (players.value?.total) {
-    if (typeof players.value.total == "bigint") {
-      return Math.ceil(players.value.total / bigint(perPage));
-    }
-
-    return Math.ceil(players.value?.total / perPage);
-  }
-
-  return 0;
+const totalCount = computed(() => {
+  if (!players.value?.total) return 0;
+  return Number(players.value.total);
 });
 
-const colorMode = useColorMode();
-
-const computedClass = computed(() => {
-  const isDark = colorMode.value == "dark";
-  return {
-    "bg-surface-light": isDark,
-    "bg-grey-lighten-3": !isDark,
-  };
+const length = computed(() => {
+  if (!totalCount.value) return 0;
+  return Math.ceil(totalCount.value / perPage);
 });
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
@@ -185,65 +179,107 @@ useSeoMeta({
 </script>
 
 <template>
-<!--  <v-container fluid>-->
-<!--    <v-row>-->
-<!--      <v-col cols="10">-->
-<!--        <v-text-field-->
-<!--            v-model="search"-->
-<!--            label="Search"-->
-<!--            outlined-->
-<!--            dense-->
-<!--            clearable-->
-<!--        ></v-text-field>-->
-<!--      </v-col>-->
-<!--      <v-col cols="2">-->
-<!--        <v-checkbox-->
-<!--            v-model="showOnlyOnlinePlayers"-->
-<!--            label="Show only online Player"-->
-<!--        ></v-checkbox>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row>-->
-<!--      <v-col>-->
-<!--        <v-progress-linear-->
-<!--            color="yellow-darken-2"-->
-<!--            indeterminate-->
-<!--            :active="pending"-->
-<!--        ></v-progress-linear>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row>-->
-<!--      <v-col cols="12" md="6" lg="3" xl="2" v-for="player in currentPlayers" :key="player.entity_id.toString()">-->
-<!--        <v-card>-->
-<!--          <template v-slot:title>-->
-<!--            <nuxt-link :class="`text-decoration-none font-weight-black ${player.signed_in ? 'text-green' : 'text-high-emphasis'}`"-->
-<!--                       :to="{ name: 'players-id', params: { id: player.entity_id.toString() } }"-->
-<!--            >{{ player.username }}-->
-<!--            </nuxt-link>-->
-<!--          </template>-->
-<!--          <v-card-text :class="computedClass">-->
-<!--            <v-table :class="computedClass" density="compact">-->
-<!--              <tbody>-->
-<!--              <tr style='text-align: right'>-->
-<!--                <th>Played:</th>-->
-<!--                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_played) }}</td>-->
-<!--              </tr>-->
-<!--              <tr style='text-align: right'>-->
-<!--                <th>Signed in:</th>-->
-<!--                <td>{{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) }}</td>-->
-<!--              </tr>-->
-<!--              </tbody>-->
-<!--            </v-table>-->
-<!--          </v-card-text>-->
-<!--        </v-card>-->
-<!--      </v-col>-->
-<!--      <v-col cols="12">-->
-<!--        <v-pagination-->
-<!--            @update:model-value="changePage"-->
-<!--            v-model="page"-->
-<!--            :length="length"-->
-<!--        ></v-pagination>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--  </v-container>-->
+  <UContainer class="w-full max-w-none py-8">
+    <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Players</p>
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                Player directory
+              </h1>
+              <p class="text-sm text-gray-600 dark:text-gray-300">
+                Search the roster and inspect player activity.
+              </p>
+            </div>
+            <div
+              class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 shadow-sm dark:border-gray-800 dark:text-gray-300"
+            >
+              <span>Total</span>
+              <span class="font-semibold text-gray-900 dark:text-gray-100">
+                {{ totalCount.toLocaleString() }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <UInput
+            v-model="debouncedSearch"
+            icon="i-lucide-search"
+            placeholder="Search players"
+            variant="outline"
+          />
+          <div
+            class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 dark:border-gray-800 dark:text-gray-300"
+          >
+            <div>
+              <p class="text-xs uppercase tracking-[0.2em]">Presence</p>
+              <p class="text-sm font-medium">Show only online</p>
+            </div>
+            <USwitch v-model="showOnlyOnlinePlayers" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex min-h-[44px] justify-center pb-4" :class="showPending ? 'opacity-60' : ''">
+        <UPagination
+          v-model:page="page"
+          :total="totalCount"
+          :items-per-page="perPage"
+          size="sm"
+          :disabled="showPending"
+          :sibling-count="4"
+          @update:page="changePage"
+        />
+      </div>
+
+      <UProgress v-if="showPending" color="neutral" />
+
+      <template v-if="currentPlayers.length">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <UCard
+            v-for="player in currentPlayers"
+            :key="player.entity_id.toString()"
+            :ui="{ body: 'p-4' }"
+            class="border border-gray-200 dark:border-gray-800"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <NuxtLink
+                :to="{ name: 'players-id', params: { id: player.entity_id.toString() } }"
+                :class="player.signed_in ? 'text-green-600' : 'text-gray-900 dark:text-gray-100'"
+                class="text-sm font-semibold"
+              >
+                {{ player.username }}
+              </NuxtLink>
+              <UBadge :color="player.signed_in ? 'success' : 'neutral'" variant="soft">
+                {{ player.signed_in ? "Online" : "Offline" }}
+              </UBadge>
+            </div>
+            <div class="mt-3 space-y-2 text-xs text-gray-500 dark:text-gray-400">
+              <div class="flex items-center justify-between">
+                <span>Played</span>
+                <span class="font-medium text-gray-900 dark:text-gray-100">
+                  {{ secondsToDaysMinutesSecondsFormat(player.time_played) || "0s" }}
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Signed in</span>
+                <span class="font-medium text-gray-900 dark:text-gray-100">
+                  {{ secondsToDaysMinutesSecondsFormat(player.time_signed_in) || "0s" }}
+                </span>
+              </div>
+            </div>
+          </UCard>
+        </div>
+      </template>
+      <UEmpty
+        v-else
+        icon="i-lucide-users"
+        title="No players found"
+        description="Try adjusting your search or filters."
+      />
+    </div>
+  </UContainer>
 </template>

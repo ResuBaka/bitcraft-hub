@@ -1,11 +1,12 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import "./custom.css";
 
 :root {
-    --ui-radius: 0rem;
-    --ui-primary: black;
+  --ui-radius: 0rem;
+  --ui-primary: black;
 }
 
 .dark {
-    --ui-primary: white;
+  --ui-primary: white;
 }

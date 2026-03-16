@@ -31,122 +31,107 @@ pub(crate) fn start_worker_traveler_task_state(
             let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
-            let mut buffer = Vec::with_capacity(batch_size + 10);
 
             loop {
-                buffer.clear();
-
-                let fill_buffer_with = if messages.len() > messages_delete.len() {
-                    batch_size
-                        .saturating_sub(buffer.len())
-                        .saturating_sub(messages.len())
-                } else {
-                    batch_size
-                        .saturating_sub(buffer.len())
-                        .saturating_sub(messages_delete.len())
-                };
-
                 tokio::select! {
-                    count = rx.recv_many(&mut buffer, fill_buffer_with) => {
-                        record_worker_received("traveler_task_state", count);
-                        for msg in buffer.drain(..) {
-                            match msg {
-                                SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                    let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                    let mut currently_known_traveler_task_state = ::entity::traveler_task_state::Entity::find()
-                                        .filter(::entity::traveler_task_state::Column::Region.eq(database_name.to_string()))
-                                        .all(&global_app_state.conn)
-                                        .await
-                                        .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole traveler_task_state state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
-                                        .into_iter()
-                                        .map(|value| (value.entity_id, value))
-                                        .collect::<HashMap<_, _>>();
+                    Some(msg) = rx.recv() => {
+                        record_worker_received("traveler_task_state", 1);
+                        match msg {
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
+                                let mut currently_known_traveler_task_state = ::entity::traveler_task_state::Entity::find()
+                                    .filter(::entity::traveler_task_state::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole traveler_task_state state"
+                                        );
+                                        vec![]
+                                    },|aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
 
-                                    for model in data.into_iter().map(|value| {
-                                        let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
-                                        model
-                                    }) {
-                                        use std::collections::hash_map::Entry;
-                                        match currently_known_traveler_task_state.entry(model.entity_id) {
-                                            Entry::Occupied(entry) => {
-                                                let existing_model = entry.get();
-                                                if &model != existing_model {
-                                                    local_messages.push(model);
-                                                }
-                                                entry.remove();
-                                            }
-                                            Entry::Vacant(_entry) => {
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+                                    match currently_known_traveler_task_state.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
                                                 local_messages.push(model);
                                             }
+                                            entry.remove();
                                         }
-                                        if local_messages.len() >= batch_size {
-                                           insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                        }
-                                    };
-                                    if !local_messages.is_empty() {
-                                        insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    }
-
-                                    for chunk_ids in currently_known_traveler_task_state.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                        let chunk_ids = chunk_ids.to_vec();
-                                        if let Err(error) = ::entity::traveler_task_state::Entity::delete_many().filter(::entity::traveler_task_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
-                                            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                            tracing::error!(TravelerTaskState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete TravelerTaskState");
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model);
                                         }
                                     }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                 }
-                                SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
-                                    let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
-
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-                                    messages.push(model);
-                                    if messages.len() >= batch_size {
-                                        insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
-                                            .await;
-                                    }
-                                }
-                                SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
-
-                                    let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
-
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
-                                        messages.remove(index);
-                                    }
-
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-                                    messages.push(model);
-                                    if messages.len() >= batch_size {
-                                        insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
-                                            .await;
+                                for chunk_ids in currently_known_traveler_task_state.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::traveler_task_state::Entity::delete_many().filter(::entity::traveler_task_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(TravelerTaskState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete TravelerTaskState");
                                     }
                                 }
-                                SpacetimeUpdateMessages::Remove { delete, .. } => {
-                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(delete).build();
-                                    let id = model.entity_id;
-                                    let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskStateDelete(model.clone()));
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
-                                        messages.remove(index);
-                                    }
+                                let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
 
-                                    messages_delete.push(id);
-                                    if messages_delete.len() >= batch_size {
-                                        break;
-                                    }
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
+                                        .await;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                                let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+
+                                let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
+
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                    messages.remove(index);
+                                }
+
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
+                                messages.push(model);
+                                if messages.len() >= batch_size {
+                                    insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
+                                        .await;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Remove { delete, .. } => {
+                                let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(delete).build();
+                                let id = model.entity_id;
+                                let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskStateDelete(model.clone()));
+
+                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
+                                    messages.remove(index);
+                                }
+
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }

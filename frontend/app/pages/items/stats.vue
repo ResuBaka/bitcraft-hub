@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
+import { rarityToTextClass, tierToBorderClass, tierToTextClass } from "~/utils";
+
 const page = ref(1);
 
 const tag = ref<string | null>(null);
@@ -27,65 +30,110 @@ const { data: metaData } = await useLazyFetchMsPack(() => {
   return `/api/bitcraft/itemsAndCargo/meta`;
 });
 
+const tagOptions = computed(() => {
+  const tags = metaData.value?.tags ?? [];
+  return [
+    { label: "All tags", value: null },
+    ...tags.map((value: string) => ({ label: value, value })),
+  ];
+});
+
+const tierOptions = computed(() => {
+  const tiers = metaData.value?.tiers ?? [];
+  return [
+    { label: "All tiers", value: null },
+    ...tiers.map((value: number) => ({ label: `Tier ${value}`, value })),
+  ];
+});
+
 const items = computed(() => {
   if (!data || !data?.value) {
     return [];
   }
-  if (!debouncedSearch.value) {
-    return Object.values(data.value.items).splice(0, 19);
-  }
+  const filtered = Object.values(data.value.items).filter((value) => {
+    if (tag.value && value[1]?.tag !== tag.value) {
+      return false;
+    }
 
-  return Object.values(data.value.items).filter((value) => {
-    if (
-      value[1].name
-        .toLocaleLowerCase()
-        .includes(debouncedSearch.value?.toLocaleLowerCase())
-    ) {
+    if (tier.value && value[1]?.tier !== tier.value) {
+      return false;
+    }
+
+    if (!debouncedSearch.value) {
       return true;
     }
 
-    if (
-      value[1].rarity
-        .toLocaleLowerCase()
-        .includes(debouncedSearch.value?.toLocaleLowerCase())
-    ) {
+    if (value[1].name.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
+      return true;
+    }
+
+    if (value[1].rarity.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
       return true;
     }
 
     return false;
   });
+
+  if (!debouncedSearch.value && !tag.value && !tier.value) {
+    return filtered.slice(0, 19);
+  }
+
+  return filtered;
 });
 
 const cargo = computed(() => {
   if (!data || !data?.value) {
     return [];
   }
-  if (!debouncedSearch.value) {
-    return Object.values(data.value.cargo).splice(0, 19);
-  }
+  const filtered = Object.values(data.value.cargo).filter((value) => {
+    if (tag.value && value[1]?.tag !== tag.value) {
+      return false;
+    }
 
-  return Object.values(data.value.cargo).filter((value) => {
-    if (
-      value[1].name
-        .toLocaleLowerCase()
-        .includes(debouncedSearch.value?.toLocaleLowerCase())
-    ) {
+    if (tier.value && value[1]?.tier !== tier.value) {
+      return false;
+    }
+
+    if (!debouncedSearch.value) {
       return true;
     }
 
-    if (
-      value[1].rarity
-        .toLocaleLowerCase()
-        .includes(debouncedSearch.value?.toLocaleLowerCase())
-    ) {
+    if (value[1].name.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
+      return true;
+    }
+
+    if (value[1].rarity.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
       return true;
     }
 
     return false;
   });
+
+  if (!debouncedSearch.value && !tag.value && !tier.value) {
+    return filtered.slice(0, 19);
+  }
+
+  return filtered;
 });
 
 const numberFormat = new Intl.NumberFormat();
+
+const imageErrors = ref(new Set<number>());
+
+const iconForItem = (item: any) => {
+  if (!item?.icon_asset_name) {
+    return null;
+  }
+
+  const icon = iconAssetUrlNameRandom(item.icon_asset_name);
+  return icon.show ? icon.url : null;
+};
+
+const onImageError = (id: number) => {
+  imageErrors.value.add(id);
+};
+
+const hasImageError = (id: number) => imageErrors.value.has(id);
 
 useSeoMeta({
   title: () => `Inventory Stats`,
@@ -93,75 +141,162 @@ useSeoMeta({
 </script>
 
 <template>
-<!--  <v-container fluid>-->
-<!--    <v-row>-->
-<!--      <v-col>-->
-<!--        <v-text-field-->
-<!--            v-model="debouncedSearch"-->
-<!--            label="Search"-->
-<!--            outlined-->
-<!--            dense-->
-<!--            clearable-->
-<!--        ></v-text-field>-->
-<!--      </v-col>-->
-<!--&lt;!&ndash;      <v-col>&ndash;&gt;-->
-<!--&lt;!&ndash;        <v-autocomplete&ndash;&gt;-->
-<!--&lt;!&ndash;            v-model="tag"&ndash;&gt;-->
-<!--&lt;!&ndash;            :items="metaData?.tags || []"&ndash;&gt;-->
-<!--&lt;!&ndash;            label="Tag"&ndash;&gt;-->
-<!--&lt;!&ndash;            outlined&ndash;&gt;-->
-<!--&lt;!&ndash;            dense&ndash;&gt;-->
-<!--&lt;!&ndash;            clearable&ndash;&gt;-->
-<!--&lt;!&ndash;        ></v-autocomplete>&ndash;&gt;-->
-<!--&lt;!&ndash;      </v-col>&ndash;&gt;-->
-<!--&lt;!&ndash;      <v-col>&ndash;&gt;-->
-<!--&lt;!&ndash;        <v-select&ndash;&gt;-->
-<!--&lt;!&ndash;            v-model="tier"&ndash;&gt;-->
-<!--&lt;!&ndash;            :items="metaData?.tiers || []"&ndash;&gt;-->
-<!--&lt;!&ndash;            label="Tier"&ndash;&gt;-->
-<!--&lt;!&ndash;            outlined&ndash;&gt;-->
-<!--&lt;!&ndash;            dense&ndash;&gt;-->
-<!--&lt;!&ndash;            clearable&ndash;&gt;-->
-<!--&lt;!&ndash;        ></v-select>&ndash;&gt;-->
-<!--&lt;!&ndash;      </v-col>&ndash;&gt;-->
-<!--    </v-row>-->
+  <UContainer class="w-full max-w-none py-8">
+    <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+            Inventory
+          </p>
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                Stats overview
+              </h1>
+              <p class="text-sm text-gray-600 dark:text-gray-300">
+                Snapshot of items and cargo quantities in circulation.
+              </p>
+            </div>
+            <div
+              class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 shadow-sm dark:border-gray-800 dark:text-gray-300"
+            >
+              <span>Items</span>
+              <span class="font-semibold text-gray-900 dark:text-gray-100">
+                {{ numberFormat.format(Object.keys(data?.items || {}).length) }}
+              </span>
+              <span class="text-gray-400">/</span>
+              <span>Cargo</span>
+              <span class="font-semibold text-gray-900 dark:text-gray-100">
+                {{ numberFormat.format(Object.keys(data?.cargo || {}).length) }}
+              </span>
+            </div>
+          </div>
+        </div>
 
-<!--    <v-row>-->
-<!--      <v-col>-->
-<!--        <v-progress-linear-->
-<!--            color="yellow-darken-2"-->
-<!--            indeterminate-->
-<!--            :active="pending"-->
-<!--        ></v-progress-linear>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <template v-if="data">-->
-<!--      <v-row>-->
-<!--        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in items" :key="`item:${item[1].id}`">-->
-<!--          {{ numberFormat.format(item[0]) }} <b>{{ item[1].name }}</b> {{ item[1].rarity }} {{ item[1].tier > 0 ? item[1].tier : '' }}-->
-<!--        </v-col>-->
-<!--      </v-row>-->
-<!--      <v-divider class="mt-5 pb-5"  thickness="10" />-->
-<!--      <v-row>-->
-<!--        <v-col cols="12" md="6" lg="4" xl="3" v-for="item in cargo" :key="`cargo:${item[1].id}`">-->
-<!--          {{ numberFormat.format(item[0]) }} <b>{{ item[1].name }}</b> {{ item[1].rarity }} {{ item[1].tier > 0 ? item[1].tier : '' }}-->
-<!--        </v-col>-->
-<!--      </v-row>-->
-<!--      <v-row>-->
-<!--        <v-col cols="12">-->
-<!--          <v-pagination-->
-<!--              @update:model-value="changePage"-->
-<!--              v-model="page"-->
-<!--              :length="data?.pages || 0"-->
-<!--          ></v-pagination>-->
-<!--        </v-col>-->
-<!--      </v-row>-->
-<!--    </template>-->
-<!--    <template v-else>-->
-<!--      <v-empty-state-->
-<!--       headline="No items found"-->
-<!--       text="Try changing your search criteria"-->
-<!--      ></v-empty-state>-->
-<!--    </template>-->
-<!--  </v-container>-->
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <UInput
+            v-model="debouncedSearch"
+            icon="i-lucide-search"
+            placeholder="Search items or rarity"
+            variant="outline"
+          />
+          <USelect v-model="tag" :items="tagOptions" placeholder="All tags" variant="outline" />
+          <USelect v-model="tier" :items="tierOptions" placeholder="All tiers" variant="outline" />
+        </div>
+      </div>
+
+      <UProgress v-if="pending" color="neutral" />
+
+      <template v-if="data">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Items</h2>
+            <span class="text-sm text-gray-500 dark:text-gray-400">
+              Showing {{ numberFormat.format(items.length) }}
+            </span>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <UCard
+              v-for="item in items"
+              :key="`item:${item[1].id}`"
+              :class="['border border-l-4', tierToBorderClass(item[1].tier)]"
+            >
+              <div class="flex flex-col gap-0">
+                <div
+                  class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
+                >
+                  <div class="flex items-center gap-1">
+                    <span class="uppercase tracking-widest">Qty</span>
+                    <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {{ numberFormat.format(item[0]) }}
+                    </span>
+                  </div>
+                  <span v-if="item[1].tier > 0" :class="tierToTextClass(item[1].tier)">
+                    Tier {{ item[1].tier }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <img
+                    v-if="iconForItem(item[1]) && !hasImageError(item[1].id)"
+                    :src="iconForItem(item[1])"
+                    :alt="item[1].name"
+                    class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
+                    loading="lazy"
+                    @error="onImageError(item[1].id)"
+                  />
+                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {{ item[1].name }}
+                  </div>
+                </div>
+                <div
+                  class="text-xs uppercase tracking-widest"
+                  :class="rarityToTextClass(item[1].rarity)"
+                >
+                  {{ item[1].rarity }}
+                </div>
+              </div>
+            </UCard>
+          </div>
+
+          <div class="h-px bg-gray-200 dark:bg-gray-800"></div>
+
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cargo</h2>
+            <span class="text-sm text-gray-500 dark:text-gray-400">
+              Showing {{ numberFormat.format(cargo.length) }}
+            </span>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <UCard
+              v-for="item in cargo"
+              :key="`cargo:${item[1].id}`"
+              :class="['border border-l-4', tierToBorderClass(item[1].tier)]"
+            >
+              <div class="flex flex-col gap-0">
+                <div
+                  class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
+                >
+                  <div class="flex items-center gap-1">
+                    <span class="uppercase tracking-widest">Qty</span>
+                    <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {{ numberFormat.format(item[0]) }}
+                    </span>
+                  </div>
+                  <span v-if="item[1].tier > 0" :class="tierToTextClass(item[1].tier)">
+                    Tier {{ item[1].tier }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <img
+                    v-if="iconForItem(item[1]) && !hasImageError(item[1].id)"
+                    :src="iconForItem(item[1])"
+                    :alt="item[1].name"
+                    class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
+                    loading="lazy"
+                    @error="onImageError(item[1].id)"
+                  />
+                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {{ item[1].name }}
+                  </div>
+                </div>
+                <div
+                  class="text-xs uppercase tracking-widest"
+                  :class="rarityToTextClass(item[1].rarity)"
+                >
+                  {{ item[1].rarity }}
+                </div>
+              </div>
+            </UCard>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <UEmpty
+          icon="i-lucide-package-search"
+          title="No inventory stats"
+          description="Try changing your search criteria."
+        />
+      </template>
+    </div>
+  </UContainer>
 </template>

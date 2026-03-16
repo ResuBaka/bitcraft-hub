@@ -16,41 +16,18 @@ export type WebSocketMessages =
   | { t: "MobileEntityState"; c: MobileEntityState }
   | {
       t: "Experience";
-      c: {
-        experience: bigint;
-        level: bigint;
-        rank: bigint;
-        skill_name: string;
-        user_id: bigint;
-      };
+      c: { experience: bigint; level: bigint; rank: bigint; skill_name: string; user_id: bigint };
     }
   | {
       t: "TotalExperience";
-      c: {
-        user_id: bigint;
-        experience: bigint;
-        experience_per_hour: bigint;
-        rank: bigint;
-      };
+      c: { user_id: bigint; experience: bigint; experience_per_hour: bigint; rank: bigint };
     }
   | { t: "TimePlayed"; c: { user_id: bigint; time: bigint; rank: bigint } }
   | { t: "TimeSignedIn"; c: { user_id: bigint; time: bigint; rank: bigint } }
-  | {
-      t: "MovedOutOfClaim";
-      c: { user_id: bigint; chunk_index: bigint; claim_id: bigint };
-    }
-  | {
-      t: "MovedIntoClaim";
-      c: { user_id: bigint; chunk_index: bigint; claim_id: bigint };
-    }
-  | {
-      t: "PlayerMovedIntoClaim";
-      c: { user_id: bigint; chunk_index: bigint; claim_id: bigint };
-    }
-  | {
-      t: "PlayerMovedOutOfClaim";
-      c: { user_id: bigint; chunk_index: bigint; claim_id: bigint };
-    }
+  | { t: "MovedOutOfClaim"; c: { user_id: bigint; chunk_index: bigint; claim_id: bigint } }
+  | { t: "MovedIntoClaim"; c: { user_id: bigint; chunk_index: bigint; claim_id: bigint } }
+  | { t: "PlayerMovedIntoClaim"; c: { user_id: bigint; chunk_index: bigint; claim_id: bigint } }
+  | { t: "PlayerMovedOutOfClaim"; c: { user_id: bigint; chunk_index: bigint; claim_id: bigint } }
   | { t: "PlayerActionState"; c: PlayerActionState }
   | { t: "PlayerActionStateChangeName"; c: [string, bigint] }
   | { t: "Level"; c: { level: bigint; user_id: bigint; skill_name: string } }
@@ -68,7 +45,4 @@ export type WebSocketMessages =
   | { t: "RemoveBuyOrder"; c: AuctionListingState }
   | { t: "InventoryUpdate"; c: { resolved_inventory: ResolvedInventory } }
   | { t: "InventoryRemove"; c: { resolved_inventory: ResolvedInventory } }
-  | {
-      t: "InventoryInsert";
-      c: { resolved_inventory: ResolvedInventory; player_owner_id: bigint };
-    };
+  | { t: "InventoryInsert"; c: { resolved_inventory: ResolvedInventory; player_owner_id: bigint } };

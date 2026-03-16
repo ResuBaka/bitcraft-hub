@@ -11,7 +11,7 @@ pub(crate) fn start_worker_mobile_entity_state(
     tokio::spawn(async move {
         let mut buffer = Vec::with_capacity(500);
         loop {
-            buffer.clear();
+            buffer.shrink_to(500);
             let count = rx.recv_many(&mut buffer, 500).await;
             if count == 0 {
                 break;
@@ -81,8 +81,6 @@ pub(crate) fn start_worker_mobile_entity_state(
                     }
                 }
             }
-
-            tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
         }
     });
 }

@@ -123,7 +123,7 @@ impl From<game_module::module_bindings::FootprintType> for FootprintType {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
 pub struct ApiResponse {
     pub id: i64,
     pub functions: Vec<Function>,

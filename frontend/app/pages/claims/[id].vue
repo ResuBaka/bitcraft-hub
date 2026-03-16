@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import type { SortingState } from "@tanstack/vue-table";
+import { getSortedRowModel } from "@tanstack/vue-table";
 import { useNow } from "@vueuse/core";
 import { watchThrottled } from "@vueuse/shared";
-import { toast } from "vuetify-sonner";
+
+const toast = useToast();
+
 import AutocompleteItem from "~/components/Bitcraft/autocomplete/AutocompleteItem.vue";
 import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
 import InventoryChanges from "~/components/Bitcraft/InventoryChanges.vue";
@@ -19,6 +23,8 @@ import type { InventoryLocationEntry } from "~/types/InventoryLocationEntry";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
+import { levelToColor, rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
+import type { BuildingDescriptionsResponse } from "~/types/BuildingDescriptionsResponse";
 
 const {
   public: { iconDomain },
@@ -26,14 +32,12 @@ const {
 
 const page = ref(1);
 const buildingItemsPage = ref(1);
+const playerItemsPage = ref(1);
+const playerToolsPage = ref(1);
+const playerOfflineItemsPage = ref(1);
+const playerOfflineToolsPage = ref(1);
+const inventoryPageSize = 52;
 const perPage = 1500;
-
-const building_items_collapsible = ref([]);
-const player_items_collapsible = ref([]);
-const player_offline_items_collapsible = ref([]);
-const buildings_collapsible = ref([]);
-const inventory_changelog_collapsible = ref([]);
-const traveler_tasks_collapsible = ref([]);
 
 const search = ref<string | null>("");
 
@@ -76,17 +80,43 @@ const raritySortOrder = new Map([
   ["Default", 0],
 ]);
 
+const sortToolInventory = (a: any, b: any) => {
+  if (a.item.tier !== b.item.tier) {
+    return b.item.tier - a.item.tier;
+  }
+
+  const nameCompare = a.item.name.localeCompare(b.item.name);
+  if (nameCompare !== 0) {
+    return nameCompare;
+  }
+
+  return (raritySortOrder.get(b.item.rarity) ?? 0) - (raritySortOrder.get(a.item.rarity) ?? 0);
+};
+
 if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-const { data: claimFetch } =
-  useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
-    () => {
-      return `/api/bitcraft/claims/${route.params.id.toString()}`;
-    },
-    { deep: true },
-  );
+const { data: claimFetch } = useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
+  () => {
+    return `/api/bitcraft/claims/${route.params.id.toString()}`;
+  },
+  { deep: true },
+);
+
+const { data: buildingDescs } = useFetchMsPack<BuildingDescriptionsResponse>(() => {
+  return `/api/bitcraft/desc/buildings?per_page=1000`;
+});
+
+const getBuildingIcon = (buildingDescId: number) => {
+  const desc = buildingDescs.value?.buildings?.find((desc) => desc.id === buildingDescId);
+
+  if (desc) {
+    return desc.icon_asset_name;
+  }
+
+  return desc;
+};
 
 const { data: trevelerTasksFetch } = useFetchMsPack<{
   [key: number]: TravelerTaskDesc;
@@ -94,11 +124,9 @@ const { data: trevelerTasksFetch } = useFetchMsPack<{
   return `/traveler_tasks`;
 });
 
-const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
-  () => {
-    return `/api/bitcraft/itemsAndCargo/all`;
-  },
-);
+const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(() => {
+  return `/api/bitcraft/itemsAndCargo/all`;
+});
 
 const travelerTaskRows = computed(() => {
   if (!itemsAndCargoAllFetch.value) {
@@ -113,12 +141,10 @@ const travelerTaskRows = computed(() => {
     const itemNames = requiredItems
       .map((requiredItem) => {
         if (requiredItem.item_type === "Item") {
-          return itemsAndCargoAllFetch.value?.item_desc?.[requiredItem.item_id]
-            ?.name;
+          return itemsAndCargoAllFetch.value?.item_desc?.[requiredItem.item_id]?.name;
         }
         if (requiredItem.item_type === "Cargo") {
-          return itemsAndCargoAllFetch.value?.cargo_desc?.[requiredItem.item_id]
-            ?.name;
+          return itemsAndCargoAllFetch.value?.cargo_desc?.[requiredItem.item_id]?.name;
         }
         return undefined;
       })
@@ -135,38 +161,40 @@ const travelerTaskRows = computed(() => {
   });
 });
 
-const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } =
-  useFetchMsPack<InventoryChangelog[]>(
-    () => {
-      return `/claims/inventory_changelog/${route.params.id.toString()}`;
-    },
-    {
-      onRequest: ({ options }) => {
-        options.query = options.query || {};
-        if (item_object.value !== undefined && item_object.value !== null) {
-          options.query.item_id = item_object.value.id;
-          options.query.item_type = item_object.value.type;
-        }
-        if (player_id.value !== undefined && player_id.value !== null) {
-          options.query.user_id = player_id.value.toString();
-        }
-        options.query.per_page = 20;
+const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = useFetchMsPack<
+  InventoryChangelog[]
+>(
+  () => {
+    return `/claims/inventory_changelog/${route.params.id.toString()}`;
+  },
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+      if (item_object.value !== undefined && item_object.value !== null) {
+        options.query.item_id = item_object.value.id;
+        options.query.item_type = item_object.value.type;
+      }
+      if (player_id.value !== undefined && player_id.value !== null) {
+        options.query.user_id = player_id.value.toString();
+      }
+      options.query.per_page = 20;
 
-        if (Object.keys(options.query).length > 1) {
-          const query = { ...options.query };
-          delete query.per_page;
-          router.push({ query });
-        } else if (options.query.page < 1) {
-          router.push({});
-        }
-      },
+      if (Object.keys(options.query).length > 1) {
+        const query = { ...options.query };
+        delete query.per_page;
+        router.push({ query });
+      } else if (options.query.page < 1) {
+        router.push({});
+      }
     },
-  );
+  },
+);
 
-const { data: buidlingsFetch, pending: buildingsPending } =
-  useFetchMsPack<BuildingStatesResponse>(() => {
+const { data: buidlingsFetch, pending: buildingsPending } = useFetchMsPack<BuildingStatesResponse>(
+  () => {
     return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&page=${page.value}&per_page=${perPage}&skip_static_buildings=true&with_inventory=true`;
-  });
+  },
+);
 
 const topicsPlayer = computed<string[]>(() => {
   if (claimFetch.value === undefined) {
@@ -183,7 +211,7 @@ registerWebsocketMessageHandler(
   "ClaimLocalState",
   [`claim_local_state.${route.params.id}`],
   (message) => {
-    if (message.entity_id === route.params.id) {
+    if (Number(message.entity_id) === Number(route.params.id)) {
       if (claimFetch.value) {
         claimFetch.value.num_tiles = message.num_tiles;
         claimFetch.value.supplies = message.supplies;
@@ -198,25 +226,15 @@ registerWebsocketMessageHandler(
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
   let onlineState = message.signed_in ? "Online" : "Offline";
 
-  if (
-    claimFetch.value.members[message.entity_id].online_state !== onlineState
-  ) {
+  if (claimFetch.value.members[message.entity_id].online_state !== onlineState) {
     if (message.signed_in) {
-      toast(
-        `${claimFetch.value.members[message.entity_id].user_name} signed in`,
-        {
-          progressBar: true,
-          duration: 5000,
-        },
-      );
+      toast.add({
+        title: `${claimFetch.value.members[message.entity_id].user_name} signed in`,
+      });
     } else {
-      toast(
-        `${claimFetch.value.members[message.entity_id].user_name} signed out`,
-        {
-          progressBar: true,
-          duration: 5000,
-        },
-      );
+      toast.add({
+        title: `${claimFetch.value.members[message.entity_id].user_name} signed out`,
+      });
     }
     claimFetch.value.members[message.entity_id].online_state = onlineState;
   }
@@ -237,14 +255,12 @@ const topicsLevel = computed<string[]>(() => {
 
 registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
   if (claimFetch.value?.members[message.user_id]) {
-    toast(
-      `Player ${claimFetch.value?.members[message.user_id].user_name} Level ${message.level} reached for Skill ${message.skill_name}`,
-      { progressBar: true, duration: 5000 },
-    );
+    toast.add({
+      title: `Player ${claimFetch.value?.members[message.user_id].user_name} Level ${message.level} reached for Skill ${message.skill_name}`,
+    });
 
-    claimFetch.value.members[message.user_id].skills_ranks[
-      message.skill_name
-    ].level = message.level;
+    claimFetch.value.members[message.user_id].skills_ranks[message.skill_name].level =
+      message.level;
   }
 });
 
@@ -258,8 +274,7 @@ const buildings = computed(() => {
 
   return buidlingsFetch.value?.buildings.filter((building) => {
     return (
-      !search.value ||
-      building.building_name.toLowerCase().includes(search.value.toLowerCase())
+      !search.value || building.building_name.toLowerCase().includes(search.value.toLowerCase())
     );
   });
 });
@@ -271,24 +286,26 @@ const inventorysBuildings = computed(() => {
     return [];
   }
 
-  if (
-    !inventoryBuildingsSearch.value &&
-    !rarityBuildings.value &&
-    !tierBuildings.value
-  ) {
+  if (!inventoryBuildingsSearch.value && !rarityBuildings.value && !tierBuildings.value) {
     return claimFetch.value?.inventorys?.buildings;
   }
 
   return claimFetch.value?.inventorys?.buildings.filter(
     (inventory) =>
-      (!rarityBuildings.value ||
-        inventory.item.rarity === rarityBuildings.value) &&
+      (!rarityBuildings.value || inventory.item.rarity === rarityBuildings.value) &&
       (!tierBuildings.value || inventory.item.tier === tierBuildings.value) &&
       (!inventoryBuildingsSearch.value ||
-        inventory.item.name
-          .toLowerCase()
-          .includes(inventoryBuildingsSearch.value.toLowerCase())),
+        inventory.item.name.toLowerCase().includes(inventoryBuildingsSearch.value.toLowerCase())),
   );
+});
+
+watch([rarityBuildings, tierBuildings], () => {
+  buildingItemsPage.value = 1;
+});
+
+const pagedInventoryBuildings = computed(() => {
+  const start = (buildingItemsPage.value - 1) * inventoryPageSize;
+  return inventorysBuildings.value.slice(start, start + inventoryPageSize);
 });
 
 const inventoryPlayersSearch = ref<string | null>("");
@@ -298,11 +315,7 @@ const inventorysPlayers = computed(() => {
     return [];
   }
 
-  if (
-    !inventoryPlayersSearch.value &&
-    !rarityPlayers.value &&
-    !tierPlayers.value
-  ) {
+  if (!inventoryPlayersSearch.value && !rarityPlayers.value && !tierPlayers.value) {
     return claimFetch.value?.inventorys?.players;
   }
 
@@ -311,10 +324,17 @@ const inventorysPlayers = computed(() => {
       (!rarityPlayers.value || inventory.item.rarity === rarityPlayers.value) &&
       (!tierPlayers.value || inventory.item.tier === tierPlayers.value) &&
       (!inventoryPlayersSearch.value ||
-        inventory.item.name
-          .toLowerCase()
-          .includes(inventoryPlayersSearch.value.toLowerCase())),
+        inventory.item.name.toLowerCase().includes(inventoryPlayersSearch.value.toLowerCase())),
   );
+});
+
+watch([rarityPlayers, tierPlayers], () => {
+  playerItemsPage.value = 1;
+});
+
+const pagedInventoryPlayers = computed(() => {
+  const start = (playerItemsPage.value - 1) * inventoryPageSize;
+  return inventorysPlayers.value.slice(start, start + inventoryPageSize);
 });
 
 const inventoryPlayersOfflineSearch = ref<string | null>("");
@@ -334,15 +354,22 @@ const inventorysPlayersOffline = computed(() => {
 
   return claimFetch.value?.inventorys?.players_offline.filter(
     (inventory) =>
-      (!rarityPlayersOffline.value ||
-        inventory.item.rarity === rarityPlayersOffline.value) &&
-      (!tierPlayersOffline.value ||
-        inventory.item.tier === tierPlayersOffline.value) &&
+      (!rarityPlayersOffline.value || inventory.item.rarity === rarityPlayersOffline.value) &&
+      (!tierPlayersOffline.value || inventory.item.tier === tierPlayersOffline.value) &&
       (!inventoryPlayersOfflineSearch.value ||
         inventory.item.name
           .toLowerCase()
           .includes(inventoryPlayersOfflineSearch.value.toLowerCase())),
   );
+});
+
+watch([rarityPlayersOffline, tierPlayersOffline], () => {
+  playerOfflineItemsPage.value = 1;
+});
+
+const pagedInventoryPlayersOffline = computed(() => {
+  const start = (playerOfflineItemsPage.value - 1) * inventoryPageSize;
+  return inventorysPlayersOffline.value.slice(start, start + inventoryPageSize);
 });
 
 const inventoryPlayersToolsSearch = ref<string | null>("");
@@ -352,45 +379,30 @@ const inventorysPlayersTools = computed(() => {
     return [];
   }
 
-  if (
-    !inventoryPlayersToolsSearch.value &&
-    !rarityPlayersTools.value &&
-    !tierPlayersTools.value
-  ) {
-    return claimFetch.value?.tool_inventorys?.players.slice().sort((a, b) => {
-      if (a.item.tier !== b.item.tier) {
-        return b.item.tier - a.item.tier;
-      }
-
-      return (
-        (raritySortOrder.get(b.item.rarity) ?? 0) -
-        (raritySortOrder.get(a.item.rarity) ?? 0)
-      );
-    });
+  if (!inventoryPlayersToolsSearch.value && !rarityPlayersTools.value && !tierPlayersTools.value) {
+    return claimFetch.value?.tool_inventorys?.players.slice().sort(sortToolInventory);
   }
 
   return claimFetch.value?.tool_inventorys?.players
     .filter(
       (inventory) =>
-        (!rarityPlayersTools.value ||
-          inventory.item.rarity === rarityPlayersTools.value) &&
-        (!tierPlayersTools.value ||
-          inventory.item.tier === tierPlayersTools.value) &&
+        (!rarityPlayersTools.value || inventory.item.rarity === rarityPlayersTools.value) &&
+        (!tierPlayersTools.value || inventory.item.tier === tierPlayersTools.value) &&
         (!inventoryPlayersToolsSearch.value ||
           inventory.item.name
             .toLowerCase()
             .includes(inventoryPlayersToolsSearch.value.toLowerCase())),
     )
-    .sort((a, b) => {
-      if (a.item.tier !== b.item.tier) {
-        return b.item.tier - a.item.tier;
-      }
+    .sort(sortToolInventory);
+});
 
-      return (
-        (raritySortOrder.get(b.item.rarity) ?? 0) -
-        (raritySortOrder.get(a.item.rarity) ?? 0)
-      );
-    });
+watch([rarityPlayersTools, tierPlayersTools], () => {
+  playerToolsPage.value = 1;
+});
+
+const pagedInventoryPlayersTools = computed(() => {
+  const start = (playerToolsPage.value - 1) * inventoryPageSize;
+  return inventorysPlayersTools.value.slice(start, start + inventoryPageSize);
 });
 
 const inventoryPlayersOfflineToolsSearch = ref<string | null>("");
@@ -405,18 +417,7 @@ const inventorysPlayersOfflineTools = computed(() => {
     !rarityPlayersOfflineTools.value &&
     !tierPlayersOfflineTools.value
   ) {
-    return claimFetch.value?.tool_inventorys?.players_offline
-      .slice()
-      .sort((a, b) => {
-        if (a.item.tier !== b.item.tier) {
-          return b.item.tier - a.item.tier;
-        }
-
-        return (
-          (raritySortOrder.get(b.item.rarity) ?? 0) -
-          (raritySortOrder.get(a.item.rarity) ?? 0)
-        );
-      });
+    return claimFetch.value?.tool_inventorys?.players_offline.slice().sort(sortToolInventory);
   }
 
   return claimFetch.value?.tool_inventorys?.players_offline
@@ -424,31 +425,22 @@ const inventorysPlayersOfflineTools = computed(() => {
       (inventory) =>
         (!rarityPlayersOfflineTools.value ||
           inventory.item.rarity === rarityPlayersOfflineTools.value) &&
-        (!tierPlayersOfflineTools.value ||
-          inventory.item.tier === tierPlayersOfflineTools.value) &&
+        (!tierPlayersOfflineTools.value || inventory.item.tier === tierPlayersOfflineTools.value) &&
         (!inventoryPlayersOfflineToolsSearch.value ||
           inventory.item.name
             .toLowerCase()
             .includes(inventoryPlayersOfflineToolsSearch.value.toLowerCase())),
     )
-    .sort((a, b) => {
-      if (a.item.tier !== b.item.tier) {
-        return b.item.tier - a.item.tier;
-      }
-
-      return (
-        (raritySortOrder.get(b.item.rarity) ?? 0) -
-        (raritySortOrder.get(a.item.rarity) ?? 0)
-      );
-    });
+    .sort(sortToolInventory);
 });
 
-const sortMembersLevelRaw = (a: any, b: any) => {
-  return (b?.level || 0) - (a?.level || 0);
-};
+watch([rarityPlayersOfflineTools, tierPlayersOfflineTools], () => {
+  playerOfflineToolsPage.value = 1;
+});
 
-const length = computed(() => {
-  return Math.ceil((buidlingsFetch.value?.total || 0) / perPage) ?? 0;
+const pagedInventoryPlayersOfflineTools = computed(() => {
+  const start = (playerOfflineToolsPage.value - 1) * inventoryPageSize;
+  return inventorysPlayersOfflineTools.value.slice(start, start + inventoryPageSize);
 });
 
 const claimOwner = computed(() => {
@@ -467,9 +459,7 @@ useSeoMeta({
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
   const years = Math.floor(seconds / (60 * 60 * 24 * 365));
-  const weeks = Math.floor(
-    (seconds % (60 * 60 * 24 * 365)) / (60 * 60 * 24 * 7),
-  );
+  const weeks = Math.floor((seconds % (60 * 60 * 24 * 365)) / (60 * 60 * 24 * 7));
   const days = Math.floor((seconds % (60 * 60 * 24 * 7)) / (60 * 60 * 24));
   const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
   const minutes = Math.floor((seconds % (60 * 60)) / 60);
@@ -518,25 +508,44 @@ const validTabs = new Set([
   "traveler_tasks",
 ]);
 
-let tab = ref("members");
+const initialTab = (() => {
+  const next = (route.query.tab as string) || "";
+  if (next && validTabs.has(next)) {
+    return next;
+  }
+  return "members";
+})();
+
+let tab = ref(initialTab);
 
 let memberSearch = ref<string | null>(null);
 let showOnlyOnlineMembers = ref(false);
+const memberSorting = ref<SortingState>([]);
+
+const defaultMemberSort = (rows: any[]) => {
+  return rows.slice().sort((a, b) => {
+    if (a.permissions !== b.permissions) {
+      return b.permissions - a.permissions;
+    }
+    if (a.online_state !== b.online_state) {
+      return a.online_state === "Online" ? -1 : 1;
+    }
+    return a.user_name.localeCompare(b.user_name);
+  });
+};
 
 const membersForTable = computed(() => {
   if (!claim.value?.members) {
     return [];
   }
-  return Object.values(claim.value.members)
+  const rows = Object.values(claim.value.members)
     .filter((member) => {
       if (showOnlyOnlineMembers.value && member.online_state !== "Online") {
         return false;
       }
 
       if (memberSearch.value) {
-        return member.user_name
-          .toLowerCase()
-          .includes(memberSearch.value.toLowerCase());
+        return member.user_name.toLowerCase().includes(memberSearch.value.toLowerCase());
       }
 
       return true;
@@ -568,17 +577,64 @@ const membersForTable = computed(() => {
         permissions,
       };
     });
+
+  return defaultMemberSort(rows);
 });
+
+const onMemberSearch = () => {
+  if (tab.value !== "members") {
+    tab.value = "members";
+  }
+};
 
 const onlinePlayersCount = computed(() => {
   if (claimFetch.value === undefined) {
     return 0;
   }
   return (
-    Object.values(claimFetch.value?.members).filter(
-      (member) => member.online_state === "Online",
-    ).length ?? 0
+    Object.values(claimFetch.value?.members).filter((member) => member.online_state === "Online")
+      .length ?? 0
   );
+});
+
+const memberSkills = [
+  "Carpentry",
+  "Farming",
+  "Fishing",
+  "Foraging",
+  "Forestry",
+  "Hunting",
+  "Leatherworking",
+  "Masonry",
+  "Mining",
+  "Scholar",
+  "Smithing",
+  "Tailoring",
+] as const;
+
+const memberColumns = computed(() => {
+  return [
+    {
+      id: "user",
+      header: "User",
+      accessorFn: (row: any) => row.user_name,
+      enableSorting: true,
+    },
+    {
+      id: "permissions",
+      header: "Perms",
+      accessorKey: "permissions",
+      enableSorting: true,
+      meta: { class: { th: "text-center", td: "text-center" } },
+    },
+    ...memberSkills.map((skill) => ({
+      id: `skill_${skill}`,
+      header: skill,
+      accessorFn: (row: any) => row?.skills_ranks?.[skill] ?? 0,
+      enableSorting: true,
+      meta: { class: { th: "text-center", td: "text-center" } },
+    })),
+  ];
 });
 
 const now = useNow({ interval: 1000, controls: true });
@@ -614,18 +670,160 @@ const upgradesByTier = computed(() => {
   return Array.from(tiers.entries()).sort((a, b) => a[0] - b[0]);
 });
 
+const tabItems = computed(() => {
+  return [
+    {
+      value: "members",
+      label: `Members (${membersForTable.value.length || 0})`,
+    },
+    {
+      value: "player_items",
+      label: `Member items (${inventorysPlayers.value.length || 0})`,
+    },
+    {
+      value: "player_offline_items",
+      label: `Member Offline items (${inventorysPlayersOffline.value.length || 0})`,
+    },
+    {
+      value: "player_tools",
+      label: `Member tools (${inventorysPlayersTools.value.length || 0})`,
+    },
+    {
+      value: "player_offline_tools",
+      label: `Member Offline tools (${inventorysPlayersOfflineTools.value.length || 0})`,
+    },
+    {
+      value: "building_items",
+      label: `Building items (${inventorysBuildings.value.length || 0})`,
+    },
+    { value: "buildings", label: `Buildings (${buildings.value.length || 0})` },
+    // { value: "leaderboards", label: "Leaderboards" },
+    {
+      value: "upgrades",
+      label: `Upgrades (${upgradesSorted.value.length || 0})`,
+    },
+    {
+      value: "inventory_changelogs",
+      label: `Inventory changes (${InventoryChangelogFetch.value?.length || 0})`,
+    },
+    { value: "traveler_tasks", label: "Traveler tasks" },
+  ];
+});
+
 const selectedLocationEntries = computed<InventoryLocationEntry[]>(() => {
   return selectedInventoryLocation.value?.locations ?? [];
+});
+
+const uniqueSortedNumbers = (list: number[]) => {
+  return Array.from(new Set(list)).sort((a, b) => a - b);
+};
+
+const uniqueSortedStrings = (list: string[]) => {
+  return Array.from(new Set(list)).sort((a, b) => a.localeCompare(b));
+};
+
+const buildingTierOptions = computed(() => {
+  return uniqueSortedNumbers(
+    claimFetch.value?.inventorys?.buildings?.map((inventory) => inventory.item.tier) ?? [],
+  );
+});
+
+const buildingRarityOptions = computed(() => {
+  return uniqueSortedStrings(
+    claimFetch.value?.inventorys?.buildings?.map((inventory) => inventory.item.rarity) ?? [],
+  );
+});
+
+const playerTierOptions = computed(() => {
+  return uniqueSortedNumbers(
+    claimFetch.value?.inventorys?.players?.map((inventory) => inventory.item.tier) ?? [],
+  );
+});
+
+const playerRarityOptions = computed(() => {
+  return uniqueSortedStrings(
+    claimFetch.value?.inventorys?.players?.map((inventory) => inventory.item.rarity) ?? [],
+  );
+});
+
+const playerOfflineTierOptions = computed(() => {
+  return uniqueSortedNumbers(
+    claimFetch.value?.inventorys?.players_offline?.map((inventory) => inventory.item.tier) ?? [],
+  );
+});
+
+const playerOfflineRarityOptions = computed(() => {
+  return uniqueSortedStrings(
+    claimFetch.value?.inventorys?.players_offline?.map((inventory) => inventory.item.rarity) ?? [],
+  );
+});
+
+const playerToolTierOptions = computed(() => {
+  return uniqueSortedNumbers(
+    claimFetch.value?.tool_inventorys?.players?.map((inventory) => inventory.item.tier) ?? [],
+  );
+});
+
+const playerToolRarityOptions = computed(() => {
+  return uniqueSortedStrings(
+    claimFetch.value?.tool_inventorys?.players?.map((inventory) => inventory.item.rarity) ?? [],
+  );
+});
+
+const playerOfflineToolTierOptions = computed(() => {
+  return uniqueSortedNumbers(
+    claimFetch.value?.tool_inventorys?.players_offline?.map((inventory) => inventory.item.tier) ??
+      [],
+  );
+});
+
+const playerOfflineToolRarityOptions = computed(() => {
+  return uniqueSortedStrings(
+    claimFetch.value?.tool_inventorys?.players_offline?.map((inventory) => inventory.item.rarity) ??
+      [],
+  );
 });
 
 const getPlayerNameById = (playerId: bigint) => {
   const key = playerId.toString();
   const member =
     claimFetch.value?.members?.[key] ??
-    (claimFetch.value?.members as Record<string, any>)?.[
-      playerId as unknown as string
-    ];
+    (claimFetch.value?.members as Record<string, any>)?.[playerId as unknown as string];
   return member?.user_name ?? `#${key}`;
+};
+
+const tierToBgStyle = (tier: number) => {
+  return { backgroundColor: `rgba(var(--tier-${tier}), 0.10)` };
+};
+
+const levelToTier = (level: number) => {
+  if (1 <= level && level <= 19) return 1;
+  if (20 <= level && level <= 29) return 2;
+  if (30 <= level && level <= 39) return 3;
+  if (40 <= level && level <= 49) return 4;
+  if (50 <= level && level <= 59) return 5;
+  if (60 <= level && level <= 69) return 6;
+  if (70 <= level && level <= 79) return 7;
+  if (80 <= level && level <= 89) return 8;
+  if (90 <= level && level <= 99) return 9;
+  if (100 <= level) return 10;
+  return 1;
+};
+
+const getSkillTool = (member: any, skill: (typeof memberSkills)[number]) => {
+  const index = skillToToolIndex[skill as keyof typeof skillToToolIndex];
+  if (index === undefined || index === null) {
+    return null;
+  }
+  return member?.inventory?.pockets?.[index]?.contents?.item ?? null;
+};
+
+const getToolLabel = (item: any) => {
+  if (!item?.tier) {
+    return null;
+  }
+  const rarity = item.rarity ? Array.from(item.rarity)[0] : "";
+  return `T${item.tier} ${rarity}`.trim();
 };
 
 const isBankLocation = (location: InventoryLocationEntry) => {
@@ -638,8 +836,7 @@ const formatLocationOwner = (location: InventoryLocationEntry) => {
   const fallbackName = location.owner_name ?? `#${ownerId}`;
 
   if (location.owner_type === "Player") {
-    const playerName =
-      location.owner_name ?? getPlayerNameById(location.owner_entity_id);
+    const playerName = location.owner_name ?? getPlayerNameById(location.owner_entity_id);
     return `Player: ${playerName}`;
   }
 
@@ -682,9 +879,7 @@ const openItemLocationModal = (
       : (claimFetch.value?.inventory_locations?.[section] ?? []);
   selectedInventoryLocation.value =
     locations.find(
-      (entry) =>
-        entry.item_id === inventory.item_id &&
-        entry.item_type === inventory.item_type,
+      (entry) => entry.item_id === inventory.item_id && entry.item_type === inventory.item_type,
     ) ?? null;
   locationModalOpen.value = true;
 };
@@ -694,8 +889,7 @@ const isUpgradeLocked = (upgrade: ClaimTechDesc) => {
 };
 
 const unlockedUpgradesCount = computed(() => {
-  return upgradesSorted.value.filter((upgrade) => !isUpgradeLocked(upgrade))
-    .length;
+  return upgradesSorted.value.filter((upgrade) => !isUpgradeLocked(upgrade)).length;
 });
 
 const learnedUpgradesSet = computed(() => {
@@ -724,27 +918,28 @@ const unlocksTechNames = (upgrade: ClaimTechDesc) => {
   });
 };
 
-const researchEnded = computed(() => {
-  return new Date(
-    new Date(
-      claimFetch.value?.running_upgrade_started
-        ?.__timestamp_micros_since_unix_epoch__,
-    ).getTime() +
-      claimFetch.value?.running_upgrade?.research_time * 1000,
-  );
-});
+const travelerColumns = [
+  { id: "items", header: "Items" },
+  { id: "name", header: "Name" },
+  { id: "npc_name", header: "NPC" },
+  { id: "player_count", header: "Players" },
+  { id: "users", header: "User names" },
+];
 
-// Show Days Hours Minutes Seconds
-const countDownUntilResearchIsFinished = computed(() => {
-  const diff = researchEnded.value.getTime() - now.now.value.getTime();
-
-  return {
-    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-    minutes: Math.floor((diff / 1000 / 60) % 60),
-    seconds: Math.floor((diff / 1000) % 60),
-  };
-});
+const getTravelerItemIcon = (shownItem: { item_type: "Item" | "Cargo"; item_id: number }) => {
+  if (!itemsAndCargoAllFetch.value) {
+    return null;
+  }
+  const desc =
+    shownItem.item_type === "Item"
+      ? itemsAndCargoAllFetch.value?.item_desc?.[shownItem.item_id]
+      : itemsAndCargoAllFetch.value?.cargo_desc?.[shownItem.item_id];
+  if (!desc?.icon_asset_name) {
+    return null;
+  }
+  const icon = iconAssetUrlNameRandom(desc.icon_asset_name);
+  return icon.show ? icon.url : null;
+};
 
 const skillToToolIndex = {
   Carpentry: 1,
@@ -777,9 +972,9 @@ watchThrottled(
 );
 
 watch(
-  () => route.hash,
-  (hash) => {
-    const next = hash?.replace(/^#/, "");
+  () => route.query.tab,
+  (value) => {
+    const next = typeof value === "string" ? value : "";
     if (next && validTabs.has(next) && tab.value !== next) {
       tab.value = next;
     }
@@ -794,1370 +989,974 @@ watch(
       return;
     }
 
-    const nextHash = `#${value}`;
-    if (route.hash !== nextHash) {
-      router.replace({ hash: nextHash });
+    if (route.query.tab !== value) {
+      router.replace({ query: { ...route.query, tab: value } });
     }
   },
-  { immediate: true },
+  { immediate: false },
+);
+
+watch(
+  inventoryBuildingsSearch,
+  (value, oldValue) => {
+    if (value !== oldValue) {
+      buildingItemsPage.value = 1;
+    }
+  },
+  { immediate: false },
+);
+
+watch(
+  inventoryPlayersSearch,
+  (value, oldValue) => {
+    if (value !== oldValue) {
+      playerItemsPage.value = 1;
+    }
+  },
+  { immediate: false },
+);
+
+watch(
+  inventoryPlayersOfflineSearch,
+  (value, oldValue) => {
+    if (value !== oldValue) {
+      playerOfflineItemsPage.value = 1;
+    }
+  },
+  { immediate: false },
+);
+
+watch(
+  inventoryPlayersToolsSearch,
+  (value, oldValue) => {
+    if (value !== oldValue) {
+      playerToolsPage.value = 1;
+    }
+  },
+  { immediate: false },
+);
+
+watch(
+  inventoryPlayersOfflineToolsSearch,
+  (value, oldValue) => {
+    if (value !== oldValue) {
+      playerOfflineToolsPage.value = 1;
+    }
+  },
+  { immediate: false },
 );
 </script>
 
 <template>
-<!--  <v-container fluid>-->
-<!--    <v-row>-->
-<!--      <v-col cols="12">-->
-<!--        <v-card height="100%" v-if="claim !== undefined">-->
-<!--          <v-card-item>-->
-<!--            <v-card-title class="text-center" :class="`color-tier-${claim.tier}`">-->
-<!--              {{ claim.name }}-->
-<!--            </v-card-title>-->
-<!--          </v-card-item>-->
-<!--          <v-card-text>-->
-<!--            <v-row>-->
-<!--              <v-col cols="6" md="2" lg="1">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Owner</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>{{ claimOwner?.user_name ?? '' }}</v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col cols="6" md="2" lg="1">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Supplies</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    <bitcraft-animated-number v-if="claim.supplies" :value="claim.supplies" :formater="numberFormat.format"-->
-<!--                                              :speed="50"></bitcraft-animated-number>-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col cols="6" md="2" lg="1">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Tiles</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    <bitcraft-animated-number v-if="claim.num_tiles" :value="claim.num_tiles" :formater="numberFormat.format"-->
-<!--                                              :speed="50"></bitcraft-animated-number>-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col cols="6" md="2" lg="1">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Treasury</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    <bitcraft-animated-number v-if="claim.treasury" :value="claim.treasury" :formater="numberFormat.format"-->
-<!--                                              :speed="50"></bitcraft-animated-number>-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col cols="6" md="2" lg="1" v-if="claim?.location && claim?.location.x != 0 && claim?.location.z != 0">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Location</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    R: <bitcraft-region :region="claim.region" /> N: {{ Math.ceil(claim.location.z / 3) }}, E:-->
-<!--                    {{ Math.ceil(claim.location.x / 3) }}-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col cols="6" md="2" lg="1">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Buildings</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    {{ numberFormat.format(claimFetch?.building_states?.length || 0) }}-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col cols="6" md="2" lg="1">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Tier</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    {{ claimFetch?.tier || 1 }}-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col v-if="claimFetch?.running_upgrade" cols="6" md="2" lg="2">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Current Research</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    <strong>{{ claimFetch?.running_upgrade.description }}</strong> is going to be finished at: <strong-->
-<!--                      v-if="countDownUntilResearchIsFinished.days">{{-->
-<!--                      countDownUntilResearchIsFinished.days-->
-<!--                    }}d </strong><strong v-if="countDownUntilResearchIsFinished.hours">{{-->
-<!--                      countDownUntilResearchIsFinished.hours-->
-<!--                    }}h </strong><strong v-if="countDownUntilResearchIsFinished.minutes">{{-->
-<!--                      countDownUntilResearchIsFinished.minutes-->
-<!--                    }}m </strong><strong v-if="countDownUntilResearchIsFinished.seconds">{{-->
-<!--                      countDownUntilResearchIsFinished.seconds-->
-<!--                    }}s</strong>-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--              <v-col cols="6" md="2" lg="2">-->
-<!--                <v-list-item>-->
-<!--                  <v-list-item-title>Total time signed in</v-list-item-title>-->
-<!--                  <v-list-item-subtitle>-->
-<!--                    {{ secondsToDaysMinutesSecondsFormat(claimFetch?.time_signed_in) }}-->
-<!--                  </v-list-item-subtitle>-->
-<!--                </v-list-item>-->
-<!--              </v-col>-->
-<!--            </v-row>-->
-<!--          </v-card-text>-->
-<!--        </v-card>-->
-<!--      </v-col>-->
-<!--      <v-col cols="12">-->
-<!--        <v-card height="100%">-->
-<!--          <v-tabs-->
-<!--              v-model="tab"-->
-<!--          >-->
-<!--            <v-tab value="members">Members</v-tab>-->
-<!--            <v-tab value="building_items">Building items ({{ inventorysBuildings.length || 0 }})</v-tab>-->
-<!--            <v-tab value="player_items">Player items ({{ inventorysPlayers.length || 0 }})</v-tab>-->
-<!--            <v-tab value="player_tools">Player tools ({{ inventorysPlayersTools.length || 0 }})</v-tab>-->
-<!--            <v-tab value="player_offline_items">Player Offline items ({{-->
-<!--                inventorysPlayersOffline.length || 0-->
-<!--              }})-->
-<!--            </v-tab>-->
-<!--            <v-tab value="player_offline_tools">Player Offline tools ({{-->
-<!--                inventorysPlayersOfflineTools.length || 0-->
-<!--              }})-->
-<!--            </v-tab>-->
-<!--            <v-tab value="buildings">Buildings ({{ buildings.length || 0 }})</v-tab>-->
-<!--            <v-tab value="leaderboards">Leaderboards</v-tab>-->
-<!--            <v-tab value="upgrades">Upgrades ({{ upgradesSorted.length || 0 }})</v-tab>-->
-<!--            <v-tab value="inventory_changelogs">Inventory Changes ({{ InventoryChangelogFetch?.length || 0 }})</v-tab>-->
-<!--            <v-tab value="traveler_tasks">Traveler Tasks</v-tab>-->
-<!--          </v-tabs>-->
+  <UContainer class="w-full max-w-none py-6">
+    <template v-if="!claim">
+      <div class="flex items-center justify-center py-10">
+        <UProgress color="neutral" />
+      </div>
+    </template>
+    <template v-else>
+      <div class="flex flex-col gap-4">
+        <div
+          class="rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                Claim
+              </p>
+              <h1 class="text-2xl font-semibold tracking-tight" :class="tierToColor[claimTier]">
+                {{ claim.name }}
+              </h1>
+              <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                <span class="font-semibold text-gray-800 dark:text-gray-100">Owner:</span>
+                {{ claimOwner?.user_name ?? "Unknown" }}
+              </div>
+              <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                <span class="font-semibold text-gray-800 dark:text-gray-100">Members: </span>
+                <span class="text-emerald-600 dark:text-emerald-400">{{ onlinePlayersCount }}</span
+                >/{{ claimFetch ? Object.values(claimFetch.members).length : 0 }}
+              </div>
+              <div
+                v-if="claim?.location && claim?.location.x !== 0 && claim?.location.z !== 0"
+                class="mt-1 text-sm text-gray-600 dark:text-gray-300"
+              >
+                R: <bitcraft-region :region="claim.region" /> N:
+                {{ Math.ceil(claim.location.z / 3) }}, E: {{ Math.ceil(claim.location.x / 3) }}
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <UBadge color="neutral" variant="soft">
+                Supplies: {{ numberFormat.format(claim.supplies ?? 0) }}
+              </UBadge>
+              <UBadge color="neutral" variant="soft">
+                Tiles: {{ numberFormat.format(claim.num_tiles ?? 0) }}
+              </UBadge>
+              <UBadge color="neutral" variant="soft">
+                Treasury: {{ numberFormat.format(claim.treasury ?? 0) }}
+              </UBadge>
+              <UBadge color="neutral" variant="soft">
+                Buildings: {{ numberFormat.format(claimFetch?.building_states?.length || 0) }}
+              </UBadge>
+              <UBadge color="neutral" variant="soft">
+                Time signed in:
+                {{ secondsToDaysMinutesSecondsFormat(claimFetch?.time_signed_in ?? 0) || "0s" }}
+              </UBadge>
+              <UBadge color="neutral" variant="soft">Tier {{ claimTier }}</UBadge>
+            </div>
+          </div>
+        </div>
 
-<!--          <v-card-text>-->
-<!--            <v-tabs-window v-model="tab">-->
-<!--              <v-tabs-window-item value="members">-->
-<!--                <v-card height="100%">-->
-<!--                  <v-card-title class="d-flex align-center pe-2">-->
-<!--                    Members (-->
-<!--                    <div-->
-<!--                        :class="`text-decoration-none ${onlinePlayersCount > 0 ? 'text-green' : 'text-high-emphasis'}`">-->
-<!--                      {{ onlinePlayersCount }}-->
-<!--                    </div>-->
-<!--                    /{{ claimFetch ? Object.values(claimFetch.members).length : 0 }})-->
+        <UCard :ui="{ body: 'sm:p-1 p-0', header: 'sm:p-3 p-0' }">
+          <template #header>
+            <div class="flex flex-wrap items-center">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Claim details</h2>
+            </div>
+          </template>
+          <div>
+            <div class="flex flex-wrap gap-2 p-4">
+              <UButton
+                v-for="item in tabItems"
+                :key="item.value"
+                :label="item.label"
+                :variant="tab === item.value ? 'solid' : 'soft'"
+                size="xs"
+                @click="tab = item.value"
+              />
+            </div>
+            <div class="border-t border-gray-200 p-4 dark:border-gray-800">
+              <div v-if="tab === 'members'" class="flex flex-col gap-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex items-center gap-2">
+                    <UBadge :color="onlinePlayersCount > 0 ? 'success' : 'neutral'" variant="soft">
+                      {{ onlinePlayersCount }} online
+                    </UBadge>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ claimFetch ? Object.values(claimFetch.members).length : 0 }} members
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <UInput
+                      v-model="memberSearch"
+                      icon="i-heroicons-magnifying-glass"
+                      placeholder="Search members"
+                      class="w-full sm:w-64"
+                      @update:model-value="onMemberSearch"
+                    />
+                    <USwitch v-model="showOnlyOnlineMembers" label="Only online" />
+                  </div>
+                </div>
+                <UTable
+                  v-model:sorting="memberSorting"
+                  :columns="memberColumns"
+                  :data="membersForTable"
+                  :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
+                  class="claim-table"
+                >
+                  <template #user-header="{ column }">
+                    <UButton
+                      variant="ghost"
+                      size="xs"
+                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
+                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
+                    >
+                      User
+                      <span class="ml-1 text-xs">
+                        {{
+                          column.getIsSorted() === "asc"
+                            ? "▲"
+                            : column.getIsSorted() === "desc"
+                              ? "▼"
+                              : ""
+                        }}
+                      </span>
+                    </UButton>
+                  </template>
+                  <template #permissions-header="{ column }">
+                    <UButton
+                      variant="ghost"
+                      size="xs"
+                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
+                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
+                    >
+                      Perms
+                      <span class="ml-1 text-xs">
+                        {{
+                          column.getIsSorted() === "asc"
+                            ? "▲"
+                            : column.getIsSorted() === "desc"
+                              ? "▼"
+                              : ""
+                        }}
+                      </span>
+                    </UButton>
+                  </template>
+                  <template
+                    v-for="skill in memberSkills"
+                    :key="`${skill}-header`"
+                    #[`skill_${skill}-header`]="{ column }"
+                  >
+                    <UButton
+                      variant="ghost"
+                      size="xs"
+                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
+                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
+                    >
+                      {{ skill }}
+                      <span class="ml-1 text-xs">
+                        {{
+                          column.getIsSorted() === "asc"
+                            ? "▲"
+                            : column.getIsSorted() === "desc"
+                              ? "▼"
+                              : ""
+                        }}
+                      </span>
+                    </UButton>
+                  </template>
+                  <template #user-cell="{ row }">
+                    <NuxtLink
+                      :to="{ name: 'players-id', params: { id: row.original.entity_id } }"
+                      class="font-semibold hover:underline"
+                      :class="
+                        row.original.online_state === 'Online'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-gray-900 dark:text-gray-100'
+                      "
+                    >
+                      {{ row.original.user_name }}
+                    </NuxtLink>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ row.original.online_state }}
+                    </div>
+                  </template>
+                  <template #permissions-cell="{ row }">
+                    <div class="flex items-center justify-center gap-1 text-lg">
+                      <span v-if="row.original.co_owner_permission">🏰</span>
+                      <span v-if="row.original.officer_permission">🗡️</span>
+                      <span v-if="row.original.build_permission">🔨</span>
+                      <span v-if="row.original.inventory_permission">📦</span>
+                    </div>
+                  </template>
+                  <template
+                    v-for="skill in memberSkills"
+                    :key="skill"
+                    #[`skill_${skill}-cell`]="{ row }"
+                  >
+                    <div class="flex items-center justify-center">
+                      <span
+                        class="level-pill rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
+                        :class="levelToColor(row.original?.skills_ranks?.[skill] ?? 0)"
+                        :style="
+                          tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))
+                        "
+                      >
+                        {{ row.original?.skills_ranks?.[skill] ?? 0 }}
+                      </span>
+                      <span
+                        v-if="getToolLabel(getSkillTool(row.original, skill))"
+                        class="level-pill rounded-r-full px-2 py-1 text-sm font-bold"
+                        :class="tierToColor[getSkillTool(row.original, skill)?.tier]"
+                        :style="tierToBgStyle(getSkillTool(row.original, skill)?.tier || 1)"
+                      >
+                        {{ getToolLabel(getSkillTool(row.original, skill)) }}
+                      </span>
+                      <span
+                        v-else
+                        class="rounded-r-full px-2 py-1 text-sm text-gray-400 dark:text-gray-500"
+                      >
+                        --
+                      </span>
+                    </div>
+                  </template>
+                </UTable>
+              </div>
 
-<!--                    <v-spacer></v-spacer>-->
-<!--                    <v-checkbox-->
-<!--                        v-model="showOnlyOnlineMembers"-->
-<!--                        label="Show only online members"-->
-<!--                    ></v-checkbox>-->
+              <div v-else-if="tab === 'building_items'" class="flex flex-col gap-4">
+                <div class="flex flex-wrap gap-2">
+                  <UInput
+                    v-model="inventoryBuildingsSearch"
+                    icon="i-heroicons-magnifying-glass"
+                    placeholder="Search items"
+                    class="w-full sm:w-64"
+                  />
+                  <USelect
+                    v-model="tierBuildings"
+                    :items="buildingTierOptions"
+                    placeholder="Tier"
+                    class="w-32"
+                  />
+                  <USelect
+                    v-model="rarityBuildings"
+                    :items="buildingRarityOptions"
+                    placeholder="Rarity"
+                    class="w-40"
+                  />
+                </div>
+                <div
+                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+                >
+                  <UCard
+                    v-for="inventory in pagedInventoryBuildings"
+                    :key="`${inventory.item_id}-${inventory.item_type}`"
+                    class="inventory-card border-l-4"
+                    :class="tierToBorderClassByLevel(inventory.item.tier)"
+                    role="button"
+                    tabindex="0"
+                    :ui="{ header: 'p-3', body: 'hidden' }"
+                    @click="openItemLocationModal(inventory, 'buildings')"
+                    @keydown.enter="openItemLocationModal(inventory, 'buildings')"
+                    @keydown.space.prevent="openItemLocationModal(inventory, 'buildings')"
+                  >
+                    <template #header>
+                      <div class="inventory-card__header inventory-card__header--media">
+                        <div class="inventory-card__meta">
+                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
+                          <div class="inventory-card__text">
+                            <div
+                              class="inventory-card__title"
+                              :class="tierToColor[inventory.item.tier]"
+                            >
+                              {{ inventory.item.name }}
+                            </div>
+                            <div
+                              class="inventory-card__subtitle"
+                              :class="rarityToTextClass(inventory.item.rarity)"
+                            >
+                              {{ inventory.item.rarity }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="inventory-card__qty">
+                          {{ numberFormat.format(inventory.quantity) }}
+                        </div>
+                      </div>
+                    </template>
+                  </UCard>
+                </div>
+                <div class="flex justify-center">
+                  <UPagination
+                    v-model:page="buildingItemsPage"
+                    :total="inventorysBuildings.length"
+                    :items-per-page="inventoryPageSize"
+                  />
+                </div>
+              </div>
 
-<!--                    <v-text-field-->
-<!--                        v-model="memberSearch"-->
-<!--                        density="compact"-->
-<!--                        label="Search"-->
-<!--                        prepend-inner-icon="mdi-magnify"-->
-<!--                        variant="solo-filled"-->
-<!--                        flat-->
-<!--                        hide-details-->
-<!--                        single-line-->
-<!--                    ></v-text-field>-->
-<!--                  </v-card-title>-->
-<!--                  <v-card-text>-->
-<!--                    <v-data-table-->
-<!--                        hover-->
-<!--                        density="compact"-->
-<!--                        :sort-by="[{ key: 'permissions', order: 'desc' }, { key: 'online_state', order: 'desc' }]"-->
-<!--                        :headers="[-->
-<!--                {-->
-<!--                  title: 'User',-->
-<!--                  key: 'user_name',-->
-<!--                  fixed: 'start',-->
-<!--                  cellProps: {-->
-<!--                    class: 'font-weight-black'-->
-<!--                  }-->
-<!--                },-->
-<!--                 {-->
-<!--                  title: 'Permissions',-->
-<!--                  key: 'permissions',-->
-<!--                },-->
-<!--                  {-->
-<!--                    title: 'Carpentry',-->
-<!--                    key: 'skills_ranks.Carpentry',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Farming',-->
-<!--                    key: 'skills_ranks.Farming',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Fishing',-->
-<!--                    key: 'skills_ranks.Fishing',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Foraging',-->
-<!--                    key: 'skills_ranks.Foraging',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Forestry',-->
-<!--                    key: 'skills_ranks.Forestry',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Hunting',-->
-<!--                    key: 'skills_ranks.Hunting',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Leatherworking',-->
-<!--                    key: 'skills_ranks.Leatherworking',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Masonry',-->
-<!--                    key: 'skills_ranks.Masonry',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Mining',-->
-<!--                    key: 'skills_ranks.Mining',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Scholar',-->
-<!--                    key: 'skills_ranks.Scholar',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Smithing',-->
-<!--                    key: 'skills_ranks.Smithing',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                  {-->
-<!--                    title: 'Tailoring',-->
-<!--                    key: 'skills_ranks.Tailoring',-->
-<!--                    sort: sortMembersLevelRaw-->
-<!--                  },-->
-<!--                ]"-->
-<!--                        :items="membersForTable"-->
-<!--                        :items-per-page="15"-->
-<!--                        :items-per-page-options="[15, 25 ,50]"-->
-<!--                        class="elevation-1"-->
+              <div v-else-if="tab === 'player_items'" class="flex flex-col gap-4">
+                <div class="flex flex-wrap gap-2">
+                  <UInput
+                    v-model="inventoryPlayersSearch"
+                    icon="i-heroicons-magnifying-glass"
+                    placeholder="Search items"
+                    class="w-full sm:w-64"
+                  />
+                  <USelect
+                    v-model="tierPlayers"
+                    :items="playerTierOptions"
+                    placeholder="Tier"
+                    class="w-32"
+                  />
+                  <USelect
+                    v-model="rarityPlayers"
+                    :items="playerRarityOptions"
+                    placeholder="Rarity"
+                    class="w-40"
+                  />
+                </div>
+                <div
+                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+                >
+                  <UCard
+                    v-for="inventory in pagedInventoryPlayers"
+                    :key="`${inventory.item_id}-${inventory.item_type}`"
+                    class="inventory-card border-l-4"
+                    :class="tierToBorderClassByLevel(inventory.item.tier)"
+                    role="button"
+                    tabindex="0"
+                    :ui="{ header: 'p-3', body: 'hidden' }"
+                    @click="openItemLocationModal(inventory, 'players')"
+                    @keydown.enter="openItemLocationModal(inventory, 'players')"
+                    @keydown.space.prevent="openItemLocationModal(inventory, 'players')"
+                  >
+                    <template #header>
+                      <div class="inventory-card__header inventory-card__header--media">
+                        <div class="inventory-card__meta">
+                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
+                          <div class="inventory-card__text">
+                            <div
+                              class="inventory-card__title"
+                              :class="tierToColor[inventory.item.tier]"
+                            >
+                              {{ inventory.item.name }}
+                            </div>
+                            <div
+                              class="inventory-card__subtitle"
+                              :class="rarityToTextClass(inventory.item.rarity)"
+                            >
+                              {{ inventory.item.rarity }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="inventory-card__qty">
+                          {{ numberFormat.format(inventory.quantity) }}
+                        </div>
+                      </div>
+                    </template>
+                  </UCard>
+                </div>
+                <div class="flex justify-center">
+                  <UPagination
+                    v-model:page="playerItemsPage"
+                    :total="inventorysPlayers.length"
+                    :items-per-page="inventoryPageSize"
+                  />
+                </div>
+              </div>
 
-<!--                    >-->
-<!--                      <template #item.user_name="{ item }">-->
-<!--                        <nuxt-link-->
-<!--                            :class="`text-decoration-none ${item.online_state === 'Online' ? 'text-green' : 'text-high-emphasis'}`"-->
-<!--                            :to="{ name: 'players-id', params: { id: item.entity_id } }">-->
-<!--                          {{ item.user_name }}-->
-<!--                        </nuxt-link>-->
-<!--                      </template>-->
-<!--                      <template #item.permissions="{ item }">-->
-<!--                        {{ item.co_owner_permission ? "🏰" : "" }}-->
-<!--                        {{ item.officer_permission ? "🗡️" : "" }}-->
-<!--                        {{ item.build_permission ? "🔨" : "" }}-->
-<!--                        {{ item.inventory_permission ? "📦" : "" }}-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Carpentry="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Carpentry']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Farming="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Farming']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Fishing="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Fishing']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Foraging="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Foraging']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Forestry="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Forestry']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Hunting="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Hunting']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Leatherworking="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.tier]">-->
-<!--                            <div-->
-<!--                                v-if="item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.tier }}-->
-<!--                              {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Leatherworking']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Masonry="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Masonry']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Mining="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Mining']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Scholar="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Scholar']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Smithing="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Smithing']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                      <template #item.skills_ranks.Tailoring="{ value, item }">-->
-<!--                        <div style="white-space: nowrap;">-->
-<!--                          <v-chip class="font-weight-black rounded-e" style="flex-wrap: nowrap;"-->
-<!--                                  :color="levelToColor(value?.level)">{{ value?.level }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip class="font-weight-black rounded-s" style="flex-wrap: nowrap;"-->
-<!--                                  :color="tierToColor[item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.tier]">-->
-<!--                            <div v-if="item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.tier">-->
-<!--                              T{{ item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.tier }} {{-->
-<!--                                Array.from(item?.inventory?.pockets[skillToToolIndex['Tailoring']]?.contents?.item.rarity)[0]-->
-<!--                              }}-->
-<!--                            </div>-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </template>-->
-<!--                    </v-data-table>-->
-<!--                  </v-card-text>-->
-<!--                </v-card>-->
-<!--              </v-tabs-window-item>-->
+              <div v-else-if="tab === 'player_tools'" class="flex flex-col gap-4">
+                <div class="flex flex-wrap gap-2">
+                  <UInput
+                    v-model="inventoryPlayersToolsSearch"
+                    icon="i-heroicons-magnifying-glass"
+                    placeholder="Search tools"
+                    class="w-full sm:w-64"
+                  />
+                  <USelect
+                    v-model="tierPlayersTools"
+                    :items="playerToolTierOptions"
+                    placeholder="Tier"
+                    class="w-32"
+                  />
+                  <USelect
+                    v-model="rarityPlayersTools"
+                    :items="playerToolRarityOptions"
+                    placeholder="Rarity"
+                    class="w-40"
+                  />
+                </div>
+                <div
+                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+                >
+                  <UCard
+                    v-for="inventory in pagedInventoryPlayersTools"
+                    :key="`${inventory.item_id}-${inventory.item_type}`"
+                    class="inventory-card border-l-4"
+                    :class="tierToBorderClassByLevel(inventory.item.tier)"
+                    role="button"
+                    tabindex="0"
+                    :ui="{ header: 'p-3', body: 'hidden' }"
+                    @click="openItemLocationModal(inventory, 'players', 'tool')"
+                    @keydown.enter="openItemLocationModal(inventory, 'players', 'tool')"
+                    @keydown.space.prevent="openItemLocationModal(inventory, 'players', 'tool')"
+                  >
+                    <template #header>
+                      <div class="inventory-card__header inventory-card__header--media">
+                        <div class="inventory-card__meta">
+                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
+                          <div class="inventory-card__text">
+                            <div
+                              class="inventory-card__title"
+                              :class="tierToColor[inventory.item.tier]"
+                            >
+                              {{ inventory.item.name }}
+                            </div>
+                            <div
+                              class="inventory-card__subtitle"
+                              :class="rarityToTextClass(inventory.item.rarity)"
+                            >
+                              {{ inventory.item.rarity }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="inventory-card__qty">
+                          {{ numberFormat.format(inventory.quantity) }}
+                        </div>
+                      </div>
+                    </template>
+                  </UCard>
+                </div>
+                <div class="flex justify-center">
+                  <UPagination
+                    v-model:page="playerToolsPage"
+                    :total="inventorysPlayersTools.length"
+                    :items-per-page="inventoryPageSize"
+                  />
+                </div>
+              </div>
 
-<!--              <v-tabs-window-item value="building_items">-->
-<!--                <v-row>-->
-<!--                  <v-col>-->
-<!--                    <v-text-field-->
-<!--                        v-model="inventoryBuildingsSearch"-->
-<!--                        label="Search"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-text-field>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-autocomplete-->
-<!--                        v-model="tierBuildings"-->
-<!--                        :items="Array.from(new Set(claimFetch?.inventorys?.buildings?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Tier"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-autocomplete>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-select-->
-<!--                        v-model="rarityPlayers"-->
-<!--                        :items="Array.from(new Set(claimFetch?.inventorys?.buildings?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Rarity"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-select>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row class="ma-0">-->
-<!--                  <v-data-iterator :items="inventorysBuildings" :items-per-page="52" page="1" class="w-100">-->
-<!--                    <template v-slot:default="{ items }">-->
-<!--                      <v-row class="ma-0">-->
-<!--                        <template-->
-<!--                            v-for="(inventory, i) in items"-->
-<!--                            :key="i"-->
-<!--                        >-->
-<!--                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">-->
-<!--                            <v-sheet-->
-<!--                                border-->
-<!--                                rounded-->
-<!--                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"-->
-<!--                                elevation="2"-->
-<!--                                @click="openItemLocationModal(inventory.raw, 'buildings')"-->
-<!--                            >-->
-<!--                              <v-tooltip activator="parent" location="top" transition="fade-transition">-->
-<!--                                <div class="text-center">-->
-<!--                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">-->
-<!--                                    {{ inventory.raw.item.name }}-->
-<!--                                  </div>-->
-<!--                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>-->
-<!--                                </div>-->
-<!--                              </v-tooltip>-->
+              <div v-else-if="tab === 'player_offline_items'" class="flex flex-col gap-4">
+                <div class="flex flex-wrap gap-2">
+                  <UInput
+                    v-model="inventoryPlayersOfflineSearch"
+                    icon="i-heroicons-magnifying-glass"
+                    placeholder="Search items"
+                    class="w-full sm:w-64"
+                  />
+                  <USelect
+                    v-model="tierPlayersOffline"
+                    :items="playerOfflineTierOptions"
+                    placeholder="Tier"
+                    class="w-32"
+                  />
+                  <USelect
+                    v-model="rarityPlayersOffline"
+                    :items="playerOfflineRarityOptions"
+                    placeholder="Rarity"
+                    class="w-40"
+                  />
+                </div>
+                <div
+                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+                >
+                  <UCard
+                    v-for="inventory in pagedInventoryPlayersOffline"
+                    :key="`${inventory.item_id}-${inventory.item_type}`"
+                    class="inventory-card border-l-4"
+                    :class="tierToBorderClassByLevel(inventory.item.tier)"
+                    role="button"
+                    tabindex="0"
+                    :ui="{ header: 'p-3', body: 'hidden' }"
+                    @click="openItemLocationModal(inventory, 'players_offline')"
+                    @keydown.enter="openItemLocationModal(inventory, 'players_offline')"
+                    @keydown.space.prevent="openItemLocationModal(inventory, 'players_offline')"
+                  >
+                    <template #header>
+                      <div class="inventory-card__header inventory-card__header--media">
+                        <div class="inventory-card__meta">
+                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
+                          <div class="inventory-card__text">
+                            <div
+                              class="inventory-card__title"
+                              :class="tierToColor[inventory.item.tier]"
+                            >
+                              {{ inventory.item.name }}
+                            </div>
+                            <div
+                              class="inventory-card__subtitle"
+                              :class="rarityToTextClass(inventory.item.rarity)"
+                            >
+                              {{ inventory.item.rarity }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="inventory-card__qty">
+                          {{ numberFormat.format(inventory.quantity) }}
+                        </div>
+                      </div>
+                    </template>
+                  </UCard>
+                </div>
+                <div class="flex justify-center">
+                  <UPagination
+                    v-model:page="playerOfflineItemsPage"
+                    :total="inventorysPlayersOffline.length"
+                    :items-per-page="inventoryPageSize"
+                  />
+                </div>
+              </div>
 
-<!--                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>-->
-<!--                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">-->
-<!--                                {{ inventory.raw.item.name }}-->
-<!--                              </div>-->
-<!--                              <div class="item-icon text-h6 font-weight-black">-->
-<!--                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />-->
-<!--                              </div>-->
+              <div v-else-if="tab === 'player_offline_tools'" class="flex flex-col gap-4">
+                <div class="flex flex-wrap gap-2">
+                  <UInput
+                    v-model="inventoryPlayersOfflineToolsSearch"
+                    icon="i-heroicons-magnifying-glass"
+                    placeholder="Search tools"
+                    class="w-full sm:w-64"
+                  />
+                  <USelect
+                    v-model="tierPlayersOfflineTools"
+                    :items="playerOfflineToolTierOptions"
+                    placeholder="Tier"
+                    class="w-32"
+                  />
+                  <USelect
+                    v-model="rarityPlayersOfflineTools"
+                    :items="playerOfflineToolRarityOptions"
+                    placeholder="Rarity"
+                    class="w-40"
+                  />
+                </div>
+                <div
+                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+                >
+                  <UCard
+                    v-for="inventory in pagedInventoryPlayersOfflineTools"
+                    :key="`${inventory.item_id}-${inventory.item_type}`"
+                    class="inventory-card border-l-4"
+                    :class="tierToBorderClassByLevel(inventory.item.tier)"
+                    role="button"
+                    tabindex="0"
+                    :ui="{ header: 'p-3', body: 'hidden' }"
+                    @click="openItemLocationModal(inventory, 'players_offline', 'tool')"
+                    @keydown.enter="openItemLocationModal(inventory, 'players_offline', 'tool')"
+                    @keydown.space.prevent="
+                      openItemLocationModal(inventory, 'players_offline', 'tool')
+                    "
+                  >
+                    <template #header>
+                      <div class="inventory-card__header inventory-card__header--media">
+                        <div class="inventory-card__meta">
+                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
+                          <div class="inventory-card__text">
+                            <div
+                              class="inventory-card__title"
+                              :class="tierToColor[inventory.item.tier]"
+                            >
+                              {{ inventory.item.name }}
+                            </div>
+                            <div
+                              class="inventory-card__subtitle"
+                              :class="rarityToTextClass(inventory.item.rarity)"
+                            >
+                              {{ inventory.item.rarity }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="inventory-card__qty">
+                          {{ numberFormat.format(inventory.quantity) }}
+                        </div>
+                      </div>
+                    </template>
+                  </UCard>
+                </div>
+                <div class="flex justify-center">
+                  <UPagination
+                    v-model:page="playerOfflineToolsPage"
+                    :total="inventorysPlayersOfflineTools.length"
+                    :items-per-page="inventoryPageSize"
+                  />
+                </div>
+              </div>
 
-<!--                              <div class="quantity-badge">-->
-<!--                                {{ inventory.raw.quantity }}-->
-<!--                              </div>-->
-<!--                            </v-sheet>-->
-<!--                          </v-col>-->
-<!--                        </template>-->
-<!--                      </v-row>-->
-<!--                    </template>-->
-<!--                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">-->
-<!--                      <div class="d-flex align-center justify-center pa-4">-->
-<!--                        <v-btn-->
-<!--                            :disabled="page === 1"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-left"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="prevPage"-->
-<!--                        ></v-btn>-->
+              <div v-else-if="tab === 'buildings'" class="flex flex-col gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                  <UInput
+                    v-model="search"
+                    icon="i-heroicons-magnifying-glass"
+                    placeholder="Search buildings"
+                    class="w-full sm:w-64"
+                  />
+                </div>
+                <UProgress v-if="buildingsPending" color="neutral" />
+                <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <NuxtLink
+                    v-for="building in buildings"
+                    :key="building.entity_id"
+                    :to="{ name: 'buildings-id', params: { id: building.entity_id.toString() } }"
+                    class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm font-semibold text-gray-900 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-100 dark:hover:bg-gray-900"
+                  >
+                    <img
+                      v-if="iconDomain"
+                      :src="`${iconDomain}/${getBuildingIcon(building.building_description_id)}.webp`"
+                      alt=""
+                      class="h-10 w-10 rounded-md object-cover"
+                    />
+                    <span>{{ building.building_name }}</span>
+                  </NuxtLink>
+                </div>
+                <div class="flex justify-center">
+                  <UPagination
+                    v-model:page="page"
+                    :total="buidlingsFetch?.total ?? 0"
+                    :items-per-page="perPage"
+                  />
+                </div>
+              </div>
 
-<!--                        <div class="mx-2 text-caption">-->
-<!--                          Page {{ page }} of {{ pageCount }}-->
-<!--                        </div>-->
+              <div v-else-if="tab === 'leaderboards'">
+                <LeaderboardClaim :claim-id="claim?.entity_id" />
+              </div>
 
-<!--                        <v-btn-->
-<!--                            :disabled="page >= pageCount"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-right"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="nextPage"-->
-<!--                        ></v-btn>-->
-<!--                      </div>-->
-<!--                    </template>-->
-<!--                  </v-data-iterator>-->
-<!--                </v-row>-->
-<!--              </v-tabs-window-item>-->
+              <div v-else-if="tab === 'upgrades'" class="flex flex-col gap-4">
+                <div class="grid gap-3 md:grid-cols-3">
+                  <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+                    <div
+                      class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
+                    >
+                      Claim tier
+                    </div>
+                    <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      T{{ claimTier }}
+                    </div>
+                  </div>
+                  <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+                    <div
+                      class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
+                    >
+                      Unlocked upgrades
+                    </div>
+                    <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {{ unlockedUpgradesCount }} / {{ upgradesSorted.length || 0 }}
+                    </div>
+                  </div>
+                </div>
+                <div v-for="[tier, upgrades] in upgradesByTier" :key="tier" class="space-y-3">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+                      Tier {{ tier }}
+                    </h3>
+                    <UBadge variant="soft" color="neutral">{{ upgrades.length }} upgrades</UBadge>
+                  </div>
+                  <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    <div
+                      v-for="upgrade in upgrades"
+                      :key="upgrade.id"
+                      class="rounded-lg border border-gray-200 p-4 shadow-sm transition dark:border-gray-800"
+                      :class="isUpgradeLocked(upgrade) ? 'opacity-70' : ''"
+                    >
+                      <div class="flex items-start justify-between gap-2">
+                        <div>
+                          <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {{ upgrade.name }}
+                          </div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400">
+                            {{ upgrade.description }}
+                          </div>
+                        </div>
+                        <UBadge variant="soft" color="neutral">T{{ upgrade.tier }}</UBadge>
+                      </div>
+                      <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Type: {{ upgrade.tech_type }}
+                      </div>
+                      <div
+                        v-if="upgrade.unlocks_techs?.length"
+                        class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                      >
+                        Unlocks: {{ unlocksTechNames(upgrade).join(", ") }}
+                      </div>
+                      <div class="mt-3">
+                        <UBadge v-if="isUpgradeLocked(upgrade)" variant="soft" color="neutral">
+                          Requires Claim Tier {{ upgrade.tier }}
+                        </UBadge>
+                        <UBadge
+                          v-else-if="isUpgradeLearned(upgrade)"
+                          variant="soft"
+                          color="primary"
+                        >
+                          Learned
+                        </UBadge>
+                        <UBadge v-else variant="soft" color="success">Available</UBadge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-<!--              <v-tabs-window-item value="player_items">-->
-<!--                <v-row>-->
-<!--                  <v-col>-->
-<!--                    <v-text-field-->
-<!--                        v-model="inventoryPlayersSearch"-->
-<!--                        label="Search"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-text-field>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-autocomplete-->
-<!--                        v-model="tierPlayers"-->
-<!--                        :items="Array.from(new Set(claimFetch?.inventorys?.players?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Tier"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-autocomplete>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-select-->
-<!--                        v-model="rarityPlayers"-->
-<!--                        :items="Array.from(new Set(claimFetch?.inventorys?.players?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Rarity"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-select>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row class="ma-0">-->
-<!--                  <v-data-iterator :items="inventorysPlayers" :items-per-page="52" class="w-100">-->
-<!--                    <template v-slot:default="{ items }">-->
-<!--                      <v-row class="ma-0">-->
-<!--                        <template-->
-<!--                            v-for="(inventory, i) in items"-->
-<!--                            :key="i"-->
-<!--                        >-->
-<!--                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">-->
-<!--                            <v-sheet-->
-<!--                                border-->
-<!--                                rounded-->
-<!--                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"-->
-<!--                                elevation="2"-->
-<!--                                @click="openItemLocationModal(inventory.raw, 'players')"-->
-<!--                            >-->
-<!--                              <v-tooltip activator="parent" location="top" transition="fade-transition">-->
-<!--                                <div class="text-center">-->
-<!--                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">-->
-<!--                                    {{ inventory.raw.item.name }}-->
-<!--                                  </div>-->
-<!--                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>-->
-<!--                                </div>-->
-<!--                              </v-tooltip>-->
+              <div v-else-if="tab === 'inventory_changelogs'" class="flex flex-col gap-4">
+                <div class="flex flex-wrap gap-2">
+                  <AutocompleteUser @model_changed="(item) => (player_id = item)" />
+                  <AutocompleteItem @model_changed="(item) => (item_object = item)" />
+                </div>
+                <InventoryChanges :items="InventoryChangelogFetch" />
+              </div>
 
-<!--                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>-->
-<!--                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">-->
-<!--                                {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}-->
-<!--                              </div>-->
-<!--                              <div class="item-icon text-h6 font-weight-black">-->
-<!--                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />-->
-<!--                              </div>-->
+              <div v-else-if="tab === 'traveler_tasks'" class="flex flex-col gap-4">
+                <UTable :columns="travelerColumns" :data="travelerTaskRows" class="claim-table">
+                  <template #items-cell="{ row }">
+                    <div class="flex flex-wrap gap-2">
+                      <div
+                        v-for="shownItem of row.original.items"
+                        :key="`${shownItem.item_type}-${shownItem.item_id}`"
+                        class="flex items-center gap-2"
+                      >
+                        <div class="relative">
+                          <img
+                            v-if="getTravelerItemIcon(shownItem)"
+                            :src="getTravelerItemIcon(shownItem) || ''"
+                            alt=""
+                            class="h-10 w-10 rounded-md object-contain"
+                          />
+                          <span
+                            class="absolute -right-2 -top-2 rounded-full bg-gray-900 px-1 text-[10px] font-semibold text-white dark:bg-gray-100 dark:text-gray-900"
+                          >
+                            {{ numberFormat.format(shownItem.quantity) }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <template #name-cell="{ row }">
+                    <div class="space-y-1">
+                      <div
+                        v-for="shownItem of row.original.items"
+                        :key="`${shownItem.item_type}-${shownItem.item_id}-name`"
+                        :class="
+                          tierToColor[
+                            shownItem.item_type === 'Item'
+                              ? itemsAndCargoAllFetch?.item_desc?.[shownItem.item_id]?.tier
+                              : itemsAndCargoAllFetch?.cargo_desc?.[shownItem.item_id]?.tier
+                          ]
+                        "
+                      >
+                        {{
+                          shownItem.item_type === "Item"
+                            ? itemsAndCargoAllFetch?.item_desc?.[shownItem.item_id]?.name
+                            : itemsAndCargoAllFetch?.cargo_desc?.[shownItem.item_id]?.name
+                        }}
+                      </div>
+                    </div>
+                  </template>
+                  <template #npc_name-cell="{ row }">
+                    {{ row.original.npc_name }}
+                  </template>
+                  <template #player_count-cell="{ row }">
+                    {{ row.original.player_count }}
+                  </template>
+                  <template #users-cell="{ row }">
+                    <div class="flex flex-wrap gap-2">
+                      <NuxtLink
+                        v-for="playerId of row.original.players"
+                        :key="playerId"
+                        :to="{ name: 'players-id', params: { id: playerId } }"
+                        class="text-sm font-semibold text-gray-900 hover:underline dark:text-gray-100"
+                      >
+                        {{ claimFetch.members[playerId]?.user_name }}
+                      </NuxtLink>
+                    </div>
+                  </template>
+                </UTable>
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </div>
+    </template>
 
-<!--                              <div class="quantity-badge">-->
-<!--                                {{ inventory.raw.quantity }}-->
-<!--                              </div>-->
-<!--                            </v-sheet>-->
-<!--                          </v-col>-->
-<!--                        </template>-->
-<!--                      </v-row>-->
-<!--                    </template>-->
-<!--                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">-->
-<!--                      <div class="d-flex align-center justify-center pa-4">-->
-<!--                        <v-btn-->
-<!--                            :disabled="page === 1"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-left"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="prevPage"-->
-<!--                        ></v-btn>-->
-
-<!--                        <div class="mx-2 text-caption">-->
-<!--                          Page {{ page }} of {{ pageCount }}-->
-<!--                        </div>-->
-
-<!--                        <v-btn-->
-<!--                            :disabled="page >= pageCount"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-right"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="nextPage"-->
-<!--                        ></v-btn>-->
-<!--                      </div>-->
-<!--                    </template>-->
-<!--                  </v-data-iterator>-->
-<!--                </v-row>-->
-<!--              </v-tabs-window-item>-->
-
-<!--              <v-tabs-window-item value="player_tools">-->
-<!--                <v-row>-->
-<!--                  <v-col>-->
-<!--                    <v-text-field-->
-<!--                        v-model="inventoryPlayersToolsSearch"-->
-<!--                        label="Search"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-text-field>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-autocomplete-->
-<!--                        v-model="tierPlayersTools"-->
-<!--                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Tier"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-autocomplete>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-select-->
-<!--                        v-model="rarityPlayersTools"-->
-<!--                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Rarity"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-select>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row class="ma-0">-->
-<!--                  <v-data-iterator :items="inventorysPlayersTools" :items-per-page="52" class="w-100">-->
-<!--                    <template v-slot:default="{ items }">-->
-<!--                      <v-row class="ma-0">-->
-<!--                        <template-->
-<!--                            v-for="(inventory, i) in items"-->
-<!--                            :key="i"-->
-<!--                        >-->
-<!--                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">-->
-<!--                            <v-sheet-->
-<!--                                border-->
-<!--                                rounded-->
-<!--                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"-->
-<!--                                elevation="2"-->
-<!--                                @click="openItemLocationModal(inventory.raw, 'players', 'tool')"-->
-<!--                            >-->
-<!--                              <v-tooltip activator="parent" location="top" transition="fade-transition">-->
-<!--                                <div class="text-center">-->
-<!--                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">-->
-<!--                                    {{ inventory.raw.item.name }}-->
-<!--                                  </div>-->
-<!--                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>-->
-<!--                                </div>-->
-<!--                              </v-tooltip>-->
-
-<!--                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>-->
-<!--                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">-->
-<!--                                {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}-->
-<!--                              </div>-->
-<!--                              <div class="item-icon text-h6 font-weight-black">-->
-<!--                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />-->
-<!--                              </div>-->
-
-<!--                              <div class="quantity-badge">-->
-<!--                                {{ inventory.raw.quantity }}-->
-<!--                              </div>-->
-<!--                            </v-sheet>-->
-<!--                          </v-col>-->
-<!--                        </template>-->
-<!--                      </v-row>-->
-<!--                    </template>-->
-<!--                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">-->
-<!--                      <div class="d-flex align-center justify-center pa-4">-->
-<!--                        <v-btn-->
-<!--                            :disabled="page === 1"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-left"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="prevPage"-->
-<!--                        ></v-btn>-->
-
-<!--                        <div class="mx-2 text-caption">-->
-<!--                          Page {{ page }} of {{ pageCount }}-->
-<!--                        </div>-->
-
-<!--                        <v-btn-->
-<!--                            :disabled="page >= pageCount"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-right"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="nextPage"-->
-<!--                        ></v-btn>-->
-<!--                      </div>-->
-<!--                    </template>-->
-<!--                  </v-data-iterator>-->
-<!--                </v-row>-->
-<!--              </v-tabs-window-item>-->
-
-<!--              <v-tabs-window-item value="player_offline_items">-->
-<!--                <v-row>-->
-<!--                  <v-col>-->
-<!--                    <v-text-field-->
-<!--                        v-model="inventoryPlayersOfflineSearch"-->
-<!--                        label="Search"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-text-field>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-autocomplete-->
-<!--                        v-model="tierPlayersOffline"-->
-<!--                        :items="Array.from(new Set(claimFetch?.inventorys?.players_offline?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Tier"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-autocomplete>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-select-->
-<!--                        v-model="rarityPlayersOffline"-->
-<!--                        :items="Array.from(new Set(claimFetch?.inventorys?.players_offline?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Rarity"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-select>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row class="ma-0">-->
-<!--                  <v-data-iterator :items="inventorysPlayersOffline" :items-per-page="52" class="w-100">-->
-<!--                    <template v-slot:default="{ items }">-->
-<!--                      <v-row class="ma-0 min-w-max">-->
-<!--                        <template-->
-<!--                            v-for="(inventory, i) in items"-->
-<!--                            :key="i"-->
-<!--                        >-->
-<!--                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">-->
-<!--                            <v-sheet-->
-<!--                                border-->
-<!--                                rounded-->
-<!--                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"-->
-<!--                                elevation="2"-->
-<!--                                @click="openItemLocationModal(inventory.raw, 'players_offline')"-->
-<!--                            >-->
-<!--                              <v-tooltip activator="parent" location="top" transition="fade-transition">-->
-<!--                                <div class="text-center">-->
-<!--                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">-->
-<!--                                    {{ inventory.raw.item.name }}-->
-<!--                                  </div>-->
-<!--                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>-->
-<!--                                </div>-->
-<!--                              </v-tooltip>-->
-
-<!--                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>-->
-<!--                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">-->
-<!--                                {{ inventory.raw.item.name }}-->
-<!--                              </div>-->
-<!--                              <div class="item-icon text-h6 font-weight-black">-->
-<!--                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />-->
-<!--                              </div>-->
-
-<!--                              <div class="quantity-badge">-->
-<!--                                {{ inventory.raw.quantity }}-->
-<!--                              </div>-->
-<!--                            </v-sheet>-->
-<!--                          </v-col>-->
-<!--                        </template>-->
-<!--                      </v-row>-->
-<!--                    </template>-->
-<!--                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">-->
-<!--                      <div class="d-flex align-center justify-center pa-4">-->
-<!--                        <v-btn-->
-<!--                            :disabled="page === 1"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-left"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="prevPage"-->
-<!--                        ></v-btn>-->
-
-<!--                        <div class="mx-2 text-caption">-->
-<!--                          Page {{ page }} of {{ pageCount }}-->
-<!--                        </div>-->
-
-<!--                        <v-btn-->
-<!--                            :disabled="page >= pageCount"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-right"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="nextPage"-->
-<!--                        ></v-btn>-->
-<!--                      </div>-->
-<!--                    </template>-->
-<!--                  </v-data-iterator>-->
-<!--                </v-row>-->
-<!--              </v-tabs-window-item>-->
-
-<!--              <v-tabs-window-item value="player_offline_tools">-->
-<!--                <v-row>-->
-<!--                  <v-col>-->
-<!--                    <v-text-field-->
-<!--                        v-model="inventoryPlayersOfflineToolsSearch"-->
-<!--                        label="Search"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-text-field>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-autocomplete-->
-<!--                        v-model="tierPlayersOfflineTools"-->
-<!--                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players_offline?.map((inventory) => inventory.item.tier) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Tier"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-autocomplete>-->
-<!--                  </v-col>-->
-<!--                  <v-col>-->
-<!--                    <v-select-->
-<!--                        v-model="rarityPlayersOfflineTools"-->
-<!--                        :items="Array.from(new Set(claimFetch?.tool_inventorys?.players_offline?.map((inventory) => inventory.item.rarity) || [])).sort((a, b) => a - b)"-->
-<!--                        label="Rarity"-->
-<!--                        outlined-->
-<!--                        dense-->
-<!--                        clearable-->
-<!--                    ></v-select>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row class="ma-0">-->
-<!--                  <v-data-iterator :items="inventorysPlayersOfflineTools" :items-per-page="52" class="w-100">-->
-<!--                    <template v-slot:default="{ items }">-->
-<!--                      <v-row class="ma-0 min-w-max">-->
-<!--                        <template-->
-<!--                            v-for="(inventory, i) in items"-->
-<!--                            :key="i"-->
-<!--                        >-->
-<!--                          <v-col cols="12" sm="6" md="3" lg="2" xl="2" xxl="1" class="pa-1">-->
-<!--                            <v-sheet-->
-<!--                                border-->
-<!--                                rounded-->
-<!--                                class="inventory-slot-box d-flex align-center justify-center position-relative has-content"-->
-<!--                                elevation="2"-->
-<!--                                @click="openItemLocationModal(inventory.raw, 'players_offline', 'tool')"-->
-<!--                            >-->
-<!--                              <v-tooltip activator="parent" location="top" transition="fade-transition">-->
-<!--                                <div class="text-center">-->
-<!--                                  <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase`">-->
-<!--                                    {{ inventory.raw.item.name }}-->
-<!--                                  </div>-->
-<!--                                  <div class="text-caption">Rarity: {{ inventory.raw.item.rarity }}</div>-->
-<!--                                </div>-->
-<!--                              </v-tooltip>-->
-
-<!--                              <div class="tier-border" :class="`bg-${getTierColor(inventory.raw.item.tier)}`"></div>-->
-<!--                              <div :class="`font-weight-bold text-${getTierColor(inventory.raw.item.tier)} text-uppercase ml-2`">-->
-<!--                                {{ inventory.raw.item.name }} {{ inventory.raw.item.rarity }}-->
-<!--                              </div>-->
-<!--                              <div class="item-icon text-h6 font-weight-black">-->
-<!--                                <inventory-img width="65" height="65" skip-error-text :item="inventory.raw.item" />-->
-<!--                              </div>-->
-
-<!--                              <div class="quantity-badge">-->
-<!--                                {{ inventory.raw.quantity }}-->
-<!--                              </div>-->
-<!--                            </v-sheet>-->
-<!--                          </v-col>-->
-<!--                        </template>-->
-<!--                      </v-row>-->
-<!--                    </template>-->
-<!--                    <template v-slot:footer="{ page, pageCount, prevPage, nextPage }">-->
-<!--                      <div class="d-flex align-center justify-center pa-4">-->
-<!--                        <v-btn-->
-<!--                            :disabled="page === 1"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-left"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="prevPage"-->
-<!--                        ></v-btn>-->
-
-<!--                        <div class="mx-2 text-caption">-->
-<!--                          Page {{ page }} of {{ pageCount }}-->
-<!--                        </div>-->
-
-<!--                        <v-btn-->
-<!--                            :disabled="page >= pageCount"-->
-<!--                            density="comfortable"-->
-<!--                            icon="mdi-arrow-right"-->
-<!--                            variant="tonal"-->
-<!--                            rounded-->
-<!--                            @click="nextPage"-->
-<!--                        ></v-btn>-->
-<!--                      </div>-->
-<!--                    </template>-->
-<!--                  </v-data-iterator>-->
-<!--                </v-row>-->
-<!--              </v-tabs-window-item>-->
-<!--              <v-tabs-window-item value="buildings">-->
-<!--                <v-col>-->
-<!--                  <v-text-field-->
-<!--                      v-model="search"-->
-<!--                      label="Search"-->
-<!--                      outlined-->
-<!--                      dense-->
-<!--                      clearable-->
-<!--                  ></v-text-field>-->
-<!--                </v-col>-->
-<!--                <v-row>-->
-<!--                  <v-col>-->
-<!--                    <v-progress-linear-->
-<!--                        color="yellow-darken-2"-->
-<!--                        indeterminate-->
-<!--                        :active="buildingsPending"-->
-<!--                    ></v-progress-linear>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row>-->
-<!--                  <v-col cols="12" md="4" lg="3" xl="2" v-for="building in buildings" :key="building.entity_id">-->
-<!--                    <nuxt-link :to="{ name: 'buildings-id', params: { id: building.entity_id.toString() } }"-->
-<!--                               class="text-high-emphasis font-weight-black">-->
-<!--                      <v-list-item>-->
-<!--                        <template #prepend v-if="iconDomain">-->
-<!--                          <v-avatar :image="`${iconDomain}/${building.image_path}`" size="50"></v-avatar>-->
-<!--                        </template>-->
-<!--                        {{ building.building_name }}-->
-<!--                      </v-list-item>-->
-<!--                    </nuxt-link>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row>-->
-<!--                  <v-col>-->
-<!--                    <v-pagination-->
-<!--                        v-model="page"-->
-<!--                        :length="length"-->
-<!--                    ></v-pagination>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--              </v-tabs-window-item>-->
-<!--              <v-tabs-window-item value="leaderboards">-->
-<!--                <leaderboard-claim :claim-id="claim?.entity_id"></leaderboard-claim>-->
-<!--              </v-tabs-window-item>-->
-<!--              <v-tabs-window-item value="upgrades">-->
-<!--                <v-row class="mb-2">-->
-<!--                  <v-col cols="12" md="4">-->
-<!--                    <v-card variant="tonal" class="pa-3">-->
-<!--                      <div class="text-caption text-medium-emphasis">Claim Tier</div>-->
-<!--                      <div class="text-h6 font-weight-bold">T{{ claimTier }}</div>-->
-<!--                    </v-card>-->
-<!--                  </v-col>-->
-<!--                  <v-col cols="12" md="4">-->
-<!--                    <v-card variant="tonal" class="pa-3">-->
-<!--                      <div class="text-caption text-medium-emphasis">Unlocked Upgrades</div>-->
-<!--                      <div class="text-h6 font-weight-bold">-->
-<!--                        {{ unlockedUpgradesCount }} / {{ upgradesSorted.length || 0 }}-->
-<!--                      </div>-->
-<!--                    </v-card>-->
-<!--                  </v-col>-->
-<!--                  <v-col cols="12" md="4" v-if="claimFetch?.running_upgrade">-->
-<!--                    <v-card variant="tonal" class="pa-3">-->
-<!--                      <div class="text-caption text-medium-emphasis">Currently Researching</div>-->
-<!--                      <div class="text-h6 font-weight-bold">-->
-<!--                        {{ claimFetch?.running_upgrade?.description }}-->
-<!--                      </div>-->
-<!--                    </v-card>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--                <v-row v-for="[tier, upgrades] in upgradesByTier" :key="tier" class="mb-6">-->
-<!--                  <v-col cols="12">-->
-<!--                    <div class="d-flex align-center justify-space-between">-->
-<!--                      <div class="text-subtitle-1 font-weight-bold">Tier {{ tier }}</div>-->
-<!--                      <v-chip size="small" class="font-weight-bold" variant="tonal">-->
-<!--                        {{ upgrades.length }} upgrades-->
-<!--                      </v-chip>-->
-<!--                    </div>-->
-<!--                    <v-divider class="mt-2"></v-divider>-->
-<!--                  </v-col>-->
-<!--                  <v-col-->
-<!--                    v-for="upgrade in upgrades"-->
-<!--                    :key="upgrade.id"-->
-<!--                    cols="12"-->
-<!--                    md="6"-->
-<!--                    lg="4"-->
-<!--                  >-->
-<!--                    <v-card-->
-<!--                      variant="outlined"-->
-<!--                      class="upgrade-card"-->
-<!--                      :class="{ 'upgrade-card&#45;&#45;locked': isUpgradeLocked(upgrade) }"-->
-<!--                    >-->
-<!--                      <v-card-title class="d-flex align-start justify-space-between gap-2">-->
-<!--                        <span class="upgrade-title text-subtitle-1 font-weight-bold">-->
-<!--                          {{ upgrade.name }}-->
-<!--                        </span>-->
-<!--                        <v-chip size="small" class="font-weight-bold" variant="tonal">-->
-<!--                          T{{ upgrade.tier }}-->
-<!--                        </v-chip>-->
-<!--                      </v-card-title>-->
-<!--                      <v-card-text>-->
-<!--                        <div class="upgrade-meta text-caption text-medium-emphasis">-->
-<!--                          {{ upgrade.description }}-->
-<!--                        </div>-->
-<!--                        <div class="upgrade-meta text-caption text-medium-emphasis">-->
-<!--                          Type: {{ upgrade.tech_type }}-->
-<!--                        </div>-->
-<!--                        <div-->
-<!--                          v-if="upgrade.unlocks_techs?.length"-->
-<!--                          class="upgrade-meta text-caption text-medium-emphasis"-->
-<!--                        >-->
-<!--                          Unlocks techs: {{ unlocksTechNames(upgrade).join(", ") }}-->
-<!--                        </div>-->
-<!--                        <div class="d-flex align-center mt-2">-->
-<!--                          <v-chip-->
-<!--                            v-if="isUpgradeLocked(upgrade)"-->
-<!--                            color="grey"-->
-<!--                            size="small"-->
-<!--                            variant="tonal"-->
-<!--                            class="font-weight-bold"-->
-<!--                          >-->
-<!--                            Requires Claim Tier {{ upgrade.tier }}-->
-<!--                          </v-chip>-->
-<!--                          <v-chip-->
-<!--                            v-else-if="isUpgradeLearned(upgrade)"-->
-<!--                            color="primary"-->
-<!--                            size="small"-->
-<!--                            variant="tonal"-->
-<!--                            class="font-weight-bold"-->
-<!--                          >-->
-<!--                            Learned-->
-<!--                          </v-chip>-->
-<!--                          <v-chip-->
-<!--                            v-else-->
-<!--                            color="success"-->
-<!--                            size="small"-->
-<!--                            variant="tonal"-->
-<!--                            class="font-weight-bold"-->
-<!--                          >-->
-<!--                            Available-->
-<!--                          </v-chip>-->
-<!--                        </div>-->
-<!--                      </v-card-text>-->
-<!--                    </v-card>-->
-<!--                  </v-col>-->
-<!--                </v-row>-->
-<!--              </v-tabs-window-item>-->
-<!--              <v-tabs-window-item value="inventory_changelogs">-->
-<!--                <v-card>-->
-<!--                  <v-card-title>Changes</v-card-title>-->
-<!--                  <v-card-text>-->
-<!--                    <v-row>-->
-<!--                      <v-col>-->
-<!--                        <autocomplete-user-->
-<!--                            @model_changed="(item) => player_id=item"-->
-<!--                        />-->
-<!--                      </v-col>-->
-<!--                      <v-col>-->
-<!--                        <autocomplete-item-->
-<!--                            @model_changed="(item) => item_object=item"-->
-<!--                        />-->
-<!--                      </v-col>-->
-<!--                    </v-row>-->
-<!--                    <inventory-changes :items="InventoryChangelogFetch"/>-->
-<!--                  </v-card-text>-->
-<!--                </v-card>-->
-<!--              </v-tabs-window-item>-->
-<!--              <v-tabs-window-item value="traveler_tasks">-->
-<!--                <v-data-table-->
-<!--                    hover-->
-<!--                    density="compact"-->
-<!--                    :headers="[-->
-<!--                {-->
-<!--                  title: 'Items',-->
-<!--                  key: 'items',-->
-<!--                  sortable: false,-->
-<!--                  width: '240px',-->
-<!--                  minWidth: '240px',-->
-<!--                  cellProps: {-->
-<!--                    class: 'font-weight-black'-->
-<!--                  }-->
-<!--                },-->
-<!--                {-->
-<!--                  title: 'Name',-->
-<!--                  key: 'name',-->
-<!--                  sortable: true,-->
-<!--                  width: '280px',-->
-<!--                  minWidth: '280px',-->
-<!--                  cellProps: {-->
-<!--                    class: 'font-weight-black'-->
-<!--                  }-->
-<!--                },-->
-<!--                 {-->
-<!--                  title: 'NPC Name',-->
-<!--                  key: 'npc_name',-->
-<!--                  sortable: true,-->
-<!--                  width: '160px',-->
-<!--                  minWidth: '160px',-->
-<!--                  cellProps: {-->
-<!--                    class: 'font-weight-black'-->
-<!--                  }-->
-<!--                },-->
-<!--                 {-->
-<!--                  title: 'Player Count',-->
-<!--                  key: 'player_count',-->
-<!--                  sortable: true,-->
-<!--                  width: '140px',-->
-<!--                  minWidth: '140px',-->
-<!--                  cellProps: {-->
-<!--                    class: 'font-weight-black'-->
-<!--                  }-->
-<!--                },-->
-<!--                {-->
-<!--                  title: 'User Names',-->
-<!--                  key: 'users',-->
-<!--                  sortable: false,-->
-<!--                  width: '260px',-->
-<!--                  minWidth: '260px',-->
-<!--                  cellProps: {-->
-<!--                    class: 'font-weight-black'-->
-<!--                  }-->
-<!--                },-->
-<!--                ]"-->
-<!--                    :items="travelerTaskRows"-->
-<!--                    :items-per-page="15"-->
-<!--                    class="elevation-1"-->
-
-<!--                >-->
-<!--                  <template #item.items="{ item }">-->
-<!--                    <template v-for="shownItem of item.items">-->
-<!--                      <v-badge :content="Intl.NumberFormat().format(shownItem.quantity)" location="right"-->
-<!--                               class="align-start">-->
-<!--                        <template v-if="shownItem.item_type == 'Item'">-->
-<!--                          <v-img-->
-<!--                              :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.item_desc[shownItem.item_id].icon_asset_name).url"-->
-<!--                              height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>-->
-<!--                        </template>-->
-<!--                        <template v-else-if="shownItem.item_type == 'Cargo'">-->
-<!--                          <v-img-->
-<!--                              :src="iconAssetUrlNameRandom(itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].icon_asset_name).url"-->
-<!--                              height="75" :width="shownItem.type == 'Item' ? 75 : 128"></v-img>-->
-<!--                        </template>-->
-<!--                      </v-badge>-->
-<!--                    </template>-->
-<!--                  </template>-->
-<!--                  <template #item.name="{ item }">-->
-<!--                    <template v-for="shownItem of item.items">-->
-<!--                      <div class="align-center"-->
-<!--                            :class="`text-${tierToColor[shownItem.item_type == 'Item' ? itemsAndCargoAllFetch.item_desc[shownItem.item_id].tier : itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].tier]}`">-->
-<!--                        <template v-if="shownItem.item_type == 'Item'">-->
-<!--                          {{ itemsAndCargoAllFetch.item_desc[shownItem.item_id].name }}-->
-<!--                        </template>-->
-<!--                        <template v-else-if="shownItem.item_type == 'Cargo'">-->
-<!--                          {{ itemsAndCargoAllFetch.cargo_desc[shownItem.item_id].name }}-->
-<!--                        </template>-->
-<!--                      </div>-->
-<!--                    </template>-->
-<!--                  </template>-->
-
-<!--                  <template #item.npc_name="{ value, item }">-->
-<!--                    {{ item.npc_name }}-->
-<!--                  </template>-->
-<!--                  <template #item.player_count="{ value, item }">-->
-<!--                    {{ item.player_count }}-->
-<!--                  </template>-->
-<!--                  <template #item.users="{ value, item }">-->
-<!--                    <template v-for="playerId of item.players">-->
-<!--                      <nuxt-link :class="`text-decoration-none`" :to="{ name: 'players-id', params: { id: playerId } }">-->
-<!--                        {{ claimFetch.members[playerId]?.user_name }}-->
-<!--                      </nuxt-link>-->
-<!--                      ,-->
-<!--                    </template>-->
-<!--                  </template>-->
-<!--                </v-data-table>-->
-<!--              </v-tabs-window-item>-->
-<!--            </v-tabs-window>-->
-<!--          </v-card-text>-->
-<!--        </v-card>-->
-<!--      </v-col>-->
-<!--      <v-col cols="12">-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--  </v-container>-->
-<!--  <v-dialog v-model="locationModalOpen" max-width="520">-->
-<!--    <v-card>-->
-<!--      <v-card-title class="d-flex align-center justify-space-between">-->
-<!--        <span>Item location</span>-->
-<!--        <v-btn icon="mdi-close" variant="text" @click="locationModalOpen = false"></v-btn>-->
-<!--      </v-card-title>-->
-<!--      <v-card-text>-->
-<!--        <div class="d-flex align-center mb-4">-->
-<!--          <inventory-img-->
-<!--            v-if="selectedInventoryItem"-->
-<!--            width="48"-->
-<!--            height="48"-->
-<!--            skip-error-text-->
-<!--            :item="selectedInventoryItem.item"-->
-<!--          />-->
-<!--          <div class="ml-3">-->
-<!--            <div class="font-weight-bold">-->
-<!--              {{ selectedInventoryItem?.item.name }}-->
-<!--            </div>-->
-<!--            <div class="text-caption text-medium-emphasis">-->
-<!--              Quantity: {{ selectedInventoryItem?.quantity }}-->
-<!--            </div>-->
-<!--          </div>-->
-<!--        </div>-->
-
-<!--        <v-divider class="mb-3"></v-divider>-->
-
-<!--        <div v-if="selectedLocationEntries.length === 0" class="text-medium-emphasis">-->
-<!--          No location data available for this item.-->
-<!--        </div>-->
-<!--        <v-list v-else density="compact">-->
-<!--          <v-list-item-->
-<!--            v-for="location in selectedLocationEntries"-->
-<!--            :key="`${location.owner_entity_id}-${location.inventory_index}-${location.cargo_index}`"-->
-<!--          >-->
-<!--            <v-list-item-title class="font-weight-bold">-->
-<!--              <template v-if="locationOwnerLink(location)">-->
-<!--                <nuxt-link-->
-<!--                  class="text-decoration-none"-->
-<!--                  :to="locationOwnerLink(location)"-->
-<!--                >-->
-<!--                  {{ formatLocationOwner(location) }}-->
-<!--                </nuxt-link>-->
-<!--              </template>-->
-<!--              <template v-else>-->
-<!--                {{ formatLocationOwner(location) }}-->
-<!--              </template>-->
-<!--            </v-list-item-title>-->
-<!--            <v-list-item-subtitle>-->
-<!--              <template v-if="isBankLocation(location)">-->
-<!--                <nuxt-link-->
-<!--                  class="text-decoration-none"-->
-<!--                  :to="bankOwnerLink(location)"-->
-<!--                >-->
-<!--                  Bank owner: {{ getPlayerNameById(location.player_owner_entity_id) }}-->
-<!--                </nuxt-link>-->
-<!--                |-->
-<!--              </template>-->
-<!--              Quantity: {{ location.quantity }} | Inventory: {{ location.inventory_index }} | Slot: {{ location.cargo_index }}-->
-<!--            </v-list-item-subtitle>-->
-<!--          </v-list-item>-->
-<!--        </v-list>-->
-<!--      </v-card-text>-->
-<!--    </v-card>-->
-<!--  </v-dialog>-->
+    <UModal v-model:open="locationModalOpen">
+      <template #content>
+        <UCard :ui="{ body: 'p-4' }">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <span class="text-lg font-semibold">Item location</span>
+              <UButton
+                icon="i-heroicons-x-mark"
+                variant="ghost"
+                @click="locationModalOpen = false"
+              />
+            </div>
+          </template>
+          <div class="flex items-center gap-3">
+            <InventoryImg
+              v-if="selectedInventoryItem"
+              width="48"
+              height="48"
+              skip-error-text
+              :item="selectedInventoryItem.item"
+            />
+            <div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {{ selectedInventoryItem?.item.name }}
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                Quantity: {{ selectedInventoryItem?.quantity }}
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 border-t border-gray-200 pt-3 text-sm dark:border-gray-800">
+            <div
+              v-if="selectedLocationEntries.length === 0"
+              class="text-gray-500 dark:text-gray-400"
+            >
+              No location data available for this item.
+            </div>
+            <div v-else class="space-y-3">
+              <div
+                v-for="location in selectedLocationEntries"
+                :key="`${location.owner_entity_id}-${location.inventory_index}-${location.cargo_index}`"
+                class="rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"
+              >
+                <div class="font-semibold text-gray-900 dark:text-gray-100">
+                  <template v-if="locationOwnerLink(location)">
+                    <NuxtLink :to="locationOwnerLink(location)" class="hover:underline">
+                      {{ formatLocationOwner(location) }}
+                    </NuxtLink>
+                  </template>
+                  <template v-else>
+                    {{ formatLocationOwner(location) }}
+                  </template>
+                </div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <template v-if="isBankLocation(location)">
+                    <NuxtLink :to="bankOwnerLink(location)" class="hover:underline">
+                      Bank owner: {{ getPlayerNameById(location.player_owner_entity_id) }}
+                    </NuxtLink>
+                    <span class="mx-1">•</span>
+                  </template>
+                  Quantity: {{ location.quantity }} | Inventory: {{ location.inventory_index }} |
+                  Slot:
+                  {{ location.cargo_index }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </template>
+    </UModal>
+  </UContainer>
 </template>
 
 <style scoped>
-.inventory-container {
-  background-color: rgba(var(--v-border-color), 0.05);
-  min-height: 100px;
-}
-
-.inventory-slot-box {
-  width: 100%;
-  max-height: 70px;
-  aspect-ratio: 1 / 1;
-  background-color: rgb(var(--v-theme-surface));
-  cursor: default;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.inventory-slot-box.has-content {
+.inventory-card {
+  display: grid;
+  text-align: left;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+  min-height: 0;
   cursor: pointer;
 }
 
-.inventory-slot-box.has-content:hover {
+.inventory-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(var(--v-theme-primary), 0.5) !important;
+  box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.4);
 }
 
-/* Color strip at the top of the slot indicating item tier */
-.tier-border {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
+.inventory-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.item-icon {
-  opacity: 0.8;
-  user-select: none;
+.inventory-card__header--media {
+  min-height: 48px;
 }
 
-.quantity-badge {
-  position: absolute;
-  bottom: 0px;
-  right: 4px;
-  font-size: 1.0rem;
-  font-weight: 800;
-  color: rgb(var(--v-theme-on-surface));
-  text-shadow: 0px 0px 3px rgb(var(--v-theme-surface));
+.inventory-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-.upgrade-card {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+.inventory-card__text {
+  min-width: 0;
 }
 
-.upgrade-card--locked {
-  opacity: 0.6;
+.inventory-card__title {
+  text-transform: uppercase;
+  font-size: 1rem;
+  line-height: 1.1;
 }
 
-.upgrade-title {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.2;
+.inventory-card__subtitle {
+  font-size: 0.75rem;
+}
+
+.inventory-card__qty {
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.claim-table :deep(thead tr th) {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(100, 116, 139, 0.9);
+}
+
+.claim-table :deep(tbody tr td) {
+  vertical-align: top;
 }
 </style>

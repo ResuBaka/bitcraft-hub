@@ -2,7 +2,7 @@ use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::NpcDesc;
 use migration::sea_query;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -151,7 +151,11 @@ pub(crate) fn start_worker_npc_desc(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(NpcDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete NpcDesc");
+                        tracing::error!(
+                            NpcDesc = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete NpcDesc"
+                        );
                     }
                 }
                 messages_delete.clear();

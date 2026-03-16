@@ -1,9 +1,7 @@
 import type { WebSocketMessages } from "~/types/WebSocketMessages";
 import type { RefinedMessageContentType } from "~/types";
 
-export function registerWebsocketMessageHandler<
-  T extends WebSocketMessages["t"],
->(
+export function registerWebsocketMessageHandler<T extends WebSocketMessages["t"]>(
   eventType: T,
   topics: MaybeRefOrGetter<string | string[]>,
   handler: (message: RefinedMessageContentType<T>) => void,

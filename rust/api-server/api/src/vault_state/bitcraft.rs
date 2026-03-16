@@ -3,7 +3,7 @@ use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::vault_state_collectibles;
 use game_module::module_bindings::VaultState;
 use migration::sea_query;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -168,13 +168,20 @@ pub(crate) fn start_worker_vault_state_collectibles(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::vault_state_collectibles::Entity::delete_many()
-                        .filter(::entity::vault_state_collectibles::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::vault_state_collectibles::Column::EntityId
+                                .is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(VaultState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete VaultState");
+                        tracing::error!(
+                            VaultState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete VaultState"
+                        );
                     }
                 }
                 messages_delete.clear();

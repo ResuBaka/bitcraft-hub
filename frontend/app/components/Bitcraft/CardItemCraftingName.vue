@@ -19,6 +19,4 @@ const replacedTempalte = computed(() =>
   {{ replacedTempalte }}
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

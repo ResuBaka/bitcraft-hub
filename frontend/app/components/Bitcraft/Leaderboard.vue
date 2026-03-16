@@ -1,19 +1,15 @@
 <script setup lang="ts">
 import { useNow } from "@vueuse/core";
 import type { GetTop100Response } from "~/types/GetTop100Response";
+import { watch } from "vue";
 
 const numberFormat = new Intl.NumberFormat(undefined);
 
-const {
-  data: leaderboard,
-  pending,
-  refresh,
-} = await useFetchMsPack<GetTop100Response>(
+const { data: leaderboard, pending } = await useLazyFetchMsPack<GetTop100Response>(
   () => {
     return `/leaderboard`;
   },
   {
-    lazy: true,
     deep: true,
   },
 );
@@ -27,11 +23,7 @@ const skills = computed(() => {
   }
 
   return Object.keys(leaderboard.value?.leaderboard).filter((name) => {
-    return (
-      name !== "Experience" &&
-      name !== "Level" &&
-      name !== "Experience Per Hour"
-    );
+    return name !== "Experience" && name !== "Level" && name !== "Experience Per Hour";
   });
 });
 
@@ -40,9 +32,17 @@ if (route.query.skill) {
   selectedSkills.value = route.query.skill as string;
 }
 
+const animateNumbers = ref(true);
+
 watch(selectedSkills, (newValue) => {
   let currentQuery = route.query;
   router.push({ query: { ...currentQuery, skill: newValue } });
+});
+
+watch(selectedSkills, async () => {
+  animateNumbers.value = false;
+  await nextTick();
+  animateNumbers.value = true;
 });
 
 const topics = computed(() => {
@@ -57,9 +57,7 @@ const topics = computed(() => {
   }
 
   for (const player of leaderboard.value.leaderboard[selectedSkills.value]) {
-    topicsSet.add(
-      `experience:${selectedSkills.value}.${player.player_id.toString()}`,
-    );
+    topicsSet.add(`experience:${selectedSkills.value}.${player.player_id.toString()}`);
   }
 
   return Array.from(topicsSet);
@@ -72,28 +70,28 @@ function swapArrayRank(arr, indexA, indexB) {
 }
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
-  const skill = leaderboard.value?.leaderboard[message.skill_name].find(
+  const skill = leaderboard.value?.leaderboard[message.skill_name].findIndex(
     (item) => item.player_id === message.user_id,
   );
 
   if (skill) {
-    skill.experience = message.experience;
-    if (skill.rank != message.rank) {
+    leaderboard.value.leaderboard[message.skill_name][skill].experience = message.experience;
+    leaderboard.value.leaderboard[message.skill_name][skill].experience_per_hour =
+      message.experience_per_hour;
+    if (
+      Number(leaderboard.value.leaderboard[message.skill_name][skill].rank) !== Number(message.rank)
+    ) {
       swapArrayRank(
-        leaderboard.value?.leaderboard["Experience"],
+        leaderboard.value.leaderboard[message.skill_name],
         skill.rank - 1,
         message.rank - 1,
       );
     }
-    skill.rank = message.rank;
   }
 });
 
 const totalExperienceTopics = computed(() => {
-  if (
-    !leaderboard.value?.leaderboard ||
-    selectedSkills.value !== "Experience"
-  ) {
+  if (!leaderboard.value?.leaderboard || selectedSkills.value !== "Experience") {
     return [];
   }
 
@@ -106,29 +104,22 @@ const totalExperienceTopics = computed(() => {
   return Array.from(topicsSet);
 });
 
-registerWebsocketMessageHandler(
-  "TotalExperience",
-  totalExperienceTopics,
-  (message) => {
-    const skill = leaderboard.value?.leaderboard["Experience"].find(
-      (item) => item.player_id === message.user_id,
-    );
+registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (message) => {
+  const skill = leaderboard.value?.leaderboard["Experience"].findIndex(
+    (item) => item.player_id === message.user_id,
+  );
 
-    if (skill) {
-      skill.experience = message.experience;
-      skill.experience_per_hour = message.experience_per_hour;
-      if (skill.rank != message.rank) {
-        swapArrayRank(
-          leaderboard.value?.leaderboard["Experience"],
-          skill.rank - 1,
-          message.rank - 1,
-        );
-      }
-
-      skill.rank = message.rank;
+  if (skill) {
+    leaderboard.value.leaderboard["Experience"][skill].experience = message.experience;
+    leaderboard.value.leaderboard["Experience"][skill].experience_per_hour =
+      message.experience_per_hour;
+    if (leaderboard.value.leaderboard["Experience"][skill].rank !== message.rank) {
+      swapArrayRank(leaderboard.value.leaderboard["Experience"], skill.rank - 1, message.rank - 1);
     }
-  },
-);
+
+    leaderboard.value.leaderboard["Experience"][skill].rank = message.rank;
+  }
+});
 
 const playerStateTopics = computed(() => {
   if (!leaderboard.value?.leaderboard) {
@@ -148,73 +139,29 @@ registerWebsocketMessageHandler("PlayerState", playerStateTopics, (message) => {
   leaderboard.value.player_map[message.entity_id] = message;
 });
 
-let skillMenu = computed(() => {
-  const skillMenu = [
-    { key: "Experience", text: "Total experience" },
-    { key: "Level", text: "Total level" },
-    { key: "Experience Per Hour", text: "Experience Per Hour" },
-  ];
-
-  for (const skill of skills.value) {
-    skillMenu.push({
-      key: skill,
-      text: skill,
-    });
-  }
-
-  return skillMenu;
-});
-
-const enableRefresh = ref(false);
-
-const refreshTimer = ref<NodeJS.Timeout | null>(null);
-
-const times = 10000 / 100;
-const untilRefresh = ref(0);
-
-const toggleRefresh = () => {
-  enableRefresh.value = !enableRefresh.value;
-
-  if (enableRefresh.value) {
-    refreshTimer.value = setInterval(() => {
-      if (untilRefresh.value >= times) {
-        refresh();
-        untilRefresh.value = 0;
-      } else {
-        untilRefresh.value++;
-      }
-    }, 100);
-  } else {
-    untilRefresh.value = 0;
-    if (refreshTimer.value) {
-      clearInterval(refreshTimer.value);
-    }
-  }
-};
-
-const queryRefresh = route.query?.refresh ?? false;
-
-if (queryRefresh) {
-  toggleRefresh();
-}
-
 const icons = {
-  Fishing: { icon: "mdi-fish", color: "blue" },
-  Mining: { icon: "mdi-pickaxe", color: "grey" },
-  Woodcutting: { icon: "mdi-forest", color: "green" },
-  Farming: { icon: "mdi-sprout", color: "green" },
-  Carpentry: { icon: "mdi-hand-saw", color: "brown" },
-  Foraging: { icon: "mdi-leaf", color: "green" },
-  Forestry: { icon: "mdi-axe", color: "brown" },
-  Masonry: { icon: "mdi-screwdriver", color: "grey" },
-  Smithing: { icon: "mdi-anvil", color: "grey" },
-  Scholar: { icon: "mdi-school", color: "" },
-  Hunting: { icon: "mdi-bow-arrow", color: "" },
-  Cooking: { icon: "mdi-stove", color: "" },
-  // Leatherworking: { icon: "", color: "" },
-  // Tailoring: { icon: "", color: "" },
-  // Experience: { icon: "", color: "" },
-  // Level: { icon: "", color: "" },
+  Fishing: { icon: "i-mdi-fish", class: "text-blue-500" },
+  Mining: { icon: "i-mdi-pickaxe", class: "text-gray-500" },
+  Woodcutting: { icon: "i-mdi-forest", class: "text-emerald-600" },
+  Farming: { icon: "i-mdi-sprout", class: "text-emerald-600" },
+  Carpentry: { icon: "i-mdi-hand-saw", class: "text-amber-700" },
+  Foraging: { icon: "i-mdi-leaf", class: "text-emerald-600" },
+  Forestry: { icon: "i-mdi-axe", class: "text-amber-700" },
+  Masonry: { icon: "i-mdi-screwdriver", class: "text-gray-500" },
+  Smithing: { icon: "i-mdi-anvil", class: "text-gray-500" },
+  Scholar: { icon: "i-mdi-school", class: "text-sky-600" },
+  Hunting: { icon: "i-mdi-bow-arrow", class: "text-slate-600" },
+  Cooking: { icon: "i-mdi-stove", class: "text-orange-600" },
+  Leatherworking: { icon: "i-mdi-bag-personal", class: "text-amber-700" },
+  Tailoring: { icon: "i-mdi-tshirt-crew", class: "text-indigo-600" },
+  Sailing: { icon: "i-mdi-sail-boat", class: "text-sky-600" },
+  Slayer: { icon: "i-mdi-sword", class: "text-rose-600" },
+  Taming: { icon: "i-mdi-paw", class: "text-amber-600" },
+  Construction: { icon: "i-mdi-hard-hat", class: "text-yellow-600" },
+  "Time Online": { icon: "i-mdi-timer-outline", class: "text-cyan-600" },
+  "Time Played": { icon: "i-mdi-clock-outline", class: "text-cyan-600" },
+  Experience: { icon: "i-mdi-star-circle", class: "text-amber-500" },
+  Level: { icon: "i-mdi-chart-line", class: "text-emerald-600" },
 };
 
 const totelExperiencePerHourAverage = computed(() => {
@@ -224,16 +171,11 @@ const totelExperiencePerHourAverage = computed(() => {
 
   let totalExperience = 0;
 
-  totalExperience += leaderboard.value.leaderboard["Experience"].reduce(
-    (acc, curr) => {
-      return acc + curr.experience_per_hour;
-    },
-    0,
-  );
+  totalExperience += leaderboard.value.leaderboard["Experience"].reduce((acc, curr) => {
+    return acc + curr.experience_per_hour;
+  }, 0);
 
-  return Math.ceil(
-    totalExperience / leaderboard.value.leaderboard["Experience"].length,
-  );
+  return Math.ceil(totalExperience / leaderboard.value.leaderboard["Experience"].length);
 });
 
 const experiencePerHourAverage = computed(() => {
@@ -243,16 +185,11 @@ const experiencePerHourAverage = computed(() => {
 
   let totalExperience = 0;
 
-  totalExperience += leaderboard.value.leaderboard[
-    "Experience Per Hour"
-  ].reduce((acc, curr) => {
+  totalExperience += leaderboard.value.leaderboard["Experience Per Hour"].reduce((acc, curr) => {
     return acc + curr.experience;
   }, 0);
 
-  return Math.ceil(
-    totalExperience /
-      leaderboard.value.leaderboard["Experience Per Hour"].length,
-  );
+  return Math.ceil(totalExperience / leaderboard.value.leaderboard["Experience Per Hour"].length);
 });
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
@@ -283,7 +220,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 };
 
 const now = useNow({ interval: 1000, controls: true });
-const game_start = new Date("2025-06-21T13:00:05Z");
+const game_start = new Date("2026-02-26T17:00:00Z");
 
 const countDownUntilResearchIsFinished = computed(() => {
   const diff = now.now.value.getTime() - game_start.getTime();
@@ -295,211 +232,232 @@ const countDownUntilResearchIsFinished = computed(() => {
     seconds: Math.floor((diff / 1000) % 60),
   };
 });
+
+const skillMenu = computed(() => {
+  const menu = [
+    { value: "Experience", label: "Total experience" },
+    { value: "Level", label: "Total level" },
+    // { value: "Experience Per Hour", label: "Experience Per Hour" },
+  ];
+
+  for (const skill of skills.value) {
+    menu.push({ value: skill, label: skill });
+  }
+
+  return menu.map((item) => ({
+    ...item,
+    icon: icons[item.value]?.icon,
+  }));
+});
+
+const isHydrated = ref(false);
+
+onMounted(() => {
+  isHydrated.value = true;
+});
+
+const timeHeader = computed(() => {
+  if (!isHydrated.value) {
+    return "Time";
+  }
+
+  const parts = [] as string[];
+  if (countDownUntilResearchIsFinished.value.days) {
+    parts.push(`${countDownUntilResearchIsFinished.value.days}d`);
+  }
+  if (countDownUntilResearchIsFinished.value.hours) {
+    parts.push(`${countDownUntilResearchIsFinished.value.hours}h`);
+  }
+  if (countDownUntilResearchIsFinished.value.minutes) {
+    parts.push(`${countDownUntilResearchIsFinished.value.minutes}m`);
+  }
+  if (countDownUntilResearchIsFinished.value.seconds) {
+    parts.push(`${countDownUntilResearchIsFinished.value.seconds}s`);
+  }
+
+  if (parts.length === 0) {
+    return "Time";
+  }
+
+  return `Time (Game is online since ${parts.join(" ")})`;
+});
+
+const experienceColumns = computed(() => [
+  { id: "rank", header: "Rank" },
+  { id: "player", header: "Player" },
+  // {
+  //   id: "experiencePerHour",
+  //   header: `Experience/h ${numberFormat.format(totelExperiencePerHourAverage.value)}`,
+  //   meta: { class: { th: "text-right", td: "text-right" } },
+  // },
+  {
+    id: "experience",
+    header: "Experience",
+    meta: { class: { th: "text-right", td: "text-right" } },
+  },
+]);
+
+const experiencePerHourColumns = computed(() => [
+  { id: "rank", header: "Rank" },
+  { id: "player", header: "Player" },
+  {
+    id: "experienceValue",
+    header: `Experience/h ${numberFormat.format(experiencePerHourAverage.value)}`,
+    meta: { class: { th: "text-right", td: "text-right" } },
+  },
+]);
+
+const levelColumns = computed(() => [
+  { id: "rank", header: "Rank" },
+  { id: "player", header: "Player" },
+  {
+    id: "level",
+    header: "Level",
+    meta: { class: { th: "text-right", td: "text-right" } },
+  },
+]);
+
+const timeColumns = computed(() => [
+  { id: "rank", header: "Rank" },
+  { id: "player", header: "Player", meta: { class: { th: "text-center" } } },
+  {
+    id: "time",
+    header: timeHeader.value,
+    meta: { class: { th: "text-right", td: "text-right" } },
+  },
+]);
+
+const defaultColumns = computed(() => [
+  { id: "rank", header: "Rank" },
+  { id: "player", header: "Player" },
+  {
+    id: "level",
+    header: "Level",
+    meta: { class: { th: "text-center", td: "text-center" } },
+  },
+  {
+    id: "experience",
+    header: "Experience",
+    meta: { class: { th: "text-right", td: "text-right" } },
+  },
+]);
+
+const playerLinkClass = (playerId: number) => {
+  const signedIn = leaderboard.value?.player_map?.[playerId]?.signed_in;
+  return [
+    "font-semibold hover:underline",
+    signedIn ? "text-emerald-600 dark:text-emerald-400" : "text-gray-900 dark:text-gray-100",
+  ].join(" ");
+};
+
+const columnsForSkill = (skill: string) => {
+  if (skill === "Experience") {
+    return experienceColumns.value;
+  }
+
+  if (skill === "Experience Per Hour") {
+    return experiencePerHourColumns.value;
+  }
+
+  if (skill === "Level") {
+    return levelColumns.value;
+  }
+
+  if (skill === "Time Played" || skill === "Time Online") {
+    return timeColumns.value;
+  }
+
+  return defaultColumns.value;
+};
 </script>
 
 <template>
-<!--  <v-container class="fill-height" v-if="pending">-->
-<!--    <v-row align-content="center" justify="center" class="fill-height">-->
-<!--      <v-progress-circular indeterminate></v-progress-circular>-->
-<!--    </v-row>-->
-<!--  </v-container>-->
-<!--  <v-container fluid v-else-if="!pending">-->
-<!--    <v-row dense align="start">-->
-<!--      <v-col class="v-col-12">-->
-<!--        <div>-->
-<!--          <v-sheet class="text-center">-->
-<!--            <v-progress-linear-->
-<!--                v-if="enableRefresh"-->
-<!--                v-model="untilRefresh"-->
-<!--                color="blue"-->
-<!--                height="40"-->
-<!--                :max="times"-->
-<!--                @click="toggleRefresh"-->
-<!--            >-->
-<!--              <strong>Leaderboards(Auto-refresh)</strong>-->
-<!--            </v-progress-linear>-->
-<!--            <h1 v-else class="pl-md-3 pl-xl-0" @click="toggleRefresh">Leaderboards</h1>-->
+  <UContainer class="w-full max-w-none py-6">
+    <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-col items-center gap-3 text-center">
+            <h1 class="text-2xl font-semibold tracking-tight">Leaderboards</h1>
+          </div>
+        </div>
 
-<!--          </v-sheet>-->
-<!--        </div>-->
-<!--      </v-col>-->
-<!--      <v-col v-if="$vuetify.display.xs">-->
-<!--        <v-select v-model="selectedSkills" item-value="key" item-title="text" :items="skillMenu" label="Skills" outlined-->
-<!--                  dense center-affix>-->
-<!--          <template #item="{ props, item }">-->
-<!--            <v-list-item v-bind="props" class="text-center">-->
-<!--              <template #append v-if="icons[item.value]">-->
-<!--                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>-->
-<!--              </template>-->
-<!--              <template #prepend v-if="icons[item.value]">-->
-<!--                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>-->
-<!--              </template>-->
-<!--            </v-list-item>-->
-<!--          </template>-->
-<!--          <template #selection="{ item }">-->
-<!--            <v-list-item class="w-100 text-center">-->
-<!--              <template #append v-if="icons[item.value]">-->
-<!--                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>-->
-<!--              </template>-->
-<!--              <template #prepend v-if="icons[item.value]">-->
-<!--                <v-icon :color="icons[item.value].color">{{ icons[item.value].icon }}</v-icon>-->
-<!--              </template>-->
-<!--              <v-list-item-title>{{ item.title }}</v-list-item-title>-->
-<!--            </v-list-item>-->
-<!--          </template>-->
-<!--        </v-select>-->
-<!--      </v-col>-->
-<!--      <v-col v-else v-for="skill in skillMenu" :key="skill.key"-->
-<!--             :style="$vuetify.display.lgAndUp ? ' flex: 1 0 18%;' : ''"-->
-<!--             cols="12"-->
-<!--             sm="4"-->
-<!--      >-->
-<!--        <v-btn variant="flat" block @click="selectedSkills = skill.key" :active="selectedSkills === skill.key">-->
-<!--          <template #prepend v-if="icons[skill.key]">-->
-<!--            <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>-->
-<!--          </template>-->
-<!--          {{ skill.text }}-->
-<!--          <template #append v-if="icons[skill.key]">-->
-<!--            <v-icon :color="icons[skill.key].color">{{ icons[skill.key].icon }}</v-icon>-->
-<!--          </template>-->
-<!--        </v-btn>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row v-if="selectedSkills === 'Experience'">-->
-<!--      <v-col lass="v-col-12 pa-0">-->
-<!--        <v-table hover>-->
-<!--          <thead>-->
-<!--          <tr>-->
-<!--            <th>Rank</th>-->
-<!--            <th class="text-center">Player</th>-->
-<!--            <th class="text-end">Experience/h {{ numberFormat.format(totelExperiencePerHourAverage) }}</th>-->
-<!--            <th class="text-end">Experience</th>-->
-<!--          </tr>-->
-<!--          </thead>-->
-<!--          <tbody>-->
-<!--          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">-->
-<!--            <td>{{ index + 1 }}</td>-->
-<!--            <td class="text-center">-->
-<!--              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"-->
-<!--                        :to="{ path: 'players/' + item.player_id }">-->
-<!--                {{ item.player_name }}-->
-<!--              </NuxtLink>-->
-<!--            </td>-->
-<!--            <td class="text-end">{{ numberFormat.format(item.experience_per_hour) }}</td>-->
-<!--            <td class="text-end"><bitcraft-animated-number :value="item.experience" :speed="8" :formater="numberFormat.format" color></bitcraft-animated-number></td>-->
-<!--          </tr>-->
-<!--          </tbody>-->
-<!--        </v-table>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row v-if="selectedSkills === 'Experience Per Hour'">-->
-<!--      <v-col lass="v-col-12 pa-0">-->
-<!--        <v-table hover>-->
-<!--          <thead>-->
-<!--          <tr>-->
-<!--            <th>Rank</th>-->
-<!--            <th class="text-center">Player</th>-->
-<!--            <th class="text-end">Experience/h {{ numberFormat.format(experiencePerHourAverage) }}</th>-->
-<!--          </tr>-->
-<!--          </thead>-->
-<!--          <tbody>-->
-<!--          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">-->
-<!--            <td>{{ index + 1 }}</td>-->
-<!--            <td class="text-center">-->
-<!--              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"-->
-<!--                        :to="{ path: 'players/' + item.player_id }">-->
-<!--                {{ item.player_name }}-->
-<!--              </NuxtLink>-->
-<!--            </td>-->
-<!--            <td class="text-end">{{ numberFormat.format(item.experience) }}</td>-->
-<!--          </tr>-->
-<!--          </tbody>-->
-<!--        </v-table>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row v-if="selectedSkills === 'Level'">-->
-<!--      <v-col lass="v-col-12 pa-0">-->
-<!--        <v-table hover>-->
-<!--          <thead>-->
-<!--          <tr>-->
-<!--            <th>Rank</th>-->
-<!--            <th class="text-center">Player</th>-->
-<!--            <th class="text-end">Level</th>-->
-<!--          </tr>-->
-<!--          </thead>-->
-<!--          <tbody>-->
-<!--          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">-->
-<!--            <td>{{ index + 1 }}</td>-->
-<!--            <td class="text-center">-->
-<!--              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"-->
-<!--                        :to="{ path: 'players/' + item.player_id }">-->
-<!--                {{ item.player_name }}-->
-<!--              </NuxtLink>-->
-<!--            </td>-->
-<!--            <td class="text-end">{{ numberFormat.format(item.level) }}</td>-->
-<!--          </tr>-->
-<!--          </tbody>-->
-<!--        </v-table>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row v-if="selectedSkills === 'Time Played' || selectedSkills === 'Time Online'">-->
-<!--      <v-col lass="v-col-12 pa-0">-->
-<!--        <v-table hover>-->
-<!--          <thead>-->
-<!--          <tr>-->
-<!--            <th>Rank</th>-->
-<!--            <th class="text-center">Player</th>-->
-<!--            <th class="text-end">Time (Game is online since <strong v-if="countDownUntilResearchIsFinished.days">{{ countDownUntilResearchIsFinished.days }}d </strong><strong v-if="countDownUntilResearchIsFinished.hours">{{ countDownUntilResearchIsFinished.hours }}h </strong><strong v-if="countDownUntilResearchIsFinished.minutes">{{ countDownUntilResearchIsFinished.minutes }}m </strong><strong v-if="countDownUntilResearchIsFinished.seconds">{{ countDownUntilResearchIsFinished.seconds }}s</strong>)</th>-->
-<!--          </tr>-->
-<!--          </thead>-->
-<!--          <tbody>-->
-<!--          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="item.player_id">-->
-<!--            <td>{{ index + 1 }}</td>-->
-<!--            <td class="text-center">-->
-<!--              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"-->
-<!--                        :to="{ path: 'players/' + item.player_id }">-->
-<!--                {{ item.player_name }}-->
-<!--              </NuxtLink>-->
-<!--            </td>-->
-<!--            <td class="text-end">{{ secondsToDaysMinutesSecondsFormat(item.time_played) }}</td>-->
-<!--          </tr>-->
-<!--          </tbody>-->
-<!--        </v-table>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--    <v-row v-if="selectedSkills !== 'Experience Per Hour' && selectedSkills !== 'Experience' && selectedSkills !== 'Level' && selectedSkills !== 'Time Played' && selectedSkills !== 'Time Online'">-->
-<!--      <v-col lass="v-col-12 pa-0">-->
-<!--        <v-table density="compact" hover>-->
-<!--          <thead>-->
-<!--          <tr>-->
-<!--            <th>Rank</th>-->
-<!--            <th class="text-center">Player</th>-->
-<!--            <th class="text-center">level</th>-->
-<!--            <th class="text-end">Experience</th>-->
-<!--          </tr>-->
-<!--          </thead>-->
-<!--          <tbody>-->
-<!--          <tr v-for="(item, index) in leaderboard.leaderboard[selectedSkills]" :key="`${item.player_id}-${selectedSkills}`">-->
-<!--            <td>{{ index + 1 }}</td>-->
-<!--            <td class="text-center">-->
-<!--              <NuxtLink :class="`text-decoration-none font-weight-black ${leaderboard.player_map[item.player_id]?.signed_in ? 'text-green' : 'text-high-emphasis'}`"-->
-<!--                        :to="{ path: 'players/' + item.player_id }">-->
-<!--                {{ item.player_name }}-->
-<!--              </NuxtLink>-->
-<!--            </td>-->
-<!--            <td class="text-center">{{ item.level }}</td>-->
-<!--            <td class="text-end"><bitcraft-animated-number :value="item.experience" :speed="8" :formater="numberFormat.format" color></bitcraft-animated-number></td>-->
-<!--          </tr>-->
-<!--          </tbody>-->
-<!--        </v-table>-->
-<!--      </v-col>-->
-<!--    </v-row>-->
-<!--  </v-container>-->
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          <UButton
+            v-for="skill in skillMenu"
+            :key="skill.value"
+            :variant="selectedSkills === skill.value ? 'solid' : 'soft'"
+            color="neutral"
+            size="md"
+            block
+            @click="selectedSkills = skill.value"
+          >
+            <template #leading>
+              <UIcon
+                v-if="skill.icon"
+                :name="skill.icon"
+                :class="icons[skill.value]?.class || 'text-gray-500'"
+              />
+            </template>
+            {{ skill.label }}
+          </UButton>
+        </div>
+
+        <div class="rounded-lg border border-gray-200 shadow-sm dark:border-gray-800">
+          <div class="w-full overflow-x-auto">
+            <UTable
+              :key="selectedSkills"
+              :columns="columnsForSkill(selectedSkills)"
+              :data="leaderboard?.leaderboard?.[selectedSkills] || []"
+              :loading="pending"
+              :watch-options="{ deep: false }"
+              loading-color="neutral"
+              loading-animation="carousel"
+              :meta="{
+                class: {
+                  tr: (row) => {
+                    return 'hover:bg-neutral-200 dark:hover:bg-neutral-700';
+                  },
+                },
+              }"
+            >
+              <template #rank-cell="{ row }">
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {{ row.index + 1 }}
+                </span>
+              </template>
+              <template #player-cell="{ row }">
+                <NuxtLink
+                  :to="{ path: 'players/' + row.original.player_id }"
+                  :class="playerLinkClass(row.original.player_id)"
+                >
+                  {{ row.original.player_name }}
+                </NuxtLink>
+              </template>
+              <template #experiencePerHour-cell="{ row }">
+                {{ numberFormat.format(row.original.experience_per_hour) }}
+              </template>
+              <template #experience-cell="{ row }">
+                <bitcraft-animated-number
+                  :value="row.original.experience"
+                  :speed="8"
+                  :formater="numberFormat.format"
+                  color
+                  :animate="animateNumbers"
+                />
+              </template>
+              <template #experienceValue-cell="{ row }">
+                {{ numberFormat.format(row.original.experience) }}
+              </template>
+              <template #level-cell="{ row }">
+                {{ numberFormat.format(row.original.level) }}
+              </template>
+              <template #time-cell="{ row }">
+                {{ secondsToDaysMinutesSecondsFormat(row.original.time_played) }}
+              </template>
+            </UTable>
+          </div>
+        </div>
+      </div>
+    </div>
+  </UContainer>
 </template>
-
-<style scoped>
-:deep(.v-select__selection) {
-  width: 100%;
-  justify-content: center;
-}
-</style>

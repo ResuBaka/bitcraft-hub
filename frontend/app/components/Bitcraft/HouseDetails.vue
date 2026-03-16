@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { HouseResponse } from "~/types/HouseResponse";
 import type { HouseInventoriesResponse } from "~/types/HouseInventoriesResponse";
+import type { HouseResponse } from "~/types/HouseResponse";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 
 const props = defineProps<{
   house: HouseResponse;
 }>();
 
-const tab = ref(null);
+const tab = ref<"overview" | "permissions" | "inventories" | "changelog">("overview");
 
 const { data: inventories, pending: invPending } =
   await useLazyFetchMsPack<HouseInventoriesResponse>(
@@ -18,14 +18,22 @@ const { data: changelog, pending: changelogPending } = await useLazyFetchMsPack<
   InventoryChangelog[]
 >(() => `/api/bitcraft/inventorys/changes/${props.house.entity_id}`);
 
-const colorMode = useColorMode();
-const computedClass = computed(() => {
-  const isDark = colorMode.value == "dark";
-  return {
-    "bg-surface-light": isDark,
-    "bg-grey-lighten-3": !isDark,
-  };
+const inventoryCount = computed(() => inventories.value?.inventories?.length ?? 0);
+
+const occupiedInventories = computed(() => {
+  const houseInventories = inventories.value?.inventories ?? [];
+  return houseInventories.filter((inventory) =>
+    inventory.pockets.some((pocket) => (pocket.contents?.quantity ?? 0) > 0),
+  );
 });
+
+const changelogCount = computed(() => changelog.value?.length ?? 0);
+
+const permissionColumns = [
+  { id: "allowed_username", header: "Username" },
+  { id: "group", header: "Group" },
+  { id: "rank", header: "Rank" },
+];
 
 const getRankName = (rank: number) => {
   switch (rank) {
@@ -41,112 +49,145 @@ const getRankName = (rank: number) => {
       return `Rank ${rank}`;
   }
 };
+
+const getRankColor = (rank: number) => {
+  if (rank >= 7) {
+    return "warning";
+  }
+  if (rank >= 6) {
+    return "primary";
+  }
+  return "neutral";
+};
 </script>
 
 <template>
-<!--  <v-card variant="outlined" class="mb-4">-->
-<!--    <v-card-title class="d-flex align-center gap-4">-->
-<!--      <span class="text-h6 font-weight-black">House {{ house.owner_username ?? house.entity_id }}</span>-->
-<!--      <v-chip color="primary" label size="small">{{ house.region }}</v-chip>-->
-<!--      <v-spacer></v-spacer>-->
-<!--      <v-chip :color="house.is_empty ? 'grey' : 'success'" size="small" label>-->
-<!--        {{ house.is_empty ? 'Empty' : 'Occupied' }}-->
-<!--      </v-chip>-->
-<!--    </v-card-title>-->
+  <UCard class="mb-4" :ui="{ header: 'p-4', body: 'p-4' }">
+    <template #header>
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-lg font-black">House {{ house.owner_username ?? house.entity_id }}</span>
+        <UBadge color="primary" variant="soft">{{ house.region }}</UBadge>
+        <UBadge :color="house.is_empty ? 'neutral' : 'success'" variant="soft">
+          {{ house.is_empty ? "Empty" : "Occupied" }}
+        </UBadge>
+      </div>
+    </template>
 
-<!--    <v-tabs v-model="tab" bg-color="transparent" density="compact">-->
-<!--      <v-tab value="overview">Overview</v-tab>-->
-<!--      <v-tab value="permissions">Permissions ({{ house.permissions.length }})</v-tab>-->
-<!--      <v-tab value="inventories">Inventories ({{ inventories?.inventories.length || 0 }})</v-tab>-->
-<!--      <v-tab value="changelog">Changes ({{ changelog?.length || 0 }})</v-tab>-->
-<!--    </v-tabs>-->
+    <div class="flex flex-wrap gap-2">
+      <UButton
+        color="neutral"
+        size="sm"
+        :variant="tab === 'overview' ? 'solid' : 'soft'"
+        @click="tab = 'overview'"
+      >
+        Overview
+      </UButton>
+      <UButton
+        color="neutral"
+        size="sm"
+        :variant="tab === 'permissions' ? 'solid' : 'soft'"
+        @click="tab = 'permissions'"
+      >
+        Permissions ({{ house.permissions.length }})
+      </UButton>
+      <UButton
+        color="neutral"
+        size="sm"
+        :variant="tab === 'inventories' ? 'solid' : 'soft'"
+        @click="tab = 'inventories'"
+      >
+        Inventories ({{ inventoryCount }})
+      </UButton>
+      <UButton
+        color="neutral"
+        size="sm"
+        :variant="tab === 'changelog' ? 'solid' : 'soft'"
+        @click="tab = 'changelog'"
+      >
+        Changes ({{ changelogCount }})
+      </UButton>
+    </div>
 
-<!--    <v-divider></v-divider>-->
+    <div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-800">
+      <template v-if="tab === 'overview'">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <UCard :ui="{ body: 'p-3' }">
+            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Region</p>
+            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+              {{ house.region }} (Index: {{ house.region_index }})
+            </p>
+          </UCard>
+          <UCard :ui="{ body: 'p-3' }">
+            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Rank</p>
+            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+              {{ getRankName(house.rank) }}
+            </p>
+          </UCard>
+        </div>
+      </template>
 
-<!--    <v-card-text>-->
-<!--      <v-window v-model="tab">-->
-<!--        &lt;!&ndash; Overview &ndash;&gt;-->
-<!--        <v-window-item value="overview">-->
-<!--          <v-row dense>-->
-<!--            <v-col cols="12">-->
-<!--              <v-list lines="two" :class="computedClass" class="rounded" density="compact">-->
-<!--                <v-list-item title="Region" :subtitle="`${house.region} (Index: ${house.region_index})`"></v-list-item>-->
-<!--                <v-divider></v-divider>-->
-<!--                <v-list-item title="Rank" :subtitle="house.rank.toString()"></v-list-item>-->
-<!--              </v-list>-->
-<!--            </v-col>-->
-<!--          </v-row>-->
-<!--        </v-window-item>-->
+      <template v-else-if="tab === 'permissions'">
+        <div
+          v-if="house.permissions.length > 0"
+          class="rounded-lg border border-gray-200 dark:border-gray-800"
+        >
+          <UTable :columns="permissionColumns" :data="house.permissions">
+            <template #allowed_username-cell="{ row }">
+              <NuxtLink
+                class="text-primary-500 hover:underline"
+                :to="{
+                  name: 'players-id',
+                  params: { id: row.original.allowed_entity_id.toString() },
+                }"
+              >
+                {{ row.original.allowed_username || "Unknown" }}
+              </NuxtLink>
+            </template>
+            <template #group-cell="{ row }">
+              {{ row.original.group }}
+            </template>
+            <template #rank-cell="{ row }">
+              <UBadge :color="getRankColor(row.original.rank)" variant="soft" size="xs">
+                {{ getRankName(row.original.rank) }}
+              </UBadge>
+            </template>
+          </UTable>
+        </div>
+        <p v-else class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          No explicit permissions found.
+        </p>
+      </template>
 
-<!--        &lt;!&ndash; Permissions &ndash;&gt;-->
-<!--        <v-window-item value="permissions">-->
-<!--          <v-table v-if="house.permissions.length > 0" density="compact">-->
-<!--            <thead>-->
-<!--              <tr>-->
-<!--                <th class="text-left">Username</th>-->
-<!--                <th class="text-left">Group</th>-->
-<!--                <th class="text-left">Rank</th>-->
-<!--              </tr>-->
-<!--            </thead>-->
-<!--            <tbody>-->
-<!--              <tr v-for="p in house.permissions" :key="p.allowed_entity_id.toString()">-->
-<!--                <td>-->
-<!--                  <nuxt-link :to="{ name: 'players-id', params: { id: p.allowed_entity_id.toString() } }">-->
-<!--                    {{ p.allowed_username || 'Unknown' }}-->
-<!--                  </nuxt-link>-->
-<!--                </td>-->
-<!--                <td>{{ p.group }}</td>-->
-<!--                <td>-->
-<!--                  <v-chip :color="p.rank === 7 ? 'gold' : 'blue-grey'" size="x-small">-->
-<!--                    {{ getRankName(p.rank) }}-->
-<!--                  </v-chip>-->
-<!--                </td>-->
-<!--              </tr>-->
-<!--            </tbody>-->
-<!--          </v-table>-->
-<!--          <div v-else class="text-center py-4 text-grey text-caption">-->
-<!--            No explicit permissions found.-->
-<!--          </div>-->
-<!--        </v-window-item>-->
+      <template v-else-if="tab === 'inventories'">
+        <div v-if="invPending" class="flex justify-center py-4">
+          <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+        <div
+          v-else-if="occupiedInventories.length > 0"
+          class="grid grid-cols-1 gap-4 lg:grid-cols-2"
+        >
+          <bitcraft-inventory
+            v-for="inv in occupiedInventories"
+            :key="inv.entity_id.toString()"
+            :inventory="inv"
+          />
+        </div>
+        <p v-else class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          No interior inventories found.
+        </p>
+      </template>
 
-<!--        &lt;!&ndash; Inventories &ndash;&gt;-->
-<!--        <v-window-item value="inventories">-->
-<!--          <div v-if="invPending" class="text-center py-4">-->
-<!--            <v-progress-circular indeterminate size="24"></v-progress-circular>-->
-<!--          </div>-->
-<!--          <template v-else-if="inventories && inventories.inventories.length > 0">-->
-<!--            <v-row>-->
-<!--              <v-col cols="12" md="6" v-for="inv in inventories.inventories.filter(inventory => !!inventory.pockets.filter((pocket) => !!pocket.contents?.quantity).length)" :key="inv.entity_id.toString()">-->
-<!--                <bitcraft-inventory-->
-<!--                  :inventory="inv"-->
-<!--                />-->
-<!--              </v-col>-->
-<!--            </v-row>-->
-<!--          </template>-->
-<!--          <div v-else class="text-center py-4 text-grey text-caption">-->
-<!--            No interior inventories found.-->
-<!--          </div>-->
-<!--        </v-window-item>-->
-
-<!--        &lt;!&ndash; Changelog &ndash;&gt;-->
-<!--        <v-window-item value="changelog">-->
-<!--          <div v-if="changelogPending" class="text-center py-4">-->
-<!--            <v-progress-circular indeterminate size="24"></v-progress-circular>-->
-<!--          </div>-->
-<!--          <template v-else-if="changelog && changelog.length > 0">-->
-<!--            <bitcraft-inventory-changes :items="changelog" />-->
-<!--          </template>-->
-<!--          <div v-else class="text-center py-4 text-grey text-caption">-->
-<!--            No inventory changes found.-->
-<!--          </div>-->
-<!--        </v-window-item>-->
-<!--      </v-window>-->
-<!--    </v-card-text>-->
-<!--  </v-card>-->
+      <template v-else-if="tab === 'changelog'">
+        <div v-if="changelogPending" class="flex justify-center py-4">
+          <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+        <template v-else-if="changelog && changelog.length > 0">
+          <bitcraft-inventory-changes :items="changelog" />
+        </template>
+        <p v-else class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          No inventory changes found.
+        </p>
+      </template>
+    </div>
+  </UCard>
 </template>
-
-<style scoped>
-.gap-4 {
-  gap: 16px;
-}
-</style>

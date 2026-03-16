@@ -8,7 +8,7 @@ use entity::inventory_changelog::TypeOfChange;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, NotSet, Set};
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, NotSet, Set};
 use spacetimedb_sdk::Event;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -56,261 +56,253 @@ pub(crate) fn start_worker_inventory_state(
             let mut messages_delete = Vec::with_capacity(batch_size + 10);
             let timer = sleep(time_limit);
             tokio::pin!(timer);
-            let mut buffer = Vec::with_capacity(batch_size + 10);
 
             loop {
-                buffer.clear();
-                let fill_buffer_with = batch_size
-                    .saturating_sub(buffer.len())
-                    .saturating_sub(messages.len());
-
                 tokio::select! {
-                    count = rx.recv_many(&mut buffer, fill_buffer_with) => {
-                        record_worker_received("inventory_state", count);
-                        for msg in buffer.drain(..) {
-                            match msg {
-                                SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                    tracing::debug!("Count of inventory amount to work on {}", data.len());
-                                    let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                    let mut currently_known_inventory = ::entity::inventory::Entity::find()
-                                        .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
-                                        .all(&global_app_state.conn)
-                                        .await
-                                        .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole inventory state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
-                                        .into_iter()
-                                        .map(|value| (value.entity_id, value))
-                                        .collect::<HashMap<_, _>>();
+                    Some(msg) = rx.recv() => {
+                        record_worker_received("inventory_state", 1);
+                        match msg {
+                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                tracing::debug!("Count of inventory amount to work on {}", data.len());
+                                let mut local_messages = Vec::with_capacity(batch_size + 10);
+                                let mut currently_known_inventory = ::entity::inventory::Entity::find()
+                                    .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
+                                    .all(&global_app_state.conn)
+                                    .await
+                                    .map_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole inventory state"
+                                        );
+                                        vec![]
+                                    },|aa| aa)
+                                    .into_iter()
+                                    .map(|value| (value.entity_id, value))
+                                    .collect::<HashMap<_, _>>();
 
-                                    for model in data.into_iter().map(|value| {
-                                        let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                for model in data.into_iter().map(|value| {
+                                    let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
-                                        model
-                                    }) {
-                                        use std::collections::hash_map::Entry;
-                                        match currently_known_inventory.entry(model.entity_id) {
-                                            Entry::Occupied(entry) => {
-                                                let existing_model = entry.get();
-                                                if &model != existing_model {
-                                                    local_messages.push(model.into_active_model());
-                                                }
-                                                entry.remove();
-                                            }
-                                            Entry::Vacant(_entry) => {
+                                    model
+                                }) {
+                                    use std::collections::hash_map::Entry;
+                                    match currently_known_inventory.entry(model.entity_id) {
+                                        Entry::Occupied(entry) => {
+                                            let existing_model = entry.get();
+                                            if &model != existing_model {
                                                 local_messages.push(model.into_active_model());
                                             }
+                                            entry.remove();
                                         }
-                                        if local_messages.len() >= batch_size {
-                                           insert_multiple_inventory(&global_app_state, &on_conflict, &mut local_messages).await;
+                                        Entry::Vacant(_entry) => {
+                                            local_messages.push(model.into_active_model());
                                         }
-                                    };
-                                    if !local_messages.is_empty() {
-                                        insert_multiple_inventory(&global_app_state, &on_conflict, &mut local_messages).await;
                                     }
+                                    if local_messages.len() >= batch_size {
+                                       insert_multiple_inventory(&global_app_state, &on_conflict, &mut local_messages).await;
+                                    }
+                                };
+                                if !local_messages.is_empty() {
+                                    insert_multiple_inventory(&global_app_state, &on_conflict, &mut local_messages).await;
+                                }
 
-                                    tracing::debug!("Count of inventory amount to delete {}", currently_known_inventory.len());
+                                tracing::debug!("Count of inventory amount to delete {}", currently_known_inventory.len());
 
-                                    for chunk_ids in currently_known_inventory.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                        let chunk_ids = chunk_ids.to_vec();
-                                        if let Err(error) = ::entity::inventory::Entity::delete_many().filter(::entity::inventory::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
-                                            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                            tracing::error!(Inventory = chunk_ids_str.join(","), error = error.to_string(), "Could not delete Inventory");
-                                        }
+                                for chunk_ids in currently_known_inventory.into_keys().collect::<Vec<_>>().chunks(1000) {
+                                    let chunk_ids = chunk_ids.to_vec();
+                                    if let Err(error) = ::entity::inventory::Entity::delete_many().filter(::entity::inventory::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+                                        tracing::error!(Inventory = chunk_ids_str.join(","), error = error.to_string(), "Could not delete Inventory");
                                     }
                                 }
-                                SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                    let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
 
-                                    let mut pockets = vec![];
-                                    for pocket in &model.pockets {
-                                        pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
-                                    }
+                                let mut pockets = vec![];
+                                for pocket in &model.pockets {
+                                    pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
+                                }
 
-                                    let mut player_owner_id = model.player_owner_entity_id;
-                                    let mut nickname = None;
+                                let mut player_owner_id = model.player_owner_entity_id;
+                                let mut nickname = None;
 
-                                    if model.player_owner_entity_id == 0 {
-                                        if let Some(deployable_state) = global_app_state.deployable_state.get(&model.owner_entity_id) {
-                                            player_owner_id = deployable_state.owner_id;
-                                            nickname = Some(deployable_state.nickname.clone());
-                                        }
-                                    }
-
-                                    let _ = global_app_state.tx.send(WebSocketMessages::InventoryInsert {
-                                        resolved_inventory: ResolvedInventory {
-                                            entity_id: model.entity_id,
-                                            pockets,
-                                            inventory_index: model.inventory_index,
-                                            cargo_index: model.cargo_index,
-                                            owner_entity_id: model.owner_entity_id,
-                                            player_owner_entity_id: model.player_owner_entity_id,
-                                            nickname,
-                                            claim: None,
-                                        },
-                                        player_owner_id,
-                                    });
-
-                                    // global_app_state.inventory_state.insert(model.entity_id, model.clone());
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-                                    if let Some(index) = messages.iter().position(|value: &::entity::inventory::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
-                                    messages.push(model.into_active_model());
-                                    if messages.len() >= batch_size {
-                                        insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
+                                if model.player_owner_entity_id == 0 {
+                                    if let Some(deployable_state) = global_app_state.deployable_state.get(&model.owner_entity_id) {
+                                        player_owner_id = deployable_state.owner_id;
+                                        nickname = Some(deployable_state.nickname.clone());
                                     }
                                 }
-                                SpacetimeUpdateMessages::Update { new, old, event, database_name, .. } => {
-                                    let mut caller_identity = None;
-                                    let mut timestamp = None;
-                                    if let Some(Event::Reducer(event)) = &event {
-                                        caller_identity = Some(event.caller_identity);
-                                        timestamp = Some(event.timestamp);
-                                    }
 
-                                    let new_model = new.clone();
-                                    let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
-                                    // global_app_state.inventory_state.insert(model.entity_id, model.clone());
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
+                                let _ = global_app_state.tx.send(WebSocketMessages::InventoryInsert {
+                                    resolved_inventory: ResolvedInventory {
+                                        entity_id: model.entity_id,
+                                        pockets,
+                                        inventory_index: model.inventory_index,
+                                        cargo_index: model.cargo_index,
+                                        owner_entity_id: model.owner_entity_id,
+                                        player_owner_entity_id: model.player_owner_entity_id,
+                                        nickname,
+                                        claim: None,
+                                    },
+                                    player_owner_id,
+                                });
 
-                                    let mut pockets = vec![];
-                                    for pocket in &model.pockets {
-                                        pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
-                                    }
-
-                                    let _ = global_app_state.tx.send(WebSocketMessages::InventoryUpdate {
-                                        resolved_inventory: ResolvedInventory {
-                                            entity_id: model.entity_id,
-                                            pockets,
-                                            inventory_index: model.inventory_index,
-                                            cargo_index: model.cargo_index,
-                                            owner_entity_id: model.owner_entity_id,
-                                            player_owner_entity_id: model.player_owner_entity_id,
-                                            nickname: None,
-                                            claim: None,
-                                        }
-                                    });
-
-                                    messages.push(model.into_active_model());
-
-
-                                    if let Some(caller_identity) = caller_identity {
-                                        let user_id = global_app_state.user_state.get(&caller_identity).map(|entity_id| entity_id.to_owned() as i64);
-                                        for (pocket_index, new_pocket) in new_model.pockets.iter().enumerate() {
-                                            if pocket_index >= old.pockets.len() {
-                                                tracing::warn!(
-                                                    "Inventory new pocket amount is less then before ?!? Player {}, EntityId {}, OwnerEntityId {}, Pockets New {}, Pockets Old {} :: {} {}",
-                                                    new_model.player_owner_entity_id,
-                                                    new_model.entity_id,
-                                                    new_model.owner_entity_id,
-                                                    new_model.pockets.len(),
-                                                    old.pockets.len(),
-                                                    old.pockets.len(),
-                                                    pocket_index
-                                                );
-                                                break;
-                                            }
-
-                                            let old_pocket = &old.pockets[pocket_index];
-
-                                            let new_item_id = new_pocket.contents.as_ref().map(|c| c.item_id);
-                                            let new_item_type = new_pocket.contents.as_ref().map(|c| c.item_type.into());
-                                            let new_item_quantity = new_pocket.contents.as_ref().map(|c| c.quantity);
-
-                                            let old_item_id = old_pocket.contents.as_ref().map(|c| c.item_id);
-                                            let old_item_type = old_pocket.contents.as_ref().map(|c| c.item_type.into());
-                                            let old_item_quantity = old_pocket.contents.as_ref().map(|c| c.quantity);
-
-                                            if new_item_id == old_item_id  && new_item_type == old_item_type && new_item_quantity == old_item_quantity {
-                                                continue
-                                            }
-
-                                            let type_of_change = match (old_item_id, new_item_id) {
-                                                (Some(_), None) => TypeOfChange::Remove,
-                                                (None, Some(_)) => TypeOfChange::Add,
-                                                (Some(old), Some(new)) => {
-                                                    if old != new {
-                                                        TypeOfChange::AddAndRemove
-                                                    } else {
-                                                        TypeOfChange::Update
-                                                    }
-                                                },
-                                                _ => unreachable!("This type of change should never happen for an inventory")
-                                            };
-
-                                            messages_changed.push(::entity::inventory_changelog::ActiveModel {
-                                                id: NotSet,
-                                                entity_id: Set(new_model.entity_id as i64),
-                                                user_id: Set(user_id),
-                                                pocket_number: Set(pocket_index as i32),
-                                                old_item_id: Set(old_item_id),
-                                                old_item_type: Set(old_item_type),
-                                                old_item_quantity: Set(old_item_quantity),
-                                                new_item_id: Set(new_item_id),
-                                                new_item_type: Set(new_item_type),
-                                                new_item_quantity: Set(new_item_quantity),
-                                                type_of_change: Set(type_of_change),
-                                                timestamp: Set(DateTime::from_timestamp_micros(timestamp.unwrap().to_micros_since_unix_epoch()).unwrap())
-                                            })
-                                        }
-                                    }
-
-                                    if messages.len() >= batch_size {
-                                        insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
-                                    }
-
-                                    if messages_changed.len() >= batch_size {
-                                        insert_multiple_inventory_changelog(
-                                            &global_app_state,
-                                            &on_conflict_changelog,
-                                            &mut messages_changed,
-                                        )
-                                        .await;
-                                    }
-
+                                // global_app_state.inventory_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
                                 }
-                                SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                    let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
-                                    let id = model.entity_id;
+                                if let Some(index) = messages.iter().position(|value: &::entity::inventory::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                messages.push(model.into_active_model());
+                                if messages.len() >= batch_size {
+                                    insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
+                                }
+                            }
+                            SpacetimeUpdateMessages::Update { new, old, event, database_name, .. } => {
+                                let mut caller_identity = None;
+                                let mut timestamp = None;
+                                if let Some(Event::Reducer(event)) = &event {
+                                    caller_identity = Some(event.caller_identity);
+                                    timestamp = Some(event.timestamp);
+                                }
 
-                                    let mut pockets = vec![];
-                                    for pocket in &model.pockets {
-                                        pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
+                                let new_model = new.clone();
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                // global_app_state.inventory_state.insert(model.entity_id, model.clone());
+                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
+                                    messages_delete.remove(index);
+                                }
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+
+                                let mut pockets = vec![];
+                                for pocket in &model.pockets {
+                                    pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
+                                }
+
+                                let _ = global_app_state.tx.send(WebSocketMessages::InventoryUpdate {
+                                    resolved_inventory: ResolvedInventory {
+                                        entity_id: model.entity_id,
+                                        pockets,
+                                        inventory_index: model.inventory_index,
+                                        cargo_index: model.cargo_index,
+                                        owner_entity_id: model.owner_entity_id,
+                                        player_owner_entity_id: model.player_owner_entity_id,
+                                        nickname: None,
+                                        claim: None,
                                     }
+                                });
 
-                                    let _ = global_app_state.tx.send(WebSocketMessages::InventoryRemove {
-                                        resolved_inventory: ResolvedInventory {
-                                            entity_id: model.entity_id,
-                                            pockets,
-                                            inventory_index: model.inventory_index,
-                                            cargo_index: model.cargo_index,
-                                            owner_entity_id: model.owner_entity_id,
-                                            player_owner_entity_id: model.player_owner_entity_id,
-                                            nickname: None,
-                                            claim: None,
+                                messages.push(model.into_active_model());
+
+
+                                if let Some(caller_identity) = caller_identity {
+                                    let user_id = global_app_state.user_state.get(&caller_identity).map(|entity_id| entity_id.to_owned() as i64);
+                                    for (pocket_index, new_pocket) in new_model.pockets.iter().enumerate() {
+                                        if pocket_index >= old.pockets.len() {
+                                            tracing::warn!(
+                                                "Inventory new pocket amount is less then before ?!? Player {}, EntityId {}, OwnerEntityId {}, Pockets New {}, Pockets Old {} :: {} {}",
+                                                new_model.player_owner_entity_id,
+                                                new_model.entity_id,
+                                                new_model.owner_entity_id,
+                                                new_model.pockets.len(),
+                                                old.pockets.len(),
+                                                old.pockets.len(),
+                                                pocket_index
+                                            );
+                                            break;
                                         }
-                                    });
 
-                                    // global_app_state.inventory_state.remove(&model.entity_id);
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
+                                        let old_pocket = &old.pockets[pocket_index];
+
+                                        let new_item_id = new_pocket.contents.as_ref().map(|c| c.item_id);
+                                        let new_item_type = new_pocket.contents.as_ref().map(|c| c.item_type.into());
+                                        let new_item_quantity = new_pocket.contents.as_ref().map(|c| c.quantity);
+
+                                        let old_item_id = old_pocket.contents.as_ref().map(|c| c.item_id);
+                                        let old_item_type = old_pocket.contents.as_ref().map(|c| c.item_type.into());
+                                        let old_item_quantity = old_pocket.contents.as_ref().map(|c| c.quantity);
+
+                                        if new_item_id == old_item_id  && new_item_type == old_item_type && new_item_quantity == old_item_quantity {
+                                            continue
+                                        }
+
+                                        let type_of_change = match (old_item_id, new_item_id) {
+                                            (Some(_), None) => TypeOfChange::Remove,
+                                            (None, Some(_)) => TypeOfChange::Add,
+                                            (Some(old), Some(new)) => {
+                                                if old != new {
+                                                    TypeOfChange::AddAndRemove
+                                                } else {
+                                                    TypeOfChange::Update
+                                                }
+                                            },
+                                            _ => unreachable!("This type of change should never happen for an inventory")
+                                        };
+
+                                        messages_changed.push(::entity::inventory_changelog::ActiveModel {
+                                            id: NotSet,
+                                            entity_id: Set(new_model.entity_id as i64),
+                                            user_id: Set(user_id),
+                                            pocket_number: Set(pocket_index as i32),
+                                            old_item_id: Set(old_item_id),
+                                            old_item_type: Set(old_item_type),
+                                            old_item_quantity: Set(old_item_quantity),
+                                            new_item_id: Set(new_item_id),
+                                            new_item_type: Set(new_item_type),
+                                            new_item_quantity: Set(new_item_quantity),
+                                            type_of_change: Set(type_of_change),
+                                            timestamp: Set(DateTime::from_timestamp_micros(timestamp.unwrap().to_micros_since_unix_epoch()).unwrap())
+                                        })
                                     }
-                                    messages_delete.push(id);
-                                    if messages_delete.len() >= batch_size {
-                                        break;
+                                }
+
+                                if messages.len() >= batch_size {
+                                    insert_multiple_inventory(&global_app_state, &on_conflict, &mut messages).await;
+                                }
+
+                                if messages_changed.len() >= batch_size {
+                                    insert_multiple_inventory_changelog(
+                                        &global_app_state,
+                                        &on_conflict_changelog,
+                                        &mut messages_changed,
+                                    )
+                                    .await;
+                                }
+
+                            }
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let id = model.entity_id;
+
+                                let mut pockets = vec![];
+                                for pocket in &model.pockets {
+                                    pockets.push(resolve_pocket(pocket, &global_app_state.item_desc, &global_app_state.cargo_desc));
+                                }
+
+                                let _ = global_app_state.tx.send(WebSocketMessages::InventoryRemove {
+                                    resolved_inventory: ResolvedInventory {
+                                        entity_id: model.entity_id,
+                                        pockets,
+                                        inventory_index: model.inventory_index,
+                                        cargo_index: model.cargo_index,
+                                        owner_entity_id: model.owner_entity_id,
+                                        player_owner_entity_id: model.player_owner_entity_id,
+                                        nickname: None,
+                                        claim: None,
                                     }
+                                });
+
+                                // global_app_state.inventory_state.remove(&model.entity_id);
+                                if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
+                                messages_delete.push(id);
+                                if messages_delete.len() >= batch_size {
+                                    break;
                                 }
                             }
                         }
@@ -354,14 +346,22 @@ pub(crate) fn start_worker_inventory_state(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(InventoryState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete InventoryState");
+                        tracing::error!(
+                            InventoryState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete InventoryState"
+                        );
                     }
                 }
                 messages_delete.clear();
             }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && messages_changed.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty()
+                && messages_changed.is_empty()
+                && messages_delete.is_empty()
+                && rx.is_closed()
+            {
                 break;
             }
         }

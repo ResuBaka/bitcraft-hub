@@ -8,26 +8,24 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "format": "biome format ./app --write",
-    "format:check": "biome format ./app"
+    "format": "oxfmt format ./app --write",
+    "format:check": "oxfmt format ./app"
   },
   "dependencies": {
+    "@antfu/utils": "^9.3.0",
     "@nuxt/ui": "^4.4.0",
     "@pinia/nuxt": "^0.11.3",
     "msgpackr": "^1.11.8",
-    "nuxt": "^4.3.1",
-    "tailwindcss": "^4.2.0",
-    "vue": "^3.6.0-beta.6",
-    "vue-router": "^4.6.4"
+    "nuxt": "^4.4.2",
+    "tailwindcss": "^4.2.1",
+    "vue": "^3.6.0-beta.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.2",
     "@nuxt/devtools": "^3.2.1",
-    "sass": "^1.97.3",
     "@vueuse/core": "^14.2.1",
-    "@vueuse/shared": "^14.2.1"
-  },
-  "overrides": {
-    "vite": "npm:vite@7.3.1"
+    "@vueuse/shared": "^14.2.1",
+    "oxfmt": "^0.36.0",
+    "oxlint": "^1.51.0",
+    "sass": "^1.97.3"
   }
 }

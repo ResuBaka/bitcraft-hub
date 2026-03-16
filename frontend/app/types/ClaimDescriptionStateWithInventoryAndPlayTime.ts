@@ -34,9 +34,7 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   tool_inventory_locations: { [key in string]: Array<InventoryItemLocation> };
   traveler_tasks: { [key in string]: { [key in number]: Array<bigint> } };
   traveler_player_tasks: {
-    [key in string]: {
-      [key in bigint]: { [key in number]: Array<TravelerTaskState> };
-    };
+    [key in string]: { [key in bigint]: { [key in number]: Array<TravelerTaskState> } };
   };
   time_signed_in: bigint;
   building_states: Array<BuildingState>;

@@ -259,7 +259,8 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     }))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct AllInventoryStatsResponse {
     items: Vec<(i64, Option<::entity::item_desc::Model>)>,
     cargo: Vec<(i64, Option<::entity::cargo_desc::Model>)>,

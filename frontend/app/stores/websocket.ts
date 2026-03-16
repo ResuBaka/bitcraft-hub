@@ -1,19 +1,14 @@
 import { useWebSocket } from "@vueuse/core";
 import { unpack } from "msgpackr/unpack";
+import type { WebSocketHandlerMessage, WebSocketMessageHandlers } from "~/types";
 import type { WebSocketMessages } from "~/types/WebSocketMessages";
-import type {
-  RefinedMessageContentType,
-  WebSocketMessageHandlers,
-} from "~/types";
 
 export const useWebsocketStore = defineStore("websocket", () => {
   const configStore = useConfigStore();
   const websocket_message_event_handler: WebSocketMessageHandlers = {};
   const topics_currently_subscribed: Ref<string[]> = ref([]);
 
-  const readOnlyTopicsCurrentlySubscribed = computed(
-    () => topics_currently_subscribed.value,
-  );
+  const readOnlyTopicsCurrentlySubscribed = computed(() => topics_currently_subscribed.value);
 
   const {
     public: { api },
@@ -31,22 +26,21 @@ export const useWebsocketStore = defineStore("websocket", () => {
       immediate: false,
       onConnected: () => {
         if (import.meta.env.DEV) {
-          console.log(
-            "Connected to websocket",
-            topics_currently_subscribed.value,
-          );
+          console.log("Connected to websocket", topics_currently_subscribed.value);
         }
         sendMessage("Subscribe", { topics: topics_currently_subscribed.value });
       },
     },
   );
 
-  if (configStore.websocket.enabled_default) {
-    open();
-  }
+  onMounted(() => {
+    if (configStore.websocket.enabled_default) {
+      open();
+    }
+  });
 
   async function handleMessage(_ws: WebSocket, event: MessageEvent) {
-    let message: WebSocketMessages;
+    let message: WebSocketMessages | undefined;
     if (typeof event.data === "string") {
       if (event.data.startsWith("{")) {
         message = JSON.parse(event.data);
@@ -57,7 +51,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
       }
     } else if (event.data instanceof Blob) {
       message = unpack(await event.data.arrayBuffer(), {
-        // @ts-ignore
+        // @ts-expect-error
         int64AsType: "auto",
       });
     }
@@ -68,14 +62,16 @@ export const useWebsocketStore = defineStore("websocket", () => {
     }
 
     const eventType = message.t;
-    const messageHandler = websocket_message_event_handler[eventType];
+    const messageHandler = websocket_message_event_handler[eventType] as
+      | Map<string, (message: WebSocketHandlerMessage<typeof eventType>) => void>
+      | undefined;
 
     if (messageHandler) {
       for (const handler of messageHandler.values()) {
         if ("c" in message) {
-          handler(message.c as RefinedMessageContentType<typeof eventType>);
+          handler(message.c as WebSocketHandlerMessage<typeof eventType>);
         } else {
-          handler(undefined as RefinedMessageContentType<typeof eventType>);
+          handler(undefined as WebSocketHandlerMessage<typeof eventType>);
         }
       }
     } else {
@@ -100,12 +96,12 @@ export const useWebsocketStore = defineStore("websocket", () => {
   function subscribe<T extends WebSocketMessages["t"]>(
     eventType: T,
     topic: MaybeRefOrGetter<string | string[]>,
-    handler: (message: RefinedMessageContentType<T>) => void,
+    handler: (message: WebSocketHandlerMessage<T>) => void,
     instanceId: string,
     lazy: boolean = false,
   ) {
-    let newTopics = [];
-    let unwrapped = unref(topic);
+    const newTopics = [];
+    const unwrapped = toValue(topic);
 
     if (typeof unwrapped === "string") {
       if (!topics_currently_subscribed.value.includes(unwrapped)) {
@@ -135,12 +131,9 @@ export const useWebsocketStore = defineStore("websocket", () => {
     }
   }
 
-  function subscribeTopicsOnly(
-    topic: string | string[],
-    lazy: boolean = false,
-  ) {
-    let newTopics = [];
-    let unwrapped = unref(topic);
+  function subscribeTopicsOnly(topic: MaybeRefOrGetter<string | string[]>, lazy: boolean = false) {
+    const newTopics = [];
+    const unwrapped = toValue(topic);
 
     if (typeof unwrapped === "string") {
       if (!topics_currently_subscribed.value.includes(unwrapped)) {
@@ -166,7 +159,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
     topic: MaybeRefOrGetter<string | string[]>,
     instanceId: string,
   ) {
-    let unwrapped = unref(topic);
+    const unwrapped = toValue(topic);
 
     let topicsToUnsubscribe: MaybeRefOrGetter<string | string[]> = [];
     if (typeof unwrapped === "string") {

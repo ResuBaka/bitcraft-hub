@@ -4,9 +4,24 @@ import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { ItemType } from "~/types/ItemType";
 import type { PlayerUsernameStateResponse } from "~/types/PlayerUsernameStateResponse";
 
-const { items } = defineProps<{
-  items: InventoryChangelog[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    items?: InventoryChangelog[];
+  }>(),
+  {
+    items: () => [],
+  },
+);
+
+const page = ref(1);
+const pageSize = 50;
+
+const tableRows = computed(() => props.items ?? []);
+
+const pagedRows = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return tableRows.value.slice(start, start + pageSize);
+});
 
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -15,7 +30,7 @@ const nDate = Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-  fractionalSecondDigits: 3,
+  fractionalSecondDigits: 1,
   hour12: false,
 });
 
@@ -70,43 +85,40 @@ function timeAgo(date: number) {
   return "just now";
 }
 
-const { data: ItemAndCargoFetch } = useFetchMsPack<ItemsAndCargollResponse>(
-  () => {
-    return `/api/bitcraft/itemsAndCargo/all`;
-  },
-);
+const { data: ItemAndCargoFetch } = useFetchMsPack<ItemsAndCargollResponse>(() => {
+  return `/api/bitcraft/itemsAndCargo/all`;
+});
 
-const { data: PlayerUsernameStateFetch } =
-  useFetchMsPack<PlayerUsernameStateResponse>(() => {
-    return `/api/bitcraft/players/all`;
-  });
+const { data: PlayerUsernameStateFetch } = useFetchMsPack<PlayerUsernameStateResponse>(() => {
+  return `/api/bitcraft/players/all`;
+});
 
-const headersChanges = [
-  { title: "Player", key: "user", align: "start" },
-  { title: "Diff", key: "diff", align: "center" },
+const columns = [
+  { id: "user", header: "Player" },
   {
-    title: "Old Amount",
-    key: "old_item_quantity",
-    align: "end",
-    maxWidth: "100px",
+    id: "diff",
+    header: "Diff",
+    meta: { class: { th: "text-center", td: "text-center" } },
   },
   {
-    title: "New Amount",
-    key: "new_item_quantity",
-    align: "end",
-    maxWidth: "100px",
+    id: "old_item_quantity",
+    header: "Old Amount",
+    meta: { class: { th: "text-right", td: "text-right" } },
   },
   {
-    title: "Timestamp Since",
-    key: "timestamp",
-    align: "end",
-    maxWidth: "100px",
+    id: "new_item_quantity",
+    header: "New Amount",
+    meta: { class: { th: "text-right", td: "text-right" } },
   },
   {
-    title: "Time Ago",
-    key: "timestamp_diff",
-    align: "end",
-    maxWidth: "100px",
+    id: "timestamp",
+    header: "Timestamp Since",
+    meta: { class: { th: "text-right", td: "text-right" } },
+  },
+  {
+    id: "timestamp_diff",
+    header: "Time Ago",
+    meta: { class: { th: "text-right", td: "text-right" } },
   },
 ];
 
@@ -116,13 +128,13 @@ function getItemOrCargoName(item_id: number, item_type: ItemType) {
   }
   if (item_type === "Item") {
     const itemDesc = ItemAndCargoFetch.value.item_desc[item_id];
-    if (itemDesc == undefined) {
+    if (itemDesc === undefined) {
       return `${item_id}`;
     }
     return `${itemDesc.name} ${Array.from(itemDesc.rarity)[0]}`;
   } else {
     const cargoDesc = ItemAndCargoFetch.value.cargo_desc[item_id];
-    if (cargoDesc == undefined) {
+    if (cargoDesc === undefined) {
       return `${item_id}`;
     }
     return `${cargoDesc.name} ${Array.from(cargoDesc.rarity)[0]}`;
@@ -130,73 +142,155 @@ function getItemOrCargoName(item_id: number, item_type: ItemType) {
 }
 
 function getUsername(user_id: bigint) {
-  if (
-    PlayerUsernameStateFetch.value === undefined ||
-    PlayerUsernameStateFetch.value === null
-  ) {
+  if (PlayerUsernameStateFetch.value === undefined || PlayerUsernameStateFetch.value === null) {
     return;
   }
   return PlayerUsernameStateFetch.value.username_state[user_id.toString()];
 }
 
-const backgroundColorRow = ({ index }: { index: number }) => {
-  return {
-    class: index % 2 === 0 ? "" : "bg-surface-light",
-  };
-};
+watch(
+  () => props.items,
+  () => {
+    page.value = 1;
+  },
+);
 </script>
 
-
 <template>
-<!--<v-data-table density="compact" :headers="headersChanges" :items="items" :row-props="backgroundColorRow">-->
-<!--            <template v-slot:item.user="{ item } ">-->
-<!--               <template v-if="item.user_id !== null">-->
-<!--                    {{ getUsername(item.user_id) }}-->
-<!--               </template>-->
-<!--            </template>-->
-<!--            <template v-slot:item.timestamp="{ item }">-->
-<!--              {{ nDate.format(Date.parse(item.timestamp)) }}-->
-<!--            </template>-->
-<!--            <template v-slot:item.timestamp_diff="{ item }">-->
-<!--              <v-tooltip :text="`UTC ${ nUTCData.format(Date.parse(item.timestamp)) }`" location="top">-->
-<!--                <template v-slot:activator="{ props }">-->
-<!--                  <div v-bind="props" >{{ timeAgo( Date.parse(item.timestamp)) }} </div>-->
-<!--                </template>-->
-<!--              </v-tooltip>-->
-<!--            </template>-->
-<!--            <template v-slot:item.diff="{ item }">-->
-<!--              <template v-if="item.type_of_change === 'Remove' && item.old_item_id !== null && item.old_item_type !== null">-->
-<!--                <v-icon color="red">mdi-delete-empty</v-icon>-->
-<!--                <b>-{{ item.old_item_quantity }}</b> {{ getItemOrCargoName(item.old_item_id,item.old_item_type) }}-->
-<!--              </template>-->
-<!--              <template v-if="item.type_of_change === 'Add' && item.new_item_id !== null && item.new_item_type !== null">-->
-<!--                <v-icon color="green">mdi-plus</v-icon>-->
-<!--                <b>{{ item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type)  }}-->
-<!--              </template>-->
-<!--              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity > item.new_item_quantity">-->
-<!--                <v-icon color="green">mdi-arrow-up-bold-outline</v-icon>-->
-<!--                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}-->
-<!--              </template>-->
-<!--              <template v-if="item.type_of_change === 'Update' && item.new_item_id !== null && item.new_item_type !== null && item.old_item_quantity !== null && item.new_item_quantity !== null && item.old_item_quantity < item.new_item_quantity">-->
-<!--                <v-icon color="red">mdi-arrow-down-bold-outline</v-icon>-->
-<!--                <b>{{ item.old_item_quantity - item.new_item_quantity }}</b> {{  getItemOrCargoName(item.new_item_id,item.new_item_type)  }}-->
-<!--              </template>-->
-<!--              <template v-if="item.type_of_change === 'AddAndRemove' && item.new_item_id !== null && item.new_item_type !== null"><b class="text-red">{{ getItemOrCargoName(item.old_item_id,item.old_item_type)  }}</b>-->
-<!--                <v-icon color="pink">mdi-swap-horizontal</v-icon>-->
-<!--                <b class="text-green">{{ getItemOrCargoName(item.new_item_id,item.new_item_type) }}</b></template>-->
-<!--            </template>-->
-<!--            <template v-slot:item.diff.old="{item } ">-->
-<!--              <template v-if="item.old_item_id !== null && item.old_item_quantity">{{ item.old_item_quantity }}</template>-->
-<!--            </template>-->
-<!--            <template v-slot:item.diff.new="{item }">-->
-<!--              <template v-if="item.old_item_quantity !== null && item.new_item_quantity !== null">-->
-<!--                <div :class="{ 'text-red': item.old_item_quantity - item.new_item_quantity < 0, 'text-green': item.old_item_quantity - item.new_item_quantity > 0 }">-->
-<!--                  {{ item.new_item_quantity }}-->
-<!--                </div>-->
-<!--              </template>-->
-<!--            </template>-->
-<!--          </v-data-table>-->
+  <div class="flex flex-col gap-3">
+    <UTable class="inventory-changes-table" :columns="columns" :data="pagedRows">
+      <template #user-cell="{ row }">
+        <span v-if="row.original.user_id !== null">
+          {{ getUsername(row.original.user_id) }}
+        </span>
+      </template>
+      <template #timestamp-cell="{ row }">
+        {{ nDate.format(Date.parse(row.original.timestamp)) }}
+      </template>
+      <template #timestamp_diff-cell="{ row }">
+        <UTooltip>
+          <template #content>
+            UTC {{ nUTCData.format(Date.parse(row.original.timestamp)) }}
+          </template>
+          <span>{{ timeAgo(Date.parse(row.original.timestamp)) }}</span>
+        </UTooltip>
+      </template>
+      <template #diff-cell="{ row }">
+        <div class="diff-cell">
+          <template
+            v-if="
+              row.original.type_of_change === 'Remove' &&
+              row.original.old_item_id !== null &&
+              row.original.old_item_type !== null
+            "
+          >
+            <UIcon name="i-mdi-delete-empty" class="diff-icon text-red-500" />
+            <strong>-{{ row.original.old_item_quantity }}</strong>
+            {{ getItemOrCargoName(row.original.old_item_id, row.original.old_item_type) }}
+          </template>
+          <template
+            v-else-if="
+              row.original.type_of_change === 'Add' &&
+              row.original.new_item_id !== null &&
+              row.original.new_item_type !== null
+            "
+          >
+            <UIcon name="i-mdi-plus" class="diff-icon text-emerald-500" />
+            <strong>{{ row.original.new_item_quantity }}</strong>
+            {{ getItemOrCargoName(row.original.new_item_id, row.original.new_item_type) }}
+          </template>
+          <template
+            v-else-if="
+              row.original.type_of_change === 'Update' &&
+              row.original.new_item_id !== null &&
+              row.original.new_item_type !== null &&
+              row.original.old_item_quantity !== null &&
+              row.original.new_item_quantity !== null &&
+              row.original.old_item_quantity > row.original.new_item_quantity
+            "
+          >
+            <UIcon name="i-mdi-arrow-up-bold-outline" class="diff-icon text-emerald-500" />
+            <strong>{{ row.original.old_item_quantity - row.original.new_item_quantity }}</strong>
+            {{ getItemOrCargoName(row.original.new_item_id, row.original.new_item_type) }}
+          </template>
+          <template
+            v-else-if="
+              row.original.type_of_change === 'Update' &&
+              row.original.new_item_id !== null &&
+              row.original.new_item_type !== null &&
+              row.original.old_item_quantity !== null &&
+              row.original.new_item_quantity !== null &&
+              row.original.old_item_quantity < row.original.new_item_quantity
+            "
+          >
+            <UIcon name="i-mdi-arrow-down-bold-outline" class="diff-icon text-red-500" />
+            <strong>{{ row.original.old_item_quantity - row.original.new_item_quantity }}</strong>
+            {{ getItemOrCargoName(row.original.new_item_id, row.original.new_item_type) }}
+          </template>
+          <template
+            v-else-if="
+              row.original.type_of_change === 'AddAndRemove' &&
+              row.original.new_item_id !== null &&
+              row.original.new_item_type !== null &&
+              row.original.old_item_id !== null &&
+              row.original.old_item_type !== null
+            "
+          >
+            <strong class="text-red-500">
+              {{ getItemOrCargoName(row.original.old_item_id, row.original.old_item_type) }}
+            </strong>
+            <UIcon name="i-mdi-swap-horizontal" class="diff-icon text-pink-400" />
+            <strong class="text-emerald-500">
+              {{ getItemOrCargoName(row.original.new_item_id, row.original.new_item_type) }}
+            </strong>
+          </template>
+        </div>
+      </template>
+      <template #old_item_quantity-cell="{ row }">
+        <span v-if="row.original.old_item_quantity !== null">
+          {{ row.original.old_item_quantity }}
+        </span>
+      </template>
+      <template #new_item_quantity-cell="{ row }">
+        <span
+          v-if="row.original.new_item_quantity !== null"
+          :class="{
+            'text-red-500':
+              row.original.old_item_quantity !== null &&
+              row.original.old_item_quantity - row.original.new_item_quantity < 0,
+            'text-emerald-500':
+              row.original.old_item_quantity !== null &&
+              row.original.old_item_quantity - row.original.new_item_quantity > 0,
+          }"
+        >
+          {{ row.original.new_item_quantity }}
+        </span>
+      </template>
+    </UTable>
+    <div v-if="tableRows.length > pageSize" class="flex justify-center">
+      <UPagination v-model:page="page" :total="tableRows.length" :items-per-page="pageSize" />
+    </div>
+  </div>
 </template>
 
 <style scoped>
+.diff-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.diff-icon {
+  width: 16px;
+  height: 16px;
+}
+
+:deep(.inventory-changes-table tbody tr:nth-child(odd)) {
+  background: rgba(148, 163, 184, 0.06);
+}
+
+:deep(.inventory-changes-table tbody tr:hover) {
+  background: rgba(148, 163, 184, 0.12);
+}
 </style>

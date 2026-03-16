@@ -2,6 +2,4 @@
 import type { CargoDesc } from "./CargoDesc";
 import type { ItemDesc } from "./ItemDesc";
 
-export type ItemCargo =
-  | ({ type: "Item" } & ItemDesc)
-  | ({ type: "Cargo" } & CargoDesc);
+export type ItemCargo = ({ type: "Item" } & ItemDesc) | ({ type: "Cargo" } & CargoDesc);

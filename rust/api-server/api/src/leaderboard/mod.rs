@@ -6,7 +6,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use crossbeam_skiplist::SkipSet;
 use dashmap::DashMap;
-use dashmap::mapref::one::Ref;
 use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
@@ -189,7 +188,7 @@ pub(crate) struct BucketDistribution {
 
 pub(super) struct Leaderboard {
     // DashMap handles concurrent ID -> XP lookups
-    scores: DashMap<i64, i64>,
+    pub(crate) scores: DashMap<i64, i64>,
     // RwLock protects the sorted order for ranking
     sorted_ranks: SkipSet<(i64, i64)>,
     // Bucketed counts for faster rank lookups
@@ -746,13 +745,7 @@ pub(crate) async fn player_leaderboard(
 
         let player_name = None;
 
-        let rank = state
-            .ranking_system
-            .skill_leaderboards
-            .get(&skill.id)
-            .unwrap()
-            .get_rank(player_id);
-        let skill_exp = if let Some(a) = state
+        let (skill_exp, rank) = if let Some(a) = state
             .ranking_system
             .skill_leaderboards
             .get(&skill.id)
@@ -760,7 +753,14 @@ pub(crate) async fn player_leaderboard(
             .scores
             .get(&player_id)
         {
-            a.clone()
+            let rank = state
+                .ranking_system
+                .skill_leaderboards
+                .get(&skill.id)
+                .unwrap()
+                .get_rank(player_id);
+
+            (a.clone(), rank.unwrap())
         } else {
             let db = state.conn.clone();
             let (entrie, _rank) = Query::get_experience_state_player_by_skill_id(
@@ -784,7 +784,14 @@ pub(crate) async fn player_leaderboard(
                     .unwrap()
                     .update(player_id.clone(), result.experience as i64);
 
-                result.experience as i64
+                let rank = state
+                    .ranking_system
+                    .skill_leaderboards
+                    .get(&skill.id)
+                    .unwrap()
+                    .get_rank(player_id);
+
+                (result.experience as i64, rank.unwrap())
             } else {
                 tracing::warn!(
                     player_id,
@@ -792,7 +799,7 @@ pub(crate) async fn player_leaderboard(
                     "Could not find player skill experience"
                 );
 
-                0
+                (0, 0)
             }
         };
 
@@ -803,7 +810,7 @@ pub(crate) async fn player_leaderboard(
                 player_name,
                 experience: skill_exp as i32,
                 level: experience_to_level(skill_exp),
-                rank: rank.unwrap() as u64,
+                rank: rank as u64,
             }),
         ));
     }

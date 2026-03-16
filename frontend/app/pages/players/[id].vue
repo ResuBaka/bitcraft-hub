@@ -1,17 +1,20 @@
 <script setup lang="ts">
+import Inventory from "~/components/Bitcraft/Inventory.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
-import { toast } from "vuetify-sonner";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
-import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
-import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
-import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardResponse";
 import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
-import type { InventorysResponse } from "~/types/InventorysResponse";
 import type { HouseResponse } from "~/types/HouseResponse";
+import type { InventorysResponse } from "~/types/InventorysResponse";
+import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
+import type { NpcDesc } from "~/types/NpcDesc";
+import type { PlayerLeaderboardResponse } from "~/types/PlayerLeaderboardResponse";
 import type { RankType } from "~/types/RankType";
-import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
+import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
+import { rarityToTextClass, tierToBorderClassByLevel, useDelayedPending } from "~/utils";
+import HouseDetails from "~/components/Bitcraft/HouseDetails.vue";
 
-const colorMode = useColorMode();
+const toast = useToast();
+
 const page = ref(1);
 const route = useRoute();
 const numberFormat = new Intl.NumberFormat(undefined);
@@ -28,11 +31,9 @@ const nDate = Intl.DateTimeFormat(undefined, {
 const tmpPage = (route.query.page as string) ?? null;
 
 const topics = reactive<string[]>([`experience.${route.params.id}`]);
-const topics_total_experience = reactive<string[]>([
-  `total_experience.${route.params.id}`,
-]);
+const topics_total_experience = reactive<string[]>([`total_experience.${route.params.id}`]);
 
-let levelMap = {
+const levelMap: Record<number, number> = {
   1: 0,
   2: 520,
   3: 1100,
@@ -145,30 +146,25 @@ let levelMap = {
   110: 686845760,
 };
 
-let expUntilNextLevel = (skill) => {
-  let currentLevel = skill.level;
-  let currentExperience = skill.experience;
-  let nextLevel = currentLevel + 1;
-  let nextLevelExperience = levelMap[nextLevel];
-  let experienceUntilNextLevel = nextLevelExperience - currentExperience;
-  return experienceUntilNextLevel;
+const expUntilNextLevel = (skill: RankType) => {
+  const currentLevel = skill.level ?? 0;
+  const currentExperience = skill.experience ?? 0;
+  const nextLevel = currentLevel + 1;
+  const nextLevelExperience = levelMap[nextLevel] ?? 0;
+  return Math.max(0, nextLevelExperience - currentExperience);
 };
 
-let mobileEntityStateTopics = computed(() => {
+const mobileEntityStateTopics = computed(() => {
   return [`mobile_entity_state.${route.params.id}`];
 });
 
-registerWebsocketMessageHandler(
-  "MobileEntityState",
-  mobileEntityStateTopics,
-  (message) => {
-    if (playerData.value) {
-      playerData.value.player_location = message;
-    }
-  },
-);
+registerWebsocketMessageHandler("MobileEntityState", mobileEntityStateTopics, (message) => {
+  if (playerData.value) {
+    playerData.value.player_location = message;
+  }
+});
 
-let playerActionStateTopics = computed(() => {
+const playerActionStateTopics = computed(() => {
   return [`player_action_state_change_name.${route.params.id}`];
 });
 
@@ -184,15 +180,14 @@ registerWebsocketMessageHandler(
 
 registerWebsocketMessageHandler("Experience", topics, (message) => {
   if (experienceData.value && experienceData.value[message.skill_name]) {
-    let currentLevel = experienceData.value[message.skill_name].level;
+    const currentLevel = experienceData.value[message.skill_name].level;
 
     experienceData.value[message.skill_name].experience = message.experience;
     experienceData.value[message.skill_name].level = message.level;
 
     if (currentLevel !== message.level && currentLevel <= message.level) {
-      toast(`Level ${message.level} reached for Skill ${message.skill_name}`, {
-        progressBar: true,
-        duration: 5000,
+      toast.add({
+        title: `Level ${message.level} reached for Skill ${message.skill_name}`,
       });
 
       experienceData.value["Level"].level += 1;
@@ -200,16 +195,12 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
   }
 });
 
-registerWebsocketMessageHandler(
-  "TotalExperience",
-  topics_total_experience,
-  (message) => {
-    if (experienceData.value && experienceData.value["Experience"]) {
-      experienceData.value["Experience"].experience = message.experience;
-      experienceData.value["Experience"].rank = message.rank;
-    }
-  },
-);
+registerWebsocketMessageHandler("TotalExperience", topics_total_experience, (message) => {
+  if (experienceData.value && experienceData.value["Experience"]) {
+    experienceData.value["Experience"].experience = message.experience;
+    experienceData.value["Experience"].rank = message.rank;
+  }
+});
 
 const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
 
@@ -217,14 +208,12 @@ registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
   if (playerData.value) {
     if (playerData.value.signed_in !== message.signed_in) {
       if (message.signed_in) {
-        toast(`${playerData.value?.username} signed in`, {
-          progressBar: true,
-          duration: 5000,
+        toast.add({
+          title: `${playerData.value?.username} signed in`,
         });
       } else {
-        toast(`${playerData.value?.username} signed out`, {
-          progressBar: true,
-          duration: 5000,
+        toast.add({
+          title: `${playerData.value?.username} signed out`,
         });
       }
     }
@@ -242,24 +231,22 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-const { data: playerData, pending: playerPending } =
-  useFetchMsPack<FindPlayerByIdResponse>(() => {
-    return `/api/bitcraft/players/${route.params.id}`;
-  });
+const { data: playerData, pending: playerPending } = useFetchMsPack<FindPlayerByIdResponse>(() => {
+  return `/api/bitcraft/players/${route.params.id}`;
+});
 
-const { data: houses, pending: housesPending } = await useLazyFetchMsPack<
-  HouseResponse[]
->(() => `/api/bitcraft/houses/by_owner/${route.params.id}`);
+const { data: houses } = await useLazyFetchMsPack<HouseResponse[]>(
+  () => `/api/bitcraft/houses/by_owner/${route.params.id}`,
+);
 
-const { data: inventoryData, pending: inventoryPending } =
-  useFetchMsPack<InventorysResponse>(
-    () => {
-      return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
-    },
-    { deep: true },
-  );
+const { data: inventoryData } = useFetchMsPack<InventorysResponse>(
+  () => {
+    return `/api/bitcraft/inventorys/owner_entity_id/${route.params.id}`;
+  },
+  { deep: true },
+);
 
-let inventoryUpdateTopics = computed(() => {
+const inventoryUpdateTopics = computed(() => {
   if (!inventoryData.value) {
     return [];
   }
@@ -269,22 +256,17 @@ let inventoryUpdateTopics = computed(() => {
   );
 });
 
-registerWebsocketMessageHandler(
-  "InventoryUpdate",
-  inventoryUpdateTopics,
-  (message) => {
-    const index = inventoryData.value.inventorys.findIndex(
-      (value) => message.resolved_inventory.entity_id == value.entity_id,
-    );
+registerWebsocketMessageHandler("InventoryUpdate", inventoryUpdateTopics, (message) => {
+  const index = inventoryData.value.inventorys.findIndex(
+    (value) => message.resolved_inventory.entity_id === value.entity_id,
+  );
 
-    if (index != -1) {
-      inventoryData.value.inventorys[index].pockets =
-        message.resolved_inventory.pockets;
-    }
-  },
-);
+  if (index !== -1) {
+    inventoryData.value.inventorys[index].pockets = message.resolved_inventory.pockets;
+  }
+});
 
-let inventoryRemoveTopics = computed(() => {
+const inventoryRemoveTopics = computed(() => {
   if (!inventoryData.value) {
     return [];
   }
@@ -294,38 +276,33 @@ let inventoryRemoveTopics = computed(() => {
   );
 });
 
-registerWebsocketMessageHandler(
-  "InventoryRemove",
-  inventoryRemoveTopics,
-  (message) => {
-    const index = inventoryData.value.inventorys.findIndex(
-      (value) => message.resolved_inventory.entity_id == value.entity_id,
-    );
+registerWebsocketMessageHandler("InventoryRemove", inventoryRemoveTopics, (message) => {
+  const index = inventoryData.value.inventorys.findIndex(
+    (value) => message.resolved_inventory.entity_id === value.entity_id,
+  );
 
-    if (index != -1) {
-      inventoryData.value.inventorys.splice(index, 1);
-    }
-  },
-);
+  if (index !== -1) {
+    inventoryData.value.inventorys.splice(index, 1);
+  }
+});
 
 registerWebsocketMessageHandler(
   "InventoryInsert",
   [`inventory_insert_player_owner.${route.params.id}`],
   (message) => {
     const index = inventoryData.value.inventorys.findIndex(
-      (value) => message.resolved_inventory.entity_id == value.entity_id,
+      (value) => message.resolved_inventory.entity_id === value.entity_id,
     );
 
-    if (index != -1) {
-      inventoryData.value.inventorys[index].pockets =
-        message.resolved_inventory.pockets;
+    if (index !== -1) {
+      inventoryData.value.inventorys[index].pockets = message.resolved_inventory.pockets;
     } else {
       inventoryData.value.inventorys.push(message.resolved_inventory);
     }
   },
 );
 
-const { data: npcData } = useFetchMsPack(() => {
+const { data: npcData } = useFetchMsPack<Record<number, NpcDesc>>(() => {
   return `/npc`;
 });
 const { data: trevelerTasksData } = useFetchMsPack<{
@@ -334,11 +311,9 @@ const { data: trevelerTasksData } = useFetchMsPack<{
   return `/traveler_tasks`;
 });
 
-const { data: itemsAndCargoAllData } = useFetchMsPack<ItemsAndCargollResponse>(
-  () => {
-    return `/api/bitcraft/itemsAndCargo/all`;
-  },
-);
+const { data: itemsAndCargoAllData } = useFetchMsPack<ItemsAndCargollResponse>(() => {
+  return `/api/bitcraft/itemsAndCargo/all`;
+});
 
 const { data: experienceData } = useFetchMsPack<PlayerLeaderboardResponse>(
   () => {
@@ -352,7 +327,7 @@ const expeirence = computed(() => {
     return undefined;
   }
 
-  let newExperience: Record<
+  const newExperience: Record<
     string,
     RankType & {
       classes: Record<string, string>;
@@ -371,9 +346,7 @@ const expeirence = computed(() => {
       level: xp_info.level,
       rank: xp_info.rank,
       classes: {
-        list: shouldAddClass
-          ? `background-tier-${levelToTier(xp_info.level)}`
-          : "",
+        list: shouldAddClass ? `background-tier-${levelToTier(xp_info.level)}` : "",
         container: shouldAddClass ? "container" : "",
         content: shouldAddClass ? "content" : "",
       },
@@ -382,40 +355,37 @@ const expeirence = computed(() => {
 
   return newExperience;
 });
-const playerInventory = computed(() => {
+
+const inventoryList = computed(() => {
   return (
-    inventoryData.value?.inventorys.filter(
-      (inventory) =>
-        inventory.nickname !== "Tool belt" &&
-        inventory.nickname !== "Wallet" &&
-        inventory.nickname !== "Inventory" &&
-        !!inventory.pockets.filter((pocket) => !!pocket.contents?.quantity)
-          .length,
-    ) ?? []
+    inventoryData.value?.inventorys.filter((inventory) => {
+      const nickname = inventory.nickname;
+      const isWalletOrTool = nickname === "Wallet" || nickname === "Tool belt";
+      const hasContents = !!inventory.pockets.find((pocket) => pocket.contents?.quantity);
+
+      return !isWalletOrTool && hasContents;
+    }) ?? []
   );
 });
 
 const tools = computed(() => {
   return (
-    inventoryData.value?.inventorys.find(
-      (inventory) => inventory.nickname === "Tool belt",
-    ) ?? undefined
+    inventoryData.value?.inventorys.find((inventory) => inventory.nickname === "Tool belt") ??
+    undefined
   );
 });
 
 const wallet = computed(() => {
   return (
-    inventoryData.value?.inventorys.find(
-      (inventory) => inventory.nickname === "Wallet",
-    ) ?? undefined
+    inventoryData.value?.inventorys.find((inventory) => inventory.nickname === "Wallet") ??
+    undefined
   );
 });
 
 const mainInventory = computed(() => {
   return (
-    inventoryData.value?.inventorys.find(
-      (inventory) => inventory.nickname === "Inventory",
-    ) ?? undefined
+    inventoryData.value?.inventorys.find((inventory) => inventory.nickname === "Inventory") ??
+    undefined
   );
 });
 
@@ -455,14 +425,6 @@ const levelToTier = (level: number) => {
     return 10;
   }
 };
-
-const computedClass = computed(() => {
-  const isDark = colorMode.value == "dark";
-  return {
-    "bg-surface-light": isDark,
-    "bg-grey-lighten-3": !isDark,
-  };
-});
 
 const skillToToolIndex = {
   Carpentry: 1,
@@ -513,17 +475,6 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
   return result;
 };
 
-const iconUrl = (item: any) => {
-  if (!item?.icon_asset_name) {
-    return {
-      url: "",
-      show: false,
-    };
-  }
-
-  return iconAssetUrlNameRandom(item.icon_asset_name);
-};
-
 const getRankName = (rank: number) => {
   switch (rank) {
     case 7:
@@ -543,263 +494,386 @@ useSeoMeta({
   title: () => `Player ${playerData.value?.username ?? route.params.id}`,
   description: () => `Player ${playerData.value?.username ?? route.params.id}`,
 });
+
+const showPlayerPending = useDelayedPending(playerPending, 150);
+
+const claims = computed(() => playerData.value?.claims ?? []);
+
+const travelerTaskGroups = computed(() => {
+  if (!playerData.value?.traveler_tasks || !npcData.value || !trevelerTasksData.value) {
+    return [];
+  }
+
+  return Object.entries(playerData.value.traveler_tasks).map(([npcIndex, tasks]) => {
+    const index = Number(npcIndex);
+    const npc = npcData.value?.[index];
+    const items = tasks.flatMap((task) =>
+      (trevelerTasksData.value?.[task.task_id]?.required_items || []).map((item) => ({
+        task,
+        item,
+      })),
+    );
+
+    return {
+      npcName: npc?.name ?? `Traveler ${index + 1}`,
+      items,
+      completedCount: tasks.filter((task) => task.completed).length,
+      totalCount: tasks.length,
+    };
+  });
+});
+
+const showTravelerTasks = ref(false);
+
+const travelerTaskSummary = computed(() => {
+  const completed = travelerTaskGroups.value.reduce(
+    (total, group) => total + group.completedCount,
+    0,
+  );
+  const total = travelerTaskGroups.value.reduce((sum, group) => sum + group.totalCount, 0);
+
+  return {
+    completed,
+    total,
+  };
+});
+
+const itemForSkill = (skill: string) => {
+  const index = skillToToolIndex[skill as keyof typeof skillToToolIndex];
+  if (index === undefined || index === null) return null;
+  return tools?.value?.pockets?.[index]?.contents?.item ?? null;
+};
+
+const loginAt = computed(() => {
+  const timestamp = playerData.value?.sign_in_timestamp;
+  if (!timestamp) return null;
+  const date = new Date(timestamp * 1000);
+  if (date.getFullYear() === 1970) return null;
+  return nDate.format(date);
+});
+
+const formatQuantity = (value: number | bigint | null | undefined) => {
+  if (value === null || value === undefined) return "0";
+  return typeof value === "bigint"
+    ? numberFormat.format(Number(value))
+    : numberFormat.format(value);
+};
+
+const getItemIconUrl = (item: { icon_asset_name?: string } | null) => {
+  if (!item?.icon_asset_name) return null;
+  const icon = iconAssetUrlNameRandom(item.icon_asset_name);
+  return icon.show ? icon.url : null;
+};
 </script>
 
 <template>
-<!--  <v-container fluid>-->
-<!--    <v-layout class="justify-center" v-if="playerPending">-->
-<!--      <v-progress-circular indeterminate>-->
-<!--      </v-progress-circular>-->
-<!--    </v-layout>-->
-<!--    <template v-else-if="playerData">-->
-<!--      <v-sheet-->
-<!--          class="d-flex align-center justify-center flex-wrap text-center mx-auto px-4"-->
-<!--          elevation="4"-->
-<!--          height="110"-->
-<!--          width="100%"-->
-<!--      >-->
-<!--        <div>-->
-<!--          <h2 class="text-h5 font-weight-black" :class="`${playerData.signed_in ? 'text-green' : 'text-high-emphasis'}`">{{ playerData?.username }}</h2>-->
-<!--          <div v-if="playerData.player_location">-->
-<!--            <p class="text-body-2">N: {{ Math.floor(playerData.player_location?.location_z / 3 / 1000) }} E: {{ Math.floor(playerData.player_location?.location_x / 3 / 1000) }} R: <bitcraft-region v-if="playerData.player_location?.region" :region="playerData.player_location?.region" /></p>-->
-<!--          </div>-->
-<!--          <div class="d-flex flex-wrap justify-center ga-1">-->
-<!--            <v-chip rounded="1">-->
-<!--              Played: {{ secondsToDaysMinutesSecondsFormat(playerData.time_played) }}-->
-<!--            </v-chip>-->
-<!--            <v-chip rounded="1">-->
-<!--              Signed in: {{ secondsToDaysMinutesSecondsFormat(playerData.time_signed_in) }}-->
-<!--            </v-chip>-->
-<!--            <v-chip rounded="1" v-if="new Date(playerData.sign_in_timestamp * 1000).getFullYear() !== 1970">-->
-<!--              Login at: {{ nDate.format(new Date(playerData.sign_in_timestamp * 1000)) }}-->
-<!--            </v-chip>-->
-<!--            <v-chip rounded="1" color="yellow">-->
-<!--              Hex Coins: {{ numberFormat.format(wallet?.pockets[0]?.contents?.quantity ?? 0) }}-->
-<!--            </v-chip>-->
-<!--          </div>-->
-<!--        </div>-->
-<!--      </v-sheet>-->
-<!--      <v-card>-->
-<!--        <v-card-text :class="computedClass">-->
-<!--          <v-table :class="computedClass" density="compact">-->
-<!--            <tbody>-->
-<!--            <tr style='text-align: right' v-if="playerData.player_action_state">-->
-<!--              <th>Current Action:</th>-->
-<!--              <td>{{ playerData.player_action_state ?? "" }}</td>-->
-<!--            </tr>-->
-<!--            <tr v-if="playerData?.claims?.length">-->
-<!--              <th>Claims:</th>-->
-<!--              <td>-->
-<!--                <v-chip-group column class="justify-end-chips">-->
-<!--                  <nuxt-link class="text-decoration-none font-weight-black text-high-emphasis"-->
-<!--                             :to="{ name: 'claims-id', params: { id: claim.entity_id.toString() } }"-->
-<!--                             v-for="(claim, index) in playerData?.claims"-->
-<!--                  >-->
-<!--                    <v-chip rounded="1">-->
-<!--                      {{ claim.name.toString() }}-->
-<!--                    </v-chip>-->
-<!--                  </nuxt-link>-->
-<!--                </v-chip-group>-->
-<!--              </td>-->
-<!--            </tr>-->
-<!--            </tbody>-->
-<!--          </v-table>-->
-<!--          <v-row>-->
-<!--            <v-col cols="12">-->
-<!--              <v-card variant="text" v-if="deployables !== undefined && deployables.length">-->
-<!--                <v-card-title>Deployable</v-card-title>-->
-<!--                <v-card-text>-->
-<!--                  <div class="d-flex flex-wrap ga-1">-->
-<!--                  <div v-for="deployable in deployables" :key="deployable.id">-->
-<!--                      <v-list>-->
-<!--                        <v-list-item>-->
-<!--                            <v-list-item-title>{{ deployable.collectible_desc.name }}</v-list-item-title>-->
-<!--                            <v-list-item-subtitle>Amount: {{ deployable.count }}</v-list-item-subtitle>-->
-<!--                            <v-list-item-subtitle>{{ deployable.activated ? "Activated" : "Not Activated" }}</v-list-item-subtitle>-->
-<!--                        </v-list-item>-->
-<!--                      </v-list>-->
-<!--                    </div>-->
-<!--                  </div>-->
-<!--                </v-card-text>-->
-<!--              </v-card>-->
-<!--            </v-col>-->
-<!--          </v-row>-->
-<!--          <v-row v-if="expeirence !== undefined">-->
-<!--            <v-col cols="12">-->
-<!--              <v-card variant="text">-->
-<!--                <v-card-title>Skills</v-card-title>-->
-<!--                <v-card-text>-->
-<!--                  <v-row>-->
-<!--                    <v-col cols="12" md="6" xxl="2" xl="3" lg="4" v-for="[skill,xp_info] of Object.entries(expeirence)" :key="skill">-->
-<!--                      <v-list :class="xp_info.classes.container">-->
-<!--                        <div :class="xp_info.classes.list"></div>-->
-<!--                        <v-row dense no-gutters :class="xp_info.classes.content">-->
-<!--                          <v-col cols="8">-->
-<!--                          <v-list-item >-->
-<!--                            <v-list-item-title>{{ skill }}</v-list-item-title>-->
-<!--                            <v-list-item-subtitle v-if="!['Level'].includes(skill)">Experience: <bitcraft-animated-number :value="xp_info.experience" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>-->
-<!--                            <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>-->
-<!--                            <v-list-item-subtitle v-if="!['Level', 'Experience'].includes(skill)">To next: <bitcraft-animated-number :value="expUntilNextLevel(xp_info)" :speed="8" :formater="numberFormat.format"></bitcraft-animated-number></v-list-item-subtitle>-->
-<!--                            <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>-->
-<!--                            <v-list-item-subtitle v-if="!['Experience'].includes(skill)">Level: <bitcraft-animated-number v-if="xp_info.level" :value="xp_info.level" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>-->
-<!--                            <v-list-item-subtitle v-else>&nbsp;</v-list-item-subtitle>-->
-<!--                            <v-list-item-subtitle>Rank: #<bitcraft-animated-number :value="xp_info.rank" :speed="50"></bitcraft-animated-number></v-list-item-subtitle>-->
-<!--                          </v-list-item>-->
-<!--                          </v-col>-->
-<!--                          <v-spacer />-->
-<!--                          <v-col v-if="skillToToolIndex[skill] >= 0 && tools?.pockets[skillToToolIndex[skill]].contents" class="pr-2">-->
-<!--                            <v-sheet-->
-<!--                                rounded-->
-<!--                                class="inventory-slot-box d-flex align-center justify-center position-relative border-lg"-->
-<!--                                :class="`bg-color-tier-${tools?.pockets[skillToToolIndex[skill]].contents.item.tier} border-color-rarity-${tools?.pockets[skillToToolIndex[skill]].contents.item.rarity.toLowerCase()}`"-->
-<!--                            >-->
-<!--                              <v-tooltip activator="parent" location="top" transition="fade-transition">-->
-<!--                                <div class="text-center">-->
-<!--                                  <div :class="`font-weight-bold text-${getTierColor(tools?.pockets[skillToToolIndex[skill]].contents.item.tier)} text-uppercase`">-->
-<!--                                    {{ tools?.pockets[skillToToolIndex[skill]].contents.item.name }}-->
-<!--                                  </div>-->
-<!--                                  <div class="text-caption">Rarity: {{ tools?.pockets[skillToToolIndex[skill]].contents.item.rarity }}</div>-->
-<!--                                </div>-->
-<!--                              </v-tooltip>-->
+  <UContainer class="w-full max-w-none py-4">
+    <template v-if="showPlayerPending">
+      <div class="flex items-center justify-center py-8">
+        <UProgress color="neutral" />
+      </div>
+    </template>
+    <template v-else-if="playerData">
+      <div class="flex flex-col gap-3">
+        <div
+          class="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/40"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                Player
+              </p>
+              <h1
+                class="text-2xl font-semibold tracking-tight"
+                :class="
+                  playerData.signed_in ? 'text-green-600' : 'text-gray-900 dark:text-gray-100'
+                "
+              >
+                {{ playerData.username }}
+              </h1>
+              <div
+                v-if="playerData.player_location"
+                class="text-sm text-gray-600 dark:text-gray-300"
+              >
+                N: {{ Math.floor(playerData.player_location.location_z / 3 / 1000) }} E:
+                {{ Math.floor(playerData.player_location.location_x / 3 / 1000) }}
+                <span class="mx-1">•</span>
+                <bitcraft-region
+                  v-if="playerData.player_location.region"
+                  :region="playerData.player_location.region"
+                />
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <UBadge :color="playerData.signed_in ? 'success' : 'neutral'" variant="soft">
+                {{ playerData.signed_in ? "Online" : "Offline" }}
+              </UBadge>
+              <UBadge color="warning" variant="soft">
+                Hex Coins: {{ formatQuantity(wallet?.pockets[0]?.contents?.quantity) }}
+              </UBadge>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <div class="rounded-full border border-gray-200 px-3 py-1 dark:border-gray-800">
+              Played: {{ secondsToDaysMinutesSecondsFormat(playerData.time_played) || "0s" }}
+            </div>
+            <div class="rounded-full border border-gray-200 px-3 py-1 dark:border-gray-800">
+              Signed in: {{ secondsToDaysMinutesSecondsFormat(playerData.time_signed_in) || "0s" }}
+            </div>
+            <div
+              v-if="loginAt"
+              class="rounded-full border border-gray-200 px-3 py-1 dark:border-gray-800"
+            >
+              Login at: {{ loginAt }}
+            </div>
+          </div>
+        </div>
 
-<!--                              <div class="tier-label" :class="`text-${getTierColor(tools?.pockets[skillToToolIndex[skill]].contents.item.tier)}`">-->
-<!--                                T{{ tools?.pockets[skillToToolIndex[skill]].contents.item.tier }}-->
-<!--                              </div>-->
+        <UCard :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Overview</h2>
+              <UBadge v-if="playerData.player_action_state" color="info" variant="soft">
+                {{ playerData.player_action_state }}
+              </UBadge>
+            </div>
+            <div v-if="claims.length" class="flex flex-wrap gap-2">
+              <NuxtLink
+                v-for="claim in claims"
+                :key="claim.entity_id.toString()"
+                :to="{ name: 'claims-id', params: { id: claim.entity_id.toString() } }"
+              >
+                <UBadge color="neutral" variant="soft"> Claim: {{ claim.name }} </UBadge>
+              </NuxtLink>
+            </div>
+            <UEmpty
+              v-else
+              icon="i-lucide-flag"
+              title="No claims"
+              description="This player does not own any claims yet."
+            />
+          </div>
+        </UCard>
 
-<!--                              <div class="item-icon text-h6 font-weight-black">-->
-<!--                                <inventory-img :item="tools.pockets[skillToToolIndex[skill]].contents.item" aspect-ratio="1"/>-->
-<!--                              </div>-->
-<!--                            </v-sheet>-->
-<!--                          </v-col>-->
-<!--                        </v-row>-->
-<!--                      </v-list>-->
-<!--                    </v-col>-->
-<!--                  </v-row>-->
-<!--                </v-card-text>-->
-<!--              </v-card>-->
-<!--            </v-col>-->
-<!--          </v-row>-->
-<!--        </v-card-text>-->
-<!--      </v-card>-->
-<!--      <v-expansion-panels>-->
-<!--        <v-expansion-panel>-->
-<!--          <v-expansion-panel-title>-->
-<!--            <v-row>-->
-<!--              <v-col class="d-flex justify-center">-->
-<!--                <h2 class="pl-md-3 pl-xl-0">Treveler tasks</h2>-->
-<!--              </v-col>-->
-<!--            </v-row>-->
-<!--          </v-expansion-panel-title>-->
-<!--          <v-expansion-panel-text>-->
-<!--            <template v-for="(traveler, index) of playerData.traveler_tasks" >-->
-<!--              <v-row>-->
-<!--                <v-col class="d-flex justify-center font-weight-bold">-->
-<!--                {{ npcData[index]?.name }}-->
-<!--                </v-col>-->
-<!--              </v-row>-->
-<!--              <v-row>-->
-<!--              <template v-for="task of traveler">-->
-<!--                  <v-col class="d-flex justify-center">-->
-<!--                    <template v-for="item of trevelerTasksData[task.task_id]?.required_items">-->
-<!--                      <div class="align-content-center">{{  }}</div>-->
-<!--                      <div class="align-content-center" :class="`text-${tierColor[item.item_type == 'Item' ? itemsAndCargoAllData.item_desc[item.item_id].tier : itemsAndCargoAllData.cargo_desc[item.item_id].tier]}`">-->
-<!--                        <template v-if="item.item_type == 'Item'">-->
-<!--                          {{ itemsAndCargoAllData.item_desc[item.item_id].name }}-->
-<!--                        </template>-->
-<!--                        <template v-else-if="item.item_type == 'Cargo'">-->
-<!--                          {{ itemsAndCargoAllData.cargo_desc[item.item_id].name }}-->
-<!--                        </template>-->
-<!--                      </div>-->
-<!--                      <v-badge :content="Intl.NumberFormat().format(item.quantity)" :color="task.completed ? 'green' : 'red'" location="right" class="align-start">-->
-<!--                        <template v-if="item.item_type == 'Item'">-->
-<!--                          <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.item_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>-->
-<!--                        </template>-->
-<!--                        <template v-else-if="item.item_type == 'Cargo'">-->
-<!--                          <v-img :src="iconAssetUrlNameRandom(itemsAndCargoAllData.cargo_desc[item.item_id].icon_asset_name).url" height="75" :width="item.type == 'Item' ? 75 : 128"></v-img>-->
-<!--                        </template>-->
-<!--                      </v-badge>-->
-<!--                    </template>-->
-<!--                  </v-col>-->
-<!--              </template>-->
-<!--              </v-row>-->
-<!--            </template>-->
-<!--          </v-expansion-panel-text>-->
-<!--        </v-expansion-panel>-->
-<!--        <v-expansion-panel v-if="houses && houses.length">-->
-<!--          <v-expansion-panel-title>-->
-<!--            <v-row>-->
-<!--              <v-col class="d-flex justify-center">-->
-<!--                <h2 class="pl-md-3 pl-xl-0">Houses ({{ houses.length }})</h2>-->
-<!--              </v-col>-->
-<!--            </v-row>-->
-<!--          </v-expansion-panel-title>-->
-<!--          <v-expansion-panel-text>-->
-<!--            <bitcraft-house-details-->
-<!--              v-for="house in houses"-->
-<!--              :key="house.entity_id.toString()"-->
-<!--              :house="house"-->
-<!--            />-->
-<!--          </v-expansion-panel-text>-->
-<!--        </v-expansion-panel>-->
-<!--      </v-expansion-panels>-->
-<!--      <v-card variant="text" v-if="playerInventory.length || tools || mainInventory">-->
-<!--        <v-card-title>Inventory's</v-card-title>-->
-<!--        <v-card-text>-->
-<!--          <v-row>-->
-<!--&lt;!&ndash;            <v-col cols="12" md="6" v-if="playerTools">&ndash;&gt;-->
-<!--&lt;!&ndash;              <bitcraft-playerData-tool-belt :inventory="playerTools"></bitcraft-playerData-tool-belt>&ndash;&gt;-->
-<!--&lt;!&ndash;            </v-col>&ndash;&gt;-->
-<!--            <v-col cols="12" md="6"  v-if="mainInventory">-->
-<!--              <bitcraft-inventory :inventory="mainInventory"></bitcraft-inventory>-->
-<!--            </v-col>-->
+        <UCard v-if="deployables && deployables.length" :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Deployables</h2>
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div
+                v-for="deployable in deployables"
+                :key="deployable.id"
+                class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+              >
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {{ deployable.collectible_desc.name }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Amount: {{ numberFormat.format(deployable.count) }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ deployable.activated ? "Activated" : "Not Activated" }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </UCard>
 
-<!--            <template v-if="!inventoryPending" v-for="(inventory, index) in playerInventory">-->
-<!--              <v-col cols="12" md="6">-->
-<!--                <bitcraft-inventory :inventory="inventory"></bitcraft-inventory>-->
-<!--              </v-col>-->
-<!--            </template>-->
-<!--            <v-layout class="justify-center" v-else>-->
-<!--              <v-progress-circular indeterminate>-->
-<!--              </v-progress-circular>-->
-<!--            </v-layout>-->
-<!--          </v-row>-->
-<!--        </v-card-text>-->
-<!--      </v-card>-->
-<!--    </template>-->
-<!--    <template v-else>-->
-<!--      <v-alert type="error">Player not found</v-alert>-->
-<!--    </template>-->
-<!--  </v-container>-->
+        <UCard v-if="expeirence" :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
+            <div class="grid gap-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div
+                v-for="[skill, xp_info] of Object.entries(expeirence)"
+                :key="skill"
+                class="rounded-lg bg-gray-200 p-3 dark:bg-zinc-900 border-l-4"
+                :class="tierToBorderClassByLevel(xp_info.level ?? 0)"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {{ skill }}
+                    </p>
+                  </div>
+                  <UBadge color="neutral" variant="soft">
+                    Rank #{{ numberFormat.format(xp_info.rank) }}
+                  </UBadge>
+                </div>
+                <div
+                  class="mt-2 flex flex-wrap items-start justify-between gap-3 text-xs text-gray-500 dark:text-gray-400"
+                >
+                  <div class="space-y-1">
+                    <p v-if="!['Level'].includes(skill)">
+                      Experience:
+                      <bitcraft-animated-number
+                        :value="xp_info.experience"
+                        :formater="numberFormat.format"
+                      />
+                    </p>
+                    <p v-if="!['Level', 'Experience'].includes(skill)">
+                      To next:
+                      <bitcraft-animated-number
+                        :value="expUntilNextLevel(xp_info)"
+                        :formater="numberFormat.format"
+                      />
+                    </p>
+                    <p v-if="!['Experience'].includes(skill)">
+                      Level: {{ numberFormat.format(xp_info.level ?? 0) }}
+                    </p>
+                  </div>
+                  <div
+                    v-if="itemForSkill(skill)"
+                    class="flex items-center gap-3 rounded-md px-2 py-1 text-right"
+                  >
+                    <div
+                      class="flex h-13 w-13 items-center justify-center rounded bg-white dark:bg-gray-950"
+                    >
+                      <img
+                        v-if="getItemIconUrl(itemForSkill(skill))"
+                        :src="getItemIconUrl(itemForSkill(skill))!"
+                        :alt="itemForSkill(skill)!.name"
+                        class="h-10 w-10 object-contain"
+                        loading="lazy"
+                      />
+                      <UIcon v-else name="i-lucide-wrench" class="h-6 w-6 text-gray-400" />
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                      <div class="flex items-center gap-2">
+                        <UBadge color="neutral" variant="soft">Tool</UBadge>
+                        <span
+                          v-if="itemForSkill(skill)?.tier"
+                          class="text-xs font-semibold leading-none"
+                          :class="tierColor[itemForSkill(skill)!.tier]"
+                        >
+                          T{{ itemForSkill(skill)!.tier }}
+                        </span>
+                      </div>
+                      <p
+                        class="text-xs dark:text-gray-300"
+                        :class="rarityToTextClass(itemForSkill(skill)?.rarity ?? null)"
+                      >
+                        {{ itemForSkill(skill)?.name }}
+                      </p>
+                      <p
+                        v-if="itemForSkill(skill)?.rarity"
+                        class="text-[10px] uppercase tracking-wide text-gray-400"
+                      >
+                        {{ itemForSkill(skill)?.rarity }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </UCard>
+
+        <UCard v-if="travelerTaskGroups.length" :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Traveler tasks
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ travelerTaskSummary.completed }}/{{ travelerTaskSummary.total }} completed
+                </p>
+              </div>
+              <USwitch v-model="showTravelerTasks" label="Show tasks" />
+            </div>
+            <div v-if="showTravelerTasks" class="grid gap-2 lg:grid-cols-2">
+              <div
+                v-for="group in travelerTaskGroups"
+                :key="group.npcName"
+                class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {{ group.npcName }}
+                  </p>
+                  <UBadge color="neutral" variant="soft">
+                    {{ group.completedCount }}/{{ group.totalCount }} completed
+                  </UBadge>
+                </div>
+                <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div
+                    v-for="(entry, index) in group.items"
+                    :key="`${group.npcName}-${index}`"
+                    class="rounded-md border border-gray-200 p-2 text-xs dark:border-gray-800"
+                  >
+                    <p class="font-semibold text-gray-900 dark:text-gray-100">
+                      {{
+                        entry.item.item_type === "Item"
+                          ? itemsAndCargoAllData?.item_desc?.[entry.item.item_id]?.name
+                          : itemsAndCargoAllData?.cargo_desc?.[entry.item.item_id]?.name
+                      }}
+                    </p>
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Qty: {{ numberFormat.format(entry.item.quantity) }}
+                    </p>
+                    <UBadge
+                      class="mt-2"
+                      :color="entry.task.completed ? 'success' : 'warning'"
+                      variant="soft"
+                    >
+                      {{ entry.task.completed ? "Completed" : "Pending" }}
+                    </UBadge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </UCard>
+
+        <UCard v-if="inventoryList.length" :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventories</h2>
+            <div
+              class="gap-4 pt-2"
+              :class="
+                inventoryList.length > 1 ? 'grid grid-cols-1 md:grid-cols-2' : 'flex flex-col'
+              "
+            >
+              <div
+                v-for="(inventory, index) in inventoryList"
+                :key="inventory.entity_id"
+                :class="
+                  inventoryList.length > 1 &&
+                  inventoryList.length % 2 === 1 &&
+                  index === inventoryList.length - 1
+                    ? 'md:col-span-2'
+                    : ''
+                "
+              >
+                <Inventory :inventory="inventory" />
+              </div>
+            </div>
+          </div>
+        </UCard>
+
+        <UCard v-if="houses && houses.length" :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Houses ({{ houses.length }})
+            </h2>
+            <div class="flex flex-col gap-4 pt-2">
+              <div
+                v-for="house in houses"
+                :key="house.entity_id.toString()"
+                class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+              >
+                <house-details :house="house"></house-details>
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </div>
+    </template>
+    <template v-else>
+      <UEmpty
+        icon="i-lucide-user-x"
+        title="Player not found"
+        description="We couldn’t find a player with that ID."
+      />
+    </template>
+  </UContainer>
 </template>
-
-<style scoped>
-.justify-end-chips :deep(.v-slide-group__content) {
-  justify-content: flex-end;
-}
-
-.inventory-slot-box {
-  width: 100px;
-  aspect-ratio: 1 / 1;
-  cursor: default;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.item-icon {
-  opacity: 0.8;
-  user-select: none;
-}
-
-.tier-label {
-  position: absolute;
-  top: 8px; /* Adjusted to sit just below or on the 4px border */
-  left: 4px;
-  font-size: 0.9rem;
-  font-weight: 900;
-  line-height: 1;
-  text-transform: uppercase;
-  user-select: none;
-  /* Optional: gives it a slight shadow to pop against dark icons */
-  text-shadow: 0px 0px 2px rgb(var(--v-theme-surface));
-}
-</style>

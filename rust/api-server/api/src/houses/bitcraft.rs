@@ -5,7 +5,7 @@ use game_module::module_bindings::{
     PortalState,
 };
 use migration::{OnConflict, sea_query};
-use sea_orm::{ColumnTrait, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -138,13 +138,20 @@ pub(crate) fn start_worker_interior_network_desc(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::interior_network_desc::Entity::delete_many()
-                        .filter(::entity::interior_network_desc::Column::BuildingId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::interior_network_desc::Column::BuildingId
+                                .is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(InteriorNetworkDesc = chunk_ids_str.join(","), error = error.to_string(), "Could not delete InteriorNetworkDesc");
+                        tracing::error!(
+                            InteriorNetworkDesc = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete InteriorNetworkDesc"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -302,13 +309,20 @@ pub(crate) fn start_worker_dimension_description_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::dimension_description_state::Entity::delete_many()
-                        .filter(::entity::dimension_description_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::dimension_description_state::Column::EntityId
+                                .is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(DimensionDescriptionState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DimensionDescriptionState");
+                        tracing::error!(
+                            DimensionDescriptionState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete DimensionDescriptionState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -468,13 +482,20 @@ pub(crate) fn start_worker_player_housing_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::player_housing_state::Entity::delete_many()
-                        .filter(::entity::player_housing_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::player_housing_state::Column::EntityId
+                                .is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(PlayerHousingState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerHousingState");
+                        tracing::error!(
+                            PlayerHousingState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete PlayerHousingState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -628,13 +649,19 @@ pub(crate) fn start_worker_permission_state(
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::permission_state::Entity::delete_many()
-                        .filter(::entity::permission_state::Column::EntityId.is_in(chunk_ids.clone()))
+                        .filter(
+                            ::entity::permission_state::Column::EntityId.is_in(chunk_ids.clone()),
+                        )
                         .exec(&global_app_state.conn)
                         .await
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(PermissionState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PermissionState");
+                        tracing::error!(
+                            PermissionState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete PermissionState"
+                        );
                     }
                 }
                 messages_delete.clear();
@@ -799,7 +826,11 @@ pub(crate) fn start_worker_portal_state(
                     {
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(PortalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PortalState");
+                        tracing::error!(
+                            PortalState = chunk_ids_str.join(","),
+                            error = error.to_string(),
+                            "Could not delete PortalState"
+                        );
                     }
                 }
                 messages_delete.clear();

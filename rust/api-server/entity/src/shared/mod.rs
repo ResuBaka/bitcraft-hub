@@ -1,6 +1,7 @@
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 use ts_rs::TS;
 
 pub mod experience_stack_f32;
@@ -18,6 +19,20 @@ pub enum JsonRarity {
     Epic = 4,
     Legendary = 5,
     Mythic = 6,
+}
+
+impl Display for JsonRarity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JsonRarity::Default => write!(f, "Default"),
+            JsonRarity::Common => write!(f, "Common"),
+            JsonRarity::Uncommon => write!(f, "Uncommon"),
+            JsonRarity::Rare => write!(f, "Rare"),
+            JsonRarity::Epic => write!(f, "Epic"),
+            JsonRarity::Legendary => write!(f, "Legendary"),
+            JsonRarity::Mythic => write!(f, "Mythic"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, Eq, TS, DeriveActiveEnum, EnumIter)]

@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
-import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
+import { watchThrottled } from "@vueuse/shared";
 import AutocompleteClaim from "~/components/Bitcraft/autocomplete/AutocompleteClaim.vue";
 import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
-import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
-import { watchThrottled } from "@vueuse/shared";
-import type { InventorysResponse } from "~/types/InventorysResponse";
+import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
+import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
+import type { CargoDesc } from "~/types/CargoDesc";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
-import type { ItemStack } from "~/types/ItemStack";
 import type { CraftingRecipe } from "~/types/CraftingRecipe";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
-import type { ResolvedInventory } from "~/types/ResolvedInventory";
-import type { ItemDesc } from "~/types/ItemDesc";
 import type { ExtractionRecipeResponse } from "~/types/ExtractionRecipeResponse";
+import type { InventorysResponse } from "~/types/InventorysResponse";
+import type { ItemDesc } from "~/types/ItemDesc";
+import type { ItemStack } from "~/types/ItemStack";
+import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
+import type { ResolvedInventory } from "~/types/ResolvedInventory";
 
 type ResourceEffort = {
   [itemKey: string]: number; // attempts needed per unit
@@ -101,9 +102,7 @@ const { data: worldItemsFetch } = useFetchMsPack<{
   return `/items/world`;
 });
 
-const { data: extractionRecipesFetch } = useFetchMsPack<
-  ExtractionRecipeResponse[]
->(() => {
+const { data: extractionRecipesFetch } = useFetchMsPack<ExtractionRecipeResponse[]>(() => {
   return `/api/bitcraft/extractionRecipes/all`;
 });
 
@@ -133,8 +132,7 @@ const resourceEffortMap = computed(() => {
         if (itemStack.item_stack.item_type === "Item") {
           const itemId = itemStack.item_stack.item_id;
           const itemDesc = allRecipiesFetch.value?.item_desc?.[itemId];
-          const itemListDescDirect =
-            allRecipiesFetch.value?.item_list_desc?.[itemId];
+          const itemListDescDirect = allRecipiesFetch.value?.item_list_desc?.[itemId];
           const itemListId = itemDesc?.item_list_id || 0;
 
           const list =
@@ -151,10 +149,7 @@ const resourceEffortMap = computed(() => {
                 const innerQuantity = inner.quantity || 1;
                 if (innerQuantity <= 0) continue;
                 const expectedYield =
-                  probability *
-                  quantity *
-                  possibilityProbability *
-                  innerQuantity;
+                  probability * quantity * possibilityProbability * innerQuantity;
                 if (expectedYield <= 0) continue;
                 expectedYieldByItemId[inner.item_id] =
                   (expectedYieldByItemId[inner.item_id] || 0) + expectedYield;
@@ -169,27 +164,21 @@ const resourceEffortMap = computed(() => {
 
         if (itemStack.item_stack.item_type === "Item") {
           expectedYieldByItemId[itemStack.item_stack.item_id] =
-            (expectedYieldByItemId[itemStack.item_stack.item_id] || 0) +
-            expectedYield;
+            (expectedYieldByItemId[itemStack.item_stack.item_id] || 0) + expectedYield;
         } else {
           expectedYieldByCargoId[itemStack.item_stack.item_id] =
-            (expectedYieldByCargoId[itemStack.item_stack.item_id] || 0) +
-            expectedYield;
+            (expectedYieldByCargoId[itemStack.item_stack.item_id] || 0) + expectedYield;
         }
       }
     }
 
-    for (const [itemId, expectedYield] of Object.entries(
-      expectedYieldByItemId,
-    )) {
+    for (const [itemId, expectedYield] of Object.entries(expectedYieldByItemId)) {
       if (expectedYield <= 0) continue;
       const attemptsPerUnit = 1 / expectedYield;
       itemEffort[getEffortKey("Item", Number(itemId))] = attemptsPerUnit;
     }
 
-    for (const [cargoId, expectedYield] of Object.entries(
-      expectedYieldByCargoId,
-    )) {
+    for (const [cargoId, expectedYield] of Object.entries(expectedYieldByCargoId)) {
       if (expectedYield <= 0) continue;
       const attemptsPerUnit = 1 / expectedYield;
       itemEffort[getEffortKey("Cargo", Number(cargoId))] = attemptsPerUnit;
@@ -240,6 +229,22 @@ const worldItemIds = computed(() => {
 let id = route.params.id;
 let type = route.params.type;
 
+const itemHeading = computed(() => {
+  const info = recipeInfo.value?.items;
+  if (!info) return "Item recipe";
+  const desc =
+    info.type === "Item"
+      ? allRecipiesFetch.value?.item_desc[info.id]
+      : allRecipiesFetch.value?.cargo_desc[info.id];
+  return desc?.name ? `Recipe for ${desc.name}` : "Item recipe";
+});
+
+const itemSubheading = computed(() => {
+  const info = recipeInfo.value?.items;
+  if (!info) return "";
+  return `${info.type} #${info.id}`;
+});
+
 const recipeInfo = computed(() => {
   let hasValues = allRecipiesFetch.value === undefined;
   let allRecipies = allRecipiesFetch.value?.recipes ?? {};
@@ -273,10 +278,7 @@ const recipeInfo = computed(() => {
   if (hasValues) {
     return;
   }
-  function getCraftedItemStack(
-    item_stack: ItemStack,
-    recipie: CraftingRecipe | undefined,
-  ) {
+  function getCraftedItemStack(item_stack: ItemStack, recipie: CraftingRecipe | undefined) {
     if (item_stack.item_type == "Item") {
       if (item_stack.item_id === undefined || recipie === undefined) {
         return;
@@ -355,18 +357,14 @@ const recipeInfo = computed(() => {
       getCraftedItemStack(item_stack, recipie);
     }
   }
-  let item;
-  if (type == "Item") {
+  let item: ItemDesc | CargoDesc | undefined;
+  if (type === "Item") {
     item = item_desc[id];
   } else {
     item = cargo_desc[id];
   }
 
-  function getQuantity(
-    item_quantity: number,
-    quantity: number,
-    recipe_id_quantity: number,
-  ) {
+  function getQuantity(item_quantity: number, quantity: number, recipe_id_quantity: number) {
     return Math.ceil((quantity * item_quantity) / recipe_id_quantity);
   }
 
@@ -379,8 +377,7 @@ const recipeInfo = computed(() => {
     const children = [];
     let looped = false;
     if (crafted[type][id] === undefined) {
-      const actions_required =
-        getExtractionActionsRequired(type, id, quantity) || 0;
+      const actions_required = getExtractionActionsRequired(type, id, quantity) || 0;
       if (actions_required > 0) {
         return [
           {
@@ -417,17 +414,10 @@ const recipeInfo = computed(() => {
           continue;
         }
 
-        let get_qauntity = getQuantity(
-          item.quantity,
-          quantity,
-          recipe.quantity,
-        );
-        let consumedChildren = getConsumedChildren(
-          item.item_id,
-          item.item_type,
-          get_qauntity,
-          [...recipes],
-        );
+        let get_qauntity = getQuantity(item.quantity, quantity, recipe.quantity);
+        let consumedChildren = getConsumedChildren(item.item_id, item.item_type, get_qauntity, [
+          ...recipes,
+        ]);
         if (consumedChildren === "Loop" || consumedChildren === undefined) {
           itemChildren.push({
             id: item.item_id,
@@ -500,8 +490,8 @@ const recipeInfo = computed(() => {
         continue;
       }
       inventory[pockets?.contents?.item_type][pockets?.contents?.item_id] =
-        (inventory[pockets?.contents?.item_type][pockets?.contents?.item_id] ||
-          0) + (pockets?.contents?.quantity || 0);
+        (inventory[pockets?.contents?.item_type][pockets?.contents?.item_id] || 0) +
+        (pockets?.contents?.quantity || 0);
     }
   }
   if (
@@ -515,10 +505,7 @@ const recipeInfo = computed(() => {
       combineInvs2(item);
     }
   }
-  if (
-    Object.keys(inventory.Cargo).length !== 0 ||
-    Object.keys(inventory.Item).length !== 0
-  ) {
+  if (Object.keys(inventory.Cargo).length !== 0 || Object.keys(inventory.Item).length !== 0) {
     function recalcQuantityDeep(item: objectWithChildren, quantity: number) {
       const itemQuantity = item.item_quantity;
       const itemRecipeQuantity = item.recipe_quantity;
@@ -578,15 +565,12 @@ const recipeInfo = computed(() => {
         ) {
           continue;
         }
-        const quantity =
-          (inventory[type][id] || 0) - (shadowInventory[type][id] || 0);
+        const quantity = (inventory[type][id] || 0) - (shadowInventory[type][id] || 0);
         if (quantity >= itemQuantity) {
-          shadowInventory[type][id] =
-            (shadowInventory[type][id] || 0) + itemQuantity;
+          shadowInventory[type][id] = (shadowInventory[type][id] || 0) + itemQuantity;
           item.deleted = true;
         } else {
-          shadowInventory[type][id] =
-            (shadowInventory[type][id] || 0) + itemQuantity;
+          shadowInventory[type][id] = (shadowInventory[type][id] || 0) + itemQuantity;
           recalcQuantityDeep(item, shadow_quantity - quantity);
         }
         if (item?.children == undefined) {
@@ -610,19 +594,14 @@ const recipeInfo = computed(() => {
     }
   }
 
-  function PannelsList(
-    recipes: objectWithChildren[],
-    pannelIndexs: PannelIndexs[],
-  ) {
+  function PannelsList(recipes: objectWithChildren[], pannelIndexs: PannelIndexs[]) {
     if (recipes === undefined) {
       return;
     }
     for (const recipe of recipes) {
       let selectedPannel = 0;
       if (recipe.children && recipe.children.length > 1) {
-        const index = recipe.children.findIndex((alt) =>
-          alt.children.every((ing) => !ing.looped),
-        );
+        const index = recipe.children.findIndex((alt) => alt.children.every((ing) => !ing.looped));
         if (index !== -1) {
           selectedPannel = index;
         }
@@ -684,8 +663,7 @@ const recipeInfo = computed(() => {
         ) {
           continue;
         }
-        list[item.type][item.id] =
-          (list[item.type][item.id] || 0) + item.quantity;
+        list[item.type][item.id] = (list[item.type][item.id] || 0) + item.quantity;
         return;
       }
       if (item.children.length === 0) {
@@ -697,8 +675,7 @@ const recipeInfo = computed(() => {
         ) {
           return;
         }
-        list[item.type][item.id] =
-          (list[item.type][item.id] || 0) + item.quantity;
+        list[item.type][item.id] = (list[item.type][item.id] || 0) + item.quantity;
         continue;
       }
       if (item.type === "Item") {
@@ -706,12 +683,8 @@ const recipeInfo = computed(() => {
         if (itemDesc === undefined) {
           continue;
         }
-        if (
-          itemDesc.name.endsWith(" Animal Hair") ||
-          itemDesc.name.endsWith(" Amber Resin")
-        ) {
-          list[item.type][item.id] =
-            (list[item.type][item.id] || 0) + item.quantity;
+        if (itemDesc.name.endsWith(" Animal Hair") || itemDesc.name.endsWith(" Amber Resin")) {
+          list[item.type][item.id] = (list[item.type][item.id] || 0) + item.quantity;
           continue;
         }
       }
@@ -754,59 +727,124 @@ useSeoMeta({
 </script>
 
 <template>
-<!--  <v-container fluid>-->
-<!--     <v-card>-->
-<!--      <v-card-text>-->
-<!--         <v-row>-->
-<!--          <v-col>-->
-<!--            <autocomplete-claim @model_changed="(item) => claimId=item" />-->
-<!--          </v-col>-->
-<!--          <v-col>-->
-<!--             <autocomplete-user @model_changed="(item) => playerId=item" />-->
-<!--          </v-col>-->
-<!--          <v-col>-->
-<!--            <v-number-input-->
-<!--            v-model="amount"-->
-<!--            :reverse="false"-->
-<!--            controlVariant="default"-->
-<!--            label="Number of finalized item you want"-->
-<!--            :hideInput="false"-->
-<!--            :inset="false"-->
-<!--          />-->
-<!--          </v-col>-->
-<!--        </v-row>-->
-<!--        <v-list>-->
-<!--          <template v-if="recipeInfo !== undefined && recipeInfo.shoplist !== undefined">-->
-<!--            <v-card-title>Items needed to finish the work</v-card-title>-->
-<!--            <v-row>-->
-<!--              <template v-for="[type,value] of Object.entries(recipeInfo.shoplist)">-->
+  <UContainer class="w-full max-w-none py-8">
+    <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-2">
+        <p class="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">Crafting</p>
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+              {{ itemHeading }}
+            </h1>
+            <p v-if="itemSubheading" class="text-sm text-gray-600 dark:text-gray-300">
+              {{ itemSubheading }}
+            </p>
+          </div>
+          <div
+            class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 shadow-sm dark:border-gray-800 dark:text-gray-300"
+          >
+            <span>Amount</span>
+            <span class="font-semibold text-gray-900 dark:text-gray-100">
+              {{ Intl.NumberFormat().format(amount) }}
+            </span>
+          </div>
+        </div>
+      </div>
 
-<!--                <v-col v-if="type === 'Cargo' || type === 'Item'"  v-for="[id,quantity] of Object.entries(value)" cols="12" sm="6" md="3" lg="2">-->
-<!--                  <gethering-shop-list-->
-<!--                      :type="type"-->
-<!--                      :id="+id"-->
-<!--                      :quantity="quantity"-->
-<!--                      :item_desc="allRecipiesFetch.item_desc"-->
-<!--                      :cargo_desc="allRecipiesFetch.cargo_desc" />-->
-<!--                </v-col>-->
-<!--              </template>-->
-<!--            </v-row>-->
-<!--            <v-divider class="pb-3 mt-3" thickness="5"/>-->
-<!--          </template>-->
-<!--          <template v-if="allRecipiesFetch?.item_desc !== undefined && recipeInfo !== undefined && pannelIndexs[0] !== undefined">-->
-<!--            <v-card-title>Recipe Tree</v-card-title>-->
-<!--            <recusive-crafting-recipe-->
-<!--              :item="recipeInfo.items"-->
-<!--              :item_desc="allRecipiesFetch.item_desc"-->
-<!--              :cargo_desc="allRecipiesFetch.cargo_desc"-->
-<!--              :item_list_desc="allRecipiesFetch.item_list_desc"-->
-<!--              :resource-effort-map="resourceEffortMap"-->
-<!--              :pannel_indexs="pannelIndexs[0]"-->
-<!--            />-->
-<!--          </template>-->
+      <UCard :ui="{ body: 'p-4' }">
+        <div class="grid gap-4 lg:grid-cols-3">
+          <div class="flex flex-col gap-2">
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
+            >
+              Claim inventory
+            </p>
+            <AutocompleteClaim @model_changed="(item) => (claimId = item)" />
+          </div>
+          <div class="flex flex-col gap-2">
+            <p
+              class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
+            >
+              Player inventory
+            </p>
+            <AutocompleteUser @model_changed="(item) => (playerId = item)" />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label
+              class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
+              for="amount"
+            >
+              Final item amount
+            </label>
+            <UInput
+              id="amount"
+              v-model.number="amount"
+              type="number"
+              min="1"
+              placeholder="Enter amount"
+            />
+          </div>
+        </div>
+      </UCard>
 
-<!--        </v-list>-->
-<!--    </v-card-text>-->
-<!--  </v-card> -->
-<!--</v-container>  -->
+      <template v-if="recipeInfo && allRecipiesFetch">
+        <UCard v-if="recipeInfo.shoplist" :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-4">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Items needed to finish the work
+              </h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300">
+                Adjust the claim or player inventory to refine the list.
+              </p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <template
+                v-for="[itemType, value] of Object.entries(recipeInfo.shoplist)"
+                :key="itemType"
+              >
+                <template v-if="itemType === 'Cargo' || itemType === 'Item'">
+                  <GetheringShopList
+                    v-for="[itemId, quantity] of Object.entries(value)"
+                    :key="`${itemType}-${itemId}`"
+                    :type="itemType"
+                    :id="Number(itemId)"
+                    :quantity="quantity"
+                    :item_desc="allRecipiesFetch.item_desc"
+                    :cargo_desc="allRecipiesFetch.cargo_desc"
+                  />
+                </template>
+              </template>
+            </div>
+          </div>
+        </UCard>
+
+        <UCard v-if="recipeInfo.items && pannelIndexs[0]" :ui="{ body: 'p-4' }">
+          <div class="flex flex-col gap-4">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recipe tree</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300">
+                Explore alternative recipes and total actions required.
+              </p>
+            </div>
+            <RecusiveCraftingRecipe
+              :item="recipeInfo.items"
+              :item_desc="allRecipiesFetch.item_desc"
+              :cargo_desc="allRecipiesFetch.cargo_desc"
+              :item_list_desc="allRecipiesFetch.item_list_desc"
+              :resource-effort-map="resourceEffortMap"
+              :pannel_indexs="pannelIndexs[0]"
+            />
+          </div>
+        </UCard>
+      </template>
+
+      <UEmpty
+        v-else
+        icon="i-lucide-package-search"
+        title="Loading recipe"
+        description="Fetching crafting data for this item."
+      />
+    </div>
+  </UContainer>
 </template>
