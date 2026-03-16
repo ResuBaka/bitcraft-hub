@@ -226,7 +226,7 @@ pub(crate) async fn get_claim_inventory_change_log(
     let (inventory_changes, _num_pages) = QueryCore::find_inventory_changes_by_entity_ids(
         &state.conn,
         inventory_ids,
-        10000,
+        1000,
         params.item_id,
         params.item_type,
         params.user_id,

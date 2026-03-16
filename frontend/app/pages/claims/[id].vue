@@ -637,8 +637,6 @@ const memberColumns = computed(() => {
   ];
 });
 
-const now = useNow({ interval: 1000, controls: true });
-
 const claimTier = computed(() => claimFetch.value?.tier ?? 1);
 
 const upgradesSorted = computed<ClaimTechDesc[]>(() => {

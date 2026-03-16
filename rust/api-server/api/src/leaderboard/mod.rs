@@ -4,14 +4,16 @@ use crate::{AppRouter, AppState, leaderboard};
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use crossbeam_skiplist::SkipSet;
+use crossbeam_channel::{Receiver, Sender, unbounded};
+use crossbeam_skiplist::{SkipMap, SkipSet};
 use dashmap::DashMap;
 use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
-use std::sync::RwLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, RwLock};
 use ts_rs::TS;
 
 #[macro_export]
@@ -187,25 +189,41 @@ pub(crate) struct BucketDistribution {
     pub(crate) count: usize,
 }
 
+// The message sent to the background worker
+enum LeaderboardOp {
+    Update {
+        user_id: i64,
+        old_xp: i64,
+        new_xp: i64,
+    },
+    Remove {
+        user_id: i64,
+        xp: i64,
+    },
+}
+
+pub(super) struct LeaderboardInner {
+    // ID -> XP
+    // pub(crate) scores: DashMap<i64, i64>,
+    // (XP, ID) for sorted iteration
+    sorted_ranks: BTreeMap<(i64, i64), ()>,
+    // Bucket ID -> Atomic Count (Ordered for range scans)
+    bucket_counts: BTreeMap<i64, usize>,
+    // XP -> Atomic Count (Ordered for range scans)
+    xp_counts: BTreeMap<i64, usize>,
+}
+
 pub(super) struct Leaderboard {
-    // DashMap handles concurrent ID -> XP lookups
     pub(crate) scores: DashMap<i64, i64>,
-    // RwLock protects the sorted order for ranking
-    sorted_ranks: SkipSet<(i64, i64)>,
-    // Bucketed counts for faster rank lookups
-    bucket_counts: RwLock<BTreeMap<i64, usize>>,
-    // Exact XP counts to avoid scanning full buckets
-    xp_counts: RwLock<BTreeMap<i64, usize>>,
+    // Protected by RwLock, but only ONE writer (the worker thread)
+    // and many readers. This eliminates write-contention.
+    data: Arc<RwLock<LeaderboardInner>>,
+    tx: Sender<LeaderboardOp>,
 }
 
 impl Default for Leaderboard {
     fn default() -> Self {
-        Self {
-            scores: DashMap::new(),
-            sorted_ranks: SkipSet::new(),
-            bucket_counts: RwLock::new(BTreeMap::new()),
-            xp_counts: RwLock::new(BTreeMap::new()),
-        }
+        Self::new()
     }
 }
 
@@ -217,6 +235,82 @@ impl Leaderboard {
         (5_000_000, 100_000),
         (i64::MAX, 500_000),
     ];
+
+    pub fn new() -> Self {
+        let (tx, rx) = unbounded();
+        let inner = Arc::new(RwLock::new(LeaderboardInner {
+            sorted_ranks: BTreeMap::new(),
+            bucket_counts: BTreeMap::new(),
+            xp_counts: BTreeMap::new(),
+        }));
+
+        let inner_clone = Arc::clone(&inner);
+
+        std::thread::spawn(move || {
+            Self::worker_loop(inner_clone, rx);
+        });
+
+        Self {
+            scores: DashMap::new(),
+            data: inner,
+            tx,
+        }
+    }
+
+    fn worker_loop(inner: Arc<RwLock<LeaderboardInner>>, rx: Receiver<LeaderboardOp>) {
+        let mut batch = Vec::with_capacity(1024);
+
+        while let Ok(first_op) = rx.recv() {
+            // 1. Start a new batch with the first message (blocking)
+            batch.push(first_op);
+
+            // 2. "Drain" the channel of all currently pending messages (non-blocking)
+            // This prevents us from locking/unlocking 1000 times for 1000 messages.
+            while let Ok(op) = rx.try_recv() {
+                batch.push(op);
+                if batch.len() > 5000 {
+                    break;
+                } // Safety cap to prevent starvation
+            }
+
+            // 3. Apply the entire batch in ONE write lock
+            if let Ok(mut guard) = inner.write() {
+                for op in batch.drain(..) {
+                    match op {
+                        LeaderboardOp::Update {
+                            user_id,
+                            old_xp,
+                            new_xp,
+                        } => {
+                            if old_xp != 0 {
+                                guard.sorted_ranks.remove(&(old_xp, user_id));
+                                Self::decrement_btreemap(
+                                    &mut guard.bucket_counts,
+                                    Self::bucket_for(old_xp),
+                                );
+                                Self::decrement_btreemap(&mut guard.xp_counts, old_xp);
+                            }
+                            guard.sorted_ranks.insert((new_xp, user_id), ());
+                            *guard
+                                .bucket_counts
+                                .entry(Self::bucket_for(new_xp))
+                                .or_insert(0) += 1;
+                            *guard.xp_counts.entry(new_xp).or_insert(0) += 1;
+                        }
+                        LeaderboardOp::Remove { user_id, xp } => {
+                            guard.sorted_ranks.remove(&(xp, user_id));
+                            Self::decrement_btreemap(
+                                &mut guard.bucket_counts,
+                                Self::bucket_for(xp),
+                            );
+                            Self::decrement_btreemap(&mut guard.xp_counts, xp);
+                        }
+                    }
+                }
+            }
+            // Write lock is dropped here, allowing readers back in.
+        }
+    }
 
     fn bucket_for(xp: i64) -> i64 {
         let normalized = xp.max(0);
@@ -272,99 +366,106 @@ impl Leaderboard {
         (0, 0)
     }
 
-    pub(crate) fn bucket_distribution(&self) -> Vec<BucketDistribution> {
-        let bucket_counts = self
+    pub fn bucket_distribution(&self) -> Vec<BucketDistribution> {
+        let guard = self.data.read().unwrap();
+        guard
             .bucket_counts
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-        bucket_counts
             .iter()
-            .map(|(bucket, count)| {
-                let (min_xp, max_xp) = Self::bucket_bounds(*bucket);
-
+            .map(|(&bucket, &count)| {
+                let (min_xp, max_xp) = Self::bucket_bounds(bucket);
                 BucketDistribution {
-                    bucket: *bucket,
+                    bucket,
                     min_xp,
                     max_xp,
-                    count: *count,
+                    count,
                 }
             })
             .collect()
     }
 
-    fn increment_bucket(&self, bucket: i64) {
-        let mut bucket_counts = self
-            .bucket_counts
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        *bucket_counts.entry(bucket).or_insert(0) += 1;
-    }
+    // fn increment_bucket(&self, bucket: i64) {
+    //     let mut bucket_counts = self
+    //         .bucket_counts
+    //         .write()
+    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
+    //     *bucket_counts.entry(bucket).or_insert(0) += 1;
+    // }
+    //
+    // fn decrement_bucket(&self, bucket: i64) {
+    //     let mut bucket_counts = self
+    //         .bucket_counts
+    //         .write()
+    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
+    //
+    //     if let Some(entry) = bucket_counts.get_mut(&bucket) {
+    //         if *entry > 0 {
+    //             *entry -= 1;
+    //         }
+    //
+    //         if *entry == 0 {
+    //             bucket_counts.remove(&bucket);
+    //         }
+    //     }
+    // }
+    //
+    // fn increment_xp_count(&self, xp: i64) {
+    //     let mut xp_counts = self
+    //         .xp_counts
+    //         .write()
+    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
+    //     *xp_counts.entry(xp).or_insert(0) += 1;
+    // }
+    //
+    // fn decrement_xp_count(&self, xp: i64) {
+    //     let mut xp_counts = self
+    //         .xp_counts
+    //         .write()
+    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
+    //
+    //     if let Some(entry) = xp_counts.get_mut(&xp) {
+    //         if *entry > 0 {
+    //             *entry -= 1;
+    //         }
+    //
+    //         if *entry == 0 {
+    //             xp_counts.remove(&xp);
+    //         }
+    //     }
+    // }
 
-    fn decrement_bucket(&self, bucket: i64) {
-        let mut bucket_counts = self
-            .bucket_counts
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-        if let Some(entry) = bucket_counts.get_mut(&bucket) {
-            if *entry > 0 {
-                *entry -= 1;
-            }
-
-            if *entry == 0 {
-                bucket_counts.remove(&bucket);
-            }
+    fn increment_count(map: &SkipMap<i64, AtomicUsize>, key: i64) {
+        if let Some(entry) = map.get(&key) {
+            entry.value().fetch_add(1, Ordering::Relaxed);
+        } else {
+            // Entry doesn't exist, try to insert it
+            map.get_or_insert(key, AtomicUsize::new(1));
         }
     }
 
-    fn increment_xp_count(&self, xp: i64) {
-        let mut xp_counts = self
-            .xp_counts
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        *xp_counts.entry(xp).or_insert(0) += 1;
-    }
-
-    fn decrement_xp_count(&self, xp: i64) {
-        let mut xp_counts = self
-            .xp_counts
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-        if let Some(entry) = xp_counts.get_mut(&xp) {
-            if *entry > 0 {
-                *entry -= 1;
-            }
-
-            if *entry == 0 {
-                xp_counts.remove(&xp);
-            }
+    fn decrement_count(map: &SkipMap<i64, AtomicUsize>, key: i64) {
+        if let Some(entry) = map.get(&key) {
+            // Note: In highly concurrent systems, a count might briefly
+            // drop to 0. We leave the key in the map to avoid
+            // the overhead of constant removals.
+            entry.value().fetch_sub(1, Ordering::Relaxed);
         }
     }
 
     pub(super) fn update(&self, user_id: i64, new_xp: i64) {
-        // 1. Get or initialize current score
-        let mut current_xp_ref = self.scores.entry(user_id).or_insert(0);
-        let old_xp = *current_xp_ref;
+        let mut entry = self.scores.entry(user_id).or_insert(0);
+        let old_xp = *entry.value();
 
-        if (old_xp == new_xp && new_xp != 0) || EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id) {
+        if old_xp == new_xp {
             return;
         }
 
-        // 2. If it's an update, remove the old entry from the sorted set
-        if old_xp != new_xp || self.sorted_ranks.contains(&(old_xp, user_id)) {
-            if self.sorted_ranks.remove(&(old_xp, user_id)).is_some() {
-                self.decrement_bucket(Self::bucket_for(old_xp));
-                self.decrement_xp_count(old_xp);
-            }
-        }
-
-        // 3. Update both structures
-        *current_xp_ref = new_xp;
-        self.sorted_ranks.insert((new_xp, user_id));
-        self.increment_bucket(Self::bucket_for(new_xp));
-        self.increment_xp_count(new_xp);
+        *entry = new_xp;
+        // The "Write" is now just a channel send. Extremely fast.
+        let _ = self.tx.send(LeaderboardOp::Update {
+            user_id,
+            old_xp,
+            new_xp,
+        });
     }
 
     pub(super) fn has(&self, user_id: &i64) -> bool {
@@ -380,89 +481,73 @@ impl Leaderboard {
     }
 
     pub(super) fn get_rank(&self, user_id: i64) -> Option<usize> {
-        let xp = self.scores.get(&user_id).map(|entry| *entry.value())?;
+        let xp = *self.scores.get(&user_id)?;
+        let guard = self.data.read().ok()?;
+
         let bucket = Self::bucket_for(xp);
         let (_, bucket_max) = Self::bucket_bounds(bucket);
 
-        let bucket_counts = self
+        let higher_count: usize = guard
             .bucket_counts
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let higher_count: usize = bucket_counts
             .range((bucket + 1)..)
-            .map(|(_, count)| *count)
+            .map(|(_, &c)| c)
             .sum();
-        if !bucket_counts.contains_key(&bucket) {
-            return None;
-        }
-        drop(bucket_counts);
-
-        let xp_counts = self
-            .xp_counts
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let above_same_bucket_higher_xp: usize = if xp >= bucket_max {
             0
         } else {
-            xp_counts
+            guard
+                .xp_counts
                 .range((xp + 1)..=bucket_max)
-                .map(|(_, count)| *count)
+                .map(|(_, &c)| c)
                 .sum()
         };
-        let same_xp_count = *xp_counts.get(&xp)?;
-        drop(xp_counts);
 
-        let key = (xp, user_id);
-        let mut tie_rank_from_top = 0usize;
-        let mut found = false;
-
-        for entry in self.sorted_ranks.range(key..=(xp, i64::MAX)).rev() {
-            tie_rank_from_top += 1;
-            if *entry.value() == key {
-                found = true;
-                break;
-            }
+        // Tie-break scan in BTreeMap is very fast (cache friendly)
+        let mut tie_rank = 0;
+        for ((entry_xp, _), _) in guard.sorted_ranks.range((xp, user_id)..=(xp, i64::MAX)) {
+            tie_rank += 1;
         }
 
-        if !found {
-            return None;
-        }
-
-        if tie_rank_from_top > same_xp_count {
-            return None;
-        }
-
-        Some(higher_count + above_same_bucket_higher_xp + tie_rank_from_top)
+        Some(higher_count + above_same_bucket_higher_xp + tie_rank)
     }
 
     pub(super) fn remove(&self, user_id: i64) {
-        let xp = self.scores.get(&user_id).map(|entry| *entry.value());
-
-        if let Some(x) = xp {
-            if self.sorted_ranks.remove(&(x, user_id)).is_some() {
-                self.decrement_bucket(Self::bucket_for(x));
-                self.decrement_xp_count(x);
-            }
+        if let Some((_, xp)) = self.scores.remove(&user_id) {
+            let _ = self.tx.send(LeaderboardOp::Remove { user_id, xp });
         }
     }
 
     pub(super) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
-        self.sorted_ranks
+        // Acquire the read lock.
+        // This will only block if the background thread is currently applying a batch.
+        let guard = self.data.read().unwrap_or_else(|p| p.into_inner());
+
+        guard
+            .sorted_ranks
             .iter()
-            .rev()
-            .enumerate()
+            .rev() // Highest XP first
             .skip(offset)
             .take(limit)
-            .map(|(idx, entry)| {
-                let entry = entry.value();
-
+            .enumerate()
+            .map(|(idx, (&(xp, user_id), _))| {
                 LeaderboardEntry {
-                    rank: idx + 1,
-                    user_id: entry.1,
-                    xp: entry.0,
+                    // rank is offset + current index + 1 (for 1-based ranking)
+                    rank: offset + idx + 1,
+                    user_id,
+                    xp,
                 }
             })
             .collect()
+    }
+
+    fn decrement_btreemap(map: &mut BTreeMap<i64, usize>, key: i64) {
+        if let Some(count) = map.get_mut(&key) {
+            if *count <= 1 {
+                map.remove(&key);
+            } else {
+                *count -= 1;
+            }
+        }
     }
 }
 
@@ -914,26 +999,26 @@ pub(crate) async fn player_leaderboard(
         ));
     }
 
-    let rank = if let Some (rank) = state.ranking_system.global_leaderboard.get_rank(player_id) {
+    let rank = if let Some(rank) = state.ranking_system.global_leaderboard.get_rank(player_id) {
         rank
     } else {
-        tracing::warn!(player_id,"Could not find total experience rank for player");
+        tracing::warn!(player_id, "Could not find total experience rank for player");
 
         0
     };
 
-    let total_experience = if let Some (total_experience) = state
+    let total_experience = if let Some(total_experience) = state
         .ranking_system
         .global_leaderboard
         .scores
-        .get(&player_id) {
+        .get(&player_id)
+    {
         total_experience.value().clone()
     } else {
         tracing::warn!(player_id, "Could not find total experience xp for player");
 
         0
     };
-
 
     results.push((
         "Experience".to_string(),

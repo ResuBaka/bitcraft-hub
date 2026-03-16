@@ -3,9 +3,7 @@ use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::building_state::ActiveModel;
 use game_module::module_bindings::{BuildingDesc, BuildingNicknameState, BuildingState};
 use migration::{OnConflict, sea_query};
-use sea_orm::{
-    ColumnTrait, DbErr, EntityTrait, InsertResult, IntoActiveModel, QueryFilter,
-};
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, InsertResult, IntoActiveModel, QueryFilter};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;

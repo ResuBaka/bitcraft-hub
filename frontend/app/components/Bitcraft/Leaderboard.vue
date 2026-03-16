@@ -57,6 +57,9 @@ const topics = computed(() => {
   }
 
   for (const player of leaderboard.value.leaderboard[selectedSkills.value]) {
+    if (player === undefined) {
+      continue
+    }
     topicsSet.add(`experience:${selectedSkills.value}.${player.player_id.toString()}`);
   }
 
@@ -98,6 +101,9 @@ const totalExperienceTopics = computed(() => {
   let topicsSet = new Set<string>();
 
   for (const player of leaderboard.value.leaderboard["Experience"]) {
+    if (player === undefined) {
+      continue
+    }
     topicsSet.add(`total_experience.${player.player_id.toString()}`);
   }
 
@@ -105,9 +111,13 @@ const totalExperienceTopics = computed(() => {
 });
 
 registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (message) => {
-  const skill = leaderboard.value?.leaderboard["Experience"].findIndex(
-    (item) => item.player_id === message.user_id,
-  );
+  const skill = leaderboard.value?.leaderboard["Experience"].findIndex((item) => {
+    if (item === undefined) {
+      return false
+    }
+
+    return item.player_id === message.user_id
+  });
 
   if (skill) {
     leaderboard.value.leaderboard["Experience"][skill].experience = message.experience;
