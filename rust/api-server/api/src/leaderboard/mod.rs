@@ -8,12 +8,13 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use crossbeam_skiplist::{SkipMap, SkipSet};
 use dashmap::DashMap;
 use log::error;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
 use ts_rs::TS;
 
 #[macro_export]
@@ -274,7 +275,7 @@ impl Leaderboard {
             }
 
             // 3. Apply the entire batch in ONE write lock
-            if let Ok(mut guard) = inner.write() {
+            if let mut guard = inner.write() {
                 for op in batch.drain(..) {
                     match op {
                         LeaderboardOp::Update {
@@ -367,7 +368,7 @@ impl Leaderboard {
     }
 
     pub fn bucket_distribution(&self) -> Vec<BucketDistribution> {
-        let guard = self.data.read().unwrap();
+        let guard = self.data.read();
         guard
             .bucket_counts
             .iter()
@@ -452,20 +453,30 @@ impl Leaderboard {
     }
 
     pub(super) fn update(&self, user_id: i64, new_xp: i64) {
-        let mut entry = self.scores.entry(user_id).or_insert(0);
-        let old_xp = *entry.value();
+        // We use a block here to ensure the DashMap 'entry' guard
+        // is dropped immediately after the value is updated.
+        let update_needed = {
+            let mut entry = self.scores.entry(user_id).or_insert(0);
+            let old_xp = *entry.value();
 
-        if old_xp == new_xp {
-            return;
+            if old_xp == new_xp && new_xp != 0 {
+                None
+            } else {
+                let old_val = old_xp;
+                *entry = new_xp;
+                // Return the data we need for the background worker
+                Some((old_val, new_xp))
+            }
+        };
+
+        // NOW we send to the channel. The DashMap shard is already unlocked.
+        if let Some((old_xp, new_xp)) = update_needed {
+            let _ = self.tx.send(LeaderboardOp::Update {
+                user_id,
+                old_xp,
+                new_xp,
+            });
         }
-
-        *entry = new_xp;
-        // The "Write" is now just a channel send. Extremely fast.
-        let _ = self.tx.send(LeaderboardOp::Update {
-            user_id,
-            old_xp,
-            new_xp,
-        });
     }
 
     pub(super) fn has(&self, user_id: &i64) -> bool {
@@ -481,8 +492,8 @@ impl Leaderboard {
     }
 
     pub(super) fn get_rank(&self, user_id: i64) -> Option<usize> {
-        let xp = *self.scores.get(&user_id)?;
-        let guard = self.data.read().ok()?;
+        let xp = self.scores.get(&user_id).map(|r| *r.value())?;
+        let guard = self.data.read();
 
         let bucket = Self::bucket_for(xp);
         let (_, bucket_max) = Self::bucket_bounds(bucket);
@@ -520,7 +531,7 @@ impl Leaderboard {
     pub(super) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
         // Acquire the read lock.
         // This will only block if the background thread is currently applying a batch.
-        let guard = self.data.read().unwrap_or_else(|p| p.into_inner());
+        let guard = self.data.read();
 
         guard
             .sorted_ranks
@@ -738,14 +749,7 @@ pub(crate) async fn get_top_100(
             player_id: entry.user_id,
             player_name: None,
             experience: entry.xp,
-            experience_per_hour: state
-                .ranking_system
-                .xp_per_hour
-                .scores
-                .get(&entry.user_id)
-                .unwrap()
-                .value()
-                .clone() as i32,
+            experience_per_hour: 0,
             rank: rank as u64,
         }));
     }
@@ -929,62 +933,30 @@ pub(crate) async fn player_leaderboard(
 
         let player_name = None;
 
-        let (skill_exp, rank) = if let Some(a) = state
+        let (skill_exp, rank) = if let Some(rank) = state
             .ranking_system
             .skill_leaderboards
             .get(&skill.id)
             .unwrap()
-            .scores
-            .get(&player_id)
+            .get_rank(player_id)
         {
-            let rank = state
+            let a = state
                 .ranking_system
                 .skill_leaderboards
                 .get(&skill.id)
                 .unwrap()
-                .get_rank(player_id);
+                .scores
+                .get(&player_id)
+                .map(|r| *r.value());
 
-            (a.clone(), rank.unwrap())
+            (a.unwrap(), rank.clone())
         } else {
-            let db = state.conn.clone();
-            let (entrie, _rank) = Query::get_experience_state_player_by_skill_id(
-                &db,
-                skill.id,
+            tracing::warn!(
                 player_id,
-                Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-            )
-            .await
-            .map_err(|error| {
-                error!("Error: {error}");
-
-                (StatusCode::INTERNAL_SERVER_ERROR, "")
-            })?;
-
-            if let Some(result) = entrie {
-                state
-                    .ranking_system
-                    .skill_leaderboards
-                    .get(&skill.id)
-                    .unwrap()
-                    .update(player_id.clone(), result.experience as i64);
-
-                let rank = state
-                    .ranking_system
-                    .skill_leaderboards
-                    .get(&skill.id)
-                    .unwrap()
-                    .get_rank(player_id);
-
-                (result.experience as i64, rank.unwrap())
-            } else {
-                tracing::warn!(
-                    player_id,
-                    skill_id = skill.id,
-                    "Could not find player skill experience"
-                );
-
-                (0, 0)
-            }
+                skill_id = skill.id,
+                "Could not find skill experience rank for player"
+            );
+            continue;
         };
 
         results.push((
@@ -1036,15 +1008,24 @@ pub(crate) async fn player_leaderboard(
         .ranking_system
         .level_leaderboard
         .scores
-        .get(&player_id);
+        .get(&player_id)
+        .map(|r| *r.value());
 
     results.push((
         "Level".to_string(),
         RankType::Level(LeaderboardLevel {
             player_id,
             player_name: None,
-            level: level.unwrap().value().clone() as u32,
-            rank: rank.unwrap() as u64,
+            level: level.unwrap_or_else(|| {
+                tracing::warn!(player_id, "Level leaderboard has no level player");
+
+                0
+            }) as u32,
+            rank: rank.unwrap_or_else(|| {
+                tracing::warn!(player_id, "Level leaderboard has no rank player");
+
+                0
+            }) as u64,
         }),
     ));
 

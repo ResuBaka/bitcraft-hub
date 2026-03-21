@@ -9,6 +9,7 @@ use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, NotSet, Set};
+use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::Event;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -164,6 +165,7 @@ pub(crate) fn start_worker_inventory_state(
                                 let mut caller_identity = None;
                                 let mut timestamp = None;
                                 if let Some(Event::Reducer(event)) = &event {
+                                    // tracing::error!("Eventname: {}", event.reducer.reducer_name());
                                     caller_identity = Some(event.caller_identity);
                                     timestamp = Some(event.timestamp);
                                 }

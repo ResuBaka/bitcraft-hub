@@ -5,12 +5,12 @@ use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use entity::inventory::{
-    ExpendedRefrence, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
+    ExpendedRefrence, InventorySummary, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
 use entity::{cargo_desc, inventory, inventory_changelog, item_desc};
 use futures::TryStreamExt;
 use log::error;
-use sea_orm::EntityTrait;
+use sea_orm::{DbBackend, EntityTrait, FromQueryResult, Statement};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
@@ -283,6 +283,29 @@ pub(crate) async fn all_inventory_stats(
     //     }
     // }
 
+    let sql = r#"
+        SELECT
+            COALESCE(SUM((content->>'quantity')::bigint), 0)::bigint AS total_quantity,
+            (content->>'item_id')::integer AS item_id,
+            content->'item_type' AS item_type
+        FROM (
+            SELECT jsonb_path_query(pockets, '$[*].contents ? (@ != null)') AS content
+            FROM inventory
+        ) AS item_extraction
+        GROUP BY item_id, item_type;
+    "#;
+
+    let mut results = InventorySummary::find_by_statement(Statement::from_string(
+        DbBackend::Postgres,
+        sql.to_string(),
+    ))
+    .stream(&state.conn)
+    .await
+    .map_err(|e| {
+        error!("Error: {e:?}");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+    })?;
+
     let mut items: HashMap<i32, (i64, Option<::entity::item_desc::Model>)> = HashMap::new();
     let mut cargo: HashMap<i32, (i64, Option<::entity::cargo_desc::Model>)> = HashMap::new();
 
@@ -294,36 +317,32 @@ pub(crate) async fn all_inventory_stats(
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
 
-    while let Some(inventory) = inventorys.try_next().await.map_err(|e| {
+    while let Some(contents) = results.try_next().await.map_err(|e| {
         error!("Error: {e:?}");
         (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
     })? {
-        for pocket in &inventory.pockets {
-            if let Some(contents) = pocket.contents.clone() {
-                if contents.item_type == ItemType::Item {
-                    items
-                        .entry(contents.item_id)
-                        .and_modify(|(qty, _)| qty.add_assign(contents.quantity as i64))
-                        .or_insert((
-                            contents.quantity as i64,
-                            state
-                                .item_desc
-                                .get(&contents.item_id)
-                                .map(|item_desc| item_desc.to_owned()),
-                        ));
-                } else {
-                    cargo
-                        .entry(contents.item_id)
-                        .and_modify(|(qty, _)| qty.add_assign(contents.quantity as i64))
-                        .or_insert((
-                            contents.quantity as i64,
-                            state
-                                .cargo_desc
-                                .get(&contents.item_id)
-                                .map(|cargo_desc| cargo_desc.to_owned()),
-                        ));
-                }
-            }
+        if contents.item_type == ItemType::Item {
+            items
+                .entry(contents.item_id)
+                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity as i64))
+                .or_insert((
+                    contents.total_quantity as i64,
+                    state
+                        .item_desc
+                        .get(&contents.item_id)
+                        .map(|item_desc| item_desc.to_owned()),
+                ));
+        } else {
+            cargo
+                .entry(contents.item_id)
+                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity as i64))
+                .or_insert((
+                    contents.total_quantity as i64,
+                    state
+                        .cargo_desc
+                        .get(&contents.item_id)
+                        .map(|cargo_desc| cargo_desc.to_owned()),
+                ));
         }
     }
 

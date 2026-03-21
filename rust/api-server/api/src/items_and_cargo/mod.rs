@@ -47,8 +47,6 @@ pub(crate) struct ItemsAndCargoParams {
 #[ts(export)]
 pub(crate) struct ItemsAndCargoResponse {
     items: Vec<ItemCargo>,
-    tags: Vec<String>,
-    tiers: Vec<i64>,
     per_page: u64,
     total: u64,
     page: u64,
@@ -277,8 +275,6 @@ pub(crate) async fn list_items_and_cargo(
     merged_tags.sort();
     Ok(axum_codec::Codec(ItemsAndCargoResponse {
         items,
-        tiers: merged_tiers,
-        tags: merged_tags,
         per_page: posts_per_page,
         total: merged_items_and_cargo.len() as u64,
         page,

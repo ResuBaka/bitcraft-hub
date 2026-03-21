@@ -797,6 +797,7 @@ async fn connect_to_db_logic(
         "claim_tech_desc",
         "resource_desc",
         "extraction_recipe_desc",
+        "progressive_action_state",
         "identity_role",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
@@ -1099,6 +1100,11 @@ async fn connect_to_db_logic(
                         data: npc_desc,
                     },
                 );
+            }
+
+            let npc_desc = ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
+            if !npc_desc.is_empty() {
+                tracing::info!("progressive_action_state, {:?}", npc_desc.len())
             }
 
             let tmp_database_name_arc = database_name_arc.clone();

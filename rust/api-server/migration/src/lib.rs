@@ -41,6 +41,7 @@ mod m20260216_000001_create_resource_tables;
 mod m20260225_202858_handle_ea_part_2;
 mod m20260227_160220_add_new_fields_to_claim_tech_desc;
 mod m20260301_131918_add_region_to_travler_tasks_state;
+mod m20260321_113758_inventory_pocket_jsonb;
 
 pub struct Migrator;
 
@@ -89,6 +90,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260225_202858_handle_ea_part_2::Migration),
             Box::new(m20260227_160220_add_new_fields_to_claim_tech_desc::Migration),
             Box::new(m20260301_131918_add_region_to_travler_tasks_state::Migration),
+            Box::new(m20260321_113758_inventory_pocket_jsonb::Migration),
         ]
     }
 }

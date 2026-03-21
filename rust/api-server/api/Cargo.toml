@@ -48,6 +48,7 @@ sea-orm-cli =  { workspace = true }
 crossbeam-skiplist = { version = "0.1.3" }
 crossbeam-channel = "0.5.15"
 jemalloc_pprof = "0.8.2"
+parking_lot = "0.12.5"
 
 [dev-dependencies]
 criterion = "0.5.1"

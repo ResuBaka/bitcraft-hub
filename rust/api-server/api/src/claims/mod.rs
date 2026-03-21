@@ -401,60 +401,34 @@ pub(crate) async fn get_claim(
         }
     }
 
-    for member in claim.members.iter_mut() {
-        for skill in state.skill_desc.iter() {
-            if skill.skill_category == 0 {
-                continue;
-            }
+    for skill in state.skill_desc.iter() {
+        if skill.skill_category == 0 {
+            continue;
+        }
 
-            let level = if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id) {
-                if let Some(a) = a.scores.get(&member.entity_id) {
+        if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id) {
+            for member in claim.members.iter_mut() {
+                let level = if let Some(a) = a.scores.get(&member.entity_id) {
                     experience_to_level(a.clone())
                 } else {
-                    let db = state.conn.clone();
-                    let (entrie, _rank) = service::Query::get_experience_state_player_by_skill_id(
-                        &db,
-                        skill.id,
+                    tracing::warn!(
                         member.entity_id,
-                        Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-                    )
-                    .await
-                    .map_err(|error| {
-                        error!("Error: {error}");
+                        skill_id = skill.id,
+                        "Could not find player skill experience"
+                    );
 
-                        (StatusCode::INTERNAL_SERVER_ERROR, "")
-                    })?;
-
-                    if let Some(result) = entrie {
-                        state
-                            .ranking_system
-                            .skill_leaderboards
-                            .get(&skill.id)
-                            .unwrap()
-                            .update(member.entity_id.clone(), result.experience as i64);
-
-                        experience_to_level(result.experience as i64)
-                    } else {
-                        tracing::warn!(
-                            member.entity_id,
-                            skill_id = skill.id,
-                            "Could not find player skill experience"
-                        );
-
-                        0
-                    }
+                    0
+                };
+                if member.skills_ranks.is_none() {
+                    member.skills_ranks = Some(BTreeMap::new());
                 }
-            } else {
-                continue;
-            };
 
-            if member.skills_ranks.is_none() {
-                member.skills_ranks = Some(BTreeMap::new());
+                let skills_ranks = member.skills_ranks.as_mut().unwrap();
+                skills_ranks.insert(skill.name.clone(), level);
             }
-
-            let skills_ranks = member.skills_ranks.as_mut().unwrap();
-            skills_ranks.insert(skill.name.clone(), level);
-        }
+        } else {
+            continue;
+        };
     }
     for member in &mut claim.members {
         let (inventorys, _num_pages) = QueryCore::find_inventory_by_owner_entity_ids_and_index(

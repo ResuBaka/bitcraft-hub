@@ -3,7 +3,7 @@
 use crate::{cargo_desc, item_desc};
 use game_module::module_bindings::InventoryState;
 use sea_orm::entity::prelude::*;
-use sea_orm::{FromJsonQueryResult, JsonValue};
+use sea_orm::{FromJsonQueryResult, FromQueryResult, JsonValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -12,7 +12,7 @@ use ts_rs::TS;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
-    #[sea_orm(column_type = "Json")]
+    #[sea_orm(column_type = "JsonBinary")]
     pub pockets: Vec<Pocket>,
     pub inventory_index: i32,
     pub cargo_index: i32,
@@ -207,4 +207,11 @@ impl ModelBuilder {
             region: self.region,
         }
     }
+}
+
+#[derive(Debug, FromQueryResult, Serialize, Deserialize)]
+pub struct InventorySummary {
+    pub total_quantity: i64,
+    pub item_id: i32, // Adjust type (i64/String) based on your actual data
+    pub item_type: ItemType,
 }
