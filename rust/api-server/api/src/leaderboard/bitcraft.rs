@@ -44,13 +44,13 @@ pub(crate) fn start_worker_experience_state(
                                     .filter(::entity::experience_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
+                                    .unwrap_or_else(|error| {
                                         tracing::error!(
                                             error = error.to_string(),
                                             "Error while query whole experience_state state"
                                         );
                                         vec![]
-                                    },|aa| aa)
+                                    })
                                     .into_par_iter()
                                     .map(|value| {
                                         let entity_id = value.entity_id;
@@ -95,7 +95,7 @@ pub(crate) fn start_worker_experience_state(
                                             let existing_model = entry.get();
                                             if &model != existing_model {
                                                 if let Some(skill_leaderboard) = global_app_state.ranking_system.skill_leaderboards.get_mut(&(model.skill_id as i64)) {
-                                                    skill_leaderboard.update(model.entity_id as i64, model.experience as i64);
+                                                    skill_leaderboard.update(model.entity_id, model.experience as i64);
                                                 }
 
                                                 local_messages.push(model.into_active_model());
@@ -163,7 +163,7 @@ pub(crate) fn start_worker_experience_state(
                                 global_app_state.ranking_system.xp_per_hour.update(new.entity_id as i64, xp_per_hour);
 
                                 if let Some(current_score) = current_score {
-                                    let current_known_xp = current_score.value().clone();
+                                    let current_known_xp = *current_score.value();
 
                                     if current_known_xp < total_exp {
                                         global_app_state.ranking_system.global_leaderboard.update(new.entity_id as i64, total_exp);
@@ -282,7 +282,7 @@ pub(crate) fn start_worker_experience_state(
                                                     let _ = global_app_state.tx.send(WebSocketMessages::Experience {
                                                         level: new_level as u64,
                                                         experience: new_skill.quantity as u64,
-                                                        rank: post_rank.unwrap_or_else(|| 0) as u64,
+                                                        rank: post_rank.unwrap_or(0) as u64,
                                                         skill_name,
                                                         user_id: id,
                                                     });
@@ -349,7 +349,7 @@ pub(crate) fn start_worker_experience_state(
                                         experience: new_total_exp as u64,
                                         user_id: id,
                                         experience_per_hour: xp_per_hour as u64,
-                                        rank: post_rank.unwrap_or_else(|| 0) as u64
+                                        rank: post_rank.unwrap_or(0) as u64
                                     });
                                 }
 
@@ -358,7 +358,16 @@ pub(crate) fn start_worker_experience_state(
                                         .await;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name, .. } => {
+                                if let Some(reducer_name) = &reducer_name {
+                                    match reducer_name {
+                                        &"transfer_player_delayed" => {
+                                            continue
+                                        }
+                                        _ => {}
+                                    }
+                                }
+
                                 let id = delete.entity_id as i64;
                                 let mut total_exp = 0;
                                 let vec_es = delete.experience_stacks.iter().map(|es| {

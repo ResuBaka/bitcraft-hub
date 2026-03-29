@@ -5,7 +5,7 @@ use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use crossbeam_channel::{Receiver, Sender, unbounded};
-use crossbeam_skiplist::{SkipMap, SkipSet};
+use crossbeam_skiplist::SkipMap;
 use dashmap::DashMap;
 use log::error;
 use parking_lot::RwLock;
@@ -483,12 +483,8 @@ impl Leaderboard {
         self.scores.contains_key(user_id)
     }
 
-    pub(super) fn get_value<'a>(&self, user_id: &i64) -> Option<i64> {
-        if let Some(xp) = self.scores.get(user_id) {
-            Some(*xp)
-        } else {
-            None
-        }
+    pub(super) fn get_value(&self, user_id: &i64) -> Option<i64> {
+        self.scores.get(user_id).map(|xp| *xp)
     }
 
     pub(super) fn get_rank(&self, user_id: i64) -> Option<usize> {
@@ -515,7 +511,7 @@ impl Leaderboard {
 
         // Tie-break scan in BTreeMap is very fast (cache friendly)
         let mut tie_rank = 0;
-        for ((entry_xp, _), _) in guard.sorted_ranks.range((xp, user_id)..=(xp, i64::MAX)) {
+        for ((_entry_xp, _), _) in guard.sorted_ranks.range((xp, user_id)..=(xp, i64::MAX)) {
             tie_rank += 1;
         }
 
@@ -687,7 +683,7 @@ pub(crate) async fn get_top_100(
     for (i, entry) in entries_time_played.into_iter().enumerate() {
         let rank = i + 1;
         leaderboard.push(RankType::Time(LeaderboardTime {
-            player_id: entry.user_id as i64,
+            player_id: entry.user_id,
             player_name: None,
             time_played: entry.xp as u64,
             rank: rank as u64,
@@ -701,7 +697,7 @@ pub(crate) async fn get_top_100(
     for (i, entry) in entries_time_signed_in.into_iter().enumerate() {
         let rank = i + 1;
         leaderboard.push(RankType::Time(LeaderboardTime {
-            player_id: entry.user_id as i64,
+            player_id: entry.user_id,
             player_name: None,
             time_played: entry.xp as u64,
             rank: rank as u64,
@@ -822,6 +818,12 @@ pub(crate) async fn get_top_100(
         .into_iter()
         .map(|x| (x.entity_id, x.username))
         .collect::<HashMap<i64, String>>();
+
+    for player_id in &player_ids {
+        if !players_name_by_id.contains_key(player_id) {
+            tracing::warn!("Player {} not found", player_id);
+        }
+    }
 
     for (_, top) in leaderboard_result.iter_mut() {
         for x in top.iter_mut() {
@@ -949,7 +951,7 @@ pub(crate) async fn player_leaderboard(
                 .get(&player_id)
                 .map(|r| *r.value());
 
-            (a.unwrap(), rank.clone())
+            (a.unwrap(), rank)
         } else {
             tracing::warn!(
                 player_id,
@@ -962,7 +964,7 @@ pub(crate) async fn player_leaderboard(
         results.push((
             skill.name.clone(),
             RankType::Skill(LeaderboardSkill {
-                player_id: player_id.clone(),
+                player_id,
                 player_name,
                 experience: skill_exp as i32,
                 level: experience_to_level(skill_exp),
@@ -985,7 +987,7 @@ pub(crate) async fn player_leaderboard(
         .scores
         .get(&player_id)
     {
-        total_experience.value().clone()
+        *total_experience.value()
     } else {
         tracing::warn!(player_id, "Could not find total experience xp for player");
 

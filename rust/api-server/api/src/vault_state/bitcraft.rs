@@ -43,13 +43,13 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                     .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole vault_state_collectibles state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole vault_state_collectibles state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -205,8 +205,8 @@ async fn insert_multiple_vault_state_collectibles(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting VaultState: {}", insert.unwrap_err())
+    if let Err(err) = insert {
+        tracing::error!("Error inserting VaultState: {}", err)
     }
 
     messages.clear();

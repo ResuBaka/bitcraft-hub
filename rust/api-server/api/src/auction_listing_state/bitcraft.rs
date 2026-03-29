@@ -189,8 +189,8 @@ async fn insert_multiple_trade_order(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting TradeOrder: {}", insert.unwrap_err())
+    if let Err(err) = insert {
+        tracing::error!("Error inserting TradeOrder: {}", err)
     }
 
     messages.clear();

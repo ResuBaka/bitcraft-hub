@@ -43,13 +43,13 @@ pub(crate) fn start_worker_building_state(
                                     .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole building_state state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole building_state state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -77,16 +77,16 @@ pub(crate) fn start_worker_building_state(
                                     if local_messages.len() >= batch_size {
                                        let insert = insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
 
-                                        if insert.is_err() {
-                                            tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
+                                        if let Err(err) = insert {
+                                            tracing::error!("Error inserting ItemListDesc: {}", err)
                                         }
                                     }
                                 };
                                 if !local_messages.is_empty() {
                                     let insert = insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
 
-                                    if insert.is_err() {
-                                        tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
+                                    if let Err(err) = insert {
+                                        tracing::error!("Error inserting ItemListDesc: {}", err)
                                     }
                                 }
 
@@ -164,8 +164,8 @@ pub(crate) fn start_worker_building_state(
                     insert_multiple_building_state(&global_app_state, &on_conflict, &mut messages)
                         .await;
 
-                if insert.is_err() {
-                    tracing::error!("Error inserting ItemListDesc: {}", insert.unwrap_err())
+                if let Err(err) = insert {
+                    tracing::error!("Error inserting ItemListDesc: {}", err)
                 }
 
                 // Your batch processing logic here
@@ -264,13 +264,13 @@ pub(crate) fn start_worker_building_desc(
                                 let mut currently_known_building_desc = ::entity::building_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole building_desc state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole building_desc state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.id, value))
                                     .collect::<HashMap<_, _>>();
@@ -410,8 +410,8 @@ async fn insert_multiple_build_desc(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting BuildingDesc: {}", insert.unwrap_err())
+    if let Err(err) = insert {
+        tracing::error!("Error inserting BuildingDesc: {}", err)
     }
 
     messages.clear();
@@ -446,13 +446,13 @@ pub(crate) fn start_worker_building_nickname_state(
                                     .filter(::entity::building_nickname_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole building_nickname_state state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole building_nickname_state state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -599,11 +599,8 @@ async fn insert_multiple_building_nickname_state(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!(
-            "Error inserting BuildingNicknameState: {}",
-            insert.unwrap_err()
-        )
+    if let Err(err) = insert {
+        tracing::error!("Error inserting BuildingNicknameState: {}", err)
     }
 
     messages.clear();

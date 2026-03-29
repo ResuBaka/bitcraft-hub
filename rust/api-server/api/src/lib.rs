@@ -1652,7 +1652,9 @@ fn setup_tracing(cfg: &Config) {
         let log_level = &cfg.log_level;
 
         const CRATE_NAME: &str = env!("CARGO_CRATE_NAME");
-        format!("{CRATE_NAME}={log_level},axum={log_level},spacetimedb_sdk={log_level}",)
+        println!("RUST_LOG={log_level} CRATE_NAME={CRATE_NAME}");
+
+        format!("{CRATE_NAME}={log_level},axum={log_level},spacetimedb_sdk={log_level},tungstenite=warn",)
         // format!("{CRATE_NAME}={log_level},axum={log_level}",)
     });
 

@@ -45,13 +45,13 @@ pub(crate) fn start_worker_deployable_state(
                                     .filter(::entity::deployable_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole deployable_state state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole deployable_state state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -188,8 +188,8 @@ async fn insert_multiple_deployable_state(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting ClaimTechDesc: {}", insert.unwrap_err())
+    if let Err(err) = insert {
+        tracing::error!("Error inserting ClaimTechDesc: {}", err)
     }
 
     messages.clear();

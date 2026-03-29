@@ -7,7 +7,6 @@ use axum::http::StatusCode;
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing;
 use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -499,6 +498,6 @@ async fn get_usernames_for_ids(state: &AppState, user_ids: &[i64]) -> HashMap<i6
 
     models
         .into_iter()
-        .map(|u| (u.entity_id as i64, u.username))
+        .map(|u| (u.entity_id, u.username))
         .collect()
 }

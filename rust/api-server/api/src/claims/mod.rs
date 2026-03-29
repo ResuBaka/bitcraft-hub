@@ -4,7 +4,7 @@ pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
 
 use crate::inventory::{InventoryChangesParams, resolve_contents, resolve_pocket};
-use crate::leaderboard::{EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardSkill, experience_to_level};
+use crate::leaderboard::experience_to_level;
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
@@ -183,9 +183,6 @@ pub(crate) async fn get_claim_tiles(
     ))
 }
 
-type ClaimLeaderboardTasks =
-    Vec<JoinHandle<Result<(String, Vec<LeaderboardSkill>), (StatusCode, &'static str)>>>;
-
 struct InventoryJobResult {
     key: String,
     inventorys: Vec<ExpendedRefrence>,
@@ -246,7 +243,7 @@ pub(crate) async fn get_claim(
     axum_codec::Codec<ClaimDescriptionStateWithInventoryAndPlayTime>,
     (StatusCode, &'static str),
 > {
-    let mut claim = match state.claim_state.get(&(id as i64)) {
+    let claim = match state.claim_state.get(&(id as i64)) {
         Some(claim) => claim.clone(),
         None => {
             let claim = QueryCore::find_claim_state(&state.conn, id as i64)
@@ -346,9 +343,9 @@ pub(crate) async fn get_claim(
 
     match claim_tech_state {
         Some(claim_tech_state) => {
-            claim.running_upgrade = if let Some(_) = state
+            claim.running_upgrade = if state
                 .tech_tier_research_map
-                .get(&claim_tech_state.researching)
+                .contains_key(&claim_tech_state.researching)
             {
                 Some(
                     state
@@ -371,11 +368,10 @@ pub(crate) async fn get_claim(
 
             if !found_tiers.is_empty() {
                 claim.tier = Some(
-                    state
+                    *state
                         .tech_tier_research_map
                         .get(&found_tiers[found_tiers.len() - 1])
-                        .unwrap()
-                        .clone(),
+                        .unwrap(),
                 );
             } else {
                 claim.tier = Some(1);
@@ -409,7 +405,7 @@ pub(crate) async fn get_claim(
         if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id) {
             for member in claim.members.iter_mut() {
                 let level = if let Some(a) = a.scores.get(&member.entity_id) {
-                    experience_to_level(a.clone())
+                    experience_to_level(*a)
                 } else {
                     tracing::warn!(
                         member.entity_id,
@@ -916,9 +912,9 @@ pub(crate) async fn list_claims(
 
             match claim_tech_state {
                 Some(claim_tech_state) => {
-                    claim_description.running_upgrade = if let Some(_) = state
+                    claim_description.running_upgrade = if state
                         .tech_tier_research_map
-                        .get(&claim_tech_state.researching)
+                        .contains_key(&claim_tech_state.researching)
                     {
                         Some(
                             state
@@ -934,13 +930,8 @@ pub(crate) async fn list_claims(
                     let learned: Vec<i32> = claim_tech_state.learned.clone();
                     claim_description.upgrades = learned
                         .iter()
-                        .filter_map(|id| {
-                            claim_tech_descs
-                                .iter()
-                                .find(|desc| desc.id == (*id))
-                                .clone()
-                        })
-                        .map(|desc| desc.clone())
+                        .filter_map(|id| claim_tech_descs.iter().find(|desc| desc.id == (*id)))
+                        .cloned()
                         .collect::<Vec<claim_tech_desc::Model>>();
                     let found_tiers = learned
                         .iter()
@@ -950,11 +941,10 @@ pub(crate) async fn list_claims(
 
                     if !found_tiers.is_empty() {
                         claim_description.tier = Some(
-                            state
+                            *state
                                 .tech_tier_research_map
                                 .get(&found_tiers[found_tiers.len() - 1])
-                                .unwrap()
-                                .clone(),
+                                .unwrap(),
                         );
                     } else {
                         claim_description.tier = Some(1);

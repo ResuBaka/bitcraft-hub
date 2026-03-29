@@ -140,19 +140,14 @@ impl Default for AllowedOriginConfig {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub(crate) enum LogType {
+    #[default]
     Default,
     #[serde(alias = "json")]
     Json,
     #[serde(alias = "pretty")]
     Pretty,
-}
-
-impl Default for LogType {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 #[derive(Default)]

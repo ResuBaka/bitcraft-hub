@@ -1,4 +1,4 @@
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -33,11 +33,4 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-}
-
-/// Use this if you are using the Iden trait for the table name
-#[derive(Iden)]
-enum Inventory {
-    Table,
-    Pockets,
 }

@@ -3,7 +3,6 @@ use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::resource_desc;
 use migration::OnConflict;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, sea_query};
-use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -41,13 +40,13 @@ pub(crate) fn start_worker_resource_desc(
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let currently_known = ::entity::resource_desc::Entity::find()
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .map_or(vec![], |aa| aa)
-                                    .into_iter()
-                                    .map(|value| (value.id, value))
-                                    .collect::<HashMap<_, _>>();
+                                // let currently_known = ::entity::resource_desc::Entity::find()
+                                //     .all(&global_app_state.conn)
+                                //     .await
+                                //     .map_or(vec![], |aa| aa)
+                                //     .into_iter()
+                                //     .map(|value| (value.id, value))
+                                //     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
                                     let model: ::entity::resource_desc::Model = value.into();

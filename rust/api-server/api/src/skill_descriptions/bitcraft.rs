@@ -43,13 +43,13 @@ pub(crate) fn start_worker_skill_desc(
                                 let mut currently_known_skill_desc = ::entity::skill_desc::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole skill_desc state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole skill_desc state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.id, value))
                                     .collect::<HashMap<_, _>>();
@@ -185,8 +185,8 @@ async fn insert_multiple_skill_desc(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting SkillDesc: {}", insert.unwrap_err())
+    if let Err(err) = insert {
+        tracing::error!("Error inserting SkillDesc: {}", err)
     }
 
     messages.clear();

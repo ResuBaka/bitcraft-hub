@@ -3,7 +3,6 @@ use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
-
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -46,13 +45,13 @@ pub(crate) fn start_worker_player_state(
                                     .filter(::entity::player_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole player_state state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole player_state state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -60,7 +59,7 @@ pub(crate) fn start_worker_player_state(
                                 let mut online = 0;
                                 let mut offline = 0;
 
-                                for model in data.into_iter().map(|value| {
+                                for mut model in data.into_iter().map(|value| {
                                     let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
 
                                     if model.signed_in {
@@ -76,6 +75,9 @@ pub(crate) fn start_worker_player_state(
                                         Entry::Occupied(entry) => {
                                             let existing_model = entry.get();
                                             if &model != existing_model {
+                                                if model.sign_in_timestamp == 0 {
+                                                    model.sign_in_timestamp = existing_model.sign_in_timestamp;
+                                                }
                                                 global_app_state.player_state.insert(model.entity_id, model.clone());
                                                 global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
                                                 global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
@@ -117,8 +119,7 @@ pub(crate) fn start_worker_player_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
-                                global_app_state.player_state.insert(model.entity_id, model.clone());
+                                let mut model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
                                 global_app_state.ranking_system.time_signed_in.update(model.entity_id, model.time_signed_in as i64);
 
@@ -133,10 +134,14 @@ pub(crate) fn start_worker_player_state(
 
                                 if ids.contains(&model.entity_id) {
                                     if let Some(index) = messages.iter().position(|value: &::entity::player_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                        if model.sign_in_timestamp == 0 {
+                                            model.sign_in_timestamp = messages[index].sign_in_timestamp.clone().unwrap();
+                                        }
                                         messages.remove(index);
                                     }
                                 }
 
+                                global_app_state.player_state.insert(model.entity_id, model.clone());
                                 ids.push(model.entity_id);
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
@@ -144,7 +149,7 @@ pub(crate) fn start_worker_player_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, old, .. } => {
-                                let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let mut model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
                                 global_app_state.ranking_system.time_played.update(model.entity_id, model.time_played as i64);
                                 let rank = global_app_state.ranking_system.time_played.get_rank(model.time_played as i64);
                                 if let Some(rank) = rank {
@@ -165,8 +170,6 @@ pub(crate) fn start_worker_player_state(
                                     });
                                 }
 
-                                global_app_state.player_state.insert(model.entity_id, model.clone());
-
                                 if model.signed_in != old.signed_in {
                                     metrics::gauge!("players_current_state", &[
                                         ("online", model.signed_in.to_string()),
@@ -180,6 +183,9 @@ pub(crate) fn start_worker_player_state(
 
                                 if ids.contains(&model.entity_id) {
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                        if model.sign_in_timestamp == 0 {
+                                            model.sign_in_timestamp = messages[index].sign_in_timestamp.clone().unwrap();
+                                        }
                                         messages.remove(index);
                                     }
                                 }
@@ -188,18 +194,31 @@ pub(crate) fn start_worker_player_state(
                                     messages_delete.remove(index);
                                 }
 
-                                let _ = global_app_state.tx.send(WebSocketMessages::PlayerState(model.clone()));
+                                if model.sign_in_timestamp == 0 {
+                                    model.sign_in_timestamp = old.sign_in_timestamp;
+                                }
 
                                 ids.push(model.entity_id);
 
+                                global_app_state.player_state.insert(model.entity_id, model.clone());
+                                let _ = global_app_state.tx.send(WebSocketMessages::PlayerState(model.clone()));
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name, .. } => {
                                 let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
+
+                                if let Some(reducer_name) = &reducer_name {
+                                    match reducer_name {
+                                        &"transfer_player_delayed" => {
+                                            continue
+                                        }
+                                        _ => {}
+                                    }
+                                }
 
                                 // global_app_state.player_state.remove(&model.entity_id);
                                 // global_app_state.ranking_system.time_played.remove(model.entity_id);
@@ -280,8 +299,8 @@ async fn insert_multiple_player_state(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting PlayerState: {}", insert.unwrap_err())
+    if let Err(err) = insert {
+        tracing::error!("Error inserting PlayerState: {}", err)
     }
 
     messages.clear();
@@ -317,13 +336,13 @@ pub(crate) fn start_worker_player_username_state(
                                     .filter(::entity::player_username_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole player_username_state state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole player_username_state state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -386,9 +405,18 @@ pub(crate) fn start_worker_player_username_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name,  .. } => {
                                 let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
+
+                                if let Some(reducer_name) = &reducer_name {
+                                    match reducer_name {
+                                        &"transfer_player_delayed" => {
+                                            continue
+                                        }
+                                        _ => {}
+                                    }
+                                }
 
                                 if ids.contains(&id) {
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
@@ -468,11 +496,8 @@ async fn insert_multiple_player_username_state(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!(
-            "Error inserting PlayerUsernameState: {}",
-            insert.unwrap_err()
-        )
+    if let Err(err) = insert {
+        tracing::error!("Error inserting PlayerUsernameState: {}", err)
     }
 
     messages.clear();

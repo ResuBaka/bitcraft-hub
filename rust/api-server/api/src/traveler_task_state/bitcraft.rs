@@ -43,13 +43,13 @@ pub(crate) fn start_worker_traveler_task_state(
                                     .filter(::entity::traveler_task_state::Column::Region.eq(database_name.to_string()))
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
+                                    .unwrap_or_else(|error| {
                                         tracing::error!(
                                             error = error.to_string(),
                                             "Error while query whole traveler_task_state state"
                                         );
                                         vec![]
-                                    },|aa| aa)
+                                    })
                                     .into_iter()
                                     .map(|value| (value.entity_id, value))
                                     .collect::<HashMap<_, _>>();
@@ -195,8 +195,8 @@ async fn insert_multiple_traveler_task_state(
     .exec(&global_app_state.conn)
     .await;
 
-    if insert.is_err() {
-        tracing::error!("Error inserting TravelerTaskState: {}", insert.unwrap_err())
+    if let Err(err) = insert {
+        tracing::error!("Error inserting TravelerTaskState: {}", err)
     }
 
     messages.clear();

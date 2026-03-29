@@ -58,7 +58,7 @@ const topics = computed(() => {
 
   for (const player of leaderboard.value.leaderboard[selectedSkills.value]) {
     if (player === undefined) {
-      continue
+      continue;
     }
     topicsSet.add(`experience:${selectedSkills.value}.${player.player_id.toString()}`);
   }
@@ -79,6 +79,7 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
 
   if (skill) {
     leaderboard.value.leaderboard[message.skill_name][skill].experience = message.experience;
+    leaderboard.value.leaderboard[message.skill_name][skill].rank = message.rank;
     leaderboard.value.leaderboard[message.skill_name][skill].experience_per_hour =
       message.experience_per_hour;
     if (
@@ -86,8 +87,8 @@ registerWebsocketMessageHandler("Experience", topics, (message) => {
     ) {
       swapArrayRank(
         leaderboard.value.leaderboard[message.skill_name],
-        skill.rank - 1,
-        message.rank - 1,
+        skill,
+        Number(message.rank) - 1,
       );
     }
   }
@@ -102,7 +103,7 @@ const totalExperienceTopics = computed(() => {
 
   for (const player of leaderboard.value.leaderboard["Experience"]) {
     if (player === undefined) {
-      continue
+      continue;
     }
     topicsSet.add(`total_experience.${player.player_id.toString()}`);
   }
@@ -113,21 +114,20 @@ const totalExperienceTopics = computed(() => {
 registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (message) => {
   const skill = leaderboard.value?.leaderboard["Experience"].findIndex((item) => {
     if (item === undefined) {
-      return false
+      return false;
     }
 
-    return item.player_id === message.user_id
+    return item.player_id === message.user_id;
   });
 
   if (skill) {
     leaderboard.value.leaderboard["Experience"][skill].experience = message.experience;
     leaderboard.value.leaderboard["Experience"][skill].experience_per_hour =
       message.experience_per_hour;
-    if (leaderboard.value.leaderboard["Experience"][skill].rank !== message.rank) {
-      swapArrayRank(leaderboard.value.leaderboard["Experience"], skill.rank - 1, message.rank - 1);
-    }
-
     leaderboard.value.leaderboard["Experience"][skill].rank = message.rank;
+    if (leaderboard.value.leaderboard["Experience"][skill].rank !== message.rank) {
+      swapArrayRank(leaderboard.value.leaderboard["Experience"], skill, Number(message.rank) - 1);
+    }
   }
 });
 
@@ -293,62 +293,57 @@ const timeHeader = computed(() => {
 });
 
 const experienceColumns = computed(() => [
-  { id: "rank", header: "Rank" },
-  { id: "player", header: "Player" },
-  // {
-  //   id: "experiencePerHour",
-  //   header: `Experience/h ${numberFormat.format(totelExperiencePerHourAverage.value)}`,
-  //   meta: { class: { th: "text-right", td: "text-right" } },
-  // },
+  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
+  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
   {
     id: "experience",
     header: "Experience",
-    meta: { class: { th: "text-right", td: "text-right" } },
+    meta:  { class: { th: "w-48 text-right", td: "w-48 text-right" } },
   },
 ]);
 
 const experiencePerHourColumns = computed(() => [
-  { id: "rank", header: "Rank" },
-  { id: "player", header: "Player" },
+  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
+  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
   {
     id: "experienceValue",
     header: `Experience/h ${numberFormat.format(experiencePerHourAverage.value)}`,
-    meta: { class: { th: "text-right", td: "text-right" } },
+    meta:  { class: { th: "w-48 text-right", td: "w-48 text-right" } },
   },
 ]);
 
 const levelColumns = computed(() => [
-  { id: "rank", header: "Rank" },
-  { id: "player", header: "Player" },
+  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
+  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
   {
     id: "level",
     header: "Level",
-    meta: { class: { th: "text-right", td: "text-right" } },
+    meta:  { class: { th: "w-48 text-right", td: "w-48 text-right" } },
   },
 ]);
 
 const timeColumns = computed(() => [
-  { id: "rank", header: "Rank" },
-  { id: "player", header: "Player", meta: { class: { th: "text-center" } } },
+  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
+  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
   {
     id: "time",
     header: timeHeader.value,
-    meta: { class: { th: "text-right", td: "text-right" } },
+    meta:  { class: { th: "w-100 text-right", td: "w-100 text-right" } },
   },
 ]);
 
 const defaultColumns = computed(() => [
-  { id: "rank", header: "Rank" },
-  { id: "player", header: "Player" },
+  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
+  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
   {
     id: "level",
     header: "Level",
-    meta: { class: { th: "text-center", td: "text-center" } },
+    meta:  { class: { th: "w-30 text-center", td: "w-30 text-center" } },
   },
   {
     id: "experience",
     header: "Experience",
-    meta: { class: { th: "text-right", td: "text-right" } },
+    meta:  { class: { th: "w-30 text-right", td: "w-30 text-right" } },
   },
 ]);
 
@@ -382,89 +377,92 @@ const columnsForSkill = (skill: string) => {
 </script>
 
 <template>
-  <UContainer class="w-full max-w-none py-6">
+  <UContainer class="py-6">
     <div class="flex flex-col gap-6">
       <div class="flex flex-col gap-4">
-        <div class="flex flex-col gap-3">
-          <div class="flex flex-col items-center gap-3 text-center">
-            <h1 class="text-2xl font-semibold tracking-tight">Leaderboards</h1>
-          </div>
-        </div>
 
-        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-          <UButton
-            v-for="skill in skillMenu"
-            :key="skill.value"
-            :variant="selectedSkills === skill.value ? 'solid' : 'soft'"
-            color="neutral"
-            size="md"
-            block
-            @click="selectedSkills = skill.value"
-          >
-            <template #leading>
-              <UIcon
-                v-if="skill.icon"
-                :name="skill.icon"
-                :class="icons[skill.value]?.class || 'text-gray-500'"
-              />
-            </template>
-            {{ skill.label }}
-          </UButton>
-        </div>
 
-        <div class="rounded-lg border border-gray-200 shadow-sm dark:border-gray-800">
-          <div class="w-full overflow-x-auto">
-            <UTable
-              :key="selectedSkills"
-              :columns="columnsForSkill(selectedSkills)"
-              :data="leaderboard?.leaderboard?.[selectedSkills] || []"
-              :loading="pending"
-              :watch-options="{ deep: false }"
-              loading-color="neutral"
-              loading-animation="carousel"
-              :meta="{
-                class: {
-                  tr: (row) => {
-                    return 'hover:bg-neutral-200 dark:hover:bg-neutral-700';
-                  },
-                },
-              }"
+        <div class="flex flex-col lg:flex-row gap-4">
+          <div class="flex flex-col gap-2 lg:w-70 shrink-0">
+            <div class="flex flex-col gap-3">
+              <div class="flex flex-col items-center gap-3 text-center">
+                <h1 class="text-2xl font-semibold tracking-tight">Leaderboards</h1>
+              </div>
+            </div>
+            <UButton
+              v-for="skill in skillMenu"
+              :key="skill.value"
+              :variant="selectedSkills === skill.value ? 'solid' : 'soft'"
+              color="neutral"
+              size="md"
+              block
+              @click="selectedSkills = skill.value"
             >
-              <template #rank-cell="{ row }">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {{ row.index + 1 }}
-                </span>
-              </template>
-              <template #player-cell="{ row }">
-                <NuxtLink
-                  :to="{ path: 'players/' + row.original.player_id }"
-                  :class="playerLinkClass(row.original.player_id)"
-                >
-                  {{ row.original.player_name }}
-                </NuxtLink>
-              </template>
-              <template #experiencePerHour-cell="{ row }">
-                {{ numberFormat.format(row.original.experience_per_hour) }}
-              </template>
-              <template #experience-cell="{ row }">
-                <bitcraft-animated-number
-                  :value="row.original.experience"
-                  :speed="8"
-                  :formater="numberFormat.format"
-                  color
-                  :animate="animateNumbers"
+              <template #leading>
+                <UIcon
+                  v-if="skill.icon"
+                  :name="skill.icon"
+                  :class="icons[skill.value]?.class || 'text-gray-500'"
                 />
               </template>
-              <template #experienceValue-cell="{ row }">
-                {{ numberFormat.format(row.original.experience) }}
-              </template>
-              <template #level-cell="{ row }">
-                {{ numberFormat.format(row.original.level) }}
-              </template>
-              <template #time-cell="{ row }">
-                {{ secondsToDaysMinutesSecondsFormat(row.original.time_played) }}
-              </template>
-            </UTable>
+              {{ skill.label }}
+            </UButton>
+          </div>
+
+          <div class="rounded-lg border border-gray-200 shadow-sm dark:border-gray-800 flex-1">
+            <div class="w-full overflow-x-auto">
+              <UTable
+                :key="selectedSkills"
+                :columns="columnsForSkill(selectedSkills)"
+                :data="leaderboard?.leaderboard?.[selectedSkills] || []"
+                :loading="pending"
+                :watch-options="{ deep: false }"
+                loading-color="neutral"
+                loading-animation="carousel"
+                :meta="{
+                  class: {
+                    tr: (row) => {
+                      return 'hover:bg-neutral-200 dark:hover:bg-neutral-700';
+                    },
+                  },
+                }"
+              >
+                <template #rank-cell="{ row }">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {{ row.index + 1 }}
+                  </span>
+                </template>
+                <template #player-cell="{ row }">
+                  <NuxtLink
+                    :to="{ path: 'players/' + row.original.player_id }"
+                    :class="playerLinkClass(row.original.player_id)"
+                  >
+                    {{ row.original.player_name }}
+                  </NuxtLink>
+                </template>
+                <template #experiencePerHour-cell="{ row }">
+                  {{ numberFormat.format(row.original.experience_per_hour) }}
+                </template>
+                <template #experience-cell="{ row }">
+                  <bitcraft-animated-number
+                    :value="row.original.experience"
+                    :speed="8"
+                    :formater="numberFormat.format"
+                    color
+                    :animate="animateNumbers"
+                  />
+                </template>
+                <template #experienceValue-cell="{ row }">
+                  {{ numberFormat.format(row.original.experience) }}
+                </template>
+                <template #level-cell="{ row }">
+                  {{ numberFormat.format(row.original.level) }}
+                </template>
+                <template #time-cell="{ row }">
+                  {{ secondsToDaysMinutesSecondsFormat(row.original.time_played) }}
+                </template>
+              </UTable>
+            </div>
           </div>
         </div>
       </div>

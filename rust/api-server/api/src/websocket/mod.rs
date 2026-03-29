@@ -190,6 +190,10 @@ macro_rules! setup_spacetime_db_listeners {
                 let reducer_name = match &ctx.event {
                     Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
                     Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_update: [(&'static str, Cow<'static, str>); 4] = [
@@ -200,6 +204,11 @@ macro_rules! setup_spacetime_db_listeners {
                     ("reducer", reducer_name),
                 ];
                 metrics::counter!("game_message_events", &labels_update).increment(1);
+
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
+                    _ => None,
+                };
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -208,6 +217,7 @@ macro_rules! setup_spacetime_db_listeners {
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
+                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -222,6 +232,10 @@ macro_rules! setup_spacetime_db_listeners {
                 let reducer_name = match &ctx.event {
                     Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
                     Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_insert: [(&'static str, Cow<'static, str>); 4] = [
@@ -237,6 +251,11 @@ macro_rules! setup_spacetime_db_listeners {
                     return;
                 }
 
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
+                    _ => None,
+                };
+
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -244,6 +263,7 @@ macro_rules! setup_spacetime_db_listeners {
                         event: None,
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
+                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -258,6 +278,10 @@ macro_rules! setup_spacetime_db_listeners {
                 let reducer_name = match &ctx.event {
                     Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
                     Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_delete: [(&'static str, Cow<'static, str>); 4] = [
@@ -268,6 +292,11 @@ macro_rules! setup_spacetime_db_listeners {
                     ("reducer", reducer_name),
                 ];
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
+
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
+                    _ => None,
+                };
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -275,6 +304,7 @@ macro_rules! setup_spacetime_db_listeners {
                         event: None,
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
+                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -297,6 +327,10 @@ macro_rules! setup_spacetime_db_listeners_event {
                 let reducer_name = match &ctx.event {
                     Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
                     Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_update: [(&'static str, Cow<'static, str>); 4] = [
@@ -307,6 +341,11 @@ macro_rules! setup_spacetime_db_listeners_event {
                     ("reducer", reducer_name),
                 ];
                 metrics::counter!("game_message_events", &labels_update).increment(1);
+
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
+                    _ => None,
+                };
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -315,6 +354,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                         database_name: tmp_database_name_arc.clone(),
                         old: old.clone(),
                         new: new.clone(),
+                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -329,6 +369,10 @@ macro_rules! setup_spacetime_db_listeners_event {
                 let reducer_name = match &ctx.event {
                     Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
                     Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_insert: [(&'static str, Cow<'static, str>); 4] = [
@@ -343,7 +387,10 @@ macro_rules! setup_spacetime_db_listeners_event {
                 if let Event::SubscribeApplied = ctx.event {
                     return;
                 }
-
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
+                    _ => None,
+                };
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -351,6 +398,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                         event: Some(ctx.event.clone()),
                         database_name: tmp_database_name_arc.clone(),
                         new: new.clone(),
+                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -365,6 +413,10 @@ macro_rules! setup_spacetime_db_listeners_event {
                 let reducer_name = match &ctx.event {
                     Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
                     Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_delete: [(&'static str, Cow<'static, str>); 4] = [
@@ -374,6 +426,11 @@ macro_rules! setup_spacetime_db_listeners_event {
                     ("type", Cow::Borrowed("delete")),
                     ("reducer", reducer_name),
                 ];
+
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
+                    _ => None,
+                };
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
                 send_worker_message(
                     $worker_name,
@@ -382,6 +439,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                         event: Some(ctx.event.clone()),
                         database_name: tmp_database_name_arc.clone(),
                         delete: new.clone(),
+                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -2046,17 +2104,20 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         new: T,
         database_name: Arc<String>,
+        reducer_name: Option<&'static str>,
     },
     Update {
         event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         old: T,
         new: T,
         database_name: Arc<String>,
+        reducer_name: Option<&'static str>,
     },
     Remove {
         event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         delete: T,
         database_name: Arc<String>,
+        reducer_name: Option<&'static str>,
     },
 }
 
@@ -2313,18 +2374,18 @@ impl WebSocketMessages {
                 resolved_inventory, ..
             } => Some(vec![(
                 "inventory_update".to_string(),
-                Some(resolved_inventory.entity_id as i64),
+                Some(resolved_inventory.entity_id),
             )]),
             WebSocketMessages::InventoryRemove {
                 resolved_inventory, ..
             } => Some(vec![
                 (
                     "inventory_remove".to_string(),
-                    Some(resolved_inventory.entity_id as i64),
+                    Some(resolved_inventory.entity_id),
                 ),
                 (
                     "inventory_remove_owner".to_string(),
-                    Some(resolved_inventory.entity_id as i64),
+                    Some(resolved_inventory.entity_id),
                 ),
             ]),
             WebSocketMessages::InventoryInsert {
@@ -2334,11 +2395,11 @@ impl WebSocketMessages {
             } => Some(vec![
                 (
                     "inventory_insert".to_string(),
-                    Some(resolved_inventory.entity_id as i64),
+                    Some(resolved_inventory.entity_id),
                 ),
                 (
                     "inventory_insert_owner".to_string(),
-                    Some(resolved_inventory.owner_entity_id as i64),
+                    Some(resolved_inventory.owner_entity_id),
                 ),
                 (
                     "inventory_insert_player_owner".to_string(),

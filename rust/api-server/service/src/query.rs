@@ -1111,7 +1111,7 @@ impl Query {
                     .into(),
             )
             .filter(claim_state::Column::Neutral.ne(true))
-            .filter(claim_state::Column::EntityId.is_not_in([360287970367149239 as i64]))
+            .filter(claim_state::Column::EntityId.is_not_in([360287970367149239_i64]))
             // .filter(claim_description_state::Column::OwnerPlayerEntityId.ne(0))
             .apply_if(search, |query, value| match db.get_database_backend() {
                 DbBackend::Postgres => {

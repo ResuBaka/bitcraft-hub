@@ -57,13 +57,13 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                                 let mut currently_known_crafting_recipe = ::entity::crafting_recipe::Entity::find()
                                     .all(&global_app_state.conn)
                                     .await
-                                    .map_or_else(|error| {
-                                            tracing::error!(
-                                                error = error.to_string(),
-                                                "Error while query whole crafting_recipe state"
-                                            );
-                                            vec![]
-                                        },|aa| aa)
+                                    .unwrap_or_else(|error| {
+                                        tracing::error!(
+                                            error = error.to_string(),
+                                            "Error while query whole crafting_recipe state"
+                                        );
+                                        vec![]
+                                    })
                                     .into_iter()
                                     .map(|value| (value.id, value))
                                     .collect::<HashMap<_, _>>();
@@ -204,11 +204,8 @@ async fn insert_multiple_crafting_recipe(
         .exec(&global_app_state.conn)
         .await;
 
-    if insert.is_err() {
-        tracing::error!(
-            "Error inserting CraftingRecipeDesc: {}",
-            insert.unwrap_err()
-        )
+    if let Err(err) = insert {
+        tracing::error!("Error inserting CraftingRecipeDesc: {}", err)
     }
 
     messages.clear();

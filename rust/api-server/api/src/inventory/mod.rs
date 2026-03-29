@@ -10,7 +10,7 @@ use entity::inventory::{
 use entity::{cargo_desc, inventory, inventory_changelog, item_desc};
 use futures::TryStreamExt;
 use log::error;
-use sea_orm::{DbBackend, EntityTrait, FromQueryResult, Statement};
+use sea_orm::{DbBackend, FromQueryResult, Statement};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
@@ -309,14 +309,6 @@ pub(crate) async fn all_inventory_stats(
     let mut items: HashMap<i32, (i64, Option<::entity::item_desc::Model>)> = HashMap::new();
     let mut cargo: HashMap<i32, (i64, Option<::entity::cargo_desc::Model>)> = HashMap::new();
 
-    let mut inventorys = ::entity::inventory::Entity::find()
-        .stream(&state.conn)
-        .await
-        .map_err(|e| {
-            error!("Error: {e:?}");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-        })?;
-
     while let Some(contents) = results.try_next().await.map_err(|e| {
         error!("Error: {e:?}");
         (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
@@ -324,9 +316,9 @@ pub(crate) async fn all_inventory_stats(
         if contents.item_type == ItemType::Item {
             items
                 .entry(contents.item_id)
-                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity as i64))
+                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity))
                 .or_insert((
-                    contents.total_quantity as i64,
+                    contents.total_quantity,
                     state
                         .item_desc
                         .get(&contents.item_id)
@@ -335,9 +327,9 @@ pub(crate) async fn all_inventory_stats(
         } else {
             cargo
                 .entry(contents.item_id)
-                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity as i64))
+                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity))
                 .or_insert((
-                    contents.total_quantity as i64,
+                    contents.total_quantity,
                     state
                         .cargo_desc
                         .get(&contents.item_id)
