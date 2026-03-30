@@ -39,6 +39,7 @@ pub mod player_state;
 pub mod player_to_claim;
 pub mod player_username_state;
 pub mod portal_state;
+pub mod progressive_action_state;
 pub mod raw_event_data;
 pub mod resource_desc;
 pub mod shared;

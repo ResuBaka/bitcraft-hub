@@ -30,6 +30,7 @@ pub(crate) fn start_worker_inventory_state(
                 ::entity::inventory::Column::CargoIndex,
                 ::entity::inventory::Column::OwnerEntityId,
                 ::entity::inventory::Column::PlayerOwnerEntityId,
+                ::entity::inventory::Column::Region,
             ])
             .to_owned();
         let on_conflict_changelog = sea_query::OnConflict::columns([
@@ -111,7 +112,10 @@ pub(crate) fn start_worker_inventory_state(
 
                                 for chunk_ids in currently_known_inventory.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::inventory::Entity::delete_many().filter(::entity::inventory::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::inventory::Entity::delete_many()
+                                    .filter(::entity::inventory::Column::EntityId.is_in(chunk_ids.clone()))
+                                    .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
+                                    .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(Inventory = chunk_ids_str.join(","), error = error.to_string(), "Could not delete Inventory");
                                     }

@@ -25,6 +25,7 @@ pub(crate) fn start_worker_claim_state(
                 claim_state::Column::OwnerBuildingEntityId,
                 claim_state::Column::Name,
                 claim_state::Column::Neutral,
+                claim_state::Column::Region,
             ])
             .to_owned();
 
@@ -85,7 +86,7 @@ pub(crate) fn start_worker_claim_state(
 
                                 for chunk_ids in currently_known_claim_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::claim_state::Entity::delete_many().filter(::entity::claim_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::claim_state::Entity::delete_many().filter(::entity::claim_state::Column::EntityId.is_in(chunk_ids.clone())).filter(::entity::claim_state::Column::Region.eq(database_name.to_string())).exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimState");
                                     }
@@ -218,6 +219,7 @@ pub(crate) fn start_worker_claim_local_state(
                 claim_local_state::Column::SuppliesPurchaseThreshold,
                 claim_local_state::Column::SuppliesPurchasePrice,
                 claim_local_state::Column::BuildingDescriptionId,
+                claim_local_state::Column::Region,
             ])
             .to_owned();
 
@@ -284,7 +286,7 @@ pub(crate) fn start_worker_claim_local_state(
 
                                 for chunk_ids in currently_known_claim_local_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::claim_local_state::Entity::delete_many().filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::claim_local_state::Entity::delete_many().filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone())).filter(::entity::claim_local_state::Column::Region.eq(database_name.to_string())).exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimLocalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimLocalState");
                                     }
@@ -506,7 +508,10 @@ pub(crate) fn start_worker_claim_member_state(
                                     id
                                 }).collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::claim_member_state::Entity::delete_many().filter(::entity::claim_member_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::claim_member_state::Entity::delete_many()
+                                    .filter(::entity::claim_member_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                    .filter(::entity::claim_member_state::Column::Region.eq(database_name.to_string()))
+                                    .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimMemberState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimMemberState");
                                     }
@@ -642,6 +647,7 @@ pub(crate) fn start_worker_claim_tech_state(
                 claim_tech_state::Column::Researching,
                 claim_tech_state::Column::StartTimestamp,
                 claim_tech_state::Column::ScheduledId,
+                claim_tech_state::Column::Region,
             ])
             .to_owned();
 
@@ -701,7 +707,10 @@ pub(crate) fn start_worker_claim_tech_state(
 
                                 for chunk_ids in currently_known_claim_tech_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::claim_tech_state::Entity::delete_many().filter(::entity::claim_tech_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::claim_tech_state::Entity::delete_many()
+                                    .filter(::entity::claim_tech_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                    .filter(::entity::claim_tech_state::Column::Region.eq(database_name.to_string()))
+                                    .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimTechState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimTechState");
                                     }

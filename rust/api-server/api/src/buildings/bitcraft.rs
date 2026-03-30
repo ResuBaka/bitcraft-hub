@@ -23,6 +23,7 @@ pub(crate) fn start_worker_building_state(
                     ::entity::building_state::Column::DirectionIndex,
                     ::entity::building_state::Column::BuildingDescriptionId,
                     ::entity::building_state::Column::ConstructedByPlayerEntityId,
+                    ::entity::building_state::Column::Region,
                 ])
                 .to_owned();
 
@@ -92,7 +93,11 @@ pub(crate) fn start_worker_building_state(
 
                                 for chunk_ids in currently_known_building_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::building_state::Entity::delete_many().filter(::entity::building_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::building_state::Entity::delete_many()
+                                        .filter(::entity::building_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                        .filter(::entity::building_state::Column::Region.eq(database_name.to_string()))
+                                        .exec(&global_app_state.conn).await
+                                    {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(BuildingState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingState");
                                     }
@@ -426,7 +431,10 @@ pub(crate) fn start_worker_building_nickname_state(
     tokio::spawn(async move {
         let on_conflict =
             sea_query::OnConflict::columns([::entity::building_nickname_state::Column::EntityId])
-                .update_columns([::entity::building_nickname_state::Column::Nickname])
+                .update_columns([
+                    ::entity::building_nickname_state::Column::Nickname,
+                    ::entity::building_nickname_state::Column::Region,
+                ])
                 .to_owned();
 
         loop {
@@ -486,7 +494,11 @@ pub(crate) fn start_worker_building_nickname_state(
 
                                 for chunk_ids in currently_known_building_nickname_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::building_nickname_state::Entity::delete_many().filter(::entity::building_nickname_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::building_nickname_state::Entity::delete_many()
+                                        .filter(::entity::building_nickname_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                        .filter(::entity::building_nickname_state::Column::Region.eq(database_name.to_string()))
+                                        .exec(&global_app_state.conn).await
+                                    {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(BuildingNicknameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingNicknameState");
                                     }

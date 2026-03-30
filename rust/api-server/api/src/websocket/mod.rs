@@ -26,6 +26,7 @@ use crate::leaderboard::bitcraft::start_worker_experience_state;
 use crate::location_state::bitcraft::start_worker_location_state;
 use crate::resource_desc::bitcraft::start_worker_resource_desc;
 
+use crate::crafting::bitcraft::start_worker_progressive_action_state;
 use crate::mobile_entity_state::bitcraft::start_worker_mobile_entity_state;
 use crate::npc_desc::bitcraft::start_worker_npc_desc;
 use crate::player_state::bitcraft::{
@@ -518,6 +519,7 @@ async fn connect_to_db_logic(
     location_state_tx: &UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
     resource_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ResourceDesc>>,
     extraction_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ExtractionRecipeDesc>>,
+    progressive_action_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ProgressiveActionState>>,
 ) -> anyhow::Result<()> {
     let ctx = connect_to_db(
         global_app_state.clone(),
@@ -825,6 +827,22 @@ async fn connect_to_db_logic(
         database,
         "extraction_recipe_desc"
     );
+    setup_spacetime_db_listeners!(
+        ctx,
+        extraction_recipe_desc,
+        extraction_recipe_desc_tx,
+        ExtractionRecipeDesc,
+        database,
+        "extraction_recipe_desc"
+    );
+    setup_spacetime_db_listeners!(
+        ctx,
+        progressive_action_state,
+        progressive_action_state_tx,
+        ProgressiveActionState,
+        database,
+        "progressive_action_state"
+    );
 
     let tables_to_subscribe = vec![
         "user_state",
@@ -919,6 +937,7 @@ async fn connect_to_db_logic(
     let tmp_portal_state_tx = portal_state_tx.clone();
     let tmp_resource_desc_tx = resource_desc_tx.clone();
     let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
+    let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
 
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
@@ -1584,6 +1603,25 @@ async fn connect_to_db_logic(
                 );
             }
 
+            let tmp_database_name_arc = database_name_arc.clone();
+            metrics::gauge!(
+                "worker_queue_initial_batch_size",
+                &[("worker", "progressive_action_state".to_string())]
+            )
+            .set(ctx.db.progressive_action_state().iter().count() as f64);
+            let progressive_action_state =
+                ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
+            if !progressive_action_state.is_empty() {
+                send_worker_message(
+                    "progressive_action_state",
+                    &tmp_progressive_action_state_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        database_name: tmp_database_name_arc.clone(),
+                        data: progressive_action_state,
+                    },
+                );
+            }
+
             // for resource_desc in ctx.db.user_state().iter() {
             //     if resource_desc.entity_id == 504403158285774600 {
             //         println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
@@ -1695,6 +1733,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (resource_desc_tx, resource_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) =
             tokio::sync::mpsc::unbounded_channel();
+        let (progressive_action_state_tx, progressive_action_state_rx) =
+            tokio::sync::mpsc::unbounded_channel();
 
         let mut remove_desc = false;
 
@@ -1754,6 +1794,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_location_state_tx = location_state_tx.clone();
                 let tmp_resource_desc_tx = resource_desc_tx.clone();
                 let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
+                let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
                 let tmp_conf = config.clone();
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
@@ -1812,6 +1853,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_location_state_tx,
                             &tmp_resource_desc_tx,
                             &tmp_extraction_recipe_desc_tx,
+                            &tmp_progressive_action_state_tx,
                         )
                             .await;
 
@@ -2061,6 +2103,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         start_worker_extraction_recipe_desc(
             global_app_state.clone(),
             extraction_recipe_desc_rx,
+            3000,
+            Duration::from_millis(200),
+        );
+        start_worker_progressive_action_state(
+            global_app_state.clone(),
+            progressive_action_state_rx,
             3000,
             Duration::from_millis(200),
         );

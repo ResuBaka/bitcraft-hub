@@ -23,7 +23,10 @@ pub(crate) fn start_worker_experience_state(
             ::entity::experience_state::Column::EntityId,
             ::entity::experience_state::Column::SkillId,
         ])
-        .update_columns([::entity::experience_state::Column::Experience])
+        .update_columns([
+            ::entity::experience_state::Column::Experience,
+            ::entity::experience_state::Column::Region,
+        ])
         .to_owned();
 
         loop {

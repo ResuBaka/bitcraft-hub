@@ -23,6 +23,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
         .update_columns([
             vault_state_collectibles::Column::Activated,
             vault_state_collectibles::Column::Count,
+            vault_state_collectibles::Column::Region,
         ])
         .to_owned();
 
@@ -82,7 +83,11 @@ pub(crate) fn start_worker_vault_state_collectibles(
 
                                 for chunk_ids in currently_known_vault_state_collectibles.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::vault_state_collectibles::Entity::delete_many().filter(::entity::vault_state_collectibles::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::vault_state_collectibles::Entity::delete_many()
+                                        .filter(::entity::vault_state_collectibles::Column::EntityId.is_in(chunk_ids.clone()))
+                                        .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name.to_string()))
+                                        .exec(&global_app_state.conn).await
+                                    {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(VaultState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete VaultState");
                                     }

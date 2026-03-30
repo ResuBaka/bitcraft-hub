@@ -24,6 +24,7 @@ pub(crate) fn start_worker_player_state(
                 ::entity::player_state::Column::SignedIn,
                 ::entity::player_state::Column::TeleportLocation,
                 ::entity::player_state::Column::TravelerTasksExpiration,
+                ::entity::player_state::Column::Region,
             ])
             .to_owned();
 
@@ -112,7 +113,12 @@ pub(crate) fn start_worker_player_state(
 
                                 for chunk_ids in currently_known_player_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::player_state::Entity::delete_many().filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::player_state::Entity::delete_many()
+                                        .filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                        .filter(::entity::player_state::Column::Region.eq(database_name.to_string()))
+                                        .exec(&global_app_state.conn)
+                                        .await
+                                    {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(PlayerState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerState");
                                     }
@@ -315,7 +321,10 @@ pub(crate) fn start_worker_player_username_state(
     tokio::spawn(async move {
         let on_conflict =
             sea_query::OnConflict::column(::entity::player_username_state::Column::EntityId)
-                .update_columns([::entity::player_username_state::Column::Username])
+                .update_columns([
+                    ::entity::player_username_state::Column::Username,
+                    ::entity::player_username_state::Column::Region,
+                ])
                 .to_owned();
 
         loop {
@@ -375,7 +384,12 @@ pub(crate) fn start_worker_player_username_state(
 
                                 for chunk_ids in currently_known_player_username_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::player_username_state::Entity::delete_many().filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::player_username_state::Entity::delete_many()
+                                        .filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                        .filter(::entity::player_username_state::Column::Region.eq(database_name.to_string()))
+                                        .exec(&global_app_state.conn)
+                                        .await
+                                    {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(PlayerUsernameState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete PlayerUsernameState");
                                     }

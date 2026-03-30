@@ -6,6 +6,7 @@ mod claim_tech_state;
 mod claims;
 mod collectible_desc;
 mod config;
+mod crafting;
 mod crafting_recipe_desc;
 mod deployable_state;
 mod extraction_recipe_desc;

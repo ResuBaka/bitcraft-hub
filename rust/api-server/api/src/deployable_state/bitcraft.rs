@@ -25,6 +25,7 @@ pub(crate) fn start_worker_deployable_state(
                 deployable_state::Column::DeployableDescriptionId,
                 deployable_state::Column::Nickname,
                 deployable_state::Column::Hidden,
+                deployable_state::Column::Region,
             ])
             .to_owned();
 
@@ -86,7 +87,10 @@ pub(crate) fn start_worker_deployable_state(
 
                                 for chunk_ids in currently_known_deployable_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::deployable_state::Entity::delete_many().filter(::entity::deployable_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::deployable_state::Entity::delete_many()
+                                    .filter(::entity::deployable_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                    .filter(::entity::deployable_state::Column::Region.eq(database_name.to_string()))
+                                    .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(DeployableState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DeployableState");
                                     }
@@ -98,6 +102,9 @@ pub(crate) fn start_worker_deployable_state(
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
+                                if let Some(index) = messages.iter().position(|value: &::entity::deployable_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
+                                }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
                                     break;
@@ -108,6 +115,9 @@ pub(crate) fn start_worker_deployable_state(
                                 global_app_state.deployable_state.insert(model.entity_id, model.clone());
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
+                                }
+                                if let Some(index) = messages.iter().position(|value: &::entity::deployable_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
                                 }
                                 messages.push(model.into_active_model());
                                 if messages.len() >= batch_size {
@@ -189,7 +199,7 @@ async fn insert_multiple_deployable_state(
         .await;
 
     if let Err(err) = insert {
-        tracing::error!("Error inserting ClaimTechDesc: {}", err)
+        tracing::error!("Error inserting deployable_state: {}", err)
     }
 
     messages.clear();

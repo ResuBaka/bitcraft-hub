@@ -82,7 +82,11 @@ pub(crate) fn start_worker_traveler_task_state(
 
                                 for chunk_ids in currently_known_traveler_task_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::traveler_task_state::Entity::delete_many().filter(::entity::traveler_task_state::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::traveler_task_state::Entity::delete_many()
+                                        .filter(::entity::traveler_task_state::Column::EntityId.is_in(chunk_ids.clone()))
+                                        .filter(::entity::traveler_task_state::Column::Region.eq(database_name.to_string()))
+                                        .exec(&global_app_state.conn).await
+                                    {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(TravelerTaskState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete TravelerTaskState");
                                     }
