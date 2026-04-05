@@ -220,6 +220,10 @@ pub(crate) fn start_worker_player_state(
                                 if let Some(reducer_name) = &reducer_name {
                                     match reducer_name {
                                         &"transfer_player_delayed" => {
+                                            metrics::gauge!("players_current_state", &[
+                                                ("online", model.signed_in.to_string()),
+                                                ("region", database_name.to_string())
+                                            ]).decrement(1);
                                             continue
                                         }
                                         _ => {}

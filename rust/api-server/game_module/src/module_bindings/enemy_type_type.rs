@@ -91,6 +91,8 @@ pub enum EnemyType {
     SpiderDungeonSpiderNest,
 
     EnragedAlphaJakyl,
+
+    DeerSwift,
 }
 
 impl __sdk::InModule for EnemyType {

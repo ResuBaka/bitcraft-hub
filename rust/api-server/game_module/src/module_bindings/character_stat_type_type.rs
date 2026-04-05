@@ -117,6 +117,62 @@ pub enum CharacterStatType {
     TeleportationEnergyRegenRate,
 
     ConstructionPower,
+
+    ForestryCritChance,
+
+    CarpentryCritChance,
+
+    MasonryCritChance,
+
+    MiningCritChance,
+
+    SmithingCritChance,
+
+    ScholarCritChance,
+
+    LeatherworkingCritChance,
+
+    HuntingCritChance,
+
+    TailoringCritChance,
+
+    FarmingCritChance,
+
+    FishingCritChance,
+
+    ForagingCritChance,
+
+    ForestryCritMultiplier,
+
+    CarpentryCritMultiplier,
+
+    MasonryCritMultiplier,
+
+    MiningCritMultiplier,
+
+    SmithingCritMultiplier,
+
+    ScholarCritMultiplier,
+
+    LeatherworkingCritMultiplier,
+
+    HuntingCritMultiplier,
+
+    TailoringCritMultiplier,
+
+    FarmingCritMultiplier,
+
+    FishingCritMultiplier,
+
+    ForagingCritMultiplier,
+
+    HexiteGatheringPower,
+
+    HexiteGatheringSpeed,
+
+    HexiteGatheringCritChance,
+
+    HexiteGatheringCritMultiplier,
 }
 
 impl __sdk::InModule for CharacterStatType {

@@ -31,6 +31,8 @@ pub enum AbilityTypeEnum {
     DeployableToggle,
 
     Emote,
+
+    EquipPreset,
 }
 
 impl __sdk::InModule for AbilityTypeEnum {

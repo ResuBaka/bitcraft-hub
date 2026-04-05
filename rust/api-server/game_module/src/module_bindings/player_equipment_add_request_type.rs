@@ -10,6 +10,7 @@ use super::pocket_key_type::PocketKey;
 #[sats(crate = __lib)]
 pub struct PlayerEquipmentAddRequest {
     pub from_pocket: Option<PocketKey>,
+    pub preset_index: i32,
 }
 
 impl __sdk::InModule for PlayerEquipmentAddRequest {

@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::item_stack_type::ItemStack;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
@@ -36,6 +37,8 @@ pub struct ProspectingDesc {
     pub breadcrumb_found_by_someone_else_message: String,
     pub resource_uncovered_by_someone_else_message: String,
     pub icon_asset_path: String,
+    pub experience_per_node: ExperienceStackF32,
+    pub pct_nodes_for_max_contribution: f32,
 }
 
 impl __sdk::InModule for ProspectingDesc {
@@ -77,6 +80,8 @@ pub struct ProspectingDescCols {
     pub resource_uncovered_by_someone_else_message:
         __sdk::__query_builder::Col<ProspectingDesc, String>,
     pub icon_asset_path: __sdk::__query_builder::Col<ProspectingDesc, String>,
+    pub experience_per_node: __sdk::__query_builder::Col<ProspectingDesc, ExperienceStackF32>,
+    pub pct_nodes_for_max_contribution: __sdk::__query_builder::Col<ProspectingDesc, f32>,
 }
 
 impl __sdk::__query_builder::HasCols for ProspectingDesc {
@@ -158,6 +163,14 @@ impl __sdk::__query_builder::HasCols for ProspectingDesc {
                 "resource_uncovered_by_someone_else_message",
             ),
             icon_asset_path: __sdk::__query_builder::Col::new(table_name, "icon_asset_path"),
+            experience_per_node: __sdk::__query_builder::Col::new(
+                table_name,
+                "experience_per_node",
+            ),
+            pct_nodes_for_max_contribution: __sdk::__query_builder::Col::new(
+                table_name,
+                "pct_nodes_for_max_contribution",
+            ),
         }
     }
 }

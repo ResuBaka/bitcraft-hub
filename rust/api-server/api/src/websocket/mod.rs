@@ -895,8 +895,8 @@ async fn connect_to_db_logic(
     ];
 
     let sql_subscribe = vec![
-        "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id",
-        "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id",
+        // "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id",
+        // "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id",
         "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
     ];
 

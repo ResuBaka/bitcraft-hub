@@ -128,6 +128,7 @@ pub struct ItemOption {
     pub id: i32,
     pub item_type: ItemType,
     pub tag: String,
+    pub icon_asset_name: String,
     pub tier: i32,
     pub rarity: String,
 }
@@ -160,6 +161,7 @@ pub(crate) async fn market_item_cargo_desc(
             id: item_desc.id,
             item_type: ItemType::Item,
             tag: item_desc.tag.clone(),
+            icon_asset_name: item_desc.icon_asset_name.clone(),
             tier: item_desc.tier,
             rarity: item_desc.rarity.to_string(),
         });
@@ -181,6 +183,7 @@ pub(crate) async fn market_item_cargo_desc(
             id: cargo_desc.id,
             item_type: ItemType::Cargo,
             tag: cargo_desc.tag.clone(),
+            icon_asset_name: cargo_desc.icon_asset_name.clone(),
             tier: cargo_desc.tier,
             rarity: cargo_desc.rarity.to_string(),
         });

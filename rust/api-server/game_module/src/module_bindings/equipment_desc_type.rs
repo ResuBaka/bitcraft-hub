@@ -82,7 +82,6 @@ impl __sdk::__query_builder::HasCols for EquipmentDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct EquipmentDescIxCols {
     pub item_id: __sdk::__query_builder::IxCol<EquipmentDesc, i32>,
-    pub show_in_progression: __sdk::__query_builder::IxCol<EquipmentDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for EquipmentDesc {
@@ -90,10 +89,6 @@ impl __sdk::__query_builder::HasIxCols for EquipmentDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         EquipmentDescIxCols {
             item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
-            show_in_progression: __sdk::__query_builder::IxCol::new(
-                table_name,
-                "show_in_progression",
-            ),
         }
     }
 }

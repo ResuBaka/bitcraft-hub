@@ -3,8 +3,6 @@ import type { ItemCargo } from "./ItemCargo";
 
 export type ItemsAndCargoResponse = {
   items: Array<ItemCargo>;
-  tags: Array<string>;
-  tiers: Array<bigint>;
   per_page: bigint;
   total: bigint;
   page: bigint;

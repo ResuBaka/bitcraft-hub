@@ -2,7 +2,7 @@
 // WILL NOT BE SAVED. MODIFY TABLES IN YOUR MODULE SOURCE CODE INSTEAD.
 
 #![allow(unused, clippy::all)]
-use super::extract_outcome_state_type::ExtractOutcomeState;
+use super::extract_outcome_state_v_2_type::ExtractOutcomeStateV2;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 /// Table handle for the table `extract_outcome_state`.
@@ -14,7 +14,7 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 /// but to directly chain method calls,
 /// like `ctx.db.extract_outcome_state().on_insert(...)`.
 pub struct ExtractOutcomeStateTableHandle<'ctx> {
-    imp: __sdk::TableHandle<ExtractOutcomeState>,
+    imp: __sdk::TableHandle<ExtractOutcomeStateV2>,
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
@@ -33,7 +33,7 @@ impl ExtractOutcomeStateTableAccess for super::RemoteTables {
         ExtractOutcomeStateTableHandle {
             imp: self
                 .imp
-                .get_table::<ExtractOutcomeState>("extract_outcome_state"),
+                .get_table::<ExtractOutcomeStateV2>("extract_outcome_state"),
             ctx: std::marker::PhantomData,
         }
     }
@@ -43,13 +43,13 @@ pub struct ExtractOutcomeStateInsertCallbackId(__sdk::CallbackId);
 pub struct ExtractOutcomeStateDeleteCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::Table for ExtractOutcomeStateTableHandle<'ctx> {
-    type Row = ExtractOutcomeState;
+    type Row = ExtractOutcomeStateV2;
     type EventContext = super::EventContext;
 
     fn count(&self) -> u64 {
         self.imp.count()
     }
-    fn iter(&self) -> impl Iterator<Item = ExtractOutcomeState> + '_ {
+    fn iter(&self) -> impl Iterator<Item = ExtractOutcomeStateV2> + '_ {
         self.imp.iter()
     }
 
@@ -82,7 +82,7 @@ impl<'ctx> __sdk::Table for ExtractOutcomeStateTableHandle<'ctx> {
 
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<ExtractOutcomeState>("extract_outcome_state");
+    let _table = client_cache.get_or_make_table::<ExtractOutcomeStateV2>("extract_outcome_state");
     _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
 }
 pub struct ExtractOutcomeStateUpdateCallbackId(__sdk::CallbackId);
@@ -105,9 +105,9 @@ impl<'ctx> __sdk::TableWithPrimaryKey for ExtractOutcomeStateTableHandle<'ctx> {
 #[doc(hidden)]
 pub(super) fn parse_table_update(
     raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<ExtractOutcomeState>> {
+) -> __sdk::Result<__sdk::TableUpdate<ExtractOutcomeStateV2>> {
     __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<ExtractOutcomeState>", "TableUpdate")
+        __sdk::InternalError::failed_parse("TableUpdate<ExtractOutcomeStateV2>", "TableUpdate")
             .with_cause(e)
             .into()
     })
@@ -121,7 +121,7 @@ pub(super) fn parse_table_update(
 /// but to directly chain method calls,
 /// like `ctx.db.extract_outcome_state().entity_id().find(...)`.
 pub struct ExtractOutcomeStateEntityIdUnique<'ctx> {
-    imp: __sdk::UniqueConstraintHandle<ExtractOutcomeState, u64>,
+    imp: __sdk::UniqueConstraintHandle<ExtractOutcomeStateV2, u64>,
     phantom: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
@@ -138,23 +138,23 @@ impl<'ctx> ExtractOutcomeStateTableHandle<'ctx> {
 impl<'ctx> ExtractOutcomeStateEntityIdUnique<'ctx> {
     /// Find the subscribed row whose `entity_id` column value is equal to `col_val`,
     /// if such a row is present in the client cache.
-    pub fn find(&self, col_val: &u64) -> Option<ExtractOutcomeState> {
+    pub fn find(&self, col_val: &u64) -> Option<ExtractOutcomeStateV2> {
         self.imp.find(col_val)
     }
 }
 
 #[allow(non_camel_case_types)]
-/// Extension trait for query builder access to the table `ExtractOutcomeState`.
+/// Extension trait for query builder access to the table `ExtractOutcomeStateV2`.
 ///
 /// Implemented for [`__sdk::QueryTableAccessor`].
 pub trait extract_outcome_stateQueryTableAccess {
     #[allow(non_snake_case)]
-    /// Get a query builder for the table `ExtractOutcomeState`.
-    fn extract_outcome_state(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState>;
+    /// Get a query builder for the table `ExtractOutcomeStateV2`.
+    fn extract_outcome_state(&self) -> __sdk::__query_builder::Table<ExtractOutcomeStateV2>;
 }
 
 impl extract_outcome_stateQueryTableAccess for __sdk::QueryTableAccessor {
-    fn extract_outcome_state(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState> {
+    fn extract_outcome_state(&self) -> __sdk::__query_builder::Table<ExtractOutcomeStateV2> {
         __sdk::__query_builder::Table::new("extract_outcome_state")
     }
 }

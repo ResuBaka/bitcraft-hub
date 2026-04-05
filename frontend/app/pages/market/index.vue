@@ -12,6 +12,11 @@ import { rarityToTextClass, tierToTextClass, useDelayedPending } from "~/utils";
 type PreparedItemOption = ItemOption & { searchLabel: string };
 type ItemGroup = { tag: string; items: PreparedItemOption[] };
 type OrderCounts = { buy: number; sell: number; total: number };
+type ClaimSummary = {
+  entity_id?: bigint | number | string;
+  name?: string;
+  location?: unknown;
+};
 type MarketTreeGroupNode = NuxtTreeItem & {
   kind: "group";
   key: string;
@@ -352,6 +357,31 @@ const expandedTreeKeys = computed(() => {
   return openGroupTags.value;
 });
 
+const flattenTreeItems = (items: MarketTreeNode[]): MarketTreeItemNode[] => {
+  const result: MarketTreeItemNode[] = [];
+
+  for (const item of items) {
+    if (item.kind === "item") {
+      result.push(item);
+      continue;
+    }
+
+    result.push(...flattenTreeItems(item.children));
+  }
+
+  return result;
+};
+
+const selectedTreeItems = computed(() => {
+  if (!selectedItemKeys.value.length) {
+    return [] as MarketTreeItemNode[];
+  }
+
+  const selectedKeys = new Set(selectedItemKeys.value);
+
+  return flattenTreeItems(treeItems.value).filter((item) => selectedKeys.has(item.key));
+});
+
 const selectedItems = computed(() => {
   if (!selectedItemKeys.value.length) {
     return [];
@@ -586,6 +616,24 @@ const buyOrders = computed(() => {
   return orders.sort((a, b) => b.price_threshold - a.price_threshold);
 });
 
+const visibleClaimIds = computed(() => {
+  const ids = new Set<string>();
+
+  for (const order of sellOrders.value) {
+    ids.add(order.claim_entity_id.toString());
+  }
+
+  for (const order of buyOrders.value) {
+    ids.add(order.claim_entity_id.toString());
+  }
+
+  return [...ids];
+});
+
+const { data: claimNames } = await useLazyFetchMsPack<Map<number, ClaimSummary>>(
+  () => `/claims/names`,
+);
+
 const sellColumns = [
   { id: "item", header: "Item" },
   {
@@ -727,10 +775,22 @@ useSeoMeta({
                 </template>
                 <UTable :columns="sellColumns" :data="sellOrders">
                   <template #item-cell="{ row }">
-                    {{
-                      itemNameByKey.get(`${row.original.item_type}:${row.original.item_id}`) ||
-                      `#${row.original.item_id}`
-                    }}
+                    <div class="flex items-center gap-2">
+                      <BitcraftInventoryImg
+                        :item="
+                          itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
+                        "
+                        :width="24"
+                        :height="24"
+                        class="shrink-0"
+                      />
+                      <span class="truncate">
+                        {{
+                          itemNameByKey.get(`${row.original.item_type}:${row.original.item_id}`) ||
+                          `#${row.original.item_id}`
+                        }}
+                      </span>
+                    </div>
                   </template>
                   <template #quantity-cell="{ row }">{{
                     row.original.quantity.toLocaleString()
@@ -746,7 +806,10 @@ useSeoMeta({
                       }"
                       class="text-primary-500 hover:underline"
                     >
-                      {{ row.original.claim_entity_id.toString() }}
+                      {{
+                        claimNames?.[row.original.claim_entity_id].name ||
+                        row.original.claim_entity_id.toString()
+                      }}
                     </NuxtLink>
                   </template>
                   <template #region-cell="{ row }">R{{ row.original.region }}</template>
@@ -764,10 +827,22 @@ useSeoMeta({
                 </template>
                 <UTable :columns="buyColumns" :data="buyOrders">
                   <template #item-cell="{ row }">
-                    {{
-                      itemNameByKey.get(`${row.original.item_type}:${row.original.item_id}`) ||
-                      `#${row.original.item_id}`
-                    }}
+                    <div class="flex items-center gap-2">
+                      <BitcraftInventoryImg
+                        :item="
+                          itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
+                        "
+                        :width="24"
+                        :height="24"
+                        class="shrink-0"
+                      />
+                      <span class="truncate">
+                        {{
+                          itemNameByKey.get(`${row.original.item_type}:${row.original.item_id}`) ||
+                          `#${row.original.item_id}`
+                        }}
+                      </span>
+                    </div>
                   </template>
                   <template #quantity-cell="{ row }">{{
                     row.original.quantity.toLocaleString()
@@ -783,7 +858,10 @@ useSeoMeta({
                       }"
                       class="text-primary-500 hover:underline"
                     >
-                      {{ row.original.claim_entity_id.toString() }}
+                      {{
+                        claimNames?.[row.original.claim_entity_id].name ||
+                        row.original.claim_entity_id.toString()
+                      }}
                     </NuxtLink>
                   </template>
                   <template #region-cell="{ row }">R{{ row.original.region }}</template>
@@ -833,11 +911,7 @@ useSeoMeta({
               v-if="treeItems.length"
               class="max-h-[60vh] overflow-y-auto pr-1"
               :items="treeItems"
-              :model-value="
-                treeItems.filter(
-                  (item) => item.kind === 'item' && selectedItemKeys.includes(item.key),
-                )
-              "
+              :model-value="selectedTreeItems"
               :expanded="expandedTreeKeys"
               :get-key="(item) => item.key"
               multiple
@@ -878,6 +952,12 @@ useSeoMeta({
                     class="flex-1 justify-start"
                     @click="handleSelect"
                   >
+                    <BitcraftInventoryImg
+                      :item="item.option"
+                      :width="30"
+                      :height="20"
+                      class="shrink-0"
+                    />
                     <span class="truncate">{{ item.option.name }}</span>
                     <span class="ml-1 text-[10px]" :class="rarityToTextClass(item.option.rarity)">
                       {{ item.option.rarity }}

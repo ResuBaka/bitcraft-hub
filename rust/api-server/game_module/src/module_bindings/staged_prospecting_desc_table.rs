@@ -2,6 +2,7 @@
 // WILL NOT BE SAVED. MODIFY TABLES IN YOUR MODULE SOURCE CODE INSTEAD.
 
 #![allow(unused, clippy::all)]
+use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::item_stack_type::ItemStack;
 use super::prospecting_desc_type::ProspectingDesc;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};

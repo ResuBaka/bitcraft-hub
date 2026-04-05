@@ -8,6 +8,7 @@ export type ItemOption = {
   id: number;
   item_type: ItemType;
   tag: string;
+  icon_asset_name: string;
   tier: number;
   rarity: string;
 };

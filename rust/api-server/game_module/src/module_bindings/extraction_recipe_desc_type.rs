@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::empire_permission_type::EmpirePermission;
 use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::input_item_stack_type::InputItemStack;
 use super::level_requirement_type::LevelRequirement;
@@ -34,6 +35,7 @@ pub struct ExtractionRecipeDesc {
     pub recipe_performance_id: i32,
     pub empire_rank_requirement: Option<i32>,
     pub show_in_progression: bool,
+    pub empire_permission_required: Option<EmpirePermission>,
 }
 
 impl __sdk::InModule for ExtractionRecipeDesc {
@@ -69,6 +71,8 @@ pub struct ExtractionRecipeDescCols {
     pub recipe_performance_id: __sdk::__query_builder::Col<ExtractionRecipeDesc, i32>,
     pub empire_rank_requirement: __sdk::__query_builder::Col<ExtractionRecipeDesc, Option<i32>>,
     pub show_in_progression: __sdk::__query_builder::Col<ExtractionRecipeDesc, bool>,
+    pub empire_permission_required:
+        __sdk::__query_builder::Col<ExtractionRecipeDesc, Option<EmpirePermission>>,
 }
 
 impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
@@ -125,6 +129,10 @@ impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
             show_in_progression: __sdk::__query_builder::Col::new(
                 table_name,
                 "show_in_progression",
+            ),
+            empire_permission_required: __sdk::__query_builder::Col::new(
+                table_name,
+                "empire_permission_required",
             ),
         }
     }

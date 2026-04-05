@@ -11,6 +11,7 @@ use super::pocket_key_type::PocketKey;
 pub struct PlayerEquipmentRemoveRequest {
     pub slot: i32,
     pub to_pocket: Option<PocketKey>,
+    pub preset_index: i32,
 }
 
 impl __sdk::InModule for PlayerEquipmentRemoveRequest {

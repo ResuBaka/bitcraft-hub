@@ -16,6 +16,7 @@ pub struct ProspectingState {
     pub next_crumb_angle: Vec<f32>,
     pub last_prospection_timestamp: __sdk::Timestamp,
     pub contribution: i32,
+    pub to_next_node: f32,
 }
 
 impl __sdk::InModule for ProspectingState {
@@ -35,6 +36,7 @@ pub struct ProspectingStateCols {
     pub next_crumb_angle: __sdk::__query_builder::Col<ProspectingState, Vec<f32>>,
     pub last_prospection_timestamp: __sdk::__query_builder::Col<ProspectingState, __sdk::Timestamp>,
     pub contribution: __sdk::__query_builder::Col<ProspectingState, i32>,
+    pub to_next_node: __sdk::__query_builder::Col<ProspectingState, f32>,
 }
 
 impl __sdk::__query_builder::HasCols for ProspectingState {
@@ -56,6 +58,7 @@ impl __sdk::__query_builder::HasCols for ProspectingState {
                 "last_prospection_timestamp",
             ),
             contribution: __sdk::__query_builder::Col::new(table_name, "contribution"),
+            to_next_node: __sdk::__query_builder::Col::new(table_name, "to_next_node"),
         }
     }
 }

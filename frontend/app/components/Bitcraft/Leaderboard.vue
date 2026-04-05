@@ -293,57 +293,97 @@ const timeHeader = computed(() => {
 });
 
 const experienceColumns = computed(() => [
-  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
-  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
+  {
+    id: "rank",
+    header: "Rank",
+    meta: { class: { th: "w-20 text-center", td: "w-20 text-center" } },
+  },
+  {
+    id: "player",
+    header: "Player",
+    meta: { class: { th: "w-auto text-center", td: "w-auto text-center" } },
+  },
   {
     id: "experience",
     header: "Experience",
-    meta:  { class: { th: "w-48 text-right", td: "w-48 text-right" } },
+    meta: { class: { th: "w-48 text-right", td: "w-48 text-right" } },
   },
 ]);
 
 const experiencePerHourColumns = computed(() => [
-  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
-  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
+  {
+    id: "rank",
+    header: "Rank",
+    meta: { class: { th: "w-20 text-center", td: "w-20 text-center" } },
+  },
+  {
+    id: "player",
+    header: "Player",
+    meta: { class: { th: "w-auto text-center", td: "w-auto text-center" } },
+  },
   {
     id: "experienceValue",
     header: `Experience/h ${numberFormat.format(experiencePerHourAverage.value)}`,
-    meta:  { class: { th: "w-48 text-right", td: "w-48 text-right" } },
+    meta: { class: { th: "w-48 text-right", td: "w-48 text-right" } },
   },
 ]);
 
 const levelColumns = computed(() => [
-  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
-  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
+  {
+    id: "rank",
+    header: "Rank",
+    meta: { class: { th: "w-20 text-center", td: "w-20 text-center" } },
+  },
+  {
+    id: "player",
+    header: "Player",
+    meta: { class: { th: "w-auto text-center", td: "w-auto text-center" } },
+  },
   {
     id: "level",
     header: "Level",
-    meta:  { class: { th: "w-48 text-right", td: "w-48 text-right" } },
+    meta: { class: { th: "w-48 text-right", td: "w-48 text-right" } },
   },
 ]);
 
 const timeColumns = computed(() => [
-  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
-  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
+  {
+    id: "rank",
+    header: "Rank",
+    meta: { class: { th: "w-20 text-center", td: "w-20 text-center" } },
+  },
+  {
+    id: "player",
+    header: "Player",
+    meta: { class: { th: "w-auto text-center", td: "w-auto text-center" } },
+  },
   {
     id: "time",
     header: timeHeader.value,
-    meta:  { class: { th: "w-100 text-right", td: "w-100 text-right" } },
+    meta: { class: { th: "w-100 text-right", td: "w-100 text-right" } },
   },
 ]);
 
 const defaultColumns = computed(() => [
-  { id: "rank", header: "Rank", meta:  { class: { th: "w-20 text-center", td: "w-20 text-center" } } },
-  { id: "player", header: "Player", meta:  { class: { th: "w-auto text-center", td: "w-auto text-center" } } },
+  {
+    id: "rank",
+    header: "Rank",
+    meta: { class: { th: "w-20 text-center", td: "w-20 text-center" } },
+  },
+  {
+    id: "player",
+    header: "Player",
+    meta: { class: { th: "w-auto text-center", td: "w-auto text-center" } },
+  },
   {
     id: "level",
     header: "Level",
-    meta:  { class: { th: "w-30 text-center", td: "w-30 text-center" } },
+    meta: { class: { th: "w-30 text-center", td: "w-30 text-center" } },
   },
   {
     id: "experience",
     header: "Experience",
-    meta:  { class: { th: "w-30 text-right", td: "w-30 text-right" } },
+    meta: { class: { th: "w-30 text-right", td: "w-30 text-right" } },
   },
 ]);
 
@@ -380,8 +420,6 @@ const columnsForSkill = (skill: string) => {
   <UContainer class="py-6">
     <div class="flex flex-col gap-6">
       <div class="flex flex-col gap-4">
-
-
         <div class="flex flex-col lg:flex-row gap-4">
           <div class="flex flex-col gap-2 lg:w-70 shrink-0">
             <div class="flex flex-col gap-3">

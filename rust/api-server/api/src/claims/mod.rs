@@ -28,6 +28,10 @@ pub(crate) fn get_routes() -> AppRouter {
     Router::new()
         .route("/claims", axum_codec::routing::get(list_claims).into())
         .route(
+            "/claims/names",
+            axum_codec::routing::get(get_claim_names).into(),
+        )
+        .route(
             "/api/bitcraft/claims",
             axum_codec::routing::get(list_claims).into(),
         )
@@ -69,6 +73,14 @@ pub struct ClaimDescriptionState {
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub xp_gained_since_last_coin_minting: i32,
     pub region: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ClaimSummaryResponse {
+    pub name: String,
+    pub region: String,
+    pub location: Option<Location>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -236,6 +248,31 @@ pub(crate) async fn get_claim_inventory_change_log(
     })?;
     Ok(axum_codec::Codec(inventory_changes))
 }
+
+pub(crate) async fn get_claim_names(
+    state: State<AppState>,
+) -> Result<axum_codec::Codec<HashMap<i64, ClaimSummaryResponse>>, (StatusCode, &'static str)> {
+    let mut claims = HashMap::new();
+
+    for claim_state in state.claim_state.iter() {
+        let location = state
+            .claim_local_state
+            .get(&(claim_state.entity_id as u64))
+            .and_then(|claim_local_state| claim_local_state.location.clone());
+
+        claims.insert(
+            claim_state.entity_id,
+            ClaimSummaryResponse {
+                name: claim_state.name.clone(),
+                region: claim_state.region.clone(),
+                location,
+            },
+        );
+    }
+
+    Ok(axum_codec::Codec(claims))
+}
+
 pub(crate) async fn get_claim(
     state: State<AppState>,
     Path(id): Path<u64>,

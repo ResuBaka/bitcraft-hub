@@ -2,6 +2,7 @@
 // WILL NOT BE SAVED. MODIFY TABLES IN YOUR MODULE SOURCE CODE INSTEAD.
 
 #![allow(unused, clippy::all)]
+use super::empire_permission_type::EmpirePermission;
 use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::extraction_recipe_desc_type::ExtractionRecipeDesc;
 use super::input_item_stack_type::InputItemStack;

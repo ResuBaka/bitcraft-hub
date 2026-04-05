@@ -14,7 +14,7 @@ pub struct PlayerMoveRequest {
     pub origin: Option<OffsetCoordinatesFloat>,
     pub duration: f32,
     pub move_type: i32,
-    pub running: bool,
+    pub is_rp_walk: bool,
 }
 
 impl __sdk::InModule for PlayerMoveRequest {

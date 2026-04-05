@@ -600,16 +600,25 @@ const onlinePlayersCount = computed(() => {
 const memberSkills = [
   "Carpentry",
   "Farming",
-  "Fishing",
-  "Foraging",
   "Forestry",
+  "Foraging",
+  "Tailoring",
+  "Fishing",
   "Hunting",
   "Leatherworking",
-  "Masonry",
   "Mining",
-  "Scholar",
   "Smithing",
-  "Tailoring",
+  "Masonry",
+  "Scholar",
+] as const;
+
+const memberSecondarySkills = [
+  "Cooking",
+  "Sailing",
+  "Slayer",
+  "Taming",
+  "Construction",
+  "Merchanting",
 ] as const;
 
 const memberColumns = computed(() => {
@@ -627,7 +636,14 @@ const memberColumns = computed(() => {
       enableSorting: true,
       meta: { class: { th: "text-center", td: "text-center" } },
     },
-    ...memberSkills.map((skill) => ({
+    ...memberSkills.toSorted().map((skill) => ({
+      id: `skill_${skill}`,
+      header: skill,
+      accessorFn: (row: any) => row?.skills_ranks?.[skill] ?? 0,
+      enableSorting: true,
+      meta: { class: { th: "text-center", td: "text-center" } },
+    })),
+    ...memberSecondarySkills.toSorted().map((skill) => ({
       id: `skill_${skill}`,
       header: skill,
       accessorFn: (row: any) => row?.skills_ranks?.[skill] ?? 0,
@@ -1211,6 +1227,29 @@ watch(
                       </span>
                     </UButton>
                   </template>
+                  <template
+                    v-for="skill in memberSecondarySkills"
+                    :key="`${skill}-header`"
+                    #[`skill_${skill}-header`]="{ column }"
+                  >
+                    <UButton
+                      variant="ghost"
+                      size="xs"
+                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
+                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
+                    >
+                      {{ skill }}
+                      <span class="ml-1 text-xs">
+                        {{
+                          column.getIsSorted() === "asc"
+                            ? "▲"
+                            : column.getIsSorted() === "desc"
+                              ? "▼"
+                              : ""
+                        }}
+                      </span>
+                    </UButton>
+                  </template>
                   <template #user-cell="{ row }">
                     <NuxtLink
                       :to="{ name: 'players-id', params: { id: row.original.entity_id } }"
@@ -1242,7 +1281,7 @@ watch(
                   >
                     <div class="flex items-center justify-center">
                       <span
-                        class="level-pill rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
+                        class="rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
                         :class="levelToColor(row.original?.skills_ranks?.[skill] ?? 0)"
                         :style="
                           tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))
@@ -1252,7 +1291,7 @@ watch(
                       </span>
                       <span
                         v-if="getToolLabel(getSkillTool(row.original, skill))"
-                        class="level-pill rounded-r-full px-2 py-1 text-sm font-bold"
+                        class="rounded-r-full px-2 py-1 text-sm font-bold"
                         :class="tierToColor[getSkillTool(row.original, skill)?.tier]"
                         :style="tierToBgStyle(getSkillTool(row.original, skill)?.tier || 1)"
                       >
@@ -1260,6 +1299,37 @@ watch(
                       </span>
                       <span
                         v-else
+                        class="rounded-r-full px-2 py-1 text-sm text-gray-400 dark:text-gray-500"
+                      >
+                        --
+                      </span>
+                    </div>
+                  </template>
+                  <template
+                    v-for="skill in memberSecondarySkills"
+                    :key="skill"
+                    #[`skill_${skill}-cell`]="{ row }"
+                  >
+                    <div class="flex items-center justify-center">
+                      <span
+                        class="rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
+                        :class="`${levelToColor(row.original?.skills_ranks?.[skill] ?? 0)} ${skillToToolIndex[skill] ? '' : 'rounded-r-full'}`"
+                        :style="
+                          tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))
+                        "
+                      >
+                        {{ row.original?.skills_ranks?.[skill] ?? 0 }}
+                      </span>
+                      <span
+                        v-if="getToolLabel(getSkillTool(row.original, skill))"
+                        class="rounded-r-full px-2 py-1 text-sm font-bold"
+                        :class="`${tierToColor[getSkillTool(row.original, skill)?.tier]}`"
+                        :style="tierToBgStyle(getSkillTool(row.original, skill)?.tier || 1)"
+                      >
+                        {{ getToolLabel(getSkillTool(row.original, skill)) }}
+                      </span>
+                      <span
+                        v-else-if="skillToToolIndex[skill] !== undefined"
                         class="rounded-r-full px-2 py-1 text-sm text-gray-400 dark:text-gray-500"
                       >
                         --
