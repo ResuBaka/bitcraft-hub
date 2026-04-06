@@ -2,7 +2,7 @@
 name = "bitcraft-hub-api"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.90.0"
+rust-version = "1.94.0"
 
 [profile.release]
 debug = 1
