@@ -362,13 +362,12 @@ pub(crate) fn start_worker_experience_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name, .. } => {
-                                if let Some(reducer_name) = &reducer_name {
-                                    match reducer_name {
-                                        &"transfer_player_delayed" => {
-                                            continue
-                                        }
-                                        _ => {}
+                                #[allow(clippy::single_match)]
+                                match reducer_name {
+                                    Some("transfer_player_delayed") => {
+                                        continue
                                     }
+                                    _ => {}
                                 }
 
                                 let id = delete.entity_id as i64;

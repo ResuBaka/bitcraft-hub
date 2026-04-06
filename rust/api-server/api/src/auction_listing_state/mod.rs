@@ -28,6 +28,7 @@ pub(crate) fn get_routes() -> AppRouter {
 #[derive(Debug, Deserialize)]
 pub(crate) struct MarketOrdersParams {
     items: Option<String>,
+    return_all: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
@@ -36,6 +37,12 @@ pub(crate) struct MarketOrderStats {
     buy: u64,
     sell: u64,
     total: u64,
+    buy_price_highest: Option<i32>,
+    buy_price_lowest: Option<i32>,
+    buy_amount_lowest: Option<i32>,
+    sell_price_highest: Option<i32>,
+    sell_price_lowest: Option<i32>,
+    sell_amount_lowest: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, TS)]
@@ -71,6 +78,24 @@ pub(crate) async fn get_market_order_stats(
         let entry = order_counts.entry(key).or_default();
         entry.buy += 1;
         entry.total += 1;
+
+        if let Some(buy_price_highest) = entry.buy_price_highest {
+            if order.price_threshold > buy_price_highest {
+                entry.buy_price_highest = Some(order.price_threshold);
+            }
+        } else {
+            entry.buy_price_lowest = Some(order.price_threshold);
+            entry.buy_amount_lowest = Some(order.quantity);
+        }
+
+        if let Some(buy_price_lowest) = entry.buy_price_lowest {
+            if order.price_threshold < buy_price_lowest {
+                entry.buy_price_highest = Some(order.price_threshold);
+            }
+        } else {
+            entry.buy_price_lowest = Some(order.price_threshold);
+            entry.buy_amount_lowest = Some(order.quantity);
+        }
     }
 
     for order in state.sell_order_state.iter() {
@@ -78,6 +103,24 @@ pub(crate) async fn get_market_order_stats(
         let entry = order_counts.entry(key).or_default();
         entry.sell += 1;
         entry.total += 1;
+
+        if let Some(sell_price_highest) = entry.sell_price_highest {
+            if order.price_threshold > sell_price_highest {
+                entry.sell_price_highest = Some(order.price_threshold);
+            }
+        } else {
+            entry.sell_price_lowest = Some(order.price_threshold);
+            entry.sell_amount_lowest = Some(order.quantity);
+        }
+
+        if let Some(sell_price_lowest) = entry.sell_price_lowest {
+            if order.price_threshold < sell_price_lowest {
+                entry.sell_price_highest = Some(order.price_threshold);
+            }
+        } else {
+            entry.sell_price_lowest = Some(order.price_threshold);
+            entry.sell_amount_lowest = Some(order.quantity);
+        }
     }
 
     Ok(axum_codec::Codec(MarketOrderStatsResponse { order_counts }))
@@ -88,6 +131,29 @@ pub(crate) async fn find_market_place_order(
     Query(params): Query<MarketOrdersParams>,
 ) -> Result<axum_codec::Codec<MarketOrdersResponse>, (StatusCode, &'static str)> {
     let selected_item_keys = parse_selected_item_keys(params.items.as_deref());
+
+    if let Some(item) = params.return_all {
+        if item {
+            return Ok(axum_codec::Codec(MarketOrdersResponse {
+                buy_orders: state
+                    .buy_order_state
+                    .iter()
+                    .fold(HashMap::new(), |mut acc, a| {
+                        let key = format!("{}:{}", a.item_type, a.item_id);
+                        acc.entry(key).or_default().push(a.clone());
+                        acc
+                    }),
+                sell_orders: state
+                    .sell_order_state
+                    .iter()
+                    .fold(HashMap::new(), |mut acc, a| {
+                        let key = format!("{}:{}", a.item_type, a.item_id);
+                        acc.entry(key).or_default().push(a.clone());
+                        acc
+                    }),
+            }));
+        }
+    }
 
     if selected_item_keys.is_empty() {
         return Ok(axum_codec::Codec(MarketOrdersResponse {

@@ -16,6 +16,7 @@ use entity::{
     player_state,
 };
 use log::error;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::cmp::Ordering;
@@ -317,6 +318,25 @@ pub(crate) async fn get_claim(
 
     let claim_local_state = state.claim_local_state.get(&(claim.entity_id as u64));
 
+    let player_ids = state
+        .claim_member_state
+        .get(&(claim.entity_id as u64))
+        .map_or(vec![], |claim_members| {
+            claim_members
+                .iter()
+                .map(|member| member.player_entity_id)
+                .collect()
+        });
+
+    let currently_known_player_username_state = ::entity::player_username_state::Entity::find()
+        .filter(::entity::player_username_state::Column::EntityId.is_in(player_ids))
+        .all(&state.conn)
+        .await
+        .map_or(vec![], |aa| aa)
+        .into_iter()
+        .map(|value| (value.entity_id, value.username))
+        .collect::<HashMap<_, _>>();
+
     let claim_member_state = state
         .claim_member_state
         .get(&(claim.entity_id as u64))
@@ -325,7 +345,10 @@ pub(crate) async fn get_claim(
                 .iter()
                 .map(|member| ClaimDescriptionStateMember {
                     entity_id: member.player_entity_id,
-                    user_name: member.user_name.clone(),
+                    user_name: currently_known_player_username_state
+                        .get(&member.player_entity_id)
+                        .unwrap_or(&member.user_name.clone())
+                        .clone(),
                     inventory_permission: member.inventory_permission,
                     build_permission: member.build_permission,
                     officer_permission: member.officer_permission,

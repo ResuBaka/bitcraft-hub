@@ -217,17 +217,16 @@ pub(crate) fn start_worker_player_state(
                                 let model: ::entity::player_state::Model = ::entity::player_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
-                                if let Some(reducer_name) = &reducer_name {
-                                    match reducer_name {
-                                        &"transfer_player_delayed" => {
-                                            metrics::gauge!("players_current_state", &[
-                                                ("online", model.signed_in.to_string()),
-                                                ("region", database_name.to_string())
-                                            ]).decrement(1);
-                                            continue
-                                        }
-                                        _ => {}
+                                #[allow(clippy::single_match)]
+                                match reducer_name {
+                                    Some("transfer_player_delayed") => {
+                                        metrics::gauge!("players_current_state", &[
+                                            ("online", model.signed_in.to_string()),
+                                            ("region", database_name.to_string())
+                                        ]).decrement(1);
+                                        continue
                                     }
+                                    _ => {}
                                 }
 
                                 // global_app_state.player_state.remove(&model.entity_id);
@@ -427,13 +426,12 @@ pub(crate) fn start_worker_player_username_state(
                                 let model: ::entity::player_username_state::Model = ::entity::player_username_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
                                 let id = model.entity_id;
 
-                                if let Some(reducer_name) = &reducer_name {
-                                    match reducer_name {
-                                        &"transfer_player_delayed" => {
-                                            continue
-                                        }
-                                        _ => {}
+                                #[allow(clippy::single_match)]
+                                match reducer_name {
+                                    Some("transfer_player_delayed") => {
+                                        continue
                                     }
+                                    _ => {}
                                 }
 
                                 if ids.contains(&id) {
