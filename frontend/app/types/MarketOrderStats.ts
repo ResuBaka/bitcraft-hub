@@ -4,8 +4,14 @@ export type MarketOrderStats = {
   buy: bigint;
   sell: bigint;
   total: bigint;
+  buy_price_mean: number | null;
   buy_price_highest: number | null;
   buy_price_lowest: number | null;
+  buy_amount_lowest: number | null;
+  buy_amount_highest: number | null;
+  sell_price_mean: number | null;
   sell_price_highest: number | null;
   sell_price_lowest: number | null;
+  sell_amount_lowest: number | null;
+  sell_amount_highest: number | null;
 };

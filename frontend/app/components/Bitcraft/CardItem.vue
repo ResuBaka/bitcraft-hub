@@ -61,40 +61,27 @@ const neededToCraftData = computed(() => {
   return neededToCraft.value ?? [];
 });
 
-const contentToShow = ref<
-  "default" | "neededToCraft" | "neededInCrafting" | "producedInCrafting"
->("default");
+const contentToShow = ref<"default" | "neededToCraft" | "neededInCrafting" | "producedInCrafting">(
+  "default",
+);
 
 const toggleContentToShow = (
-  contentArg:
-    | "default"
-    | "neededToCraft"
-    | "neededInCrafting"
-    | "producedInCrafting",
+  contentArg: "default" | "neededToCraft" | "neededInCrafting" | "producedInCrafting",
 ) => {
   if (contentArg === "neededToCraft") {
-    if (
-      neededToCraftData.value.length === 0 &&
-      neededToCraftStatus.value !== "success"
-    ) {
+    if (neededToCraftData.value.length === 0 && neededToCraftStatus.value !== "success") {
       neededToCraftExecute();
     }
   }
 
   if (contentArg === "neededInCrafting") {
-    if (
-      neededInCraftingData.value.length === 0 &&
-      neededInCraftingStatus.value !== "success"
-    ) {
+    if (neededInCraftingData.value.length === 0 && neededInCraftingStatus.value !== "success") {
       neededInCraftingExecute();
     }
   }
 
   if (contentArg === "producedInCrafting") {
-    if (
-      producedInCraftingData.value.length === 0 &&
-      producedInCraftingStatus.value !== "success"
-    ) {
+    if (producedInCraftingData.value.length === 0 && producedInCraftingStatus.value !== "success") {
       producedInCraftingExecute();
     }
   }
@@ -116,10 +103,8 @@ const iconUrl = computed(() => {
 const tierColorClass = computed(() => `color-tier-${item.tier}`);
 
 const isLoadingSection = computed(() => {
-  if (contentToShow.value === "neededToCraft")
-    return neededToCraftStatus.value === "pending";
-  if (contentToShow.value === "neededInCrafting")
-    return neededInCraftingStatus.value === "pending";
+  if (contentToShow.value === "neededToCraft") return neededToCraftStatus.value === "pending";
+  if (contentToShow.value === "neededInCrafting") return neededInCraftingStatus.value === "pending";
   if (contentToShow.value === "producedInCrafting")
     return producedInCraftingStatus.value === "pending";
   return false;
@@ -179,7 +164,12 @@ const isLoadingSection = computed(() => {
             />
           </UTooltip>
           <UTooltip text="Needed in crafting">
-            <UButton color="neutral" variant="ghost" size="sm" @click="toggleContentToShow('neededInCrafting')">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="toggleContentToShow('neededInCrafting')"
+            >
               <UBadge color="primary" variant="soft" size="xs">
                 {{ neededInCraftingData.length }}
               </UBadge>
@@ -230,11 +220,7 @@ const isLoadingSection = computed(() => {
 
     <template v-else-if="contentToShow === 'neededInCrafting'">
       <div v-if="neededInCraftingData.length" class="flex flex-col gap-2">
-        <UCard
-          v-for="crafting in neededInCraftingData"
-          :key="crafting.id"
-          :ui="{ body: 'p-3' }"
-        >
+        <UCard v-for="crafting in neededInCraftingData" :key="crafting.id" :ui="{ body: 'p-3' }">
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
             <bitcraft-card-item-crafting-name
               :item="item"
@@ -267,11 +253,7 @@ const isLoadingSection = computed(() => {
 
     <template v-else-if="contentToShow === 'producedInCrafting'">
       <div v-if="producedInCraftingData.length" class="flex flex-col gap-2">
-        <UCard
-          v-for="crafting in producedInCraftingData"
-          :key="crafting.id"
-          :ui="{ body: 'p-3' }"
-        >
+        <UCard v-for="crafting in producedInCraftingData" :key="crafting.id" :ui="{ body: 'p-3' }">
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
             <bitcraft-card-item-crafting-name
               :item="item"
@@ -294,6 +276,7 @@ const isLoadingSection = computed(() => {
         No produced crafting recipes found.
       </p>
     </template>
+  </UCard>
 </template>
 
 <style scoped></style>

@@ -939,6 +939,8 @@ async fn connect_to_db_logic(
     let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
     let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
 
+    let tmp_sub_error_db_name = tmp_database.clone();
+
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
             tracing::debug!("Handle Subscription response");
@@ -1634,7 +1636,15 @@ async fn connect_to_db_logic(
 
             tracing::debug!("Handled Subscription response");
         })
-        .on_error(on_sub_error)
+        .on_error(move |ctx: &ErrorContext, err: Error| {
+            tracing::warn!(
+                db = tmp_sub_error_db_name,
+                "Subscription failed: {} {:?}",
+                err,
+                ctx.event
+            );
+            // std::process::exit(1);
+        })
         .subscribe(
             tables_to_subscribe
                 .into_iter()

@@ -40,9 +40,11 @@ pub(crate) struct MarketOrderStats {
     buy_price_highest: Option<i32>,
     buy_price_lowest: Option<i32>,
     buy_amount_lowest: Option<i32>,
+    buy_amount_highest: Option<i32>,
     sell_price_highest: Option<i32>,
     sell_price_lowest: Option<i32>,
     sell_amount_lowest: Option<i32>,
+    sell_amount_highest: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, TS)]
@@ -82,15 +84,17 @@ pub(crate) async fn get_market_order_stats(
         if let Some(buy_price_highest) = entry.buy_price_highest {
             if order.price_threshold > buy_price_highest {
                 entry.buy_price_highest = Some(order.price_threshold);
+                entry.buy_amount_highest = Some(order.quantity);
             }
         } else {
-            entry.buy_price_lowest = Some(order.price_threshold);
-            entry.buy_amount_lowest = Some(order.quantity);
+            entry.buy_price_highest = Some(order.price_threshold);
+            entry.buy_amount_highest = Some(order.quantity);
         }
 
         if let Some(buy_price_lowest) = entry.buy_price_lowest {
             if order.price_threshold < buy_price_lowest {
-                entry.buy_price_highest = Some(order.price_threshold);
+                entry.buy_price_lowest = Some(order.price_threshold);
+                entry.buy_amount_lowest = Some(order.quantity);
             }
         } else {
             entry.buy_price_lowest = Some(order.price_threshold);
@@ -107,15 +111,17 @@ pub(crate) async fn get_market_order_stats(
         if let Some(sell_price_highest) = entry.sell_price_highest {
             if order.price_threshold > sell_price_highest {
                 entry.sell_price_highest = Some(order.price_threshold);
+                entry.sell_amount_highest = Some(order.quantity);
             }
         } else {
-            entry.sell_price_lowest = Some(order.price_threshold);
-            entry.sell_amount_lowest = Some(order.quantity);
+            entry.sell_price_highest = Some(order.price_threshold);
+            entry.sell_amount_highest = Some(order.quantity);
         }
 
         if let Some(sell_price_lowest) = entry.sell_price_lowest {
             if order.price_threshold < sell_price_lowest {
-                entry.sell_price_highest = Some(order.price_threshold);
+                entry.sell_price_lowest = Some(order.price_threshold);
+                entry.sell_amount_lowest = Some(order.quantity);
             }
         } else {
             entry.sell_price_lowest = Some(order.price_threshold);

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { TreeItem as NuxtTreeItem } from "@nuxt/ui";
+import type { TableColumn, TreeItem as NuxtTreeItem } from "@nuxt/ui";
 import { watchThrottled } from "@vueuse/shared";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { AuctionListingState } from "~/types/AuctionListingState";
 import type { ItemOption } from "~/types/ItemOption";
 import type { MarketItemCargoDescResponse } from "~/types/MarketItemCargoDescResponse";
+import type { MarketOrderStats } from "~/types/MarketOrderStats";
 import type { MarketOrderStatsResponse } from "~/types/MarketOrderStatsResponse";
 import type { MarketOrdersResponse } from "~/types/MarketOrdersResponse";
 import { rarityToTextClass, tierToTextClass, useDelayedPending } from "~/utils";
@@ -29,7 +30,7 @@ type MarketTreeItemNode = NuxtTreeItem & {
   key: string;
   label: string;
   option: PreparedItemOption;
-  counts?: OrderCounts;
+  stats?: MarketOrderStats;
   onSelect?: (event: Event) => void;
 };
 type MarketTreeNode = MarketTreeGroupNode | MarketTreeItemNode;
@@ -190,60 +191,24 @@ watch(
   { immediate: true },
 );
 
-// const itemNameByKey = computed(() => {
-//   if (!itemsAndCargo.value) return new Map<string, string>();
-//
-//   const map = new Map<string, string>();
-//
-//   for (const item of Object.values(itemsAndCargo.value.item_desc)) {
-//     map.set(`0:${item.id}`, item.name);
-//   }
-//
-//   for (const cargo of Object.values(itemsAndCargo.value.cargo_desc)) {
-//     map.set(`1:${cargo.id}`, cargo.name);
-//   }
-//
-//   return map;
-// });
-
-// const itemOptions = computed<ItemOption[]>(() => {
-//   if (!itemsAndCargo.value) {
-//     return [];
-//   }
-//
-//   const values: ItemOption[] = [];
-//
-//   for (const item of Object.values(itemsAndCargo.value.cargo_desc)) {
-//     values.push({
-//       label: `${item.name} - ${item.rarity} - T${item.tier}`,
-//       name: item.name,
-//       key: `1:${item.id}`,
-//       id: item.id,
-//       item_type: 1,
-//       tag: item.tag,
-//       tier: item.tier,
-//       rarity: item.rarity,
-//     });
-//   }
-//
-//   for (const item of Object.values(itemsAndCargo.value.item_desc)) {
-//     values.push({
-//       label: `${item.name} - ${item.rarity} - T${item.tier}`,
-//       name: item.name,
-//       key: `0:${item.id}`,
-//       id: item.id,
-//       item_type: 0,
-//       tag: item.tag,
-//       tier: item.tier,
-//       rarity: item.rarity,
-//     });
-//   }
-//
-//   return values.sort((a, b) => a.label.localeCompare(b.label));
-// });
-
 const getOrderCounts = (key: string) => {
   return marketStatsData.value?.order_counts[key];
+};
+
+const formatStatAmount = (value: bigint | number | null | undefined) => {
+  if (value == null) {
+    return "0";
+  }
+
+  return value.toLocaleString();
+};
+
+const formatStatPrice = (value: number | null | undefined) => {
+  if (value == null) {
+    return "-";
+  }
+
+  return Math.round(value).toLocaleString();
 };
 
 const treeItems = computed(() => {
@@ -263,7 +228,7 @@ const treeItems = computed(() => {
     const filteredItems: MarketTreeItemNode[] = [];
 
     for (const option of group.items) {
-      const counts = getOrderCounts(option.key);
+      const stats = getOrderCounts(option.key);
       const matchesSearch = !hasSearch || option.searchLabel.includes(term);
 
       if (!matchesSearch) {
@@ -271,8 +236,8 @@ const treeItems = computed(() => {
       }
 
       if (hasBuyFilter || hasSellFilter) {
-        const hasBuy = (counts?.buy ?? 0) > 0;
-        const hasSell = (counts?.sell ?? 0) > 0;
+        const hasBuy = Number(stats?.buy ?? 0) > 0;
+        const hasSell = Number(stats?.sell ?? 0) > 0;
 
         if (hasBuyFilter && hasSellFilter) {
           if (!hasBuy && !hasSell) {
@@ -292,7 +257,7 @@ const treeItems = computed(() => {
         key: option.key,
         label: option.name,
         option,
-        counts,
+        stats,
         onSelect: (event: Event) => event.preventDefault(),
       };
 
@@ -356,6 +321,46 @@ const expandedTreeKeys = computed(() => {
 
   return openGroupTags.value;
 });
+
+const visibleTreeRows = computed(() => {
+  const rows: MarketTreeNode[] = [];
+  const expandedKeys = new Set(expandedTreeKeys.value);
+
+  const visit = (items: MarketTreeNode[]) => {
+    for (const item of items) {
+      rows.push(item);
+
+      if (item.kind === "group" && expandedKeys.has(item.key)) {
+        visit(item.children);
+      }
+    }
+  };
+
+  visit(treeItems.value);
+
+  return rows;
+});
+
+const estimateTreeRowSize = (index: number) => {
+  const item = visibleTreeRows.value[index];
+
+  if (!item || item.kind === "group") {
+    return 32;
+  }
+
+  const hasSellStats = Number(item.stats?.sell ?? 0) > 0;
+  const hasBuyStats = Number(item.stats?.buy ?? 0) > 0;
+
+  if (hasSellStats && hasBuyStats) {
+    return 66;
+  }
+
+  if (hasSellStats || hasBuyStats) {
+    return 50;
+  }
+
+  return 32;
+};
 
 const flattenTreeItems = (items: MarketTreeNode[]): MarketTreeItemNode[] => {
   const result: MarketTreeItemNode[] = [];
@@ -461,6 +466,14 @@ const upsertOrder = (book: keyof MarketOrdersResponse, message: AuctionListingSt
       buy: countDelta.buy,
       sell: countDelta.sell,
       total: 1,
+      buy_price_highest: null,
+      buy_price_lowest: null,
+      buy_amount_lowest: null,
+      buy_amount_highest: null,
+      sell_price_highest: null,
+      sell_price_lowest: null,
+      sell_amount_lowest: null,
+      sell_amount_highest: null,
     };
   } else {
     const index = orderBook[key].findIndex((order) => order.entity_id === message.entity_id);
@@ -475,6 +488,14 @@ const upsertOrder = (book: keyof MarketOrdersResponse, message: AuctionListingSt
         buy: (existing?.buy ?? 0) + countDelta.buy,
         sell: (existing?.sell ?? 0) + countDelta.sell,
         total: (existing?.total ?? 0) + 1,
+        buy_price_highest: existing?.buy_price_highest ?? null,
+        buy_price_lowest: existing?.buy_price_lowest ?? null,
+        buy_amount_lowest: existing?.buy_amount_lowest ?? null,
+        buy_amount_highest: existing?.buy_amount_highest ?? null,
+        sell_price_highest: existing?.sell_price_highest ?? null,
+        sell_price_lowest: existing?.sell_price_lowest ?? null,
+        sell_amount_lowest: existing?.sell_amount_lowest ?? null,
+        sell_amount_highest: existing?.sell_amount_highest ?? null,
       };
     }
   }
@@ -522,6 +543,14 @@ const removeOrder = (book: keyof MarketOrdersResponse, message: AuctionListingSt
           buy: nextBuy,
           sell: nextSell,
           total: nextTotal,
+          buy_price_highest: existing.buy_price_highest,
+          buy_price_lowest: existing.buy_price_lowest,
+          buy_amount_lowest: existing.buy_amount_lowest,
+          buy_amount_highest: existing.buy_amount_highest,
+          sell_price_highest: existing.sell_price_highest,
+          sell_price_lowest: existing.sell_price_lowest,
+          sell_amount_lowest: existing.sell_amount_lowest,
+          sell_amount_highest: existing.sell_amount_highest,
         };
       }
     }
@@ -634,20 +663,24 @@ const { data: claimNames } = await useLazyFetchMsPack<Map<number, ClaimSummary>>
   () => `/claims/names`,
 );
 
-const sellColumns = [
-  { id: "item", header: "Item" },
+const sellColumns: TableColumn<AuctionListingState>[] = [
+  { id: "item_id", header: "Item", meta: { class: { th: "text-center", td: "text-center" } } },
   {
     id: "quantity",
     header: "Quantity",
-    meta: { class: { th: "text-right", td: "text-right" } },
+    meta: { class: { th: "text-center", td: "text-center" } },
   },
   {
-    id: "price",
+    id: "price_threshold",
     header: "Price",
-    meta: { class: { th: "text-right", td: "text-right" } },
+    meta: { class: { th: "text-center", td: "text-center" } },
   },
-  { id: "claim", header: "Claim" },
-  { id: "region", header: "Region" },
+  {
+    id: "claim_entity_id",
+    header: "Claim",
+    meta: { class: { th: "text-center", td: "text-center" } },
+  },
+  { id: "region", header: "Region", meta: { class: { th: "text-center", td: "text-center" } } },
 ];
 
 const buyColumns = sellColumns;
@@ -708,6 +741,22 @@ watch(
 useSeoMeta({
   title: "Market",
   description: "Live Bitcraft market buy and sell orders",
+});
+
+import { getPaginationRowModel } from "@tanstack/vue-table";
+
+const tableSellOrders = useTemplateRef("table-sell-orders");
+
+const paginationSellOrders = ref({
+  pageIndex: 0,
+  pageSize: 15,
+});
+
+const tableBuyOrders = useTemplateRef("table-buy-orders");
+
+const paginationBuyOrders = ref({
+  pageIndex: 0,
+  pageSize: 15,
 });
 </script>
 
@@ -773,9 +822,17 @@ useSeoMeta({
                     <UBadge color="neutral" variant="soft">{{ sellOrders.length }}</UBadge>
                   </div>
                 </template>
-                <UTable :columns="sellColumns" :data="sellOrders">
-                  <template #item-cell="{ row }">
-                    <div class="flex items-center gap-2">
+                <UTable
+                  ref="table-sell-orders"
+                  v-model:pagination="paginationSellOrders"
+                  :columns="sellColumns"
+                  :data="sellOrders"
+                  :pagination-options="{
+                    getPaginationRowModel: getPaginationRowModel(),
+                  }"
+                >
+                  <template #item_id-cell="{ row }">
+                    <div class="flex items-center justify-center gap-2">
                       <BitcraftInventoryImg
                         :item="
                           itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
@@ -795,10 +852,10 @@ useSeoMeta({
                   <template #quantity-cell="{ row }">{{
                     row.original.quantity.toLocaleString()
                   }}</template>
-                  <template #price-cell="{ row }">{{
+                  <template #price_threshold-cell="{ row }">{{
                     row.original.price_threshold.toLocaleString()
                   }}</template>
-                  <template #claim-cell="{ row }">
+                  <template #claim_entity_id-cell="{ row }">
                     <NuxtLink
                       :to="{
                         name: 'claims-id',
@@ -814,6 +871,14 @@ useSeoMeta({
                   </template>
                   <template #region-cell="{ row }">R{{ row.original.region }}</template>
                 </UTable>
+                <div class="flex justify-end border-t border-default pt-4 px-4">
+                  <UPagination
+                    :page="(tableSellOrders?.tableApi?.getState().pagination.pageIndex || 0) + 1"
+                    :items-per-page="tableSellOrders?.tableApi?.getState().pagination.pageSize"
+                    :total="tableSellOrders?.tableApi?.getFilteredRowModel().rows.length"
+                    @update:page="(p) => tableSellOrders?.tableApi?.setPageIndex(p - 1)"
+                  />
+                </div>
               </UCard>
 
               <UCard :ui="{ header: 'p-4', body: 'p-0' }">
@@ -825,9 +890,17 @@ useSeoMeta({
                     <UBadge color="neutral" variant="soft">{{ buyOrders.length }}</UBadge>
                   </div>
                 </template>
-                <UTable :columns="buyColumns" :data="buyOrders">
-                  <template #item-cell="{ row }">
-                    <div class="flex items-center gap-2">
+                <UTable
+                  ref="table-buy-orders"
+                  v-model:pagination="paginationBuyOrders"
+                  :columns="buyColumns"
+                  :data="buyOrders"
+                  :pagination-options="{
+                    getPaginationRowModel: getPaginationRowModel(),
+                  }"
+                >
+                  <template #item_id-cell="{ row }">
+                    <div class="flex items-center justify-center gap-2">
                       <BitcraftInventoryImg
                         :item="
                           itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
@@ -847,10 +920,10 @@ useSeoMeta({
                   <template #quantity-cell="{ row }">{{
                     row.original.quantity.toLocaleString()
                   }}</template>
-                  <template #price-cell="{ row }">{{
+                  <template #price_threshold-cell="{ row }">{{
                     row.original.price_threshold.toLocaleString()
                   }}</template>
-                  <template #claim-cell="{ row }">
+                  <template #claim_entity_id-cell="{ row }">
                     <NuxtLink
                       :to="{
                         name: 'claims-id',
@@ -866,6 +939,14 @@ useSeoMeta({
                   </template>
                   <template #region-cell="{ row }">R{{ row.original.region }}</template>
                 </UTable>
+                <div class="flex justify-end border-t border-default pt-4 px-4">
+                  <UPagination
+                    :page="(tableBuyOrders?.tableApi?.getState().pagination.pageIndex || 0) + 1"
+                    :items-per-page="tableBuyOrders?.tableApi?.getState().pagination.pageSize"
+                    :total="tableBuyOrders?.tableApi?.getFilteredRowModel().rows.length"
+                    @update:page="(p) => tableBuyOrders?.tableApi?.setPageIndex(p - 1)"
+                  />
+                </div>
               </UCard>
             </div>
           </template>
@@ -917,7 +998,7 @@ useSeoMeta({
               multiple
               color="neutral"
               selection-behavior="toggle"
-              :virtualize="{ estimateSize: 32, overscan: 20 }"
+              :virtualize="{ estimateSize: estimateTreeRowSize, overscan: 20 }"
               @update:model-value="handleTreeSelection"
               @update:expanded="handleTreeExpanded"
             >
@@ -947,32 +1028,49 @@ useSeoMeta({
                   <UButton
                     size="xs"
                     color="neutral"
-                    :variant="selected ? 'solid' : 'soft'"
+                    :variant="selected ? 'outline' : 'soft'"
                     block
                     class="flex-1 justify-start"
                     @click="handleSelect"
                   >
                     <BitcraftInventoryImg
                       :item="item.option"
-                      :width="30"
-                      :height="20"
+                      :width="!!item.stats ? 30 * 1.5 : 30"
+                      :height="!!item.stats ? 20 * 1.5 : 20"
                       class="shrink-0"
                     />
-                    <span class="truncate">{{ item.option.name }}</span>
-                    <span class="ml-1 text-[10px]" :class="rarityToTextClass(item.option.rarity)">
-                      {{ item.option.rarity }}
-                    </span>
-                    <span
-                      class="ml-1 text-[10px] font-semibold"
-                      :class="tierToTextClass(item.option.tier)"
-                    >
-                      T{{ item.option.tier }}
-                    </span>
-                    <span
-                      v-if="item.counts"
-                      class="ml-1 text-[10px] text-gray-500 dark:text-gray-400"
-                    >
-                      B{{ item.counts.buy }} / S{{ item.counts.sell }}
+                    <span class="min-w-0 flex-1">
+                      <span class="truncate">{{ item.option.name }}</span>
+                      <span class="text-[10px]" :class="rarityToTextClass(item.option.rarity)">
+                        {{ item.option.rarity }}
+                      </span>
+                      <span
+                        class="shrink-0 text-[10px] font-semibold"
+                        :class="tierToTextClass(item.option.tier)"
+                      >
+                        T{{ item.option.tier }}
+                      </span>
+                      <span
+                        v-if="item.stats"
+                        class="mt-0.5 flex flex-col text-[10px] leading-4 text-gray-500 dark:text-gray-400"
+                      >
+                        <span
+                          v-if="item.stats.sell"
+                          class="grid grid-cols-[2.5rem_max-content_max-content_max-content] gap-x-1 truncate justify-center"
+                        >
+                          <span>Sell: {{ formatStatAmount(item.stats.sell) }}</span>
+                          <span>Low: {{ formatStatPrice(item.stats.sell_price_lowest) }}</span>
+                          <span>High: {{ formatStatPrice(item.stats.sell_price_highest) }}</span>
+                        </span>
+                        <span
+                          v-if="item.stats.buy"
+                          class="grid grid-cols-[2.5rem_max-content_max-content_max-content] gap-x-1 truncate justify-center"
+                        >
+                          <span>Buy: {{ formatStatAmount(item.stats.buy) }}</span>
+                          <span>Low: {{ formatStatPrice(item.stats.buy_price_lowest) }}</span>
+                          <span>High: {{ formatStatPrice(item.stats.buy_price_highest) }}</span>
+                        </span>
+                      </span>
                     </span>
                   </UButton>
                   <UButton
