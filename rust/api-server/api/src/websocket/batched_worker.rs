@@ -1,7 +1,7 @@
 use super::{SpacetimeUpdateMessages, record_worker_received};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time::sleep;
 use tokio::time::Duration;
+use tokio::time::sleep;
 
 pub(crate) trait BatchedWorker<T> {
     fn worker_name(&self) -> &'static str;
@@ -22,8 +22,7 @@ pub(crate) trait BatchedWorker<T> {
 pub(crate) async fn run_batched_worker<T, W>(
     worker: &mut W,
     rx: &mut UnboundedReceiver<SpacetimeUpdateMessages<T>>,
-)
-where
+) where
     T: Send + 'static,
     W: BatchedWorker<T> + Send,
 {

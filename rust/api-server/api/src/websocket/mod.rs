@@ -807,27 +807,11 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        location_state,
-        location_state_tx,
-        LocationState,
-        database,
-        "location_state"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
         resource_desc,
         resource_desc_tx,
         ResourceDesc,
         database,
         "resource_desc"
-    );
-    setup_spacetime_db_listeners!(
-        ctx,
-        extraction_recipe_desc,
-        extraction_recipe_desc_tx,
-        ExtractionRecipeDesc,
-        database,
-        "extraction_recipe_desc"
     );
     setup_spacetime_db_listeners!(
         ctx,
@@ -951,7 +935,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "cargo_desc".to_string())]
             )
-            .set(ctx.db.cargo_desc().iter().count() as f64);
+            .set(ctx.db.cargo_desc().count() as f64);
 
             let tmp_database_name_arc = database_name_arc.clone();
             let cargo_desc = ctx.db.cargo_desc().iter().collect::<Vec<_>>();
@@ -971,7 +955,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "player_username_state".to_string())]
             )
-            .set(ctx.db.player_username_state().iter().count() as f64);
+            .set(ctx.db.player_username_state().count() as f64);
             let player_username_state = ctx.db.player_username_state().iter().collect::<Vec<_>>();
             if !player_username_state.is_empty() {
                 send_worker_message(
@@ -989,7 +973,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_local_state".to_string())]
             )
-            .set(ctx.db.claim_local_state().iter().count() as f64);
+            .set(ctx.db.claim_local_state().count() as f64);
             let claim_local_state = ctx.db.claim_local_state().iter().collect::<Vec<_>>();
             if !claim_local_state.is_empty() {
                 send_worker_message(
@@ -1007,7 +991,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_state".to_string())]
             )
-            .set(ctx.db.claim_state().iter().count() as f64);
+            .set(ctx.db.claim_state().count() as f64);
             let claim_state = ctx.db.claim_state().iter().collect::<Vec<_>>();
             if !claim_state.is_empty() {
                 send_worker_message(
@@ -1025,7 +1009,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "deployable_state".to_string())]
             )
-            .set(ctx.db.deployable_state().iter().count() as f64);
+            .set(ctx.db.deployable_state().count() as f64);
             let deployable_state = ctx.db.deployable_state().iter().collect::<Vec<_>>();
             if !deployable_state.is_empty() {
                 send_worker_message(
@@ -1043,7 +1027,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "item_desc".to_string())]
             )
-            .set(ctx.db.item_desc().iter().count() as f64);
+            .set(ctx.db.item_desc().count() as f64);
             let item_desc = ctx.db.item_desc().iter().collect::<Vec<_>>();
             if !item_desc.is_empty() {
                 send_worker_message(
@@ -1061,7 +1045,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "skill_desc".to_string())]
             )
-            .set(ctx.db.skill_desc().iter().count() as f64);
+            .set(ctx.db.skill_desc().count() as f64);
             let skill_desc = ctx.db.skill_desc().iter().collect::<Vec<_>>();
             if !skill_desc.is_empty() {
                 send_worker_message(
@@ -1079,7 +1063,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "building_desc".to_string())]
             )
-            .set(ctx.db.building_desc().iter().count() as f64);
+            .set(ctx.db.building_desc().count() as f64);
             let building_desc = ctx.db.building_desc().iter().collect::<Vec<_>>();
             if !building_desc.is_empty() {
                 send_worker_message(
@@ -1097,7 +1081,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_tech_desc".to_string())]
             )
-            .set(ctx.db.claim_tech_desc().iter().count() as f64);
+            .set(ctx.db.claim_tech_desc().count() as f64);
             let claim_tech_desc = ctx.db.claim_tech_desc().iter().collect::<Vec<_>>();
             if !claim_tech_desc.is_empty() {
                 send_worker_message(
@@ -1115,7 +1099,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "crafting_recipe_desc".to_string())]
             )
-            .set(ctx.db.crafting_recipe_desc().iter().count() as f64);
+            .set(ctx.db.crafting_recipe_desc().count() as f64);
             let crafting_recipe_desc = ctx.db.crafting_recipe_desc().iter().collect::<Vec<_>>();
             if !crafting_recipe_desc.is_empty() {
                 send_worker_message(
@@ -1133,7 +1117,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "item_list_desc".to_string())]
             )
-            .set(ctx.db.item_list_desc().iter().count() as f64);
+            .set(ctx.db.item_list_desc().count() as f64);
             let item_list_desc = ctx.db.item_list_desc().iter().collect::<Vec<_>>();
             if !item_list_desc.is_empty() {
                 send_worker_message(
@@ -1151,7 +1135,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "traveler_task_desc".to_string())]
             )
-            .set(ctx.db.traveler_task_desc().iter().count() as f64);
+            .set(ctx.db.traveler_task_desc().count() as f64);
             let traveler_task_desc = ctx.db.traveler_task_desc().iter().collect::<Vec<_>>();
             if !traveler_task_desc.is_empty() {
                 send_worker_message(
@@ -1169,7 +1153,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "npc_desc".to_string())]
             )
-            .set(ctx.db.npc_desc().iter().count() as f64);
+            .set(ctx.db.npc_desc().count() as f64);
             let npc_desc = ctx.db.npc_desc().iter().collect::<Vec<_>>();
             if !npc_desc.is_empty() {
                 send_worker_message(
@@ -1192,7 +1176,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "extraction_recipe_desc".to_string())]
             )
-            .set(ctx.db.extraction_recipe_desc().iter().count() as f64);
+            .set(ctx.db.extraction_recipe_desc().count() as f64);
             let extraction_recipe_desc = ctx.db.extraction_recipe_desc().iter().collect::<Vec<_>>();
             if !extraction_recipe_desc.is_empty() {
                 send_worker_message(
@@ -1210,7 +1194,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "inventory_state".to_string())]
             )
-            .set(ctx.db.inventory_state().iter().count() as f64);
+            .set(ctx.db.inventory_state().count() as f64);
             let inventory_state = ctx.db.inventory_state().iter().collect::<Vec<_>>();
             if !inventory_state.is_empty() {
                 send_worker_message(
@@ -1228,7 +1212,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_member_state".to_string())]
             )
-            .set(ctx.db.claim_member_state().iter().count() as f64);
+            .set(ctx.db.claim_member_state().count() as f64);
             let claim_member_state = ctx.db.claim_member_state().iter().collect::<Vec<_>>();
             if !claim_member_state.is_empty() {
                 send_worker_message(
@@ -1246,7 +1230,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "experience_state".to_string())]
             )
-            .set(ctx.db.experience_state().iter().count() as f64);
+            .set(ctx.db.experience_state().count() as f64);
             let experience_state = ctx.db.experience_state().iter().collect::<Vec<_>>();
             if !experience_state.is_empty() {
                 send_worker_message(
@@ -1264,7 +1248,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "mobile_entity_state".to_string())]
             )
-            .set(ctx.db.mobile_entity_state().iter().count() as f64);
+            .set(ctx.db.mobile_entity_state().count() as f64);
             let mobile_entity_state = ctx.db.mobile_entity_state().iter().collect::<Vec<_>>();
             if !mobile_entity_state.is_empty() {
                 send_worker_message(
@@ -1282,7 +1266,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "player_state".to_string())]
             )
-            .set(ctx.db.player_state().iter().count() as f64);
+            .set(ctx.db.player_state().count() as f64);
             let player_state = ctx.db.player_state().iter().collect::<Vec<_>>();
             if !player_state.is_empty() {
                 send_worker_message(
@@ -1300,7 +1284,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "vault_state".to_string())]
             )
-            .set(ctx.db.vault_state().iter().count() as f64);
+            .set(ctx.db.vault_state().count() as f64);
             let vault_state = ctx.db.vault_state().iter().collect::<Vec<_>>();
             if !vault_state.is_empty() {
                 send_worker_message(
@@ -1318,7 +1302,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_tech_state".to_string())]
             )
-            .set(ctx.db.claim_tech_state().iter().count() as f64);
+            .set(ctx.db.claim_tech_state().count() as f64);
             let claim_tech_state = ctx.db.claim_tech_state().iter().collect::<Vec<_>>();
             if !claim_tech_state.is_empty() {
                 send_worker_message(
@@ -1336,7 +1320,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "building_state".to_string())]
             )
-            .set(ctx.db.building_state().iter().count() as f64);
+            .set(ctx.db.building_state().count() as f64);
             let building_state = ctx.db.building_state().iter().collect::<Vec<_>>();
             if !building_state.is_empty() {
                 send_worker_message(
@@ -1354,7 +1338,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "location_state".to_string())]
             )
-            .set(ctx.db.location_state().iter().count() as f64);
+            .set(ctx.db.location_state().count() as f64);
             let location_state = ctx.db.location_state().iter().collect::<Vec<_>>();
             if !location_state.is_empty() {
                 send_worker_message(
@@ -1372,7 +1356,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "building_nickname_state".to_string())]
             )
-            .set(ctx.db.building_nickname_state().iter().count() as f64);
+            .set(ctx.db.building_nickname_state().count() as f64);
             let building_nickname_state =
                 ctx.db.building_nickname_state().iter().collect::<Vec<_>>();
             if !building_nickname_state.is_empty() {
@@ -1391,7 +1375,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "traveler_task_state".to_string())]
             )
-            .set(ctx.db.traveler_task_state().iter().count() as f64);
+            .set(ctx.db.traveler_task_state().count() as f64);
             let traveler_task_state = ctx.db.traveler_task_state().iter().collect::<Vec<_>>();
             if !traveler_task_state.is_empty() {
                 send_worker_message(
@@ -1409,7 +1393,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "trade_order_state".to_string())]
             )
-            .set(ctx.db.trade_order_state().iter().count() as f64);
+            .set(ctx.db.trade_order_state().count() as f64);
             let trade_order_state = ctx.db.trade_order_state().iter().collect::<Vec<_>>();
             if !trade_order_state.is_empty() {
                 send_worker_message(
@@ -1427,7 +1411,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "user_state".to_string())]
             )
-            .set(ctx.db.user_state().iter().count() as f64);
+            .set(ctx.db.user_state().count() as f64);
             let user_state = ctx.db.user_state().iter().collect::<Vec<_>>();
             if !user_state.is_empty() {
                 send_worker_message(
@@ -1445,7 +1429,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "sell_order_state".to_string())]
             )
-            .set(ctx.db.sell_order_state().iter().count() as f64);
+            .set(ctx.db.sell_order_state().count() as f64);
             let sell_order_state = ctx.db.sell_order_state().iter().collect::<Vec<_>>();
             if !sell_order_state.is_empty() {
                 send_worker_message(
@@ -1463,7 +1447,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "buy_order_state".to_string())]
             )
-            .set(ctx.db.buy_order_state().iter().count() as f64);
+            .set(ctx.db.buy_order_state().count() as f64);
             let buy_order_state = ctx.db.buy_order_state().iter().collect::<Vec<_>>();
             if !buy_order_state.is_empty() {
                 send_worker_message(
@@ -1481,7 +1465,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "collectible_desc".to_string())]
             )
-            .set(ctx.db.collectible_desc().iter().count() as f64);
+            .set(ctx.db.collectible_desc().count() as f64);
             let collectible_desc = ctx.db.collectible_desc().iter().collect::<Vec<_>>();
             if !collectible_desc.is_empty() {
                 send_worker_message(
@@ -1499,7 +1483,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "interior_network_desc".to_string())]
             )
-            .set(ctx.db.interior_network_desc().iter().count() as f64);
+            .set(ctx.db.interior_network_desc().count() as f64);
             let interior_network_desc = ctx.db.interior_network_desc().iter().collect::<Vec<_>>();
             if !interior_network_desc.is_empty() {
                 send_worker_message(
@@ -1517,7 +1501,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "dimension_description_state".to_string())]
             )
-            .set(ctx.db.dimension_description_state().iter().count() as f64);
+            .set(ctx.db.dimension_description_state().count() as f64);
             let dimension_description_state = ctx
                 .db
                 .dimension_description_state()
@@ -1539,7 +1523,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "player_housing_state".to_string())]
             )
-            .set(ctx.db.player_housing_state().iter().count() as f64);
+            .set(ctx.db.player_housing_state().count() as f64);
             let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
             if !player_housing_state.is_empty() {
                 send_worker_message(
@@ -1557,7 +1541,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "permission_state".to_string())]
             )
-            .set(ctx.db.permission_state().iter().count() as f64);
+            .set(ctx.db.permission_state().count() as f64);
             let permission_state = ctx.db.permission_state().iter().collect::<Vec<_>>();
             if !permission_state.is_empty() {
                 send_worker_message(
@@ -1575,7 +1559,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "portal_state".to_string())]
             )
-            .set(ctx.db.portal_state().iter().count() as f64);
+            .set(ctx.db.portal_state().count() as f64);
             let portal_state = ctx.db.portal_state().iter().collect::<Vec<_>>();
             if !portal_state.is_empty() {
                 send_worker_message(
@@ -1593,7 +1577,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "resource_desc".to_string())]
             )
-            .set(ctx.db.resource_desc().iter().count() as f64);
+            .set(ctx.db.resource_desc().count() as f64);
             let resource_desc = ctx.db.resource_desc().iter().collect::<Vec<_>>();
             if !resource_desc.is_empty() {
                 send_worker_message(
@@ -1611,7 +1595,7 @@ async fn connect_to_db_logic(
                 "worker_queue_initial_batch_size",
                 &[("worker", "progressive_action_state".to_string())]
             )
-            .set(ctx.db.progressive_action_state().iter().count() as f64);
+            .set(ctx.db.progressive_action_state().count() as f64);
             let progressive_action_state =
                 ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
             if !progressive_action_state.is_empty() {

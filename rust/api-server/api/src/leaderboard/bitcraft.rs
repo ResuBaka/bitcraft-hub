@@ -1,18 +1,18 @@
 use crate::AppState;
 use crate::leaderboard::{Leaderboard, experience_to_level};
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
+use chrono::DateTime;
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+use spacetimedb_sdk::Event;
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
-use spacetimedb_sdk::Event;
-use chrono::DateTime;
 
 pub(crate) fn start_worker_experience_state(
     global_app_state: AppState,
