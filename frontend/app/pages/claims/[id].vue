@@ -23,7 +23,7 @@ import type { InventoryLocationEntry } from "~/types/InventoryLocationEntry";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
-import { levelToColor, rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
+import { levelToColor, raritySort, rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
 import type { BuildingDescriptionsResponse } from "~/types/BuildingDescriptionsResponse";
 
 const {
@@ -70,16 +70,6 @@ const tmpPage = (route.query.page as string) ?? null;
 
 const tierToColor = useTierColor();
 
-const raritySortOrder = new Map([
-  ["Mythic", 6],
-  ["Legendary", 5],
-  ["Epic", 4],
-  ["Rare", 3],
-  ["Uncommon", 2],
-  ["Common", 1],
-  ["Default", 0],
-]);
-
 const sortToolInventory = (a: any, b: any) => {
   if (a.item.tier !== b.item.tier) {
     return b.item.tier - a.item.tier;
@@ -90,7 +80,7 @@ const sortToolInventory = (a: any, b: any) => {
     return nameCompare;
   }
 
-  return (raritySortOrder.get(b.item.rarity) ?? 0) - (raritySortOrder.get(a.item.rarity) ?? 0);
+  return raritySort(a.item.rarity, b.item.rarity);
 };
 
 if (tmpPage) {
@@ -128,37 +118,52 @@ const { data: itemsAndCargoAllFetch } = useFetchMsPack<ItemsAndCargollResponse>(
   return `/api/bitcraft/itemsAndCargo/all`;
 });
 
+const travelerSortLookup = {
+  rumbagh: 1,
+  svim: 2,
+  heimlich: 3,
+  brico: 4,
+  alesi: 5,
+  ramparte: 6,
+};
+
 const travelerTaskRows = computed(() => {
   if (!itemsAndCargoAllFetch.value) {
     return [];
   }
 
   const playersMap = claimFetch.value?.traveler_tasks?.players ?? {};
-  return Object.entries(playersMap).map(([taskId, players]) => {
-    const taskKey = Number(taskId);
-    const task = trevelerTasksFetch.value?.[taskKey];
-    const requiredItems = task?.required_items ?? [];
-    const itemNames = requiredItems
-      .map((requiredItem) => {
-        if (requiredItem.item_type === "Item") {
-          return itemsAndCargoAllFetch.value?.item_desc?.[requiredItem.item_id]?.name;
-        }
-        if (requiredItem.item_type === "Cargo") {
-          return itemsAndCargoAllFetch.value?.cargo_desc?.[requiredItem.item_id]?.name;
-        }
-        return undefined;
-      })
-      .filter((name): name is string => Boolean(name));
-    const npcName = task?.description?.split(" ")[0] ?? "";
-    return {
-      task_id: taskKey,
-      players,
-      items: requiredItems,
-      name: itemNames.join(", "),
-      npc_name: npcName,
-      player_count: players.length,
-    };
-  });
+  return Object.entries(playersMap)
+    .map(([taskId, players]) => {
+      const taskKey = Number(taskId);
+      const task = trevelerTasksFetch.value?.[taskKey];
+      const requiredItems = task?.required_items ?? [];
+      const itemNames = requiredItems
+        .map((requiredItem) => {
+          if (requiredItem.item_type === "Item") {
+            return itemsAndCargoAllFetch.value?.item_desc?.[requiredItem.item_id]?.name;
+          }
+          if (requiredItem.item_type === "Cargo") {
+            return itemsAndCargoAllFetch.value?.cargo_desc?.[requiredItem.item_id]?.name;
+          }
+          return undefined;
+        })
+        .filter((name): name is string => Boolean(name));
+      const npcName = task?.description?.split(" ")[0] ?? "";
+      return {
+        task_id: taskKey,
+        players,
+        items: requiredItems,
+        name: itemNames.join(", "),
+        npc_name: npcName,
+        player_count: players.length,
+      };
+    })
+    .sort(
+      (a, b) =>
+        travelerSortLookup[a.npc_name.toLocaleLowerCase()] -
+        travelerSortLookup[b.npc_name.toLocaleLowerCase()],
+    );
 });
 
 const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = useFetchMsPack<
@@ -736,6 +741,10 @@ const uniqueSortedStrings = (list: string[]) => {
   return Array.from(new Set(list)).sort((a, b) => a.localeCompare(b));
 };
 
+const uniqueSortedStringsRarity = (list: string[]) => {
+  return Array.from(new Set(list)).sort(raritySort);
+};
+
 const buildingTierOptions = computed(() => {
   return uniqueSortedNumbers(
     claimFetch.value?.inventorys?.buildings?.map((inventory) => inventory.item.tier) ?? [],
@@ -743,7 +752,7 @@ const buildingTierOptions = computed(() => {
 });
 
 const buildingRarityOptions = computed(() => {
-  return uniqueSortedStrings(
+  return uniqueSortedStringsRarity(
     claimFetch.value?.inventorys?.buildings?.map((inventory) => inventory.item.rarity) ?? [],
   );
 });
@@ -755,7 +764,7 @@ const playerTierOptions = computed(() => {
 });
 
 const playerRarityOptions = computed(() => {
-  return uniqueSortedStrings(
+  return uniqueSortedStringsRarity(
     claimFetch.value?.inventorys?.players?.map((inventory) => inventory.item.rarity) ?? [],
   );
 });
@@ -767,7 +776,7 @@ const playerOfflineTierOptions = computed(() => {
 });
 
 const playerOfflineRarityOptions = computed(() => {
-  return uniqueSortedStrings(
+  return uniqueSortedStringsRarity(
     claimFetch.value?.inventorys?.players_offline?.map((inventory) => inventory.item.rarity) ?? [],
   );
 });
@@ -779,7 +788,7 @@ const playerToolTierOptions = computed(() => {
 });
 
 const playerToolRarityOptions = computed(() => {
-  return uniqueSortedStrings(
+  return uniqueSortedStringsRarity(
     claimFetch.value?.tool_inventorys?.players?.map((inventory) => inventory.item.rarity) ?? [],
   );
 });
@@ -792,7 +801,7 @@ const playerOfflineToolTierOptions = computed(() => {
 });
 
 const playerOfflineToolRarityOptions = computed(() => {
-  return uniqueSortedStrings(
+  return uniqueSortedStringsRarity(
     claimFetch.value?.tool_inventorys?.players_offline?.map((inventory) => inventory.item.rarity) ??
       [],
   );
@@ -970,7 +979,7 @@ const skillToToolIndex = {
   Masonry: 2,
   Mining: 3,
   Scholar: 12,
-  Slayer: 14,
+  Slayer: 15,
   Smithing: 4,
   Tailoring: 7,
 };
@@ -1353,10 +1362,11 @@ watch(
                     placeholder="Tier"
                     class="w-32"
                   />
-                  <USelect
+                  <USelectMenu
                     v-model="rarityBuildings"
                     :items="buildingRarityOptions"
                     placeholder="Rarity"
+                    clear
                     class="w-40"
                   />
                 </div>
@@ -1424,9 +1434,10 @@ watch(
                     placeholder="Tier"
                     class="w-32"
                   />
-                  <USelect
+                  <USelectMenu
                     v-model="rarityPlayers"
                     :items="playerRarityOptions"
+                    clear
                     placeholder="Rarity"
                     class="w-40"
                   />
@@ -1495,12 +1506,22 @@ watch(
                     placeholder="Tier"
                     class="w-32"
                   />
-                  <USelect
+                  <USelectMenu
                     v-model="rarityPlayersTools"
                     :items="playerToolRarityOptions"
+                    clear
                     placeholder="Rarity"
                     class="w-40"
                   />
+                  <span class="align-middle"
+                    >Total Items:
+                    {{
+                      pagedInventoryPlayersTools.reduce(
+                        (accumulator, currentValue) => accumulator + currentValue.quantity,
+                        0,
+                      )
+                    }}</span
+                  >
                 </div>
                 <div
                   class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
@@ -1566,10 +1587,11 @@ watch(
                     placeholder="Tier"
                     class="w-32"
                   />
-                  <USelect
+                  <USelectMenu
                     v-model="rarityPlayersOffline"
                     :items="playerOfflineRarityOptions"
                     placeholder="Rarity"
+                    clear
                     class="w-40"
                   />
                 </div>
@@ -1637,12 +1659,22 @@ watch(
                     placeholder="Tier"
                     class="w-32"
                   />
-                  <USelect
+                  <USelectMenu
                     v-model="rarityPlayersOfflineTools"
                     :items="playerOfflineToolRarityOptions"
+                    clear
                     placeholder="Rarity"
                     class="w-40"
                   />
+                  <span class="align-middle"
+                    >Total Items:
+                    {{
+                      pagedInventoryPlayersOfflineTools.reduce(
+                        (accumulator, currentValue) => accumulator + currentValue.quantity,
+                        0,
+                      )
+                    }}</span
+                  >
                 </div>
                 <div
                   class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"

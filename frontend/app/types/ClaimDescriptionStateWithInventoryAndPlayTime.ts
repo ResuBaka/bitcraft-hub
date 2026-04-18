@@ -4,7 +4,7 @@ import type { ClaimDescriptionStateMember } from "./ClaimDescriptionStateMember"
 import type { ClaimTechDesc } from "./ClaimTechDesc";
 import type { ExpendedRefrence } from "./ExpendedRefrence";
 import type { InventoryItemLocation } from "./InventoryItemLocation";
-import type { Location } from "./Location";
+import type { SharedState } from "./SharedState";
 import type { Timestamp } from "./Timestamp";
 import type { TravelerTaskState } from "./TravelerTaskState";
 
@@ -20,7 +20,7 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   num_tiles: number;
   extensions: number;
   neutral: boolean;
-  location: Location | null;
+  location: SharedState | null;
   treasury: number;
   xp_gained_since_last_coin_minting: number;
   running_upgrade: ClaimTechDesc | null;

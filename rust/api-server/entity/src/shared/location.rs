@@ -5,6 +5,7 @@ use ts_rs::TS;
 #[derive(
     Serialize, Deserialize, Clone, Debug, PartialEq, sea_orm::FromJsonQueryResult, Default, TS,
 )]
+#[ts(rename = "SharedState")]
 pub struct Location {
     pub x: i32,
     pub z: i32,

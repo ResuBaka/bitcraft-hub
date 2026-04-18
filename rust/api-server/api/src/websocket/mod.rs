@@ -52,6 +52,8 @@ use tokio::time::Duration;
 use tokio::time::Instant;
 use ts_rs::TS;
 
+pub(crate) mod batched_worker;
+
 fn send_worker_message<T>(
     worker_name: &str,
     tx: &UnboundedSender<SpacetimeUpdateMessages<T>>,
@@ -560,7 +562,7 @@ async fn connect_to_db_logic(
         database,
         "player_username_state"
     );
-    setup_spacetime_db_listeners!(
+    setup_spacetime_db_listeners_event!(
         ctx,
         experience_state,
         experience_state_tx,
@@ -883,7 +885,6 @@ async fn connect_to_db_logic(
         "traveler_task_desc",
         "traveler_task_state",
         // "trade_order_state",
-        // @todo this only temp until it can get fixed
         "buy_order_state",
         "sell_order_state",
         "npc_desc",

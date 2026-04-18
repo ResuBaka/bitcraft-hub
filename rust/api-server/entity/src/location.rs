@@ -7,7 +7,7 @@ use ts_rs::TS;
 
 // #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[ts(rename = "Location")]
+#[ts(rename = "LocationState")]
 // #[sea_orm(table_name = "location")]
 pub struct Model {
     // #[sea_orm(primary_key, auto_increment = false)]

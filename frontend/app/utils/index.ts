@@ -68,6 +68,22 @@ export const tierToBackgroundClass = (tier?: number | null) => {
   return `bg-tier-${tier}`;
 };
 
+const raritySortHelp = {
+  common: 0,
+  uncommon: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 4,
+  mythic: 5,
+};
+
+export const raritySort = (a: string, b: string) => {
+  const numberA = raritySortHelp[a.toLowerCase()] ?? 0;
+  const numberB = raritySortHelp[b.toLowerCase()] ?? 0;
+
+  return numberA - numberB;
+};
+
 export const tierToBorderClass = (tier?: number | null) => {
   if (!tier || tier < 1) {
     return "border-tier-1";

@@ -11,6 +11,8 @@ use std::ops::AddAssign;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
+use spacetimedb_sdk::Event;
+use chrono::DateTime;
 
 pub(crate) fn start_worker_experience_state(
     global_app_state: AppState,
@@ -28,6 +30,7 @@ pub(crate) fn start_worker_experience_state(
             ::entity::experience_state::Column::Region,
         ])
         .to_owned();
+        let mut last_time: Option<DateTime<chrono::Utc>> = None;
 
         loop {
             let mut messages = Vec::with_capacity(batch_size + 10);
@@ -194,7 +197,28 @@ pub(crate) fn start_worker_experience_state(
                                         .await;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, old, database_name, .. } => {
+                            SpacetimeUpdateMessages::Update { new, old, database_name, event , .. } => {
+                                // if new.entity_id == 1224979098660016778 {
+                                //     if let Some(Event::Reducer(event)) = &event {
+                                //         match last_time {
+                                //             Some(time) => {
+                                //                 let current_time = DateTime::from_timestamp_micros(event.timestamp.to_micros_since_unix_epoch()).unwrap();
+                                //
+                                //                 let diff = current_time.timestamp_millis() - time.timestamp_millis();
+                                //
+                                //                 tracing::error!("Diff {:?} Off {} Off % {} ", diff, diff - 1170, (diff as f64 / 1170f64 * 100f64) - 100f64);
+                                //
+                                //                 last_time = Some(current_time);
+                                //             }
+                                //             None => {
+                                //                 tracing::error!("AA {:?}", event.timestamp);
+                                //                 last_time = Some(DateTime::from_timestamp_micros(event.timestamp.to_micros_since_unix_epoch()).unwrap());
+                                //             }
+                                //         }
+                                //
+                                //     }
+                                // }
+
                                 let id = new.entity_id as i64;
                                 let mut new_total_exp = 0;
                                 let mut new_total_level = 0;
