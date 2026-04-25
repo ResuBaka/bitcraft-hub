@@ -465,7 +465,26 @@ pub mod dimension_description_state_type;
 pub mod dimension_network_state_table;
 pub mod dimension_network_state_type;
 pub mod dimension_type_type;
+pub mod discover_achievement_reducer;
+pub mod discover_building_reducer;
+pub mod discover_cargo_reducer;
+pub mod discover_claim_reducer;
+pub mod discover_collectible_reducer;
+pub mod discover_construction_recipe_reducer;
+pub mod discover_crafting_recipe_reducer;
+pub mod discover_deployable_reducer;
+pub mod discover_enemy_reducer;
 pub mod discover_entities_reducer;
+pub mod discover_extraction_recipe_reducer;
+pub mod discover_item_reducer;
+pub mod discover_npc_reducer;
+pub mod discover_pavement_reducer;
+pub mod discover_pillar_shaping_reducer;
+pub mod discover_resource_placement_reducer;
+pub mod discover_resource_reducer;
+pub mod discover_ruins_reducer;
+pub mod discover_scroll_reducer;
+pub mod discover_secondary_knowledge_reducer;
 pub mod discovery_trigger_desc_type;
 pub mod distant_visible_entity_desc_table;
 pub mod distant_visible_entity_desc_type;
@@ -2861,8 +2880,68 @@ pub use dimension_description_state_type::DimensionDescriptionState;
 pub use dimension_network_state_table::*;
 pub use dimension_network_state_type::DimensionNetworkState;
 pub use dimension_type_type::DimensionType;
+pub use discover_achievement_reducer::{
+    discover_achievement, set_flags_for_discover_achievement, DiscoverAchievementCallbackId,
+};
+pub use discover_building_reducer::{
+    discover_building, set_flags_for_discover_building, DiscoverBuildingCallbackId,
+};
+pub use discover_cargo_reducer::{
+    discover_cargo, set_flags_for_discover_cargo, DiscoverCargoCallbackId,
+};
+pub use discover_claim_reducer::{
+    discover_claim, set_flags_for_discover_claim, DiscoverClaimCallbackId,
+};
+pub use discover_collectible_reducer::{
+    discover_collectible, set_flags_for_discover_collectible, DiscoverCollectibleCallbackId,
+};
+pub use discover_construction_recipe_reducer::{
+    discover_construction_recipe, set_flags_for_discover_construction_recipe,
+    DiscoverConstructionRecipeCallbackId,
+};
+pub use discover_crafting_recipe_reducer::{
+    discover_crafting_recipe, set_flags_for_discover_crafting_recipe,
+    DiscoverCraftingRecipeCallbackId,
+};
+pub use discover_deployable_reducer::{
+    discover_deployable, set_flags_for_discover_deployable, DiscoverDeployableCallbackId,
+};
+pub use discover_enemy_reducer::{
+    discover_enemy, set_flags_for_discover_enemy, DiscoverEnemyCallbackId,
+};
 pub use discover_entities_reducer::{
     discover_entities, set_flags_for_discover_entities, DiscoverEntitiesCallbackId,
+};
+pub use discover_extraction_recipe_reducer::{
+    discover_extraction_recipe, set_flags_for_discover_extraction_recipe,
+    DiscoverExtractionRecipeCallbackId,
+};
+pub use discover_item_reducer::{
+    discover_item, set_flags_for_discover_item, DiscoverItemCallbackId,
+};
+pub use discover_npc_reducer::{discover_npc, set_flags_for_discover_npc, DiscoverNpcCallbackId};
+pub use discover_pavement_reducer::{
+    discover_pavement, set_flags_for_discover_pavement, DiscoverPavementCallbackId,
+};
+pub use discover_pillar_shaping_reducer::{
+    discover_pillar_shaping, set_flags_for_discover_pillar_shaping, DiscoverPillarShapingCallbackId,
+};
+pub use discover_resource_placement_reducer::{
+    discover_resource_placement, set_flags_for_discover_resource_placement,
+    DiscoverResourcePlacementCallbackId,
+};
+pub use discover_resource_reducer::{
+    discover_resource, set_flags_for_discover_resource, DiscoverResourceCallbackId,
+};
+pub use discover_ruins_reducer::{
+    discover_ruins, set_flags_for_discover_ruins, DiscoverRuinsCallbackId,
+};
+pub use discover_scroll_reducer::{
+    discover_scroll, set_flags_for_discover_scroll, DiscoverScrollCallbackId,
+};
+pub use discover_secondary_knowledge_reducer::{
+    discover_secondary_knowledge, set_flags_for_discover_secondary_knowledge,
+    DiscoverSecondaryKnowledgeCallbackId,
 };
 pub use discovery_trigger_desc_type::DiscoveryTriggerDesc;
 pub use distant_visible_entity_desc_table::*;
@@ -6106,8 +6185,65 @@ pub enum Reducer {
         timer: DestroyDimensionNetworkTimer,
     },
     DevDeleteWorld,
+    DiscoverAchievement {
+        achievement_id: i32,
+    },
+    DiscoverBuilding {
+        building_id: i32,
+    },
+    DiscoverCargo {
+        cargo_id: i32,
+    },
+    DiscoverClaim {
+        claim_entity_id: u64,
+    },
+    DiscoverCollectible {
+        collectible_id: i32,
+    },
+    DiscoverConstructionRecipe {
+        construction_id: i32,
+    },
+    DiscoverCraftingRecipe {
+        craft_id: i32,
+    },
+    DiscoverDeployable {
+        deployable_id: i32,
+    },
+    DiscoverEnemy {
+        enemy_id: i32,
+    },
     DiscoverEntities {
         request: PlayerDiscoverEntitiesRequest,
+    },
+    DiscoverExtractionRecipe {
+        extract_id: i32,
+    },
+    DiscoverItem {
+        item_id: i32,
+    },
+    DiscoverNpc {
+        npc_id: i32,
+    },
+    DiscoverPavement {
+        paving_id: i32,
+    },
+    DiscoverPillarShaping {
+        pillar_shaping_id: i32,
+    },
+    DiscoverResource {
+        resource_id: i32,
+    },
+    DiscoverResourcePlacement {
+        resource_placement_id: i32,
+    },
+    DiscoverRuins {
+        coordinates: OffsetCoordinatesSmallMessage,
+    },
+    DiscoverScroll {
+        scroll_id: i32,
+    },
+    DiscoverSecondaryKnowledge {
+        secondary_id: i32,
     },
     DroppedInventoryDespawn {
         timer: DroppedInventoryDespawnTimer,
@@ -7842,7 +7978,26 @@ impl __sdk::Reducer for Reducer {
             Reducer::DeployableToggleAutoFollow { .. } => "deployable_toggle_auto_follow",
             Reducer::DestroyDimensionNetwork { .. } => "destroy_dimension_network",
             Reducer::DevDeleteWorld => "dev_delete_world",
+            Reducer::DiscoverAchievement { .. } => "discover_achievement",
+            Reducer::DiscoverBuilding { .. } => "discover_building",
+            Reducer::DiscoverCargo { .. } => "discover_cargo",
+            Reducer::DiscoverClaim { .. } => "discover_claim",
+            Reducer::DiscoverCollectible { .. } => "discover_collectible",
+            Reducer::DiscoverConstructionRecipe { .. } => "discover_construction_recipe",
+            Reducer::DiscoverCraftingRecipe { .. } => "discover_crafting_recipe",
+            Reducer::DiscoverDeployable { .. } => "discover_deployable",
+            Reducer::DiscoverEnemy { .. } => "discover_enemy",
             Reducer::DiscoverEntities { .. } => "discover_entities",
+            Reducer::DiscoverExtractionRecipe { .. } => "discover_extraction_recipe",
+            Reducer::DiscoverItem { .. } => "discover_item",
+            Reducer::DiscoverNpc { .. } => "discover_npc",
+            Reducer::DiscoverPavement { .. } => "discover_pavement",
+            Reducer::DiscoverPillarShaping { .. } => "discover_pillar_shaping",
+            Reducer::DiscoverResource { .. } => "discover_resource",
+            Reducer::DiscoverResourcePlacement { .. } => "discover_resource_placement",
+            Reducer::DiscoverRuins { .. } => "discover_ruins",
+            Reducer::DiscoverScroll { .. } => "discover_scroll",
+            Reducer::DiscoverSecondaryKnowledge { .. } => "discover_secondary_knowledge",
             Reducer::DroppedInventoryDespawn { .. } => "dropped_inventory_despawn",
             Reducer::DroppedInventoryDestroy { .. } => "dropped_inventory_destroy",
             Reducer::DroppedInventoryLoseOwnership { .. } => "dropped_inventory_lose_ownership",
@@ -8599,7 +8754,26 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "deployable_toggle_auto_follow" => Ok(__sdk::parse_reducer_args::<deployable_toggle_auto_follow_reducer::DeployableToggleAutoFollowArgs>("deployable_toggle_auto_follow", &value.args)?.into()),
             "destroy_dimension_network" => Ok(__sdk::parse_reducer_args::<destroy_dimension_network_reducer::DestroyDimensionNetworkArgs>("destroy_dimension_network", &value.args)?.into()),
             "dev_delete_world" => Ok(__sdk::parse_reducer_args::<dev_delete_world_reducer::DevDeleteWorldArgs>("dev_delete_world", &value.args)?.into()),
+            "discover_achievement" => Ok(__sdk::parse_reducer_args::<discover_achievement_reducer::DiscoverAchievementArgs>("discover_achievement", &value.args)?.into()),
+            "discover_building" => Ok(__sdk::parse_reducer_args::<discover_building_reducer::DiscoverBuildingArgs>("discover_building", &value.args)?.into()),
+            "discover_cargo" => Ok(__sdk::parse_reducer_args::<discover_cargo_reducer::DiscoverCargoArgs>("discover_cargo", &value.args)?.into()),
+            "discover_claim" => Ok(__sdk::parse_reducer_args::<discover_claim_reducer::DiscoverClaimArgs>("discover_claim", &value.args)?.into()),
+            "discover_collectible" => Ok(__sdk::parse_reducer_args::<discover_collectible_reducer::DiscoverCollectibleArgs>("discover_collectible", &value.args)?.into()),
+            "discover_construction_recipe" => Ok(__sdk::parse_reducer_args::<discover_construction_recipe_reducer::DiscoverConstructionRecipeArgs>("discover_construction_recipe", &value.args)?.into()),
+            "discover_crafting_recipe" => Ok(__sdk::parse_reducer_args::<discover_crafting_recipe_reducer::DiscoverCraftingRecipeArgs>("discover_crafting_recipe", &value.args)?.into()),
+            "discover_deployable" => Ok(__sdk::parse_reducer_args::<discover_deployable_reducer::DiscoverDeployableArgs>("discover_deployable", &value.args)?.into()),
+            "discover_enemy" => Ok(__sdk::parse_reducer_args::<discover_enemy_reducer::DiscoverEnemyArgs>("discover_enemy", &value.args)?.into()),
             "discover_entities" => Ok(__sdk::parse_reducer_args::<discover_entities_reducer::DiscoverEntitiesArgs>("discover_entities", &value.args)?.into()),
+            "discover_extraction_recipe" => Ok(__sdk::parse_reducer_args::<discover_extraction_recipe_reducer::DiscoverExtractionRecipeArgs>("discover_extraction_recipe", &value.args)?.into()),
+            "discover_item" => Ok(__sdk::parse_reducer_args::<discover_item_reducer::DiscoverItemArgs>("discover_item", &value.args)?.into()),
+            "discover_npc" => Ok(__sdk::parse_reducer_args::<discover_npc_reducer::DiscoverNpcArgs>("discover_npc", &value.args)?.into()),
+            "discover_pavement" => Ok(__sdk::parse_reducer_args::<discover_pavement_reducer::DiscoverPavementArgs>("discover_pavement", &value.args)?.into()),
+            "discover_pillar_shaping" => Ok(__sdk::parse_reducer_args::<discover_pillar_shaping_reducer::DiscoverPillarShapingArgs>("discover_pillar_shaping", &value.args)?.into()),
+            "discover_resource" => Ok(__sdk::parse_reducer_args::<discover_resource_reducer::DiscoverResourceArgs>("discover_resource", &value.args)?.into()),
+            "discover_resource_placement" => Ok(__sdk::parse_reducer_args::<discover_resource_placement_reducer::DiscoverResourcePlacementArgs>("discover_resource_placement", &value.args)?.into()),
+            "discover_ruins" => Ok(__sdk::parse_reducer_args::<discover_ruins_reducer::DiscoverRuinsArgs>("discover_ruins", &value.args)?.into()),
+            "discover_scroll" => Ok(__sdk::parse_reducer_args::<discover_scroll_reducer::DiscoverScrollArgs>("discover_scroll", &value.args)?.into()),
+            "discover_secondary_knowledge" => Ok(__sdk::parse_reducer_args::<discover_secondary_knowledge_reducer::DiscoverSecondaryKnowledgeArgs>("discover_secondary_knowledge", &value.args)?.into()),
             "dropped_inventory_despawn" => Ok(__sdk::parse_reducer_args::<dropped_inventory_despawn_reducer::DroppedInventoryDespawnArgs>("dropped_inventory_despawn", &value.args)?.into()),
             "dropped_inventory_destroy" => Ok(__sdk::parse_reducer_args::<dropped_inventory_destroy_reducer::DroppedInventoryDestroyArgs>("dropped_inventory_destroy", &value.args)?.into()),
             "dropped_inventory_lose_ownership" => Ok(__sdk::parse_reducer_args::<dropped_inventory_lose_ownership_reducer::DroppedInventoryLoseOwnershipArgs>("dropped_inventory_lose_ownership", &value.args)?.into()),

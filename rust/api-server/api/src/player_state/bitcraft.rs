@@ -5,6 +5,7 @@ use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -62,7 +63,7 @@ impl PlayerStateWorker {
                 database_name,
                 ..
             } => {
-                self.handle_initial(data, database_name.to_string()).await;
+                self.handle_initial(data, database_name).await;
             }
             SpacetimeUpdateMessages::Insert {
                 new, database_name, ..
@@ -90,10 +91,10 @@ impl PlayerStateWorker {
         }
     }
 
-    async fn handle_initial(&mut self, data: Vec<PlayerState>, database_name: String) {
+    async fn handle_initial(&mut self, data: Vec<PlayerState>, database_name: Arc<String>) {
         let mut local_messages = Vec::with_capacity(self.batch_size + 10);
         let mut currently_known_player_state = ::entity::player_state::Entity::find()
-            .filter(::entity::player_state::Column::Region.eq(database_name.clone()))
+            .filter(::entity::player_state::Column::Region.eq(database_name.to_string()))
             .all(&self.global_app_state.conn)
             .await
             .unwrap_or_else(|error| {
@@ -113,7 +114,7 @@ impl PlayerStateWorker {
         for mut model in data.into_iter().map(|value| {
             let model: ::entity::player_state::Model =
                 ::entity::player_state::ModelBuilder::new(value)
-                    .with_region(database_name.clone())
+                    .with_region(database_name.to_string())
                     .build();
 
             if model.signed_in {

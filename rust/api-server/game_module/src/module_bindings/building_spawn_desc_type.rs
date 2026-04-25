@@ -68,7 +68,6 @@ impl __sdk::__query_builder::HasCols for BuildingSpawnDesc {
 ///
 /// Provides typed access to indexed columns for query building.
 pub struct BuildingSpawnDescIxCols {
-    pub building_id: __sdk::__query_builder::IxCol<BuildingSpawnDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<BuildingSpawnDesc, i32>,
 }
 
@@ -76,7 +75,6 @@ impl __sdk::__query_builder::HasIxCols for BuildingSpawnDesc {
     type IxCols = BuildingSpawnDescIxCols;
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         BuildingSpawnDescIxCols {
-            building_id: __sdk::__query_builder::IxCol::new(table_name, "building_id"),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
         }
     }
