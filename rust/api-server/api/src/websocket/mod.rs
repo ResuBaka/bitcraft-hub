@@ -46,7 +46,6 @@ use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Table, TableWithPrimaryKey, credentials,
 };
 use std::borrow::Cow;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
@@ -179,14 +178,12 @@ fn on_connect_error(_ctx: &ErrorContext, err: Error) {
 }
 
 macro_rules! setup_spacetime_db_listeners {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $worker_name:expr) => {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $database_region:expr, $worker_name:expr) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
-        let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
 
         let temp_tx = $tx_channel.clone();
         let labels_database_name_update = database_name_runtime_string.clone();
-        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
             move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
@@ -217,7 +214,7 @@ macro_rules! setup_spacetime_db_listeners {
                     &temp_tx,
                     SpacetimeUpdateMessages::Update {
                         event: None,
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: $database_region,
                         old: old.clone(),
                         new: new.clone(),
                         reducer_name: reducer_name.clone(),
@@ -228,7 +225,6 @@ macro_rules! setup_spacetime_db_listeners {
 
         let temp_tx = $tx_channel.clone();
         let labels_database_name_insert = database_name_runtime_string.clone();
-        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_insert(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
@@ -264,7 +260,7 @@ macro_rules! setup_spacetime_db_listeners {
                     &temp_tx,
                     SpacetimeUpdateMessages::Insert {
                         event: None,
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: $database_region,
                         new: new.clone(),
                         reducer_name: reducer_name.clone(),
                     },
@@ -274,7 +270,6 @@ macro_rules! setup_spacetime_db_listeners {
 
         let temp_tx = $tx_channel.clone();
         let labels_database_name_delete = database_name_runtime_string.clone();
-        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
@@ -305,7 +300,7 @@ macro_rules! setup_spacetime_db_listeners {
                     &temp_tx,
                     SpacetimeUpdateMessages::Remove {
                         event: None,
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: $database_region,
                         delete: new.clone(),
                         reducer_name: reducer_name.clone(),
                     },
@@ -316,14 +311,12 @@ macro_rules! setup_spacetime_db_listeners {
 }
 
 macro_rules! setup_spacetime_db_listeners_event {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $worker_name:expr) => {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $database_region:expr, $worker_name:expr) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
-        let database_name_arc: Arc<String> = Arc::new($database_name_expr.to_string());
 
         let temp_tx = $tx_channel.clone();
         let labels_database_name_update = database_name_runtime_string.clone();
-        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
             move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
@@ -354,7 +347,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                     &temp_tx,
                     SpacetimeUpdateMessages::Update {
                         event: Some(ctx.event.clone()),
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: $database_region,
                         old: old.clone(),
                         new: new.clone(),
                         reducer_name: reducer_name.clone(),
@@ -365,7 +358,6 @@ macro_rules! setup_spacetime_db_listeners_event {
 
         let temp_tx = $tx_channel.clone();
         let labels_database_name_insert = database_name_runtime_string.clone();
-        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_insert(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
@@ -399,7 +391,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                     &temp_tx,
                     SpacetimeUpdateMessages::Insert {
                         event: Some(ctx.event.clone()),
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: $database_region,
                         new: new.clone(),
                         reducer_name: reducer_name.clone(),
                     },
@@ -409,7 +401,6 @@ macro_rules! setup_spacetime_db_listeners_event {
 
         let temp_tx = $tx_channel.clone();
         let labels_database_name_delete = database_name_runtime_string.clone();
-        let tmp_database_name_arc = database_name_arc.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
@@ -440,7 +431,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                     &temp_tx,
                     SpacetimeUpdateMessages::Remove {
                         event: Some(ctx.event.clone()),
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: $database_region,
                         delete: new.clone(),
                         reducer_name: reducer_name.clone(),
                     },
@@ -538,12 +529,19 @@ async fn connect_to_db_logic(
         return Ok(());
     }
 
+    let region_number = database
+        .split("-")
+        .last()
+        .unwrap()
+        .parse::<entity::shared::Region>()?;
+
     setup_spacetime_db_listeners!(
         ctx,
         mobile_entity_state,
         mobile_entity_state_tx,
         MobileEntityState,
         database,
+        region_number,
         "mobile_entity_state"
     );
     setup_spacetime_db_listeners!(
@@ -552,6 +550,7 @@ async fn connect_to_db_logic(
         player_state_tx,
         PlayerState,
         database,
+        region_number,
         "player_state"
     );
     setup_spacetime_db_listeners!(
@@ -560,6 +559,7 @@ async fn connect_to_db_logic(
         player_username_state_tx,
         PlayerUsernameState,
         database,
+        region_number,
         "player_username_state"
     );
     setup_spacetime_db_listeners_event!(
@@ -568,6 +568,7 @@ async fn connect_to_db_logic(
         experience_state_tx,
         ExperienceState,
         database,
+        region_number,
         "experience_state"
     );
     setup_spacetime_db_listeners_event!(
@@ -576,6 +577,7 @@ async fn connect_to_db_logic(
         inventory_state_tx,
         InventoryState,
         database,
+        region_number,
         "inventory_state"
     );
     setup_spacetime_db_listeners!(
@@ -584,6 +586,7 @@ async fn connect_to_db_logic(
         item_desc_tx,
         ItemDesc,
         database,
+        region_number,
         "item_desc"
     );
     setup_spacetime_db_listeners!(
@@ -592,6 +595,7 @@ async fn connect_to_db_logic(
         cargo_desc_tx,
         CargoDesc,
         database,
+        region_number,
         "cargo_desc"
     );
     setup_spacetime_db_listeners!(
@@ -600,6 +604,7 @@ async fn connect_to_db_logic(
         vault_state_collectibles_tx,
         VaultState,
         database,
+        region_number,
         "vault_state"
     );
     setup_spacetime_db_listeners!(
@@ -608,6 +613,7 @@ async fn connect_to_db_logic(
         claim_state_tx,
         ClaimState,
         database,
+        region_number,
         "claim_state"
     );
     setup_spacetime_db_listeners!(
@@ -616,6 +622,7 @@ async fn connect_to_db_logic(
         deployable_state_tx,
         DeployableState,
         database,
+        region_number,
         "deployable_state"
     );
     setup_spacetime_db_listeners!(
@@ -624,6 +631,7 @@ async fn connect_to_db_logic(
         claim_local_state_tx,
         ClaimLocalState,
         database,
+        region_number,
         "claim_local_state"
     );
     setup_spacetime_db_listeners!(
@@ -632,6 +640,7 @@ async fn connect_to_db_logic(
         claim_member_state_tx,
         ClaimMemberState,
         database,
+        region_number,
         "claim_member_state"
     );
     setup_spacetime_db_listeners!(
@@ -640,6 +649,7 @@ async fn connect_to_db_logic(
         skill_desc_tx,
         SkillDesc,
         database,
+        region_number,
         "skill_desc"
     );
     setup_spacetime_db_listeners!(
@@ -648,6 +658,7 @@ async fn connect_to_db_logic(
         claim_tech_state_tx,
         ClaimTechState,
         database,
+        region_number,
         "claim_tech_state"
     );
     setup_spacetime_db_listeners!(
@@ -656,6 +667,7 @@ async fn connect_to_db_logic(
         claim_tech_desc_tx,
         ClaimTechDesc,
         database,
+        region_number,
         "claim_tech_desc"
     );
     setup_spacetime_db_listeners!(
@@ -664,6 +676,7 @@ async fn connect_to_db_logic(
         building_state_tx,
         BuildingState,
         database,
+        region_number,
         "building_state"
     );
     setup_spacetime_db_listeners!(
@@ -672,6 +685,7 @@ async fn connect_to_db_logic(
         building_desc_tx,
         BuildingDesc,
         database,
+        region_number,
         "building_desc"
     );
     setup_spacetime_db_listeners!(
@@ -680,6 +694,7 @@ async fn connect_to_db_logic(
         location_state_tx,
         LocationState,
         database,
+        region_number,
         "location_state"
     );
     setup_spacetime_db_listeners!(
@@ -688,6 +703,7 @@ async fn connect_to_db_logic(
         building_nickname_state_tx,
         BuildingNicknameState,
         database,
+        region_number,
         "building_nickname_state"
     );
 
@@ -697,6 +713,7 @@ async fn connect_to_db_logic(
         crafting_recipe_desc_tx,
         CraftingRecipeDesc,
         database,
+        region_number,
         "crafting_recipe_desc"
     );
     setup_spacetime_db_listeners!(
@@ -705,6 +722,7 @@ async fn connect_to_db_logic(
         item_list_desc_tx,
         ItemListDesc,
         database,
+        region_number,
         "item_list_desc"
     );
     setup_spacetime_db_listeners!(
@@ -713,6 +731,7 @@ async fn connect_to_db_logic(
         traveler_task_desc_tx,
         TravelerTaskDesc,
         database,
+        region_number,
         "traveler_task_desc"
     );
     setup_spacetime_db_listeners!(
@@ -721,6 +740,7 @@ async fn connect_to_db_logic(
         traveler_task_state_tx,
         TravelerTaskState,
         database,
+        region_number,
         "traveler_task_state"
     );
     setup_spacetime_db_listeners!(
@@ -729,6 +749,7 @@ async fn connect_to_db_logic(
         trade_order_state_tx,
         TradeOrderState,
         database,
+        region_number,
         "trade_order_state"
     );
     setup_spacetime_db_listeners!(
@@ -737,6 +758,7 @@ async fn connect_to_db_logic(
         sell_order_state_tx,
         AuctionListingState,
         database,
+        region_number,
         "sell_order_state"
     );
     setup_spacetime_db_listeners!(
@@ -745,9 +767,18 @@ async fn connect_to_db_logic(
         buy_order_state_tx,
         AuctionListingState,
         database,
+        region_number,
         "buy_order_state"
     );
-    setup_spacetime_db_listeners!(ctx, npc_desc, npc_desc_tx, NpcDesc, database, "npc_desc");
+    setup_spacetime_db_listeners!(
+        ctx,
+        npc_desc,
+        npc_desc_tx,
+        NpcDesc,
+        database,
+        region_number,
+        "npc_desc"
+    );
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -755,6 +786,7 @@ async fn connect_to_db_logic(
         user_state_tx,
         UserState,
         database,
+        region_number,
         "user_state"
     );
     setup_spacetime_db_listeners!(
@@ -763,6 +795,7 @@ async fn connect_to_db_logic(
         collectible_desc_tx,
         CollectibleDesc,
         database,
+        region_number,
         "collectible_desc"
     );
     setup_spacetime_db_listeners!(
@@ -771,6 +804,7 @@ async fn connect_to_db_logic(
         interior_network_desc_tx,
         InteriorNetworkDesc,
         database,
+        region_number,
         "interior_network_desc"
     );
     setup_spacetime_db_listeners!(
@@ -779,6 +813,7 @@ async fn connect_to_db_logic(
         dimension_description_state_tx,
         DimensionDescriptionState,
         database,
+        region_number,
         "dimension_description_state"
     );
     setup_spacetime_db_listeners!(
@@ -787,6 +822,7 @@ async fn connect_to_db_logic(
         player_housing_state_tx,
         PlayerHousingState,
         database,
+        region_number,
         "player_housing_state"
     );
     setup_spacetime_db_listeners!(
@@ -795,6 +831,7 @@ async fn connect_to_db_logic(
         permission_state_tx,
         PermissionState,
         database,
+        region_number,
         "permission_state"
     );
     setup_spacetime_db_listeners!(
@@ -803,6 +840,7 @@ async fn connect_to_db_logic(
         portal_state_tx,
         PortalState,
         database,
+        region_number,
         "portal_state"
     );
     setup_spacetime_db_listeners!(
@@ -811,6 +849,7 @@ async fn connect_to_db_logic(
         resource_desc_tx,
         ResourceDesc,
         database,
+        region_number,
         "resource_desc"
     );
     setup_spacetime_db_listeners!(
@@ -819,6 +858,7 @@ async fn connect_to_db_logic(
         extraction_recipe_desc_tx,
         ExtractionRecipeDesc,
         database,
+        region_number,
         "extraction_recipe_desc"
     );
     setup_spacetime_db_listeners!(
@@ -827,6 +867,7 @@ async fn connect_to_db_logic(
         progressive_action_state_tx,
         ProgressiveActionState,
         database,
+        region_number,
         "progressive_action_state"
     );
 
@@ -885,7 +926,7 @@ async fn connect_to_db_logic(
         "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
     ];
 
-    let tmp_database = database.to_string().clone();
+    let tmp_region_number = region_number.clone();
     let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
     let tmp_player_state_tx = player_state_tx.clone();
     let tmp_player_username_state_tx = player_username_state_tx.clone();
@@ -924,12 +965,11 @@ async fn connect_to_db_logic(
     let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
     let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
 
-    let tmp_sub_error_db_name = tmp_database.clone();
+    let tmp_sub_error_db_name = tmp_region_number.clone();
 
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
             tracing::debug!("Handle Subscription response");
-            let database_name_arc: Arc<String> = Arc::new(tmp_database);
 
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
@@ -937,20 +977,18 @@ async fn connect_to_db_logic(
             )
             .set(ctx.db.cargo_desc().count() as f64);
 
-            let tmp_database_name_arc = database_name_arc.clone();
             let cargo_desc = ctx.db.cargo_desc().iter().collect::<Vec<_>>();
             if !cargo_desc.is_empty() {
                 send_worker_message(
                     "cargo_desc",
                     &tmp_cargo_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: cargo_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "player_username_state".to_string())]
@@ -962,13 +1000,12 @@ async fn connect_to_db_logic(
                     "player_username_state",
                     &tmp_player_username_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: player_username_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_local_state".to_string())]
@@ -980,13 +1017,12 @@ async fn connect_to_db_logic(
                     "claim_local_state",
                     &tmp_claim_local_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: claim_local_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_state".to_string())]
@@ -998,13 +1034,12 @@ async fn connect_to_db_logic(
                     "claim_state",
                     &tmp_claim_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: claim_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "deployable_state".to_string())]
@@ -1016,13 +1051,12 @@ async fn connect_to_db_logic(
                     "deployable_state",
                     &tmp_deployable_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: deployable_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "item_desc".to_string())]
@@ -1034,13 +1068,12 @@ async fn connect_to_db_logic(
                     "item_desc",
                     &tmp_item_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: item_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "skill_desc".to_string())]
@@ -1052,13 +1085,12 @@ async fn connect_to_db_logic(
                     "skill_desc",
                     &tmp_skill_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: skill_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "building_desc".to_string())]
@@ -1070,13 +1102,12 @@ async fn connect_to_db_logic(
                     "building_desc",
                     &tmp_building_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: building_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_tech_desc".to_string())]
@@ -1088,13 +1119,12 @@ async fn connect_to_db_logic(
                     "claim_tech_desc",
                     &tmp_claim_tech_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: claim_tech_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "crafting_recipe_desc".to_string())]
@@ -1106,13 +1136,12 @@ async fn connect_to_db_logic(
                     "crafting_recipe_desc",
                     &tmp_crafting_recipe_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: crafting_recipe_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "item_list_desc".to_string())]
@@ -1124,13 +1153,12 @@ async fn connect_to_db_logic(
                     "item_list_desc",
                     &tmp_item_list_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: item_list_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "traveler_task_desc".to_string())]
@@ -1142,13 +1170,12 @@ async fn connect_to_db_logic(
                     "traveler_task_desc",
                     &tmp_traveler_task_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: traveler_task_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "npc_desc".to_string())]
@@ -1160,7 +1187,7 @@ async fn connect_to_db_logic(
                     "npc_desc",
                     &tmp_npc_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: npc_desc,
                     },
                 );
@@ -1171,7 +1198,6 @@ async fn connect_to_db_logic(
                 tracing::info!("progressive_action_state, {:?}", npc_desc.len())
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "extraction_recipe_desc".to_string())]
@@ -1183,13 +1209,12 @@ async fn connect_to_db_logic(
                     "extraction_recipe_desc",
                     &tmp_extraction_recipe_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: extraction_recipe_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "inventory_state".to_string())]
@@ -1201,13 +1226,12 @@ async fn connect_to_db_logic(
                     "inventory_state",
                     &tmp_inventory_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: inventory_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_member_state".to_string())]
@@ -1219,13 +1243,12 @@ async fn connect_to_db_logic(
                     "claim_member_state",
                     &tmp_claim_member_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: claim_member_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "experience_state".to_string())]
@@ -1237,13 +1260,12 @@ async fn connect_to_db_logic(
                     "experience_state",
                     &tmp_experience_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: experience_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "mobile_entity_state".to_string())]
@@ -1255,13 +1277,12 @@ async fn connect_to_db_logic(
                     "mobile_entity_state",
                     &tmp_mobile_entity_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: mobile_entity_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "player_state".to_string())]
@@ -1273,13 +1294,12 @@ async fn connect_to_db_logic(
                     "player_state",
                     &tmp_player_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: player_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "vault_state".to_string())]
@@ -1291,13 +1311,12 @@ async fn connect_to_db_logic(
                     "vault_state",
                     &tmp_vault_state_collectibles_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: vault_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "claim_tech_state".to_string())]
@@ -1309,13 +1328,12 @@ async fn connect_to_db_logic(
                     "claim_tech_state",
                     &tmp_claim_tech_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: claim_tech_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "building_state".to_string())]
@@ -1327,13 +1345,12 @@ async fn connect_to_db_logic(
                     "building_state",
                     &tmp_building_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: building_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "location_state".to_string())]
@@ -1345,13 +1362,12 @@ async fn connect_to_db_logic(
                     "location_state",
                     &tmp_location_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: location_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "building_nickname_state".to_string())]
@@ -1364,13 +1380,12 @@ async fn connect_to_db_logic(
                     "building_nickname_state",
                     &tmp_building_nickname_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: building_nickname_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "traveler_task_state".to_string())]
@@ -1382,13 +1397,12 @@ async fn connect_to_db_logic(
                     "traveler_task_state",
                     &tmp_traveler_task_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: traveler_task_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "trade_order_state".to_string())]
@@ -1400,13 +1414,12 @@ async fn connect_to_db_logic(
                     "trade_order_state",
                     &tmp_trade_order_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: trade_order_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "user_state".to_string())]
@@ -1418,13 +1431,12 @@ async fn connect_to_db_logic(
                     "user_state",
                     &tmp_user_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: user_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "sell_order_state".to_string())]
@@ -1436,13 +1448,12 @@ async fn connect_to_db_logic(
                     "sell_order_state",
                     &tmp_sell_order_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: sell_order_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "buy_order_state".to_string())]
@@ -1454,13 +1465,12 @@ async fn connect_to_db_logic(
                     "buy_order_state",
                     &tmp_buy_order_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: buy_order_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "collectible_desc".to_string())]
@@ -1472,13 +1482,12 @@ async fn connect_to_db_logic(
                     "collectible_desc",
                     &tmp_collectible_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: collectible_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "interior_network_desc".to_string())]
@@ -1490,13 +1499,12 @@ async fn connect_to_db_logic(
                     "interior_network_desc",
                     &tmp_interior_network_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: interior_network_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "dimension_description_state".to_string())]
@@ -1512,13 +1520,12 @@ async fn connect_to_db_logic(
                     "dimension_description_state",
                     &tmp_dimension_description_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: dimension_description_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "player_housing_state".to_string())]
@@ -1526,17 +1533,21 @@ async fn connect_to_db_logic(
             .set(ctx.db.player_housing_state().count() as f64);
             let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
             if !player_housing_state.is_empty() {
+                tracing::info!(
+                    "We have {} in region {}",
+                    player_housing_state.len(),
+                    tmp_region_number
+                );
                 send_worker_message(
                     "player_housing_state",
                     &tmp_player_housing_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: player_housing_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "permission_state".to_string())]
@@ -1548,13 +1559,12 @@ async fn connect_to_db_logic(
                     "permission_state",
                     &tmp_permission_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: permission_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "portal_state".to_string())]
@@ -1566,13 +1576,12 @@ async fn connect_to_db_logic(
                     "portal_state",
                     &tmp_portal_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: portal_state,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "resource_desc".to_string())]
@@ -1584,13 +1593,12 @@ async fn connect_to_db_logic(
                     "resource_desc",
                     &tmp_resource_desc_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: resource_desc,
                     },
                 );
             }
 
-            let tmp_database_name_arc = database_name_arc.clone();
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
                 &[("worker", "progressive_action_state".to_string())]
@@ -1603,7 +1611,7 @@ async fn connect_to_db_logic(
                     "progressive_action_state",
                     &tmp_progressive_action_state_tx,
                     SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_database_name_arc.clone(),
+                        database_name: tmp_region_number,
                         data: progressive_action_state,
                     },
                 );
@@ -2141,25 +2149,25 @@ async fn websocket_retry_helper(
 pub(crate) enum SpacetimeUpdateMessages<T> {
     Initial {
         data: Vec<T>,
-        database_name: Arc<String>,
+        database_name: entity::shared::Region,
     },
     Insert {
         event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         new: T,
-        database_name: Arc<String>,
+        database_name: entity::shared::Region,
         reducer_name: Option<&'static str>,
     },
     Update {
         event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         old: T,
         new: T,
-        database_name: Arc<String>,
+        database_name: entity::shared::Region,
         reducer_name: Option<&'static str>,
     },
     Remove {
         event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
         delete: T,
-        database_name: Arc<String>,
+        database_name: entity::shared::Region,
         reducer_name: Option<&'static str>,
     },
 }

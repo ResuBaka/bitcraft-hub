@@ -3,16 +3,16 @@ import { regions } from "~/consts/regions";
 const configStore = useConfigStore();
 
 const props = defineProps<{
-  region: string;
+  region: number;
 }>();
 </script>
 
 <template>
   <template v-if="configStore.show_region_as_number">
-    {{ region.replace("bitcraft-live-", "") }}
+    {{ region }}
   </template>
   <template v-else>
-    {{ regions[region.replace("bitcraft-live-", "")] }}
+    {{ regions[region] }}
   </template>
 </template>
 

@@ -69,7 +69,6 @@ pub(crate) struct HouseResponse {
     pub rank: i32,
     pub is_empty: bool,
     pub region_index: i32,
-    pub region: String,
     /// The player entity ID who owns this house.
     pub owner_entity_id: i64,
     /// The username of the owner, if known.
@@ -323,7 +322,6 @@ async fn build_house_response(
         rank: house.rank,
         is_empty: house.is_empty,
         region_index: house.region_index,
-        region: house.region,
         owner_entity_id: owner_id,
         owner_username,
         permissions,
@@ -419,7 +417,7 @@ async fn get_building_entity_ids_in_dimension(
     dim_id: i64,
 ) -> Result<Vec<i64>, (StatusCode, &'static str)> {
     // dimension_id is only unique within a region
-    let region: String = format!("bitcraft-live-{}", house.region_index);
+    let region = house.region_index as entity::shared::Region;
 
     let locations = ::entity::location_state::Entity::find()
         .filter(::entity::location_state::Column::Dimension.eq(dim_id))

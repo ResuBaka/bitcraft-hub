@@ -20,7 +20,7 @@ pub struct Model {
     pub sign_in_timestamp: i32,
     pub signed_in: bool,
     pub traveler_tasks_expiration: i32,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -85,7 +85,7 @@ pub struct ModelBuilder {
     sign_in_timestamp: i32,
     signed_in: bool,
     traveler_tasks_expiration: i32,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -124,11 +124,11 @@ impl ModelBuilder {
             sign_in_timestamp: value.sign_in_timestamp,
             signed_in: value.signed_in,
             traveler_tasks_expiration: value.traveler_tasks_expiration,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

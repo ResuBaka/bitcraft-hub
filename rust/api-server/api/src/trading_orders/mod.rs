@@ -197,7 +197,7 @@ pub struct TradeOrdersWithExpendedRefrence {
     pub offer_cargo_id: Vec<i32>,
     pub required_items: Vec<ExpendedRefrence>,
     pub required_cargo_id: Vec<i32>,
-    pub region: String,
+    pub region: entity::shared::Region,
     pub shop_entity_id: i64,
     pub traveler_trade_order_id: Option<i32>,
 }

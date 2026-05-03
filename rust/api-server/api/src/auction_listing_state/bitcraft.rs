@@ -47,7 +47,7 @@ pub(crate) fn start_worker_sell_order_state(
 
                                 // let mut local_messages = vec![];
                                 // let mut trade_order = ::entity::trade_order::Entity::find()
-                                //     .filter(::entity::trade_order::Column::Region.eq(database_name.to_string()))
+                                //     .filter(::entity::trade_order::Column::Region.eq(database_name))
                                 //     .all(&global_app_state.conn)
                                 //     .await
                                 //     .map_or(vec![], |aa| aa)
@@ -56,7 +56,7 @@ pub(crate) fn start_worker_sell_order_state(
                                 //     .collect::<HashMap<_, _>>();
                                 //
                                 // for model in data.into_iter().map(|value| {
-                                //     let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                //     let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(value).with_region(database_name).build();
                                 //
                                 //     model
                                 // }) {
@@ -241,7 +241,7 @@ pub(crate) fn start_worker_buy_order_state(
 
                                 // let mut local_messages = vec![];
                                 // let mut trade_order = ::entity::trade_order::Entity::find()
-                                //     .filter(::entity::trade_order::Column::Region.eq(database_name.to_string()))
+                                //     .filter(::entity::trade_order::Column::Region.eq(database_name))
                                 //     .all(&global_app_state.conn)
                                 //     .await
                                 //     .map_or(vec![], |aa| aa)
@@ -250,7 +250,7 @@ pub(crate) fn start_worker_buy_order_state(
                                 //     .collect::<HashMap<_, _>>();
                                 //
                                 // for model in data.into_iter().map(|value| {
-                                //     let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                //     let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(value).with_region(database_name).build();
                                 //
                                 //     model
                                 // }) {

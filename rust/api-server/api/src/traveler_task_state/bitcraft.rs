@@ -40,7 +40,7 @@ pub(crate) fn start_worker_traveler_task_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_traveler_task_state = ::entity::traveler_task_state::Entity::find()
-                                    .filter(::entity::traveler_task_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::traveler_task_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -55,7 +55,7 @@ pub(crate) fn start_worker_traveler_task_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name).build();
 
                                     model
                                 }) {
@@ -84,7 +84,7 @@ pub(crate) fn start_worker_traveler_task_state(
                                     let chunk_ids = chunk_ids.to_vec();
                                     if let Err(error) = ::entity::traveler_task_state::Entity::delete_many()
                                         .filter(::entity::traveler_task_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .filter(::entity::traveler_task_state::Column::Region.eq(database_name.to_string()))
+                                        .filter(::entity::traveler_task_state::Column::Region.eq(database_name))
                                         .exec(&global_app_state.conn).await
                                     {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
@@ -93,7 +93,7 @@ pub(crate) fn start_worker_traveler_task_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
 
@@ -107,7 +107,7 @@ pub(crate) fn start_worker_traveler_task_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
 

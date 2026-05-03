@@ -73,14 +73,14 @@ pub struct ClaimDescriptionState {
     pub tier: Option<i32>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub xp_gained_since_last_coin_minting: i32,
-    pub region: String,
+    pub region: entity::shared::Region,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ClaimSummaryResponse {
     pub name: String,
-    pub region: String,
+    pub region: entity::shared::Region,
     pub location: Option<Location>,
 }
 
@@ -91,7 +91,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub owner_player_entity_id: i64,
     pub owner_building_entity_id: i64,
     pub name: String,
-    pub region: String,
+    pub region: entity::shared::Region,
     pub supplies: i32,
     pub building_maintenance: f32,
     pub members: HashMap<i64, ClaimDescriptionStateMember>,

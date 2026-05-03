@@ -14,7 +14,7 @@ pub struct Model {
     pub destination_dimension: i32,
     pub enabled: bool,
     pub allow_deployables: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -30,7 +30,7 @@ pub struct ModelBuilder {
     destination_dimension: i32,
     enabled: bool,
     allow_deployables: bool,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -43,11 +43,11 @@ impl ModelBuilder {
             destination_dimension: value.destination_dimension as i32,
             enabled: value.enabled,
             allow_deployables: value.allow_deployables,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

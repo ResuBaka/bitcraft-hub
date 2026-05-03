@@ -12,7 +12,7 @@ pub struct Model {
     pub allowed_entity_id: i64,
     pub group: i32,
     pub rank: i32,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -63,7 +63,7 @@ pub struct ModelBuilder {
     allowed_entity_id: i64,
     group: i32,
     rank: i32,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -74,11 +74,11 @@ impl ModelBuilder {
             allowed_entity_id: value.allowed_entity_id as i64,
             group: value.group,
             rank: value.rank,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

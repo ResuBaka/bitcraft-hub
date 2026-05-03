@@ -41,7 +41,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_vault_state_collectibles = ::entity::vault_state_collectibles::Entity::find()
-                                    .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -58,7 +58,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                 for model in data.into_iter().flat_map(|value| {
                                     let model: ::entity::vault_state_collectibles::RawVaultState = value.into();
 
-                                    model.to_model_collectibles(database_name.to_string())
+                                    model.to_model_collectibles(database_name)
                                 }) {
                                     use std::collections::hash_map::Entry;
                                     match currently_known_vault_state_collectibles.entry(model.entity_id) {
@@ -85,7 +85,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                     let chunk_ids = chunk_ids.to_vec();
                                     if let Err(error) = ::entity::vault_state_collectibles::Entity::delete_many()
                                         .filter(::entity::vault_state_collectibles::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name.to_string()))
+                                        .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name))
                                         .exec(&global_app_state.conn).await
                                     {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
@@ -95,7 +95,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
-                                let models = raw_model.to_model_collectibles(database_name.to_string());
+                                let models = raw_model.to_model_collectibles(database_name);
 
                                 for model in models {
                                     if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
@@ -114,7 +114,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
-                                let models = raw_model.to_model_collectibles(database_name.to_string());
+                                let models = raw_model.to_model_collectibles(database_name);
                                 for model in models {
                                     if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                         messages_delete.remove(index);
@@ -131,7 +131,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = delete.into();
-                                let models= raw_model.to_model_collectibles(database_name.to_string());
+                                let models= raw_model.to_model_collectibles(database_name);
                                 for model in models {
 
                                     let id = model.entity_id;

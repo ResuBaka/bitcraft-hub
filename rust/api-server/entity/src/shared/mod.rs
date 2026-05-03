@@ -60,3 +60,5 @@ impl From<game_module::module_bindings::Rarity> for Rarity {
         }
     }
 }
+
+pub type Region = i16;

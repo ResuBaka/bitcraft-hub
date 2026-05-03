@@ -57,7 +57,7 @@ pub(crate) fn start_worker_location_state(
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::location_state::ModelBuilder::new(entry)
-                                        .with_region(database_name.to_string())
+                                        .with_region(database_name)
                                         .build();
                                     if let Some(index) = messages.iter().position(|value: &::entity::location_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         messages.remove(index);
@@ -78,7 +78,7 @@ pub(crate) fn start_worker_location_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model = ::entity::location_state::ModelBuilder::new(new)
-                                    .with_region(database_name.to_string())
+                                    .with_region(database_name)
                                     .build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -91,7 +91,7 @@ pub(crate) fn start_worker_location_state(
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model = ::entity::location_state::ModelBuilder::new(new)
-                                    .with_region(database_name.to_string())
+                                    .with_region(database_name)
                                     .build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -104,7 +104,7 @@ pub(crate) fn start_worker_location_state(
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model = ::entity::location_state::ModelBuilder::new(delete)
-                                    .with_region(database_name.to_string())
+                                    .with_region(database_name)
                                     .build();
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);

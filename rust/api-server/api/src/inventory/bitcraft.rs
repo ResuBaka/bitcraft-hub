@@ -68,7 +68,7 @@ pub(crate) fn start_worker_inventory_state(
                                 tracing::debug!("Count of inventory amount to work on {}", data.len());
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_inventory = ::entity::inventory::Entity::find()
-                                    .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::inventory::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -83,7 +83,7 @@ pub(crate) fn start_worker_inventory_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value).with_region(database_name).build();
 
                                     model
                                 }) {
@@ -114,7 +114,7 @@ pub(crate) fn start_worker_inventory_state(
                                     let chunk_ids = chunk_ids.to_vec();
                                     if let Err(error) = ::entity::inventory::Entity::delete_many()
                                     .filter(::entity::inventory::Column::EntityId.is_in(chunk_ids.clone()))
-                                    .filter(::entity::inventory::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::inventory::Column::Region.eq(database_name))
                                     .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(Inventory = chunk_ids_str.join(","), error = error.to_string(), "Could not delete Inventory");
@@ -122,7 +122,7 @@ pub(crate) fn start_worker_inventory_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name).build();
 
                                 let mut pockets = vec![];
                                 for pocket in &model.pockets {
@@ -182,7 +182,7 @@ pub(crate) fn start_worker_inventory_state(
                                 }
 
                                 let new_model = new.clone();
-                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new).with_region(database_name).build();
                                 // global_app_state.inventory_state.insert(model.entity_id, model.clone());
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -288,7 +288,7 @@ pub(crate) fn start_worker_inventory_state(
 
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(delete).with_region(database_name).build();
                                 let id = model.entity_id;
 
                                 let mut pockets = vec![];

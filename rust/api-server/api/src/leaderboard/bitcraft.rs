@@ -47,7 +47,7 @@ pub(crate) fn start_worker_experience_state(
                                 tracing::debug!("Processed Initial ExperienceState {}", data.len());
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
-                                    .filter(::entity::experience_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::experience_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -74,7 +74,7 @@ pub(crate) fn start_worker_experience_state(
                                                 entity_id: id as i64,
                                                 skill_id: exp_stack.skill_id,
                                                 experience: exp_stack.quantity,
-                                                region: database_name.to_string()
+                                                region: database_name
                                             }
                                         }).collect();
 
@@ -147,7 +147,7 @@ pub(crate) fn start_worker_experience_state(
                                         entity_id: id,
                                         skill_id: es.skill_id,
                                         experience: es.quantity,
-                                        region: database_name.to_string()
+                                        region: database_name
                                     };
 
                                     if let Some(index) = messages_delete.iter().position(|value| value.0 == id && value.1 == es.skill_id) {
@@ -263,7 +263,7 @@ pub(crate) fn start_worker_experience_state(
                                                 entity_id: id,
                                                 skill_id: es.skill_id,
                                                 experience: es.quantity,
-                                                region: database_name.to_string()
+                                                region: database_name
                                             };
 
                                             if let Some(index) = messages_delete.iter().position(|value| value.0 == id && value.1 == es.skill_id) {
@@ -406,7 +406,7 @@ pub(crate) fn start_worker_experience_state(
                                         entity_id: id,
                                         skill_id: es.skill_id,
                                         experience: es.quantity,
-                                        region: database_name.to_string()
+                                        region: database_name
                                     }
                                 }).collect::<Vec<_>>();
 

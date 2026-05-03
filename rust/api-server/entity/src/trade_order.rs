@@ -20,7 +20,7 @@ pub struct Model {
     #[sea_orm(column_type = "Json")]
     pub required_items: Vec<ItemStack>,
     pub required_cargo_id: Vec<i32>,
-    pub region: String,
+    pub region: crate::shared::Region,
     pub shop_entity_id: i64,
     pub traveler_trade_order_id: Option<i32>,
 }
@@ -47,7 +47,7 @@ pub struct ModelBuilder {
     pub required_items: Vec<ItemStack>,
     pub required_cargo_id: Vec<i32>,
     pub traveler_trade_order_id: Option<i32>,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -79,11 +79,11 @@ impl ModelBuilder {
                 .collect(),
             required_cargo_id: value.required_cargo_id,
             traveler_trade_order_id: value.traveler_trade_order_id,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

@@ -23,7 +23,7 @@ pub struct Model {
     #[serde(deserialize_with = "deserialize_with_recipe_id")]
     pub recipe_id: Option<i32>,
     pub client_cancel: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

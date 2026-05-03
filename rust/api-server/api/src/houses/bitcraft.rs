@@ -45,7 +45,7 @@ pub(crate) fn start_worker_interior_network_desc(
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::interior_network_desc::ModelBuilder::new(entry)
-                                        .with_region(database_name.to_string())
+                                        .with_region(database_name)
                                         .build();
                                     if let Some(index) = local_messages.iter().position(|value: &::entity::interior_network_desc::ActiveModel| value.building_id.as_ref() == &model.building_id) {
                                         local_messages.remove(index);
@@ -76,7 +76,7 @@ pub(crate) fn start_worker_interior_network_desc(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model = ::entity::interior_network_desc::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::interior_network_desc::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.building_id) {
                                     messages_delete.remove(index);
                                 }
@@ -89,7 +89,7 @@ pub(crate) fn start_worker_interior_network_desc(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model = ::entity::interior_network_desc::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::interior_network_desc::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.building_id) {
                                     messages_delete.remove(index);
                                 }
@@ -102,7 +102,7 @@ pub(crate) fn start_worker_interior_network_desc(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model = ::entity::interior_network_desc::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model = ::entity::interior_network_desc::ModelBuilder::new(delete).with_region(database_name).build();
                                 if let Some(index) = messages.iter().position(|value| value.building_id.as_ref() == &model.building_id) {
                                     messages.remove(index);
                                 }
@@ -220,7 +220,7 @@ pub(crate) fn start_worker_dimension_description_state(
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::dimension_description_state::ModelBuilder::new(entry)
-                                        .with_region(database_name.to_string())
+                                        .with_region(database_name)
                                         .build();
                                     if let Some(index) = local_messages.iter().position(|value: &::entity::dimension_description_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         local_messages.remove(index);
@@ -251,7 +251,7 @@ pub(crate) fn start_worker_dimension_description_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model = ::entity::dimension_description_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::dimension_description_state::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -264,7 +264,7 @@ pub(crate) fn start_worker_dimension_description_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model = ::entity::dimension_description_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::dimension_description_state::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -277,7 +277,7 @@ pub(crate) fn start_worker_dimension_description_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model = ::entity::dimension_description_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model = ::entity::dimension_description_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -374,7 +374,6 @@ pub(crate) fn start_worker_player_housing_state(
                     ::entity::player_housing_state::Column::LockedUntil,
                     ::entity::player_housing_state::Column::IsEmpty,
                     ::entity::player_housing_state::Column::RegionIndex,
-                    ::entity::player_housing_state::Column::Region,
                 ])
                 .to_owned();
 
@@ -393,7 +392,6 @@ pub(crate) fn start_worker_player_housing_state(
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::player_housing_state::ModelBuilder::new(entry)
-                                        .with_region(database_name.to_string())
                                         .build();
                                     if let Some(index) = local_messages.iter().position(|value: &::entity::player_housing_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         local_messages.remove(index);
@@ -424,7 +422,7 @@ pub(crate) fn start_worker_player_housing_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model = ::entity::player_housing_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::player_housing_state::ModelBuilder::new(new).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -437,7 +435,7 @@ pub(crate) fn start_worker_player_housing_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model = ::entity::player_housing_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::player_housing_state::ModelBuilder::new(new).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -450,7 +448,7 @@ pub(crate) fn start_worker_player_housing_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model = ::entity::player_housing_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model = ::entity::player_housing_state::ModelBuilder::new(delete).build();
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -563,7 +561,7 @@ pub(crate) fn start_worker_permission_state(
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::permission_state::ModelBuilder::new(entry)
-                                        .with_region(database_name.to_string())
+                                        .with_region(database_name)
                                         .build();
                                     if let Some(index) = local_messages.iter().position(|value: &::entity::permission_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         local_messages.remove(index);
@@ -594,7 +592,7 @@ pub(crate) fn start_worker_permission_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model = ::entity::permission_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::permission_state::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -607,7 +605,7 @@ pub(crate) fn start_worker_permission_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model = ::entity::permission_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::permission_state::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -620,7 +618,7 @@ pub(crate) fn start_worker_permission_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model = ::entity::permission_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model = ::entity::permission_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }
@@ -731,7 +729,7 @@ pub(crate) fn start_worker_portal_state(
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::portal_state::ModelBuilder::new(entry)
-                                        .with_region(database_name.to_string())
+                                        .with_region(database_name)
                                         .build();
                                     if let Some(index) = local_messages.iter().position(|value: &::entity::portal_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
                                         local_messages.remove(index);
@@ -762,7 +760,7 @@ pub(crate) fn start_worker_portal_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -775,7 +773,7 @@ pub(crate) fn start_worker_portal_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model = ::entity::portal_state::ModelBuilder::new(new).with_region(database_name).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
                                 }
@@ -788,7 +786,7 @@ pub(crate) fn start_worker_portal_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model = ::entity::portal_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model = ::entity::portal_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
                                 }

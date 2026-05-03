@@ -12,7 +12,7 @@ pub struct Model {
     pub id: i32,
     pub activated: bool,
     pub count: i32,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -28,7 +28,7 @@ pub struct RawVaultStateCollectibles {
 }
 
 impl RawVaultStateCollectibles {
-    pub fn to_model(&self, entity_id: i64, region: String) -> Model {
+    pub fn to_model(&self, entity_id: i64, region: crate::shared::Region) -> Model {
         Model {
             entity_id,
             id: self.id,
@@ -57,7 +57,7 @@ pub struct RawVaultState {
 impl RawVaultState {
     pub fn to_model_collectibles(
         &self,
-        region: String,
+        region: crate::shared::Region,
     ) -> Vec<crate::vault_state_collectibles::Model> {
         self.collectibles
             .iter()

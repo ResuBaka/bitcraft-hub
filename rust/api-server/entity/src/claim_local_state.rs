@@ -21,7 +21,7 @@ pub struct Model {
     pub supplies_purchase_threshold: i32,
     pub supplies_purchase_price: f32,
     pub building_description_id: i32,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -41,7 +41,7 @@ pub struct ModelBuilder {
     supplies_purchase_threshold: i32,
     supplies_purchase_price: f32,
     building_description_id: i32,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -58,11 +58,11 @@ impl ModelBuilder {
             supplies_purchase_threshold: value.supplies_purchase_threshold as i32,
             supplies_purchase_price: value.supplies_purchase_price,
             building_description_id: value.building_description_id,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

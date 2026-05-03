@@ -12,7 +12,7 @@ pub struct Model {
     pub dimension_type: i32,
     #[sea_orm(column_type = "Json")]
     pub child_interior_instances: ChildInteriorInstances,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ pub struct ModelBuilder {
     building_id: i32,
     dimension_type: i32,
     child_interior_instances: ChildInteriorInstances,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -42,11 +42,11 @@ impl ModelBuilder {
                 game_module::module_bindings::DimensionType::Unknown => 4,
             },
             child_interior_instances: ChildInteriorInstances(value.child_interior_instances),
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

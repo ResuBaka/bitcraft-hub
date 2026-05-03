@@ -18,7 +18,7 @@ pub struct Model {
     pub task_id: i32,
     #[sea_orm(indexed)]
     pub completed: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -32,7 +32,7 @@ pub struct ModelBuilder {
     pub traveler_id: i32,
     pub task_id: i32,
     pub completed: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -43,11 +43,11 @@ impl ModelBuilder {
             traveler_id: value.traveler_id,
             task_id: value.task_id,
             completed: value.completed,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

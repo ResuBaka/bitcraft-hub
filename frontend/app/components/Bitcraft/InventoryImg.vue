@@ -3,8 +3,8 @@ const props = withDefaults(
   defineProps<{
     item: any;
     skipErrorText?: boolean;
-    height?: number;
-    width?: number;
+    height?: number | string;
+    width?: number | string;
   }>(),
   {
     skipErrorText: false,

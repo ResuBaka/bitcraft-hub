@@ -18,12 +18,15 @@ const playerId = ref<bigint | null>();
 const itemObject = ref<ItemCargo | undefined>();
 const numberFormat = new Intl.NumberFormat(undefined, {
   notation: "compact",
+  compactDisplay: "short",
+  maximumFractionDigits: 2,
+  maximumSignificantDigits: 3,
 });
-const numberQuantityFormat = new Intl.NumberFormat(undefined);
 
 const itemPockets = computed(() => {
   return props.inventory?.pockets.slice(0, props.inventory.cargo_index) ?? [];
 });
+
 const cargoPockets = computed(() => {
   return (
     props.inventory?.pockets.slice(
@@ -97,7 +100,7 @@ watchThrottled(
               <span>Claim</span>
               <NuxtLink
                 class="inventory-claim-link"
-                :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id } }"
+                :to="{ name: 'claims-id', params: { id: inventory.claim.entity_id.toString() } }"
               >
                 {{ inventory.claim.name }}
                 <span class="inventory-claim-region">
@@ -119,13 +122,26 @@ watchThrottled(
             :key="index"
             class="inventory-slot"
           >
-            <UTooltip>
+            <UTooltip
+              :ui="{
+                content: 'h-full',
+              }"
+              :delay-duration="250"
+            >
               <template #content>
                 <div class="inventory-tooltip">
                   <div class="inventory-tooltip-title">
                     {{ pocket.contents.item.name }}
                   </div>
                   <div class="inventory-tooltip-sub">Rarity: {{ pocket.contents.item.rarity }}</div>
+                  <div class="inventory-tooltip-sub">
+                    Volume: {{ pocket.contents.quantity }}/{{
+                      numberFormat.format(
+                        pocket.volume /
+                          (pocket.contents.item.volume === 0 ? 1 : pocket.contents.item.volume),
+                      )
+                    }}
+                  </div>
                 </div>
               </template>
               <div
@@ -136,13 +152,17 @@ watchThrottled(
                 <div class="item-icon">
                   <InventoryImg :item="pocket.contents.item" width="70%" height="70%" />
                 </div>
-                <div class="quantity-badge">
-                  {{ numberQuantityFormat.format(pocket.contents.quantity) }}/{{
-                    numberFormat.format(
-                      pocket.volume /
-                        (pocket.contents.item.volume === 0 ? 1 : pocket.contents.item.volume),
-                    )
-                  }}
+                <div
+                  class="quantity-badge"
+                  :class="
+                    pocket.volume /
+                      (pocket.contents.item.volume === 0 ? 1 : pocket.contents.item.volume) ==
+                    pocket.contents.quantity
+                      ? 'text-green-700'
+                      : ''
+                  "
+                >
+                  {{ numberFormat.format(pocket.contents.quantity) }}
                 </div>
               </div>
             </UTooltip>
@@ -295,9 +315,8 @@ watchThrottled(
   position: absolute;
   bottom: 0px;
   right: 4px;
-  font-size: 0.7rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  color: rgba(226, 232, 240, 0.95);
   text-shadow: 0px 0px 3px rgba(15, 23, 42, 0.6);
 }
 

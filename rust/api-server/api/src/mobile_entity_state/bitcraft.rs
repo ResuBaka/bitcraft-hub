@@ -27,7 +27,7 @@ pub(crate) fn start_worker_mobile_entity_state(
                         for entry in data {
                             let model: mobile_entity_state::Model =
                                 ::entity::mobile_entity_state::ModelBuilder::new(entry)
-                                    .with_region(database_name.to_string())
+                                    .with_region(database_name)
                                     .build();
                             global_app_state
                                 .mobile_entity_state
@@ -45,7 +45,7 @@ pub(crate) fn start_worker_mobile_entity_state(
                     } => {
                         let model: mobile_entity_state::Model =
                             ::entity::mobile_entity_state::ModelBuilder::new(new)
-                                .with_region(database_name.to_string())
+                                .with_region(database_name)
                                 .build();
 
                         global_app_state
@@ -63,7 +63,7 @@ pub(crate) fn start_worker_mobile_entity_state(
                     } => {
                         let model: mobile_entity_state::Model =
                             ::entity::mobile_entity_state::ModelBuilder::new(new)
-                                .with_region(database_name.to_string())
+                                .with_region(database_name)
                                 .build();
 
                         global_app_state

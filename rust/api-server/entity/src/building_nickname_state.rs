@@ -9,7 +9,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     pub nickname: String,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -20,7 +20,7 @@ impl ActiveModelBehavior for ActiveModel {}
 pub struct ModelBuilder {
     entity_id: i64,
     nickname: String,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -30,11 +30,11 @@ impl ModelBuilder {
         ModelBuilder {
             entity_id: building_nickname_state.entity_id as i64,
             nickname: building_nickname_state.nickname,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

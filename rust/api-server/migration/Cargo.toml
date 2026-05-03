@@ -12,6 +12,7 @@ path = "src/lib.rs"
 [dependencies]
 async-std = { version = "1.13.2", features = ["attributes", "tokio1"] }
 entity = { path = "../entity" }
+tracing = { workspace = true }
 
 [dependencies.sea-orm-migration]
 workspace = true

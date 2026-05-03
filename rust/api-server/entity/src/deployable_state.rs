@@ -15,7 +15,7 @@ pub struct Model {
     pub deployable_description_id: i32,
     pub nickname: String,
     pub hidden: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -31,7 +31,7 @@ pub struct ModelBuilder {
     deployable_description_id: i32,
     nickname: String,
     hidden: bool,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -44,11 +44,11 @@ impl ModelBuilder {
             deployable_description_id: value.deployable_description_id,
             nickname: value.nickname,
             hidden: value.hidden,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

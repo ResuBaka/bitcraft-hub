@@ -15,7 +15,6 @@ pub struct Model {
     pub locked_until: i64,
     pub is_empty: bool,
     pub region_index: i32,
-    pub region: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -45,7 +44,6 @@ pub struct ModelBuilder {
     locked_until: i64,
     is_empty: bool,
     region_index: i32,
-    region: String,
 }
 
 impl ModelBuilder {
@@ -63,13 +61,7 @@ impl ModelBuilder {
                 .unwrap_or(0),
             is_empty: value.is_empty,
             region_index: value.region_index as i32,
-            region: String::new(),
         }
-    }
-
-    pub fn with_region(mut self, region: String) -> Self {
-        self.region = region;
-        self
     }
 
     pub fn build(self) -> Model {
@@ -82,7 +74,6 @@ impl ModelBuilder {
             locked_until: self.locked_until,
             is_empty: self.is_empty,
             region_index: self.region_index,
-            region: self.region,
         }
     }
 }

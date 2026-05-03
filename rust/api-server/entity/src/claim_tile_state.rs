@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     pub entity_id: u64,
     pub claim_id: u64,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

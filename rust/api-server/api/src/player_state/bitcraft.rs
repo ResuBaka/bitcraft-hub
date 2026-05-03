@@ -5,9 +5,26 @@ use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+
+enum PlayerStateDbOperation {
+    Upsert(Vec<::entity::player_state::ActiveModel>),
+    Delete(Vec<i64>),
+    DeleteForRegion {
+        ids: Vec<i64>,
+        region: entity::shared::Region,
+    },
+}
+
+enum PlayerUsernameStateDbOperation {
+    Upsert(Vec<::entity::player_username_state::ActiveModel>),
+    Delete(Vec<i64>),
+    DeleteForRegion {
+        ids: Vec<i64>,
+        region: entity::shared::Region,
+    },
+}
 
 pub(crate) fn start_worker_player_state(
     global_app_state: AppState,
@@ -26,7 +43,7 @@ struct PlayerStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    on_conflict: sea_query::OnConflict,
+    db_tx: UnboundedSender<PlayerStateDbOperation>,
     messages: Vec<::entity::player_state::ActiveModel>,
     ids: Vec<i64>,
     messages_delete: Vec<i64>,
@@ -34,25 +51,58 @@ struct PlayerStateWorker {
 
 impl PlayerStateWorker {
     fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
+        let db_tx = start_player_state_db_worker(global_app_state.clone());
+
         Self {
             global_app_state,
             batch_size,
             time_limit,
-            on_conflict: sea_query::OnConflict::column(::entity::player_state::Column::EntityId)
-                .update_columns([
-                    ::entity::player_state::Column::TimePlayed,
-                    ::entity::player_state::Column::SessionStartTimestamp,
-                    ::entity::player_state::Column::TimeSignedIn,
-                    ::entity::player_state::Column::SignInTimestamp,
-                    ::entity::player_state::Column::SignedIn,
-                    ::entity::player_state::Column::TeleportLocation,
-                    ::entity::player_state::Column::TravelerTasksExpiration,
-                    ::entity::player_state::Column::Region,
-                ])
-                .to_owned(),
+            db_tx,
             messages: Vec::with_capacity(batch_size + 10),
             ids: Vec::with_capacity(batch_size + 10),
             messages_delete: Vec::with_capacity(batch_size + 10),
+        }
+    }
+
+    fn queue_upserts(&self, messages: Vec<::entity::player_state::ActiveModel>) {
+        if messages.is_empty() {
+            return;
+        }
+
+        if let Err(error) = self.db_tx.send(PlayerStateDbOperation::Upsert(messages)) {
+            tracing::error!(
+                error = error.to_string(),
+                "Could not queue PlayerState upserts"
+            );
+        }
+    }
+
+    fn queue_deletes(&self, ids: Vec<i64>) {
+        if ids.is_empty() {
+            return;
+        }
+
+        if let Err(error) = self.db_tx.send(PlayerStateDbOperation::Delete(ids)) {
+            tracing::error!(
+                error = error.to_string(),
+                "Could not queue PlayerState deletes"
+            );
+        }
+    }
+
+    fn queue_region_deletes(&self, ids: Vec<i64>, region: entity::shared::Region) {
+        if ids.is_empty() {
+            return;
+        }
+
+        if let Err(error) = self
+            .db_tx
+            .send(PlayerStateDbOperation::DeleteForRegion { ids, region })
+        {
+            tracing::error!(
+                error = error.to_string(),
+                "Could not queue PlayerState region deletes"
+            );
         }
     }
 
@@ -68,7 +118,7 @@ impl PlayerStateWorker {
             SpacetimeUpdateMessages::Insert {
                 new, database_name, ..
             } => {
-                self.handle_insert(new, database_name.to_string()).await;
+                self.handle_insert(new, database_name).await;
             }
             SpacetimeUpdateMessages::Update {
                 new,
@@ -76,8 +126,7 @@ impl PlayerStateWorker {
                 old,
                 ..
             } => {
-                self.handle_update(new, database_name.to_string(), old)
-                    .await;
+                self.handle_update(new, database_name, old).await;
             }
             SpacetimeUpdateMessages::Remove {
                 delete,
@@ -85,16 +134,20 @@ impl PlayerStateWorker {
                 reducer_name,
                 ..
             } => {
-                self.handle_remove(delete, database_name.to_string(), reducer_name)
+                self.handle_remove(delete, database_name, reducer_name)
                     .await;
             }
         }
     }
 
-    async fn handle_initial(&mut self, data: Vec<PlayerState>, database_name: Arc<String>) {
+    async fn handle_initial(
+        &mut self,
+        data: Vec<PlayerState>,
+        database_name: entity::shared::Region,
+    ) {
         let mut local_messages = Vec::with_capacity(self.batch_size + 10);
         let mut currently_known_player_state = ::entity::player_state::Entity::find()
-            .filter(::entity::player_state::Column::Region.eq(database_name.to_string()))
+            .filter(::entity::player_state::Column::Region.eq(database_name))
             .all(&self.global_app_state.conn)
             .await
             .unwrap_or_else(|error| {
@@ -114,7 +167,7 @@ impl PlayerStateWorker {
         for mut model in data.into_iter().map(|value| {
             let model: ::entity::player_state::Model =
                 ::entity::player_state::ModelBuilder::new(value)
-                    .with_region(database_name.to_string())
+                    .with_region(database_name)
                     .build();
 
             if model.signed_in {
@@ -164,29 +217,20 @@ impl PlayerStateWorker {
                 }
             }
             if local_messages.len() >= self.batch_size {
-                insert_multiple_player_state(
-                    &self.global_app_state,
-                    &self.on_conflict,
-                    &mut local_messages,
-                )
-                .await;
+                self.queue_upserts(std::mem::take(&mut local_messages));
+                local_messages = Vec::with_capacity(self.batch_size + 10);
             }
         }
 
         if !local_messages.is_empty() {
-            insert_multiple_player_state(
-                &self.global_app_state,
-                &self.on_conflict,
-                &mut local_messages,
-            )
-            .await;
+            self.queue_upserts(local_messages);
         }
 
         metrics::gauge!(
             "players_current_state",
             &[
                 ("online", "false".to_string()),
-                ("region", database_name.clone())
+                ("region", database_name.to_string())
             ]
         )
         .set(offline);
@@ -195,7 +239,7 @@ impl PlayerStateWorker {
             "players_current_state",
             &[
                 ("online", "true".to_string()),
-                ("region", database_name.clone())
+                ("region", database_name.to_string())
             ]
         )
         .set(online);
@@ -205,28 +249,14 @@ impl PlayerStateWorker {
             .collect::<Vec<_>>()
             .chunks(1000)
         {
-            let chunk_ids = chunk_ids.to_vec();
-            if let Err(error) = ::entity::player_state::Entity::delete_many()
-                .filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone()))
-                .filter(::entity::player_state::Column::Region.eq(database_name.clone()))
-                .exec(&self.global_app_state.conn)
-                .await
-            {
-                let chunk_ids_str: Vec<String> =
-                    chunk_ids.iter().map(|id| id.to_string()).collect();
-                tracing::error!(
-                    PlayerState = chunk_ids_str.join(","),
-                    error = error.to_string(),
-                    "Could not delete PlayerState"
-                );
-            }
+            self.queue_region_deletes(chunk_ids.to_vec(), database_name);
         }
     }
 
-    async fn handle_insert(&mut self, new: PlayerState, database_name: String) {
+    async fn handle_insert(&mut self, new: PlayerState, database_name: entity::shared::Region) {
         let mut model: ::entity::player_state::Model =
             ::entity::player_state::ModelBuilder::new(new)
-                .with_region(database_name.clone())
+                .with_region(database_name)
                 .build();
         self.global_app_state
             .ranking_system
@@ -249,7 +279,7 @@ impl PlayerStateWorker {
             "players_current_state",
             &[
                 ("online", model.signed_in.to_string()),
-                ("region", database_name)
+                ("region", database_name.to_string())
             ]
         )
         .increment(1);
@@ -277,10 +307,15 @@ impl PlayerStateWorker {
         self.messages.push(model.into_active_model());
     }
 
-    async fn handle_update(&mut self, new: PlayerState, database_name: String, old: PlayerState) {
+    async fn handle_update(
+        &mut self,
+        new: PlayerState,
+        database_name: entity::shared::Region,
+        old: PlayerState,
+    ) {
         let mut model: ::entity::player_state::Model =
             ::entity::player_state::ModelBuilder::new(new)
-                .with_region(database_name.clone())
+                .with_region(database_name)
                 .build();
         self.global_app_state
             .ranking_system
@@ -327,7 +362,7 @@ impl PlayerStateWorker {
                 "players_current_state",
                 &[
                     ("online", model.signed_in.to_string()),
-                    ("region", database_name.clone())
+                    ("region", database_name.to_string())
                 ]
             )
             .increment(1);
@@ -335,7 +370,7 @@ impl PlayerStateWorker {
                 "players_current_state",
                 &[
                     ("online", old.signed_in.to_string()),
-                    ("region", database_name.clone())
+                    ("region", database_name.to_string())
                 ]
             )
             .decrement(1);
@@ -382,12 +417,12 @@ impl PlayerStateWorker {
     async fn handle_remove(
         &mut self,
         delete: PlayerState,
-        database_name: String,
+        database_name: entity::shared::Region,
         reducer_name: Option<&'static str>,
     ) {
         let model: ::entity::player_state::Model =
             ::entity::player_state::ModelBuilder::new(delete)
-                .with_region(database_name.clone())
+                .with_region(database_name)
                 .build();
         let id = model.entity_id;
 
@@ -398,7 +433,7 @@ impl PlayerStateWorker {
                     "players_current_state",
                     &[
                         ("online", model.signed_in.to_string()),
-                        ("region", database_name)
+                        ("region", database_name.to_string())
                     ]
                 )
                 .decrement(1);
@@ -421,7 +456,7 @@ impl PlayerStateWorker {
             "players_current_state",
             &[
                 ("online", model.signed_in.to_string()),
-                ("region", database_name)
+                ("region", database_name.to_string())
             ]
         )
         .decrement(1);
@@ -434,12 +469,9 @@ impl PlayerStateWorker {
             return;
         }
 
-        insert_multiple_player_state(
-            &self.global_app_state,
-            &self.on_conflict,
-            &mut self.messages,
-        )
-        .await;
+        let messages =
+            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        self.queue_upserts(messages);
     }
 
     async fn flush_deletes(&mut self) {
@@ -448,24 +480,11 @@ impl PlayerStateWorker {
         }
 
         tracing::debug!("PlayerState::Remove");
-        for chunk_ids in self.messages_delete.chunks(1000) {
-            let chunk_ids = chunk_ids.to_vec();
-            if let Err(error) = ::entity::player_state::Entity::delete_many()
-                .filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone()))
-                .exec(&self.global_app_state.conn)
-                .await
-            {
-                let chunk_ids_str: Vec<String> =
-                    chunk_ids.iter().map(|id| id.to_string()).collect();
-                tracing::error!(
-                    PlayerState = chunk_ids_str.join(","),
-                    error = error.to_string(),
-                    "Could not delete PlayerState"
-                );
-            }
-        }
-
-        self.messages_delete.clear();
+        let messages_delete = std::mem::replace(
+            &mut self.messages_delete,
+            Vec::with_capacity(self.batch_size + 10),
+        );
+        self.queue_deletes(messages_delete);
     }
 }
 
@@ -503,9 +522,9 @@ impl BatchedWorker<PlayerState> for PlayerStateWorker {
 async fn insert_multiple_player_state(
     global_app_state: &AppState,
     on_conflict: &sea_query::OnConflict,
-    messages: &mut Vec<::entity::player_state::ActiveModel>,
+    messages: Vec<::entity::player_state::ActiveModel>,
 ) {
-    let insert = ::entity::player_state::Entity::insert_many(messages.clone())
+    let insert = ::entity::player_state::Entity::insert_many(messages)
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -513,8 +532,84 @@ async fn insert_multiple_player_state(
     if let Err(err) = insert {
         tracing::error!("Error inserting PlayerState: {}", err)
     }
+}
 
-    messages.clear();
+async fn delete_multiple_player_state(global_app_state: &AppState, ids: Vec<i64>) {
+    for chunk_ids in ids.chunks(1000) {
+        let chunk_ids = chunk_ids.to_vec();
+        if let Err(error) = ::entity::player_state::Entity::delete_many()
+            .filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone()))
+            .exec(&global_app_state.conn)
+            .await
+        {
+            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+            tracing::error!(
+                PlayerState = chunk_ids_str.join(","),
+                error = error.to_string(),
+                "Could not delete PlayerState"
+            );
+        }
+    }
+}
+
+async fn delete_multiple_player_state_for_region(
+    global_app_state: &AppState,
+    ids: Vec<i64>,
+    region: entity::shared::Region,
+) {
+    for chunk_ids in ids.chunks(1000) {
+        let chunk_ids = chunk_ids.to_vec();
+        if let Err(error) = ::entity::player_state::Entity::delete_many()
+            .filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone()))
+            .filter(::entity::player_state::Column::Region.eq(region.clone()))
+            .exec(&global_app_state.conn)
+            .await
+        {
+            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+            tracing::error!(
+                PlayerState = chunk_ids_str.join(","),
+                region,
+                error = error.to_string(),
+                "Could not delete PlayerState"
+            );
+        }
+    }
+}
+
+fn start_player_state_db_worker(
+    global_app_state: AppState,
+) -> UnboundedSender<PlayerStateDbOperation> {
+    let (tx, mut rx) = unbounded_channel();
+    let on_conflict = sea_query::OnConflict::column(::entity::player_state::Column::EntityId)
+        .update_columns([
+            ::entity::player_state::Column::TimePlayed,
+            ::entity::player_state::Column::SessionStartTimestamp,
+            ::entity::player_state::Column::TimeSignedIn,
+            ::entity::player_state::Column::SignInTimestamp,
+            ::entity::player_state::Column::SignedIn,
+            ::entity::player_state::Column::TeleportLocation,
+            ::entity::player_state::Column::TravelerTasksExpiration,
+            ::entity::player_state::Column::Region,
+        ])
+        .to_owned();
+
+    tokio::spawn(async move {
+        while let Some(operation) = rx.recv().await {
+            match operation {
+                PlayerStateDbOperation::Upsert(messages) => {
+                    insert_multiple_player_state(&global_app_state, &on_conflict, messages).await;
+                }
+                PlayerStateDbOperation::Delete(ids) => {
+                    delete_multiple_player_state(&global_app_state, ids).await;
+                }
+                PlayerStateDbOperation::DeleteForRegion { ids, region } => {
+                    delete_multiple_player_state_for_region(&global_app_state, ids, region).await;
+                }
+            }
+        }
+    });
+
+    tx
 }
 
 pub(crate) fn start_worker_player_username_state(
@@ -534,7 +629,7 @@ struct PlayerUsernameStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    on_conflict: sea_query::OnConflict,
+    db_tx: UnboundedSender<PlayerUsernameStateDbOperation>,
     messages: Vec<::entity::player_username_state::ActiveModel>,
     ids: Vec<i64>,
     messages_delete: Vec<i64>,
@@ -542,21 +637,61 @@ struct PlayerUsernameStateWorker {
 
 impl PlayerUsernameStateWorker {
     fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
+        let db_tx = start_player_username_state_db_worker(global_app_state.clone());
+
         Self {
             global_app_state,
             batch_size,
             time_limit,
-            on_conflict: sea_query::OnConflict::column(
-                ::entity::player_username_state::Column::EntityId,
-            )
-            .update_columns([
-                ::entity::player_username_state::Column::Username,
-                ::entity::player_username_state::Column::Region,
-            ])
-            .to_owned(),
+            db_tx,
             messages: Vec::with_capacity(batch_size + 10),
             ids: Vec::with_capacity(batch_size + 10),
             messages_delete: Vec::with_capacity(batch_size + 10),
+        }
+    }
+
+    fn queue_upserts(&self, messages: Vec<::entity::player_username_state::ActiveModel>) {
+        if messages.is_empty() {
+            return;
+        }
+
+        if let Err(error) = self
+            .db_tx
+            .send(PlayerUsernameStateDbOperation::Upsert(messages))
+        {
+            tracing::error!(
+                error = error.to_string(),
+                "Could not queue PlayerUsernameState upserts"
+            );
+        }
+    }
+
+    fn queue_deletes(&self, ids: Vec<i64>) {
+        if ids.is_empty() {
+            return;
+        }
+
+        if let Err(error) = self.db_tx.send(PlayerUsernameStateDbOperation::Delete(ids)) {
+            tracing::error!(
+                error = error.to_string(),
+                "Could not queue PlayerUsernameState deletes"
+            );
+        }
+    }
+
+    fn queue_region_deletes(&self, ids: Vec<i64>, region: entity::shared::Region) {
+        if ids.is_empty() {
+            return;
+        }
+
+        if let Err(error) = self
+            .db_tx
+            .send(PlayerUsernameStateDbOperation::DeleteForRegion { ids, region })
+        {
+            tracing::error!(
+                error = error.to_string(),
+                "Could not queue PlayerUsernameState region deletes"
+            );
         }
     }
 
@@ -570,10 +705,7 @@ impl PlayerUsernameStateWorker {
                 let mut local_messages = Vec::with_capacity(self.batch_size + 10);
                 let mut currently_known_player_username_state =
                     ::entity::player_username_state::Entity::find()
-                        .filter(
-                            ::entity::player_username_state::Column::Region
-                                .eq(database_name.to_string()),
-                        )
+                        .filter(::entity::player_username_state::Column::Region.eq(database_name))
                         .all(&self.global_app_state.conn)
                         .await
                         .unwrap_or_else(|error| {
@@ -590,7 +722,7 @@ impl PlayerUsernameStateWorker {
                 for model in data.into_iter().map(|value| {
                     let model: ::entity::player_username_state::Model =
                         ::entity::player_username_state::ModelBuilder::new(value)
-                            .with_region(database_name.to_string())
+                            .with_region(database_name)
                             .build();
 
                     model
@@ -609,21 +741,12 @@ impl PlayerUsernameStateWorker {
                         }
                     }
                     if local_messages.len() >= self.batch_size {
-                        insert_multiple_player_username_state(
-                            &self.global_app_state,
-                            &self.on_conflict,
-                            &mut local_messages,
-                        )
-                        .await;
+                        self.queue_upserts(std::mem::take(&mut local_messages));
+                        local_messages = Vec::with_capacity(self.batch_size + 10);
                     }
                 }
                 if !local_messages.is_empty() {
-                    insert_multiple_player_username_state(
-                        &self.global_app_state,
-                        &self.on_conflict,
-                        &mut local_messages,
-                    )
-                    .await;
+                    self.queue_upserts(local_messages);
                 }
 
                 for chunk_ids in currently_known_player_username_state
@@ -631,27 +754,7 @@ impl PlayerUsernameStateWorker {
                     .collect::<Vec<_>>()
                     .chunks(1000)
                 {
-                    let chunk_ids = chunk_ids.to_vec();
-                    if let Err(error) = ::entity::player_username_state::Entity::delete_many()
-                        .filter(
-                            ::entity::player_username_state::Column::EntityId
-                                .is_in(chunk_ids.clone()),
-                        )
-                        .filter(
-                            ::entity::player_username_state::Column::Region
-                                .eq(database_name.to_string()),
-                        )
-                        .exec(&self.global_app_state.conn)
-                        .await
-                    {
-                        let chunk_ids_str: Vec<String> =
-                            chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(
-                            PlayerUsernameState = chunk_ids_str.join(","),
-                            error = error.to_string(),
-                            "Could not delete PlayerUsernameState"
-                        );
-                    }
+                    self.queue_region_deletes(chunk_ids.to_vec(), database_name);
                 }
             }
             SpacetimeUpdateMessages::Insert {
@@ -659,7 +762,7 @@ impl PlayerUsernameStateWorker {
             } => {
                 let model: ::entity::player_username_state::Model =
                     ::entity::player_username_state::ModelBuilder::new(new)
-                        .with_region(database_name.to_string())
+                        .with_region(database_name)
                         .build();
 
                 if let Some(index) = self
@@ -677,7 +780,7 @@ impl PlayerUsernameStateWorker {
             } => {
                 let model: ::entity::player_username_state::Model =
                     ::entity::player_username_state::ModelBuilder::new(new)
-                        .with_region(database_name.to_string())
+                        .with_region(database_name)
                         .build();
                 if let Some(index) = self
                     .messages_delete
@@ -697,7 +800,7 @@ impl PlayerUsernameStateWorker {
             } => {
                 let model: ::entity::player_username_state::Model =
                     ::entity::player_username_state::ModelBuilder::new(delete)
-                        .with_region(database_name.to_string())
+                        .with_region(database_name)
                         .build();
                 let id = model.entity_id;
 
@@ -729,12 +832,9 @@ impl PlayerUsernameStateWorker {
             return;
         }
 
-        insert_multiple_player_username_state(
-            &self.global_app_state,
-            &self.on_conflict,
-            &mut self.messages,
-        )
-        .await;
+        let messages =
+            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        self.queue_upserts(messages);
     }
 
     async fn flush_deletes(&mut self) {
@@ -743,23 +843,11 @@ impl PlayerUsernameStateWorker {
         }
 
         tracing::debug!("PlayerUsernameState::Remove");
-        for chunk_ids in self.messages_delete.chunks(1000) {
-            let chunk_ids = chunk_ids.to_vec();
-            if let Err(error) = ::entity::player_username_state::Entity::delete_many()
-                .filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone()))
-                .exec(&self.global_app_state.conn)
-                .await
-            {
-                let chunk_ids_str: Vec<String> =
-                    chunk_ids.iter().map(|id| id.to_string()).collect();
-                tracing::error!(
-                    PlayerUsernameState = chunk_ids_str.join(","),
-                    error = error.to_string(),
-                    "Could not delete PlayerUsernameState"
-                );
-            }
-        }
-        self.messages_delete.clear();
+        let messages_delete = std::mem::replace(
+            &mut self.messages_delete,
+            Vec::with_capacity(self.batch_size + 10),
+        );
+        self.queue_deletes(messages_delete);
     }
 }
 
@@ -797,9 +885,9 @@ impl BatchedWorker<PlayerUsernameState> for PlayerUsernameStateWorker {
 async fn insert_multiple_player_username_state(
     global_app_state: &AppState,
     on_conflict: &sea_query::OnConflict,
-    messages: &mut Vec<::entity::player_username_state::ActiveModel>,
+    messages: Vec<::entity::player_username_state::ActiveModel>,
 ) {
-    let insert = ::entity::player_username_state::Entity::insert_many(messages.clone())
+    let insert = ::entity::player_username_state::Entity::insert_many(messages)
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -807,6 +895,87 @@ async fn insert_multiple_player_username_state(
     if let Err(err) = insert {
         tracing::error!("Error inserting PlayerUsernameState: {}", err)
     }
+}
 
-    messages.clear();
+async fn delete_multiple_player_username_state(global_app_state: &AppState, ids: Vec<i64>) {
+    for chunk_ids in ids.chunks(1000) {
+        let chunk_ids = chunk_ids.to_vec();
+        if let Err(error) = ::entity::player_username_state::Entity::delete_many()
+            .filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone()))
+            .exec(&global_app_state.conn)
+            .await
+        {
+            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+            tracing::error!(
+                PlayerUsernameState = chunk_ids_str.join(","),
+                error = error.to_string(),
+                "Could not delete PlayerUsernameState"
+            );
+        }
+    }
+}
+
+async fn delete_multiple_player_username_state_for_region(
+    global_app_state: &AppState,
+    ids: Vec<i64>,
+    region: entity::shared::Region,
+) {
+    for chunk_ids in ids.chunks(1000) {
+        let chunk_ids = chunk_ids.to_vec();
+        if let Err(error) = ::entity::player_username_state::Entity::delete_many()
+            .filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone()))
+            .filter(::entity::player_username_state::Column::Region.eq(region.clone()))
+            .exec(&global_app_state.conn)
+            .await
+        {
+            let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
+            tracing::error!(
+                PlayerUsernameState = chunk_ids_str.join(","),
+                region,
+                error = error.to_string(),
+                "Could not delete PlayerUsernameState"
+            );
+        }
+    }
+}
+
+fn start_player_username_state_db_worker(
+    global_app_state: AppState,
+) -> UnboundedSender<PlayerUsernameStateDbOperation> {
+    let (tx, mut rx) = unbounded_channel();
+    let on_conflict =
+        sea_query::OnConflict::column(::entity::player_username_state::Column::EntityId)
+            .update_columns([
+                ::entity::player_username_state::Column::Username,
+                ::entity::player_username_state::Column::Region,
+            ])
+            .to_owned();
+
+    tokio::spawn(async move {
+        while let Some(operation) = rx.recv().await {
+            match operation {
+                PlayerUsernameStateDbOperation::Upsert(messages) => {
+                    insert_multiple_player_username_state(
+                        &global_app_state,
+                        &on_conflict,
+                        messages,
+                    )
+                    .await;
+                }
+                PlayerUsernameStateDbOperation::Delete(ids) => {
+                    delete_multiple_player_username_state(&global_app_state, ids).await;
+                }
+                PlayerUsernameStateDbOperation::DeleteForRegion { ids, region } => {
+                    delete_multiple_player_username_state_for_region(
+                        &global_app_state,
+                        ids,
+                        region,
+                    )
+                    .await;
+                }
+            }
+        }
+    });
+
+    tx
 }

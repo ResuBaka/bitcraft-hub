@@ -16,7 +16,14 @@ const props = withDefaults(
 const page = ref(1);
 const pageSize = 50;
 
-const tableRows = computed(() => props.items ?? []);
+const tableRows = computed(() =>
+  props.items
+    ? props.items.map((item) => ({
+        ...item,
+        timestamp: Date.parse(item.timestamp),
+      }))
+    : [],
+);
 
 const pagedRows = computed(() => {
   const start = (page.value - 1) * pageSize;
@@ -111,11 +118,6 @@ const columns = [
     meta: { class: { th: "text-right", td: "text-right" } },
   },
   {
-    id: "timestamp",
-    header: "Timestamp Since",
-    meta: { class: { th: "text-right", td: "text-right" } },
-  },
-  {
     id: "timestamp_diff",
     header: "Time Ago",
     meta: { class: { th: "text-right", td: "text-right" } },
@@ -164,15 +166,10 @@ watch(
           {{ getUsername(row.original.user_id) }}
         </span>
       </template>
-      <template #timestamp-cell="{ row }">
-        {{ nDate.format(Date.parse(row.original.timestamp)) }}
-      </template>
       <template #timestamp_diff-cell="{ row }">
         <UTooltip>
-          <template #content>
-            UTC {{ nUTCData.format(Date.parse(row.original.timestamp)) }}
-          </template>
-          <span>{{ timeAgo(Date.parse(row.original.timestamp)) }}</span>
+          <template #content> UTC {{ nUTCData.format(row.original.timestamp) }} </template>
+          <span>{{ timeAgo(row.original.timestamp) }}</span>
         </UTooltip>
       </template>
       <template #diff-cell="{ row }">

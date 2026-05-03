@@ -10,7 +10,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
     pub identity: Identity,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

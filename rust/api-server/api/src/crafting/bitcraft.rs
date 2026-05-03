@@ -46,7 +46,7 @@ pub(crate) fn start_worker_progressive_action_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_progressive_action_state = ::entity::progressive_action_state::Entity::find()
-                                    .filter(::entity::progressive_action_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::progressive_action_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -61,7 +61,7 @@ pub(crate) fn start_worker_progressive_action_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(value).with_region(database_name).build();
                                     model
                                 }) {
                                     use std::collections::hash_map::Entry;
@@ -89,7 +89,7 @@ pub(crate) fn start_worker_progressive_action_state(
                                     let chunk_ids = chunk_ids.to_vec();
                                     if let Err(error) = ::entity::progressive_action_state::Entity::delete_many()
                                         .filter(::entity::progressive_action_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .filter(::entity::progressive_action_state::Column::Region.eq(database_name.to_string()))
+                                        .filter(::entity::progressive_action_state::Column::Region.eq(database_name))
                                         .exec(&global_app_state.conn)
                                         .await
                                     {
@@ -99,7 +99,7 @@ pub(crate) fn start_worker_progressive_action_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -118,7 +118,7 @@ pub(crate) fn start_worker_progressive_action_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 if ids.contains(&model.entity_id) {
                                     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
@@ -138,7 +138,7 @@ pub(crate) fn start_worker_progressive_action_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name, .. } => {
-                                let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 let id = model.entity_id;
 
                                 #[allow(clippy::single_match)]

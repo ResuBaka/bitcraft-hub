@@ -12,7 +12,7 @@ pub struct AuctionListingState {
     pub quantity: i32,
     pub timestamp: crate::shared::timestamp::Timestamp,
     pub stored_coins: i32,
-    pub region: i32,
+    pub region: crate::shared::Region,
 }
 
 pub struct AuctionListingStateBuilder {
@@ -25,7 +25,7 @@ pub struct AuctionListingStateBuilder {
     pub quantity: i32,
     pub timestamp: crate::shared::timestamp::Timestamp,
     pub stored_coins: i32,
-    pub region: i32,
+    pub region: crate::shared::Region,
 }
 
 impl AuctionListingStateBuilder {
@@ -44,7 +44,7 @@ impl AuctionListingStateBuilder {
         }
     }
 
-    pub fn with_region(mut self, region: i32) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

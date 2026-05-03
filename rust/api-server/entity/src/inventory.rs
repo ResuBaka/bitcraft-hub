@@ -18,7 +18,7 @@ pub struct Model {
     pub cargo_index: i32,
     pub owner_entity_id: i64,
     pub player_owner_entity_id: i64,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
@@ -171,7 +171,7 @@ pub struct ModelBuilder {
     cargo_index: i32,
     owner_entity_id: i64,
     player_owner_entity_id: i64,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -187,11 +187,11 @@ impl ModelBuilder {
             cargo_index: value.cargo_index,
             owner_entity_id: value.owner_entity_id as i64,
             player_owner_entity_id: value.player_owner_entity_id as i64,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

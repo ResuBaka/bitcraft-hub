@@ -16,7 +16,7 @@ pub struct Model {
     pub x: i32,
     pub z: i32,
     pub dimension: i32,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 // #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -30,7 +30,7 @@ pub struct ModelBuilder {
     x: i32,
     z: i32,
     dimension: i32,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -41,11 +41,11 @@ impl ModelBuilder {
             x: value.x,
             z: value.z,
             dimension: value.dimension as i32,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

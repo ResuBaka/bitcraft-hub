@@ -17,7 +17,7 @@ pub struct Model {
     pub destination_z: i32,
     pub dimension: u32,
     pub is_walking: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -33,7 +33,7 @@ pub struct ModelBuilder {
     destination_z: i32,
     dimension: u32,
     is_walking: bool,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -48,11 +48,11 @@ impl ModelBuilder {
             destination_z: value.destination_z,
             dimension: value.dimension,
             is_walking: value.is_walking,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

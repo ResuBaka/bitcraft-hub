@@ -14,7 +14,7 @@ pub struct Model {
     pub build_permission: bool,
     pub officer_permission: bool,
     pub co_owner_permission: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -31,7 +31,7 @@ pub struct ModelBuilder {
     build_permission: bool,
     officer_permission: bool,
     co_owner_permission: bool,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -45,11 +45,11 @@ impl ModelBuilder {
             build_permission: claim_state.build_permission,
             officer_permission: claim_state.officer_permission,
             co_owner_permission: claim_state.co_owner_permission,
-            region: String::new(), // Default or uninitialized
+            region: 0, // Default or uninitialized
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

@@ -11,7 +11,7 @@ pub struct Model {
     pub spawn_timestamp: i32,
     pub description_id: i32,
     pub direction: i32,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

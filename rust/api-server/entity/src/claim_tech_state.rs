@@ -15,7 +15,7 @@ pub struct Model {
     #[sea_orm(column_type = "Json")]
     pub start_timestamp: timestamp::Timestamp,
     pub scheduled_id: Option<i64>,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -29,7 +29,7 @@ pub struct ModelBuilder {
     researching: i32,
     start_timestamp: timestamp::Timestamp,
     scheduled_id: Option<i64>,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -40,11 +40,11 @@ impl ModelBuilder {
             researching: claim_tech_state.researching,
             start_timestamp: claim_tech_state.start_timestamp.into(),
             scheduled_id: claim_tech_state.scheduled_id.map(|s| s as i64),
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

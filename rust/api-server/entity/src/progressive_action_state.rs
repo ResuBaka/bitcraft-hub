@@ -19,7 +19,7 @@ pub struct Model {
     #[sea_orm(column_type = "JsonBinary")]
     pub lock_expiration: timestamp::Timestamp,
     pub preparation: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -38,7 +38,7 @@ pub struct ModelBuilder {
     owner_entity_id: i64,
     lock_expiration: timestamp::Timestamp,
     preparation: bool,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -54,11 +54,11 @@ impl ModelBuilder {
             owner_entity_id: value.owner_entity_id as i64,
             lock_expiration: value.lock_expiration.into(),
             preparation: value.preparation,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

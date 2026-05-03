@@ -43,7 +43,7 @@ pub(crate) fn start_worker_claim_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_state = ::entity::claim_state::Entity::find()
-                                    .filter(::entity::claim_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::claim_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -58,7 +58,7 @@ pub(crate) fn start_worker_claim_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(value).with_region(database_name).build();
 
                                     model
                                 }) {
@@ -86,14 +86,14 @@ pub(crate) fn start_worker_claim_state(
 
                                 for chunk_ids in currently_known_claim_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::claim_state::Entity::delete_many().filter(::entity::claim_state::Column::EntityId.is_in(chunk_ids.clone())).filter(::entity::claim_state::Column::Region.eq(database_name.to_string())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::claim_state::Entity::delete_many().filter(::entity::claim_state::Column::EntityId.is_in(chunk_ids.clone())).filter(::entity::claim_state::Column::Region.eq(database_name)).exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimState");
                                     }
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 global_app_state.claim_state.insert(model.entity_id, model.clone());
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
@@ -105,7 +105,7 @@ pub(crate) fn start_worker_claim_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
@@ -122,7 +122,7 @@ pub(crate) fn start_worker_claim_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_state::Model = ::entity::claim_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 let id = model.entity_id;
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
@@ -237,7 +237,7 @@ pub(crate) fn start_worker_claim_local_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_local_state = ::entity::claim_local_state::Entity::find()
-                                    .filter(::entity::claim_local_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::claim_local_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -252,7 +252,7 @@ pub(crate) fn start_worker_claim_local_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(value).with_region(database_name).build();
 
                                     model
                                 }) {
@@ -286,7 +286,7 @@ pub(crate) fn start_worker_claim_local_state(
 
                                 for chunk_ids in currently_known_claim_local_state.into_keys().collect::<Vec<_>>().chunks(1000) {
                                     let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::claim_local_state::Entity::delete_many().filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone())).filter(::entity::claim_local_state::Column::Region.eq(database_name.to_string())).exec(&global_app_state.conn).await {
+                                    if let Err(error) = ::entity::claim_local_state::Entity::delete_many().filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone())).filter(::entity::claim_local_state::Column::Region.eq(database_name)).exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimLocalState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimLocalState");
                                     }
@@ -294,7 +294,7 @@ pub(crate) fn start_worker_claim_local_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let org_id = new.entity_id;
-                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name).build();
                                 global_app_state.claim_local_state.insert(org_id, model.clone());
 
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
@@ -323,7 +323,7 @@ pub(crate) fn start_worker_claim_local_state(
                                     metrics::counter!("claim_treasury_hex_production_count", &[("region", database_name.to_string()), ("claim_id", org_id.to_string())]).increment(1);
                                 }
 
-                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 global_app_state.claim_local_state.insert(org_id, model.clone());
 
@@ -346,7 +346,7 @@ pub(crate) fn start_worker_claim_local_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_local_state::Model = ::entity::claim_local_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 let id = model.entity_id;
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
@@ -460,7 +460,7 @@ pub(crate) fn start_worker_claim_member_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_member_state = ::entity::claim_member_state::Entity::find()
-                                    .filter(::entity::claim_member_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::claim_member_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -475,7 +475,7 @@ pub(crate) fn start_worker_claim_member_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(value).with_region(database_name).build();
 
                                     model
                                 }) {
@@ -510,7 +510,7 @@ pub(crate) fn start_worker_claim_member_state(
                                     let chunk_ids = chunk_ids.to_vec();
                                     if let Err(error) = ::entity::claim_member_state::Entity::delete_many()
                                     .filter(::entity::claim_member_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                    .filter(::entity::claim_member_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::claim_member_state::Column::Region.eq(database_name))
                                     .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimMemberState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimMemberState");
@@ -518,7 +518,7 @@ pub(crate) fn start_worker_claim_member_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -529,7 +529,7 @@ pub(crate) fn start_worker_claim_member_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);
@@ -545,7 +545,7 @@ pub(crate) fn start_worker_claim_member_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_member_state::Model = ::entity::claim_member_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 let id = model.entity_id;
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
@@ -665,7 +665,7 @@ pub(crate) fn start_worker_claim_tech_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_claim_tech_state = ::entity::claim_tech_state::Entity::find()
-                                    .filter(::entity::claim_tech_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::claim_tech_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -680,7 +680,7 @@ pub(crate) fn start_worker_claim_tech_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(value).with_region(database_name).build();
 
                                     model
                                 }) {
@@ -709,7 +709,7 @@ pub(crate) fn start_worker_claim_tech_state(
                                     let chunk_ids = chunk_ids.to_vec();
                                     if let Err(error) = ::entity::claim_tech_state::Entity::delete_many()
                                     .filter(::entity::claim_tech_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                    .filter(::entity::claim_tech_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::claim_tech_state::Column::Region.eq(database_name))
                                     .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(ClaimTechState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete ClaimTechState");
@@ -717,7 +717,7 @@ pub(crate) fn start_worker_claim_tech_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -732,7 +732,7 @@ pub(crate) fn start_worker_claim_tech_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(new).with_region(database_name).build();
 
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -747,7 +747,7 @@ pub(crate) fn start_worker_claim_tech_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model: ::entity::claim_tech_state::Model = ::entity::claim_tech_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 let id = model.entity_id;
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {

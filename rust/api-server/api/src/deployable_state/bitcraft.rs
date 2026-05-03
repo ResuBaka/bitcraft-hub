@@ -43,7 +43,7 @@ pub(crate) fn start_worker_deployable_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_deployable_state = ::entity::deployable_state::Entity::find()
-                                    .filter(::entity::deployable_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::deployable_state::Column::Region.eq(database_name))
                                     .all(&global_app_state.conn)
                                     .await
                                     .unwrap_or_else(|error| {
@@ -58,7 +58,7 @@ pub(crate) fn start_worker_deployable_state(
                                     .collect::<HashMap<_, _>>();
 
                                 for model in data.into_iter().map(|value| {
-                                    let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(value).with_region(database_name.to_string()).build();
+                                    let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(value).with_region(database_name).build();
 
                                     global_app_state.deployable_state.insert(model.entity_id, model.clone());
 
@@ -89,7 +89,7 @@ pub(crate) fn start_worker_deployable_state(
                                     let chunk_ids = chunk_ids.to_vec();
                                     if let Err(error) = ::entity::deployable_state::Entity::delete_many()
                                     .filter(::entity::deployable_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                    .filter(::entity::deployable_state::Column::Region.eq(database_name.to_string()))
+                                    .filter(::entity::deployable_state::Column::Region.eq(database_name))
                                     .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
                                         tracing::error!(DeployableState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DeployableState");
@@ -97,7 +97,7 @@ pub(crate) fn start_worker_deployable_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
-                                let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name).build();
                                 global_app_state.deployable_state.insert(model.entity_id, model.clone());
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -111,7 +111,7 @@ pub(crate) fn start_worker_deployable_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
-                                let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name.to_string()).build();
+                                let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(new).with_region(database_name).build();
                                 global_app_state.deployable_state.insert(model.entity_id, model.clone());
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -125,7 +125,7 @@ pub(crate) fn start_worker_deployable_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
-                                let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(delete).with_region(database_name.to_string()).build();
+                                let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 global_app_state.deployable_state.remove(&model.entity_id);
                                 let id = model.entity_id;
 

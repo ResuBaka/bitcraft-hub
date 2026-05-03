@@ -13,7 +13,7 @@ pub struct Model {
     pub owner_building_entity_id: i64,
     pub name: String,
     pub neutral: bool,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -27,7 +27,7 @@ pub struct ModelBuilder {
     owner_building_entity_id: i64,
     name: String,
     neutral: bool,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -38,11 +38,11 @@ impl ModelBuilder {
             owner_building_entity_id: value.owner_building_entity_id as i64,
             name: value.name,
             neutral: value.neutral,
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }

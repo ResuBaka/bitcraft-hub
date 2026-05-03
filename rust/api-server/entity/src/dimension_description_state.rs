@@ -17,7 +17,7 @@ pub struct Model {
     pub dimension_size_large_z: i64,
     pub dimension_id: i64,
     pub dimension_type: i32,
-    pub region: String,
+    pub region: crate::shared::Region,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -36,7 +36,7 @@ pub struct ModelBuilder {
     dimension_size_large_z: i64,
     dimension_id: i64,
     dimension_type: i32,
-    region: String,
+    region: crate::shared::Region,
 }
 
 impl ModelBuilder {
@@ -58,11 +58,11 @@ impl ModelBuilder {
                 game_module::module_bindings::DimensionType::Dungeon => 3,
                 game_module::module_bindings::DimensionType::Unknown => 4,
             },
-            region: String::new(),
+            region: 0,
         }
     }
 
-    pub fn with_region(mut self, region: String) -> Self {
+    pub fn with_region(mut self, region: crate::shared::Region) -> Self {
         self.region = region;
         self
     }
