@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watchThrottled } from "@vueuse/shared";
 import { useDelayedPending } from "~/utils";
+import type { ClaimResponse } from "~/types/ClaimResponse";
 
 const page = ref(1);
 const perPage = 20;
@@ -24,7 +25,7 @@ const {
   data: claims,
   pending,
   refresh,
-} = await useLazyFetchMsPack(
+} = await useLazyFetchMsPack<ClaimResponse>(
   () => {
     return `/api/bitcraft/claims`;
   },

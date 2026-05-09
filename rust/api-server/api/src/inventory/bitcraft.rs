@@ -168,7 +168,8 @@ pub(crate) fn start_worker_inventory_state(
                             SpacetimeUpdateMessages::Update { new, old, event, database_name, .. } => {
                                 let mut caller_identity = None;
                                 let mut timestamp = None;
-                                if let Some(Event::Reducer(event)) = &event {
+                                if let Some(event) = &event {
+                                    if let Event::Reducer(event) = &** event {
                                     match event.reducer.reducer_name() {
                                         "inventory_sort" => {}
                                         _ => {
@@ -179,6 +180,7 @@ pub(crate) fn start_worker_inventory_state(
                                     // if old.owner_entity_id == 1224979098660016778 {
                                     //     tracing::error!("Eventname: {}", event.reducer.reducer_name());
                                     // }
+                                    }
                                 }
 
                                 let new_model = new.clone();

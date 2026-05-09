@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::batched_worker::{BatchedWorker, run_batched_worker};
+use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
@@ -26,20 +26,9 @@ enum PlayerUsernameStateDbOperation {
     },
 }
 
-pub(crate) fn start_worker_player_state(
-    global_app_state: AppState,
+pub(crate) struct PlayerStateWorker {
     rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerState>>,
-    batch_size: usize,
-    time_limit: Duration,
-) {
-    tokio::spawn(async move {
-        let mut worker = PlayerStateWorker::new(global_app_state, batch_size, time_limit);
-        let mut rx = rx;
-        run_batched_worker(&mut worker, &mut rx).await;
-    });
-}
-
-struct PlayerStateWorker {
+    tx: UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
@@ -50,10 +39,13 @@ struct PlayerStateWorker {
 }
 
 impl PlayerStateWorker {
-    fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
+    pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_player_state_db_worker(global_app_state.clone());
+        let (tx, rx) = unbounded_channel();
 
         Self {
+            rx,
+            tx,
             global_app_state,
             batch_size,
             time_limit,
@@ -489,6 +481,14 @@ impl PlayerStateWorker {
 }
 
 impl BatchedWorker<PlayerState> for PlayerStateWorker {
+    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<PlayerState>> {
+        &mut self.rx
+    }
+
+    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<PlayerState>> {
+        self.tx.clone()
+    }
+
     fn worker_name(&self) -> &'static str {
         "player_state"
     }
@@ -612,20 +612,9 @@ fn start_player_state_db_worker(
     tx
 }
 
-pub(crate) fn start_worker_player_username_state(
-    global_app_state: AppState,
+pub(crate) struct PlayerUsernameStateWorker {
     rx: UnboundedReceiver<SpacetimeUpdateMessages<PlayerUsernameState>>,
-    batch_size: usize,
-    time_limit: Duration,
-) {
-    tokio::spawn(async move {
-        let mut worker = PlayerUsernameStateWorker::new(global_app_state, batch_size, time_limit);
-        let mut rx = rx;
-        run_batched_worker(&mut worker, &mut rx).await;
-    });
-}
-
-struct PlayerUsernameStateWorker {
+    tx: UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
@@ -636,10 +625,13 @@ struct PlayerUsernameStateWorker {
 }
 
 impl PlayerUsernameStateWorker {
-    fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
+    pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_player_username_state_db_worker(global_app_state.clone());
+        let (tx, rx) = unbounded_channel();
 
         Self {
+            rx,
+            tx,
             global_app_state,
             batch_size,
             time_limit,
@@ -852,6 +844,14 @@ impl PlayerUsernameStateWorker {
 }
 
 impl BatchedWorker<PlayerUsernameState> for PlayerUsernameStateWorker {
+    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<PlayerUsernameState>> {
+        &mut self.rx
+    }
+
+    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>> {
+        self.tx.clone()
+    }
+
     fn worker_name(&self) -> &'static str {
         "player_username_state"
     }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { ClaimDescriptionState } from "~/types/ClaimDescriptionState";
+
 export interface CardClaimProps {
-  claim: any;
+  claim: ClaimDescriptionState;
   defaultMembers?: number;
 }
 

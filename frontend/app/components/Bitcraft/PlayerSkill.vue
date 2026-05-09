@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
+import type { ResolvedInventory } from "~/types/ResolvedInventory";
+import type { LeaderboardSkill } from "~/types/LeaderboardSkill";
 const skillToToolIndex = {
   Carpentry: 1,
   Construction: 13,
@@ -21,9 +23,9 @@ const skillToToolIndex = {
 };
 
 const props = defineProps<{
-  xp_info: any;
-  skill: any;
-  tools: any;
+  xp_info: LeaderboardSkill;
+  skill: keyof typeof skillToToolIndex;
+  tools: ResolvedInventory;
 }>();
 const numberFormat = new Intl.NumberFormat(undefined);
 const tierColor = useTierColor();
@@ -32,7 +34,7 @@ const itemForSkill = computed(() => {
   const index = skillToToolIndex[props.skill as keyof typeof skillToToolIndex];
 
   if (index === undefined || index === null) return null;
-  return props.tools?.pockets?.[index]?.contents.item ?? null;
+  return props.tools?.pockets?.[index]?.contents?.item ?? null;
 });
 
 const itemIcon = computed(() => {
@@ -154,7 +156,7 @@ const levelMap: Record<number, number> = {
   110: 686845760,
 };
 
-const expUntilNextLevel = (skill: RankType) => {
+const expUntilNextLevel = (skill: LeaderboardSkill) => {
   const currentLevel = skill.level ?? 0;
   const currentExperience = skill.experience ?? 0;
   const nextLevel = currentLevel + 1;

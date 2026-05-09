@@ -25,6 +25,8 @@ import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import { levelToColor, raritySort, rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
 import type { BuildingDescriptionsResponse } from "~/types/BuildingDescriptionsResponse";
+import type { ClaimDescriptionStateMember } from "~/types/ClaimDescriptionStateMember";
+import type { ItemExpended } from "~/types/ItemExpended";
 
 const {
   public: { iconDomain },
@@ -70,7 +72,7 @@ const tmpPage = (route.query.page as string) ?? null;
 
 const tierToColor = useTierColor();
 
-const sortToolInventory = (a: any, b: any) => {
+const sortToolInventory = (a: ExpendedRefrence, b: ExpendedRefrence) => {
   if (a.item.tier !== b.item.tier) {
     return b.item.tier - a.item.tier;
   }
@@ -527,7 +529,7 @@ let memberSearch = ref<string | null>(null);
 let showOnlyOnlineMembers = ref(false);
 const memberSorting = ref<SortingState>([]);
 
-const defaultMemberSort = (rows: any[]) => {
+const defaultMemberSort = (rows: ({ permissions: number } & ClaimDescriptionStateMember)[]) => {
   return rows.slice().sort((a, b) => {
     if (a.permissions !== b.permissions) {
       return b.permissions - a.permissions;
@@ -543,7 +545,9 @@ const membersForTable = computed(() => {
   if (!claim.value?.members) {
     return [];
   }
-  const rows = Object.values(claim.value.members)
+  const rows = Object.values<{ permissions: number } & ClaimDescriptionStateMember>(
+    claim.value.members,
+  )
     .filter((member) => {
       if (showOnlyOnlineMembers.value && member.online_state !== "Online") {
         return false;
@@ -631,7 +635,7 @@ const memberColumns = computed(() => {
     {
       id: "user",
       header: "User",
-      accessorFn: (row: any) => row.user_name,
+      accessorFn: (row) => row.user_name,
       enableSorting: true,
     },
     {
@@ -644,14 +648,14 @@ const memberColumns = computed(() => {
     ...memberSkills.toSorted().map((skill) => ({
       id: `skill_${skill}`,
       header: skill,
-      accessorFn: (row: any) => row?.skills_ranks?.[skill] ?? 0,
+      accessorFn: (row) => row?.skills_ranks?.[skill] ?? 0,
       enableSorting: true,
       meta: { class: { th: "text-center", td: "text-center" } },
     })),
     ...memberSecondarySkills.toSorted().map((skill) => ({
       id: `skill_${skill}`,
       header: skill,
-      accessorFn: (row: any) => row?.skills_ranks?.[skill] ?? 0,
+      accessorFn: (row) => row?.skills_ranks?.[skill] ?? 0,
       enableSorting: true,
       meta: { class: { th: "text-center", td: "text-center" } },
     })),
@@ -809,9 +813,7 @@ const playerOfflineToolRarityOptions = computed(() => {
 
 const getPlayerNameById = (playerId: bigint) => {
   const key = playerId.toString();
-  const member =
-    claimFetch.value?.members?.[key] ??
-    (claimFetch.value?.members as Record<string, any>)?.[playerId as unknown as string];
+  const member = claimFetch.value?.members?.[key] ?? claimFetch.value?.members?.[playerId];
   return member?.user_name ?? `#${key}`;
 };
 
@@ -833,15 +835,18 @@ const levelToTier = (level: number) => {
   return 1;
 };
 
-const getSkillTool = (member: any, skill: (typeof memberSkills)[number]) => {
+const getSkillTool = (
+  member: ClaimDescriptionStateMember,
+  skill: (typeof memberSkills)[number],
+) => {
   const index = skillToToolIndex[skill as keyof typeof skillToToolIndex];
   if (index === undefined || index === null) {
-    return null;
+    return undefined;
   }
-  return member?.inventory?.pockets?.[index]?.contents?.item ?? null;
+  return member?.inventory?.pockets?.[index]?.contents?.item;
 };
 
-const getToolLabel = (item: any) => {
+const getToolLabel = (item: ItemExpended) => {
   if (!item?.tier) {
     return null;
   }

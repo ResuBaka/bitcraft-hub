@@ -29,15 +29,13 @@ use crate::resource_desc::bitcraft::start_worker_resource_desc;
 use crate::crafting::bitcraft::start_worker_progressive_action_state;
 use crate::mobile_entity_state::bitcraft::start_worker_mobile_entity_state;
 use crate::npc_desc::bitcraft::start_worker_npc_desc;
-use crate::player_state::bitcraft::{
-    start_worker_player_state, start_worker_player_username_state,
-};
 use crate::skill_descriptions::bitcraft::start_worker_skill_desc;
 use crate::trading_orders::bitcraft::start_worker_trade_order_state;
 use crate::traveler_task_desc::bitcraft::start_worker_traveler_task_desc;
 use crate::traveler_task_state::bitcraft::start_worker_traveler_task_state;
 use crate::user_state::bitcraft::start_worker_user_state;
 use crate::vault_state::bitcraft::start_worker_vault_state_collectibles;
+use crate::websocket::batched_worker::BatchedWorker;
 use game_module::module_bindings::*;
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::__codegen::Reducer;
@@ -346,7 +344,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                     $worker_name,
                     &temp_tx,
                     SpacetimeUpdateMessages::Update {
-                        event: Some(ctx.event.clone()),
+                        event: Some(Box::new(ctx.event.clone())),
                         database_name: $database_region,
                         old: old.clone(),
                         new: new.clone(),
@@ -390,7 +388,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                     $worker_name,
                     &temp_tx,
                     SpacetimeUpdateMessages::Insert {
-                        event: Some(ctx.event.clone()),
+                        event: Some(Box::new(ctx.event.clone())),
                         database_name: $database_region,
                         new: new.clone(),
                         reducer_name: reducer_name.clone(),
@@ -430,7 +428,7 @@ macro_rules! setup_spacetime_db_listeners_event {
                     $worker_name,
                     &temp_tx,
                     SpacetimeUpdateMessages::Remove {
-                        event: Some(ctx.event.clone()),
+                        event: Some(Box::new(ctx.event.clone())),
                         database_name: $database_region,
                         delete: new.clone(),
                         reducer_name: reducer_name.clone(),
@@ -1642,7 +1640,8 @@ async fn connect_to_db_logic(
             tables_to_subscribe
                 .into_iter()
                 .filter_map(|table| {
-                    if *remove_desc && table.contains("_desc") {
+                    if *remove_desc && (table.contains("_desc") || table == "player_housing_state")
+                    {
                         return None;
                     }
 
@@ -1676,10 +1675,18 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let (user_state_tx, user_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (player_state_tx, player_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut player_state_worker = crate::player_state::bitcraft::PlayerStateWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
 
-        let (player_username_state_tx, player_username_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let mut player_username_state_worker =
+            crate::player_state::bitcraft::PlayerUsernameStateWorker::new(
+                global_app_state.clone(),
+                3000,
+                Duration::from_millis(200),
+            );
 
         let (experience_state_tx, experience_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -1762,8 +1769,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             .filter(|value| !value.trim().is_empty())
             .for_each(|database| {
                 let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
-                let tmp_player_state_tx = player_state_tx.clone();
-                let tmp_player_username_state_tx = player_username_state_tx.clone();
+                let tmp_player_state_tx = player_state_worker.tx();
+                let tmp_player_username_state_tx = player_username_state_worker.tx();
                 let tmp_experience_state_tx = experience_state_tx.clone();
                 let tmp_inventory_state_tx = inventory_state_tx.clone();
                 let tmp_item_desc_tx = item_desc_tx.clone();
@@ -1898,18 +1905,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             });
 
         start_worker_mobile_entity_state(global_app_state.clone(), mobile_entity_state_rx);
-        start_worker_player_state(
-            global_app_state.clone(),
-            player_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
-        start_worker_player_username_state(
-            global_app_state.clone(),
-            player_username_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
+        player_state_worker.start();
+        player_username_state_worker.start();
         start_worker_experience_state(
             global_app_state.clone(),
             experience_state_rx,
@@ -2152,20 +2149,20 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         database_name: entity::shared::Region,
     },
     Insert {
-        event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
+        event: Option<Box<__sdk::Event<game_module::module_bindings::Reducer>>>,
         new: T,
         database_name: entity::shared::Region,
         reducer_name: Option<&'static str>,
     },
     Update {
-        event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
+        event: Option<Box<__sdk::Event<game_module::module_bindings::Reducer>>>,
         old: T,
         new: T,
         database_name: entity::shared::Region,
         reducer_name: Option<&'static str>,
     },
     Remove {
-        event: Option<__sdk::Event<game_module::module_bindings::Reducer>>,
+        event: Option<Box<__sdk::Event<game_module::module_bindings::Reducer>>>,
         delete: T,
         database_name: entity::shared::Region,
         reducer_name: Option<&'static str>,

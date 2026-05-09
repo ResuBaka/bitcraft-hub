@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { rarityToTextClass, tierToBorderClass, tierToTextClass } from "~/utils";
+import type { AllInventoryStatsResponse } from "~/types/AllInventoryStatsResponse";
+import type { MetaResponse } from "~/types/MetaResponse";
+import type { ItemExpended } from "~/types/ItemExpended";
 
 const page = ref(1);
 
@@ -19,14 +22,11 @@ if (route.query.tier) {
   tier.value = parseInt(route.query.tier);
 }
 
-const { data, pending } = await useLazyFetchMsPack<{
-  items: any[];
-  cargo: any[];
-}>(() => {
+const { data, pending } = await useLazyFetchMsPack<AllInventoryStatsResponse>(() => {
   return `/inventory/all_inventory_stats`;
 });
 
-const { data: metaData } = await useLazyFetchMsPack(() => {
+const { data: metaData } = await useLazyFetchMsPack<MetaResponse>(() => {
   return `/api/bitcraft/itemsAndCargo/meta`;
 });
 
@@ -120,7 +120,7 @@ const numberFormat = new Intl.NumberFormat();
 
 const imageErrors = ref(new Set<number>());
 
-const iconForItem = (item: any) => {
+const iconForItem = (item: ItemExpended) => {
   if (!item?.icon_asset_name) {
     return null;
   }

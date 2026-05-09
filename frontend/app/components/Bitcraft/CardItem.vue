@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
-import type { ItemRow } from "~/modules/bitcraft/gamestate/item";
 
 const imageErrored = ref(false);
 

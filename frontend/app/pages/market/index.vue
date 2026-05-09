@@ -8,7 +8,7 @@ import type { MarketItemCargoDescResponse } from "~/types/MarketItemCargoDescRes
 import type { MarketOrderStats } from "~/types/MarketOrderStats";
 import type { MarketOrderStatsResponse } from "~/types/MarketOrderStatsResponse";
 import type { MarketOrdersResponse } from "~/types/MarketOrdersResponse";
-import { rarityToTextClass, tierToTextClass, useDelayedPending } from "~/utils";
+import { raritySort, rarityToTextClass, tierToTextClass, useDelayedPending } from "~/utils";
 
 type PreparedItemOption = ItemOption & { searchLabel: string };
 type ItemGroup = { tag: string; items: PreparedItemOption[] };
@@ -173,6 +173,10 @@ watch(
       normalizedItems.sort((a, b) => {
         if (a.tier !== b.tier) {
           return a.tier - b.tier;
+        }
+
+        if (a.rarity !== b.rarity) {
+          return raritySort(a.rarity, b.rarity);
         }
 
         return a.label.localeCompare(b.label);
@@ -341,27 +345,6 @@ const visibleTreeRows = computed(() => {
   return rows;
 });
 
-const estimateTreeRowSize = (index: number) => {
-  const item = visibleTreeRows.value[index];
-
-  if (!item || item.kind === "group") {
-    return 32;
-  }
-
-  const hasSellStats = Number(item.stats?.sell ?? 0) > 0;
-  const hasBuyStats = Number(item.stats?.buy ?? 0) > 0;
-
-  if (hasSellStats && hasBuyStats) {
-    return 66;
-  }
-
-  if (hasSellStats || hasBuyStats) {
-    return 50;
-  }
-
-  return 32;
-};
-
 const flattenTreeItems = (items: MarketTreeNode[]): MarketTreeItemNode[] => {
   const result: MarketTreeItemNode[] = [];
 
@@ -397,6 +380,10 @@ const selectedItems = computed(() => {
   for (const key of selectedItemKeys.value) {
     const option = itemOptionByKey.value.get(key);
     if (option) {
+      const stats = getOrderCounts(key);
+      if (stats) {
+        option.stats = stats;
+      }
       result.push(option);
     }
   }
@@ -801,6 +788,27 @@ const paginationBuyOrders = ref({
               <span class="ml-1 text-[10px] font-semibold" :class="tierToTextClass(item.tier)">
                 T{{ item.tier }}
               </span>
+              <span
+                v-if="item.stats"
+                class="mt-0.5 flex flex-col text-[10px] leading-4 text-gray-500 dark:text-gray-400"
+              >
+                <span
+                  v-if="item.stats.sell"
+                  class="grid grid-cols-[2.5rem_max-content_max-content_max-content] gap-x-1 truncate justify-center"
+                >
+                  <span>Sell: {{ formatStatAmount(item.stats.sell) }}</span>
+                  <span>Low: {{ formatStatPrice(item.stats.sell_price_lowest) }}</span>
+                  <span>High: {{ formatStatPrice(item.stats.sell_price_highest) }}</span>
+                </span>
+                <span
+                  v-if="item.stats.buy"
+                  class="grid grid-cols-[2.5rem_max-content_max-content_max-content] gap-x-1 truncate justify-center"
+                >
+                  <span>Buy: {{ formatStatAmount(item.stats.buy) }}</span>
+                  <span>Low: {{ formatStatPrice(item.stats.buy_price_lowest) }}</span>
+                  <span>High: {{ formatStatPrice(item.stats.buy_price_highest) }}</span>
+                </span>
+              </span>
               <UIcon name="i-lucide-x" class="ml-1 h-3 w-3" />
             </UButton>
           </div>
@@ -845,6 +853,20 @@ const paginationBuyOrders = ref({
                         {{
                           itemNameByKey.get(`${row.original.item_type}:${row.original.item_id}`) ||
                           `#${row.original.item_id}`
+                        }}
+                      </span>
+                      <span
+                        class="truncate"
+                        :class="
+                          rarityToTextClass(
+                            itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
+                              ?.rarity,
+                          )
+                        "
+                      >
+                        {{
+                          itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
+                            ?.rarity
                         }}
                       </span>
                     </div>
@@ -913,6 +935,20 @@ const paginationBuyOrders = ref({
                         {{
                           itemNameByKey.get(`${row.original.item_type}:${row.original.item_id}`) ||
                           `#${row.original.item_id}`
+                        }}
+                      </span>
+                      <span
+                        class="truncate"
+                        :class="
+                          rarityToTextClass(
+                            itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
+                              ?.rarity,
+                          )
+                        "
+                      >
+                        {{
+                          itemOptionByKey.get(`${row.original.item_type}:${row.original.item_id}`)
+                            ?.rarity
                         }}
                       </span>
                     </div>
@@ -998,7 +1034,7 @@ const paginationBuyOrders = ref({
               multiple
               color="neutral"
               selection-behavior="toggle"
-              :virtualize="{ estimateSize: estimateTreeRowSize, overscan: 20 }"
+              :virtualize="{ estimateSize: 32, overscan: 20 }"
               @update:model-value="handleTreeSelection"
               @update:expanded="handleTreeExpanded"
             >
@@ -1035,8 +1071,8 @@ const paginationBuyOrders = ref({
                   >
                     <BitcraftInventoryImg
                       :item="item.option"
-                      :width="!!item.stats ? 30 * 1.5 : 30"
-                      :height="!!item.stats ? 20 * 1.5 : 20"
+                      :width="30"
+                      :height="20"
                       class="shrink-0"
                     />
                     <span class="min-w-0 flex-1">
@@ -1049,27 +1085,6 @@ const paginationBuyOrders = ref({
                         :class="tierToTextClass(item.option.tier)"
                       >
                         T{{ item.option.tier }}
-                      </span>
-                      <span
-                        v-if="item.stats"
-                        class="mt-0.5 flex flex-col text-[10px] leading-4 text-gray-500 dark:text-gray-400"
-                      >
-                        <span
-                          v-if="item.stats.sell"
-                          class="grid grid-cols-[2.5rem_max-content_max-content_max-content] gap-x-1 truncate justify-center"
-                        >
-                          <span>Sell: {{ formatStatAmount(item.stats.sell) }}</span>
-                          <span>Low: {{ formatStatPrice(item.stats.sell_price_lowest) }}</span>
-                          <span>High: {{ formatStatPrice(item.stats.sell_price_highest) }}</span>
-                        </span>
-                        <span
-                          v-if="item.stats.buy"
-                          class="grid grid-cols-[2.5rem_max-content_max-content_max-content] gap-x-1 truncate justify-center"
-                        >
-                          <span>Buy: {{ formatStatAmount(item.stats.buy) }}</span>
-                          <span>Low: {{ formatStatPrice(item.stats.buy_price_lowest) }}</span>
-                          <span>High: {{ formatStatPrice(item.stats.buy_price_highest) }}</span>
-                        </span>
                       </span>
                     </span>
                   </UButton>

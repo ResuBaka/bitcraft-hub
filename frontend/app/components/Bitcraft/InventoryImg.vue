@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { ItemExpended } from "~/types/ItemExpended";
+import Item from "~/components/Bitcraft/Item.vue";
+
 const props = withDefaults(
   defineProps<{
-    item: any;
+    item: ItemExpended;
     skipErrorText?: boolean;
     height?: number | string;
     width?: number | string;
@@ -14,7 +17,7 @@ const props = withDefaults(
 );
 
 const imagedErrored = ref(false);
-const iconUrl = (item: any) => {
+const iconUrl = (item: ItemExpended) => {
   if (!item?.icon_asset_name) {
     return {
       url: "",

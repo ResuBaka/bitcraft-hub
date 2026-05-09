@@ -219,6 +219,10 @@ pub(crate) async fn market_item_cargo_desc(
     let mut item_name_by_key = HashMap::new();
 
     for item_desc in state.item_desc.iter() {
+        if item_desc.item_list_id > 0 {
+            continue;
+        }
+
         let groupe = items_grouped
             .entry(item_desc.tag.clone())
             .or_insert(Vec::new());
