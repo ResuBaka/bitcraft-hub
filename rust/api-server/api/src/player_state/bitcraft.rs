@@ -456,7 +456,7 @@ impl PlayerStateWorker {
         self.messages_delete.push(id);
     }
 
-    async fn flush_messages(&mut self) {
+    fn flush_messages(&mut self) {
         if self.messages.is_empty() {
             return;
         }
@@ -466,7 +466,7 @@ impl PlayerStateWorker {
         self.queue_upserts(messages);
     }
 
-    async fn flush_deletes(&mut self) {
+    fn flush_deletes(&mut self) {
         if self.messages_delete.is_empty() {
             return;
         }
@@ -480,12 +480,14 @@ impl PlayerStateWorker {
     }
 }
 
-impl BatchedWorker<PlayerState> for PlayerStateWorker {
-    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<PlayerState>> {
+impl BatchedWorker for PlayerStateWorker {
+    type Entity = PlayerState;
+
+    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<Self::Entity>> {
         &mut self.rx
     }
 
-    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<PlayerState>> {
+    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<Self::Entity>> {
         self.tx.clone()
     }
 
@@ -509,13 +511,13 @@ impl BatchedWorker<PlayerState> for PlayerStateWorker {
         self.ids.clear();
     }
 
-    async fn handle_message(&mut self, msg: SpacetimeUpdateMessages<PlayerState>) {
+    async fn handle_message(&mut self, msg: SpacetimeUpdateMessages<Self::Entity>) {
         self.process_message(msg).await;
     }
 
-    async fn flush(&mut self) {
-        self.flush_messages().await;
-        self.flush_deletes().await;
+    fn flush(&mut self) {
+        self.flush_messages();
+        self.flush_deletes();
     }
 }
 
@@ -819,7 +821,7 @@ impl PlayerUsernameStateWorker {
         }
     }
 
-    async fn flush_messages(&mut self) {
+    fn flush_messages(&mut self) {
         if self.messages.is_empty() {
             return;
         }
@@ -829,7 +831,7 @@ impl PlayerUsernameStateWorker {
         self.queue_upserts(messages);
     }
 
-    async fn flush_deletes(&mut self) {
+    fn flush_deletes(&mut self) {
         if self.messages_delete.is_empty() {
             return;
         }
@@ -843,12 +845,13 @@ impl PlayerUsernameStateWorker {
     }
 }
 
-impl BatchedWorker<PlayerUsernameState> for PlayerUsernameStateWorker {
-    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<PlayerUsernameState>> {
+impl BatchedWorker for PlayerUsernameStateWorker {
+    type Entity = PlayerUsernameState;
+    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<Self::Entity>> {
         &mut self.rx
     }
 
-    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>> {
+    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<Self::Entity>> {
         self.tx.clone()
     }
 
@@ -872,13 +875,13 @@ impl BatchedWorker<PlayerUsernameState> for PlayerUsernameStateWorker {
         self.ids.clear();
     }
 
-    async fn handle_message(&mut self, msg: SpacetimeUpdateMessages<PlayerUsernameState>) {
+    async fn handle_message(&mut self, msg: SpacetimeUpdateMessages<Self::Entity>) {
         self.process_message(msg).await;
     }
 
-    async fn flush(&mut self) {
-        self.flush_messages().await;
-        self.flush_deletes().await;
+    fn flush(&mut self) {
+        self.flush_messages();
+        self.flush_deletes();
     }
 }
 

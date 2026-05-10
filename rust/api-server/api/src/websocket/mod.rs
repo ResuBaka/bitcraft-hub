@@ -22,7 +22,6 @@ use crate::houses::bitcraft::{
 use crate::inventory::bitcraft::start_worker_inventory_state;
 use crate::item_list_desc::bitcraft::start_worker_item_list_desc;
 use crate::items::bitcraft::start_worker_item_desc;
-use crate::leaderboard::bitcraft::start_worker_experience_state;
 use crate::location_state::bitcraft::start_worker_location_state;
 use crate::resource_desc::bitcraft::start_worker_resource_desc;
 
@@ -1688,7 +1687,11 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 Duration::from_millis(200),
             );
 
-        let (experience_state_tx, experience_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut experience_state_worker = crate::leaderboard::bitcraft::ExperienceStateWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
 
         let (inventory_state_tx, inventory_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -1771,7 +1774,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
                 let tmp_player_state_tx = player_state_worker.tx();
                 let tmp_player_username_state_tx = player_username_state_worker.tx();
-                let tmp_experience_state_tx = experience_state_tx.clone();
+                let tmp_experience_state_tx = experience_state_worker.tx();
                 let tmp_inventory_state_tx = inventory_state_tx.clone();
                 let tmp_item_desc_tx = item_desc_tx.clone();
                 let tmp_cargo_desc_tx = cargo_desc_tx.clone();
@@ -1907,12 +1910,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         start_worker_mobile_entity_state(global_app_state.clone(), mobile_entity_state_rx);
         player_state_worker.start();
         player_username_state_worker.start();
-        start_worker_experience_state(
-            global_app_state.clone(),
-            experience_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
+        experience_state_worker.start();
+
         start_worker_inventory_state(
             global_app_state.clone(),
             inventory_state_rx,

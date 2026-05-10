@@ -4,15 +4,17 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::Duration;
 use tokio::time::sleep;
 
-pub(crate) trait BatchedWorker<T> {
-    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<T>>;
+pub(crate) trait BatchedWorker {
+    type Entity;
 
-    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<T>>;
+    fn rx(&mut self) -> &mut UnboundedReceiver<SpacetimeUpdateMessages<Self::Entity>>;
+
+    fn tx(&self) -> UnboundedSender<SpacetimeUpdateMessages<Self::Entity>>;
 
     fn start(self)
     where
         Self: Sized + Send + 'static,
-        T: Send + 'static,
+        Self::Entity: Send + 'static,
     {
         tokio::spawn(async move {
             let mut worker = self;
@@ -32,16 +34,15 @@ pub(crate) trait BatchedWorker<T> {
 
     fn handle_message(
         &mut self,
-        msg: SpacetimeUpdateMessages<T>,
+        msg: SpacetimeUpdateMessages<Self::Entity>,
     ) -> impl Future<Output = ()> + Send;
 
-    fn flush(&mut self) -> impl Future<Output = ()> + Send;
+    fn flush(&mut self);
 }
 
-pub(crate) async fn run_batched_worker<T, W>(worker: &mut W)
+pub(crate) async fn run_batched_worker<W>(worker: &mut W)
 where
-    T: Send + 'static,
-    W: BatchedWorker<T> + Send,
+    W: BatchedWorker + Send,
 {
     loop {
         let timer = sleep(worker.batch_delay());
@@ -65,7 +66,7 @@ where
             }
         }
 
-        worker.flush().await;
+        worker.flush();
         worker.reset_batch();
 
         if worker.is_idle() && worker.rx().is_closed() {
