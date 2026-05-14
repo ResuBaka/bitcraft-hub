@@ -47,8 +47,8 @@ pub trait item_pick_up {
     fn on_item_pick_up(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerDroppedInventoryPickUpRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ItemPickUpCallbackId;
     /// Cancel a callback previously registered by [`Self::on_item_pick_up`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl item_pick_up for super::RemoteReducers {
     fn on_item_pick_up(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDroppedInventoryPickUpRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ItemPickUpCallbackId {
         ItemPickUpCallbackId(self.imp.on_reducer(
             "item_pick_up",

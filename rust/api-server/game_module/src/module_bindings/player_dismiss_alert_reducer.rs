@@ -61,8 +61,8 @@ impl player_dismiss_alert for super::RemoteReducers {
     fn on_player_dismiss_alert(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDismissAlertRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlayerDismissAlertCallbackId {
         PlayerDismissAlertCallbackId(self.imp.on_reducer(
             "player_dismiss_alert",

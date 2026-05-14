@@ -72,8 +72,8 @@ impl import_extraction_recipe_desc for super::RemoteReducers {
     fn on_import_extraction_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ExtractionRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportExtractionRecipeDescCallbackId {
         ImportExtractionRecipeDescCallbackId(self.imp.on_reducer(
             "import_extraction_recipe_desc",

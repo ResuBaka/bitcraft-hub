@@ -37,13 +37,14 @@ pub(crate) trait BatchedWorker {
         msg: SpacetimeUpdateMessages<Self::Entity>,
     ) -> impl Future<Output = ()> + Send;
 
-    fn flush(&mut self);
+    fn flush(&mut self) -> impl Future<Output = ()> + Send;
 }
 
 pub(crate) async fn run_batched_worker<W>(worker: &mut W)
 where
     W: BatchedWorker + Send,
 {
+    tracing::info!(worker = worker.worker_name(), "Worker started");
     loop {
         let timer = sleep(worker.batch_delay());
         tokio::pin!(timer);
@@ -66,10 +67,14 @@ where
             }
         }
 
-        worker.flush();
+        worker.flush().await;
         worker.reset_batch();
 
         if worker.is_idle() && worker.rx().is_closed() {
+            tracing::warn!(
+                worker = worker.worker_name(),
+                "Worker is idle and worker closed, exiting"
+            );
             break;
         }
     }

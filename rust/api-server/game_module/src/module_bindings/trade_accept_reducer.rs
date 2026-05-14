@@ -61,8 +61,8 @@ impl trade_accept for super::RemoteReducers {
     fn on_trade_accept(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeAcceptRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeAcceptCallbackId {
         TradeAcceptCallbackId(self.imp.on_reducer(
             "trade_accept",

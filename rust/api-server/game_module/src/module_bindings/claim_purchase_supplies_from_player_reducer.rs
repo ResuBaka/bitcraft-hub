@@ -50,8 +50,8 @@ pub trait claim_purchase_supplies_from_player {
     fn on_claim_purchase_supplies_from_player(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &ClaimPurchaseSuppliesFromPlayerRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimPurchaseSuppliesFromPlayerCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_purchase_supplies_from_player`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl claim_purchase_supplies_from_player for super::RemoteReducers {
     fn on_claim_purchase_supplies_from_player(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &ClaimPurchaseSuppliesFromPlayerRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimPurchaseSuppliesFromPlayerCallbackId {
         ClaimPurchaseSuppliesFromPlayerCallbackId(self.imp.on_reducer(
             "claim_purchase_supplies_from_player",

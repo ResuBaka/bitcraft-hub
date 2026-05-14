@@ -61,8 +61,8 @@ impl player_complete_task for super::RemoteReducers {
     fn on_player_complete_task(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCompleteTaskRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlayerCompleteTaskCallbackId {
         PlayerCompleteTaskCallbackId(self.imp.on_reducer(
             "player_complete_task",

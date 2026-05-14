@@ -37,7 +37,7 @@ pub trait barter_stall_order_accept {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_barter_stall_order_accept`] callbacks.
     fn barter_stall_order_accept(&self, request: PlayerBarterStallOrderAccept)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `barter_stall_order_accept`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -48,8 +48,8 @@ pub trait barter_stall_order_accept {
     fn on_barter_stall_order_accept(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerBarterStallOrderAccept)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> BarterStallOrderAcceptCallbackId;
     /// Cancel a callback previously registered by [`Self::on_barter_stall_order_accept`],
     /// causing it not to run in the future.
@@ -69,8 +69,8 @@ impl barter_stall_order_accept for super::RemoteReducers {
     fn on_barter_stall_order_accept(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBarterStallOrderAccept)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> BarterStallOrderAcceptCallbackId {
         BarterStallOrderAcceptCallbackId(self.imp.on_reducer(
             "barter_stall_order_accept",

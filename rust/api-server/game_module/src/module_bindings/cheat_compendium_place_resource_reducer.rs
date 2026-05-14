@@ -50,8 +50,8 @@ pub trait cheat_compendium_place_resource {
     fn on_cheat_compendium_place_resource(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &CheatCompendiumItemPlaceRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatCompendiumPlaceResourceCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_compendium_place_resource`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl cheat_compendium_place_resource for super::RemoteReducers {
     fn on_cheat_compendium_place_resource(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatCompendiumItemPlaceRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatCompendiumPlaceResourceCallbackId {
         CheatCompendiumPlaceResourceCallbackId(self.imp.on_reducer(
             "cheat_compendium_place_resource",

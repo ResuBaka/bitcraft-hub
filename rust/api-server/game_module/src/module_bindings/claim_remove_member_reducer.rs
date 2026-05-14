@@ -47,8 +47,8 @@ pub trait claim_remove_member {
     fn on_claim_remove_member(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRemoveMemberRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimRemoveMemberCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_remove_member`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl claim_remove_member for super::RemoteReducers {
     fn on_claim_remove_member(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRemoveMemberRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimRemoveMemberCallbackId {
         ClaimRemoveMemberCallbackId(self.imp.on_reducer(
             "claim_remove_member",

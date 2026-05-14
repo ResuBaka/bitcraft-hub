@@ -63,8 +63,8 @@ impl import_building_repairs_desc for super::RemoteReducers {
     fn on_import_building_repairs_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingRepairsDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportBuildingRepairsDescCallbackId {
         ImportBuildingRepairsDescCallbackId(self.imp.on_reducer(
             "import_building_repairs_desc",

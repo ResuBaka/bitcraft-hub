@@ -63,8 +63,8 @@ impl admin_create_player_report for super::RemoteReducers {
     fn on_admin_create_player_report(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CreatePlayerReportRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> AdminCreatePlayerReportCallbackId {
         AdminCreatePlayerReportCallbackId(self.imp.on_reducer(
             "admin_create_player_report",

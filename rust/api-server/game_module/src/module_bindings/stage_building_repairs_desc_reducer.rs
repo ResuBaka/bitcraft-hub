@@ -63,8 +63,8 @@ impl stage_building_repairs_desc for super::RemoteReducers {
     fn on_stage_building_repairs_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingRepairsDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageBuildingRepairsDescCallbackId {
         StageBuildingRepairsDescCallbackId(self.imp.on_reducer(
             "stage_building_repairs_desc",

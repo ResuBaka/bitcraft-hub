@@ -57,8 +57,8 @@ pub trait admin_create_entity_name_report {
     fn on_admin_create_entity_name_report(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &String, &u64, &String, &String)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> AdminCreateEntityNameReportCallbackId;
     /// Cancel a callback previously registered by [`Self::on_admin_create_entity_name_report`],
     /// causing it not to run in the future.
@@ -89,8 +89,8 @@ impl admin_create_entity_name_report for super::RemoteReducers {
     fn on_admin_create_entity_name_report(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &String, &u64, &String, &String)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> AdminCreateEntityNameReportCallbackId {
         AdminCreateEntityNameReportCallbackId(self.imp.on_reducer(
             "admin_create_entity_name_report",

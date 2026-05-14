@@ -63,8 +63,8 @@ impl import_terraform_recipe_desc for super::RemoteReducers {
     fn on_import_terraform_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TerraformRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportTerraformRecipeDescCallbackId {
         ImportTerraformRecipeDescCallbackId(self.imp.on_reducer(
             "import_terraform_recipe_desc",

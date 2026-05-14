@@ -83,21 +83,21 @@ pub trait world_place_npc_watchtowers {
     fn on_world_place_npc_watchtowers(
         &self,
         callback: impl FnMut(
-                &super::ReducerEventContext,
-                &Vec<OffsetCoordinatesSmallMessage>,
-                &Vec<Vec<u64>>,
-                &i32,
-                &i32,
-                &i32,
-                &Vec<i32>,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-            ) + Send
-            + 'static,
+            &super::ReducerEventContext,
+            &Vec<OffsetCoordinatesSmallMessage>,
+            &Vec<Vec<u64>>,
+            &i32,
+            &i32,
+            &i32,
+            &Vec<i32>,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+        ) + Send
+        + 'static,
     ) -> WorldPlaceNpcWatchtowersCallbackId;
     /// Cancel a callback previously registered by [`Self::on_world_place_npc_watchtowers`],
     /// causing it not to run in the future.
@@ -141,21 +141,21 @@ impl world_place_npc_watchtowers for super::RemoteReducers {
     fn on_world_place_npc_watchtowers(
         &self,
         mut callback: impl FnMut(
-                &super::ReducerEventContext,
-                &Vec<OffsetCoordinatesSmallMessage>,
-                &Vec<Vec<u64>>,
-                &i32,
-                &i32,
-                &i32,
-                &Vec<i32>,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-            ) + Send
-            + 'static,
+            &super::ReducerEventContext,
+            &Vec<OffsetCoordinatesSmallMessage>,
+            &Vec<Vec<u64>>,
+            &i32,
+            &i32,
+            &i32,
+            &Vec<i32>,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+        ) + Send
+        + 'static,
     ) -> WorldPlaceNpcWatchtowersCallbackId {
         WorldPlaceNpcWatchtowersCallbackId(self.imp.on_reducer(
             "world_place_npc_watchtowers",

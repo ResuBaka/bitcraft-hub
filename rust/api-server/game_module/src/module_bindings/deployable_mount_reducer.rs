@@ -47,8 +47,8 @@ pub trait deployable_mount {
     fn on_deployable_mount(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableMountRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DeployableMountCallbackId;
     /// Cancel a callback previously registered by [`Self::on_deployable_mount`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl deployable_mount for super::RemoteReducers {
     fn on_deployable_mount(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableMountRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DeployableMountCallbackId {
         DeployableMountCallbackId(self.imp.on_reducer(
             "deployable_mount",

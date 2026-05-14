@@ -26,7 +26,7 @@ pub trait BuildingFunctionTypeMappingDescTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`BuildingFunctionTypeMappingDescTableHandle`], which mediates access to the table `building_function_type_mapping_desc`.
     fn building_function_type_mapping_desc(&self)
-        -> BuildingFunctionTypeMappingDescTableHandle<'_>;
+    -> BuildingFunctionTypeMappingDescTableHandle<'_>;
 }
 
 impl BuildingFunctionTypeMappingDescTableAccess for super::RemoteTables {

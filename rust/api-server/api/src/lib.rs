@@ -1390,6 +1390,11 @@ fn setup_metrics_recorder() -> PrometheusHandle {
         0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
     ];
 
+    metrics::describe_counter!(
+        "worker_queue_received_total",
+        "This shows how many events a worker got"
+    );
+
     PrometheusBuilder::new()
         .set_buckets_for_metric(
             Matcher::Full("http_requests_duration_seconds".to_string()),

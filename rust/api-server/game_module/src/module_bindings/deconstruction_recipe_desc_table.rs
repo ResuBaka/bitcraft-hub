@@ -156,7 +156,7 @@ pub trait deconstruction_recipe_descQueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `DeconstructionRecipeDesc`.
     fn deconstruction_recipe_desc(&self)
-        -> __sdk::__query_builder::Table<DeconstructionRecipeDesc>;
+    -> __sdk::__query_builder::Table<DeconstructionRecipeDesc>;
 }
 
 impl deconstruction_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {

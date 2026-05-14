@@ -12,7 +12,9 @@ use spacetimedb_sdk::Event;
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::time::Duration;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::{
+    Receiver, Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel,
+};
 use tokio::time::sleep;
 
 enum ExperienceStateDbOperation {
@@ -30,7 +32,7 @@ pub(crate) struct ExperienceStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<ExperienceStateDbOperation>,
+    db_tx: Sender<ExperienceStateDbOperation>,
     messages: Vec<::entity::experience_state::ActiveModel>,
     ids: Vec<i64>,
     messages_delete: Vec<(i64, i32)>,
@@ -38,8 +40,8 @@ pub(crate) struct ExperienceStateWorker {
 
 fn start_experience_state_db_worker(
     global_app_state: AppState,
-) -> UnboundedSender<ExperienceStateDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+) -> Sender<ExperienceStateDbOperation> {
+    let (tx, mut rx) = channel(5);
     let on_conflict = sea_query::OnConflict::columns([
         ::entity::experience_state::Column::EntityId,
         ::entity::experience_state::Column::SkillId,
@@ -141,7 +143,7 @@ impl ExperienceStateWorker {
         }
     }
 
-    fn queue_upserts(&self, messages: Vec<::entity::experience_state::ActiveModel>) {
+    async fn queue_upserts(&self, messages: Vec<::entity::experience_state::ActiveModel>) {
         if messages.is_empty() {
             return;
         }
@@ -149,6 +151,7 @@ impl ExperienceStateWorker {
         if let Err(error) = self
             .db_tx
             .send(ExperienceStateDbOperation::Upsert(messages))
+            .await
         {
             tracing::error!(
                 error = error.to_string(),
@@ -157,12 +160,16 @@ impl ExperienceStateWorker {
         }
     }
 
-    fn queue_deletes(&self, ids: Vec<(i64, i32)>) {
+    async fn queue_deletes(&self, ids: Vec<(i64, i32)>) {
         if ids.is_empty() {
             return;
         }
 
-        if let Err(error) = self.db_tx.send(ExperienceStateDbOperation::Delete(ids)) {
+        if let Err(error) = self
+            .db_tx
+            .send(ExperienceStateDbOperation::Delete(ids))
+            .await
+        {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue ExperienceState deletes"
@@ -170,7 +177,7 @@ impl ExperienceStateWorker {
         }
     }
 
-    fn queue_region_deletes(&self, ids: Vec<String>, region: entity::shared::Region) {
+    async fn queue_region_deletes(&self, ids: Vec<String>, region: entity::shared::Region) {
         if ids.is_empty() {
             return;
         }
@@ -178,6 +185,7 @@ impl ExperienceStateWorker {
         if let Err(error) = self
             .db_tx
             .send(ExperienceStateDbOperation::DeleteForRegion { ids, region })
+            .await
         {
             tracing::error!(
                 error = error.to_string(),
@@ -323,12 +331,13 @@ impl ExperienceStateWorker {
                 }
             }
             if local_messages.len() >= self.batch_size {
-                self.queue_upserts(std::mem::take(&mut local_messages));
+                self.queue_upserts(std::mem::take(&mut local_messages))
+                    .await;
                 local_messages = Vec::with_capacity(self.batch_size + 10);
             }
         }
         if !local_messages.is_empty() {
-            self.queue_upserts(local_messages);
+            self.queue_upserts(local_messages).await;
         }
 
         for chunk_ids in currently_known_experience_state
@@ -336,7 +345,8 @@ impl ExperienceStateWorker {
             .collect::<Vec<_>>()
             .chunks(100)
         {
-            self.queue_region_deletes(chunk_ids.to_vec(), database_name);
+            self.queue_region_deletes(chunk_ids.to_vec(), database_name)
+                .await;
         }
         tracing::debug!(
             "Processed Initial ExperienceState {}",
@@ -742,17 +752,17 @@ impl ExperienceStateWorker {
         }
     }
 
-    fn flush_messages(&mut self) {
+    async fn flush_messages(&mut self) {
         if self.messages.is_empty() {
             return;
         }
 
         let messages =
             std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
-        self.queue_upserts(messages);
+        self.queue_upserts(messages).await;
     }
 
-    fn flush_deletes(&mut self) {
+    async fn flush_deletes(&mut self) {
         if self.messages_delete.is_empty() {
             return;
         }
@@ -762,7 +772,7 @@ impl ExperienceStateWorker {
             &mut self.messages_delete,
             Vec::with_capacity(self.batch_size + 10),
         );
-        self.queue_deletes(messages_delete);
+        self.queue_deletes(messages_delete).await;
     }
 }
 
@@ -801,9 +811,9 @@ impl BatchedWorker for ExperienceStateWorker {
         self.process_message(msg).await;
     }
 
-    fn flush(&mut self) {
-        self.flush_messages();
-        self.flush_deletes();
+    async fn flush(&mut self) {
+        self.flush_messages().await;
+        self.flush_deletes().await;
     }
 }
 

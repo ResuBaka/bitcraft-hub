@@ -61,8 +61,8 @@ impl cheat_teleport_float for super::RemoteReducers {
     fn on_cheat_teleport_float(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatTeleportFloatRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatTeleportFloatCallbackId {
         CheatTeleportFloatCallbackId(self.imp.on_reducer(
             "cheat_teleport_float",

@@ -61,8 +61,8 @@ impl craft_initiate_start for super::RemoteReducers {
     fn on_craft_initiate_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftInitiateRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CraftInitiateStartCallbackId {
         CraftInitiateStartCallbackId(self.imp.on_reducer(
             "craft_initiate_start",

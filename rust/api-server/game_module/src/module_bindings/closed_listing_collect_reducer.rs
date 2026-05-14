@@ -50,8 +50,8 @@ pub trait closed_listing_collect {
     fn on_closed_listing_collect(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClosedListingCollectRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClosedListingCollectCallbackId;
     /// Cancel a callback previously registered by [`Self::on_closed_listing_collect`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl closed_listing_collect for super::RemoteReducers {
     fn on_closed_listing_collect(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClosedListingCollectRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClosedListingCollectCallbackId {
         ClosedListingCollectCallbackId(self.imp.on_reducer(
             "closed_listing_collect",

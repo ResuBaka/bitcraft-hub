@@ -27,7 +27,7 @@ pub trait StagedKnowledgeStatModifierDescTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`StagedKnowledgeStatModifierDescTableHandle`], which mediates access to the table `staged_knowledge_stat_modifier_desc`.
     fn staged_knowledge_stat_modifier_desc(&self)
-        -> StagedKnowledgeStatModifierDescTableHandle<'_>;
+    -> StagedKnowledgeStatModifierDescTableHandle<'_>;
 }
 
 impl StagedKnowledgeStatModifierDescTableAccess for super::RemoteTables {

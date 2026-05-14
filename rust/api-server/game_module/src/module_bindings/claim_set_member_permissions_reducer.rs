@@ -50,8 +50,8 @@ pub trait claim_set_member_permissions {
     fn on_claim_set_member_permissions(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimSetMemberPermissionsRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimSetMemberPermissionsCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_set_member_permissions`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl claim_set_member_permissions for super::RemoteReducers {
     fn on_claim_set_member_permissions(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimSetMemberPermissionsRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimSetMemberPermissionsCallbackId {
         ClaimSetMemberPermissionsCallbackId(self.imp.on_reducer(
             "claim_set_member_permissions",

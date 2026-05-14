@@ -61,8 +61,8 @@ impl order_cancel for super::RemoteReducers {
     fn on_order_cancel(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerOrderCancelRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> OrderCancelCallbackId {
         OrderCancelCallbackId(self.imp.on_reducer(
             "order_cancel",

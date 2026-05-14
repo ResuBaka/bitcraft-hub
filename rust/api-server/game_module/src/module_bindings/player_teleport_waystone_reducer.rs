@@ -37,7 +37,7 @@ pub trait player_teleport_waystone {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_player_teleport_waystone`] callbacks.
     fn player_teleport_waystone(&self, request: PlayerTeleportWaystoneRequest)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `player_teleport_waystone`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -48,8 +48,8 @@ pub trait player_teleport_waystone {
     fn on_player_teleport_waystone(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTeleportWaystoneRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlayerTeleportWaystoneCallbackId;
     /// Cancel a callback previously registered by [`Self::on_player_teleport_waystone`],
     /// causing it not to run in the future.
@@ -69,8 +69,8 @@ impl player_teleport_waystone for super::RemoteReducers {
     fn on_player_teleport_waystone(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTeleportWaystoneRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlayerTeleportWaystoneCallbackId {
         PlayerTeleportWaystoneCallbackId(self.imp.on_reducer(
             "player_teleport_waystone",

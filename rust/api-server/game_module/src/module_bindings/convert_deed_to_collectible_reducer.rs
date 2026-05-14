@@ -50,8 +50,8 @@ pub trait convert_deed_to_collectible {
     fn on_convert_deed_to_collectible(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerConvertDeedToCollectibleRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ConvertDeedToCollectibleCallbackId;
     /// Cancel a callback previously registered by [`Self::on_convert_deed_to_collectible`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl convert_deed_to_collectible for super::RemoteReducers {
     fn on_convert_deed_to_collectible(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerConvertDeedToCollectibleRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ConvertDeedToCollectibleCallbackId {
         ConvertDeedToCollectibleCallbackId(self.imp.on_reducer(
             "convert_deed_to_collectible",

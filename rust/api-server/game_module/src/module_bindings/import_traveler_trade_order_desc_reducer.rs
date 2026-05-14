@@ -72,8 +72,8 @@ impl import_traveler_trade_order_desc for super::RemoteReducers {
     fn on_import_traveler_trade_order_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTradeOrderDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportTravelerTradeOrderDescCallbackId {
         ImportTravelerTradeOrderDescCallbackId(self.imp.on_reducer(
             "import_traveler_trade_order_desc",

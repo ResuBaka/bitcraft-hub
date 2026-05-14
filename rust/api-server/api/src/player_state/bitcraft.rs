@@ -6,7 +6,9 @@ use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::{
+    Receiver, Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel,
+};
 
 enum PlayerStateDbOperation {
     Upsert(Vec<::entity::player_state::ActiveModel>),
@@ -32,7 +34,7 @@ pub(crate) struct PlayerStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<PlayerStateDbOperation>,
+    db_tx: Sender<PlayerStateDbOperation>,
     messages: Vec<::entity::player_state::ActiveModel>,
     ids: Vec<i64>,
     messages_delete: Vec<i64>,
@@ -56,12 +58,16 @@ impl PlayerStateWorker {
         }
     }
 
-    fn queue_upserts(&self, messages: Vec<::entity::player_state::ActiveModel>) {
+    async fn queue_upserts(&self, messages: Vec<::entity::player_state::ActiveModel>) {
         if messages.is_empty() {
             return;
         }
 
-        if let Err(error) = self.db_tx.send(PlayerStateDbOperation::Upsert(messages)) {
+        if let Err(error) = self
+            .db_tx
+            .send(PlayerStateDbOperation::Upsert(messages))
+            .await
+        {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue PlayerState upserts"
@@ -69,12 +75,12 @@ impl PlayerStateWorker {
         }
     }
 
-    fn queue_deletes(&self, ids: Vec<i64>) {
+    async fn queue_deletes(&self, ids: Vec<i64>) {
         if ids.is_empty() {
             return;
         }
 
-        if let Err(error) = self.db_tx.send(PlayerStateDbOperation::Delete(ids)) {
+        if let Err(error) = self.db_tx.send(PlayerStateDbOperation::Delete(ids)).await {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue PlayerState deletes"
@@ -82,7 +88,7 @@ impl PlayerStateWorker {
         }
     }
 
-    fn queue_region_deletes(&self, ids: Vec<i64>, region: entity::shared::Region) {
+    async fn queue_region_deletes(&self, ids: Vec<i64>, region: entity::shared::Region) {
         if ids.is_empty() {
             return;
         }
@@ -90,6 +96,7 @@ impl PlayerStateWorker {
         if let Err(error) = self
             .db_tx
             .send(PlayerStateDbOperation::DeleteForRegion { ids, region })
+            .await
         {
             tracing::error!(
                 error = error.to_string(),
@@ -209,13 +216,14 @@ impl PlayerStateWorker {
                 }
             }
             if local_messages.len() >= self.batch_size {
-                self.queue_upserts(std::mem::take(&mut local_messages));
+                self.queue_upserts(std::mem::take(&mut local_messages))
+                    .await;
                 local_messages = Vec::with_capacity(self.batch_size + 10);
             }
         }
 
         if !local_messages.is_empty() {
-            self.queue_upserts(local_messages);
+            self.queue_upserts(local_messages).await;
         }
 
         metrics::gauge!(
@@ -241,7 +249,8 @@ impl PlayerStateWorker {
             .collect::<Vec<_>>()
             .chunks(1000)
         {
-            self.queue_region_deletes(chunk_ids.to_vec(), database_name);
+            self.queue_region_deletes(chunk_ids.to_vec(), database_name)
+                .await;
         }
     }
 
@@ -456,17 +465,17 @@ impl PlayerStateWorker {
         self.messages_delete.push(id);
     }
 
-    fn flush_messages(&mut self) {
+    async fn flush_messages(&mut self) {
         if self.messages.is_empty() {
             return;
         }
 
         let messages =
             std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
-        self.queue_upserts(messages);
+        self.queue_upserts(messages).await;
     }
 
-    fn flush_deletes(&mut self) {
+    async fn flush_deletes(&mut self) {
         if self.messages_delete.is_empty() {
             return;
         }
@@ -476,7 +485,7 @@ impl PlayerStateWorker {
             &mut self.messages_delete,
             Vec::with_capacity(self.batch_size + 10),
         );
-        self.queue_deletes(messages_delete);
+        self.queue_deletes(messages_delete).await;
     }
 }
 
@@ -515,9 +524,9 @@ impl BatchedWorker for PlayerStateWorker {
         self.process_message(msg).await;
     }
 
-    fn flush(&mut self) {
-        self.flush_messages();
-        self.flush_deletes();
+    async fn flush(&mut self) {
+        self.flush_messages().await;
+        self.flush_deletes().await;
     }
 }
 
@@ -578,10 +587,8 @@ async fn delete_multiple_player_state_for_region(
     }
 }
 
-fn start_player_state_db_worker(
-    global_app_state: AppState,
-) -> UnboundedSender<PlayerStateDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+fn start_player_state_db_worker(global_app_state: AppState) -> Sender<PlayerStateDbOperation> {
+    let (tx, mut rx) = channel(5);
     let on_conflict = sea_query::OnConflict::column(::entity::player_state::Column::EntityId)
         .update_columns([
             ::entity::player_state::Column::TimePlayed,
@@ -620,7 +627,7 @@ pub(crate) struct PlayerUsernameStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<PlayerUsernameStateDbOperation>,
+    db_tx: Sender<PlayerUsernameStateDbOperation>,
     messages: Vec<::entity::player_username_state::ActiveModel>,
     ids: Vec<i64>,
     messages_delete: Vec<i64>,
@@ -644,7 +651,7 @@ impl PlayerUsernameStateWorker {
         }
     }
 
-    fn queue_upserts(&self, messages: Vec<::entity::player_username_state::ActiveModel>) {
+    async fn queue_upserts(&self, messages: Vec<::entity::player_username_state::ActiveModel>) {
         if messages.is_empty() {
             return;
         }
@@ -652,6 +659,7 @@ impl PlayerUsernameStateWorker {
         if let Err(error) = self
             .db_tx
             .send(PlayerUsernameStateDbOperation::Upsert(messages))
+            .await
         {
             tracing::error!(
                 error = error.to_string(),
@@ -660,12 +668,16 @@ impl PlayerUsernameStateWorker {
         }
     }
 
-    fn queue_deletes(&self, ids: Vec<i64>) {
+    async fn queue_deletes(&self, ids: Vec<i64>) {
         if ids.is_empty() {
             return;
         }
 
-        if let Err(error) = self.db_tx.send(PlayerUsernameStateDbOperation::Delete(ids)) {
+        if let Err(error) = self
+            .db_tx
+            .send(PlayerUsernameStateDbOperation::Delete(ids))
+            .await
+        {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue PlayerUsernameState deletes"
@@ -673,7 +685,7 @@ impl PlayerUsernameStateWorker {
         }
     }
 
-    fn queue_region_deletes(&self, ids: Vec<i64>, region: entity::shared::Region) {
+    async fn queue_region_deletes(&self, ids: Vec<i64>, region: entity::shared::Region) {
         if ids.is_empty() {
             return;
         }
@@ -681,6 +693,7 @@ impl PlayerUsernameStateWorker {
         if let Err(error) = self
             .db_tx
             .send(PlayerUsernameStateDbOperation::DeleteForRegion { ids, region })
+            .await
         {
             tracing::error!(
                 error = error.to_string(),
@@ -735,12 +748,13 @@ impl PlayerUsernameStateWorker {
                         }
                     }
                     if local_messages.len() >= self.batch_size {
-                        self.queue_upserts(std::mem::take(&mut local_messages));
+                        self.queue_upserts(std::mem::take(&mut local_messages))
+                            .await;
                         local_messages = Vec::with_capacity(self.batch_size + 10);
                     }
                 }
                 if !local_messages.is_empty() {
-                    self.queue_upserts(local_messages);
+                    self.queue_upserts(local_messages).await;
                 }
 
                 for chunk_ids in currently_known_player_username_state
@@ -748,7 +762,8 @@ impl PlayerUsernameStateWorker {
                     .collect::<Vec<_>>()
                     .chunks(1000)
                 {
-                    self.queue_region_deletes(chunk_ids.to_vec(), database_name);
+                    self.queue_region_deletes(chunk_ids.to_vec(), database_name)
+                        .await;
                 }
             }
             SpacetimeUpdateMessages::Insert {
@@ -821,17 +836,17 @@ impl PlayerUsernameStateWorker {
         }
     }
 
-    fn flush_messages(&mut self) {
+    async fn flush_messages(&mut self) {
         if self.messages.is_empty() {
             return;
         }
 
         let messages =
             std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
-        self.queue_upserts(messages);
+        self.queue_upserts(messages).await;
     }
 
-    fn flush_deletes(&mut self) {
+    async fn flush_deletes(&mut self) {
         if self.messages_delete.is_empty() {
             return;
         }
@@ -841,7 +856,7 @@ impl PlayerUsernameStateWorker {
             &mut self.messages_delete,
             Vec::with_capacity(self.batch_size + 10),
         );
-        self.queue_deletes(messages_delete);
+        self.queue_deletes(messages_delete).await;
     }
 }
 
@@ -879,9 +894,9 @@ impl BatchedWorker for PlayerUsernameStateWorker {
         self.process_message(msg).await;
     }
 
-    fn flush(&mut self) {
-        self.flush_messages();
-        self.flush_deletes();
+    async fn flush(&mut self) {
+        self.flush_messages().await;
+        self.flush_deletes().await;
     }
 }
 
@@ -944,8 +959,8 @@ async fn delete_multiple_player_username_state_for_region(
 
 fn start_player_username_state_db_worker(
     global_app_state: AppState,
-) -> UnboundedSender<PlayerUsernameStateDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+) -> Sender<PlayerUsernameStateDbOperation> {
+    let (tx, mut rx) = channel(5);
     let on_conflict =
         sea_query::OnConflict::column(::entity::player_username_state::Column::EntityId)
             .update_columns([

@@ -153,7 +153,7 @@ pub trait knowledge_deployable_stateQueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `KnowledgeDeployableState`.
     fn knowledge_deployable_state(&self)
-        -> __sdk::__query_builder::Table<KnowledgeDeployableState>;
+    -> __sdk::__query_builder::Table<KnowledgeDeployableState>;
 }
 
 impl knowledge_deployable_stateQueryTableAccess for __sdk::QueryTableAccessor {

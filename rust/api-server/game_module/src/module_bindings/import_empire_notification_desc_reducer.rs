@@ -72,8 +72,8 @@ impl import_empire_notification_desc for super::RemoteReducers {
     fn on_import_empire_notification_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EmpireNotificationDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportEmpireNotificationDescCallbackId {
         ImportEmpireNotificationDescCallbackId(self.imp.on_reducer(
             "import_empire_notification_desc",

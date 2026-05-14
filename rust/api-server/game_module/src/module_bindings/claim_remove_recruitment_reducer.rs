@@ -50,8 +50,8 @@ pub trait claim_remove_recruitment {
     fn on_claim_remove_recruitment(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRemoveRecruitmentRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimRemoveRecruitmentCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_remove_recruitment`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl claim_remove_recruitment for super::RemoteReducers {
     fn on_claim_remove_recruitment(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRemoveRecruitmentRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimRemoveRecruitmentCallbackId {
         ClaimRemoveRecruitmentCallbackId(self.imp.on_reducer(
             "claim_remove_recruitment",

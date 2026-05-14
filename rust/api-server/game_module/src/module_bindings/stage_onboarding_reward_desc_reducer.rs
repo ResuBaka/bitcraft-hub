@@ -37,7 +37,7 @@ pub trait stage_onboarding_reward_desc {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_stage_onboarding_reward_desc`] callbacks.
     fn stage_onboarding_reward_desc(&self, records: Vec<OnboardingRewardDesc>)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_onboarding_reward_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -67,8 +67,8 @@ impl stage_onboarding_reward_desc for super::RemoteReducers {
     fn on_stage_onboarding_reward_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<OnboardingRewardDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageOnboardingRewardDescCallbackId {
         StageOnboardingRewardDescCallbackId(self.imp.on_reducer(
             "stage_onboarding_reward_desc",

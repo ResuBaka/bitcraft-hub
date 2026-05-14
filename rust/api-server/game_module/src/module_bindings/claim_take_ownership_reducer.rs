@@ -47,8 +47,8 @@ pub trait claim_take_ownership {
     fn on_claim_take_ownership(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTakeOwnershipRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimTakeOwnershipCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_take_ownership`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl claim_take_ownership for super::RemoteReducers {
     fn on_claim_take_ownership(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTakeOwnershipRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimTakeOwnershipCallbackId {
         ClaimTakeOwnershipCallbackId(self.imp.on_reducer(
             "claim_take_ownership",

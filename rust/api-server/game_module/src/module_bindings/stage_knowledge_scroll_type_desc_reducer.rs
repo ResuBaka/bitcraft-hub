@@ -50,8 +50,8 @@ pub trait stage_knowledge_scroll_type_desc {
     fn on_stage_knowledge_scroll_type_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeScrollTypeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageKnowledgeScrollTypeDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_knowledge_scroll_type_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_knowledge_scroll_type_desc for super::RemoteReducers {
     fn on_stage_knowledge_scroll_type_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeScrollTypeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageKnowledgeScrollTypeDescCallbackId {
         StageKnowledgeScrollTypeDescCallbackId(self.imp.on_reducer(
             "stage_knowledge_scroll_type_desc",

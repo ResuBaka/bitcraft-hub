@@ -6,10 +6,7 @@ use crate::buildings::bitcraft::{
     start_worker_building_desc, start_worker_building_nickname_state, start_worker_building_state,
 };
 use crate::cargo_desc::bitcraft::start_worker_cargo_desc;
-use crate::claims::bitcraft::{
-    start_worker_claim_local_state, start_worker_claim_member_state, start_worker_claim_state,
-    start_worker_claim_tech_desc, start_worker_claim_tech_state,
-};
+use crate::claims::bitcraft;
 use crate::collectible_desc::bitcraft::start_worker_collectible_desc;
 use crate::config::Config;
 use crate::crafting_recipe_desc::bitcraft::start_worker_crafting_recipe_desc;
@@ -19,7 +16,7 @@ use crate::houses::bitcraft::{
     start_worker_dimension_description_state, start_worker_interior_network_desc,
     start_worker_permission_state, start_worker_player_housing_state, start_worker_portal_state,
 };
-use crate::inventory::bitcraft::start_worker_inventory_state;
+use crate::inventory::bitcraft as inventory_bitcraft;
 use crate::item_list_desc::bitcraft::start_worker_item_list_desc;
 use crate::items::bitcraft::start_worker_item_desc;
 use crate::location_state::bitcraft::start_worker_location_state;
@@ -43,6 +40,8 @@ use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Table, TableWithPrimaryKey, credentials,
 };
 use std::borrow::Cow;
+use std::fs::{self, File};
+use std::io::BufWriter;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
@@ -76,7 +75,7 @@ pub(crate) fn record_worker_received(worker_name: &str, count: usize) {
 
     metrics::counter!(
         "worker_queue_received_total",
-        &[("worker", worker_name.to_string())]
+        "worker" => worker_name.to_string()
     )
     .increment(count as u64);
     metrics::gauge!(
@@ -100,7 +99,10 @@ fn connect_to_db(
     DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, identity, token| {
-            tracing::info!("Connected to server {tmp_db_name} with {identity}");
+            tracing::info!(
+                region = tmp_db_name,
+                "Connected to server {tmp_db_name} with {identity}"
+            );
             metrics::gauge!(
                 "bitcraft_database_connected",
                 &[("region", tmp_db_name.clone())]
@@ -109,9 +111,13 @@ fn connect_to_db(
 
             tmp_global_app_state
                 .connection_state
-                .insert(tmp_db_name, true);
+                .insert(tmp_db_name.clone(), true);
             if let Err(e) = creds_store().save(token) {
-                tracing::warn!("Failed to save credentials: {:?}", e);
+                tracing::warn!(
+                    region = tmp_db_name.clone(),
+                    "Failed to save credentials: {:?}",
+                    e
+                );
             }
         })
         // Register our `on_connect_error` callback, which will print a message, then exit the process.
@@ -128,10 +134,19 @@ fn connect_to_db(
                 .connection_state
                 .insert(tmp_disconnect_db_name.clone(), false);
             if let Some(err) = err {
-                tracing::error!("Disconnected: {} : {}", err, tmp_disconnect_db_name);
+                tracing::error!(
+                    region = tmp_disconnect_db_name,
+                    "Disconnected: {} : {}",
+                    err,
+                    tmp_disconnect_db_name
+                );
                 // std::process::exit(1);
             } else {
-                tracing::error!("Disconnected {}.", tmp_disconnect_db_name);
+                tracing::error!(
+                    region = tmp_disconnect_db_name,
+                    "Disconnected {}.",
+                    tmp_disconnect_db_name
+                );
                 // std::process::exit(0);
             }
         })
@@ -452,6 +467,7 @@ fn connect_to_db_global(
 
     if !ctx.is_active() {
         tracing::error!(
+            region = database,
             "Could not connect to the bitcraft server {} with module {database}",
             config.spacetimedb_url()
         );
@@ -520,6 +536,7 @@ async fn connect_to_db_logic(
 
     if !ctx.is_active() {
         tracing::error!(
+            region = database,
             "Could not connect to the bitcraft server {} with module {database}",
             config.spacetimedb_url()
         );
@@ -876,10 +893,12 @@ async fn connect_to_db_logic(
         "item_desc",
         "item_list_desc",
         "cargo_desc",
+        // "equipment_desc",
         // "player_action_state",
         "crafting_recipe_desc",
         // "action_state",
         "player_state",
+        // "equipment_state",
         "skill_desc",
         "player_username_state",
         "building_desc",
@@ -898,6 +917,7 @@ async fn connect_to_db_logic(
         "resource_desc",
         "extraction_recipe_desc",
         "progressive_action_state",
+        "character_stats_state",
         "identity_role",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
@@ -917,7 +937,125 @@ async fn connect_to_db_logic(
         "portal_state",
     ];
 
+    // "ability_custom_desc"
+    // "ability_unlock_desc"
+    // "achievement_desc"
+    // "alert_desc"
+    // "biome_desc"
+    // "buff_desc"
+    // "buff_type_desc"
+    // "building_buff_desc"
+    // "building_claim_desc"
+    // "building_desc"
+    // "building_function_type_mapping_desc"
+    // "building_portal_desc"
+    // "building_repairs_desc"
+    // "building_spawn_desc"
+    // "building_type_desc"
+    // "cargo_desc"
+    // "character_stat_desc"
+    // "chest_rarity_desc"
+    // "claim_tech_desc"
+    // "climb_requirement_desc"
+    // "clothing_desc"
+    // "collectible_desc"
+    // "combat_action_desc"
+    // "combat_action_multi_hit_desc"
+    // "construction_recipe_desc"
+    // "construction_recipe_discovery_cargo_desc"
+    // "construction_recipe_discovery_item_desc"
+    // "construction_recipe_discovery_knowledge_desc"
+    // "contribution_loot_desc"
+    // "crafting_recipe_desc"
+    // "crafting_recipe_discovery_cargo_desc"
+    // "crafting_recipe_discovery_item_desc"
+    // "crafting_recipe_discovery_knowledge_desc"
+    // "deconstruction_recipe_desc"
+    // "deployable_desc"
+    // "distant_visible_entity_desc"
+    // "elevator_desc"
+    // "emote_desc"
+    // "empire_color_desc"
+    // "empire_icon_desc"
+    // "empire_notification_desc"
+    // "empire_rank_desc"
+    // "empire_supplies_desc"
+    // "empire_territory_desc"
+    // "enemy_ai_params_desc"
+    // "enemy_desc"
+    // "enemy_scaling_desc"
+    // "environment_debuff_desc"
+    // "equipment_desc"
+    // "equipment_preset_knowledge_desc"
+    // "extraction_recipe_desc"
+    // "food_desc"
+    // "gate_desc"
+    // "hexite_exchange_entry_desc"
+    // "interior_environment_desc"
+    // "interior_instance_desc"
+    // "interior_network_desc"
+    // "interior_portal_connections_desc"
+    // "interior_shape_desc"
+    // "interior_spawn_desc"
+    // "item_conversion_recipe_desc"
+    // "item_desc"
+    // "item_list_desc"
+    // "knowledge_scroll_desc"
+    // "knowledge_scroll_type_desc"
+    // "knowledge_stat_modifier_desc"
+    // "loot_chest_desc"
+    // "loot_rarity_desc"
+    // "loot_table_desc"
+    // "npc_desc"
+    // "onboarding_reward_desc"
+    // "parameters_desc"
+    // "parameters_player_move_desc"
+    // "pathfinding_desc"
+    // "paving_recipe_discovery_cargo_desc"
+    // "paving_recipe_discovery_item_desc"
+    // "paving_recipe_discovery_knowledge_desc"
+    // "paving_tile_desc"
+    // "pillar_shaping_desc"
+    // "pillar_shaping_recipe_discovery_cargo_desc"
+    // "pillar_shaping_recipe_discovery_item_desc"
+    // "pillar_shaping_recipe_discovery_knowledge_desc"
+    // "player_action_desc"
+    // "player_housing_desc"
+    // "premium_item_desc"
+    // "premium_service_desc"
+    // "private_parameters_desc"
+    // "prospecting_desc"
+    // "quest_chain_desc"
+    // "quest_drop_desc"
+    // "quest_stage_desc"
+    // "reserved_name_desc"
+    // "resource_clump_desc"
+    // "resource_desc"
+    // "resource_growth_recipe_desc"
+    // "resource_placement_recipe_desc"
+    // "resource_placement_recipe_discovery_cargo_desc"
+    // "resource_placement_recipe_discovery_item_desc"
+    // "resource_placement_recipe_discovery_knowledge_desc"
+    // "secondary_knowledge_desc"
+    // "single_resource_to_clump_desc"
+    // "skill_desc"
+    // "targeting_matrix_desc"
+    // "teleport_item_desc"
+    // "terraform_recipe_desc"
+    // "tool_desc"
+    // "tool_type_desc"
+    // "traveler_task_desc"
+    // "traveler_task_knowledge_requirement_desc"
+    // "traveler_trade_order_desc"
+    // "wall_desc"
+    // "weapon_desc"
+    // "weapon_type_desc"
+    // "wind_dbg_desc"
+    // "wind_params_desc"
+
     let sql_subscribe = vec![
+        "SELECT * FROM equipment_desc",
+        "SELECT * FROM equipment_state",
         // "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id",
         // "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id",
         "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
@@ -962,11 +1100,9 @@ async fn connect_to_db_logic(
     let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
     let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
 
-    let tmp_sub_error_db_name = tmp_region_number.clone();
-
     ctx.subscription_builder()
         .on_applied(move |ctx: &SubscriptionEventContext| {
-            tracing::debug!("Handle Subscription response");
+            tracing::debug!(region = region_number, "Handle Subscription response");
 
             metrics::gauge!(
                 "worker_queue_initial_batch_size",
@@ -1192,7 +1328,11 @@ async fn connect_to_db_logic(
 
             let npc_desc = ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
             if !npc_desc.is_empty() {
-                tracing::info!("progressive_action_state, {:?}", npc_desc.len())
+                tracing::info!(
+                    region = region_number,
+                    "progressive_action_state, {:?}",
+                    npc_desc.len()
+                )
             }
 
             metrics::gauge!(
@@ -1531,6 +1671,7 @@ async fn connect_to_db_logic(
             let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
             if !player_housing_state.is_empty() {
                 tracing::info!(
+                    region = region_number,
                     "We have {} in region {}",
                     player_housing_state.len(),
                     tmp_region_number
@@ -1624,11 +1765,11 @@ async fn connect_to_db_logic(
             //     println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.role);
             // }
 
-            tracing::debug!("Handled Subscription response");
+            tracing::debug!(region = region_number, "Handled Subscription response");
         })
         .on_error(move |ctx: &ErrorContext, err: Error| {
             tracing::warn!(
-                db = tmp_sub_error_db_name,
+                region = region_number,
                 "Subscription failed: {} {:?}",
                 err,
                 ctx.event
@@ -1692,8 +1833,11 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             3000,
             Duration::from_millis(200),
         );
-
-        let (inventory_state_tx, inventory_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut inventory_state_worker = inventory_bitcraft::InventoryStateWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
 
         let (item_desc_tx, item_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (item_list_desc_tx, item_list_desc_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -1705,16 +1849,36 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let (deployable_state_tx, deployable_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (claim_state_tx, claim_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut claim_state_worker = bitcraft::ClaimStateWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
 
-        let (claim_local_state_tx, claim_local_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut claim_local_state_worker = bitcraft::ClaimLocalStateWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
 
-        let (claim_member_state_tx, claim_member_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut claim_member_state_worker = bitcraft::ClaimMemberStateWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
 
         let (skill_desc_tx, skill_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (claim_tech_state_tx, claim_tech_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (claim_tech_desc_tx, claim_tech_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut claim_tech_state_worker = bitcraft::ClaimTechStateWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
+        let mut claim_tech_desc_worker = bitcraft::ClaimTechDescWorker::new(
+            global_app_state.clone(),
+            3000,
+            Duration::from_millis(200),
+        );
         let (building_state_tx, building_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (building_desc_tx, building_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -1759,6 +1923,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         if let Err(error) = result {
             tracing::error!(
+                region = tmp_database,
                 error = error.to_string(),
                 "Error creating connection to {tmp_database} on {}",
                 tmp_conf.spacetimedb_url()
@@ -1775,17 +1940,17 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_player_state_tx = player_state_worker.tx();
                 let tmp_player_username_state_tx = player_username_state_worker.tx();
                 let tmp_experience_state_tx = experience_state_worker.tx();
-                let tmp_inventory_state_tx = inventory_state_tx.clone();
+                let tmp_inventory_state_tx = inventory_state_worker.tx();
                 let tmp_item_desc_tx = item_desc_tx.clone();
                 let tmp_cargo_desc_tx = cargo_desc_tx.clone();
                 let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
                 let tmp_deployable_state_tx = deployable_state_tx.clone();
-                let tmp_claim_state_tx = claim_state_tx.clone();
-                let tmp_claim_local_state_tx = claim_local_state_tx.clone();
-                let tmp_claim_member_state_tx = claim_member_state_tx.clone();
+                let tmp_claim_state_tx = claim_state_worker.tx();
+                let tmp_claim_local_state_tx = claim_local_state_worker.tx();
+                let tmp_claim_member_state_tx = claim_member_state_worker.tx();
                 let tmp_skill_desc_tx = skill_desc_tx.clone();
-                let tmp_claim_tech_state_tx = claim_tech_state_tx.clone();
-                let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
+                let tmp_claim_tech_state_tx = claim_tech_state_worker.tx();
+                let tmp_claim_tech_desc_tx = claim_tech_desc_worker.tx();
                 let tmp_building_state_tx = building_state_tx.clone();
                 let tmp_building_desc_tx = building_desc_tx.clone();
                 let tmp_building_nickname_state_tx = building_nickname_state_tx.clone();
@@ -1874,13 +2039,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
                         if let Err(error) = result {
                             tracing::error!(
+                                region = tmp_database,
                                 error = error.to_string(),
                                 "Error creating connection to {tmp_database} on {}",
                                 tmp_conf.spacetimedb_url()
                             );
 
                             if tries > 10 {
-                              tracing::error!("We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                              tracing::error!(region = tmp_database, "We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
                               break;
                             }
                         } else if last_connected.elapsed().as_secs() > 120 {
@@ -1890,15 +2056,15 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         };
 
                         if tries > 15 {
-                            tracing::error!("We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                            tracing::error!(region = tmp_database, "We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
                             break;
                         }
 
                         if tries > 0 {
-                            tracing::info!("We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                            tracing::info!(region = tmp_database, "We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
                             tokio::time::sleep(Duration::from_secs(15)).await;
                         } else {
-                            tracing::info!("We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                            tracing::info!(region = tmp_database, "We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
                             tokio::time::sleep(Duration::from_secs(tries * 20)).await;
                         }
                     }
@@ -1911,13 +2077,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         player_state_worker.start();
         player_username_state_worker.start();
         experience_state_worker.start();
-
-        start_worker_inventory_state(
-            global_app_state.clone(),
-            inventory_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
+        inventory_state_worker.start();
         start_worker_vault_state_collectibles(
             global_app_state.clone(),
             vault_state_collectibles_rx,
@@ -1942,42 +2102,17 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             3000,
             Duration::from_millis(200),
         );
-        start_worker_claim_state(
-            global_app_state.clone(),
-            claim_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
-        start_worker_claim_local_state(
-            global_app_state.clone(),
-            claim_local_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
-        start_worker_claim_member_state(
-            global_app_state.clone(),
-            claim_member_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
+        claim_state_worker.start();
+        claim_local_state_worker.start();
+        claim_member_state_worker.start();
         start_worker_skill_desc(
             global_app_state.clone(),
             skill_desc_rx,
             3000,
             Duration::from_millis(200),
         );
-        start_worker_claim_tech_state(
-            global_app_state.clone(),
-            claim_tech_state_rx,
-            3000,
-            Duration::from_millis(200),
-        );
-        start_worker_claim_tech_desc(
-            global_app_state.clone(),
-            claim_tech_desc_rx,
-            3000,
-            Duration::from_millis(200),
-        );
+        claim_tech_state_worker.start();
+        claim_tech_desc_worker.start();
         start_worker_building_state(
             global_app_state.clone(),
             building_state_rx,

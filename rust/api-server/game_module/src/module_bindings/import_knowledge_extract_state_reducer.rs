@@ -72,8 +72,8 @@ impl import_knowledge_extract_state for super::RemoteReducers {
     fn on_import_knowledge_extract_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeExtractState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgeExtractStateCallbackId {
         ImportKnowledgeExtractStateCallbackId(self.imp.on_reducer(
             "import_knowledge_extract_state",

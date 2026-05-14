@@ -50,8 +50,8 @@ pub trait stage_resource_placement_recipe_desc {
     fn on_stage_resource_placement_recipe_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourcePlacementRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageResourcePlacementRecipeDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_resource_placement_recipe_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_resource_placement_recipe_desc for super::RemoteReducers {
     fn on_stage_resource_placement_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourcePlacementRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageResourcePlacementRecipeDescCallbackId {
         StageResourcePlacementRecipeDescCallbackId(self.imp.on_reducer(
             "stage_resource_placement_recipe_desc",

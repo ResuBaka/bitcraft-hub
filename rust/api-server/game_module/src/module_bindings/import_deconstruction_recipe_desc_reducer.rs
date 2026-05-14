@@ -50,8 +50,8 @@ pub trait import_deconstruction_recipe_desc {
     fn on_import_deconstruction_recipe_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<DeconstructionRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportDeconstructionRecipeDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_deconstruction_recipe_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_deconstruction_recipe_desc for super::RemoteReducers {
     fn on_import_deconstruction_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DeconstructionRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportDeconstructionRecipeDescCallbackId {
         ImportDeconstructionRecipeDescCallbackId(self.imp.on_reducer(
             "import_deconstruction_recipe_desc",

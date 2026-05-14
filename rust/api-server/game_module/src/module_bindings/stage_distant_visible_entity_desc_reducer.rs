@@ -50,8 +50,8 @@ pub trait stage_distant_visible_entity_desc {
     fn on_stage_distant_visible_entity_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<DistantVisibleEntityDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageDistantVisibleEntityDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_distant_visible_entity_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_distant_visible_entity_desc for super::RemoteReducers {
     fn on_stage_distant_visible_entity_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DistantVisibleEntityDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageDistantVisibleEntityDescCallbackId {
         StageDistantVisibleEntityDescCallbackId(self.imp.on_reducer(
             "stage_distant_visible_entity_desc",

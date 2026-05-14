@@ -26,7 +26,7 @@ pub trait CraftingRecipeDiscoveryItemDescTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`CraftingRecipeDiscoveryItemDescTableHandle`], which mediates access to the table `crafting_recipe_discovery_item_desc`.
     fn crafting_recipe_discovery_item_desc(&self)
-        -> CraftingRecipeDiscoveryItemDescTableHandle<'_>;
+    -> CraftingRecipeDiscoveryItemDescTableHandle<'_>;
 }
 
 impl CraftingRecipeDiscoveryItemDescTableAccess for super::RemoteTables {

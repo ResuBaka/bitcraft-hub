@@ -50,8 +50,8 @@ pub trait project_site_advance_project_start {
     fn on_project_site_advance_project_start(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteAdvanceProjectRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ProjectSiteAdvanceProjectStartCallbackId;
     /// Cancel a callback previously registered by [`Self::on_project_site_advance_project_start`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl project_site_advance_project_start for super::RemoteReducers {
     fn on_project_site_advance_project_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteAdvanceProjectRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ProjectSiteAdvanceProjectStartCallbackId {
         ProjectSiteAdvanceProjectStartCallbackId(self.imp.on_reducer(
             "project_site_advance_project_start",

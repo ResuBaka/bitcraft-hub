@@ -47,8 +47,8 @@ pub trait pocket_swap_contents {
     fn on_pocket_swap_contents(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPocketSwapContentsRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PocketSwapContentsCallbackId;
     /// Cancel a callback previously registered by [`Self::on_pocket_swap_contents`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl pocket_swap_contents for super::RemoteReducers {
     fn on_pocket_swap_contents(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPocketSwapContentsRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PocketSwapContentsCallbackId {
         PocketSwapContentsCallbackId(self.imp.on_reducer(
             "pocket_swap_contents",

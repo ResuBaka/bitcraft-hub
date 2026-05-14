@@ -48,8 +48,8 @@ pub trait player_housing_income_agent_loop {
     fn on_player_housing_income_agent_loop(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingIncomeLoopTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlayerHousingIncomeAgentLoopCallbackId;
     /// Cancel a callback previously registered by [`Self::on_player_housing_income_agent_loop`],
     /// causing it not to run in the future.
@@ -72,8 +72,8 @@ impl player_housing_income_agent_loop for super::RemoteReducers {
     fn on_player_housing_income_agent_loop(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingIncomeLoopTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlayerHousingIncomeAgentLoopCallbackId {
         PlayerHousingIncomeAgentLoopCallbackId(self.imp.on_reducer(
             "player_housing_income_agent_loop",

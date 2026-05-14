@@ -53,8 +53,8 @@ pub trait admin_set_sign_text_coord {
     fn on_admin_set_sign_text_coord(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesSmallMessage, &String)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> AdminSetSignTextCoordCallbackId;
     /// Cancel a callback previously registered by [`Self::on_admin_set_sign_text_coord`],
     /// causing it not to run in the future.
@@ -75,8 +75,8 @@ impl admin_set_sign_text_coord for super::RemoteReducers {
     fn on_admin_set_sign_text_coord(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesSmallMessage, &String)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> AdminSetSignTextCoordCallbackId {
         AdminSetSignTextCoordCallbackId(self.imp.on_reducer(
             "admin_set_sign_text_coord",
