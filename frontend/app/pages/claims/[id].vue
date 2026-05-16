@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { SortingState } from "@tanstack/vue-table";
-import { getSortedRowModel } from "@tanstack/vue-table";
-import { useNow } from "@vueuse/core";
 import { watchThrottled } from "@vueuse/shared";
 
 const toast = useToast();
 
-import AutocompleteItem from "~/components/Bitcraft/autocomplete/AutocompleteItem.vue";
-import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
-import InventoryChanges from "~/components/Bitcraft/InventoryChanges.vue";
+import ClaimTabBuildings from "~/components/Bitcraft/Claim/ClaimTabBuildings.vue";
+import ClaimTabInventoryChangelogs from "~/components/Bitcraft/Claim/ClaimTabInventoryChangelogs.vue";
+import ClaimTabLeaderboards from "~/components/Bitcraft/Claim/ClaimTabLeaderboards.vue";
+import ClaimTabMembers from "~/components/Bitcraft/Claim/ClaimTabMembers.vue";
+import ClaimTabTravelerTasks from "~/components/Bitcraft/Claim/ClaimTabTravelerTasks.vue";
+import ClaimTabUpgrades from "~/components/Bitcraft/Claim/ClaimTabUpgrades.vue";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
-import LeaderboardClaim from "~/components/Bitcraft/LeaderboardClaim.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
@@ -23,10 +23,11 @@ import type { InventoryLocationEntry } from "~/types/InventoryLocationEntry";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
-import { levelToColor, raritySort, rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
+import { raritySort } from "~/utils";
 import type { BuildingDescriptionsResponse } from "~/types/BuildingDescriptionsResponse";
 import type { ClaimDescriptionStateMember } from "~/types/ClaimDescriptionStateMember";
 import type { ItemExpended } from "~/types/ItemExpended";
+import ClaimTabInventorySection from "~/components/Bitcraft/Claim/ClaimTabInventorySection.vue";
 
 const {
   public: { iconDomain },
@@ -89,12 +90,9 @@ if (tmpPage) {
   page.value = parseInt(tmpPage);
 }
 
-const { data: claimFetch } = useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(
-  () => {
-    return `/api/bitcraft/claims/${route.params.id.toString()}`;
-  },
-  { deep: true },
-);
+const { data: claimFetch } = useFetchMsPack<ClaimDescriptionStateWithInventoryAndPlayTime>(() => {
+  return `/api/bitcraft/claims/${route.params.id.toString()}`;
+});
 
 const { data: buildingDescs } = useFetchMsPack<BuildingDescriptionsResponse>(() => {
   return `/api/bitcraft/desc/buildings?per_page=1000`;
@@ -225,6 +223,7 @@ registerWebsocketMessageHandler(
         claimFetch.value.treasury = message.treasury;
         claimFetch.value.xp_gained_since_last_coin_minting =
           message.xp_gained_since_last_coin_minting;
+        triggerRef(claimFetch);
       }
     }
   },
@@ -244,6 +243,7 @@ registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
       });
     }
     claimFetch.value.members[message.entity_id].online_state = onlineState;
+    triggerRef(claimFetch);
   }
 });
 
@@ -268,6 +268,7 @@ registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
 
     claimFetch.value.members[message.user_id].skills_ranks[message.skill_name].level =
       message.level;
+    triggerRef(claimFetch);
   }
 });
 
@@ -720,7 +721,7 @@ const tabItems = computed(() => {
       label: `Building items (${inventorysBuildings.value.length || 0})`,
     },
     { value: "buildings", label: `Buildings (${buildings.value.length || 0})` },
-    // { value: "leaderboards", label: "Leaderboards" },
+    { value: "leaderboards", label: "Leaderboards" },
     {
       value: "upgrades",
       label: `Upgrades (${upgradesSorted.value.length || 0})`,
@@ -819,20 +820,6 @@ const getPlayerNameById = (playerId: bigint) => {
 
 const tierToBgStyle = (tier: number) => {
   return { backgroundColor: `rgba(var(--tier-${tier}), 0.10)` };
-};
-
-const levelToTier = (level: number) => {
-  if (1 <= level && level <= 19) return 1;
-  if (20 <= level && level <= 29) return 2;
-  if (30 <= level && level <= 39) return 3;
-  if (40 <= level && level <= 49) return 4;
-  if (50 <= level && level <= 59) return 5;
-  if (60 <= level && level <= 69) return 6;
-  if (70 <= level && level <= 79) return 7;
-  if (80 <= level && level <= 89) return 8;
-  if (90 <= level && level <= 99) return 9;
-  if (100 <= level) return 10;
-  return 1;
 };
 
 const getSkillTool = (
@@ -1089,21 +1076,9 @@ watch(
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                Claim
-              </p>
               <h1 class="text-2xl font-semibold tracking-tight" :class="tierToColor[claimTier]">
                 {{ claim.name }}
               </h1>
-              <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                <span class="font-semibold text-gray-800 dark:text-gray-100">Owner:</span>
-                {{ claimOwner?.user_name ?? "Unknown" }}
-              </div>
-              <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                <span class="font-semibold text-gray-800 dark:text-gray-100">Members: </span>
-                <span class="text-emerald-600 dark:text-emerald-400">{{ onlinePlayersCount }}</span
-                >/{{ claimFetch ? Object.values(claimFetch.members).length : 0 }}
-              </div>
               <div
                 v-if="claim?.location && claim?.location.x !== 0 && claim?.location.z !== 0"
                 class="mt-1 text-sm text-gray-600 dark:text-gray-300"
@@ -1113,6 +1088,17 @@ watch(
               </div>
             </div>
             <div class="flex flex-wrap gap-2">
+              <UBadge color="neutral" variant="soft">
+                <span class="text-gray-800 dark:text-gray-100">Owner:</span>
+                {{ claimOwner?.user_name ?? "Unknown" }}
+              </UBadge>
+              <UBadge color="neutral" variant="soft">
+                <span class="text-gray-800 dark:text-gray-100">Members: </span>
+                <span class="text-emerald-600 dark:text-emerald-400">{{ onlinePlayersCount }}</span
+                >/<span class="text-gray-800 dark:text-gray-100">{{
+                  claimFetch ? Object.values(claimFetch.members).length : 0
+                }}</span>
+              </UBadge>
               <UBadge color="neutral" variant="soft">
                 Supplies: {{ numberFormat.format(claim.supplies ?? 0) }}
               </UBadge>
@@ -1135,11 +1121,6 @@ watch(
         </div>
 
         <UCard :ui="{ body: 'sm:p-1 p-0', header: 'sm:p-3 p-0' }">
-          <template #header>
-            <div class="flex flex-wrap items-center">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Claim details</h2>
-            </div>
-          </template>
           <div>
             <div class="flex flex-wrap gap-2 p-4">
               <UButton
@@ -1152,775 +1133,189 @@ watch(
               />
             </div>
             <div class="border-t border-gray-200 p-4 dark:border-gray-800">
-              <div v-if="tab === 'members'" class="flex flex-col gap-3">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div class="flex items-center gap-2">
-                    <UBadge :color="onlinePlayersCount > 0 ? 'success' : 'neutral'" variant="soft">
-                      {{ onlinePlayersCount }} online
-                    </UBadge>
-                    <span class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ claimFetch ? Object.values(claimFetch.members).length : 0 }} members
-                    </span>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <UInput
-                      v-model="memberSearch"
-                      icon="i-heroicons-magnifying-glass"
-                      placeholder="Search members"
-                      class="w-full sm:w-64"
-                      @update:model-value="onMemberSearch"
-                    />
-                    <USwitch v-model="showOnlyOnlineMembers" label="Only online" />
-                  </div>
-                </div>
-                <UTable
-                  v-model:sorting="memberSorting"
-                  :columns="memberColumns"
-                  :data="membersForTable"
-                  :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
-                  class="claim-table"
-                >
-                  <template #user-header="{ column }">
-                    <UButton
-                      variant="ghost"
-                      size="xs"
-                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
-                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
-                    >
-                      User
-                      <span class="ml-1 text-xs">
-                        {{
-                          column.getIsSorted() === "asc"
-                            ? "▲"
-                            : column.getIsSorted() === "desc"
-                              ? "▼"
-                              : ""
-                        }}
-                      </span>
-                    </UButton>
-                  </template>
-                  <template #permissions-header="{ column }">
-                    <UButton
-                      variant="ghost"
-                      size="xs"
-                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
-                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
-                    >
-                      Perms
-                      <span class="ml-1 text-xs">
-                        {{
-                          column.getIsSorted() === "asc"
-                            ? "▲"
-                            : column.getIsSorted() === "desc"
-                              ? "▼"
-                              : ""
-                        }}
-                      </span>
-                    </UButton>
-                  </template>
-                  <template
-                    v-for="skill in memberSkills"
-                    :key="`${skill}-header`"
-                    #[`skill_${skill}-header`]="{ column }"
-                  >
-                    <UButton
-                      variant="ghost"
-                      size="xs"
-                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
-                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
-                    >
-                      {{ skill }}
-                      <span class="ml-1 text-xs">
-                        {{
-                          column.getIsSorted() === "asc"
-                            ? "▲"
-                            : column.getIsSorted() === "desc"
-                              ? "▼"
-                              : ""
-                        }}
-                      </span>
-                    </UButton>
-                  </template>
-                  <template
-                    v-for="skill in memberSecondarySkills"
-                    :key="`${skill}-header`"
-                    #[`skill_${skill}-header`]="{ column }"
-                  >
-                    <UButton
-                      variant="ghost"
-                      size="xs"
-                      class="-ml-2 font-semibold uppercase tracking-[0.08em]"
-                      @click="column.toggleSorting(column.getIsSorted() === 'asc')"
-                    >
-                      {{ skill }}
-                      <span class="ml-1 text-xs">
-                        {{
-                          column.getIsSorted() === "asc"
-                            ? "▲"
-                            : column.getIsSorted() === "desc"
-                              ? "▼"
-                              : ""
-                        }}
-                      </span>
-                    </UButton>
-                  </template>
-                  <template #user-cell="{ row }">
-                    <NuxtLink
-                      :to="{ name: 'players-id', params: { id: row.original.entity_id } }"
-                      class="font-semibold hover:underline"
-                      :class="
-                        row.original.online_state === 'Online'
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-gray-900 dark:text-gray-100'
-                      "
-                    >
-                      {{ row.original.user_name }}
-                    </NuxtLink>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ row.original.online_state }}
-                    </div>
-                  </template>
-                  <template #permissions-cell="{ row }">
-                    <div class="flex items-center justify-center gap-1 text-lg">
-                      <span v-if="row.original.co_owner_permission">🏰</span>
-                      <span v-if="row.original.officer_permission">🗡️</span>
-                      <span v-if="row.original.build_permission">🔨</span>
-                      <span v-if="row.original.inventory_permission">📦</span>
-                    </div>
-                  </template>
-                  <template
-                    v-for="skill in memberSkills"
-                    :key="skill"
-                    #[`skill_${skill}-cell`]="{ row }"
-                  >
-                    <div class="flex items-center justify-center">
-                      <span
-                        class="rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
-                        :class="levelToColor(row.original?.skills_ranks?.[skill] ?? 0)"
-                        :style="
-                          tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))
-                        "
-                      >
-                        {{ row.original?.skills_ranks?.[skill] ?? 0 }}
-                      </span>
-                      <span
-                        v-if="getToolLabel(getSkillTool(row.original, skill))"
-                        class="rounded-r-full px-2 py-1 text-sm font-bold"
-                        :class="tierToColor[getSkillTool(row.original, skill)?.tier]"
-                        :style="tierToBgStyle(getSkillTool(row.original, skill)?.tier || 1)"
-                      >
-                        {{ getToolLabel(getSkillTool(row.original, skill)) }}
-                      </span>
-                      <span
-                        v-else
-                        class="rounded-r-full px-2 py-1 text-sm text-gray-400 dark:text-gray-500"
-                      >
-                        --
-                      </span>
-                    </div>
-                  </template>
-                  <template
-                    v-for="skill in memberSecondarySkills"
-                    :key="skill"
-                    #[`skill_${skill}-cell`]="{ row }"
-                  >
-                    <div class="flex items-center justify-center">
-                      <span
-                        class="rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
-                        :class="`${levelToColor(row.original?.skills_ranks?.[skill] ?? 0)} ${skillToToolIndex[skill] ? '' : 'rounded-r-full'}`"
-                        :style="
-                          tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))
-                        "
-                      >
-                        {{ row.original?.skills_ranks?.[skill] ?? 0 }}
-                      </span>
-                      <span
-                        v-if="getToolLabel(getSkillTool(row.original, skill))"
-                        class="rounded-r-full px-2 py-1 text-sm font-bold"
-                        :class="`${tierToColor[getSkillTool(row.original, skill)?.tier]}`"
-                        :style="tierToBgStyle(getSkillTool(row.original, skill)?.tier || 1)"
-                      >
-                        {{ getToolLabel(getSkillTool(row.original, skill)) }}
-                      </span>
-                      <span
-                        v-else-if="skillToToolIndex[skill] !== undefined"
-                        class="rounded-r-full px-2 py-1 text-sm text-gray-400 dark:text-gray-500"
-                      >
-                        --
-                      </span>
-                    </div>
-                  </template>
-                </UTable>
-              </div>
+              <ClaimTabMembers
+                v-if="tab === 'members'"
+                :online-players-count="onlinePlayersCount"
+                :member-count="claimFetch ? Object.values(claimFetch.members).length : 0"
+                :member-search="memberSearch"
+                :show-only-online-members="showOnlyOnlineMembers"
+                :member-sorting="memberSorting"
+                :member-columns="memberColumns"
+                :members-for-table="membersForTable"
+                :member-skills="memberSkills"
+                :member-secondary-skills="memberSecondarySkills"
+                :tier-to-color="tierToColor"
+                :skill-to-tool-index="skillToToolIndex"
+                :tier-to-bg-style="tierToBgStyle"
+                :get-skill-tool="getSkillTool"
+                :get-tool-label="getToolLabel"
+                @update:member-search="(value) => (memberSearch = value)"
+                @update:show-only-online-members="(value) => (showOnlyOnlineMembers = value)"
+                @update:member-sorting="(value) => (memberSorting = value)"
+                @member-search-changed="onMemberSearch"
+              />
 
-              <div v-else-if="tab === 'building_items'" class="flex flex-col gap-4">
-                <div class="flex flex-wrap gap-2">
-                  <UInput
-                    v-model="inventoryBuildingsSearch"
-                    icon="i-heroicons-magnifying-glass"
-                    placeholder="Search items"
-                    class="w-full sm:w-64"
-                  />
-                  <USelect
-                    v-model="tierBuildings"
-                    :items="buildingTierOptions"
-                    placeholder="Tier"
-                    class="w-32"
-                  />
-                  <USelectMenu
-                    v-model="rarityBuildings"
-                    :items="buildingRarityOptions"
-                    placeholder="Rarity"
-                    clear
-                    class="w-40"
-                  />
-                </div>
-                <div
-                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                >
-                  <UCard
-                    v-for="inventory in pagedInventoryBuildings"
-                    :key="`${inventory.item_id}-${inventory.item_type}`"
-                    class="inventory-card border-l-4"
-                    :class="tierToBorderClassByLevel(inventory.item.tier)"
-                    role="button"
-                    tabindex="0"
-                    :ui="{ header: 'p-3', body: 'hidden' }"
-                    @click="openItemLocationModal(inventory, 'buildings')"
-                    @keydown.enter="openItemLocationModal(inventory, 'buildings')"
-                    @keydown.space.prevent="openItemLocationModal(inventory, 'buildings')"
-                  >
-                    <template #header>
-                      <div class="inventory-card__header inventory-card__header--media">
-                        <div class="inventory-card__meta">
-                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
-                          <div class="inventory-card__text">
-                            <div
-                              class="inventory-card__title"
-                              :class="tierToColor[inventory.item.tier]"
-                            >
-                              {{ inventory.item.name }}
-                            </div>
-                            <div
-                              class="inventory-card__subtitle"
-                              :class="rarityToTextClass(inventory.item.rarity)"
-                            >
-                              {{ inventory.item.rarity }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="inventory-card__qty">
-                          {{ numberFormat.format(inventory.quantity) }}
-                        </div>
-                      </div>
-                    </template>
-                  </UCard>
-                </div>
-                <div class="flex justify-center">
-                  <UPagination
-                    v-model:page="buildingItemsPage"
-                    :total="inventorysBuildings.length"
-                    :items-per-page="inventoryPageSize"
-                  />
-                </div>
-              </div>
+              <ClaimTabInventorySection
+                v-else-if="tab === 'building_items'"
+                :search="inventoryBuildingsSearch"
+                :tier="tierBuildings"
+                :rarity="rarityBuildings"
+                :tier-options="buildingTierOptions"
+                :rarity-options="buildingRarityOptions"
+                :items="pagedInventoryBuildings"
+                :page="buildingItemsPage"
+                :total="inventorysBuildings.length"
+                :items-per-page="inventoryPageSize"
+                search-placeholder="Search items"
+                location-section="buildings"
+                :tier-to-color="tierToColor"
+                :number-format="numberFormat"
+                :open-item-location-modal="openItemLocationModal"
+                @update:search="(value) => (inventoryBuildingsSearch = value)"
+                @update:tier="(value) => (tierBuildings = value)"
+                @update:rarity="(value) => (rarityBuildings = value)"
+                @update:page="(value) => (buildingItemsPage = value)"
+              />
 
-              <div v-else-if="tab === 'player_items'" class="flex flex-col gap-4">
-                <div class="flex flex-wrap gap-2">
-                  <UInput
-                    v-model="inventoryPlayersSearch"
-                    icon="i-heroicons-magnifying-glass"
-                    placeholder="Search items"
-                    class="w-full sm:w-64"
-                  />
-                  <USelect
-                    v-model="tierPlayers"
-                    :items="playerTierOptions"
-                    placeholder="Tier"
-                    class="w-32"
-                  />
-                  <USelectMenu
-                    v-model="rarityPlayers"
-                    :items="playerRarityOptions"
-                    clear
-                    placeholder="Rarity"
-                    class="w-40"
-                  />
-                </div>
-                <div
-                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                >
-                  <UCard
-                    v-for="inventory in pagedInventoryPlayers"
-                    :key="`${inventory.item_id}-${inventory.item_type}`"
-                    class="inventory-card border-l-4"
-                    :class="tierToBorderClassByLevel(inventory.item.tier)"
-                    role="button"
-                    tabindex="0"
-                    :ui="{ header: 'p-3', body: 'hidden' }"
-                    @click="openItemLocationModal(inventory, 'players')"
-                    @keydown.enter="openItemLocationModal(inventory, 'players')"
-                    @keydown.space.prevent="openItemLocationModal(inventory, 'players')"
-                  >
-                    <template #header>
-                      <div class="inventory-card__header inventory-card__header--media">
-                        <div class="inventory-card__meta">
-                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
-                          <div class="inventory-card__text">
-                            <div
-                              class="inventory-card__title"
-                              :class="tierToColor[inventory.item.tier]"
-                            >
-                              {{ inventory.item.name }}
-                            </div>
-                            <div
-                              class="inventory-card__subtitle"
-                              :class="rarityToTextClass(inventory.item.rarity)"
-                            >
-                              {{ inventory.item.rarity }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="inventory-card__qty">
-                          {{ numberFormat.format(inventory.quantity) }}
-                        </div>
-                      </div>
-                    </template>
-                  </UCard>
-                </div>
-                <div class="flex justify-center">
-                  <UPagination
-                    v-model:page="playerItemsPage"
-                    :total="inventorysPlayers.length"
-                    :items-per-page="inventoryPageSize"
-                  />
-                </div>
-              </div>
+              <ClaimTabInventorySection
+                v-else-if="tab === 'player_items'"
+                :search="inventoryPlayersSearch"
+                :tier="tierPlayers"
+                :rarity="rarityPlayers"
+                :tier-options="playerTierOptions"
+                :rarity-options="playerRarityOptions"
+                :items="pagedInventoryPlayers"
+                :page="playerItemsPage"
+                :total="inventorysPlayers.length"
+                :items-per-page="inventoryPageSize"
+                search-placeholder="Search items"
+                location-section="players"
+                :tier-to-color="tierToColor"
+                :number-format="numberFormat"
+                :open-item-location-modal="openItemLocationModal"
+                @update:search="(value) => (inventoryPlayersSearch = value)"
+                @update:tier="(value) => (tierPlayers = value)"
+                @update:rarity="(value) => (rarityPlayers = value)"
+                @update:page="(value) => (playerItemsPage = value)"
+              />
 
-              <div v-else-if="tab === 'player_tools'" class="flex flex-col gap-4">
-                <div class="flex flex-wrap gap-2">
-                  <UInput
-                    v-model="inventoryPlayersToolsSearch"
-                    icon="i-heroicons-magnifying-glass"
-                    placeholder="Search tools"
-                    class="w-full sm:w-64"
-                  />
-                  <USelect
-                    v-model="tierPlayersTools"
-                    :items="playerToolTierOptions"
-                    placeholder="Tier"
-                    class="w-32"
-                  />
-                  <USelectMenu
-                    v-model="rarityPlayersTools"
-                    :items="playerToolRarityOptions"
-                    clear
-                    placeholder="Rarity"
-                    class="w-40"
-                  />
-                  <span class="align-middle"
-                    >Total Items:
-                    {{
-                      pagedInventoryPlayersTools.reduce(
-                        (accumulator, currentValue) => accumulator + currentValue.quantity,
-                        0,
-                      )
-                    }}</span
-                  >
-                </div>
-                <div
-                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                >
-                  <UCard
-                    v-for="inventory in pagedInventoryPlayersTools"
-                    :key="`${inventory.item_id}-${inventory.item_type}`"
-                    class="inventory-card border-l-4"
-                    :class="tierToBorderClassByLevel(inventory.item.tier)"
-                    role="button"
-                    tabindex="0"
-                    :ui="{ header: 'p-3', body: 'hidden' }"
-                    @click="openItemLocationModal(inventory, 'players', 'tool')"
-                    @keydown.enter="openItemLocationModal(inventory, 'players', 'tool')"
-                    @keydown.space.prevent="openItemLocationModal(inventory, 'players', 'tool')"
-                  >
-                    <template #header>
-                      <div class="inventory-card__header inventory-card__header--media">
-                        <div class="inventory-card__meta">
-                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
-                          <div class="inventory-card__text">
-                            <div
-                              class="inventory-card__title"
-                              :class="tierToColor[inventory.item.tier]"
-                            >
-                              {{ inventory.item.name }}
-                            </div>
-                            <div
-                              class="inventory-card__subtitle"
-                              :class="rarityToTextClass(inventory.item.rarity)"
-                            >
-                              {{ inventory.item.rarity }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="inventory-card__qty">
-                          {{ numberFormat.format(inventory.quantity) }}
-                        </div>
-                      </div>
-                    </template>
-                  </UCard>
-                </div>
-                <div class="flex justify-center">
-                  <UPagination
-                    v-model:page="playerToolsPage"
-                    :total="inventorysPlayersTools.length"
-                    :items-per-page="inventoryPageSize"
-                  />
-                </div>
-              </div>
+              <ClaimTabInventorySection
+                v-else-if="tab === 'player_tools'"
+                :search="inventoryPlayersToolsSearch"
+                :tier="tierPlayersTools"
+                :rarity="rarityPlayersTools"
+                :tier-options="playerToolTierOptions"
+                :rarity-options="playerToolRarityOptions"
+                :items="pagedInventoryPlayersTools"
+                :page="playerToolsPage"
+                :total="inventorysPlayersTools.length"
+                :items-per-page="inventoryPageSize"
+                search-placeholder="Search tools"
+                location-section="players"
+                tool-mode
+                show-total-items
+                :tier-to-color="tierToColor"
+                :number-format="numberFormat"
+                :open-item-location-modal="openItemLocationModal"
+                @update:search="(value) => (inventoryPlayersToolsSearch = value)"
+                @update:tier="(value) => (tierPlayersTools = value)"
+                @update:rarity="(value) => (rarityPlayersTools = value)"
+                @update:page="(value) => (playerToolsPage = value)"
+              />
 
-              <div v-else-if="tab === 'player_offline_items'" class="flex flex-col gap-4">
-                <div class="flex flex-wrap gap-2">
-                  <UInput
-                    v-model="inventoryPlayersOfflineSearch"
-                    icon="i-heroicons-magnifying-glass"
-                    placeholder="Search items"
-                    class="w-full sm:w-64"
-                  />
-                  <USelect
-                    v-model="tierPlayersOffline"
-                    :items="playerOfflineTierOptions"
-                    placeholder="Tier"
-                    class="w-32"
-                  />
-                  <USelectMenu
-                    v-model="rarityPlayersOffline"
-                    :items="playerOfflineRarityOptions"
-                    placeholder="Rarity"
-                    clear
-                    class="w-40"
-                  />
-                </div>
-                <div
-                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                >
-                  <UCard
-                    v-for="inventory in pagedInventoryPlayersOffline"
-                    :key="`${inventory.item_id}-${inventory.item_type}`"
-                    class="inventory-card border-l-4"
-                    :class="tierToBorderClassByLevel(inventory.item.tier)"
-                    role="button"
-                    tabindex="0"
-                    :ui="{ header: 'p-3', body: 'hidden' }"
-                    @click="openItemLocationModal(inventory, 'players_offline')"
-                    @keydown.enter="openItemLocationModal(inventory, 'players_offline')"
-                    @keydown.space.prevent="openItemLocationModal(inventory, 'players_offline')"
-                  >
-                    <template #header>
-                      <div class="inventory-card__header inventory-card__header--media">
-                        <div class="inventory-card__meta">
-                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
-                          <div class="inventory-card__text">
-                            <div
-                              class="inventory-card__title"
-                              :class="tierToColor[inventory.item.tier]"
-                            >
-                              {{ inventory.item.name }}
-                            </div>
-                            <div
-                              class="inventory-card__subtitle"
-                              :class="rarityToTextClass(inventory.item.rarity)"
-                            >
-                              {{ inventory.item.rarity }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="inventory-card__qty">
-                          {{ numberFormat.format(inventory.quantity) }}
-                        </div>
-                      </div>
-                    </template>
-                  </UCard>
-                </div>
-                <div class="flex justify-center">
-                  <UPagination
-                    v-model:page="playerOfflineItemsPage"
-                    :total="inventorysPlayersOffline.length"
-                    :items-per-page="inventoryPageSize"
-                  />
-                </div>
-              </div>
+              <ClaimTabInventorySection
+                v-else-if="tab === 'player_offline_items'"
+                :search="inventoryPlayersOfflineSearch"
+                :tier="tierPlayersOffline"
+                :rarity="rarityPlayersOffline"
+                :tier-options="playerOfflineTierOptions"
+                :rarity-options="playerOfflineRarityOptions"
+                :items="pagedInventoryPlayersOffline"
+                :page="playerOfflineItemsPage"
+                :total="inventorysPlayersOffline.length"
+                :items-per-page="inventoryPageSize"
+                search-placeholder="Search items"
+                location-section="players_offline"
+                :tier-to-color="tierToColor"
+                :number-format="numberFormat"
+                :open-item-location-modal="openItemLocationModal"
+                @update:search="(value) => (inventoryPlayersOfflineSearch = value)"
+                @update:tier="(value) => (tierPlayersOffline = value)"
+                @update:rarity="(value) => (rarityPlayersOffline = value)"
+                @update:page="(value) => (playerOfflineItemsPage = value)"
+              />
 
-              <div v-else-if="tab === 'player_offline_tools'" class="flex flex-col gap-4">
-                <div class="flex flex-wrap gap-2">
-                  <UInput
-                    v-model="inventoryPlayersOfflineToolsSearch"
-                    icon="i-heroicons-magnifying-glass"
-                    placeholder="Search tools"
-                    class="w-full sm:w-64"
-                  />
-                  <USelect
-                    v-model="tierPlayersOfflineTools"
-                    :items="playerOfflineToolTierOptions"
-                    placeholder="Tier"
-                    class="w-32"
-                  />
-                  <USelectMenu
-                    v-model="rarityPlayersOfflineTools"
-                    :items="playerOfflineToolRarityOptions"
-                    clear
-                    placeholder="Rarity"
-                    class="w-40"
-                  />
-                  <span class="align-middle"
-                    >Total Items:
-                    {{
-                      pagedInventoryPlayersOfflineTools.reduce(
-                        (accumulator, currentValue) => accumulator + currentValue.quantity,
-                        0,
-                      )
-                    }}</span
-                  >
-                </div>
-                <div
-                  class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                >
-                  <UCard
-                    v-for="inventory in pagedInventoryPlayersOfflineTools"
-                    :key="`${inventory.item_id}-${inventory.item_type}`"
-                    class="inventory-card border-l-4"
-                    :class="tierToBorderClassByLevel(inventory.item.tier)"
-                    role="button"
-                    tabindex="0"
-                    :ui="{ header: 'p-3', body: 'hidden' }"
-                    @click="openItemLocationModal(inventory, 'players_offline', 'tool')"
-                    @keydown.enter="openItemLocationModal(inventory, 'players_offline', 'tool')"
-                    @keydown.space.prevent="
-                      openItemLocationModal(inventory, 'players_offline', 'tool')
-                    "
-                  >
-                    <template #header>
-                      <div class="inventory-card__header inventory-card__header--media">
-                        <div class="inventory-card__meta">
-                          <InventoryImg :item="inventory.item" :width="48" :height="48" />
-                          <div class="inventory-card__text">
-                            <div
-                              class="inventory-card__title"
-                              :class="tierToColor[inventory.item.tier]"
-                            >
-                              {{ inventory.item.name }}
-                            </div>
-                            <div
-                              class="inventory-card__subtitle"
-                              :class="rarityToTextClass(inventory.item.rarity)"
-                            >
-                              {{ inventory.item.rarity }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="inventory-card__qty">
-                          {{ numberFormat.format(inventory.quantity) }}
-                        </div>
-                      </div>
-                    </template>
-                  </UCard>
-                </div>
-                <div class="flex justify-center">
-                  <UPagination
-                    v-model:page="playerOfflineToolsPage"
-                    :total="inventorysPlayersOfflineTools.length"
-                    :items-per-page="inventoryPageSize"
-                  />
-                </div>
-              </div>
+              <ClaimTabInventorySection
+                v-else-if="tab === 'player_offline_tools'"
+                :search="inventoryPlayersOfflineToolsSearch"
+                :tier="tierPlayersOfflineTools"
+                :rarity="rarityPlayersOfflineTools"
+                :tier-options="playerOfflineToolTierOptions"
+                :rarity-options="playerOfflineToolRarityOptions"
+                :items="pagedInventoryPlayersOfflineTools"
+                :page="playerOfflineToolsPage"
+                :total="inventorysPlayersOfflineTools.length"
+                :items-per-page="inventoryPageSize"
+                search-placeholder="Search tools"
+                location-section="players_offline"
+                tool-mode
+                show-total-items
+                :tier-to-color="tierToColor"
+                :number-format="numberFormat"
+                :open-item-location-modal="openItemLocationModal"
+                @update:search="(value) => (inventoryPlayersOfflineToolsSearch = value)"
+                @update:tier="(value) => (tierPlayersOfflineTools = value)"
+                @update:rarity="(value) => (rarityPlayersOfflineTools = value)"
+                @update:page="(value) => (playerOfflineToolsPage = value)"
+              />
 
-              <div v-else-if="tab === 'buildings'" class="flex flex-col gap-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <UInput
-                    v-model="search"
-                    icon="i-heroicons-magnifying-glass"
-                    placeholder="Search buildings"
-                    class="w-full sm:w-64"
-                  />
-                </div>
-                <UProgress v-if="buildingsPending" color="neutral" />
-                <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  <NuxtLink
-                    v-for="building in buildings"
-                    :key="building.entity_id"
-                    :to="{ name: 'buildings-id', params: { id: building.entity_id.toString() } }"
-                    class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm font-semibold text-gray-900 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-100 dark:hover:bg-gray-900"
-                  >
-                    <img
-                      v-if="iconDomain"
-                      :src="`${iconDomain}/${getBuildingIcon(building.building_description_id)}.webp`"
-                      alt=""
-                      class="h-10 w-10 rounded-md object-cover"
-                    />
-                    <span>{{ building.building_name }}</span>
-                  </NuxtLink>
-                </div>
-                <div class="flex justify-center">
-                  <UPagination
-                    v-model:page="page"
-                    :total="buidlingsFetch?.total ?? 0"
-                    :items-per-page="perPage"
-                  />
-                </div>
-              </div>
+              <ClaimTabBuildings
+                v-else-if="tab === 'buildings'"
+                :search="search"
+                :buildings="buildings"
+                :buildings-pending="buildingsPending"
+                :page="page"
+                :total="Number(buidlingsFetch?.total ?? 0)"
+                :per-page="perPage"
+                :icon-domain="iconDomain"
+                :get-building-icon="getBuildingIcon"
+                @update:search="(value) => (search = value)"
+                @update:page="(value) => (page = value)"
+              />
 
-              <div v-else-if="tab === 'leaderboards'">
-                <LeaderboardClaim :claim-id="claim?.entity_id" />
-              </div>
+              <ClaimTabLeaderboards
+                v-else-if="tab === 'leaderboards'"
+                :claim-id="claim?.entity_id"
+              />
 
-              <div v-else-if="tab === 'upgrades'" class="flex flex-col gap-4">
-                <div class="grid gap-3 md:grid-cols-3">
-                  <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-                    <div
-                      class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
-                    >
-                      Claim tier
-                    </div>
-                    <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      T{{ claimTier }}
-                    </div>
-                  </div>
-                  <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-                    <div
-                      class="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
-                    >
-                      Unlocked upgrades
-                    </div>
-                    <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {{ unlockedUpgradesCount }} / {{ upgradesSorted.length || 0 }}
-                    </div>
-                  </div>
-                </div>
-                <div v-for="[tier, upgrades] in upgradesByTier" :key="tier" class="space-y-3">
-                  <div class="flex flex-wrap items-center justify-between gap-2">
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                      Tier {{ tier }}
-                    </h3>
-                    <UBadge variant="soft" color="neutral">{{ upgrades.length }} upgrades</UBadge>
-                  </div>
-                  <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                    <div
-                      v-for="upgrade in upgrades"
-                      :key="upgrade.id"
-                      class="rounded-lg border border-gray-200 p-4 shadow-sm transition dark:border-gray-800"
-                      :class="isUpgradeLocked(upgrade) ? 'opacity-70' : ''"
-                    >
-                      <div class="flex items-start justify-between gap-2">
-                        <div>
-                          <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {{ upgrade.name }}
-                          </div>
-                          <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ upgrade.description }}
-                          </div>
-                        </div>
-                        <UBadge variant="soft" color="neutral">T{{ upgrade.tier }}</UBadge>
-                      </div>
-                      <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        Type: {{ upgrade.tech_type }}
-                      </div>
-                      <div
-                        v-if="upgrade.unlocks_techs?.length"
-                        class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                      >
-                        Unlocks: {{ unlocksTechNames(upgrade).join(", ") }}
-                      </div>
-                      <div class="mt-3">
-                        <UBadge v-if="isUpgradeLocked(upgrade)" variant="soft" color="neutral">
-                          Requires Claim Tier {{ upgrade.tier }}
-                        </UBadge>
-                        <UBadge
-                          v-else-if="isUpgradeLearned(upgrade)"
-                          variant="soft"
-                          color="primary"
-                        >
-                          Learned
-                        </UBadge>
-                        <UBadge v-else variant="soft" color="success">Available</UBadge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ClaimTabUpgrades
+                v-else-if="tab === 'upgrades'"
+                :claim-tier="claimTier"
+                :unlocked-upgrades-count="unlockedUpgradesCount"
+                :upgrades-sorted="upgradesSorted"
+                :upgrades-by-tier="upgradesByTier"
+                :is-upgrade-locked="isUpgradeLocked"
+                :is-upgrade-learned="isUpgradeLearned"
+                :unlocks-tech-names="unlocksTechNames"
+              />
 
-              <div v-else-if="tab === 'inventory_changelogs'" class="flex flex-col gap-4">
-                <div class="flex flex-wrap gap-2">
-                  <AutocompleteUser @model_changed="(item) => (player_id = item)" />
-                  <AutocompleteItem @model_changed="(item) => (item_object = item)" />
-                </div>
-                <InventoryChanges :items="InventoryChangelogFetch" />
-              </div>
+              <ClaimTabInventoryChangelogs
+                v-else-if="tab === 'inventory_changelogs'"
+                :items="InventoryChangelogFetch"
+                @player-changed="(item) => (player_id = item)"
+                @item-changed="(item) => (item_object = item)"
+              />
 
-              <div v-else-if="tab === 'traveler_tasks'" class="flex flex-col gap-4">
-                <UTable :columns="travelerColumns" :data="travelerTaskRows" class="claim-table">
-                  <template #items-cell="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                      <div
-                        v-for="shownItem of row.original.items"
-                        :key="`${shownItem.item_type}-${shownItem.item_id}`"
-                        class="flex items-center gap-2"
-                      >
-                        <div class="relative">
-                          <img
-                            v-if="getTravelerItemIcon(shownItem)"
-                            :src="getTravelerItemIcon(shownItem) || ''"
-                            alt=""
-                            class="h-10 w-10 rounded-md object-contain"
-                          />
-                          <span
-                            class="absolute -right-2 -top-2 rounded-full bg-gray-900 px-1 text-[10px] font-semibold text-white dark:bg-gray-100 dark:text-gray-900"
-                          >
-                            {{ numberFormat.format(shownItem.quantity) }}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                  <template #name-cell="{ row }">
-                    <div class="space-y-1">
-                      <div
-                        v-for="shownItem of row.original.items"
-                        :key="`${shownItem.item_type}-${shownItem.item_id}-name`"
-                        :class="
-                          tierToColor[
-                            shownItem.item_type === 'Item'
-                              ? itemsAndCargoAllFetch?.item_desc?.[shownItem.item_id]?.tier
-                              : itemsAndCargoAllFetch?.cargo_desc?.[shownItem.item_id]?.tier
-                          ]
-                        "
-                      >
-                        {{
-                          shownItem.item_type === "Item"
-                            ? itemsAndCargoAllFetch?.item_desc?.[shownItem.item_id]?.name
-                            : itemsAndCargoAllFetch?.cargo_desc?.[shownItem.item_id]?.name
-                        }}
-                      </div>
-                    </div>
-                  </template>
-                  <template #npc_name-cell="{ row }">
-                    {{ row.original.npc_name }}
-                  </template>
-                  <template #player_count-cell="{ row }">
-                    {{ row.original.player_count }}
-                  </template>
-                  <template #users-cell="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                      <NuxtLink
-                        v-for="playerId of row.original.players"
-                        :key="playerId"
-                        :to="{ name: 'players-id', params: { id: playerId } }"
-                        class="text-sm font-semibold text-gray-900 hover:underline dark:text-gray-100"
-                      >
-                        {{ claimFetch.members[playerId]?.user_name }}
-                      </NuxtLink>
-                    </div>
-                  </template>
-                </UTable>
-              </div>
+              <ClaimTabTravelerTasks
+                v-else-if="tab === 'traveler_tasks'"
+                :traveler-columns="travelerColumns"
+                :traveler-task-rows="travelerTaskRows"
+                :claim-members="claimFetch.members"
+                :items-and-cargo-all-fetch="itemsAndCargoAllFetch"
+                :tier-to-color="tierToColor"
+                :number-format="numberFormat"
+                :get-traveler-item-icon="getTravelerItemIcon"
+              />
             </div>
           </div>
         </UCard>
@@ -1999,69 +1394,3 @@ watch(
     </UModal>
   </UContainer>
 </template>
-
-<style scoped>
-.inventory-card {
-  display: grid;
-  text-align: left;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-  min-height: 0;
-  cursor: pointer;
-}
-
-.inventory-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.4);
-}
-
-.inventory-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.inventory-card__header--media {
-  min-height: 48px;
-}
-
-.inventory-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.inventory-card__text {
-  min-width: 0;
-}
-
-.inventory-card__title {
-  text-transform: uppercase;
-  font-size: 1rem;
-  line-height: 1.1;
-}
-
-.inventory-card__subtitle {
-  font-size: 0.75rem;
-}
-
-.inventory-card__qty {
-  font-size: 1rem;
-  white-space: nowrap;
-}
-
-.claim-table :deep(thead tr th) {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(100, 116, 139, 0.9);
-}
-
-.claim-table :deep(tbody tr td) {
-  vertical-align: top;
-}
-</style>

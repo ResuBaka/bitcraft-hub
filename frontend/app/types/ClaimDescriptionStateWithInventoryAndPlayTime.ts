@@ -13,7 +13,7 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   owner_player_entity_id: bigint;
   owner_building_entity_id: bigint;
   name: string;
-  region: string;
+  region: number;
   supplies: number;
   building_maintenance: number;
   members: { [key in bigint]: ClaimDescriptionStateMember };

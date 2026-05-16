@@ -40,6 +40,14 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/claims/{id}",
             axum_codec::routing::get(get_claim).into(),
         )
+        .route(
+            "/claims/{id}/auction_listings",
+            axum_codec::routing::get(get_claim_auction_listings).into(),
+        )
+        .route(
+            "/api/bitcraft/claims/{id}/auction_listings",
+            axum_codec::routing::get(get_claim_auction_listings).into(),
+        )
         // .route(
         //     "/claims/{id}",
         //     axum_codec::routing::get(find_claim_descriptions).into(),
@@ -162,6 +170,13 @@ pub(crate) struct ClaimResponse {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
+pub(crate) struct ClaimAuctionListingsResponse {
+    pub buy_orders: Vec<entity::auction_listing_state::AuctionListingState>,
+    pub sell_orders: Vec<entity::auction_listing_state::AuctionListingState>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub(crate) struct ClaimDescriptionStateMember {
     pub entity_id: i64,
     pub user_name: String,
@@ -194,6 +209,30 @@ pub(crate) async fn get_claim_tiles(
     Ok(axum_codec::Codec(
         claim_tiles.iter().map(|a| a.value().clone()).collect(),
     ))
+}
+
+pub(crate) async fn get_claim_auction_listings(
+    state: State<AppState>,
+    Path(id): Path<u64>,
+) -> Result<axum_codec::Codec<ClaimAuctionListingsResponse>, (StatusCode, &'static str)> {
+    let buy_orders = state
+        .buy_order_state
+        .iter()
+        .filter(|order| order.claim_entity_id == id)
+        .map(|order| order.value().clone())
+        .collect();
+
+    let sell_orders = state
+        .sell_order_state
+        .iter()
+        .filter(|order| order.claim_entity_id == id)
+        .map(|order| order.value().clone())
+        .collect();
+
+    Ok(axum_codec::Codec(ClaimAuctionListingsResponse {
+        buy_orders,
+        sell_orders,
+    }))
 }
 
 struct InventoryJobResult {

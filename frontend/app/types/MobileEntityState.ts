@@ -10,5 +10,5 @@ export type MobileEntityState = {
   destination_z: number;
   dimension: number;
   is_walking: boolean;
-  region: string;
+  region: number;
 };

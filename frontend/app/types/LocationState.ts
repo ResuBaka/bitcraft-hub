@@ -6,5 +6,5 @@ export type LocationState = {
   x: number;
   z: number;
   dimension: number;
-  region: string;
+  region: number;
 };

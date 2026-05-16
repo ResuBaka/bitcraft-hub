@@ -9,7 +9,6 @@ export type HouseResponse = {
   rank: number;
   is_empty: boolean;
   region_index: number;
-  region: string;
   /**
    * The player entity ID who owns this house.
    */

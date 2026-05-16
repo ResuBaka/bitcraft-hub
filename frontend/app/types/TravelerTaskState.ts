@@ -6,5 +6,5 @@ export type TravelerTaskState = {
   traveler_id: number;
   task_id: number;
   completed: boolean;
-  region: string;
+  region: number;
 };

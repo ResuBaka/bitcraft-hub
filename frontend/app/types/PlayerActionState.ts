@@ -12,5 +12,5 @@ export type PlayerActionState = {
   target: any;
   recipe_id: number | null;
   client_cancel: boolean;
-  region: string;
+  region: number;
 };

@@ -5,5 +5,5 @@ export type ActionState = {
   owner_entity_id: bigint;
   action_id: number;
   cooldown: any;
-  region: string;
+  region: number;
 };

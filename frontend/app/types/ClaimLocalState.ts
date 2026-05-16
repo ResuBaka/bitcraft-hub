@@ -13,5 +13,5 @@ export type ClaimLocalState = {
   supplies_purchase_threshold: number;
   supplies_purchase_price: number;
   building_description_id: number;
-  region: string;
+  region: number;
 };

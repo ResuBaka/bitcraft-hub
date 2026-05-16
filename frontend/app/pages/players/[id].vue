@@ -272,39 +272,6 @@ const deployables = computed(() => {
   return playerData.value?.deployables ?? undefined;
 });
 
-const levelToTier = (level: number) => {
-  if (1 <= level && level <= 19) {
-    return 1;
-  }
-  if (20 <= level && level <= 29) {
-    return 2;
-  }
-  if (30 <= level && level <= 39) {
-    return 3;
-  }
-  if (40 <= level && level <= 49) {
-    return 4;
-  }
-  if (50 <= level && level <= 59) {
-    return 5;
-  }
-  if (60 <= level && level <= 69) {
-    return 6;
-  }
-  if (70 <= level && level <= 79) {
-    return 7;
-  }
-  if (80 <= level && level <= 89) {
-    return 8;
-  }
-  if (90 <= level && level <= 99) {
-    return 9;
-  }
-  if (100 === level) {
-    return 10;
-  }
-};
-
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
   const days = Math.floor(seconds / (60 * 60 * 24));
   const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));

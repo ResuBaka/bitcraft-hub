@@ -8,7 +8,7 @@ export type TradeOrdersWithExpendedRefrence = {
   offer_cargo_id: Array<number>;
   required_items: Array<ExpendedRefrence>;
   required_cargo_id: Array<number>;
-  region: string;
+  region: number;
   shop_entity_id: bigint;
   traveler_trade_order_id: number | null;
 };

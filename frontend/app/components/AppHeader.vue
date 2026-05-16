@@ -16,10 +16,10 @@ const items = computed(() => [
     label: "Players",
     to: "/players",
   },
-  //   {
-  //   label: 'Trade orders',
-  //   to: '/tradeOrders',
-  // },
+  {
+    label: "Market",
+    to: "/market",
+  },
   {
     label: "Buildings",
     to: "/buildings",
@@ -32,7 +32,6 @@ const configStore = useConfigStore();
 const websocketEnabled = computed({
   get: () => configStore.websocket.enabled_default,
   set: (enabled) => {
-    console.log("enabled", enabled);
     configStore.websocket.enabled_default = enabled;
     if (enabled) {
       websocketStore.open();
@@ -50,9 +49,7 @@ const websocketEnabled = computed({
     }"
   >
     <template #left>
-      <NuxtLink to="/">🚧 BitCraft Hub 🚧</NuxtLink>
-
-      <!--      <TemplateMenu />-->
+      <NuxtLink to="/">BitCraft Hub</NuxtLink>
     </template>
 
     <template #right>

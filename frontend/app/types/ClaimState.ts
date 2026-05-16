@@ -6,5 +6,5 @@ export type ClaimState = {
   owner_building_entity_id: bigint;
   name: string;
   neutral: boolean;
-  region: string;
+  region: number;
 };
