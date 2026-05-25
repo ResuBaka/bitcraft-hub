@@ -249,7 +249,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         });
     }
 
-    resolved_inventory.sort_by(|a, b| a.entity_id.cmp(&b.entity_id));
+    resolved_inventory.sort_by_key(|a| a.entity_id);
 
     Ok(axum_codec::Codec(InventorysResponse {
         inventorys: resolved_inventory,
@@ -376,11 +376,11 @@ pub(crate) async fn all_inventory_stats(
 
     let mut items = items.into_values().collect::<Vec<_>>();
 
-    items.sort_by(|a, b| b.0.cmp(&a.0));
+    items.sort_by_key(|b| std::cmp::Reverse(b.0));
 
     let mut cargo = cargo.into_values().collect::<Vec<_>>();
 
-    cargo.sort_by(|a, b| b.0.cmp(&a.0));
+    cargo.sort_by_key(|b| std::cmp::Reverse(b.0));
 
     Ok(axum_codec::Codec(AllInventoryStatsResponse {
         items,

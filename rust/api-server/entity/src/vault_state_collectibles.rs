@@ -61,7 +61,7 @@ impl RawVaultState {
     ) -> Vec<crate::vault_state_collectibles::Model> {
         self.collectibles
             .iter()
-            .map(|collectible| collectible.to_model(self.entity_id, region.clone()))
+            .map(|collectible| collectible.to_model(self.entity_id, region))
             .collect()
     }
 }

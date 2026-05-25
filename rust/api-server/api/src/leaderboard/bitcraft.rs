@@ -1,21 +1,16 @@
 use crate::AppState;
 use crate::leaderboard::{Leaderboard, experience_to_level};
 use crate::websocket::batched_worker::BatchedWorker;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
-use chrono::DateTime;
+use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
-use spacetimedb_sdk::Event;
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::time::Duration;
-use tokio::sync::mpsc::{
-    Receiver, Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel,
-};
-use tokio::time::sleep;
+use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
 
 enum ExperienceStateDbOperation {
     Upsert(Vec<::entity::experience_state::ActiveModel>),
@@ -89,7 +84,7 @@ fn start_experience_state_db_worker(
                         }
                     }
                 }
-                ExperienceStateDbOperation::DeleteForRegion { ids, region } => {
+                ExperienceStateDbOperation::DeleteForRegion { ids, .. } => {
                     let mut query = sea_query::Condition::any();
                     for chunk_id in &ids {
                         let (entity_id, skill_id) = chunk_id.split_once(":").unwrap();
@@ -278,29 +273,26 @@ impl ExperienceStateWorker {
                     .ranking_system
                     .global_leaderboard
                     .get_value(&(value.entity_id as i64))
+                    && xp != total_exp
                 {
-                    if xp != total_exp {
-                        self.global_app_state
-                            .ranking_system
-                            .global_leaderboard
-                            .update(value.entity_id as i64, total_exp);
+                    self.global_app_state
+                        .ranking_system
+                        .global_leaderboard
+                        .update(value.entity_id as i64, total_exp);
 
-                        let mut xp_per_hour = 0;
-                        if let Some(player_state) = self
-                            .global_app_state
-                            .player_state
-                            .get(&(value.entity_id as i64))
-                        {
-                            if player_state.time_signed_in >= 3600 {
-                                xp_per_hour =
-                                    total_exp / (player_state.time_signed_in as i64 / 3600);
-                            }
-                        }
-                        self.global_app_state
-                            .ranking_system
-                            .xp_per_hour
-                            .update(value.entity_id as i64, xp_per_hour);
+                    let mut xp_per_hour = 0;
+                    if let Some(player_state) = self
+                        .global_app_state
+                        .player_state
+                        .get(&(value.entity_id as i64))
+                        && player_state.time_signed_in >= 3600
+                    {
+                        xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
                     }
+                    self.global_app_state
+                        .ranking_system
+                        .xp_per_hour
+                        .update(value.entity_id as i64, xp_per_hour);
                 }
 
                 model
@@ -396,10 +388,9 @@ impl ExperienceStateWorker {
             .global_app_state
             .player_state
             .get(&(new.entity_id as i64))
+            && player_state.time_signed_in >= 3600
         {
-            if player_state.time_signed_in >= 3600 {
-                xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
-            }
+            xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
         }
         self.global_app_state
             .ranking_system
@@ -419,10 +410,9 @@ impl ExperienceStateWorker {
                     .global_app_state
                     .player_state
                     .get(&(new.entity_id as i64))
+                    && player_state.time_signed_in >= 3600
                 {
-                    if player_state.time_signed_in >= 3600 {
-                        xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
-                    }
+                    xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
                 }
                 self.global_app_state
                     .ranking_system
@@ -439,10 +429,9 @@ impl ExperienceStateWorker {
                 .global_app_state
                 .player_state
                 .get(&(new.entity_id as i64))
+                && player_state.time_signed_in >= 3600
             {
-                if player_state.time_signed_in >= 3600 {
-                    xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
-                }
+                xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
             }
             self.global_app_state
                 .ranking_system
@@ -543,75 +532,74 @@ impl ExperienceStateWorker {
                     self.messages.push(model.into_active_model());
 
                     if let Some(skill) = self.global_app_state.skill_desc.get(&(es.skill_id as i64))
+                        && skill.skill_category != 0
                     {
-                        if skill.skill_category != 0 {
-                            let skill_name = skill.to_owned().name;
+                        let skill_name = skill.to_owned().name;
 
-                            let mut prev_rank = None;
-                            let post_rank;
-                            if let Some(skill_leaderboard) = self
+                        let mut prev_rank = None;
+                        let post_rank;
+                        if let Some(skill_leaderboard) = self
+                            .global_app_state
+                            .ranking_system
+                            .skill_leaderboards
+                            .get_mut(&(es.skill_id as i64))
+                        {
+                            prev_rank = skill_leaderboard.get_rank(new.entity_id as i64);
+                            skill_leaderboard
+                                .update(new.entity_id as i64, new_skill.quantity as i64);
+                            post_rank = skill_leaderboard.get_rank(new.entity_id as i64);
+                        } else {
+                            self.global_app_state
+                                .ranking_system
+                                .skill_leaderboards
+                                .insert(es.skill_id as i64, Leaderboard::default());
+                            self.global_app_state
+                                .ranking_system
+                                .skill_leaderboards
+                                .get_mut(&(es.skill_id as i64))
+                                .unwrap()
+                                .update(new.entity_id as i64, new_skill.quantity as i64);
+                            post_rank = self
                                 .global_app_state
                                 .ranking_system
                                 .skill_leaderboards
                                 .get_mut(&(es.skill_id as i64))
-                            {
-                                prev_rank = skill_leaderboard.get_rank(new.entity_id as i64);
-                                skill_leaderboard
-                                    .update(new.entity_id as i64, new_skill.quantity as i64);
-                                post_rank = skill_leaderboard.get_rank(new.entity_id as i64);
-                            } else {
-                                self.global_app_state
-                                    .ranking_system
-                                    .skill_leaderboards
-                                    .insert(es.skill_id as i64, Leaderboard::default());
-                                self.global_app_state
-                                    .ranking_system
-                                    .skill_leaderboards
-                                    .get_mut(&(es.skill_id as i64))
-                                    .unwrap()
-                                    .update(new.entity_id as i64, new_skill.quantity as i64);
-                                post_rank = self
-                                    .global_app_state
-                                    .ranking_system
-                                    .skill_leaderboards
-                                    .get_mut(&(es.skill_id as i64))
-                                    .unwrap()
-                                    .get_rank(new.entity_id as i64);
-                            }
-
-                            match (prev_rank, post_rank) {
-                                (Some(prev_rank), Some(post_rank)) => {
-                                    if prev_rank != post_rank {
-                                        tracing::debug!(
-                                            "Skill EXP rank {skill_name} changed {prev_rank} to {post_rank}"
-                                        );
-                                    }
-                                }
-                                (Some(prev_rank), None) => {
-                                    tracing::debug!(
-                                        "Skill EXP rank {skill_name} changed {prev_rank} to no post_rank"
-                                    );
-                                }
-                                (None, Some(post_rank)) => {
-                                    tracing::debug!(
-                                        "Skill EXP rank {skill_name} changed no prev_rank to {post_rank}"
-                                    );
-                                }
-                                (None, None) => {
-                                    tracing::error!("Skill EXP {skill_name} no rank?");
-                                }
-                            }
-                            let _ = self
-                                .global_app_state
-                                .tx
-                                .send(WebSocketMessages::Experience {
-                                    level: new_level as u64,
-                                    experience: new_skill.quantity as u64,
-                                    rank: post_rank.unwrap_or(0) as u64,
-                                    skill_name,
-                                    user_id: id,
-                                });
+                                .unwrap()
+                                .get_rank(new.entity_id as i64);
                         }
+
+                        match (prev_rank, post_rank) {
+                            (Some(prev_rank), Some(post_rank)) => {
+                                if prev_rank != post_rank {
+                                    tracing::debug!(
+                                        "Skill EXP rank {skill_name} changed {prev_rank} to {post_rank}"
+                                    );
+                                }
+                            }
+                            (Some(prev_rank), None) => {
+                                tracing::debug!(
+                                    "Skill EXP rank {skill_name} changed {prev_rank} to no post_rank"
+                                );
+                            }
+                            (None, Some(post_rank)) => {
+                                tracing::debug!(
+                                    "Skill EXP rank {skill_name} changed no prev_rank to {post_rank}"
+                                );
+                            }
+                            (None, None) => {
+                                tracing::error!("Skill EXP {skill_name} no rank?");
+                            }
+                        }
+                        let _ = self
+                            .global_app_state
+                            .tx
+                            .send(WebSocketMessages::Experience {
+                                level: new_level as u64,
+                                experience: new_skill.quantity as u64,
+                                rank: post_rank.unwrap_or(0) as u64,
+                                skill_name,
+                                user_id: id,
+                            });
                     }
                 }
             }
@@ -666,10 +654,9 @@ impl ExperienceStateWorker {
                 .global_app_state
                 .player_state
                 .get(&(new.entity_id as i64))
+                && player_state.time_signed_in >= 3600
             {
-                if player_state.time_signed_in >= 3600 {
-                    xp_per_hour = new_total_exp / (player_state.time_signed_in as i64 / 3600);
-                }
+                xp_per_hour = new_total_exp / (player_state.time_signed_in as i64 / 3600);
             }
             self.global_app_state
                 .ranking_system

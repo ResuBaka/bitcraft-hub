@@ -304,7 +304,7 @@ pub(crate) async fn get_claim_names(
             claim_state.entity_id,
             ClaimSummaryResponse {
                 name: claim_state.name.clone(),
-                region: claim_state.region.clone(),
+                region: claim_state.region,
                 location,
             },
         );
@@ -1184,7 +1184,7 @@ pub(crate) fn get_inventory_locations(
         .into_values()
         .map(|entry| {
             let mut locations = entry.locations.into_values().collect::<Vec<_>>();
-            locations.sort_by(|a, b| b.quantity.cmp(&a.quantity));
+            locations.sort_by_key(|b| std::cmp::Reverse(b.quantity));
             InventoryItemLocation {
                 item_id: entry.item_id,
                 item: entry.item,

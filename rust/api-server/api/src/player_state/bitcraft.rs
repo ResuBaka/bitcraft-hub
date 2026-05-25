@@ -6,9 +6,7 @@ use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::mpsc::{
-    Receiver, Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel,
-};
+use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
 
 enum PlayerStateDbOperation {
     Upsert(Vec<::entity::player_state::ActiveModel>),
@@ -285,20 +283,18 @@ impl PlayerStateWorker {
         )
         .increment(1);
 
-        if self.ids.contains(&model.entity_id) {
-            if let Some(index) =
+        if self.ids.contains(&model.entity_id)
+            && let Some(index) =
                 self.messages
                     .iter()
                     .position(|value: &::entity::player_state::ActiveModel| {
                         value.entity_id.as_ref() == &model.entity_id
                     })
-            {
-                if model.sign_in_timestamp == 0 {
-                    model.sign_in_timestamp =
-                        self.messages[index].sign_in_timestamp.clone().unwrap();
-                }
-                self.messages.remove(index);
+        {
+            if model.sign_in_timestamp == 0 {
+                model.sign_in_timestamp = self.messages[index].sign_in_timestamp.clone().unwrap();
             }
+            self.messages.remove(index);
         }
 
         self.global_app_state
@@ -377,18 +373,16 @@ impl PlayerStateWorker {
             .decrement(1);
         }
 
-        if self.ids.contains(&model.entity_id) {
-            if let Some(index) = self
+        if self.ids.contains(&model.entity_id)
+            && let Some(index) = self
                 .messages
                 .iter()
                 .position(|value| value.entity_id.as_ref() == &model.entity_id)
-            {
-                if model.sign_in_timestamp == 0 {
-                    model.sign_in_timestamp =
-                        self.messages[index].sign_in_timestamp.clone().unwrap();
-                }
-                self.messages.remove(index);
+        {
+            if model.sign_in_timestamp == 0 {
+                model.sign_in_timestamp = self.messages[index].sign_in_timestamp.clone().unwrap();
             }
+            self.messages.remove(index);
         }
 
         if let Some(index) = self
@@ -443,14 +437,13 @@ impl PlayerStateWorker {
             _ => {}
         }
 
-        if self.ids.contains(&id) {
-            if let Some(index) = self
+        if self.ids.contains(&id)
+            && let Some(index) = self
                 .messages
                 .iter()
                 .position(|value| value.entity_id.as_ref() == &model.entity_id)
-            {
-                self.messages.remove(index);
-            }
+        {
+            self.messages.remove(index);
         }
 
         metrics::gauge!(
@@ -572,7 +565,7 @@ async fn delete_multiple_player_state_for_region(
         let chunk_ids = chunk_ids.to_vec();
         if let Err(error) = ::entity::player_state::Entity::delete_many()
             .filter(::entity::player_state::Column::EntityId.is_in(chunk_ids.clone()))
-            .filter(::entity::player_state::Column::Region.eq(region.clone()))
+            .filter(::entity::player_state::Column::Region.eq(region))
             .exec(&global_app_state.conn)
             .await
         {
@@ -841,14 +834,13 @@ impl PlayerUsernameStateWorker {
                     _ => {}
                 }
 
-                if self.ids.contains(&id) {
-                    if let Some(index) = self
+                if self.ids.contains(&id)
+                    && let Some(index) = self
                         .messages
                         .iter()
                         .position(|value| value.entity_id.as_ref() == &model.entity_id)
-                    {
-                        self.messages.remove(index);
-                    }
+                {
+                    self.messages.remove(index);
                 }
 
                 self.messages_delete.push(id);
@@ -962,7 +954,7 @@ async fn delete_multiple_player_username_state_for_region(
         let chunk_ids = chunk_ids.to_vec();
         if let Err(error) = ::entity::player_username_state::Entity::delete_many()
             .filter(::entity::player_username_state::Column::EntityId.is_in(chunk_ids.clone()))
-            .filter(::entity::player_username_state::Column::Region.eq(region.clone()))
+            .filter(::entity::player_username_state::Column::Region.eq(region))
             .exec(&global_app_state.conn)
             .await
         {

@@ -105,10 +105,8 @@ pub(crate) fn start_worker_progressive_action_state(
                                     messages_delete.remove(index);
                                 }
 
-                                if ids.contains(&model.entity_id) {
-                                    if let Some(index) = messages.iter().position(|value: &::entity::progressive_action_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
+                                if ids.contains(&model.entity_id) && let Some(index) = messages.iter().position(|value: &::entity::progressive_action_state::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
                                 }
 
                                 ids.push(model.entity_id);
@@ -120,10 +118,8 @@ pub(crate) fn start_worker_progressive_action_state(
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name).build();
 
-                                if ids.contains(&model.entity_id) {
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
+                                if ids.contains(&model.entity_id) && let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
                                 }
 
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
@@ -149,10 +145,8 @@ pub(crate) fn start_worker_progressive_action_state(
                                     _ => {}
                                 }
 
-                                if ids.contains(&id) {
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
+                                if ids.contains(&id) && let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
+                                    messages.remove(index);
                                 }
 
                                 messages_delete.push(id);

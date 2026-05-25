@@ -471,13 +471,12 @@ async fn get_building_nickname(state: &AppState, entity_id: i64) -> Option<Strin
         .await
         .unwrap_or_default();
 
-    if let Some(building) = building_state {
-        if let Some(desc) = state
+    if let Some(building) = building_state
+        && let Some(desc) = state
             .building_desc
             .get(&(building.building_description_id as i64))
-        {
-            return Some(desc.name.clone());
-        }
+    {
+        return Some(desc.name.clone());
     }
 
     None

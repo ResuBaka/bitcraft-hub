@@ -386,7 +386,7 @@ async fn delete_multiple_claim_state_for_region(
         let chunk_ids = chunk_ids.to_vec();
         if let Err(error) = ::entity::claim_state::Entity::delete_many()
             .filter(::entity::claim_state::Column::EntityId.is_in(chunk_ids.clone()))
-            .filter(::entity::claim_state::Column::Region.eq(region.clone()))
+            .filter(::entity::claim_state::Column::Region.eq(region))
             .exec(&global_app_state.conn)
             .await
         {
@@ -866,7 +866,7 @@ async fn delete_multiple_claim_local_state_for_region(
         let chunk_ids = chunk_ids.to_vec();
         if let Err(error) = ::entity::claim_local_state::Entity::delete_many()
             .filter(::entity::claim_local_state::Column::EntityId.is_in(chunk_ids.clone()))
-            .filter(::entity::claim_local_state::Column::Region.eq(region.clone()))
+            .filter(::entity::claim_local_state::Column::Region.eq(region))
             .exec(&global_app_state.conn)
             .await
         {
@@ -1297,7 +1297,7 @@ async fn delete_multiple_claim_member_state_for_region(
         let chunk_ids = chunk_ids.to_vec();
         if let Err(error) = ::entity::claim_member_state::Entity::delete_many()
             .filter(::entity::claim_member_state::Column::EntityId.is_in(chunk_ids.clone()))
-            .filter(::entity::claim_member_state::Column::Region.eq(region.clone()))
+            .filter(::entity::claim_member_state::Column::Region.eq(region))
             .exec(&global_app_state.conn)
             .await
         {
@@ -1722,7 +1722,7 @@ async fn delete_multiple_claim_tech_state_for_region(
         let chunk_ids = chunk_ids.to_vec();
         if let Err(error) = ::entity::claim_tech_state::Entity::delete_many()
             .filter(::entity::claim_tech_state::Column::EntityId.is_in(chunk_ids.clone()))
-            .filter(::entity::claim_tech_state::Column::Region.eq(region.clone()))
+            .filter(::entity::claim_tech_state::Column::Region.eq(region))
             .exec(&global_app_state.conn)
             .await
         {

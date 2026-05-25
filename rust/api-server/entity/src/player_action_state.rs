@@ -35,21 +35,20 @@ where
 {
     let json = serde_json::Value::deserialize(deserializer)?;
 
-    if let serde_json::Value::Array(array) = json {
-        if array.len() == 2 {
-            if let serde_json::Value::Number(number) = array[0].clone() {
-                if let Some(number) = number.as_i64() {
-                    if number == 1 {
-                        return Ok(None);
-                    }
-                }
-            }
+    if let serde_json::Value::Array(array) = json
+        && array.len() == 2
+    {
+        if let serde_json::Value::Number(number) = array[0].clone()
+            && let Some(number) = number.as_i64()
+            && number == 1
+        {
+            return Ok(None);
+        }
 
-            if let serde_json::Value::Number(number) = array[1].clone() {
-                if let Some(number) = number.as_i64() {
-                    return Ok(Some(number as i32));
-                }
-            }
+        if let serde_json::Value::Number(number) = array[1].clone()
+            && let Some(number) = number.as_i64()
+        {
+            return Ok(Some(number as i32));
         }
     }
 

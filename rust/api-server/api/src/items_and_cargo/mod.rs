@@ -179,26 +179,25 @@ pub(crate) async fn list_items_and_cargo(
                     return None;
                 }
 
-                if let Some(tier) = &tier {
-                    if &item.tier != tier {
-                        return None;
-                    }
+                if let Some(tier) = &tier
+                    && &item.tier != tier
+                {
+                    return None;
                 };
 
-                if let Some(tag) = &tag {
-                    if &item.tag != tag {
-                        return None;
-                    }
+                if let Some(tag) = &tag
+                    && &item.tag != tag
+                {
+                    return None;
                 };
 
-                if let Some(search) = &search {
-                    if !item
+                if let Some(search) = &search
+                    && !item
                         .name
                         .to_lowercase()
                         .contains(search.to_lowercase().as_str())
-                    {
-                        return None;
-                    }
+                {
+                    return None;
                 };
 
                 Some(item.to_owned())
@@ -208,26 +207,25 @@ pub(crate) async fn list_items_and_cargo(
             .cargo_desc
             .iter()
             .filter_map(|cargo| {
-                if let Some(tier) = &tier {
-                    if &cargo.tier != tier {
-                        return None;
-                    }
+                if let Some(tier) = &tier
+                    && &cargo.tier != tier
+                {
+                    return None;
                 };
 
-                if let Some(tag) = &tag {
-                    if &cargo.tag != tag {
-                        return None;
-                    }
+                if let Some(tag) = &tag
+                    && &cargo.tag != tag
+                {
+                    return None;
                 };
 
-                if let Some(search) = &search {
-                    if !cargo
+                if let Some(search) = &search
+                    && !cargo
                         .name
                         .to_lowercase()
                         .contains(search.to_lowercase().as_str())
-                    {
-                        return None;
-                    }
+                {
+                    return None;
                 };
 
                 Some(cargo.to_owned())

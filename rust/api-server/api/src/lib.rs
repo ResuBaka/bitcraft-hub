@@ -382,6 +382,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                                     .add_topic_to_client(&inner_id, &topic.to_string(), Some(id))
                                     .await;
 
+                                #[allow(clippy::single_match)]
                                 match topic {
                                     "player_username" => {
                                         tracing::warn!(
@@ -1063,10 +1064,10 @@ impl AppState {
 
                     let mut xp_per_hour = 0;
 
-                    if let Some(player_state) = self.player_state.get(&entry.0) {
-                        if player_state.time_signed_in >= 3600 {
-                            xp_per_hour = entry.1 / (player_state.time_signed_in as i64 / 3600);
-                        }
+                    if let Some(player_state) = self.player_state.get(&entry.0)
+                        && player_state.time_signed_in >= 3600
+                    {
+                        xp_per_hour = entry.1 / (player_state.time_signed_in as i64 / 3600);
                     }
 
                     self.ranking_system.xp_per_hour.update(entry.0, xp_per_hour)
@@ -1338,12 +1339,11 @@ impl ClientsState {
         }
 
         let mut topics_listen_to = self.topics_listen_to.write().await;
-        if let Some(found_topic) = topics_listen_to.get_mut(topic) {
-            if let Some(current_topic) = found_topic.get_mut(&topic_id.unwrap()) {
-                if current_topic > &mut 0u64 {
-                    current_topic.sub_assign(1);
-                }
-            }
+        if let Some(found_topic) = topics_listen_to.get_mut(topic)
+            && let Some(current_topic) = found_topic.get_mut(&topic_id.unwrap())
+            && current_topic > &mut 0u64
+        {
+            current_topic.sub_assign(1);
         }
     }
 
@@ -1358,10 +1358,10 @@ impl ClientsState {
         for (_, (tx, topics, _, topic_with_out_id)) in clients.iter() {
             if topic_id.is_none() && topic_with_out_id.contains(topic) {
                 senders.push(tx.clone());
-            } else if let Some(found_topic) = topics.get(topic) {
-                if found_topic.contains(&topic_id.unwrap()) {
-                    senders.push(tx.clone());
-                }
+            } else if let Some(found_topic) = topics.get(topic)
+                && found_topic.contains(&topic_id.unwrap())
+            {
+                senders.push(tx.clone());
             }
         }
 
@@ -1392,12 +1392,11 @@ impl ClientsState {
     pub(crate) async fn listeners_for_topic(&self, topics: Vec<(String, i64)>) -> bool {
         let topics_listen_to = self.topics_listen_to.read().await;
         for (topic, id) in topics {
-            if let Some(found_topic) = topics_listen_to.get(&topic) {
-                if let Some(current_topic) = found_topic.get(&id) {
-                    if current_topic > &0u64 {
-                        return true;
-                    }
-                }
+            if let Some(found_topic) = topics_listen_to.get(&topic)
+                && let Some(current_topic) = found_topic.get(&id)
+                && current_topic > &0u64
+            {
+                return true;
             }
         }
 

@@ -45,7 +45,7 @@ async fn get_trade_orders(
                     })
                     .collect(),
                 required_cargo_id: trade_order.required_cargo_id.clone(),
-                region: trade_order.region.clone(),
+                region: trade_order.region,
                 shop_entity_id: trade_order.shop_entity_id,
                 traveler_trade_order_id: trade_order.traveler_trade_order_id,
             })

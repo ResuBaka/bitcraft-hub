@@ -388,7 +388,7 @@ pub(crate) fn start_worker_player_housing_state(
                     Some(msg) = rx.recv() => {
                         record_worker_received("player_housing_state", 1);
                         match msg {
-                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                            SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 for entry in data {
                                     let model = ::entity::player_housing_state::ModelBuilder::new(entry)
@@ -421,7 +421,7 @@ pub(crate) fn start_worker_player_housing_state(
                                     }
                                 }
                             }
-                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                            SpacetimeUpdateMessages::Insert { new, .. } => {
                                 let model = ::entity::player_housing_state::ModelBuilder::new(new).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -434,7 +434,7 @@ pub(crate) fn start_worker_player_housing_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                            SpacetimeUpdateMessages::Update { new, .. } => {
                                 let model = ::entity::player_housing_state::ModelBuilder::new(new).build();
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -447,7 +447,7 @@ pub(crate) fn start_worker_player_housing_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, .. } => {
                                 let model = ::entity::player_housing_state::ModelBuilder::new(delete).build();
                                 if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);

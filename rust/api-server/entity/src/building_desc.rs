@@ -46,7 +46,7 @@ impl ActiveModelBehavior for ActiveModel {}
 
 impl Model {
     pub fn can_be_interactive_with(&self) -> bool {
-        if self.functions.len() == 0 {
+        if self.functions.is_empty() {
             return false;
         }
 

@@ -275,37 +275,33 @@ impl Leaderboard {
             }
 
             // 3. Apply the entire batch in ONE write lock
-            if let mut guard = inner.write() {
-                for op in batch.drain(..) {
-                    match op {
-                        LeaderboardOp::Update {
-                            user_id,
-                            old_xp,
-                            new_xp,
-                        } => {
-                            if old_xp != 0 {
-                                guard.sorted_ranks.remove(&(old_xp, user_id));
-                                Self::decrement_btreemap(
-                                    &mut guard.bucket_counts,
-                                    Self::bucket_for(old_xp),
-                                );
-                                Self::decrement_btreemap(&mut guard.xp_counts, old_xp);
-                            }
-                            guard.sorted_ranks.insert((new_xp, user_id), ());
-                            *guard
-                                .bucket_counts
-                                .entry(Self::bucket_for(new_xp))
-                                .or_insert(0) += 1;
-                            *guard.xp_counts.entry(new_xp).or_insert(0) += 1;
-                        }
-                        LeaderboardOp::Remove { user_id, xp } => {
-                            guard.sorted_ranks.remove(&(xp, user_id));
+            let mut guard = inner.write();
+            for op in batch.drain(..) {
+                match op {
+                    LeaderboardOp::Update {
+                        user_id,
+                        old_xp,
+                        new_xp,
+                    } => {
+                        if old_xp != 0 {
+                            guard.sorted_ranks.remove(&(old_xp, user_id));
                             Self::decrement_btreemap(
                                 &mut guard.bucket_counts,
-                                Self::bucket_for(xp),
+                                Self::bucket_for(old_xp),
                             );
-                            Self::decrement_btreemap(&mut guard.xp_counts, xp);
+                            Self::decrement_btreemap(&mut guard.xp_counts, old_xp);
                         }
+                        guard.sorted_ranks.insert((new_xp, user_id), ());
+                        *guard
+                            .bucket_counts
+                            .entry(Self::bucket_for(new_xp))
+                            .or_insert(0) += 1;
+                        *guard.xp_counts.entry(new_xp).or_insert(0) += 1;
+                    }
+                    LeaderboardOp::Remove { user_id, xp } => {
+                        guard.sorted_ranks.remove(&(xp, user_id));
+                        Self::decrement_btreemap(&mut guard.bucket_counts, Self::bucket_for(xp));
+                        Self::decrement_btreemap(&mut guard.xp_counts, xp);
                     }
                 }
             }

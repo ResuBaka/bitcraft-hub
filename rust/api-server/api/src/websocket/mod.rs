@@ -40,8 +40,6 @@ use spacetimedb_sdk::{
     Compression, DbContext, Error, Event, Table, TableWithPrimaryKey, credentials,
 };
 use std::borrow::Cow;
-use std::fs::{self, File};
-use std::io::BufWriter;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
@@ -1061,7 +1059,7 @@ async fn connect_to_db_logic(
         "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
     ];
 
-    let tmp_region_number = region_number.clone();
+    let tmp_region_number = region_number;
     let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
     let tmp_player_state_tx = player_state_tx.clone();
     let tmp_player_username_state_tx = player_username_state_tx.clone();
@@ -1815,25 +1813,25 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let (user_state_tx, user_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let mut player_state_worker = crate::player_state::bitcraft::PlayerStateWorker::new(
+        let player_state_worker = crate::player_state::bitcraft::PlayerStateWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),
         );
 
-        let mut player_username_state_worker =
+        let player_username_state_worker =
             crate::player_state::bitcraft::PlayerUsernameStateWorker::new(
                 global_app_state.clone(),
                 3000,
                 Duration::from_millis(200),
             );
 
-        let mut experience_state_worker = crate::leaderboard::bitcraft::ExperienceStateWorker::new(
+        let experience_state_worker = crate::leaderboard::bitcraft::ExperienceStateWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),
         );
-        let mut inventory_state_worker = inventory_bitcraft::InventoryStateWorker::new(
+        let inventory_state_worker = inventory_bitcraft::InventoryStateWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),
@@ -1849,19 +1847,19 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let (deployable_state_tx, deployable_state_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let mut claim_state_worker = bitcraft::ClaimStateWorker::new(
+        let claim_state_worker = bitcraft::ClaimStateWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),
         );
 
-        let mut claim_local_state_worker = bitcraft::ClaimLocalStateWorker::new(
+        let claim_local_state_worker = bitcraft::ClaimLocalStateWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),
         );
 
-        let mut claim_member_state_worker = bitcraft::ClaimMemberStateWorker::new(
+        let claim_member_state_worker = bitcraft::ClaimMemberStateWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),
@@ -1869,12 +1867,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let (skill_desc_tx, skill_desc_rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let mut claim_tech_state_worker = bitcraft::ClaimTechStateWorker::new(
+        let claim_tech_state_worker = bitcraft::ClaimTechStateWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),
         );
-        let mut claim_tech_desc_worker = bitcraft::ClaimTechDescWorker::new(
+        let claim_tech_desc_worker = bitcraft::ClaimTechDescWorker::new(
             global_app_state.clone(),
             3000,
             Duration::from_millis(200),

@@ -14,9 +14,7 @@ use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::Event;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::mpsc::{
-    Receiver, Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel,
-};
+use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
 
 enum InventoryDbOperation {
     Upsert(Vec<::entity::inventory::ActiveModel>),
@@ -259,15 +257,14 @@ impl InventoryStateWorker {
         let mut player_owner_id = model.player_owner_entity_id;
         let mut nickname = None;
 
-        if model.player_owner_entity_id == 0 {
-            if let Some(deployable_state) = self
+        if model.player_owner_entity_id == 0
+            && let Some(deployable_state) = self
                 .global_app_state
                 .deployable_state
                 .get(&model.owner_entity_id)
-            {
-                player_owner_id = deployable_state.owner_id;
-                nickname = Some(deployable_state.nickname.clone());
-            }
+        {
+            player_owner_id = deployable_state.owner_id;
+            nickname = Some(deployable_state.nickname.clone());
         }
 
         let _ = self
@@ -317,14 +314,14 @@ impl InventoryStateWorker {
     ) {
         let mut caller_identity = None;
         let mut timestamp = None;
-        if let Some(event) = &event {
-            if let Event::Reducer(event) = &**event {
-                match event.reducer.reducer_name() {
-                    "inventory_sort" => {}
-                    _ => {
-                        caller_identity = Some(event.caller_identity);
-                        timestamp = Some(event.timestamp);
-                    }
+        if let Some(event) = &event
+            && let Event::Reducer(event) = &**event
+        {
+            match event.reducer.reducer_name() {
+                "inventory_sort" => {}
+                _ => {
+                    caller_identity = Some(event.caller_identity);
+                    timestamp = Some(event.timestamp);
                 }
             }
         }
@@ -665,7 +662,7 @@ async fn delete_multiple_inventory_for_region(
         let chunk_ids = chunk_ids.to_vec();
         if let Err(error) = ::entity::inventory::Entity::delete_many()
             .filter(::entity::inventory::Column::EntityId.is_in(chunk_ids.clone()))
-            .filter(::entity::inventory::Column::Region.eq(region.clone()))
+            .filter(::entity::inventory::Column::Region.eq(region))
             .exec(&global_app_state.conn)
             .await
         {
