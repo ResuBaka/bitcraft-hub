@@ -44,6 +44,24 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
+impl Model {
+    pub fn can_be_interactive_with(&self) -> bool {
+        if self.functions.len() == 0 {
+            return false;
+        }
+
+        for function in &self.functions {
+            if function.can_be_interactive_with() {
+                return true;
+            } else {
+                // println!("This could maybe be shown? Name: {} Function Type:  {}", self.name, function.function_type)
+            }
+        }
+
+        false
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, FromJsonQueryResult, Serialize, Deserialize, TS)]
 pub struct Function {
     pub function_type: i32,
@@ -61,6 +79,64 @@ pub struct Function {
     pub terraform: bool,
     pub housing_slots: i32,
     pub housing_income: u32,
+}
+
+impl Function {
+    pub fn can_be_interactive_with(&self) -> bool {
+        match self.function_type {
+            1 => true,
+            3 => true,
+            4 => true,
+            10 => true,
+            12 => true,
+            13 => true,
+            14 => true,
+            15 => true,
+            16 => true,
+            17 => true,
+            20 => true,
+            21 => true,
+            22 => true,
+            24 => true,
+            25 => true,
+            26 => true,
+            27 => true,
+            28 => true,
+            30 => true,
+            33 => true,
+            34 => true,
+            40 => true,
+            44 => true,
+            48 => true,
+            59 => true,
+            200 => true,
+            201 => true,
+            // @todo this needs special handling based on the name
+            // 999 => true,
+            2001 => true,
+            81226542 => true,
+            104950060 => true,
+            127749503 => true,
+            200031066 => true,
+            238340097 => true,
+            610217457 => true,
+            635094930 => true,
+            688483913 => true,
+            787619404 => true,
+            // Signs
+            // 848835411 => true,
+            928540987 => true,
+            937867074 => true,
+            1265792081 => true,
+            1559722792 => true,
+            1680198173 => true,
+            1721785854 => true,
+            1837107818 => true,
+            1913947152 => true,
+            2012420824 => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<BuildingFunction> for Function {

@@ -1,7 +1,7 @@
 // Note that the standalone server is invoked through standaline/src/main.rs, so you will
 // also want to set the allocator there.
 #[cfg(not(target_env = "msvc"))]
-use mimalloc::MiMalloc;
+use mimalloc_safe::MiMalloc;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]

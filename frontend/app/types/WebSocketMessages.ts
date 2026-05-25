@@ -45,4 +45,5 @@ export type WebSocketMessages =
   | { t: "RemoveBuyOrder"; c: AuctionListingState }
   | { t: "InventoryUpdate"; c: { resolved_inventory: ResolvedInventory } }
   | { t: "InventoryRemove"; c: { resolved_inventory: ResolvedInventory } }
-  | { t: "InventoryInsert"; c: { resolved_inventory: ResolvedInventory; player_owner_id: bigint } };
+  | { t: "InventoryInsert"; c: { resolved_inventory: ResolvedInventory; player_owner_id: bigint } }
+  | { t: "PlayerUsername"; c: { entity_id: bigint; username: string } };

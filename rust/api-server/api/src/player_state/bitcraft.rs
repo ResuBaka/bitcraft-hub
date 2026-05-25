@@ -739,6 +739,12 @@ impl PlayerUsernameStateWorker {
                         Entry::Occupied(entry) => {
                             let existing_model = entry.get();
                             if &model != existing_model {
+                                let _ = self.global_app_state.tx.send(
+                                    WebSocketMessages::PlayerUsername {
+                                        entity_id: model.entity_id,
+                                        username: model.username.clone(),
+                                    },
+                                );
                                 local_messages.push(model.into_active_model());
                             }
                             entry.remove();
@@ -782,6 +788,13 @@ impl PlayerUsernameStateWorker {
                     self.messages_delete.remove(index);
                 }
                 self.ids.push(model.entity_id);
+                let _ = self
+                    .global_app_state
+                    .tx
+                    .send(WebSocketMessages::PlayerUsername {
+                        entity_id: model.entity_id,
+                        username: model.username.clone(),
+                    });
                 self.messages.push(model.into_active_model());
             }
             SpacetimeUpdateMessages::Update {
@@ -799,6 +812,13 @@ impl PlayerUsernameStateWorker {
                     self.messages_delete.remove(index);
                 }
                 self.ids.push(model.entity_id);
+                let _ = self
+                    .global_app_state
+                    .tx
+                    .send(WebSocketMessages::PlayerUsername {
+                        entity_id: model.entity_id,
+                        username: model.username.clone(),
+                    });
                 self.messages.push(model.into_active_model());
             }
             SpacetimeUpdateMessages::Remove {

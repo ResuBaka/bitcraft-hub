@@ -197,7 +197,7 @@ const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = us
 
 const { data: buidlingsFetch, pending: buildingsPending } = useFetchMsPack<BuildingStatesResponse>(
   () => {
-    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&page=${page.value}&per_page=${perPage}&skip_static_buildings=true&with_inventory=true`;
+    return `/api/bitcraft/buildings?claim_entity_id=${route.params.id}&page=${page.value}&per_page=${perPage}&skip_static_buildings=true`;
   },
 );
 
@@ -514,6 +514,7 @@ const validTabs = new Set([
   "upgrades",
   "inventory_changelogs",
   "traveler_tasks",
+  "marketplace",
 ]);
 
 const initialTab = (() => {
@@ -699,6 +700,10 @@ const tabItems = computed(() => {
     {
       value: "members",
       label: `Members (${membersForTable.value.length || 0})`,
+    },
+    {
+      value: "marketplace",
+      label: `Marketplace`,
     },
     {
       value: "player_items",
@@ -1005,6 +1010,14 @@ watch(
     }
 
     if (route.query.tab !== value) {
+      if ("search" in route.query) {
+        delete route.query.search;
+      }
+
+      if ("items" in route.query) {
+        delete route.query.items;
+      }
+
       router.replace({ query: { ...route.query, tab: value } });
     }
   },
@@ -1133,8 +1146,12 @@ watch(
               />
             </div>
             <div class="border-t border-gray-200 p-4 dark:border-gray-800">
+              <bitcraft-claim-market
+                v-if="tab === 'marketplace'"
+                :claim-id="route.params.id.toString()"
+              ></bitcraft-claim-market>
               <ClaimTabMembers
-                v-if="tab === 'members'"
+                v-else-if="tab === 'members'"
                 :online-players-count="onlinePlayersCount"
                 :member-count="claimFetch ? Object.values(claimFetch.members).length : 0"
                 :member-search="memberSearch"

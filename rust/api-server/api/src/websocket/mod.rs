@@ -2389,6 +2389,10 @@ pub(crate) enum WebSocketMessages {
         resolved_inventory: entity::inventory::ResolvedInventory,
         player_owner_id: i64,
     },
+    PlayerUsername {
+        entity_id: i64,
+        username: String,
+    },
 }
 
 impl WebSocketMessages {
@@ -2432,6 +2436,9 @@ impl WebSocketMessages {
             )]),
             WebSocketMessages::PlayerState(player) => {
                 Some(vec![("player_state".to_string(), Some(player.entity_id))])
+            }
+            WebSocketMessages::PlayerUsername { entity_id, .. } => {
+                Some(vec![("player_username".to_string(), Some(*entity_id))])
             }
             WebSocketMessages::MobileEntityState(mobile_entity_state) => Some(vec![(
                 "mobile_entity_state".to_string(),

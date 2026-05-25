@@ -47,4 +47,4 @@ api = { path = "api" }
 tokio = { version = "1.52.3", features = [ "full" ] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-mimalloc = { version = "0.1.50", features = ["override"] }
+mimalloc-safe = { version = "0.1.61", features = ["v3"] }

@@ -2,6 +2,7 @@ pub(crate) mod bitcraft;
 
 use crate::{AppRouter, AppState};
 use axum::Router;
+use axum::extract::Path;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use entity::inventory::ItemType;
@@ -22,6 +23,14 @@ pub(crate) fn get_routes() -> AppRouter {
         .route(
             "/market/item_cargo_desc",
             axum_codec::routing::get(market_item_cargo_desc).into(),
+        )
+        .route(
+            "/market/claim/{claim_id}",
+            axum_codec::routing::get(get_market_order_stats_by_claim).into(),
+        )
+        .route(
+            "/market/orders/claim/{claim_id}",
+            axum_codec::routing::get(find_market_place_order_by_claim).into(),
         )
 }
 
@@ -70,12 +79,13 @@ fn parse_selected_item_keys(items: Option<&str>) -> HashSet<String> {
         .collect()
 }
 
-pub(crate) async fn get_market_order_stats(
-    state: State<AppState>,
-) -> Result<axum_codec::Codec<MarketOrderStatsResponse>, (StatusCode, &'static str)> {
+fn collect_market_order_stats(
+    buy_orders: impl Iterator<Item = entity::auction_listing_state::AuctionListingState>,
+    sell_orders: impl Iterator<Item = entity::auction_listing_state::AuctionListingState>,
+) -> HashMap<String, MarketOrderStats> {
     let mut order_counts = HashMap::<String, MarketOrderStats>::new();
 
-    for order in state.buy_order_state.iter() {
+    for order in buy_orders {
         let key = format!("{}:{}", order.item_type, order.item_id);
         let entry = order_counts.entry(key).or_default();
         entry.buy += 1;
@@ -102,7 +112,7 @@ pub(crate) async fn get_market_order_stats(
         }
     }
 
-    for order in state.sell_order_state.iter() {
+    for order in sell_orders {
         let key = format!("{}:{}", order.item_type, order.item_id);
         let entry = order_counts.entry(key).or_default();
         entry.sell += 1;
@@ -129,6 +139,76 @@ pub(crate) async fn get_market_order_stats(
         }
     }
 
+    order_counts
+}
+
+fn collect_market_orders(
+    buy_orders: impl Iterator<Item = entity::auction_listing_state::AuctionListingState>,
+    sell_orders: impl Iterator<Item = entity::auction_listing_state::AuctionListingState>,
+    selected_item_keys: Option<&HashSet<String>>,
+) -> MarketOrdersResponse {
+    let include_order = |key: &String| {
+        selected_item_keys
+            .map(|selected_keys| selected_keys.contains(key))
+            .unwrap_or(true)
+    };
+
+    let buy_orders = buy_orders.fold(HashMap::<String, Vec<_>>::new(), |mut acc, order| {
+        let key = format!("{}:{}", order.item_type, order.item_id);
+        if include_order(&key) {
+            acc.entry(key).or_default().push(order);
+        }
+        acc
+    });
+
+    let sell_orders = sell_orders.fold(HashMap::<String, Vec<_>>::new(), |mut acc, order| {
+        let key = format!("{}:{}", order.item_type, order.item_id);
+        if include_order(&key) {
+            acc.entry(key).or_default().push(order);
+        }
+        acc
+    });
+
+    MarketOrdersResponse {
+        buy_orders,
+        sell_orders,
+    }
+}
+
+pub(crate) async fn get_market_order_stats(
+    state: State<AppState>,
+) -> Result<axum_codec::Codec<MarketOrderStatsResponse>, (StatusCode, &'static str)> {
+    let order_counts = collect_market_order_stats(
+        state
+            .buy_order_state
+            .iter()
+            .map(|order| order.value().clone()),
+        state
+            .sell_order_state
+            .iter()
+            .map(|order| order.value().clone()),
+    );
+
+    Ok(axum_codec::Codec(MarketOrderStatsResponse { order_counts }))
+}
+
+pub(crate) async fn get_market_order_stats_by_claim(
+    state: State<AppState>,
+    Path(claim_id): Path<u64>,
+) -> Result<axum_codec::Codec<MarketOrderStatsResponse>, (StatusCode, &'static str)> {
+    let order_counts = collect_market_order_stats(
+        state
+            .buy_order_state
+            .iter()
+            .filter(|order| order.claim_entity_id == claim_id)
+            .map(|order| order.value().clone()),
+        state
+            .sell_order_state
+            .iter()
+            .filter(|order| order.claim_entity_id == claim_id)
+            .map(|order| order.value().clone()),
+    );
+
     Ok(axum_codec::Codec(MarketOrderStatsResponse { order_counts }))
 }
 
@@ -136,31 +216,21 @@ pub(crate) async fn find_market_place_order(
     state: State<AppState>,
     Query(params): Query<MarketOrdersParams>,
 ) -> Result<axum_codec::Codec<MarketOrdersResponse>, (StatusCode, &'static str)> {
-    let selected_item_keys = parse_selected_item_keys(params.items.as_deref());
-
-    if let Some(item) = params.return_all {
-        if item {
-            return Ok(axum_codec::Codec(MarketOrdersResponse {
-                buy_orders: state
-                    .buy_order_state
-                    .iter()
-                    .fold(HashMap::new(), |mut acc, a| {
-                        let key = format!("{}:{}", a.item_type, a.item_id);
-                        acc.entry(key).or_default().push(a.clone());
-                        acc
-                    }),
-                sell_orders: state
-                    .sell_order_state
-                    .iter()
-                    .fold(HashMap::new(), |mut acc, a| {
-                        let key = format!("{}:{}", a.item_type, a.item_id);
-                        acc.entry(key).or_default().push(a.clone());
-                        acc
-                    }),
-            }));
-        }
+    if params.return_all.unwrap_or(false) {
+        return Ok(axum_codec::Codec(collect_market_orders(
+            state
+                .buy_order_state
+                .iter()
+                .map(|order| order.value().clone()),
+            state
+                .sell_order_state
+                .iter()
+                .map(|order| order.value().clone()),
+            None,
+        )));
     }
 
+    let selected_item_keys = parse_selected_item_keys(params.items.as_deref());
     if selected_item_keys.is_empty() {
         return Ok(axum_codec::Codec(MarketOrdersResponse {
             buy_orders: HashMap::new(),
@@ -168,28 +238,61 @@ pub(crate) async fn find_market_place_order(
         }));
     }
 
-    Ok(axum_codec::Codec(MarketOrdersResponse {
-        buy_orders: state
+    Ok(axum_codec::Codec(collect_market_orders(
+        state
             .buy_order_state
             .iter()
-            .fold(HashMap::new(), |mut acc, a| {
-                let key = format!("{}:{}", a.item_type, a.item_id);
-                if selected_item_keys.contains(&key) {
-                    acc.entry(key).or_default().push(a.clone());
-                }
-                acc
-            }),
-        sell_orders: state
+            .map(|order| order.value().clone()),
+        state
             .sell_order_state
             .iter()
-            .fold(HashMap::new(), |mut acc, a| {
-                let key = format!("{}:{}", a.item_type, a.item_id);
-                if selected_item_keys.contains(&key) {
-                    acc.entry(key).or_default().push(a.clone());
-                }
-                acc
-            }),
-    }))
+            .map(|order| order.value().clone()),
+        Some(&selected_item_keys),
+    )))
+}
+
+pub(crate) async fn find_market_place_order_by_claim(
+    state: State<AppState>,
+    Path(claim_id): Path<u64>,
+    Query(params): Query<MarketOrdersParams>,
+) -> Result<axum_codec::Codec<MarketOrdersResponse>, (StatusCode, &'static str)> {
+    if params.return_all.unwrap_or(false) {
+        return Ok(axum_codec::Codec(collect_market_orders(
+            state
+                .buy_order_state
+                .iter()
+                .filter(|order| order.claim_entity_id == claim_id)
+                .map(|order| order.value().clone()),
+            state
+                .sell_order_state
+                .iter()
+                .filter(|order| order.claim_entity_id == claim_id)
+                .map(|order| order.value().clone()),
+            None,
+        )));
+    }
+
+    let selected_item_keys = parse_selected_item_keys(params.items.as_deref());
+    if selected_item_keys.is_empty() {
+        return Ok(axum_codec::Codec(MarketOrdersResponse {
+            buy_orders: HashMap::new(),
+            sell_orders: HashMap::new(),
+        }));
+    }
+
+    Ok(axum_codec::Codec(collect_market_orders(
+        state
+            .buy_order_state
+            .iter()
+            .filter(|order| order.claim_entity_id == claim_id)
+            .map(|order| order.value().clone()),
+        state
+            .sell_order_state
+            .iter()
+            .filter(|order| order.claim_entity_id == claim_id)
+            .map(|order| order.value().clone()),
+        Some(&selected_item_keys),
+    )))
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, TS)]

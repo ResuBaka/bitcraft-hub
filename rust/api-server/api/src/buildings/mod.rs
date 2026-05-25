@@ -154,37 +154,7 @@ pub(crate) async fn find_building_states(
             state
                 .building_desc
                 .iter()
-                .filter(|building_desc| {
-                    if building_desc.name.contains("Wall") {
-                        return false;
-                    }
-
-                    if building_desc.name.contains("Fence") {
-                        return false;
-                    }
-
-                    if building_desc.name.contains("Farming Field") {
-                        return false;
-                    }
-
-                    if building_desc.name.contains("Outdoor Garden Plot") {
-                        return false;
-                    }
-
-                    if building_desc.name.contains("Outdoor Planterbox") {
-                        return false;
-                    }
-
-                    if building_desc.name.contains("Outdoor Planter Boxes") {
-                        return false;
-                    }
-
-                    if building_desc.name.contains(" Gate") {
-                        return false;
-                    }
-
-                    true
-                })
+                .filter(|building_desc| building_desc.can_be_interactive_with())
                 .map(|building_desc| building_desc.clone().id)
                 .collect::<Vec<_>>(),
         );

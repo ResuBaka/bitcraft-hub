@@ -639,7 +639,7 @@ name = "bitcraft-hub-api"
 version = "0.1.0"
 dependencies = [
  "api",
- "mimalloc",
+ "mimalloc-safe",
  "tokio",
 ]
 
@@ -955,6 +955,15 @@ name = "clap_lex"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
+
+[[package]]
+name = "cmake"
+version = "0.1.54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "colorchoice"
@@ -2368,12 +2377,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
-name = "libmimalloc-sys"
-version = "0.1.47"
+name = "libmimalloc-sys2"
+version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d1eacfa31c33ec25e873c136ba5669f00f9866d0688bea7be4d3f7e43067df6"
+checksum = "1c601df46d9245293af01d2e82529bef06fd46d7428cd079ba2ab73fe452e9fb"
 dependencies = [
  "cc",
+ "cmake",
+ "libc",
 ]
 
 [[package]]
@@ -2568,12 +2579,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "mimalloc"
-version = "0.1.50"
+name = "mimalloc-safe"
+version = "0.1.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3627c4272df786b9260cabaa46aec1d59c93ede723d4c3ef646c503816b0640"
+checksum = "339faed83010f7e29846491de7db305c2624384271776cb27e08c9e44ee692c0"
 dependencies = [
- "libmimalloc-sys",
+ "libmimalloc-sys2",
 ]
 
 [[package]]

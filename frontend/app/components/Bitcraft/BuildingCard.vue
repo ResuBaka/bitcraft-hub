@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
-import type { BuildingDescRow } from "~/modules/bitcraft/gamestate/buildingDesc";
+import type { ApiResponse } from "~/types/ApiResponse";
 
 const imageErrored = ref(false);
 
 const { building } = defineProps<{
-  building: BuildingDescRow;
+  building: ApiResponse;
 }>();
 
 const iconUrl = computed(() => {
@@ -60,6 +60,12 @@ const tier = computed(() => building.functions[0]?.level ?? "-");
         <span class="font-semibold text-gray-700 dark:text-gray-300">Description</span>
         <span class="max-w-[70%] text-right text-gray-600 dark:text-gray-400">
           {{ building.description || "-" }}
+        </span>
+      </div>
+      <div class="flex items-start justify-between gap-3">
+        <span class="font-semibold text-gray-700 dark:text-gray-300">Functions</span>
+        <span class="max-w-[70%] text-right text-gray-600 dark:text-gray-400">
+          {{ building.functions?.map((a) => a.function_type).join(", ") || "-" }}
         </span>
       </div>
     </div>

@@ -57,6 +57,7 @@ use axum::{
     routing::{get, get_service},
 };
 use clap::{Parser, Subcommand};
+use entity::player_username_state;
 use futures::{SinkExt, StreamExt};
 use kanal::AsyncSender;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
@@ -292,6 +293,8 @@ struct ServerInstance {
 // connected client / user, for which we will spawn two independent tasks (for
 // receiving / sending chat messages).
 async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryWebsocketOptions) {
+    use sea_orm::{ColumnTrait, QueryFilter};
+
     // By splitting, we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 
@@ -373,10 +376,42 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
                             if let Some((topic, id)) = possible_topic {
                                 let id = id.parse::<i64>().unwrap();
+
                                 inner_state
                                     .clients_state
                                     .add_topic_to_client(&inner_id, &topic.to_string(), Some(id))
                                     .await;
+
+                                match topic {
+                                    "player_username" => {
+                                        tracing::warn!(
+                                            topic = topic,
+                                            id = id,
+                                            "Hello find player_username"
+                                        );
+                                        let player_username = player_username_state::Entity::find()
+                                            .filter(player_username_state::Column::EntityId.eq(id))
+                                            .one(&state.conn)
+                                            .await
+                                            .expect("Cannot find player_username");
+
+                                        if let Some(player_username) = player_username {
+                                            let _ = inner_state.tx.send(
+                                                WebSocketMessages::PlayerUsername {
+                                                    username: player_username.username,
+                                                    entity_id: id,
+                                                },
+                                            );
+                                        } else {
+                                            tracing::debug!(
+                                                topic = topic,
+                                                id = id,
+                                                "Could not find player_username"
+                                            );
+                                        }
+                                    }
+                                    _ => {}
+                                }
                             } else {
                                 inner_state
                                     .clients_state
