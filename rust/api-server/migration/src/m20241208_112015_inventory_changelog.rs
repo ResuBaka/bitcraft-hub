@@ -96,16 +96,13 @@ impl MigrationTrait for Migration {
             manager.get_database_backend(),
             format!(
                 "SELECT create_hypertable('{}', by_range('{}'));",
-                match InventoryChangelog::Table.into_table_ref() {
-                    TableRef::Table(table_ref) => table_ref.to_string(),
-                    _ => panic!("Unexpected table ref type"),
-                },
+                InventoryChangelog::Table.to_string(),
                 InventoryChangelog::Timestamp.to_string(),
             )
             .as_str(),
         );
 
-        db.execute(stmt).await?;
+        db.execute_raw(stmt).await?;
 
         Ok(())
     }

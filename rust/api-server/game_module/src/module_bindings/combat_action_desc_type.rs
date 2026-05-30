@@ -161,7 +161,6 @@ impl __sdk::__query_builder::HasCols for CombatActionDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct CombatActionDescIxCols {
     pub id: __sdk::__query_builder::IxCol<CombatActionDesc, i32>,
-    pub learned_by_player: __sdk::__query_builder::IxCol<CombatActionDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for CombatActionDesc {
@@ -169,7 +168,6 @@ impl __sdk::__query_builder::HasIxCols for CombatActionDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         CombatActionDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            learned_by_player: __sdk::__query_builder::IxCol::new(table_name, "learned_by_player"),
         }
     }
 }

@@ -47,18 +47,15 @@ impl MigrationTrait for Migration {
             manager.get_database_backend(),
             format!(
                 "SELECT create_hypertable('{}', by_range('{}'));",
-                match RawEventData::Table.into_table_ref() {
-                    TableRef::Table(table_ref) => table_ref.to_string(),
-                    _ => panic!("Unexpected table ref type"),
-                },
+                RawEventData::Table.to_string(),
                 RawEventData::Timestamp.to_string(),
             )
             .as_str(),
         );
 
-        db.execute(stmt).await?;
+        db.execute_raw(stmt).await?;
 
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             manager.get_database_backend(),
             format!(
                 r#"
@@ -67,26 +64,20 @@ impl MigrationTrait for Migration {
                       timescaledb.compress_segmentby = '{} , {}'
                     );
                 "#,
-                match RawEventData::Table.into_table_ref() {
-                    TableRef::Table(table_ref) => table_ref.to_string(),
-                    _ => panic!("Unexpected table ref type"),
-                },
+                RawEventData::Table.to_string(),
                 RawEventData::ReducerName.to_string(),
                 RawEventData::ReducerId.to_string(),
             ),
         ))
         .await?;
 
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             manager.get_database_backend(),
             format!(
                 r#"
                     SELECT add_compression_policy('{}', INTERVAL '1 days');
                 "#,
-                match RawEventData::Table.into_table_ref() {
-                    TableRef::Table(table_ref) => table_ref.to_string(),
-                    _ => panic!("Unexpected table ref type"),
-                },
+                RawEventData::Table.to_string(),
             ),
         ))
         .await?;

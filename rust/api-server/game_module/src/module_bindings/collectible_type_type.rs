@@ -53,6 +53,8 @@ pub enum CollectibleType {
     HousingWalls,
 
     HousingFloor,
+
+    DeployableAppearanceOverride,
 }
 
 impl __sdk::InModule for CollectibleType {

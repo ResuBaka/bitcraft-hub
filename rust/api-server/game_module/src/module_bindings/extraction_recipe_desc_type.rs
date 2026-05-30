@@ -143,6 +143,8 @@ impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct ExtractionRecipeDescIxCols {
     pub id: __sdk::__query_builder::IxCol<ExtractionRecipeDesc, i32>,
+    pub resource_id: __sdk::__query_builder::IxCol<ExtractionRecipeDesc, i32>,
+    pub show_in_progression: __sdk::__query_builder::IxCol<ExtractionRecipeDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ExtractionRecipeDesc {
@@ -150,6 +152,11 @@ impl __sdk::__query_builder::HasIxCols for ExtractionRecipeDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ExtractionRecipeDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            resource_id: __sdk::__query_builder::IxCol::new(table_name, "resource_id"),
+            show_in_progression: __sdk::__query_builder::IxCol::new(
+                table_name,
+                "show_in_progression",
+            ),
         }
     }
 }

@@ -76,7 +76,7 @@ impl enemy_despawn_from_mob_monitor_batch for super::RemoteReducers {
                 let super::ReducerEventContext {
                     event: __sdk::ReducerEvent {
                         reducer: super::Reducer::EnemyDespawnFromMobMonitorBatch {
-                            enemy_entity_ids, 
+                            enemy_entity_ids,
                         },
                         ..
                     },

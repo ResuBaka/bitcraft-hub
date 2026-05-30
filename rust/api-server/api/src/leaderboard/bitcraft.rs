@@ -6,7 +6,7 @@ use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, IntoActiveModel, QueryFilter};
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::time::Duration;
@@ -489,12 +489,12 @@ impl ExperienceStateWorker {
                 } else {
                     new.experience_stacks
                         .iter()
-                        .find(|new_level| new_level.skill_id.eq(&es.skill_id))
+                        .find(|new_level| new_level.skill_id == es.skill_id)
                 }
             } else {
                 new.experience_stacks
                     .iter()
-                    .find(|new_level| new_level.skill_id.eq(&es.skill_id))
+                    .find(|new_level| new_level.skill_id == es.skill_id)
             };
             if let Some(new_skill) = new_skill {
                 let new_level = experience_to_level(new_skill.quantity as i64);

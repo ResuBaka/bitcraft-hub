@@ -17,6 +17,6 @@ tracing = { workspace = true }
 [dependencies.sea-orm-migration]
 workspace = true
 features = [
-    "runtime-actix-native-tls",
+    "runtime-tokio-rustls",
     "sqlx-postgres",
 ]

@@ -385,11 +385,6 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                                 #[allow(clippy::single_match)]
                                 match topic {
                                     "player_username" => {
-                                        tracing::warn!(
-                                            topic = topic,
-                                            id = id,
-                                            "Hello find player_username"
-                                        );
                                         let player_username = player_username_state::Entity::find()
                                             .filter(player_username_state::Column::EntityId.eq(id))
                                             .one(&state.conn)

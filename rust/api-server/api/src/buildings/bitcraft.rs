@@ -3,7 +3,7 @@ use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::building_state::ActiveModel;
 use game_module::module_bindings::{BuildingDesc, BuildingNicknameState, BuildingState};
 use migration::{OnConflict, sea_query};
-use sea_orm::{ColumnTrait, DbErr, EntityTrait, InsertResult, IntoActiveModel, QueryFilter};
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, InsertManyResult, IntoActiveModel, QueryFilter};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -209,7 +209,7 @@ async fn insert_multiple_building_state(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::building_state::ActiveModel>,
-) -> Result<InsertResult<ActiveModel>, DbErr> {
+) -> Result<InsertManyResult<ActiveModel>, DbErr> {
     let insert = ::entity::building_state::Entity::insert_many(messages.clone())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)

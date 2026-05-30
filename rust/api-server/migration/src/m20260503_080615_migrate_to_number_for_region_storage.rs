@@ -64,7 +64,7 @@ async fn migrate_region_to_smallint(
 
     manager
         .get_connection()
-        .execute(Statement::from_string(
+        .execute_raw(Statement::from_string(
             manager.get_database_backend(),
             format!(
                 r#"
@@ -77,7 +77,7 @@ async fn migrate_region_to_smallint(
 
     manager
         .get_connection()
-        .execute(Statement::from_string(
+        .execute_raw(Statement::from_string(
             manager.get_database_backend(),
             format!(
                 r#"
@@ -106,7 +106,7 @@ async fn migrate_region_to_text(
 
     manager
         .get_connection()
-        .execute(Statement::from_string(
+        .execute_raw(Statement::from_string(
             manager.get_database_backend(),
             format!(
                 r#"
@@ -119,7 +119,7 @@ async fn migrate_region_to_text(
 
     manager
         .get_connection()
-        .execute(Statement::from_string(
+        .execute_raw(Statement::from_string(
             manager.get_database_backend(),
             format!(
                 r#"

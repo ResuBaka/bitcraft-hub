@@ -71,6 +71,10 @@ pub enum PlayerActionType {
     AbilityCustom,
 
     Prospect,
+
+    PlacePlaceable,
+
+    InteractPlaceable,
 }
 
 impl __sdk::InModule for PlayerActionType {

@@ -83,6 +83,7 @@ pub mod admin_gated_feature_remove_reducer;
 pub mod admin_grant_all_claim_supplies_reducer;
 pub mod admin_grant_collectibles_reducer;
 pub mod admin_migrate_action_state_reducer;
+pub mod admin_migrate_deployable_state_v_2_reducer;
 pub mod admin_migrate_trade_orders_reducer;
 pub mod admin_modify_chat_message_reducer;
 pub mod admin_patch_housing_costs_reducer;
@@ -429,6 +430,8 @@ pub mod deconstruction_recipe_desc_type;
 pub mod delete_all_npcs_reducer;
 pub mod delete_developer_identity_reducer;
 pub mod delete_empire_msg_type;
+pub mod deployable_appearance_override_desc_table;
+pub mod deployable_appearance_override_desc_type;
 pub mod deployable_collectible_state_table;
 pub mod deployable_collectible_state_type;
 pub mod deployable_deploy_reducer;
@@ -448,6 +451,8 @@ pub mod deployable_move_off_claim_reducer;
 pub mod deployable_move_reducer;
 pub mod deployable_state_table;
 pub mod deployable_state_type;
+pub mod deployable_state_v_2_table;
+pub mod deployable_state_v_2_type;
 pub mod deployable_store_from_collectible_id_reducer;
 pub mod deployable_store_reducer;
 pub mod deployable_store_request_type;
@@ -750,6 +755,7 @@ pub mod import_construction_recipe_desc_reducer;
 pub mod import_contribution_loot_desc_reducer;
 pub mod import_crafting_recipe_desc_reducer;
 pub mod import_deconstruction_recipe_desc_reducer;
+pub mod import_deployable_appearance_override_desc_reducer;
 pub mod import_deployable_desc_reducer;
 pub mod import_deployable_state_reducer;
 pub mod import_dimension_description_state_reducer;
@@ -834,6 +840,11 @@ pub mod import_pathfinding_desc_reducer;
 pub mod import_paved_tile_state_reducer;
 pub mod import_paving_tile_desc_reducer;
 pub mod import_pillar_shaping_desc_reducer;
+pub mod import_placeable_desc_reducer;
+pub mod import_placeable_group_desc_reducer;
+pub mod import_placeable_growth_desc_reducer;
+pub mod import_placeable_interaction_desc_reducer;
+pub mod import_placeable_placement_desc_reducer;
 pub mod import_player_action_desc_reducer;
 pub mod import_player_action_state_reducer;
 pub mod import_player_housing_desc_reducer;
@@ -900,6 +911,8 @@ pub mod inter_module_message_table;
 pub mod inter_module_message_type;
 pub mod inter_module_message_v_2_table;
 pub mod inter_module_message_v_2_type;
+pub mod inter_module_message_v_3_table;
+pub mod inter_module_message_v_3_type;
 pub mod inter_module_response_message_counter_table;
 pub mod inter_module_response_message_counter_type;
 pub mod inter_module_table_updates_type;
@@ -1030,6 +1043,7 @@ pub mod marketplace_state_table;
 pub mod marketplace_state_type;
 pub mod message_contents_type;
 pub mod message_contents_v_2_type;
+pub mod message_contents_v_3_type;
 pub mod migrate_auto_attacks_reducer;
 pub mod migrate_character_stats_reducer;
 pub mod migrate_claim_tech_reducer;
@@ -1069,6 +1083,7 @@ pub mod offset_coordinates_large_message_type;
 pub mod offset_coordinates_small_message_type;
 pub mod on_claim_members_changed_msg_type;
 pub mod on_deployable_recovered_msg_type;
+pub mod on_deployable_recovered_msg_v_2_type;
 pub mod on_durability_zero_reducer;
 pub mod on_durability_zero_timer_table;
 pub mod on_durability_zero_timer_type;
@@ -1136,6 +1151,23 @@ pub mod pillar_shaping_recipe_discovery_item_desc_table;
 pub mod pillar_shaping_recipe_discovery_knowledge_desc_table;
 pub mod pillar_shaping_state_table;
 pub mod pillar_shaping_state_type;
+pub mod placeable_desc_table;
+pub mod placeable_desc_type;
+pub mod placeable_group_desc_table;
+pub mod placeable_group_desc_type;
+pub mod placeable_growth_desc_table;
+pub mod placeable_growth_desc_type;
+pub mod placeable_growth_outcome_type;
+pub mod placeable_interact_reducer;
+pub mod placeable_interact_start_reducer;
+pub mod placeable_interaction_desc_table;
+pub mod placeable_interaction_desc_type;
+pub mod placeable_place_reducer;
+pub mod placeable_place_start_reducer;
+pub mod placeable_placement_desc_table;
+pub mod placeable_placement_desc_type;
+pub mod placeable_state_table;
+pub mod placeable_state_type;
 pub mod player_achievement_claim_request_type;
 pub mod player_acquire_knowledge_from_entities_request_type;
 pub mod player_action_cancel_reducer;
@@ -1252,6 +1284,8 @@ pub mod player_paving_place_tile_request_type;
 pub mod player_permission_edit_request_type;
 pub mod player_pillar_shaping_destroy_request_type;
 pub mod player_pillar_shaping_place_request_type;
+pub mod player_placeable_interact_request_type;
+pub mod player_placeable_place_request_type;
 pub mod player_pocket_swap_contents_request_type;
 pub mod player_portal_enter_request_type;
 pub mod player_post_order_request_type;
@@ -1541,6 +1575,7 @@ pub mod stage_construction_recipe_desc_reducer;
 pub mod stage_contribution_loot_desc_reducer;
 pub mod stage_crafting_recipe_desc_reducer;
 pub mod stage_deconstruction_recipe_desc_reducer;
+pub mod stage_deployable_appearance_override_desc_reducer;
 pub mod stage_deployable_desc_reducer;
 pub mod stage_distant_visible_entity_desc_reducer;
 pub mod stage_elevator_desc_reducer;
@@ -1582,6 +1617,11 @@ pub mod stage_parameters_desc_reducer;
 pub mod stage_pathfinding_desc_reducer;
 pub mod stage_paving_tile_desc_reducer;
 pub mod stage_pillar_shaping_desc_reducer;
+pub mod stage_placeable_desc_reducer;
+pub mod stage_placeable_group_desc_reducer;
+pub mod stage_placeable_growth_desc_reducer;
+pub mod stage_placeable_interaction_desc_reducer;
+pub mod stage_placeable_placement_desc_reducer;
 pub mod stage_player_action_desc_reducer;
 pub mod stage_player_housing_desc_reducer;
 pub mod stage_premium_item_desc_reducer;
@@ -1641,6 +1681,7 @@ pub mod staged_construction_recipe_desc_table;
 pub mod staged_contribution_loot_desc_table;
 pub mod staged_crafting_recipe_desc_table;
 pub mod staged_deconstruction_recipe_desc_table;
+pub mod staged_deployable_appearance_override_desc_table;
 pub mod staged_deployable_desc_table;
 pub mod staged_distant_visible_entity_desc_table;
 pub mod staged_elevator_desc_table;
@@ -1682,6 +1723,11 @@ pub mod staged_parameters_desc_table;
 pub mod staged_pathfinding_desc_table;
 pub mod staged_paving_tile_desc_table;
 pub mod staged_pillar_shaping_desc_table;
+pub mod staged_placeable_desc_table;
+pub mod staged_placeable_group_desc_table;
+pub mod staged_placeable_growth_desc_table;
+pub mod staged_placeable_interaction_desc_table;
+pub mod staged_placeable_placement_desc_table;
 pub mod staged_player_action_desc_table;
 pub mod staged_player_housing_desc_table;
 pub mod staged_premium_item_desc_table;
@@ -1792,6 +1838,7 @@ pub mod transfer_player_delayed_reducer;
 pub mod transfer_player_housing_msg_type;
 pub mod transfer_player_msg_type;
 pub mod transfer_player_msg_v_2_type;
+pub mod transfer_player_msg_v_3_type;
 pub mod transfer_player_timer_table;
 pub mod transfer_player_timer_type;
 pub mod traveler_task_agent_loop_reducer;
@@ -2096,6 +2143,10 @@ pub use admin_grant_collectibles_reducer::{
 pub use admin_migrate_action_state_reducer::{
     AdminMigrateActionStateCallbackId, admin_migrate_action_state,
     set_flags_for_admin_migrate_action_state,
+};
+pub use admin_migrate_deployable_state_v_2_reducer::{
+    AdminMigrateDeployableStateV2CallbackId, admin_migrate_deployable_state_v_2,
+    set_flags_for_admin_migrate_deployable_state_v_2,
 };
 pub use admin_migrate_trade_orders_reducer::{
     AdminMigrateTradeOrdersCallbackId, admin_migrate_trade_orders,
@@ -2803,6 +2854,8 @@ pub use delete_developer_identity_reducer::{
     set_flags_for_delete_developer_identity,
 };
 pub use delete_empire_msg_type::DeleteEmpireMsg;
+pub use deployable_appearance_override_desc_table::*;
+pub use deployable_appearance_override_desc_type::DeployableAppearanceOverrideDesc;
 pub use deployable_collectible_state_table::*;
 pub use deployable_collectible_state_type::DeployableCollectibleState;
 pub use deployable_deploy_reducer::{
@@ -2846,6 +2899,8 @@ pub use deployable_move_reducer::{
 };
 pub use deployable_state_table::*;
 pub use deployable_state_type::DeployableState;
+pub use deployable_state_v_2_table::*;
+pub use deployable_state_v_2_type::DeployableStateV2;
 pub use deployable_store_from_collectible_id_reducer::{
     DeployableStoreFromCollectibleIdCallbackId, deployable_store_from_collectible_id,
     set_flags_for_deployable_store_from_collectible_id,
@@ -3409,6 +3464,10 @@ pub use import_deconstruction_recipe_desc_reducer::{
     ImportDeconstructionRecipeDescCallbackId, import_deconstruction_recipe_desc,
     set_flags_for_import_deconstruction_recipe_desc,
 };
+pub use import_deployable_appearance_override_desc_reducer::{
+    ImportDeployableAppearanceOverrideDescCallbackId, import_deployable_appearance_override_desc,
+    set_flags_for_import_deployable_appearance_override_desc,
+};
 pub use import_deployable_desc_reducer::{
     ImportDeployableDescCallbackId, import_deployable_desc, set_flags_for_import_deployable_desc,
 };
@@ -3710,6 +3769,25 @@ pub use import_pillar_shaping_desc_reducer::{
     ImportPillarShapingDescCallbackId, import_pillar_shaping_desc,
     set_flags_for_import_pillar_shaping_desc,
 };
+pub use import_placeable_desc_reducer::{
+    ImportPlaceableDescCallbackId, import_placeable_desc, set_flags_for_import_placeable_desc,
+};
+pub use import_placeable_group_desc_reducer::{
+    ImportPlaceableGroupDescCallbackId, import_placeable_group_desc,
+    set_flags_for_import_placeable_group_desc,
+};
+pub use import_placeable_growth_desc_reducer::{
+    ImportPlaceableGrowthDescCallbackId, import_placeable_growth_desc,
+    set_flags_for_import_placeable_growth_desc,
+};
+pub use import_placeable_interaction_desc_reducer::{
+    ImportPlaceableInteractionDescCallbackId, import_placeable_interaction_desc,
+    set_flags_for_import_placeable_interaction_desc,
+};
+pub use import_placeable_placement_desc_reducer::{
+    ImportPlaceablePlacementDescCallbackId, import_placeable_placement_desc,
+    set_flags_for_import_placeable_placement_desc,
+};
 pub use import_player_action_desc_reducer::{
     ImportPlayerActionDescCallbackId, import_player_action_desc,
     set_flags_for_import_player_action_desc,
@@ -3920,6 +3998,8 @@ pub use inter_module_message_table::*;
 pub use inter_module_message_type::InterModuleMessage;
 pub use inter_module_message_v_2_table::*;
 pub use inter_module_message_v_2_type::InterModuleMessageV2;
+pub use inter_module_message_v_3_table::*;
+pub use inter_module_message_v_3_type::InterModuleMessageV3;
 pub use inter_module_response_message_counter_table::*;
 pub use inter_module_response_message_counter_type::InterModuleResponseMessageCounter;
 pub use inter_module_table_updates_type::InterModuleTableUpdates;
@@ -4080,6 +4160,7 @@ pub use marketplace_state_table::*;
 pub use marketplace_state_type::MarketplaceState;
 pub use message_contents_type::MessageContents;
 pub use message_contents_v_2_type::MessageContentsV2;
+pub use message_contents_v_3_type::MessageContentsV3;
 pub use migrate_auto_attacks_reducer::{
     MigrateAutoAttacksCallbackId, migrate_auto_attacks, set_flags_for_migrate_auto_attacks,
 };
@@ -4140,6 +4221,7 @@ pub use offset_coordinates_large_message_type::OffsetCoordinatesLargeMessage;
 pub use offset_coordinates_small_message_type::OffsetCoordinatesSmallMessage;
 pub use on_claim_members_changed_msg_type::OnClaimMembersChangedMsg;
 pub use on_deployable_recovered_msg_type::OnDeployableRecoveredMsg;
+pub use on_deployable_recovered_msg_v_2_type::OnDeployableRecoveredMsgV2;
 pub use on_durability_zero_reducer::{
     OnDurabilityZeroCallbackId, on_durability_zero, set_flags_for_on_durability_zero,
 };
@@ -4257,6 +4339,32 @@ pub use pillar_shaping_recipe_discovery_item_desc_table::*;
 pub use pillar_shaping_recipe_discovery_knowledge_desc_table::*;
 pub use pillar_shaping_state_table::*;
 pub use pillar_shaping_state_type::PillarShapingState;
+pub use placeable_desc_table::*;
+pub use placeable_desc_type::PlaceableDesc;
+pub use placeable_group_desc_table::*;
+pub use placeable_group_desc_type::PlaceableGroupDesc;
+pub use placeable_growth_desc_table::*;
+pub use placeable_growth_desc_type::PlaceableGrowthDesc;
+pub use placeable_growth_outcome_type::PlaceableGrowthOutcome;
+pub use placeable_interact_reducer::{
+    PlaceableInteractCallbackId, placeable_interact, set_flags_for_placeable_interact,
+};
+pub use placeable_interact_start_reducer::{
+    PlaceableInteractStartCallbackId, placeable_interact_start,
+    set_flags_for_placeable_interact_start,
+};
+pub use placeable_interaction_desc_table::*;
+pub use placeable_interaction_desc_type::PlaceableInteractionDesc;
+pub use placeable_place_reducer::{
+    PlaceablePlaceCallbackId, placeable_place, set_flags_for_placeable_place,
+};
+pub use placeable_place_start_reducer::{
+    PlaceablePlaceStartCallbackId, placeable_place_start, set_flags_for_placeable_place_start,
+};
+pub use placeable_placement_desc_table::*;
+pub use placeable_placement_desc_type::PlaceablePlacementDesc;
+pub use placeable_state_table::*;
+pub use placeable_state_type::PlaceableState;
 pub use player_achievement_claim_request_type::PlayerAchievementClaimRequest;
 pub use player_acquire_knowledge_from_entities_request_type::PlayerAcquireKnowledgeFromEntitiesRequest;
 pub use player_action_cancel_reducer::{
@@ -4415,6 +4523,8 @@ pub use player_paving_place_tile_request_type::PlayerPavingPlaceTileRequest;
 pub use player_permission_edit_request_type::PlayerPermissionEditRequest;
 pub use player_pillar_shaping_destroy_request_type::PlayerPillarShapingDestroyRequest;
 pub use player_pillar_shaping_place_request_type::PlayerPillarShapingPlaceRequest;
+pub use player_placeable_interact_request_type::PlayerPlaceableInteractRequest;
+pub use player_placeable_place_request_type::PlayerPlaceablePlaceRequest;
 pub use player_pocket_swap_contents_request_type::PlayerPocketSwapContentsRequest;
 pub use player_portal_enter_request_type::PlayerPortalEnterRequest;
 pub use player_post_order_request_type::PlayerPostOrderRequest;
@@ -4905,6 +5015,11 @@ pub use stage_deconstruction_recipe_desc_reducer::{
     StageDeconstructionRecipeDescCallbackId, set_flags_for_stage_deconstruction_recipe_desc,
     stage_deconstruction_recipe_desc,
 };
+pub use stage_deployable_appearance_override_desc_reducer::{
+    StageDeployableAppearanceOverrideDescCallbackId,
+    set_flags_for_stage_deployable_appearance_override_desc,
+    stage_deployable_appearance_override_desc,
+};
 pub use stage_deployable_desc_reducer::{
     StageDeployableDescCallbackId, set_flags_for_stage_deployable_desc, stage_deployable_desc,
 };
@@ -5051,6 +5166,25 @@ pub use stage_pillar_shaping_desc_reducer::{
     StagePillarShapingDescCallbackId, set_flags_for_stage_pillar_shaping_desc,
     stage_pillar_shaping_desc,
 };
+pub use stage_placeable_desc_reducer::{
+    StagePlaceableDescCallbackId, set_flags_for_stage_placeable_desc, stage_placeable_desc,
+};
+pub use stage_placeable_group_desc_reducer::{
+    StagePlaceableGroupDescCallbackId, set_flags_for_stage_placeable_group_desc,
+    stage_placeable_group_desc,
+};
+pub use stage_placeable_growth_desc_reducer::{
+    StagePlaceableGrowthDescCallbackId, set_flags_for_stage_placeable_growth_desc,
+    stage_placeable_growth_desc,
+};
+pub use stage_placeable_interaction_desc_reducer::{
+    StagePlaceableInteractionDescCallbackId, set_flags_for_stage_placeable_interaction_desc,
+    stage_placeable_interaction_desc,
+};
+pub use stage_placeable_placement_desc_reducer::{
+    StagePlaceablePlacementDescCallbackId, set_flags_for_stage_placeable_placement_desc,
+    stage_placeable_placement_desc,
+};
 pub use stage_player_action_desc_reducer::{
     StagePlayerActionDescCallbackId, set_flags_for_stage_player_action_desc,
     stage_player_action_desc,
@@ -5185,6 +5319,7 @@ pub use staged_construction_recipe_desc_table::*;
 pub use staged_contribution_loot_desc_table::*;
 pub use staged_crafting_recipe_desc_table::*;
 pub use staged_deconstruction_recipe_desc_table::*;
+pub use staged_deployable_appearance_override_desc_table::*;
 pub use staged_deployable_desc_table::*;
 pub use staged_distant_visible_entity_desc_table::*;
 pub use staged_elevator_desc_table::*;
@@ -5226,6 +5361,11 @@ pub use staged_parameters_desc_table::*;
 pub use staged_pathfinding_desc_table::*;
 pub use staged_paving_tile_desc_table::*;
 pub use staged_pillar_shaping_desc_table::*;
+pub use staged_placeable_desc_table::*;
+pub use staged_placeable_group_desc_table::*;
+pub use staged_placeable_growth_desc_table::*;
+pub use staged_placeable_interaction_desc_table::*;
+pub use staged_placeable_placement_desc_table::*;
 pub use staged_player_action_desc_table::*;
 pub use staged_player_housing_desc_table::*;
 pub use staged_premium_item_desc_table::*;
@@ -5382,6 +5522,7 @@ pub use transfer_player_delayed_reducer::{
 pub use transfer_player_housing_msg_type::TransferPlayerHousingMsg;
 pub use transfer_player_msg_type::TransferPlayerMsg;
 pub use transfer_player_msg_v_2_type::TransferPlayerMsgV2;
+pub use transfer_player_msg_v_3_type::TransferPlayerMsgV3;
 pub use transfer_player_timer_table::*;
 pub use transfer_player_timer_type::TransferPlayerTimer;
 pub use traveler_task_agent_loop_reducer::{
@@ -5656,6 +5797,7 @@ pub enum Reducer {
         collectibles: Vec<i32>,
     },
     AdminMigrateActionState,
+    AdminMigrateDeployableStateV2,
     AdminMigrateTradeOrders,
     AdminModifyChatMessage {
         entity_id: u64,
@@ -6505,6 +6647,9 @@ pub enum Reducer {
     ImportDeconstructionRecipeDesc {
         records: Vec<DeconstructionRecipeDesc>,
     },
+    ImportDeployableAppearanceOverrideDesc {
+        records: Vec<DeployableAppearanceOverrideDesc>,
+    },
     ImportDeployableDesc {
         records: Vec<DeployableDesc>,
     },
@@ -6756,6 +6901,21 @@ pub enum Reducer {
     },
     ImportPillarShapingDesc {
         records: Vec<PillarShapingDesc>,
+    },
+    ImportPlaceableDesc {
+        records: Vec<PlaceableDesc>,
+    },
+    ImportPlaceableGroupDesc {
+        records: Vec<PlaceableGroupDesc>,
+    },
+    ImportPlaceableGrowthDesc {
+        records: Vec<PlaceableGrowthDesc>,
+    },
+    ImportPlaceableInteractionDesc {
+        records: Vec<PlaceableInteractionDesc>,
+    },
+    ImportPlaceablePlacementDesc {
+        records: Vec<PlaceablePlacementDesc>,
     },
     ImportPlayerActionDesc {
         records: Vec<PlayerActionDesc>,
@@ -7075,6 +7235,18 @@ pub enum Reducer {
     PillarShapingPlacePillarStart {
         request: PlayerPillarShapingPlaceRequest,
     },
+    PlaceableInteract {
+        request: PlayerPlaceableInteractRequest,
+    },
+    PlaceableInteractStart {
+        request: PlayerPlaceableInteractRequest,
+    },
+    PlaceablePlace {
+        request: PlayerPlaceablePlaceRequest,
+    },
+    PlaceablePlaceStart {
+        request: PlayerPlaceablePlaceRequest,
+    },
     PlayerActionCancel {
         client_cancel: bool,
     },
@@ -7184,7 +7356,7 @@ pub enum Reducer {
     },
     ProcessInterModuleMessage {
         sender: u8,
-        message: InterModuleMessageV2,
+        message: InterModuleMessageV3,
     },
     ProjectSiteAddMaterials {
         request: PlayerProjectSiteAddMaterialsRequest,
@@ -7397,6 +7569,9 @@ pub enum Reducer {
     StageDeconstructionRecipeDesc {
         records: Vec<DeconstructionRecipeDesc>,
     },
+    StageDeployableAppearanceOverrideDesc {
+        records: Vec<DeployableAppearanceOverrideDesc>,
+    },
     StageDeployableDesc {
         records: Vec<DeployableDesc>,
     },
@@ -7519,6 +7694,21 @@ pub enum Reducer {
     },
     StagePillarShapingDesc {
         records: Vec<PillarShapingDesc>,
+    },
+    StagePlaceableDesc {
+        records: Vec<PlaceableDesc>,
+    },
+    StagePlaceableGroupDesc {
+        records: Vec<PlaceableGroupDesc>,
+    },
+    StagePlaceableGrowthDesc {
+        records: Vec<PlaceableGrowthDesc>,
+    },
+    StagePlaceableInteractionDesc {
+        records: Vec<PlaceableInteractionDesc>,
+    },
+    StagePlaceablePlacementDesc {
+        records: Vec<PlaceablePlacementDesc>,
     },
     StagePlayerActionDesc {
         records: Vec<PlayerActionDesc>,
@@ -7791,6 +7981,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::AdminGrantAllClaimSupplies { .. } => "admin_grant_all_claim_supplies",
             Reducer::AdminGrantCollectibles { .. } => "admin_grant_collectibles",
             Reducer::AdminMigrateActionState => "admin_migrate_action_state",
+            Reducer::AdminMigrateDeployableStateV2 => "admin_migrate_deployable_state_v2",
             Reducer::AdminMigrateTradeOrders => "admin_migrate_trade_orders",
             Reducer::AdminModifyChatMessage { .. } => "admin_modify_chat_message",
             Reducer::AdminPatchHousingCosts => "admin_patch_housing_costs",
@@ -8087,6 +8278,9 @@ impl __sdk::Reducer for Reducer {
             Reducer::ImportContributionLootDesc { .. } => "import_contribution_loot_desc",
             Reducer::ImportCraftingRecipeDesc { .. } => "import_crafting_recipe_desc",
             Reducer::ImportDeconstructionRecipeDesc { .. } => "import_deconstruction_recipe_desc",
+            Reducer::ImportDeployableAppearanceOverrideDesc { .. } => {
+                "import_deployable_appearance_override_desc"
+            }
             Reducer::ImportDeployableDesc { .. } => "import_deployable_desc",
             Reducer::ImportDeployableState { .. } => "import_deployable_state",
             Reducer::ImportDimensionDescriptionState { .. } => "import_dimension_description_state",
@@ -8189,6 +8383,11 @@ impl __sdk::Reducer for Reducer {
             Reducer::ImportPavedTileState { .. } => "import_paved_tile_state",
             Reducer::ImportPavingTileDesc { .. } => "import_paving_tile_desc",
             Reducer::ImportPillarShapingDesc { .. } => "import_pillar_shaping_desc",
+            Reducer::ImportPlaceableDesc { .. } => "import_placeable_desc",
+            Reducer::ImportPlaceableGroupDesc { .. } => "import_placeable_group_desc",
+            Reducer::ImportPlaceableGrowthDesc { .. } => "import_placeable_growth_desc",
+            Reducer::ImportPlaceableInteractionDesc { .. } => "import_placeable_interaction_desc",
+            Reducer::ImportPlaceablePlacementDesc { .. } => "import_placeable_placement_desc",
             Reducer::ImportPlayerActionDesc { .. } => "import_player_action_desc",
             Reducer::ImportPlayerActionState { .. } => "import_player_action_state",
             Reducer::ImportPlayerHousingDesc { .. } => "import_player_housing_desc",
@@ -8300,6 +8499,10 @@ impl __sdk::Reducer for Reducer {
             Reducer::PillarShapingDestroyStart { .. } => "pillar_shaping_destroy_start",
             Reducer::PillarShapingPlacePillar { .. } => "pillar_shaping_place_pillar",
             Reducer::PillarShapingPlacePillarStart { .. } => "pillar_shaping_place_pillar_start",
+            Reducer::PlaceableInteract { .. } => "placeable_interact",
+            Reducer::PlaceableInteractStart { .. } => "placeable_interact_start",
+            Reducer::PlaceablePlace { .. } => "placeable_place",
+            Reducer::PlaceablePlaceStart { .. } => "placeable_place_start",
             Reducer::PlayerActionCancel { .. } => "player_action_cancel",
             Reducer::PlayerCancelRegionTransfer => "player_cancel_region_transfer",
             Reducer::PlayerClearActionState { .. } => "player_clear_action_state",
@@ -8416,6 +8619,9 @@ impl __sdk::Reducer for Reducer {
             Reducer::StageContributionLootDesc { .. } => "stage_contribution_loot_desc",
             Reducer::StageCraftingRecipeDesc { .. } => "stage_crafting_recipe_desc",
             Reducer::StageDeconstructionRecipeDesc { .. } => "stage_deconstruction_recipe_desc",
+            Reducer::StageDeployableAppearanceOverrideDesc { .. } => {
+                "stage_deployable_appearance_override_desc"
+            }
             Reducer::StageDeployableDesc { .. } => "stage_deployable_desc",
             Reducer::StageDistantVisibleEntityDesc { .. } => "stage_distant_visible_entity_desc",
             Reducer::StageElevatorDesc { .. } => "stage_elevator_desc",
@@ -8461,6 +8667,11 @@ impl __sdk::Reducer for Reducer {
             Reducer::StagePathfindingDesc { .. } => "stage_pathfinding_desc",
             Reducer::StagePavingTileDesc { .. } => "stage_paving_tile_desc",
             Reducer::StagePillarShapingDesc { .. } => "stage_pillar_shaping_desc",
+            Reducer::StagePlaceableDesc { .. } => "stage_placeable_desc",
+            Reducer::StagePlaceableGroupDesc { .. } => "stage_placeable_group_desc",
+            Reducer::StagePlaceableGrowthDesc { .. } => "stage_placeable_growth_desc",
+            Reducer::StagePlaceableInteractionDesc { .. } => "stage_placeable_interaction_desc",
+            Reducer::StagePlaceablePlacementDesc { .. } => "stage_placeable_placement_desc",
             Reducer::StagePlayerActionDesc { .. } => "stage_player_action_desc",
             Reducer::StagePlayerHousingDesc { .. } => "stage_player_housing_desc",
             Reducer::StagePremiumItemDesc { .. } => "stage_premium_item_desc",
@@ -8585,6 +8796,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "admin_grant_all_claim_supplies" => Ok(__sdk::parse_reducer_args::<admin_grant_all_claim_supplies_reducer::AdminGrantAllClaimSuppliesArgs>("admin_grant_all_claim_supplies", &value.args)?.into()),
             "admin_grant_collectibles" => Ok(__sdk::parse_reducer_args::<admin_grant_collectibles_reducer::AdminGrantCollectiblesArgs>("admin_grant_collectibles", &value.args)?.into()),
             "admin_migrate_action_state" => Ok(__sdk::parse_reducer_args::<admin_migrate_action_state_reducer::AdminMigrateActionStateArgs>("admin_migrate_action_state", &value.args)?.into()),
+            "admin_migrate_deployable_state_v2" => Ok(__sdk::parse_reducer_args::<admin_migrate_deployable_state_v_2_reducer::AdminMigrateDeployableStateV2Args>("admin_migrate_deployable_state_v2", &value.args)?.into()),
             "admin_migrate_trade_orders" => Ok(__sdk::parse_reducer_args::<admin_migrate_trade_orders_reducer::AdminMigrateTradeOrdersArgs>("admin_migrate_trade_orders", &value.args)?.into()),
             "admin_modify_chat_message" => Ok(__sdk::parse_reducer_args::<admin_modify_chat_message_reducer::AdminModifyChatMessageArgs>("admin_modify_chat_message", &value.args)?.into()),
             "admin_patch_housing_costs" => Ok(__sdk::parse_reducer_args::<admin_patch_housing_costs_reducer::AdminPatchHousingCostsArgs>("admin_patch_housing_costs", &value.args)?.into()),
@@ -8861,6 +9073,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "import_contribution_loot_desc" => Ok(__sdk::parse_reducer_args::<import_contribution_loot_desc_reducer::ImportContributionLootDescArgs>("import_contribution_loot_desc", &value.args)?.into()),
             "import_crafting_recipe_desc" => Ok(__sdk::parse_reducer_args::<import_crafting_recipe_desc_reducer::ImportCraftingRecipeDescArgs>("import_crafting_recipe_desc", &value.args)?.into()),
             "import_deconstruction_recipe_desc" => Ok(__sdk::parse_reducer_args::<import_deconstruction_recipe_desc_reducer::ImportDeconstructionRecipeDescArgs>("import_deconstruction_recipe_desc", &value.args)?.into()),
+            "import_deployable_appearance_override_desc" => Ok(__sdk::parse_reducer_args::<import_deployable_appearance_override_desc_reducer::ImportDeployableAppearanceOverrideDescArgs>("import_deployable_appearance_override_desc", &value.args)?.into()),
             "import_deployable_desc" => Ok(__sdk::parse_reducer_args::<import_deployable_desc_reducer::ImportDeployableDescArgs>("import_deployable_desc", &value.args)?.into()),
             "import_deployable_state" => Ok(__sdk::parse_reducer_args::<import_deployable_state_reducer::ImportDeployableStateArgs>("import_deployable_state", &value.args)?.into()),
             "import_dimension_description_state" => Ok(__sdk::parse_reducer_args::<import_dimension_description_state_reducer::ImportDimensionDescriptionStateArgs>("import_dimension_description_state", &value.args)?.into()),
@@ -8945,6 +9158,11 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "import_paved_tile_state" => Ok(__sdk::parse_reducer_args::<import_paved_tile_state_reducer::ImportPavedTileStateArgs>("import_paved_tile_state", &value.args)?.into()),
             "import_paving_tile_desc" => Ok(__sdk::parse_reducer_args::<import_paving_tile_desc_reducer::ImportPavingTileDescArgs>("import_paving_tile_desc", &value.args)?.into()),
             "import_pillar_shaping_desc" => Ok(__sdk::parse_reducer_args::<import_pillar_shaping_desc_reducer::ImportPillarShapingDescArgs>("import_pillar_shaping_desc", &value.args)?.into()),
+            "import_placeable_desc" => Ok(__sdk::parse_reducer_args::<import_placeable_desc_reducer::ImportPlaceableDescArgs>("import_placeable_desc", &value.args)?.into()),
+            "import_placeable_group_desc" => Ok(__sdk::parse_reducer_args::<import_placeable_group_desc_reducer::ImportPlaceableGroupDescArgs>("import_placeable_group_desc", &value.args)?.into()),
+            "import_placeable_growth_desc" => Ok(__sdk::parse_reducer_args::<import_placeable_growth_desc_reducer::ImportPlaceableGrowthDescArgs>("import_placeable_growth_desc", &value.args)?.into()),
+            "import_placeable_interaction_desc" => Ok(__sdk::parse_reducer_args::<import_placeable_interaction_desc_reducer::ImportPlaceableInteractionDescArgs>("import_placeable_interaction_desc", &value.args)?.into()),
+            "import_placeable_placement_desc" => Ok(__sdk::parse_reducer_args::<import_placeable_placement_desc_reducer::ImportPlaceablePlacementDescArgs>("import_placeable_placement_desc", &value.args)?.into()),
             "import_player_action_desc" => Ok(__sdk::parse_reducer_args::<import_player_action_desc_reducer::ImportPlayerActionDescArgs>("import_player_action_desc", &value.args)?.into()),
             "import_player_action_state" => Ok(__sdk::parse_reducer_args::<import_player_action_state_reducer::ImportPlayerActionStateArgs>("import_player_action_state", &value.args)?.into()),
             "import_player_housing_desc" => Ok(__sdk::parse_reducer_args::<import_player_housing_desc_reducer::ImportPlayerHousingDescArgs>("import_player_housing_desc", &value.args)?.into()),
@@ -9052,6 +9270,10 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "pillar_shaping_destroy_start" => Ok(__sdk::parse_reducer_args::<pillar_shaping_destroy_start_reducer::PillarShapingDestroyStartArgs>("pillar_shaping_destroy_start", &value.args)?.into()),
             "pillar_shaping_place_pillar" => Ok(__sdk::parse_reducer_args::<pillar_shaping_place_pillar_reducer::PillarShapingPlacePillarArgs>("pillar_shaping_place_pillar", &value.args)?.into()),
             "pillar_shaping_place_pillar_start" => Ok(__sdk::parse_reducer_args::<pillar_shaping_place_pillar_start_reducer::PillarShapingPlacePillarStartArgs>("pillar_shaping_place_pillar_start", &value.args)?.into()),
+            "placeable_interact" => Ok(__sdk::parse_reducer_args::<placeable_interact_reducer::PlaceableInteractArgs>("placeable_interact", &value.args)?.into()),
+            "placeable_interact_start" => Ok(__sdk::parse_reducer_args::<placeable_interact_start_reducer::PlaceableInteractStartArgs>("placeable_interact_start", &value.args)?.into()),
+            "placeable_place" => Ok(__sdk::parse_reducer_args::<placeable_place_reducer::PlaceablePlaceArgs>("placeable_place", &value.args)?.into()),
+            "placeable_place_start" => Ok(__sdk::parse_reducer_args::<placeable_place_start_reducer::PlaceablePlaceStartArgs>("placeable_place_start", &value.args)?.into()),
             "player_action_cancel" => Ok(__sdk::parse_reducer_args::<player_action_cancel_reducer::PlayerActionCancelArgs>("player_action_cancel", &value.args)?.into()),
             "player_cancel_region_transfer" => Ok(__sdk::parse_reducer_args::<player_cancel_region_transfer_reducer::PlayerCancelRegionTransferArgs>("player_cancel_region_transfer", &value.args)?.into()),
             "player_clear_action_state" => Ok(__sdk::parse_reducer_args::<player_clear_action_state_reducer::PlayerClearActionStateArgs>("player_clear_action_state", &value.args)?.into()),
@@ -9162,6 +9384,7 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "stage_contribution_loot_desc" => Ok(__sdk::parse_reducer_args::<stage_contribution_loot_desc_reducer::StageContributionLootDescArgs>("stage_contribution_loot_desc", &value.args)?.into()),
             "stage_crafting_recipe_desc" => Ok(__sdk::parse_reducer_args::<stage_crafting_recipe_desc_reducer::StageCraftingRecipeDescArgs>("stage_crafting_recipe_desc", &value.args)?.into()),
             "stage_deconstruction_recipe_desc" => Ok(__sdk::parse_reducer_args::<stage_deconstruction_recipe_desc_reducer::StageDeconstructionRecipeDescArgs>("stage_deconstruction_recipe_desc", &value.args)?.into()),
+            "stage_deployable_appearance_override_desc" => Ok(__sdk::parse_reducer_args::<stage_deployable_appearance_override_desc_reducer::StageDeployableAppearanceOverrideDescArgs>("stage_deployable_appearance_override_desc", &value.args)?.into()),
             "stage_deployable_desc" => Ok(__sdk::parse_reducer_args::<stage_deployable_desc_reducer::StageDeployableDescArgs>("stage_deployable_desc", &value.args)?.into()),
             "stage_distant_visible_entity_desc" => Ok(__sdk::parse_reducer_args::<stage_distant_visible_entity_desc_reducer::StageDistantVisibleEntityDescArgs>("stage_distant_visible_entity_desc", &value.args)?.into()),
             "stage_elevator_desc" => Ok(__sdk::parse_reducer_args::<stage_elevator_desc_reducer::StageElevatorDescArgs>("stage_elevator_desc", &value.args)?.into()),
@@ -9203,6 +9426,11 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
             "stage_pathfinding_desc" => Ok(__sdk::parse_reducer_args::<stage_pathfinding_desc_reducer::StagePathfindingDescArgs>("stage_pathfinding_desc", &value.args)?.into()),
             "stage_paving_tile_desc" => Ok(__sdk::parse_reducer_args::<stage_paving_tile_desc_reducer::StagePavingTileDescArgs>("stage_paving_tile_desc", &value.args)?.into()),
             "stage_pillar_shaping_desc" => Ok(__sdk::parse_reducer_args::<stage_pillar_shaping_desc_reducer::StagePillarShapingDescArgs>("stage_pillar_shaping_desc", &value.args)?.into()),
+            "stage_placeable_desc" => Ok(__sdk::parse_reducer_args::<stage_placeable_desc_reducer::StagePlaceableDescArgs>("stage_placeable_desc", &value.args)?.into()),
+            "stage_placeable_group_desc" => Ok(__sdk::parse_reducer_args::<stage_placeable_group_desc_reducer::StagePlaceableGroupDescArgs>("stage_placeable_group_desc", &value.args)?.into()),
+            "stage_placeable_growth_desc" => Ok(__sdk::parse_reducer_args::<stage_placeable_growth_desc_reducer::StagePlaceableGrowthDescArgs>("stage_placeable_growth_desc", &value.args)?.into()),
+            "stage_placeable_interaction_desc" => Ok(__sdk::parse_reducer_args::<stage_placeable_interaction_desc_reducer::StagePlaceableInteractionDescArgs>("stage_placeable_interaction_desc", &value.args)?.into()),
+            "stage_placeable_placement_desc" => Ok(__sdk::parse_reducer_args::<stage_placeable_placement_desc_reducer::StagePlaceablePlacementDescArgs>("stage_placeable_placement_desc", &value.args)?.into()),
             "stage_player_action_desc" => Ok(__sdk::parse_reducer_args::<stage_player_action_desc_reducer::StagePlayerActionDescArgs>("stage_player_action_desc", &value.args)?.into()),
             "stage_player_housing_desc" => Ok(__sdk::parse_reducer_args::<stage_player_housing_desc_reducer::StagePlayerHousingDescArgs>("stage_player_housing_desc", &value.args)?.into()),
             "stage_premium_item_desc" => Ok(__sdk::parse_reducer_args::<stage_premium_item_desc_reducer::StagePremiumItemDescArgs>("stage_premium_item_desc", &value.args)?.into()),
@@ -9359,10 +9587,12 @@ pub struct DbUpdate {
     crumb_trail_state: __sdk::TableUpdate<CrumbTrailState>,
     day_night_loop_timer: __sdk::TableUpdate<DayNightLoopTimer>,
     deconstruction_recipe_desc: __sdk::TableUpdate<DeconstructionRecipeDesc>,
+    deployable_appearance_override_desc: __sdk::TableUpdate<DeployableAppearanceOverrideDesc>,
     deployable_collectible_state: __sdk::TableUpdate<DeployableCollectibleState>,
     deployable_desc: __sdk::TableUpdate<DeployableDesc>,
     deployable_dismount_timer: __sdk::TableUpdate<DeployableDismountTimer>,
     deployable_state: __sdk::TableUpdate<DeployableState>,
+    deployable_state_v_2: __sdk::TableUpdate<DeployableStateV2>,
     destroy_dimension_network_timer: __sdk::TableUpdate<DestroyDimensionNetworkTimer>,
     developer: __sdk::TableUpdate<Developer>,
     dimension_description_state: __sdk::TableUpdate<DimensionDescriptionState>,
@@ -9431,6 +9661,7 @@ pub struct DbUpdate {
     inter_module_message_counter: __sdk::TableUpdate<InterModuleMessageCounter>,
     inter_module_message_errors: __sdk::TableUpdate<InterModuleMessageErrors>,
     inter_module_message_v_2: __sdk::TableUpdate<InterModuleMessageV2>,
+    inter_module_message_v_3: __sdk::TableUpdate<InterModuleMessageV3>,
     inter_module_response_message_counter: __sdk::TableUpdate<InterModuleResponseMessageCounter>,
     interior_collapse_trigger_state: __sdk::TableUpdate<InteriorCollapseTriggerState>,
     interior_environment_desc: __sdk::TableUpdate<InteriorEnvironmentDesc>,
@@ -9508,6 +9739,12 @@ pub struct DbUpdate {
     pillar_shaping_recipe_discovery_item_desc: __sdk::TableUpdate<DiscoveryTriggerDesc>,
     pillar_shaping_recipe_discovery_knowledge_desc: __sdk::TableUpdate<DiscoveryTriggerDesc>,
     pillar_shaping_state: __sdk::TableUpdate<PillarShapingState>,
+    placeable_desc: __sdk::TableUpdate<PlaceableDesc>,
+    placeable_group_desc: __sdk::TableUpdate<PlaceableGroupDesc>,
+    placeable_growth_desc: __sdk::TableUpdate<PlaceableGrowthDesc>,
+    placeable_interaction_desc: __sdk::TableUpdate<PlaceableInteractionDesc>,
+    placeable_placement_desc: __sdk::TableUpdate<PlaceablePlacementDesc>,
+    placeable_state: __sdk::TableUpdate<PlaceableState>,
     player_action_desc: __sdk::TableUpdate<PlayerActionDesc>,
     player_action_state: __sdk::TableUpdate<PlayerActionState>,
     player_death_timer: __sdk::TableUpdate<PlayerDeathTimer>,
@@ -9615,6 +9852,8 @@ pub struct DbUpdate {
     staged_contribution_loot_desc: __sdk::TableUpdate<ContributionLootDesc>,
     staged_crafting_recipe_desc: __sdk::TableUpdate<CraftingRecipeDesc>,
     staged_deconstruction_recipe_desc: __sdk::TableUpdate<DeconstructionRecipeDesc>,
+    staged_deployable_appearance_override_desc:
+        __sdk::TableUpdate<DeployableAppearanceOverrideDesc>,
     staged_deployable_desc: __sdk::TableUpdate<DeployableDesc>,
     staged_distant_visible_entity_desc: __sdk::TableUpdate<DistantVisibleEntityDesc>,
     staged_elevator_desc: __sdk::TableUpdate<ElevatorDesc>,
@@ -9656,6 +9895,11 @@ pub struct DbUpdate {
     staged_pathfinding_desc: __sdk::TableUpdate<PathfindingDesc>,
     staged_paving_tile_desc: __sdk::TableUpdate<PavingTileDesc>,
     staged_pillar_shaping_desc: __sdk::TableUpdate<PillarShapingDesc>,
+    staged_placeable_desc: __sdk::TableUpdate<PlaceableDesc>,
+    staged_placeable_group_desc: __sdk::TableUpdate<PlaceableGroupDesc>,
+    staged_placeable_growth_desc: __sdk::TableUpdate<PlaceableGrowthDesc>,
+    staged_placeable_interaction_desc: __sdk::TableUpdate<PlaceableInteractionDesc>,
+    staged_placeable_placement_desc: __sdk::TableUpdate<PlaceablePlacementDesc>,
     staged_player_action_desc: __sdk::TableUpdate<PlayerActionDesc>,
     staged_player_housing_desc: __sdk::TableUpdate<PlayerHousingDesc>,
     staged_premium_item_desc: __sdk::TableUpdate<PremiumItemDesc>,
@@ -9826,10 +10070,12 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
     "crumb_trail_state" => db_update.crumb_trail_state.append(crumb_trail_state_table::parse_table_update(table_update)?),
     "day_night_loop_timer" => db_update.day_night_loop_timer.append(day_night_loop_timer_table::parse_table_update(table_update)?),
     "deconstruction_recipe_desc" => db_update.deconstruction_recipe_desc.append(deconstruction_recipe_desc_table::parse_table_update(table_update)?),
+    "deployable_appearance_override_desc" => db_update.deployable_appearance_override_desc.append(deployable_appearance_override_desc_table::parse_table_update(table_update)?),
     "deployable_collectible_state" => db_update.deployable_collectible_state.append(deployable_collectible_state_table::parse_table_update(table_update)?),
     "deployable_desc" => db_update.deployable_desc.append(deployable_desc_table::parse_table_update(table_update)?),
     "deployable_dismount_timer" => db_update.deployable_dismount_timer.append(deployable_dismount_timer_table::parse_table_update(table_update)?),
     "deployable_state" => db_update.deployable_state.append(deployable_state_table::parse_table_update(table_update)?),
+    "deployable_state_v2" => db_update.deployable_state_v_2.append(deployable_state_v_2_table::parse_table_update(table_update)?),
     "destroy_dimension_network_timer" => db_update.destroy_dimension_network_timer.append(destroy_dimension_network_timer_table::parse_table_update(table_update)?),
     "developer" => db_update.developer.append(developer_table::parse_table_update(table_update)?),
     "dimension_description_state" => db_update.dimension_description_state.append(dimension_description_state_table::parse_table_update(table_update)?),
@@ -9898,6 +10144,7 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
     "inter_module_message_counter" => db_update.inter_module_message_counter.append(inter_module_message_counter_table::parse_table_update(table_update)?),
     "inter_module_message_errors" => db_update.inter_module_message_errors.append(inter_module_message_errors_table::parse_table_update(table_update)?),
     "inter_module_message_v2" => db_update.inter_module_message_v_2.append(inter_module_message_v_2_table::parse_table_update(table_update)?),
+    "inter_module_message_v3" => db_update.inter_module_message_v_3.append(inter_module_message_v_3_table::parse_table_update(table_update)?),
     "inter_module_response_message_counter" => db_update.inter_module_response_message_counter.append(inter_module_response_message_counter_table::parse_table_update(table_update)?),
     "interior_collapse_trigger_state" => db_update.interior_collapse_trigger_state.append(interior_collapse_trigger_state_table::parse_table_update(table_update)?),
     "interior_environment_desc" => db_update.interior_environment_desc.append(interior_environment_desc_table::parse_table_update(table_update)?),
@@ -9975,6 +10222,12 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
     "pillar_shaping_recipe_discovery_item_desc" => db_update.pillar_shaping_recipe_discovery_item_desc.append(pillar_shaping_recipe_discovery_item_desc_table::parse_table_update(table_update)?),
     "pillar_shaping_recipe_discovery_knowledge_desc" => db_update.pillar_shaping_recipe_discovery_knowledge_desc.append(pillar_shaping_recipe_discovery_knowledge_desc_table::parse_table_update(table_update)?),
     "pillar_shaping_state" => db_update.pillar_shaping_state.append(pillar_shaping_state_table::parse_table_update(table_update)?),
+    "placeable_desc" => db_update.placeable_desc.append(placeable_desc_table::parse_table_update(table_update)?),
+    "placeable_group_desc" => db_update.placeable_group_desc.append(placeable_group_desc_table::parse_table_update(table_update)?),
+    "placeable_growth_desc" => db_update.placeable_growth_desc.append(placeable_growth_desc_table::parse_table_update(table_update)?),
+    "placeable_interaction_desc" => db_update.placeable_interaction_desc.append(placeable_interaction_desc_table::parse_table_update(table_update)?),
+    "placeable_placement_desc" => db_update.placeable_placement_desc.append(placeable_placement_desc_table::parse_table_update(table_update)?),
+    "placeable_state" => db_update.placeable_state.append(placeable_state_table::parse_table_update(table_update)?),
     "player_action_desc" => db_update.player_action_desc.append(player_action_desc_table::parse_table_update(table_update)?),
     "player_action_state" => db_update.player_action_state.append(player_action_state_table::parse_table_update(table_update)?),
     "player_death_timer" => db_update.player_death_timer.append(player_death_timer_table::parse_table_update(table_update)?),
@@ -10082,6 +10335,7 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
     "staged_contribution_loot_desc" => db_update.staged_contribution_loot_desc.append(staged_contribution_loot_desc_table::parse_table_update(table_update)?),
     "staged_crafting_recipe_desc" => db_update.staged_crafting_recipe_desc.append(staged_crafting_recipe_desc_table::parse_table_update(table_update)?),
     "staged_deconstruction_recipe_desc" => db_update.staged_deconstruction_recipe_desc.append(staged_deconstruction_recipe_desc_table::parse_table_update(table_update)?),
+    "staged_deployable_appearance_override_desc" => db_update.staged_deployable_appearance_override_desc.append(staged_deployable_appearance_override_desc_table::parse_table_update(table_update)?),
     "staged_deployable_desc" => db_update.staged_deployable_desc.append(staged_deployable_desc_table::parse_table_update(table_update)?),
     "staged_distant_visible_entity_desc" => db_update.staged_distant_visible_entity_desc.append(staged_distant_visible_entity_desc_table::parse_table_update(table_update)?),
     "staged_elevator_desc" => db_update.staged_elevator_desc.append(staged_elevator_desc_table::parse_table_update(table_update)?),
@@ -10123,6 +10377,11 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
     "staged_pathfinding_desc" => db_update.staged_pathfinding_desc.append(staged_pathfinding_desc_table::parse_table_update(table_update)?),
     "staged_paving_tile_desc" => db_update.staged_paving_tile_desc.append(staged_paving_tile_desc_table::parse_table_update(table_update)?),
     "staged_pillar_shaping_desc" => db_update.staged_pillar_shaping_desc.append(staged_pillar_shaping_desc_table::parse_table_update(table_update)?),
+    "staged_placeable_desc" => db_update.staged_placeable_desc.append(staged_placeable_desc_table::parse_table_update(table_update)?),
+    "staged_placeable_group_desc" => db_update.staged_placeable_group_desc.append(staged_placeable_group_desc_table::parse_table_update(table_update)?),
+    "staged_placeable_growth_desc" => db_update.staged_placeable_growth_desc.append(staged_placeable_growth_desc_table::parse_table_update(table_update)?),
+    "staged_placeable_interaction_desc" => db_update.staged_placeable_interaction_desc.append(staged_placeable_interaction_desc_table::parse_table_update(table_update)?),
+    "staged_placeable_placement_desc" => db_update.staged_placeable_placement_desc.append(staged_placeable_placement_desc_table::parse_table_update(table_update)?),
     "staged_player_action_desc" => db_update.staged_player_action_desc.append(staged_player_action_desc_table::parse_table_update(table_update)?),
     "staged_player_housing_desc" => db_update.staged_player_housing_desc.append(staged_player_housing_desc_table::parse_table_update(table_update)?),
     "staged_premium_item_desc" => db_update.staged_premium_item_desc.append(staged_premium_item_desc_table::parse_table_update(table_update)?),
@@ -10608,6 +10867,12 @@ impl __sdk::DbUpdate for DbUpdate {
                 &self.deconstruction_recipe_desc,
             )
             .with_updates_by_pk(|row| &row.id);
+        diff.deployable_appearance_override_desc = cache
+            .apply_diff_to_table::<DeployableAppearanceOverrideDesc>(
+                "deployable_appearance_override_desc",
+                &self.deployable_appearance_override_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
         diff.deployable_collectible_state = cache
             .apply_diff_to_table::<DeployableCollectibleState>(
                 "deployable_collectible_state",
@@ -10625,6 +10890,12 @@ impl __sdk::DbUpdate for DbUpdate {
             .with_updates_by_pk(|row| &row.scheduled_id);
         diff.deployable_state = cache
             .apply_diff_to_table::<DeployableState>("deployable_state", &self.deployable_state)
+            .with_updates_by_pk(|row| &row.entity_id);
+        diff.deployable_state_v_2 = cache
+            .apply_diff_to_table::<DeployableStateV2>(
+                "deployable_state_v2",
+                &self.deployable_state_v_2,
+            )
             .with_updates_by_pk(|row| &row.entity_id);
         diff.destroy_dimension_network_timer = cache
             .apply_diff_to_table::<DestroyDimensionNetworkTimer>(
@@ -10937,6 +11208,12 @@ impl __sdk::DbUpdate for DbUpdate {
             .apply_diff_to_table::<InterModuleMessageV2>(
                 "inter_module_message_v2",
                 &self.inter_module_message_v_2,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.inter_module_message_v_3 = cache
+            .apply_diff_to_table::<InterModuleMessageV3>(
+                "inter_module_message_v3",
+                &self.inter_module_message_v_3,
             )
             .with_updates_by_pk(|row| &row.id);
         diff.inter_module_response_message_counter = cache
@@ -11327,6 +11604,36 @@ impl __sdk::DbUpdate for DbUpdate {
                 "pillar_shaping_state",
                 &self.pillar_shaping_state,
             )
+            .with_updates_by_pk(|row| &row.entity_id);
+        diff.placeable_desc = cache
+            .apply_diff_to_table::<PlaceableDesc>("placeable_desc", &self.placeable_desc)
+            .with_updates_by_pk(|row| &row.id);
+        diff.placeable_group_desc = cache
+            .apply_diff_to_table::<PlaceableGroupDesc>(
+                "placeable_group_desc",
+                &self.placeable_group_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.placeable_growth_desc = cache
+            .apply_diff_to_table::<PlaceableGrowthDesc>(
+                "placeable_growth_desc",
+                &self.placeable_growth_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.placeable_interaction_desc = cache
+            .apply_diff_to_table::<PlaceableInteractionDesc>(
+                "placeable_interaction_desc",
+                &self.placeable_interaction_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.placeable_placement_desc = cache
+            .apply_diff_to_table::<PlaceablePlacementDesc>(
+                "placeable_placement_desc",
+                &self.placeable_placement_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.placeable_state = cache
+            .apply_diff_to_table::<PlaceableState>("placeable_state", &self.placeable_state)
             .with_updates_by_pk(|row| &row.entity_id);
         diff.player_action_desc = cache
             .apply_diff_to_table::<PlayerActionDesc>("player_action_desc", &self.player_action_desc)
@@ -11858,6 +12165,12 @@ impl __sdk::DbUpdate for DbUpdate {
                 &self.staged_deconstruction_recipe_desc,
             )
             .with_updates_by_pk(|row| &row.id);
+        diff.staged_deployable_appearance_override_desc = cache
+            .apply_diff_to_table::<DeployableAppearanceOverrideDesc>(
+                "staged_deployable_appearance_override_desc",
+                &self.staged_deployable_appearance_override_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
         diff.staged_deployable_desc = cache
             .apply_diff_to_table::<DeployableDesc>(
                 "staged_deployable_desc",
@@ -12081,6 +12394,36 @@ impl __sdk::DbUpdate for DbUpdate {
             .apply_diff_to_table::<PillarShapingDesc>(
                 "staged_pillar_shaping_desc",
                 &self.staged_pillar_shaping_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.staged_placeable_desc = cache
+            .apply_diff_to_table::<PlaceableDesc>(
+                "staged_placeable_desc",
+                &self.staged_placeable_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.staged_placeable_group_desc = cache
+            .apply_diff_to_table::<PlaceableGroupDesc>(
+                "staged_placeable_group_desc",
+                &self.staged_placeable_group_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.staged_placeable_growth_desc = cache
+            .apply_diff_to_table::<PlaceableGrowthDesc>(
+                "staged_placeable_growth_desc",
+                &self.staged_placeable_growth_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.staged_placeable_interaction_desc = cache
+            .apply_diff_to_table::<PlaceableInteractionDesc>(
+                "staged_placeable_interaction_desc",
+                &self.staged_placeable_interaction_desc,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.staged_placeable_placement_desc = cache
+            .apply_diff_to_table::<PlaceablePlacementDesc>(
+                "staged_placeable_placement_desc",
+                &self.staged_placeable_placement_desc,
             )
             .with_updates_by_pk(|row| &row.id);
         diff.staged_player_action_desc = cache
@@ -12558,10 +12901,13 @@ pub struct AppliedDiff<'r> {
     crumb_trail_state: __sdk::TableAppliedDiff<'r, CrumbTrailState>,
     day_night_loop_timer: __sdk::TableAppliedDiff<'r, DayNightLoopTimer>,
     deconstruction_recipe_desc: __sdk::TableAppliedDiff<'r, DeconstructionRecipeDesc>,
+    deployable_appearance_override_desc:
+        __sdk::TableAppliedDiff<'r, DeployableAppearanceOverrideDesc>,
     deployable_collectible_state: __sdk::TableAppliedDiff<'r, DeployableCollectibleState>,
     deployable_desc: __sdk::TableAppliedDiff<'r, DeployableDesc>,
     deployable_dismount_timer: __sdk::TableAppliedDiff<'r, DeployableDismountTimer>,
     deployable_state: __sdk::TableAppliedDiff<'r, DeployableState>,
+    deployable_state_v_2: __sdk::TableAppliedDiff<'r, DeployableStateV2>,
     destroy_dimension_network_timer: __sdk::TableAppliedDiff<'r, DestroyDimensionNetworkTimer>,
     developer: __sdk::TableAppliedDiff<'r, Developer>,
     dimension_description_state: __sdk::TableAppliedDiff<'r, DimensionDescriptionState>,
@@ -12630,6 +12976,7 @@ pub struct AppliedDiff<'r> {
     inter_module_message_counter: __sdk::TableAppliedDiff<'r, InterModuleMessageCounter>,
     inter_module_message_errors: __sdk::TableAppliedDiff<'r, InterModuleMessageErrors>,
     inter_module_message_v_2: __sdk::TableAppliedDiff<'r, InterModuleMessageV2>,
+    inter_module_message_v_3: __sdk::TableAppliedDiff<'r, InterModuleMessageV3>,
     inter_module_response_message_counter:
         __sdk::TableAppliedDiff<'r, InterModuleResponseMessageCounter>,
     interior_collapse_trigger_state: __sdk::TableAppliedDiff<'r, InteriorCollapseTriggerState>,
@@ -12711,6 +13058,12 @@ pub struct AppliedDiff<'r> {
     pillar_shaping_recipe_discovery_knowledge_desc:
         __sdk::TableAppliedDiff<'r, DiscoveryTriggerDesc>,
     pillar_shaping_state: __sdk::TableAppliedDiff<'r, PillarShapingState>,
+    placeable_desc: __sdk::TableAppliedDiff<'r, PlaceableDesc>,
+    placeable_group_desc: __sdk::TableAppliedDiff<'r, PlaceableGroupDesc>,
+    placeable_growth_desc: __sdk::TableAppliedDiff<'r, PlaceableGrowthDesc>,
+    placeable_interaction_desc: __sdk::TableAppliedDiff<'r, PlaceableInteractionDesc>,
+    placeable_placement_desc: __sdk::TableAppliedDiff<'r, PlaceablePlacementDesc>,
+    placeable_state: __sdk::TableAppliedDiff<'r, PlaceableState>,
     player_action_desc: __sdk::TableAppliedDiff<'r, PlayerActionDesc>,
     player_action_state: __sdk::TableAppliedDiff<'r, PlayerActionState>,
     player_death_timer: __sdk::TableAppliedDiff<'r, PlayerDeathTimer>,
@@ -12822,6 +13175,8 @@ pub struct AppliedDiff<'r> {
     staged_contribution_loot_desc: __sdk::TableAppliedDiff<'r, ContributionLootDesc>,
     staged_crafting_recipe_desc: __sdk::TableAppliedDiff<'r, CraftingRecipeDesc>,
     staged_deconstruction_recipe_desc: __sdk::TableAppliedDiff<'r, DeconstructionRecipeDesc>,
+    staged_deployable_appearance_override_desc:
+        __sdk::TableAppliedDiff<'r, DeployableAppearanceOverrideDesc>,
     staged_deployable_desc: __sdk::TableAppliedDiff<'r, DeployableDesc>,
     staged_distant_visible_entity_desc: __sdk::TableAppliedDiff<'r, DistantVisibleEntityDesc>,
     staged_elevator_desc: __sdk::TableAppliedDiff<'r, ElevatorDesc>,
@@ -12865,6 +13220,11 @@ pub struct AppliedDiff<'r> {
     staged_pathfinding_desc: __sdk::TableAppliedDiff<'r, PathfindingDesc>,
     staged_paving_tile_desc: __sdk::TableAppliedDiff<'r, PavingTileDesc>,
     staged_pillar_shaping_desc: __sdk::TableAppliedDiff<'r, PillarShapingDesc>,
+    staged_placeable_desc: __sdk::TableAppliedDiff<'r, PlaceableDesc>,
+    staged_placeable_group_desc: __sdk::TableAppliedDiff<'r, PlaceableGroupDesc>,
+    staged_placeable_growth_desc: __sdk::TableAppliedDiff<'r, PlaceableGrowthDesc>,
+    staged_placeable_interaction_desc: __sdk::TableAppliedDiff<'r, PlaceableInteractionDesc>,
+    staged_placeable_placement_desc: __sdk::TableAppliedDiff<'r, PlaceablePlacementDesc>,
     staged_player_action_desc: __sdk::TableAppliedDiff<'r, PlayerActionDesc>,
     staged_player_housing_desc: __sdk::TableAppliedDiff<'r, PlayerHousingDesc>,
     staged_premium_item_desc: __sdk::TableAppliedDiff<'r, PremiumItemDesc>,
@@ -13348,6 +13708,11 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             &self.deconstruction_recipe_desc,
             event,
         );
+        callbacks.invoke_table_row_callbacks::<DeployableAppearanceOverrideDesc>(
+            "deployable_appearance_override_desc",
+            &self.deployable_appearance_override_desc,
+            event,
+        );
         callbacks.invoke_table_row_callbacks::<DeployableCollectibleState>(
             "deployable_collectible_state",
             &self.deployable_collectible_state,
@@ -13366,6 +13731,11 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
         callbacks.invoke_table_row_callbacks::<DeployableState>(
             "deployable_state",
             &self.deployable_state,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<DeployableStateV2>(
+            "deployable_state_v2",
+            &self.deployable_state_v_2,
             event,
         );
         callbacks.invoke_table_row_callbacks::<DestroyDimensionNetworkTimer>(
@@ -13670,6 +14040,11 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
         callbacks.invoke_table_row_callbacks::<InterModuleMessageV2>(
             "inter_module_message_v2",
             &self.inter_module_message_v_2,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<InterModuleMessageV3>(
+            "inter_module_message_v3",
+            &self.inter_module_message_v_3,
             event,
         );
         callbacks.invoke_table_row_callbacks::<InterModuleResponseMessageCounter>(
@@ -14043,6 +14418,36 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
         callbacks.invoke_table_row_callbacks::<PillarShapingState>(
             "pillar_shaping_state",
             &self.pillar_shaping_state,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableDesc>(
+            "placeable_desc",
+            &self.placeable_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableGroupDesc>(
+            "placeable_group_desc",
+            &self.placeable_group_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableGrowthDesc>(
+            "placeable_growth_desc",
+            &self.placeable_growth_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableInteractionDesc>(
+            "placeable_interaction_desc",
+            &self.placeable_interaction_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceablePlacementDesc>(
+            "placeable_placement_desc",
+            &self.placeable_placement_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableState>(
+            "placeable_state",
+            &self.placeable_state,
             event,
         );
         callbacks.invoke_table_row_callbacks::<PlayerActionDesc>(
@@ -14572,6 +14977,11 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             &self.staged_deconstruction_recipe_desc,
             event,
         );
+        callbacks.invoke_table_row_callbacks::<DeployableAppearanceOverrideDesc>(
+            "staged_deployable_appearance_override_desc",
+            &self.staged_deployable_appearance_override_desc,
+            event,
+        );
         callbacks.invoke_table_row_callbacks::<DeployableDesc>(
             "staged_deployable_desc",
             &self.staged_deployable_desc,
@@ -14775,6 +15185,31 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
         callbacks.invoke_table_row_callbacks::<PillarShapingDesc>(
             "staged_pillar_shaping_desc",
             &self.staged_pillar_shaping_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableDesc>(
+            "staged_placeable_desc",
+            &self.staged_placeable_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableGroupDesc>(
+            "staged_placeable_group_desc",
+            &self.staged_placeable_group_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableGrowthDesc>(
+            "staged_placeable_growth_desc",
+            &self.staged_placeable_growth_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceableInteractionDesc>(
+            "staged_placeable_interaction_desc",
+            &self.staged_placeable_interaction_desc,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<PlaceablePlacementDesc>(
+            "staged_placeable_placement_desc",
+            &self.staged_placeable_placement_desc,
             event,
         );
         callbacks.invoke_table_row_callbacks::<PlayerActionDesc>(
@@ -15932,10 +16367,12 @@ impl __sdk::SpacetimeModule for RemoteModule {
         crumb_trail_state_table::register_table(client_cache);
         day_night_loop_timer_table::register_table(client_cache);
         deconstruction_recipe_desc_table::register_table(client_cache);
+        deployable_appearance_override_desc_table::register_table(client_cache);
         deployable_collectible_state_table::register_table(client_cache);
         deployable_desc_table::register_table(client_cache);
         deployable_dismount_timer_table::register_table(client_cache);
         deployable_state_table::register_table(client_cache);
+        deployable_state_v_2_table::register_table(client_cache);
         destroy_dimension_network_timer_table::register_table(client_cache);
         developer_table::register_table(client_cache);
         dimension_description_state_table::register_table(client_cache);
@@ -16004,6 +16441,7 @@ impl __sdk::SpacetimeModule for RemoteModule {
         inter_module_message_counter_table::register_table(client_cache);
         inter_module_message_errors_table::register_table(client_cache);
         inter_module_message_v_2_table::register_table(client_cache);
+        inter_module_message_v_3_table::register_table(client_cache);
         inter_module_response_message_counter_table::register_table(client_cache);
         interior_collapse_trigger_state_table::register_table(client_cache);
         interior_environment_desc_table::register_table(client_cache);
@@ -16081,6 +16519,12 @@ impl __sdk::SpacetimeModule for RemoteModule {
         pillar_shaping_recipe_discovery_item_desc_table::register_table(client_cache);
         pillar_shaping_recipe_discovery_knowledge_desc_table::register_table(client_cache);
         pillar_shaping_state_table::register_table(client_cache);
+        placeable_desc_table::register_table(client_cache);
+        placeable_group_desc_table::register_table(client_cache);
+        placeable_growth_desc_table::register_table(client_cache);
+        placeable_interaction_desc_table::register_table(client_cache);
+        placeable_placement_desc_table::register_table(client_cache);
+        placeable_state_table::register_table(client_cache);
         player_action_desc_table::register_table(client_cache);
         player_action_state_table::register_table(client_cache);
         player_death_timer_table::register_table(client_cache);
@@ -16188,6 +16632,7 @@ impl __sdk::SpacetimeModule for RemoteModule {
         staged_contribution_loot_desc_table::register_table(client_cache);
         staged_crafting_recipe_desc_table::register_table(client_cache);
         staged_deconstruction_recipe_desc_table::register_table(client_cache);
+        staged_deployable_appearance_override_desc_table::register_table(client_cache);
         staged_deployable_desc_table::register_table(client_cache);
         staged_distant_visible_entity_desc_table::register_table(client_cache);
         staged_elevator_desc_table::register_table(client_cache);
@@ -16229,6 +16674,11 @@ impl __sdk::SpacetimeModule for RemoteModule {
         staged_pathfinding_desc_table::register_table(client_cache);
         staged_paving_tile_desc_table::register_table(client_cache);
         staged_pillar_shaping_desc_table::register_table(client_cache);
+        staged_placeable_desc_table::register_table(client_cache);
+        staged_placeable_group_desc_table::register_table(client_cache);
+        staged_placeable_growth_desc_table::register_table(client_cache);
+        staged_placeable_interaction_desc_table::register_table(client_cache);
+        staged_placeable_placement_desc_table::register_table(client_cache);
         staged_player_action_desc_table::register_table(client_cache);
         staged_player_housing_desc_table::register_table(client_cache);
         staged_premium_item_desc_table::register_table(client_cache);

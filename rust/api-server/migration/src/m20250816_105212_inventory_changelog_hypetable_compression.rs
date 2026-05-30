@@ -14,14 +14,14 @@ impl MigrationTrait for Migration {
             "ALTER TABLE inventory_changelog SET(timescaledb.enable_columnstore, timescaledb.orderby = 'timestamp DESC', timescaledb.segmentby = 'entity_id');".to_string(),
         );
 
-        db.execute(stmt).await?;
+        db.execute_raw(stmt).await?;
 
         let stmt = Statement::from_string(
             manager.get_database_backend(),
             "ALTER TABLE inventory_changelog SET (timescaledb.compress_chunk_time_interval = '24 hours');".to_string(),
         );
 
-        db.execute(stmt).await?;
+        db.execute_raw(stmt).await?;
 
         Ok(())
     }

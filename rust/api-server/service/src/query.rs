@@ -363,7 +363,7 @@ impl Query {
             .order_by_asc(claim_state::Column::EntityId)
             .expr_as(
                 Expr::case(
-                    Expr::eq(
+                    ExprTrait::eq(
                         Expr::val(200),
                         Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                     ),
@@ -372,7 +372,7 @@ impl Query {
                 .finally(0)
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(300),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -382,7 +382,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(400),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -392,7 +392,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(500),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -402,7 +402,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(600),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -412,7 +412,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(700),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -422,7 +422,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(800),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -432,7 +432,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(900),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -442,7 +442,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1000),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -452,7 +452,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(2136582402),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -462,7 +462,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1426269264),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -472,7 +472,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1912870048),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -482,7 +482,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(187931146),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -492,7 +492,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(736567281),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -502,7 +502,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1728735124),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -512,7 +512,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(905455362),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -522,7 +522,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(571236380),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -532,7 +532,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(830936030),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -542,7 +542,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1826500486),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -552,7 +552,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1157053499),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -562,7 +562,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(688169271),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -572,7 +572,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(733358069),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -582,7 +582,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(906602291),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -592,7 +592,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1273121576),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -602,7 +602,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1206083197),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -612,7 +612,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1567647942),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -622,7 +622,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(649819263),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -632,7 +632,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1161565644),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -642,7 +642,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(477458683),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -652,7 +652,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(2099304788),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -662,7 +662,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(956489539),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -672,7 +672,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(473237479),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -682,7 +682,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(728778297),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -692,7 +692,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1617681454),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -702,7 +702,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1337780142),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -712,7 +712,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(2072167322),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -722,7 +722,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(10000),
                             Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                         ),
@@ -732,7 +732,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(200),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -742,7 +742,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(300),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -752,7 +752,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(400),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -762,7 +762,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(500),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -772,7 +772,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(600),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -782,7 +782,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(700),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -792,7 +792,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(800),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -802,7 +802,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(900),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -812,7 +812,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1000),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -822,7 +822,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(2136582402),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -832,7 +832,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1426269264),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -842,7 +842,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1912870048),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -852,7 +852,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(187931146),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -862,7 +862,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(736567281),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -872,7 +872,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1728735124),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -882,7 +882,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(905455362),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -892,7 +892,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(571236380),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -902,7 +902,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(830936030),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -912,7 +912,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1826500486),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -922,7 +922,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1157053499),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -932,7 +932,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(688169271),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -942,7 +942,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(733358069),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -952,7 +952,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(906602291),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -962,7 +962,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1273121576),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -972,7 +972,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1206083197),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -982,7 +982,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1567647942),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -992,7 +992,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(649819263),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1002,7 +1002,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1161565644),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1012,7 +1012,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(477458683),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1022,7 +1022,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(2099304788),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1032,7 +1032,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(956489539),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1042,7 +1042,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(473237479),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1052,7 +1052,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(728778297),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1062,7 +1062,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1617681454),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1072,7 +1072,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(1337780142),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1082,7 +1082,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(2072167322),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1092,7 +1092,7 @@ impl Query {
                 )
                 .add(
                     Expr::case(
-                        Expr::eq(
+                        ExprTrait::eq(
                             Expr::val(10000),
                             Expr::expr(Expr::col(claim_tech_state::Column::Researching)),
                         ),
@@ -1132,7 +1132,7 @@ impl Query {
                                         // .and_where(SimpleExpr::from(PgFunc::any(Expr::col(claim_tech_state::Column::Learned)).eq(
                                         //     value
                                         // )))
-                                        .and_where(Expr::eq(
+                                        .and_where(ExprTrait::eq(
                                             Expr::val(value),
                                             Expr::expr(PgFunc::any(Expr::col(
                                                 claim_tech_state::Column::Learned,
@@ -1318,7 +1318,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1351,7 +1351,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1384,7 +1384,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1431,7 +1431,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1465,7 +1465,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1499,7 +1499,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1519,7 +1519,7 @@ impl Query {
     ) -> Result<(Option<u64>, Option<u64>), DbErr> {
         let query_level = sea_orm::sea_query::Query::select()
             .column(experience_state::Column::EntityId)
-            .expr_as(Expr::cust(&level_case_sql), Alias::new("level"))
+            .expr_as(Expr::cust(level_case_sql.clone()), Alias::new("level"))
             .from(experience_state::Entity)
             .and_where(Expr::col(experience_state::Column::EntityId).eq(player_id))
             .and_where(
@@ -1546,7 +1546,7 @@ impl Query {
         };
 
         let level = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 db.get_database_backend(),
                 query_level,
             ))
@@ -1593,7 +1593,7 @@ impl Query {
         };
 
         let rank: Option<i64> = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 db.get_database_backend(),
                 query_rank,
             ))
@@ -1643,7 +1643,7 @@ impl Query {
         };
 
         let experience: Option<i64> = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 db.get_database_backend(),
                 query_experience,
             ))
@@ -1689,7 +1689,7 @@ impl Query {
         };
 
         let rank: Option<i64> = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 db.get_database_backend(),
                 query_rank,
             ))
@@ -1760,7 +1760,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1825,7 +1825,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1880,7 +1880,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {
@@ -1950,7 +1950,7 @@ impl Query {
         };
 
         Ok(db
-            .query_all(Statement::from_string(db.get_database_backend(), query))
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
             .await?
             .into_iter()
             .map(|row| {

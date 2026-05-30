@@ -91,6 +91,7 @@ pub enum CollectibleType {
     Emote = 20,
     HousingWalls = 21,
     HousingFloor = 22,
+    DeployableAppearanceOverride = 23,
 }
 
 impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
@@ -142,6 +143,9 @@ impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
             }
             game_module::module_bindings::CollectibleType::HousingFloor => {
                 CollectibleType::HousingFloor
+            }
+            game_module::module_bindings::CollectibleType::DeployableAppearanceOverride => {
+                CollectibleType::DeployableAppearanceOverride
             }
         }
     }
