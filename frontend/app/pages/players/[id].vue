@@ -568,7 +568,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             <div
               class="gap-4 pt-2"
               :class="
-                inventoryList.length > 1 ? 'grid grid-cols-1 md:grid-cols-2' : 'flex flex-col'
+                inventoryList.length > 1 ? 'grid grid-cols-1 xl:grid-cols-2' : 'flex flex-col'
               "
             >
               <div

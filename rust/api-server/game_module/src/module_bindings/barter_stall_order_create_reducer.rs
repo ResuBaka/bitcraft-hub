@@ -50,8 +50,8 @@ pub trait barter_stall_order_create {
     fn on_barter_stall_order_create(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerBarterStallOrderCreateRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BarterStallOrderCreateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_barter_stall_order_create`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl barter_stall_order_create for super::RemoteReducers {
     fn on_barter_stall_order_create(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBarterStallOrderCreateRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BarterStallOrderCreateCallbackId {
         BarterStallOrderCreateCallbackId(self.imp.on_reducer(
             "barter_stall_order_create",

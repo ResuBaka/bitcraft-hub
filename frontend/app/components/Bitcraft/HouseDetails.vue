@@ -8,15 +8,33 @@ const props = defineProps<{
 }>();
 
 const tab = ref<"overview" | "permissions" | "inventories" | "changelog">("overview");
+const changelogStartDay = ref<string>();
+const changelogEndDay = ref<string>();
 
 const { data: inventories, pending: invPending } =
   await useLazyFetchMsPack<HouseInventoriesResponse>(
     () => `/api/bitcraft/houses/${props.house.entity_id}/inventories`,
   );
 
-const { data: changelog, pending: changelogPending } = await useLazyFetchMsPack<
-  InventoryChangelog[]
->(() => `/api/bitcraft/inventorys/changes/${props.house.entity_id}`);
+const {
+  data: changelog,
+  pending: changelogPending,
+  refresh: refreshChangelog,
+} = await useLazyFetchMsPack<InventoryChangelog[]>(
+  () => `/api/bitcraft/inventorys/changes/${props.house.entity_id}`,
+  {
+    onRequest: ({ options }) => {
+      options.query = options.query || {};
+
+      if (changelogStartDay.value) {
+        options.query.start_day = changelogStartDay.value;
+      }
+      if (changelogEndDay.value) {
+        options.query.end_day = changelogEndDay.value;
+      }
+    },
+  },
+);
 
 const inventoryCount = computed(() => inventories.value?.inventories?.length ?? 0);
 
@@ -28,6 +46,12 @@ const occupiedInventories = computed(() => {
 });
 
 const changelogCount = computed(() => changelog.value?.length ?? 0);
+
+const updateChangelogRange = (range: { startDay: string; endDay: string }) => {
+  changelogStartDay.value = range.startDay;
+  changelogEndDay.value = range.endDay;
+  refreshChangelog();
+};
 
 const permissionColumns = [
   { id: "allowed_username", header: "Username" },
@@ -181,12 +205,9 @@ const getRankColor = (rank: number) => {
         <div v-if="changelogPending" class="flex justify-center py-4">
           <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-gray-400" />
         </div>
-        <template v-else-if="changelog && changelog.length > 0">
-          <bitcraft-inventory-changes :items="changelog" />
+        <template v-else>
+          <bitcraft-inventory-changes :items="changelog" @range-changed="updateChangelogRange" />
         </template>
-        <p v-else class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-          No inventory changes found.
-        </p>
       </template>
     </div>
   </UCard>

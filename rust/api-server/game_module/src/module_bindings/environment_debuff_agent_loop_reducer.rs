@@ -35,7 +35,7 @@ pub trait environment_debuff_agent_loop {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_environment_debuff_agent_loop`] callbacks.
     fn environment_debuff_agent_loop(&self, timer: EnvironmentDebuffLoopTimer)
-    -> __sdk::Result<()>;
+        -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `environment_debuff_agent_loop`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -68,8 +68,8 @@ impl environment_debuff_agent_loop for super::RemoteReducers {
     fn on_environment_debuff_agent_loop(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &EnvironmentDebuffLoopTimer)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EnvironmentDebuffAgentLoopCallbackId {
         EnvironmentDebuffAgentLoopCallbackId(self.imp.on_reducer(
             "environment_debuff_agent_loop",

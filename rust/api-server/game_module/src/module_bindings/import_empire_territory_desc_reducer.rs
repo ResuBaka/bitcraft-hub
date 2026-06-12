@@ -63,8 +63,8 @@ impl import_empire_territory_desc for super::RemoteReducers {
     fn on_import_empire_territory_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EmpireTerritoryDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportEmpireTerritoryDescCallbackId {
         ImportEmpireTerritoryDescCallbackId(self.imp.on_reducer(
             "import_empire_territory_desc",

@@ -61,8 +61,8 @@ impl craft_cancel for super::RemoteReducers {
     fn on_craft_cancel(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftCancelRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CraftCancelCallbackId {
         CraftCancelCallbackId(self.imp.on_reducer(
             "craft_cancel",

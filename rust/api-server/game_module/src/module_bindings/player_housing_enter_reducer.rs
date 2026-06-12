@@ -61,8 +61,8 @@ impl player_housing_enter for super::RemoteReducers {
     fn on_player_housing_enter(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingEnterRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerHousingEnterCallbackId {
         PlayerHousingEnterCallbackId(self.imp.on_reducer(
             "player_housing_enter",

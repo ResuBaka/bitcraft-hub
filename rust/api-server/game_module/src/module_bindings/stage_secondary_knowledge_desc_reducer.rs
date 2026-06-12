@@ -72,8 +72,8 @@ impl stage_secondary_knowledge_desc for super::RemoteReducers {
     fn on_stage_secondary_knowledge_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<SecondaryKnowledgeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageSecondaryKnowledgeDescCallbackId {
         StageSecondaryKnowledgeDescCallbackId(self.imp.on_reducer(
             "stage_secondary_knowledge_desc",

@@ -2,6 +2,7 @@ use crate::AppState;
 use crate::leaderboard::{Leaderboard, experience_to_level};
 use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use entity::shared::Region;
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use rayon::iter::IntoParallelIterator;
@@ -17,7 +18,8 @@ enum ExperienceStateDbOperation {
     Delete(Vec<(i64, i32)>),
     DeleteForRegion {
         ids: Vec<String>,
-        region: entity::shared::Region,
+        #[allow(dead_code)]
+        region: Region,
     },
 }
 
@@ -84,7 +86,7 @@ fn start_experience_state_db_worker(
                         }
                     }
                 }
-                ExperienceStateDbOperation::DeleteForRegion { ids, .. } => {
+                ExperienceStateDbOperation::DeleteForRegion { ids, region: _ } => {
                     let mut query = sea_query::Condition::any();
                     for chunk_id in &ids {
                         let (entity_id, skill_id) = chunk_id.split_once(":").unwrap();

@@ -58,12 +58,12 @@ pub trait insert_terrain_chunk {
     fn on_insert_terrain_chunk(
         &self,
         callback: impl FnMut(
-            &super::ReducerEventContext,
-            &TerrainChunkState,
-            &Vec<WorldGenGeneratedBuilding>,
-            &Vec<WorldGenGeneratedResourceDeposit>,
-        ) + Send
-        + 'static,
+                &super::ReducerEventContext,
+                &TerrainChunkState,
+                &Vec<WorldGenGeneratedBuilding>,
+                &Vec<WorldGenGeneratedResourceDeposit>,
+            ) + Send
+            + 'static,
     ) -> InsertTerrainChunkCallbackId;
     /// Cancel a callback previously registered by [`Self::on_insert_terrain_chunk`],
     /// causing it not to run in the future.
@@ -89,12 +89,12 @@ impl insert_terrain_chunk for super::RemoteReducers {
     fn on_insert_terrain_chunk(
         &self,
         mut callback: impl FnMut(
-            &super::ReducerEventContext,
-            &TerrainChunkState,
-            &Vec<WorldGenGeneratedBuilding>,
-            &Vec<WorldGenGeneratedResourceDeposit>,
-        ) + Send
-        + 'static,
+                &super::ReducerEventContext,
+                &TerrainChunkState,
+                &Vec<WorldGenGeneratedBuilding>,
+                &Vec<WorldGenGeneratedResourceDeposit>,
+            ) + Send
+            + 'static,
     ) -> InsertTerrainChunkCallbackId {
         InsertTerrainChunkCallbackId(self.imp.on_reducer(
             "insert_terrain_chunk",

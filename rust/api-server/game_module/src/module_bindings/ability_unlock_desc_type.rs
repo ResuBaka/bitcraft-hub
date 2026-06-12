@@ -73,24 +73,14 @@ impl __sdk::__query_builder::HasCols for AbilityUnlockDesc {
 ///
 /// Provides typed access to indexed columns for query building.
 pub struct AbilityUnlockDescIxCols {
-    pub ability_type_enum_id: __sdk::__query_builder::IxCol<AbilityUnlockDesc, i32>,
     pub id: __sdk::__query_builder::IxCol<AbilityUnlockDesc, i32>,
-    pub show_in_progression: __sdk::__query_builder::IxCol<AbilityUnlockDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for AbilityUnlockDesc {
     type IxCols = AbilityUnlockDescIxCols;
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         AbilityUnlockDescIxCols {
-            ability_type_enum_id: __sdk::__query_builder::IxCol::new(
-                table_name,
-                "ability_type_enum_id",
-            ),
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            show_in_progression: __sdk::__query_builder::IxCol::new(
-                table_name,
-                "show_in_progression",
-            ),
         }
     }
 }

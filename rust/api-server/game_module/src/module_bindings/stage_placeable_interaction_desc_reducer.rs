@@ -50,8 +50,8 @@ pub trait stage_placeable_interaction_desc {
     fn on_stage_placeable_interaction_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceableInteractionDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StagePlaceableInteractionDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_placeable_interaction_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_placeable_interaction_desc for super::RemoteReducers {
     fn on_stage_placeable_interaction_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceableInteractionDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StagePlaceableInteractionDescCallbackId {
         StagePlaceableInteractionDescCallbackId(self.imp.on_reducer(
             "stage_placeable_interaction_desc",

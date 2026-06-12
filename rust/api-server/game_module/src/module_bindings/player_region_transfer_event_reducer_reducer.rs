@@ -70,8 +70,8 @@ impl player_region_transfer_event_reducer for super::RemoteReducers {
     fn on_player_region_transfer_event_reducer(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerRegionTransferEvent)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerRegionTransferEventReducerCallbackId {
         PlayerRegionTransferEventReducerCallbackId(self.imp.on_reducer(
             "player_region_transfer_event_reducer",

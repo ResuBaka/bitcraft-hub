@@ -173,6 +173,12 @@ pub enum CharacterStatType {
     HexiteGatheringCritChance,
 
     HexiteGatheringCritMultiplier,
+
+    CartSpeed,
+
+    MountSpeed,
+
+    BoatSpeed,
 }
 
 impl __sdk::InModule for CharacterStatType {

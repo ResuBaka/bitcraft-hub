@@ -2147,33 +2147,46 @@ impl Query {
         db: &DbConn,
         ids: Vec<i64>,
         page_size: u64,
-        item_id: Option<i32>,
-        item_type: Option<ItemType>,
+        start_time: DateTime<Utc>,
+        end_time: DateTime<Utc>,
+        item_filters: Option<Vec<(i32, ItemType)>>,
         user_id: Option<i64>,
     ) -> Result<(Vec<inventory_changelog::Model>, ItemsAndPagesNumber), DbErr> {
-        let start_time: DateTime<Utc> = Utc::now() - chrono::Duration::hours(24);
-        let end_time: DateTime<Utc> = Utc::now();
-
         let paginator = inventory_changelog::Entity::find()
             .filter(inventory_changelog::Column::EntityId.is_in(ids))
-            .apply_if(item_id, |query, value| {
-                query.filter(
-                    Condition::any()
-                        .add(inventory_changelog::Column::NewItemId.eq(value))
-                        .add(inventory_changelog::Column::OldItemId.eq(value)),
-                )
-            })
-            .apply_if(item_type, |query, value| {
-                query.filter(
-                    Condition::any()
-                        .add(inventory_changelog::Column::NewItemType.eq(value.clone()))
-                        .add(inventory_changelog::Column::OldItemType.eq(value)),
-                )
+            .apply_if(item_filters, |query, filters| {
+                let condition =
+                    filters
+                        .into_iter()
+                        .fold(Condition::any(), |condition, (id, item_type)| {
+                            condition.add(
+                                Condition::all()
+                                    .add(
+                                        Condition::any()
+                                            .add(inventory_changelog::Column::NewItemId.eq(id))
+                                            .add(inventory_changelog::Column::OldItemId.eq(id)),
+                                    )
+                                    .add(
+                                        Condition::any()
+                                            .add(
+                                                inventory_changelog::Column::NewItemType
+                                                    .eq(item_type.clone()),
+                                            )
+                                            .add(
+                                                inventory_changelog::Column::OldItemType
+                                                    .eq(item_type),
+                                            ),
+                                    ),
+                            )
+                        });
+
+                query.filter(condition)
             })
             .apply_if(user_id, |query, value| {
                 query.filter(inventory_changelog::Column::UserId.eq(value))
             })
-            .filter(inventory_changelog::Column::Timestamp.between(start_time, end_time))
+            .filter(inventory_changelog::Column::Timestamp.gte(start_time))
+            .filter(inventory_changelog::Column::Timestamp.lt(end_time))
             .order_by_desc(inventory_changelog::Column::Timestamp)
             .paginate(db, page_size);
 

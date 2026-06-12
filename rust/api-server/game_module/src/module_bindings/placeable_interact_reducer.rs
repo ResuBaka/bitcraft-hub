@@ -47,8 +47,8 @@ pub trait placeable_interact {
     fn on_placeable_interact(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPlaceableInteractRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlaceableInteractCallbackId;
     /// Cancel a callback previously registered by [`Self::on_placeable_interact`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl placeable_interact for super::RemoteReducers {
     fn on_placeable_interact(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPlaceableInteractRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlaceableInteractCallbackId {
         PlaceableInteractCallbackId(self.imp.on_reducer(
             "placeable_interact",

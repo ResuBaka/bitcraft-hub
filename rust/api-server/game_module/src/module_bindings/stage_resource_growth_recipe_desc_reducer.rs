@@ -50,8 +50,8 @@ pub trait stage_resource_growth_recipe_desc {
     fn on_stage_resource_growth_recipe_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourceGrowthRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageResourceGrowthRecipeDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_resource_growth_recipe_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_resource_growth_recipe_desc for super::RemoteReducers {
     fn on_stage_resource_growth_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ResourceGrowthRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageResourceGrowthRecipeDescCallbackId {
         StageResourceGrowthRecipeDescCallbackId(self.imp.on_reducer(
             "stage_resource_growth_recipe_desc",

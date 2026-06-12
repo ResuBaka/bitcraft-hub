@@ -64,8 +64,8 @@ impl region_popuplation_agent_loop for super::RemoteReducers {
     fn on_region_popuplation_agent_loop(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &RegionPopulationLoopTimer)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> RegionPopuplationAgentLoopCallbackId {
         RegionPopuplationAgentLoopCallbackId(self.imp.on_reducer(
             "region_popuplation_agent_loop",

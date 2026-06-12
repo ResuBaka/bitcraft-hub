@@ -50,8 +50,8 @@ pub trait import_dimension_description_state {
     fn on_import_dimension_description_state(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<DimensionDescriptionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportDimensionDescriptionStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_dimension_description_state`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_dimension_description_state for super::RemoteReducers {
     fn on_import_dimension_description_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DimensionDescriptionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportDimensionDescriptionStateCallbackId {
         ImportDimensionDescriptionStateCallbackId(self.imp.on_reducer(
             "import_dimension_description_state",

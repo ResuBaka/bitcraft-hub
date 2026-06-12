@@ -44,7 +44,6 @@ impl __sdk::__query_builder::HasCols for ResourceGrowthRecipeDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct ResourceGrowthRecipeDescIxCols {
     pub id: __sdk::__query_builder::IxCol<ResourceGrowthRecipeDesc, i32>,
-    pub resource_id: __sdk::__query_builder::IxCol<ResourceGrowthRecipeDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ResourceGrowthRecipeDesc {
@@ -52,7 +51,6 @@ impl __sdk::__query_builder::HasIxCols for ResourceGrowthRecipeDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ResourceGrowthRecipeDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            resource_id: __sdk::__query_builder::IxCol::new(table_name, "resource_id"),
         }
     }
 }

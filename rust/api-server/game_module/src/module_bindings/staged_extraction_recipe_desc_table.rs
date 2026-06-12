@@ -5,6 +5,7 @@
 use super::empire_permission_type::EmpirePermission;
 use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::extraction_recipe_desc_type::ExtractionRecipeDesc;
+use super::extraction_spawned_placeable_type::ExtractionSpawnedPlaceable;
 use super::input_item_stack_type::InputItemStack;
 use super::level_requirement_type::LevelRequirement;
 use super::probabilistic_item_stack_type::ProbabilisticItemStack;

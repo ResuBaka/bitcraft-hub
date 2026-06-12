@@ -61,8 +61,8 @@ impl order_collect for super::RemoteReducers {
     fn on_order_collect(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerOrderCollectRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> OrderCollectCallbackId {
         OrderCollectCallbackId(self.imp.on_reducer(
             "order_collect",

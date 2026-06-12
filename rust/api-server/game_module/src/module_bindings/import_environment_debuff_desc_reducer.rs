@@ -72,8 +72,8 @@ impl import_environment_debuff_desc for super::RemoteReducers {
     fn on_import_environment_debuff_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EnvironmentDebuffDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportEnvironmentDebuffDescCallbackId {
         ImportEnvironmentDebuffDescCallbackId(self.imp.on_reducer(
             "import_environment_debuff_desc",

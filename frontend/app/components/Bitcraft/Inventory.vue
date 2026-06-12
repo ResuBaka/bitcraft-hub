@@ -15,7 +15,9 @@ const props = defineProps<{
 
 const showChangelog = ref(false);
 const playerId = ref<bigint | null>();
-const itemObject = ref<ItemCargo | undefined>();
+const itemObjects = ref<ItemCargo[]>([]);
+const inventoryChangesStartDay = ref<string>();
+const inventoryChangesEndDay = ref<string>();
 const numberFormat = new Intl.NumberFormat(undefined, {
   notation: "compact",
   compactDisplay: "short",
@@ -48,22 +50,38 @@ const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } = useFet
 >(() => `/api/bitcraft/inventorys/changes/${props.inventory.entity_id}`, {
   onRequest: ({ options }) => {
     options.query = options.query || {};
-    if (itemObject.value) {
-      options.query.item_id = itemObject.value.id;
-      options.query.item_type = itemObject.value.type;
+    if (itemObjects.value.length) {
+      options.query.item_id = itemObjects.value.map((item) => item.id);
+      options.query.item_type = itemObjects.value.map((item) => item.type);
     }
     if (playerId.value) {
       options.query.user_id = playerId.value.toString();
+    }
+    if (inventoryChangesStartDay.value) {
+      options.query.start_day = inventoryChangesStartDay.value;
+    }
+    if (inventoryChangesEndDay.value) {
+      options.query.end_day = inventoryChangesEndDay.value;
     }
     options.query.per_page = 20;
   },
 });
 
 watchThrottled(
-  () => [itemObject.value, playerId.value],
+  () => [
+    itemObjects.value,
+    playerId.value,
+    inventoryChangesStartDay.value,
+    inventoryChangesEndDay.value,
+  ],
   () => InventoryChangesRefresh(),
   { throttle: 50 },
 );
+
+const updateInventoryChangesRange = (range: { startDay: string; endDay: string }) => {
+  inventoryChangesStartDay.value = range.startDay;
+  inventoryChangesEndDay.value = range.endDay;
+};
 </script>
 
 <template>
@@ -175,9 +193,12 @@ watchThrottled(
           <div class="inventory-changelog-header">History &amp; Changes</div>
           <div class="inventory-filters">
             <AutocompleteUser @model_changed="(item) => (playerId = item)" />
-            <AutocompleteItem @model_changed="(item) => (itemObject = item)" />
+            <AutocompleteItem @model_changed="(items) => (itemObjects = items)" />
           </div>
-          <InventoryChanges :items="InventoryChangesFetch" />
+          <InventoryChanges
+            :items="InventoryChangesFetch"
+            @range-changed="updateInventoryChangesRange"
+          />
         </div>
       </template>
     </UCard>

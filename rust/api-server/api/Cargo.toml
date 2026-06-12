@@ -12,6 +12,7 @@ sea-orm = { workspace = true }
 tokio = { workspace = true }
 log = { workspace = true }
 axum = { workspace = true }
+axum-extra = { version = "0.12.6", features = ["query"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yml = { workspace = true }

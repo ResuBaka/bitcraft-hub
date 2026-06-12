@@ -37,6 +37,14 @@ pub enum Biome {
     Jungle,
 
     Sapwoods,
+
+    DesertedBeach,
+
+    TropicalCanopy,
+
+    VolcanicCrag,
+
+    UnchartedOcean,
 }
 
 impl __sdk::InModule for Biome {

@@ -93,6 +93,8 @@ pub enum EnemyType {
     EnragedAlphaJakyl,
 
     DeerSwift,
+
+    CrystalizedHexiteCrab,
 }
 
 impl __sdk::InModule for EnemyType {

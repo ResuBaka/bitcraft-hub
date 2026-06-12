@@ -61,8 +61,8 @@ impl item_convert_start for super::RemoteReducers {
     fn on_item_convert_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerItemConvertRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ItemConvertStartCallbackId {
         ItemConvertStartCallbackId(self.imp.on_reducer(
             "item_convert_start",

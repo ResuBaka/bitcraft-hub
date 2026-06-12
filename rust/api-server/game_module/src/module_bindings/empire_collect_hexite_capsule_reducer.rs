@@ -50,8 +50,8 @@ pub trait empire_collect_hexite_capsule {
     fn on_empire_collect_hexite_capsule(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &EmpireCollectHexiteCapsuleRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EmpireCollectHexiteCapsuleCallbackId;
     /// Cancel a callback previously registered by [`Self::on_empire_collect_hexite_capsule`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl empire_collect_hexite_capsule for super::RemoteReducers {
     fn on_empire_collect_hexite_capsule(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &EmpireCollectHexiteCapsuleRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EmpireCollectHexiteCapsuleCallbackId {
         EmpireCollectHexiteCapsuleCallbackId(self.imp.on_reducer(
             "empire_collect_hexite_capsule",

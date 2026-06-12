@@ -11,7 +11,8 @@ defineProps<{
 
 const emit = defineEmits<{
   playerChanged: [value: bigint | null | undefined];
-  itemChanged: [value: ItemCargo | undefined];
+  itemChanged: [value: ItemCargo[]];
+  rangeChanged: [value: { startDay: string; endDay: string; useUtcTimezone: boolean }];
 }>();
 </script>
 
@@ -21,6 +22,6 @@ const emit = defineEmits<{
       <AutocompleteUser @model_changed="(item) => emit('playerChanged', item)" />
       <AutocompleteItem @model_changed="(item) => emit('itemChanged', item)" />
     </div>
-    <InventoryChanges :items="items" />
+    <InventoryChanges :items="items" @range-changed="(range) => emit('rangeChanged', range)" />
   </div>
 </template>

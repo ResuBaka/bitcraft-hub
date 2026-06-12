@@ -72,8 +72,8 @@ impl stage_placeable_placement_desc for super::RemoteReducers {
     fn on_stage_placeable_placement_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceablePlacementDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StagePlaceablePlacementDescCallbackId {
         StagePlaceablePlacementDescCallbackId(self.imp.on_reducer(
             "stage_placeable_placement_desc",

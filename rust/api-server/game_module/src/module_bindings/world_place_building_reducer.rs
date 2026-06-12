@@ -61,8 +61,8 @@ impl world_place_building for super::RemoteReducers {
     fn on_world_place_building(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &WorldPlaceBuildingRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> WorldPlaceBuildingCallbackId {
         WorldPlaceBuildingCallbackId(self.imp.on_reducer(
             "world_place_building",

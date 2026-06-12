@@ -50,8 +50,8 @@ pub trait pillar_shaping_destroy {
     fn on_pillar_shaping_destroy(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingDestroyRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PillarShapingDestroyCallbackId;
     /// Cancel a callback previously registered by [`Self::on_pillar_shaping_destroy`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl pillar_shaping_destroy for super::RemoteReducers {
     fn on_pillar_shaping_destroy(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingDestroyRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PillarShapingDestroyCallbackId {
         PillarShapingDestroyCallbackId(self.imp.on_reducer(
             "pillar_shaping_destroy",

@@ -33,6 +33,8 @@ pub struct ResourceDesc {
     pub not_respawning: bool,
     pub show_time_left: bool,
     pub on_destroy_yield_resource_chance: f32,
+    pub on_destroy_yield_resource_min_radius: i32,
+    pub on_destroy_yield_resource_max_radius: i32,
 }
 
 impl __sdk::InModule for ResourceDesc {
@@ -65,6 +67,8 @@ pub struct ResourceDescCols {
     pub not_respawning: __sdk::__query_builder::Col<ResourceDesc, bool>,
     pub show_time_left: __sdk::__query_builder::Col<ResourceDesc, bool>,
     pub on_destroy_yield_resource_chance: __sdk::__query_builder::Col<ResourceDesc, f32>,
+    pub on_destroy_yield_resource_min_radius: __sdk::__query_builder::Col<ResourceDesc, i32>,
+    pub on_destroy_yield_resource_max_radius: __sdk::__query_builder::Col<ResourceDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasCols for ResourceDesc {
@@ -101,6 +105,14 @@ impl __sdk::__query_builder::HasCols for ResourceDesc {
             on_destroy_yield_resource_chance: __sdk::__query_builder::Col::new(
                 table_name,
                 "on_destroy_yield_resource_chance",
+            ),
+            on_destroy_yield_resource_min_radius: __sdk::__query_builder::Col::new(
+                table_name,
+                "on_destroy_yield_resource_min_radius",
+            ),
+            on_destroy_yield_resource_max_radius: __sdk::__query_builder::Col::new(
+                table_name,
+                "on_destroy_yield_resource_max_radius",
             ),
         }
     }

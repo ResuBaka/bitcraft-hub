@@ -37,7 +37,7 @@ pub trait admin_rename_deployable_entity {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_admin_rename_deployable_entity`] callbacks.
     fn admin_rename_deployable_entity(&self, entity_id: u64, new_name: String)
-    -> __sdk::Result<()>;
+        -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_rename_deployable_entity`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]

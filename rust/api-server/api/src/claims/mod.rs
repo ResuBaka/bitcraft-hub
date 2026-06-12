@@ -272,12 +272,16 @@ pub(crate) async fn get_claim_inventory_change_log(
         error!("Error loading find_inventory_entity_ids_by_owner_entity_ids: {err}");
         vec![]
     });
+    let (start_time, end_time) = params.parsed_day_range()?;
+    let item_filters = params.item_filters()?;
+
     let (inventory_changes, _num_pages) = QueryCore::find_inventory_changes_by_entity_ids(
         &state.conn,
         inventory_ids,
         1000,
-        params.item_id,
-        params.item_type,
+        start_time,
+        end_time,
+        item_filters,
         params.user_id,
     )
     .await

@@ -70,8 +70,8 @@ impl player_set_name_outcome_event_reducer for super::RemoteReducers {
     fn on_player_set_name_outcome_event_reducer(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerSetNameOutcomeEvent)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerSetNameOutcomeEventReducerCallbackId {
         PlayerSetNameOutcomeEventReducerCallbackId(self.imp.on_reducer(
             "player_set_name_outcome_event_reducer",

@@ -36,9 +36,7 @@ use game_module::module_bindings::*;
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::__codegen::{self as __sdk};
-use spacetimedb_sdk::{
-    Compression, DbContext, Error, Event, Table, TableWithPrimaryKey, credentials,
-};
+use spacetimedb_sdk::{Compression, DbContext, Error, Event, Table, TableWithPrimaryKey};
 use std::borrow::Cow;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
@@ -96,7 +94,7 @@ fn connect_to_db(
 
     DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
-        .on_connect(move |_ctx, identity, token| {
+        .on_connect(move |_ctx, identity, _token| {
             tracing::info!(
                 region = tmp_db_name,
                 "Connected to server {tmp_db_name} with {identity}"
@@ -110,13 +108,6 @@ fn connect_to_db(
             tmp_global_app_state
                 .connection_state
                 .insert(tmp_db_name.clone(), true);
-            if let Err(e) = creds_store().save(token) {
-                tracing::warn!(
-                    region = tmp_db_name.clone(),
-                    "Failed to save credentials: {:?}",
-                    e
-                );
-            }
         })
         // Register our `on_connect_error` callback, which will print a message, then exit the process.
         .on_connect_error(on_connect_error)
@@ -151,7 +142,6 @@ fn connect_to_db(
         // If the user has previously connected, we'll have saved a token in the `on_connect` callback.
         // In that case, we'll load it and pass it to `with_token`,
         // so we can re-authenticate as the same `Identity`.
-        // .with_token(creds_store().load().expect("Error loading credentials"))
         .with_token(Some(token.trim()))
         // Set the database name we chose when we called `spacetime publish`.
         .with_module_name(db_name)
@@ -160,25 +150,6 @@ fn connect_to_db(
         // Finalize configuration and connect!
         .with_compression(Compression::Brotli)
         .build()
-}
-
-// /// Register subscriptions for all rows of both tables.
-// fn subscribe_to_tables(ctx: &DbConnection) {
-//     ctx.subscription_builder()
-//         .on_applied(on_sub_applied)
-//         .on_error(on_sub_error)
-//         .subscribe(["SELECT * FROM player_state", "SELECT * FROM mobile_entity_state"]);
-// }
-
-/// Or `on_error` callback:
-/// print the error, then exit the process.
-fn on_sub_error(_ctx: &ErrorContext, err: Error) {
-    tracing::warn!("Subscription failed: {}", err);
-    // std::process::exit(1);
-}
-
-fn creds_store() -> credentials::File {
-    credentials::File::new("bitcraft-ea")
 }
 
 /// Our `on_connect_error` callback: print the error, then exit the process.

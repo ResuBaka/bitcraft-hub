@@ -50,8 +50,8 @@ pub trait import_knowledge_pillar_shaping_state {
     fn on_import_knowledge_pillar_shaping_state(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgePillarShapingState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportKnowledgePillarShapingStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_knowledge_pillar_shaping_state`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_knowledge_pillar_shaping_state for super::RemoteReducers {
     fn on_import_knowledge_pillar_shaping_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgePillarShapingState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportKnowledgePillarShapingStateCallbackId {
         ImportKnowledgePillarShapingStateCallbackId(self.imp.on_reducer(
             "import_knowledge_pillar_shaping_state",

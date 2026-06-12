@@ -72,8 +72,8 @@ impl import_dimension_network_description_state for super::RemoteReducers {
     fn on_import_dimension_network_description_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DimensionNetworkState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportDimensionNetworkDescriptionStateCallbackId {
         ImportDimensionNetworkDescriptionStateCallbackId(self.imp.on_reducer(
             "import_dimension_network_description_state",

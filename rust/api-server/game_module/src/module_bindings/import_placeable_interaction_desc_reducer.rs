@@ -50,8 +50,8 @@ pub trait import_placeable_interaction_desc {
     fn on_import_placeable_interaction_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceableInteractionDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportPlaceableInteractionDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_placeable_interaction_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_placeable_interaction_desc for super::RemoteReducers {
     fn on_import_placeable_interaction_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceableInteractionDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ImportPlaceableInteractionDescCallbackId {
         ImportPlaceableInteractionDescCallbackId(self.imp.on_reducer(
             "import_placeable_interaction_desc",

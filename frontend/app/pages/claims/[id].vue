@@ -48,7 +48,9 @@ const route = useRoute();
 const router = useRouter();
 
 const player_id = ref<bigint | null>();
-const item_object = ref<ItemCargo | undefined>();
+const item_objects = ref<ItemCargo[]>([]);
+const inventory_changes_start_day = ref<string>();
+const inventory_changes_end_day = ref<string>();
 
 const locationModalOpen = ref(false);
 const selectedInventoryItem = ref<ExpendedRefrence | null>(null);
@@ -175,12 +177,18 @@ const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = us
   {
     onRequest: ({ options }) => {
       options.query = options.query || {};
-      if (item_object.value !== undefined && item_object.value !== null) {
-        options.query.item_id = item_object.value.id;
-        options.query.item_type = item_object.value.type;
+      if (item_objects.value.length) {
+        options.query.item_id = item_objects.value.map((item) => item.id);
+        options.query.item_type = item_objects.value.map((item) => item.type);
       }
       if (player_id.value !== undefined && player_id.value !== null) {
         options.query.user_id = player_id.value.toString();
+      }
+      if (inventory_changes_start_day.value) {
+        options.query.start_day = inventory_changes_start_day.value;
+      }
+      if (inventory_changes_end_day.value) {
+        options.query.end_day = inventory_changes_end_day.value;
       }
       options.query.per_page = 20;
 
@@ -984,12 +992,22 @@ const skillToToolIndex = {
 const numberFormat = new Intl.NumberFormat(undefined);
 
 watchThrottled(
-  () => [item_object.value, player_id.value],
-  (value, oldValue) => {
+  () => [
+    item_objects.value,
+    player_id.value,
+    inventory_changes_start_day.value,
+    inventory_changes_end_day.value,
+  ],
+  () => {
     InventoryChangelogRefresh();
   },
   { throttle: 50 },
 );
+
+const updateInventoryChangesRange = (range: { startDay: string; endDay: string }) => {
+  inventory_changes_start_day.value = range.startDay;
+  inventory_changes_end_day.value = range.endDay;
+};
 
 watch(
   () => route.query.tab,
@@ -1320,7 +1338,8 @@ watch(
                 v-else-if="tab === 'inventory_changelogs'"
                 :items="InventoryChangelogFetch"
                 @player-changed="(item) => (player_id = item)"
-                @item-changed="(item) => (item_object = item)"
+                @item-changed="(items) => (item_objects = items)"
+                @range-changed="updateInventoryChangesRange"
               />
 
               <ClaimTabTravelerTasks

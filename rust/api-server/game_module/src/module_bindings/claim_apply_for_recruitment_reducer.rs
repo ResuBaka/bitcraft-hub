@@ -50,8 +50,8 @@ pub trait claim_apply_for_recruitment {
     fn on_claim_apply_for_recruitment(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimApplyForRecruitmentRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimApplyForRecruitmentCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_apply_for_recruitment`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl claim_apply_for_recruitment for super::RemoteReducers {
     fn on_claim_apply_for_recruitment(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimApplyForRecruitmentRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimApplyForRecruitmentCallbackId {
         ClaimApplyForRecruitmentCallbackId(self.imp.on_reducer(
             "claim_apply_for_recruitment",

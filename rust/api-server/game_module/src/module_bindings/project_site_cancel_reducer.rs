@@ -47,8 +47,8 @@ pub trait project_site_cancel {
     fn on_project_site_cancel(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteCancelRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProjectSiteCancelCallbackId;
     /// Cancel a callback previously registered by [`Self::on_project_site_cancel`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl project_site_cancel for super::RemoteReducers {
     fn on_project_site_cancel(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteCancelRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProjectSiteCancelCallbackId {
         ProjectSiteCancelCallbackId(self.imp.on_reducer(
             "project_site_cancel",

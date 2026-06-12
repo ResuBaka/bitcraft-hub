@@ -50,8 +50,8 @@ pub trait barter_stall_set_market_mode_enabled {
     fn on_barter_stall_set_market_mode_enabled(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &BarterStallSetMarketModeEnabledRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BarterStallSetMarketModeEnabledCallbackId;
     /// Cancel a callback previously registered by [`Self::on_barter_stall_set_market_mode_enabled`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl barter_stall_set_market_mode_enabled for super::RemoteReducers {
     fn on_barter_stall_set_market_mode_enabled(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &BarterStallSetMarketModeEnabledRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BarterStallSetMarketModeEnabledCallbackId {
         BarterStallSetMarketModeEnabledCallbackId(self.imp.on_reducer(
             "barter_stall_set_market_mode_enabled",

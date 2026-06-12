@@ -50,8 +50,8 @@ pub trait stage_knowledge_stat_modifier_desc {
     fn on_stage_knowledge_stat_modifier_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeStatModifierDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageKnowledgeStatModifierDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_knowledge_stat_modifier_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_knowledge_stat_modifier_desc for super::RemoteReducers {
     fn on_stage_knowledge_stat_modifier_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeStatModifierDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageKnowledgeStatModifierDescCallbackId {
         StageKnowledgeStatModifierDescCallbackId(self.imp.on_reducer(
             "stage_knowledge_stat_modifier_desc",

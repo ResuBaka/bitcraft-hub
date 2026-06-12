@@ -5,7 +5,6 @@ use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use crossbeam_channel::{Receiver, Sender, unbounded};
-use crossbeam_skiplist::SkipMap;
 use dashmap::DashMap;
 use log::error;
 use parking_lot::RwLock;
@@ -14,7 +13,6 @@ use service::Query;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::sync::LazyLock;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use ts_rs::TS;
 
 #[macro_export]
@@ -178,6 +176,7 @@ pub(crate) enum RankType {
 }
 
 pub struct LeaderboardEntry {
+    #[allow(dead_code)]
     pub rank: usize,
     pub user_id: i64,
     pub xp: i64,
@@ -430,24 +429,6 @@ impl Leaderboard {
     //     }
     // }
 
-    fn increment_count(map: &SkipMap<i64, AtomicUsize>, key: i64) {
-        if let Some(entry) = map.get(&key) {
-            entry.value().fetch_add(1, Ordering::Relaxed);
-        } else {
-            // Entry doesn't exist, try to insert it
-            map.get_or_insert(key, AtomicUsize::new(1));
-        }
-    }
-
-    fn decrement_count(map: &SkipMap<i64, AtomicUsize>, key: i64) {
-        if let Some(entry) = map.get(&key) {
-            // Note: In highly concurrent systems, a count might briefly
-            // drop to 0. We leave the key in the map to avoid
-            // the overhead of constant removals.
-            entry.value().fetch_sub(1, Ordering::Relaxed);
-        }
-    }
-
     pub(super) fn update(&self, user_id: i64, new_xp: i64) {
         // We use a block here to ensure the DashMap 'entry' guard
         // is dropped immediately after the value is updated.
@@ -475,6 +456,7 @@ impl Leaderboard {
         }
     }
 
+    #[allow(dead_code)]
     pub(super) fn has(&self, user_id: &i64) -> bool {
         self.scores.contains_key(user_id)
     }
@@ -514,6 +496,7 @@ impl Leaderboard {
         Some(higher_count + above_same_bucket_higher_xp + tie_rank)
     }
 
+    #[allow(dead_code)]
     pub(super) fn remove(&self, user_id: i64) {
         if let Some((_, xp)) = self.scores.remove(&user_id) {
             let _ = self.tx.send(LeaderboardOp::Remove { user_id, xp });

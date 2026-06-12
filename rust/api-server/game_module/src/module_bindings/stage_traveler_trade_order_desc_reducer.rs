@@ -72,8 +72,8 @@ impl stage_traveler_trade_order_desc for super::RemoteReducers {
     fn on_stage_traveler_trade_order_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTradeOrderDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StageTravelerTradeOrderDescCallbackId {
         StageTravelerTradeOrderDescCallbackId(self.imp.on_reducer(
             "stage_traveler_trade_order_desc",

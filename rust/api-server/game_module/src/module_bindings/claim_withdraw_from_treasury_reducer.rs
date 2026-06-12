@@ -50,8 +50,8 @@ pub trait claim_withdraw_from_treasury {
     fn on_claim_withdraw_from_treasury(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimWithdrawFromTreasuryRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimWithdrawFromTreasuryCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_withdraw_from_treasury`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl claim_withdraw_from_treasury for super::RemoteReducers {
     fn on_claim_withdraw_from_treasury(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimWithdrawFromTreasuryRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimWithdrawFromTreasuryCallbackId {
         ClaimWithdrawFromTreasuryCallbackId(self.imp.on_reducer(
             "claim_withdraw_from_treasury",

@@ -61,8 +61,8 @@ impl building_repair_start for super::RemoteReducers {
     fn on_building_repair_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBuildingRepairRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingRepairStartCallbackId {
         BuildingRepairStartCallbackId(self.imp.on_reducer(
             "building_repair_start",

@@ -50,8 +50,8 @@ pub trait claim_set_purchase_supply_threshold {
     fn on_claim_set_purchase_supply_threshold(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &ClaimSetPurchaseSupplyThresholdRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimSetPurchaseSupplyThresholdCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_set_purchase_supply_threshold`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl claim_set_purchase_supply_threshold for super::RemoteReducers {
     fn on_claim_set_purchase_supply_threshold(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &ClaimSetPurchaseSupplyThresholdRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimSetPurchaseSupplyThresholdCallbackId {
         ClaimSetPurchaseSupplyThresholdCallbackId(self.imp.on_reducer(
             "claim_set_purchase_supply_threshold",

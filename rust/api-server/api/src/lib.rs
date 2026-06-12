@@ -541,6 +541,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         .merge(traveler_tasks::get_routes())
         .merge(auction_listing_state::get_routes())
         .merge(houses::get_routes())
+        .merge(crafting::get_routes())
         .nest("/desc", desc_router)
         .nest_service(
             "/static",

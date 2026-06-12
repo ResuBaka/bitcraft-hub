@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DateValue } from "@internationalized/date";
+import { DateFormatter, getLocalTimeZone, today } from "@internationalized/date";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { ItemType } from "~/types/ItemType";
@@ -7,14 +9,101 @@ import type { PlayerUsernameStateResponse } from "~/types/PlayerUsernameStateRes
 const props = withDefaults(
   defineProps<{
     items?: InventoryChangelog[];
+    defaultUseUtcTimezone?: boolean;
   }>(),
   {
     items: () => [],
+    defaultUseUtcTimezone: false,
   },
 );
 
+const emit = defineEmits<{
+  rangeChanged: [
+    value: {
+      startDay: string;
+      endDay: string;
+      useUtcTimezone: boolean;
+    },
+  ];
+}>();
+
 const page = ref(1);
 const pageSize = 50;
+const maxRangeDays = 4;
+const localTimeZone = getLocalTimeZone();
+const dateFormatter = new DateFormatter(undefined, { dateStyle: "medium" });
+
+const formatTimezoneOffset = (date: Date) => {
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const hours = `${Math.floor(absoluteMinutes / 60)}`.padStart(2, "0");
+  const minutes = `${absoluteMinutes % 60}`.padStart(2, "0");
+  return `${sign}${hours}:${minutes}`;
+};
+
+const useUtcTimezone = ref(props.defaultUseUtcTimezone);
+const initialEnd = today(localTimeZone);
+const minSelectableDate = initialEnd.subtract({ days: 31 });
+const dateRange = shallowRef({
+  start: initialEnd.subtract({ days: 1 }),
+  end: initialEnd,
+});
+
+const formatSelectedDay = (date: DateValue) => {
+  if (useUtcTimezone.value) {
+    return `${date.toString()}Z`;
+  }
+
+  return `${date.toString()}${formatTimezoneOffset(date.toDate(localTimeZone))}`;
+};
+
+const rangeLabel = computed(() => {
+  const { start, end } = dateRange.value;
+
+  if (!start) {
+    return "Pick a date range";
+  }
+
+  if (!end) {
+    return dateFormatter.format(start.toDate(localTimeZone));
+  }
+
+  return `${dateFormatter.format(start.toDate(localTimeZone))} - ${dateFormatter.format(
+    end.toDate(localTimeZone),
+  )}`;
+});
+
+const emitRangeChanged = () => {
+  const { start, end } = dateRange.value;
+
+  if (!start || !end) {
+    return;
+  }
+
+  emit("rangeChanged", {
+    startDay: formatSelectedDay(start),
+    endDay: formatSelectedDay(end),
+    useUtcTimezone: useUtcTimezone.value,
+  });
+};
+
+const selectDateRange = (range?: { start?: DateValue; end?: DateValue } | null) => {
+  if (!range) {
+    return;
+  }
+
+  dateRange.value = range;
+  emitRangeChanged();
+};
+
+watch(useUtcTimezone, () => {
+  emitRangeChanged();
+});
+
+onMounted(() => {
+  emitRangeChanged();
+});
 
 const tableRows = computed(() =>
   props.items
@@ -160,6 +249,30 @@ watch(
 
 <template>
   <div class="flex flex-col gap-3">
+    <div class="flex flex-wrap items-end gap-3">
+      <UPopover :content="{ align: 'start' }">
+        <UButton color="neutral" variant="subtle" icon="i-lucide-calendar">
+          {{ rangeLabel }}
+        </UButton>
+
+        <template #content>
+          <div class="flex flex-col gap-2 p-2">
+            <UCalendar
+              :model-value="dateRange"
+              :number-of-months="2"
+              :maximum-days="maxRangeDays"
+              :min-value="minSelectableDate"
+              :max-value="initialEnd"
+              range
+              @update:model-value="selectDateRange"
+            />
+            <div class="border-t border-(--ui-border) pt-2">
+              <USwitch v-model="useUtcTimezone" label="Use UTC timezone" />
+            </div>
+          </div>
+        </template>
+      </UPopover>
+    </div>
     <UTable class="inventory-changes-table" :columns="columns" :data="pagedRows">
       <template #user-cell="{ row }">
         <span v-if="row.original.user_id !== null">

@@ -4,6 +4,7 @@ use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, TimeDelta, TimeZone, Utc};
 use entity::inventory::{
     ExpendedRefrence, InventorySummary, ItemExpended, ItemSlotResolved, ItemType, ResolvedInventory,
 };
@@ -46,21 +47,119 @@ pub(crate) fn get_routes() -> AppRouter {
 
 #[derive(Deserialize)]
 pub(crate) struct InventoryChangesParams {
-    pub item_id: Option<i32>,
-    pub item_type: Option<inventory_changelog::ItemType>,
+    pub start_day: Option<String>,
+    pub end_day: Option<String>,
+    pub item_id: Option<Vec<i32>>,
+    pub item_type: Option<Vec<inventory_changelog::ItemType>>,
     pub user_id: Option<i64>,
 }
+
+impl InventoryChangesParams {
+    pub(crate) fn parsed_day_range(
+        &self,
+    ) -> Result<(DateTime<Utc>, DateTime<Utc>), (StatusCode, &'static str)> {
+        let start_day = parse_day_with_offset(self.start_day.as_deref())?;
+        let end_day = parse_day_with_offset(self.end_day.as_deref())?;
+        let today = (Utc::now().date_naive(), FixedOffset::east_opt(0).unwrap());
+        let start_day = start_day.or(end_day).unwrap_or(today);
+        let end_day = end_day.unwrap_or(start_day);
+
+        if start_day.0 > end_day.0 {
+            return Err((StatusCode::BAD_REQUEST, "Invalid day range"));
+        }
+
+        let start_time = start_day
+            .1
+            .from_local_datetime(&start_day.0.and_time(NaiveTime::MIN))
+            .single()
+            .ok_or((StatusCode::BAD_REQUEST, "Invalid day format"))?
+            .with_timezone(&Utc);
+        let end_time = end_day
+            .1
+            .from_local_datetime(&end_day.0.and_time(NaiveTime::MIN))
+            .single()
+            .ok_or((StatusCode::BAD_REQUEST, "Invalid day format"))?
+            + TimeDelta::days(1);
+
+        Ok((start_time, end_time.with_timezone(&Utc)))
+    }
+
+    pub(crate) fn item_filters(
+        &self,
+    ) -> Result<Option<Vec<(i32, inventory_changelog::ItemType)>>, (StatusCode, &'static str)> {
+        if self.item_id.is_none() || self.item_type.is_none() {
+            return Ok(None);
+        };
+
+        let itms_ids = self.item_id.clone().unwrap();
+        let item_types = self.item_type.clone().unwrap();
+
+        if itms_ids.len() != item_types.len() {
+            return Err((StatusCode::BAD_REQUEST, "Invalid item filter"));
+        }
+
+        Ok(Some(
+            itms_ids
+                .iter()
+                .copied()
+                .zip(item_types.iter().cloned())
+                .collect(),
+        ))
+    }
+}
+
+fn parse_day_with_offset(
+    day: Option<&str>,
+) -> Result<Option<(NaiveDate, FixedOffset)>, (StatusCode, &'static str)> {
+    let Some(day) = day.map(str::trim).filter(|day| !day.is_empty()) else {
+        return Ok(None);
+    };
+
+    if let Ok(date) = NaiveDate::parse_from_str(day, "%Y-%m-%d") {
+        return Ok(Some((date, FixedOffset::east_opt(0).unwrap())));
+    }
+
+    if day.len() < 11 {
+        return Err((StatusCode::BAD_REQUEST, "Invalid day format"));
+    }
+
+    let day_with_midnight = if let Some(day) = day.strip_suffix('Z') {
+        format!("{day}T00:00:00Z")
+    } else {
+        let offset_start = day[10..]
+            .find(['+', '-', ' '])
+            .map(|offset_start| offset_start + 10)
+            .ok_or((StatusCode::BAD_REQUEST, "Invalid day format"))?;
+        let offset = day[offset_start..].trim_start();
+        let offset = if day[offset_start..].starts_with(' ') && !offset.starts_with(['+', '-']) {
+            format!("+{offset}")
+        } else {
+            offset.to_string()
+        };
+
+        format!("{}T00:00:00{}", &day[..offset_start], offset)
+    };
+
+    DateTime::parse_from_rfc3339(&day_with_midnight)
+        .map(|date_time| Some((date_time.date_naive(), *date_time.offset())))
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid day format"))
+}
+
 pub(crate) async fn read_inventory_changes(
     state: State<AppState>,
     Path(id): Path<i64>,
-    Query(params): Query<InventoryChangesParams>,
+    axum_extra::extract::Query(params): axum_extra::extract::Query<InventoryChangesParams>,
 ) -> Result<axum_codec::Codec<Vec<inventory_changelog::Model>>, (StatusCode, &'static str)> {
+    let (start_time, end_time) = params.parsed_day_range()?;
+    let item_filters = params.item_filters()?;
+
     let (inventory_changes, _num_pages) = QueryCore::find_inventory_changes_by_entity_ids(
         &state.conn,
         vec![id],
-        10000,
-        params.item_id,
-        params.item_type,
+        20,
+        start_time,
+        end_time,
+        item_filters,
         params.user_id,
     )
     .await

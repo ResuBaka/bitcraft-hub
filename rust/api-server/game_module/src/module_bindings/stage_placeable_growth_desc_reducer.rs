@@ -63,8 +63,8 @@ impl stage_placeable_growth_desc for super::RemoteReducers {
     fn on_stage_placeable_growth_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceableGrowthDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StagePlaceableGrowthDescCallbackId {
         StagePlaceableGrowthDescCallbackId(self.imp.on_reducer(
             "stage_placeable_growth_desc",

@@ -61,8 +61,8 @@ impl placeable_place for super::RemoteReducers {
     fn on_placeable_place(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPlaceablePlaceRequest)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlaceablePlaceCallbackId {
         PlaceablePlaceCallbackId(self.imp.on_reducer(
             "placeable_place",

@@ -53,8 +53,8 @@ pub trait admin_rename_building_coord {
     fn on_admin_rename_building_coord(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesSmallMessage, &String)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AdminRenameBuildingCoordCallbackId;
     /// Cancel a callback previously registered by [`Self::on_admin_rename_building_coord`],
     /// causing it not to run in the future.
@@ -75,8 +75,8 @@ impl admin_rename_building_coord for super::RemoteReducers {
     fn on_admin_rename_building_coord(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesSmallMessage, &String)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AdminRenameBuildingCoordCallbackId {
         AdminRenameBuildingCoordCallbackId(self.imp.on_reducer(
             "admin_rename_building_coord",

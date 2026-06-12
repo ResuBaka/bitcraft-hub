@@ -4,12 +4,12 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::exploration_chunks_state_type::ExplorationChunksState;
+use super::exploration_chunks_state_v_2_type::ExplorationChunksStateV2;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct ImportExplorationChunksStateArgs {
-    pub records: Vec<ExplorationChunksState>,
+    pub records: Vec<ExplorationChunksStateV2>,
 }
 
 impl From<ImportExplorationChunksStateArgs> for super::Reducer {
@@ -38,7 +38,7 @@ pub trait import_exploration_chunks_state {
     ///  and its status can be observed by listening for [`Self::on_import_exploration_chunks_state`] callbacks.
     fn import_exploration_chunks_state(
         &self,
-        records: Vec<ExplorationChunksState>,
+        records: Vec<ExplorationChunksStateV2>,
     ) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `import_exploration_chunks_state`.
     ///
@@ -49,7 +49,9 @@ pub trait import_exploration_chunks_state {
     /// to cancel the callback.
     fn on_import_exploration_chunks_state(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<ExplorationChunksState>) + Send + 'static,
+        callback: impl FnMut(&super::ReducerEventContext, &Vec<ExplorationChunksStateV2>)
+            + Send
+            + 'static,
     ) -> ImportExplorationChunksStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_exploration_chunks_state`],
     /// causing it not to run in the future.
@@ -62,7 +64,7 @@ pub trait import_exploration_chunks_state {
 impl import_exploration_chunks_state for super::RemoteReducers {
     fn import_exploration_chunks_state(
         &self,
-        records: Vec<ExplorationChunksState>,
+        records: Vec<ExplorationChunksStateV2>,
     ) -> __sdk::Result<()> {
         self.imp.call_reducer(
             "import_exploration_chunks_state",
@@ -71,9 +73,9 @@ impl import_exploration_chunks_state for super::RemoteReducers {
     }
     fn on_import_exploration_chunks_state(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ExplorationChunksState>)
-        + Send
-        + 'static,
+        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ExplorationChunksStateV2>)
+            + Send
+            + 'static,
     ) -> ImportExplorationChunksStateCallbackId {
         ImportExplorationChunksStateCallbackId(self.imp.on_reducer(
             "import_exploration_chunks_state",
