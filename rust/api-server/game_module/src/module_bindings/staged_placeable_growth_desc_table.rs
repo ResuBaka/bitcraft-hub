@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use super::placeable_growth_desc_type::PlaceableGrowthDesc;
 use super::placeable_growth_outcome_type::PlaceableGrowthOutcome;
+use super::placeable_growth_outcome_v_2_type::PlaceableGrowthOutcomeV2;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 /// Table handle for the table `staged_placeable_growth_desc`.

@@ -92,6 +92,8 @@ pub enum CollectibleType {
     HousingWalls = 21,
     HousingFloor = 22,
     DeployableAppearanceOverride = 23,
+    FaceAccessory = 24,
+    FacialHair = 25,
 }
 
 impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
@@ -146,6 +148,12 @@ impl From<game_module::module_bindings::CollectibleType> for CollectibleType {
             }
             game_module::module_bindings::CollectibleType::DeployableAppearanceOverride => {
                 CollectibleType::DeployableAppearanceOverride
+            }
+            game_module::module_bindings::CollectibleType::FaceAccessory => {
+                CollectibleType::FaceAccessory
+            }
+            game_module::module_bindings::CollectibleType::FacialHair => {
+                CollectibleType::FacialHair
             }
         }
     }

@@ -34,7 +34,7 @@ export const iconAssetUrlName = <T = any>(
   const matches = assetPath.match(multipleIconsRegex);
   if (!matches || !iconDomain) {
     return {
-      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
+      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}`,
       show: !!iconDomain,
     };
   }
@@ -51,7 +51,7 @@ export const iconAssetUrlName = <T = any>(
     extraArgs,
   );
 
-  result.url = url.endsWith(".webp") ? url : `${url}.webp`;
+  result.url = url.endsWith("") ? url : `${url}`;
   if (amount) {
     result.amount = amount;
   }
@@ -78,7 +78,7 @@ const internalIconDeciderFunction = <T = any | undefined>(
 
   const { url, amount } = deciderFunctionToUse(base, options, extraArgs);
 
-  result.url = url.endsWith(".webp") ? url : `${url}.webp`;
+  result.url = url.endsWith("") ? url : `${url}`;
   if (amount) {
     result.amount = amount;
   }
@@ -97,7 +97,7 @@ export const iconAssetUrlNameAmount = (
 
   if (!matches || !iconDomain) {
     return {
-      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
+      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}`,
       show: !!iconDomain,
     };
   }
@@ -150,7 +150,7 @@ export const iconAssetUrlNameAmount = (
     localExtraArgs,
   );
 
-  result.url = url.endsWith(".webp") ? url : `${url}.webp`;
+  result.url = url.endsWith("") ? url : `${url}`;
   if (amount) {
     result.amount = amount;
   }
@@ -169,7 +169,7 @@ export const iconAssetUrlNameRandom = (assetPath: string): IconAssetUrl => {
   const matches = assetPath.match(multipleIconsRegex);
   if (!matches || !iconDomain) {
     return {
-      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
+      url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}`,
       show: !!iconDomain,
     };
   }
@@ -212,7 +212,7 @@ export const iconAssetUrlNameAll = (assetPath: string): IconAssetUrlAll => {
     return {
       icons: [
         {
-          url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}.webp`,
+          url: `${iconDomain}${iconDomain.endsWith("/") ? "" : "/"}${assetPath}`,
         },
       ],
       show: !!iconDomain,

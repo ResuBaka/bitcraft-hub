@@ -6,7 +6,9 @@ use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::input_item_stack_type::InputItemStack;
 use super::item_stack_type::ItemStack;
 use super::level_requirement_type::LevelRequirement;
+use super::placeable_growth_outcome_v_2_type::PlaceableGrowthOutcomeV2;
 use super::placeable_interaction_desc_type::PlaceableInteractionDesc;
+use super::placeable_self_buff_chance_type::PlaceableSelfBuffChance;
 use super::tool_requirement_type::ToolRequirement;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 

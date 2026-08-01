@@ -19,6 +19,12 @@ pub struct PlaceableDesc {
     pub icon_asset_name: String,
     pub max_health: i32,
     pub visible_to_others: bool,
+    pub spawns_on_land: bool,
+    pub land_elevation_min: i32,
+    pub land_elevation_max: i32,
+    pub spawns_in_water: bool,
+    pub water_depth_min: i32,
+    pub water_depth_max: i32,
 }
 
 impl __sdk::InModule for PlaceableDesc {
@@ -39,6 +45,12 @@ pub struct PlaceableDescCols {
     pub icon_asset_name: __sdk::__query_builder::Col<PlaceableDesc, String>,
     pub max_health: __sdk::__query_builder::Col<PlaceableDesc, i32>,
     pub visible_to_others: __sdk::__query_builder::Col<PlaceableDesc, bool>,
+    pub spawns_on_land: __sdk::__query_builder::Col<PlaceableDesc, bool>,
+    pub land_elevation_min: __sdk::__query_builder::Col<PlaceableDesc, i32>,
+    pub land_elevation_max: __sdk::__query_builder::Col<PlaceableDesc, i32>,
+    pub spawns_in_water: __sdk::__query_builder::Col<PlaceableDesc, bool>,
+    pub water_depth_min: __sdk::__query_builder::Col<PlaceableDesc, i32>,
+    pub water_depth_max: __sdk::__query_builder::Col<PlaceableDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasCols for PlaceableDesc {
@@ -55,6 +67,12 @@ impl __sdk::__query_builder::HasCols for PlaceableDesc {
             icon_asset_name: __sdk::__query_builder::Col::new(table_name, "icon_asset_name"),
             max_health: __sdk::__query_builder::Col::new(table_name, "max_health"),
             visible_to_others: __sdk::__query_builder::Col::new(table_name, "visible_to_others"),
+            spawns_on_land: __sdk::__query_builder::Col::new(table_name, "spawns_on_land"),
+            land_elevation_min: __sdk::__query_builder::Col::new(table_name, "land_elevation_min"),
+            land_elevation_max: __sdk::__query_builder::Col::new(table_name, "land_elevation_max"),
+            spawns_in_water: __sdk::__query_builder::Col::new(table_name, "spawns_in_water"),
+            water_depth_min: __sdk::__query_builder::Col::new(table_name, "water_depth_min"),
+            water_depth_max: __sdk::__query_builder::Col::new(table_name, "water_depth_max"),
         }
     }
 }

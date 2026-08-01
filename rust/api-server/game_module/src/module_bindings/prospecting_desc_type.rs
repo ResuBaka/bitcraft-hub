@@ -39,6 +39,7 @@ pub struct ProspectingDesc {
     pub icon_asset_path: String,
     pub experience_per_node: ExperienceStackF32,
     pub pct_nodes_for_max_contribution: f32,
+    pub single_contribution_only: bool,
 }
 
 impl __sdk::InModule for ProspectingDesc {
@@ -82,6 +83,7 @@ pub struct ProspectingDescCols {
     pub icon_asset_path: __sdk::__query_builder::Col<ProspectingDesc, String>,
     pub experience_per_node: __sdk::__query_builder::Col<ProspectingDesc, ExperienceStackF32>,
     pub pct_nodes_for_max_contribution: __sdk::__query_builder::Col<ProspectingDesc, f32>,
+    pub single_contribution_only: __sdk::__query_builder::Col<ProspectingDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for ProspectingDesc {
@@ -170,6 +172,10 @@ impl __sdk::__query_builder::HasCols for ProspectingDesc {
             pct_nodes_for_max_contribution: __sdk::__query_builder::Col::new(
                 table_name,
                 "pct_nodes_for_max_contribution",
+            ),
+            single_contribution_only: __sdk::__query_builder::Col::new(
+                table_name,
+                "single_contribution_only",
             ),
         }
     }

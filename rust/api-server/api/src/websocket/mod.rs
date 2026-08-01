@@ -33,6 +33,7 @@ use crate::user_state::bitcraft::start_worker_user_state;
 use crate::vault_state::bitcraft::start_worker_vault_state_collectibles;
 use crate::websocket::batched_worker::BatchedWorker;
 use game_module::module_bindings::*;
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::__codegen::{self as __sdk};
@@ -95,7 +96,7 @@ fn connect_to_db(
     DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, identity, _token| {
-            tracing::info!(
+            tracing::debug!(
                 region = tmp_db_name,
                 "Connected to server {tmp_db_name} with {identity}"
             );
@@ -1297,11 +1298,7 @@ async fn connect_to_db_logic(
 
             let npc_desc = ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
             if !npc_desc.is_empty() {
-                tracing::info!(
-                    region = region_number,
-                    "progressive_action_state, {:?}",
-                    npc_desc.len()
-                )
+                // @todo Write the SpacetimeUpdateMessages::Initial part
             }
 
             metrics::gauge!(
@@ -1639,12 +1636,6 @@ async fn connect_to_db_logic(
             .set(ctx.db.player_housing_state().count() as f64);
             let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
             if !player_housing_state.is_empty() {
-                tracing::info!(
-                    region = region_number,
-                    "We have {} in region {}",
-                    player_housing_state.len(),
-                    tmp_region_number
-                );
                 send_worker_message(
                     "player_housing_state",
                     &tmp_player_housing_state_tx,
@@ -1749,8 +1740,7 @@ async fn connect_to_db_logic(
             tables_to_subscribe
                 .into_iter()
                 .filter_map(|table| {
-                    if *remove_desc && (table.contains("_desc") || table == "player_housing_state")
-                    {
+                    if *remove_desc && (table.contains("_desc")) {
                         return None;
                     }
 
@@ -1948,6 +1938,26 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_database = database.clone();
 
                 tokio::spawn(async move {
+                    let startup_wait_ms = {
+                        let startup_wait_ranges_ms =
+                            [(0, 500), (500, 2_000), (2_000, 5_000), (5_000, 15_000)];
+                        let range_index = rand::rng().random_range(0..startup_wait_ranges_ms.len());
+                        let (min_wait_ms, max_wait_ms) = startup_wait_ranges_ms[range_index];
+
+                        rand::rng().random_range(min_wait_ms..=max_wait_ms)
+                    };
+
+                    if startup_wait_ms > 0 {
+                        tracing::debug!(
+                            region = tmp_database,
+                            wait_ms = startup_wait_ms,
+                            database_name = tmp_database.clone(),
+                            spacetime_url = tmp_conf.spacetimedb_url(),
+                            "Delaying websocket connection startup"
+                        );
+                        tokio::time::sleep(Duration::from_millis(startup_wait_ms)).await;
+                    }
+
                     let mut tries = 0;
 
                     loop {
@@ -1955,7 +1965,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             "bitcraft_database_connected",
                             &[("region", tmp_database.clone())]
                         )
-                            .set(0);
+                        .set(0);
 
                         let last_connected = Instant::now();
 
@@ -2002,9 +2012,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_extraction_recipe_desc_tx,
                             &tmp_progressive_action_state_tx,
                         )
-                            .await;
-
-
+                        .await;
 
                         if let Err(error) = result {
                             tracing::error!(
@@ -2015,8 +2023,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             );
 
                             if tries > 10 {
-                              tracing::error!(region = tmp_database, "We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
-                              break;
+                                tracing::error!(
+                                    region = tmp_database,
+                                    tries,
+                                    database_name = tmp_database.clone(),
+                                    spacetime_url = tmp_conf.spacetimedb_url(),
+                                    "We tried all tries and with that don't retry"
+                                );
+                                break;
                             }
                         } else if last_connected.elapsed().as_secs() > 120 {
                             tries = 0;
@@ -2025,17 +2039,29 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         };
 
                         if tries > 15 {
-                            tracing::error!(region = tmp_database, "We tried {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
+                            tracing::error!(
+                                region = tmp_database,
+                                tries,
+                                database_name = tmp_database.clone(),
+                                spacetime_url = tmp_conf.spacetimedb_url(),
+                                "We tried all tries and with that don't retry"
+                            );
                             break;
                         }
 
-                        if tries > 0 {
-                            tracing::info!(region = tmp_database, "We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
-                            tokio::time::sleep(Duration::from_secs(15)).await;
-                        } else {
-                            tracing::info!(region = tmp_database, "We retry {} and then we disconnected from region {} and server {}", tries, tmp_database.clone(), tmp_conf.spacetimedb_url());
-                            tokio::time::sleep(Duration::from_secs(tries * 20)).await;
-                        }
+                        let base_wait_secs = (tries.max(1) * 45).min(300);
+                        let jitter_secs = rand::rng().random_range(0..=90);
+                        let wait_secs = base_wait_secs + jitter_secs;
+
+                        tracing::warn!(
+                            region = tmp_database,
+                            tries,
+                            wait = wait_secs,
+                            database_name = tmp_database.clone(),
+                            spacetime_url = tmp_conf.spacetimedb_url(),
+                            "We are retrying to connecect again"
+                        );
+                        tokio::time::sleep(Duration::from_secs(wait_secs)).await;
                     }
                 });
 

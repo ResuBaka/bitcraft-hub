@@ -2,7 +2,7 @@
 
 # use the official Bun image
 # see all versions at https://hub.docker.com/r/oven/bun/tags
-FROM oven/bun:1-alpine as base-alpine
+FROM oven/bun:canary-alpine as base-alpine
 WORKDIR /usr/src/app
 
 FROM oven/bun:1 as base

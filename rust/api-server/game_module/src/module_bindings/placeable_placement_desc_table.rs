@@ -6,6 +6,7 @@ use super::biome_type::Biome;
 use super::item_stack_type::ItemStack;
 use super::level_requirement_type::LevelRequirement;
 use super::placeable_placement_desc_type::PlaceablePlacementDesc;
+use super::placeable_self_buff_chance_type::PlaceableSelfBuffChance;
 use super::tool_requirement_type::ToolRequirement;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 

@@ -3,10 +3,6 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   nitro: {
-    experimental: {
-      websocket: true,
-      tasks: true,
-    },
     preset: "bun"
   },
   modules: [
@@ -15,9 +11,6 @@ export default defineNuxtConfig({
   ],
   css: ['@/assets/css/main.css'],
   vite: {
-    experimental: {
-      enableNativePlugin: true,
-    },
     optimizeDeps: {
       include: [
         '@vue/devtools-core',

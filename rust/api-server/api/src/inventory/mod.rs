@@ -2,7 +2,7 @@ pub(crate) mod bitcraft;
 
 use crate::{AppRouter, AppState};
 use axum::Router;
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use chrono::{DateTime, FixedOffset, NaiveDate, NaiveTime, TimeDelta, TimeZone, Utc};
 use entity::inventory::{

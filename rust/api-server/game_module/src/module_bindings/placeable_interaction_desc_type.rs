@@ -8,6 +8,8 @@ use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::input_item_stack_type::InputItemStack;
 use super::item_stack_type::ItemStack;
 use super::level_requirement_type::LevelRequirement;
+use super::placeable_growth_outcome_v_2_type::PlaceableGrowthOutcomeV2;
+use super::placeable_self_buff_chance_type::PlaceableSelfBuffChance;
 use super::tool_requirement_type::ToolRequirement;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
@@ -32,6 +34,8 @@ pub struct PlaceableInteractionDesc {
     pub recipe_performance_id: i32,
     pub on_destroy_spawned_placeable_id: i32,
     pub on_destroy_spawned_placeable_chance: f32,
+    pub on_destroy_outcomes: Option<Vec<PlaceableGrowthOutcomeV2>>,
+    pub self_buffs: Option<Vec<PlaceableSelfBuffChance>>,
 }
 
 impl __sdk::InModule for PlaceableInteractionDesc {
@@ -66,6 +70,12 @@ pub struct PlaceableInteractionDescCols {
     pub on_destroy_spawned_placeable_id: __sdk::__query_builder::Col<PlaceableInteractionDesc, i32>,
     pub on_destroy_spawned_placeable_chance:
         __sdk::__query_builder::Col<PlaceableInteractionDesc, f32>,
+    pub on_destroy_outcomes: __sdk::__query_builder::Col<
+        PlaceableInteractionDesc,
+        Option<Vec<PlaceableGrowthOutcomeV2>>,
+    >,
+    pub self_buffs:
+        __sdk::__query_builder::Col<PlaceableInteractionDesc, Option<Vec<PlaceableSelfBuffChance>>>,
 }
 
 impl __sdk::__query_builder::HasCols for PlaceableInteractionDesc {
@@ -118,6 +128,11 @@ impl __sdk::__query_builder::HasCols for PlaceableInteractionDesc {
                 table_name,
                 "on_destroy_spawned_placeable_chance",
             ),
+            on_destroy_outcomes: __sdk::__query_builder::Col::new(
+                table_name,
+                "on_destroy_outcomes",
+            ),
+            self_buffs: __sdk::__query_builder::Col::new(table_name, "self_buffs"),
         }
     }
 }

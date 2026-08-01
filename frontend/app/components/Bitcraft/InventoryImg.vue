@@ -54,20 +54,23 @@ const sizeValue = (value: number | string) => {
 
 <template>
   <div class="inventory-img" v-bind="$attrs">
-    <img
-      v-if="!imagedErrored && iconUrl(item).show"
-      :src="iconUrl(item).url"
-      :alt="item?.name ?? 'Item icon'"
-      :style="{
-        maxWidth: sizeValue(width),
-        maxHeight: sizeValue(height),
-        width: 'auto',
-        height: 'auto',
-      }"
-      class="inventory-img__image"
-      loading="lazy"
-      @error="imagedErrored = true"
-    />
+    <picture v-if="!imagedErrored && iconUrl(item).show">
+      <source :srcset="`${iconUrl(item).url}.jxl`" type="image/jxl">
+      <source :srcset="`${iconUrl(item).url}.avif`" type="image/avif">
+      <img
+        :src="`${iconUrl(item).url}.webp`"
+        :alt="item?.name ?? 'Item icon'"
+        :style="{
+          maxWidth: sizeValue(width),
+          maxHeight: sizeValue(height),
+          width: 'auto',
+          height: 'auto',
+        }"
+        class="inventory-img__image"
+        loading="lazy"
+        @error="imagedErrored = true"
+      />
+    </picture>
     <div
       v-else-if="!skipErrorText && fallbackText"
       class="inventory-img__fallback"

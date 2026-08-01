@@ -55,6 +55,10 @@ pub enum CollectibleType {
     HousingFloor,
 
     DeployableAppearanceOverride,
+
+    FaceAccessory,
+
+    FacialHair,
 }
 
 impl __sdk::InModule for CollectibleType {

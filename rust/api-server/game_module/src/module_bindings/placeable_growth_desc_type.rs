@@ -5,6 +5,7 @@
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 use super::placeable_growth_outcome_type::PlaceableGrowthOutcome;
+use super::placeable_growth_outcome_v_2_type::PlaceableGrowthOutcomeV2;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
@@ -14,6 +15,7 @@ pub struct PlaceableGrowthDesc {
     pub time: Vec<f32>,
     pub outcomes: Vec<PlaceableGrowthOutcome>,
     pub show_time_left: bool,
+    pub outcomes_v_2: Option<Vec<PlaceableGrowthOutcomeV2>>,
 }
 
 impl __sdk::InModule for PlaceableGrowthDesc {
@@ -29,6 +31,8 @@ pub struct PlaceableGrowthDescCols {
     pub time: __sdk::__query_builder::Col<PlaceableGrowthDesc, Vec<f32>>,
     pub outcomes: __sdk::__query_builder::Col<PlaceableGrowthDesc, Vec<PlaceableGrowthOutcome>>,
     pub show_time_left: __sdk::__query_builder::Col<PlaceableGrowthDesc, bool>,
+    pub outcomes_v2:
+        __sdk::__query_builder::Col<PlaceableGrowthDesc, Option<Vec<PlaceableGrowthOutcomeV2>>>,
 }
 
 impl __sdk::__query_builder::HasCols for PlaceableGrowthDesc {
@@ -40,6 +44,7 @@ impl __sdk::__query_builder::HasCols for PlaceableGrowthDesc {
             time: __sdk::__query_builder::Col::new(table_name, "time"),
             outcomes: __sdk::__query_builder::Col::new(table_name, "outcomes"),
             show_time_left: __sdk::__query_builder::Col::new(table_name, "show_time_left"),
+            outcomes_v2: __sdk::__query_builder::Col::new(table_name, "outcomes_v2"),
         }
     }
 }

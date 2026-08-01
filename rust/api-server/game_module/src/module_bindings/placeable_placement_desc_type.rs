@@ -7,6 +7,7 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 use super::biome_type::Biome;
 use super::item_stack_type::ItemStack;
 use super::level_requirement_type::LevelRequirement;
+use super::placeable_self_buff_chance_type::PlaceableSelfBuffChance;
 use super::tool_requirement_type::ToolRequirement;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
@@ -37,6 +38,7 @@ pub struct PlaceablePlacementDesc {
     pub max_distance_to_buildings: i32,
     pub buildings: Vec<i32>,
     pub recipe_performance_id: i32,
+    pub self_buffs: Option<Vec<PlaceableSelfBuffChance>>,
 }
 
 impl __sdk::InModule for PlaceablePlacementDesc {
@@ -75,6 +77,8 @@ pub struct PlaceablePlacementDescCols {
     pub max_distance_to_buildings: __sdk::__query_builder::Col<PlaceablePlacementDesc, i32>,
     pub buildings: __sdk::__query_builder::Col<PlaceablePlacementDesc, Vec<i32>>,
     pub recipe_performance_id: __sdk::__query_builder::Col<PlaceablePlacementDesc, i32>,
+    pub self_buffs:
+        __sdk::__query_builder::Col<PlaceablePlacementDesc, Option<Vec<PlaceableSelfBuffChance>>>,
 }
 
 impl __sdk::__query_builder::HasCols for PlaceablePlacementDesc {
@@ -142,6 +146,7 @@ impl __sdk::__query_builder::HasCols for PlaceablePlacementDesc {
                 table_name,
                 "recipe_performance_id",
             ),
+            self_buffs: __sdk::__query_builder::Col::new(table_name, "self_buffs"),
         }
     }
 }

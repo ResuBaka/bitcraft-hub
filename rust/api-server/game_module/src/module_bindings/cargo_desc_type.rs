@@ -32,6 +32,8 @@ pub struct CargoDesc {
     pub tag: String,
     pub rarity: Rarity,
     pub not_pickupable: bool,
+    pub cannot_store_in_buildings: bool,
+    pub cannot_store_in_deployables: bool,
 }
 
 impl __sdk::InModule for CargoDesc {
@@ -65,6 +67,8 @@ pub struct CargoDescCols {
     pub tag: __sdk::__query_builder::Col<CargoDesc, String>,
     pub rarity: __sdk::__query_builder::Col<CargoDesc, Rarity>,
     pub not_pickupable: __sdk::__query_builder::Col<CargoDesc, bool>,
+    pub cannot_store_in_buildings: __sdk::__query_builder::Col<CargoDesc, bool>,
+    pub cannot_store_in_deployables: __sdk::__query_builder::Col<CargoDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for CargoDesc {
@@ -112,6 +116,14 @@ impl __sdk::__query_builder::HasCols for CargoDesc {
             tag: __sdk::__query_builder::Col::new(table_name, "tag"),
             rarity: __sdk::__query_builder::Col::new(table_name, "rarity"),
             not_pickupable: __sdk::__query_builder::Col::new(table_name, "not_pickupable"),
+            cannot_store_in_buildings: __sdk::__query_builder::Col::new(
+                table_name,
+                "cannot_store_in_buildings",
+            ),
+            cannot_store_in_deployables: __sdk::__query_builder::Col::new(
+                table_name,
+                "cannot_store_in_deployables",
+            ),
         }
     }
 }

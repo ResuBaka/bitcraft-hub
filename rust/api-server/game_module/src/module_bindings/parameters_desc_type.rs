@@ -5,6 +5,7 @@
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 use super::movement_speed_type::MovementSpeed;
+use super::traveler_weekly_task_credits_type::TravelerWeeklyTaskCredits;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
@@ -103,6 +104,8 @@ pub struct ParametersDesc {
     pub hexite_capsule_currency_cost: u32,
     pub prospecting_herd_immunity_secs: u32,
     pub rp_walk_speed: f32,
+    pub traveler_task_weekly_credits: Option<Vec<TravelerWeeklyTaskCredits>>,
+    pub traveler_task_reroll_credit_cost: i32,
 }
 
 impl __sdk::InModule for ParametersDesc {
@@ -207,6 +210,9 @@ pub struct ParametersDescCols {
     pub hexite_capsule_currency_cost: __sdk::__query_builder::Col<ParametersDesc, u32>,
     pub prospecting_herd_immunity_secs: __sdk::__query_builder::Col<ParametersDesc, u32>,
     pub rp_walk_speed: __sdk::__query_builder::Col<ParametersDesc, f32>,
+    pub traveler_task_weekly_credits:
+        __sdk::__query_builder::Col<ParametersDesc, Option<Vec<TravelerWeeklyTaskCredits>>>,
+    pub traveler_task_reroll_credit_cost: __sdk::__query_builder::Col<ParametersDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasCols for ParametersDesc {
@@ -538,6 +544,14 @@ impl __sdk::__query_builder::HasCols for ParametersDesc {
                 "prospecting_herd_immunity_secs",
             ),
             rp_walk_speed: __sdk::__query_builder::Col::new(table_name, "rp_walk_speed"),
+            traveler_task_weekly_credits: __sdk::__query_builder::Col::new(
+                table_name,
+                "traveler_task_weekly_credits",
+            ),
+            traveler_task_reroll_credit_cost: __sdk::__query_builder::Col::new(
+                table_name,
+                "traveler_task_reroll_credit_cost",
+            ),
         }
     }
 }

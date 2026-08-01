@@ -13,18 +13,21 @@
   },
   "dependencies": {
     "@antfu/utils": "^9.3.0",
-    "@nuxt/ui": "^4.8.2",
-    "@pinia/nuxt": "^0.11.3",
-    "msgpackr": "^2.0.4",
-    "nuxt": "^4.4.8",
-    "tailwindcss": "^4.3.1",
-    "vue": "^3.6.0-beta.15"
+    "@nuxt/ui": "^4.10.0",
+    "@pinia/nuxt": "^1.0.1",
+    "msgpackr": "^2.0.5",
+    "nuxt": "^4.5.1",
+    "tailwindcss": "^4.3.3",
+    "vue": "^3.6.0-rc.2"
+  },
+  "overrides": {
+    "vue": "^3.6.0-rc.2"
   },
   "devDependencies": {
-    "@nuxt/devtools": "^3.2.4",
-    "@vueuse/core": "^14.3.0",
-    "@vueuse/shared": "^14.3.0",
-    "oxfmt": "^0.54.0",
-    "oxlint": "^1.69.0"
+    "@nuxt/devtools": "^3.4.0",
+    "@vueuse/core": "^14.4.0",
+    "@vueuse/shared": "^14.4.0",
+    "oxfmt": "^0.61.0",
+    "oxlint": "^1.76.0"
   }
 }

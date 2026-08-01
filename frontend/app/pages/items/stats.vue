@@ -9,6 +9,7 @@ const page = ref(1);
 
 const tag = ref<string | null>(null);
 const tier = ref<number | null>(null);
+const rarity = ref<string | null>(null);
 const search = ref<string | null>("");
 const debouncedSearch = ref<string | null>("");
 
@@ -17,24 +18,38 @@ const route = useRoute();
 debouncedSearch.value = (route.query.search as string) ?? "";
 search.value = debouncedSearch.value;
 tag.value = (route.query.tag as string) ?? null;
+rarity.value = (route.query.rarity as string) ?? null;
 
 if (route.query.tier) {
   tier.value = parseInt(route.query.tier);
 }
 
-const { data, pending } = await useLazyFetchMsPack<AllInventoryStatsResponse>(() => {
-  return `/inventory/all_inventory_stats`;
-});
+const { data, pending } = await useLazyFetchMsPack<AllInventoryStatsResponse>(
+  () => {
+    return `/inventory/all_inventory_stats`;
+  },
+  {
+    timeout: 15000,
+  },
+);
 
-const { data: metaData } = await useLazyFetchMsPack<MetaResponse>(() => {
-  return `/api/bitcraft/itemsAndCargo/meta`;
-});
+const { data: metaData } = await useLazyFetchMsPack<MetaResponse>(
+  () => {
+    return `/api/bitcraft/itemsAndCargo/meta`;
+  },
+  {
+    timeout: 15000,
+  },
+);
 
 const tagOptions = computed(() => {
   const tags = metaData.value?.tags ?? [];
+
   return [
     { label: "All tags", value: null },
-    ...tags.map((value: string) => ({ label: value, value })),
+    ...tags
+      .filter((value: string) => value.length != 0)
+      .map((value: string) => ({ label: value, value })),
   ];
 });
 
@@ -43,6 +58,25 @@ const tierOptions = computed(() => {
   return [
     { label: "All tiers", value: null },
     ...tiers.map((value: number) => ({ label: `Tier ${value}`, value })),
+  ];
+});
+
+const rarityOptions = computed(() => {
+  const rarityOrder = ["Default", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"];
+  const rarities = new Set<string>();
+
+  for (const value of [
+    ...Object.values(data.value?.items ?? {}),
+    ...Object.values(data.value?.cargo ?? {}),
+  ]) {
+    if (value[1]?.rarity) {
+      rarities.add(value[1].rarity);
+    }
+  }
+
+  return [
+    { label: "All rarities", value: null },
+    ...rarityOrder.filter((value) => rarities.has(value)).map((value) => ({ label: value, value })),
   ];
 });
 
@@ -59,8 +93,16 @@ const items = computed(() => {
       return false;
     }
 
+    if (rarity.value && value[1]?.rarity !== rarity.value) {
+      return false;
+    }
+
     if (!debouncedSearch.value) {
       return true;
+    }
+
+    if (value[1] == null) {
+      return false;
     }
 
     if (value[1].name.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
@@ -74,7 +116,7 @@ const items = computed(() => {
     return false;
   });
 
-  if (!debouncedSearch.value && !tag.value && !tier.value) {
+  if (!debouncedSearch.value && !tag.value && !tier.value && !rarity.value) {
     return filtered.slice(0, 19);
   }
 
@@ -94,8 +136,16 @@ const cargo = computed(() => {
       return false;
     }
 
+    if (rarity.value && value[1]?.rarity !== rarity.value) {
+      return false;
+    }
+
     if (!debouncedSearch.value) {
       return true;
+    }
+
+    if (value[1] == null) {
+      return false;
     }
 
     if (value[1].name.toLocaleLowerCase().includes(debouncedSearch.value?.toLocaleLowerCase())) {
@@ -109,7 +159,7 @@ const cargo = computed(() => {
     return false;
   });
 
-  if (!debouncedSearch.value && !tag.value && !tier.value) {
+  if (!debouncedSearch.value && !tag.value && !tier.value && !rarity.value) {
     return filtered.slice(0, 19);
   }
 
@@ -173,7 +223,7 @@ useSeoMeta({
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <UInput
             v-model="debouncedSearch"
             icon="i-lucide-search"
@@ -182,6 +232,12 @@ useSeoMeta({
           />
           <USelect v-model="tag" :items="tagOptions" placeholder="All tags" variant="outline" />
           <USelect v-model="tier" :items="tierOptions" placeholder="All tiers" variant="outline" />
+          <USelect
+            v-model="rarity"
+            :items="rarityOptions"
+            placeholder="All rarities"
+            variant="outline"
+          />
         </div>
       </div>
 
@@ -214,16 +270,22 @@ useSeoMeta({
                   <span v-if="item[1].tier > 0" :class="tierToTextClass(item[1].tier)">
                     Tier {{ item[1].tier }}
                   </span>
+                  <span v-if="item[1].tag" >
+                    {{ item[1].tag }}
+                  </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <img
-                    v-if="iconForItem(item[1]) && !hasImageError(item[1].id)"
-                    :src="iconForItem(item[1])"
-                    :alt="item[1].name"
-                    class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
-                    loading="lazy"
-                    @error="onImageError(item[1].id)"
-                  />
+                  <picture v-if="iconForItem(item[1]) && !hasImageError(item[1].id)">
+                    <source :srcset="`${iconForItem(item[1])}.jxl`" type="image/jxl" />
+                    <source :srcset="`${iconForItem(item[1])}.avif`" type="image/avif" />
+                    <img
+                      :src="`${iconForItem(item[1])}.webp`"
+                      :alt="item[1].name"
+                      class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
+                      loading="lazy"
+                      @error="onImageError(item[1].id)"
+                    />
+                  </picture>
                   <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {{ item[1].name }}
                   </div>
@@ -265,16 +327,22 @@ useSeoMeta({
                   <span v-if="item[1].tier > 0" :class="tierToTextClass(item[1].tier)">
                     Tier {{ item[1].tier }}
                   </span>
+                  <span v-if="item[1].tag" >
+                    {{ item[1].tag }}
+                  </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <img
-                    v-if="iconForItem(item[1]) && !hasImageError(item[1].id)"
-                    :src="iconForItem(item[1])"
-                    :alt="item[1].name"
-                    class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
-                    loading="lazy"
-                    @error="onImageError(item[1].id)"
-                  />
+                  <picture v-if="iconForItem(item[1]) && !hasImageError(item[1].id)">
+                    <source :srcset="`${iconForItem(item[1])}.jxl`" type="image/jxl" />
+                    <source :srcset="`${iconForItem(item[1])}.avif`" type="image/avif" />
+                    <img
+                      :src="`${iconForItem(item[1])}.webp`"
+                      :alt="item[1].name"
+                      class="h-9 w-9 rounded border border-gray-200 object-cover dark:border-gray-800"
+                      loading="lazy"
+                      @error="onImageError(item[1].id)"
+                    />
+                  </picture>
                   <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {{ item[1].name }}
                   </div>

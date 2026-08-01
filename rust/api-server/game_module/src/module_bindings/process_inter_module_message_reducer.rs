@@ -4,13 +4,13 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::inter_module_message_v_4_type::InterModuleMessageV4;
+use super::inter_module_message_v_5_type::InterModuleMessageV5;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
 pub(super) struct ProcessInterModuleMessageArgs {
     pub sender: u8,
-    pub message: InterModuleMessageV4,
+    pub message: InterModuleMessageV5,
 }
 
 impl From<ProcessInterModuleMessageArgs> for super::Reducer {
@@ -41,7 +41,7 @@ pub trait process_inter_module_message {
     fn process_inter_module_message(
         &self,
         sender: u8,
-        message: InterModuleMessageV4,
+        message: InterModuleMessageV5,
     ) -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `process_inter_module_message`.
     ///
@@ -52,7 +52,7 @@ pub trait process_inter_module_message {
     /// to cancel the callback.
     fn on_process_inter_module_message(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u8, &InterModuleMessageV4) + Send + 'static,
+        callback: impl FnMut(&super::ReducerEventContext, &u8, &InterModuleMessageV5) + Send + 'static,
     ) -> ProcessInterModuleMessageCallbackId;
     /// Cancel a callback previously registered by [`Self::on_process_inter_module_message`],
     /// causing it not to run in the future.
@@ -63,7 +63,7 @@ impl process_inter_module_message for super::RemoteReducers {
     fn process_inter_module_message(
         &self,
         sender: u8,
-        message: InterModuleMessageV4,
+        message: InterModuleMessageV5,
     ) -> __sdk::Result<()> {
         self.imp.call_reducer(
             "process_inter_module_message",
@@ -72,7 +72,7 @@ impl process_inter_module_message for super::RemoteReducers {
     }
     fn on_process_inter_module_message(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u8, &InterModuleMessageV4)
+        mut callback: impl FnMut(&super::ReducerEventContext, &u8, &InterModuleMessageV5)
             + Send
             + 'static,
     ) -> ProcessInterModuleMessageCallbackId {

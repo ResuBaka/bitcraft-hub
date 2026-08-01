@@ -31,12 +31,15 @@ defineProps<{
             class="flex items-center gap-2"
           >
             <div class="relative">
-              <img
-                v-if="getTravelerItemIcon(shownItem)"
-                :src="getTravelerItemIcon(shownItem) || ''"
-                alt=""
-                class="h-10 w-10 rounded-md object-contain"
-              />
+              <picture v-if="getTravelerItemIcon(shownItem)">
+                <source :srcset="`${getTravelerItemIcon(shownItem)}.jxl`" type="image/jxl">
+                <source :srcset="`${getTravelerItemIcon(shownItem)}.avif`" type="image/avif">
+                <img
+                  :src="`${getTravelerItemIcon(shownItem)}.webp`"
+                  alt=""
+                  class="h-10 w-10 rounded-md object-contain"
+                />
+              </picture>
               <span
                 class="absolute -right-2 -top-2 rounded-full bg-gray-900 px-1 text-[10px] font-semibold text-white dark:bg-gray-100 dark:text-gray-900"
               >

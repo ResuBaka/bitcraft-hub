@@ -33,6 +33,54 @@ pub enum EquipmentSlotType {
     FeetClothing,
 
     None,
+
+    ForestryCharm,
+
+    ForestryInstrument,
+
+    CarpentryCharm,
+
+    CarpentryInstrument,
+
+    MasonryCharm,
+
+    MasonryInstrument,
+
+    MiningCharm,
+
+    MiningInstrument,
+
+    SmithingCharm,
+
+    SmithingInstrument,
+
+    LeatherworkingCharm,
+
+    LeatherworkingInstrument,
+
+    HuntingCharm,
+
+    HuntingInstrument,
+
+    TailoringCharm,
+
+    TailoringInstrument,
+
+    FarmingCharm,
+
+    FarmingInstrument,
+
+    FishingCharm,
+
+    FishingInstrument,
+
+    ForagingCharm,
+
+    ForagingInstrument,
+
+    ScholarCharm,
+
+    ScholarInstrument,
 }
 
 impl __sdk::InModule for EquipmentSlotType {

@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use super::movement_speed_type::MovementSpeed;
 use super::parameters_desc_type::ParametersDesc;
+use super::traveler_weekly_task_credits_type::TravelerWeeklyTaskCredits;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 /// Table handle for the table `staged_parameters_desc`.

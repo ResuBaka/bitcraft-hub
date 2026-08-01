@@ -11,6 +11,7 @@ export function useFetchMsPack<DataT, ErrorT = undefined>(
   // @ts-ignore
   return useFetch<DataT, ErrorT>(request, {
     baseURL: api.base,
+    timeout: 5000,
     ...options,
     headers: {
       Accept: "application/vnd.msgpack",

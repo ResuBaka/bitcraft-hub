@@ -9,6 +9,7 @@ export function useLazyFetchMsPack<DataT, ErrorT = undefined>(
   const [request, options] = args;
   return useLazyFetch<DataT, ErrorT>(request, {
     baseURL: api.base,
+    timeout: 5000,
     ...options,
     headers: {
       Accept: "application/vnd.msgpack",

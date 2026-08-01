@@ -4,6 +4,7 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::probabilistic_item_stack_type::ProbabilisticItemStack;
 use super::tool_requirement_type::ToolRequirement;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
@@ -16,6 +17,7 @@ pub struct TerraformRecipeDesc {
     pub time_per_action: f32,
     pub tool_mesh_index: i32,
     pub recipe_performance_id: i32,
+    pub output_item_stacks: Option<Vec<ProbabilisticItemStack>>,
 }
 
 impl __sdk::InModule for TerraformRecipeDesc {
@@ -33,6 +35,8 @@ pub struct TerraformRecipeDescCols {
     pub time_per_action: __sdk::__query_builder::Col<TerraformRecipeDesc, f32>,
     pub tool_mesh_index: __sdk::__query_builder::Col<TerraformRecipeDesc, i32>,
     pub recipe_performance_id: __sdk::__query_builder::Col<TerraformRecipeDesc, i32>,
+    pub output_item_stacks:
+        __sdk::__query_builder::Col<TerraformRecipeDesc, Option<Vec<ProbabilisticItemStack>>>,
 }
 
 impl __sdk::__query_builder::HasCols for TerraformRecipeDesc {
@@ -49,6 +53,7 @@ impl __sdk::__query_builder::HasCols for TerraformRecipeDesc {
                 table_name,
                 "recipe_performance_id",
             ),
+            output_item_stacks: __sdk::__query_builder::Col::new(table_name, "output_item_stacks"),
         }
     }
 }
