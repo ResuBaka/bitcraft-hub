@@ -72,8 +72,8 @@ impl import_placeable_placement_desc for super::RemoteReducers {
     fn on_import_placeable_placement_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceablePlacementDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportPlaceablePlacementDescCallbackId {
         ImportPlaceablePlacementDescCallbackId(self.imp.on_reducer(
             "import_placeable_placement_desc",

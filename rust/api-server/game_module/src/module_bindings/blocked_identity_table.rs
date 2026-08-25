@@ -37,18 +37,41 @@ impl BlockedIdentityTableAccess for super::RemoteTables {
     }
 }
 
+pub struct BlockedIdentityInitialCallbackId(__sdk::CallbackId);
 pub struct BlockedIdentityInsertCallbackId(__sdk::CallbackId);
 pub struct BlockedIdentityDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> BlockedIdentityTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[BlockedIdentity]) + Send + 'static,
+    ) -> BlockedIdentityInitialCallbackId {
+        BlockedIdentityInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: BlockedIdentityInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for BlockedIdentityTableHandle<'ctx> {
     type Row = BlockedIdentity;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = BlockedIdentity> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = BlockedIdentity> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = BlockedIdentityInsertCallbackId;
@@ -78,10 +101,13 @@ impl<'ctx> __sdk::Table for BlockedIdentityTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<BlockedIdentity>("blocked_identity");
+
+        let _table = client_cache.get_or_make_table::<BlockedIdentity>("blocked_identity");
     _table.add_unique_constraint::<__sdk::Identity>("identity", |row| &row.identity);
+}
 }
 pub struct BlockedIdentityUpdateCallbackId(__sdk::CallbackId);
 
@@ -111,6 +137,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `identity` unique index on the table `blocked_identity`,
 /// which allows point queries on the field of the same name
 /// via the [`BlockedIdentityIdentityUnique::find`] method.
@@ -127,9 +154,7 @@ impl<'ctx> BlockedIdentityTableHandle<'ctx> {
     /// Get a handle on the `identity` unique index on the table `blocked_identity`.
     pub fn identity(&self) -> BlockedIdentityIdentityUnique<'ctx> {
         BlockedIdentityIdentityUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<__sdk::Identity>("identity"),
+            imp: self.imp.get_unique_constraint::<__sdk::Identity>("identity"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -141,6 +166,7 @@ impl<'ctx> BlockedIdentityIdentityUnique<'ctx> {
     pub fn find(&self, col_val: &__sdk::Identity) -> Option<BlockedIdentity> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

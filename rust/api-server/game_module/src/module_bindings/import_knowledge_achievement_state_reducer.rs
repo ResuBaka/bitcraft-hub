@@ -50,8 +50,8 @@ pub trait import_knowledge_achievement_state {
     fn on_import_knowledge_achievement_state(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeAchievementState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgeAchievementStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_knowledge_achievement_state`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_knowledge_achievement_state for super::RemoteReducers {
     fn on_import_knowledge_achievement_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeAchievementState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgeAchievementStateCallbackId {
         ImportKnowledgeAchievementStateCallbackId(self.imp.on_reducer(
             "import_knowledge_achievement_state",

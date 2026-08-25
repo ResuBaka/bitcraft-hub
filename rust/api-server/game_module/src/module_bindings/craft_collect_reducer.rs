@@ -61,8 +61,8 @@ impl craft_collect for super::RemoteReducers {
     fn on_craft_collect(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftCollectRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CraftCollectCallbackId {
         CraftCollectCallbackId(self.imp.on_reducer(
             "craft_collect",

@@ -72,8 +72,8 @@ impl import_world_region_name_state for super::RemoteReducers {
     fn on_import_world_region_name_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<WorldRegionNameState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportWorldRegionNameStateCallbackId {
         ImportWorldRegionNameStateCallbackId(self.imp.on_reducer(
             "import_world_region_name_state",

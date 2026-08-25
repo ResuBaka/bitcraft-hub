@@ -61,8 +61,8 @@ impl item_stack_move for super::RemoteReducers {
     fn on_item_stack_move(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerItemStackMoveRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ItemStackMoveCallbackId {
         ItemStackMoveCallbackId(self.imp.on_reducer(
             "item_stack_move",

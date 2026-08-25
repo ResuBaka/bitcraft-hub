@@ -23,4 +23,7 @@ export type CollectibleType =
   | "PremiumItem"
   | "Emote"
   | "HousingWalls"
-  | "HousingFloor";
+  | "HousingFloor"
+  | "DeployableAppearanceOverride"
+  | "FaceAccessory"
+  | "FacialHair";

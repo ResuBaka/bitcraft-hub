@@ -63,8 +63,8 @@ impl import_knowledge_enemy_state for super::RemoteReducers {
     fn on_import_knowledge_enemy_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeEnemyState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgeEnemyStateCallbackId {
         ImportKnowledgeEnemyStateCallbackId(self.imp.on_reducer(
             "import_knowledge_enemy_state",

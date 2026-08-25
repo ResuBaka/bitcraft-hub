@@ -61,8 +61,8 @@ impl empire_queue_supplies for super::RemoteReducers {
     fn on_empire_queue_supplies(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &EmpireQueueSuppliesRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> EmpireQueueSuppliesCallbackId {
         EmpireQueueSuppliesCallbackId(self.imp.on_reducer(
             "empire_queue_supplies",

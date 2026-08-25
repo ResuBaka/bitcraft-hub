@@ -50,8 +50,8 @@ pub trait stage_deployable_appearance_override_desc {
     fn on_stage_deployable_appearance_override_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<DeployableAppearanceOverrideDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageDeployableAppearanceOverrideDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_deployable_appearance_override_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_deployable_appearance_override_desc for super::RemoteReducers {
     fn on_stage_deployable_appearance_override_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<DeployableAppearanceOverrideDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageDeployableAppearanceOverrideDescCallbackId {
         StageDeployableAppearanceOverrideDescCallbackId(self.imp.on_reducer(
             "stage_deployable_appearance_override_desc",

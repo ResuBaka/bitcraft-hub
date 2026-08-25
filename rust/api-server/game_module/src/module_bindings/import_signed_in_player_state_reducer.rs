@@ -37,7 +37,7 @@ pub trait import_signed_in_player_state {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_import_signed_in_player_state`] callbacks.
     fn import_signed_in_player_state(&self, records: Vec<SignedInPlayerState>)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `import_signed_in_player_state`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -70,8 +70,8 @@ impl import_signed_in_player_state for super::RemoteReducers {
     fn on_import_signed_in_player_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<SignedInPlayerState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportSignedInPlayerStateCallbackId {
         ImportSignedInPlayerStateCallbackId(self.imp.on_reducer(
             "import_signed_in_player_state",

@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::deployable_state;
-use game_module::module_bindings::DeployableState;
+use game_module::module_bindings::DeployableStateV2;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel};
@@ -12,7 +12,7 @@ use tokio::time::sleep;
 
 pub(crate) fn start_worker_deployable_state(
     global_app_state: AppState,
-    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<DeployableState>>,
+    mut rx: UnboundedReceiver<SpacetimeUpdateMessages<DeployableStateV2>>,
     batch_size: usize,
     time_limit: Duration,
 ) {
@@ -41,6 +41,7 @@ pub(crate) fn start_worker_deployable_state(
                         record_worker_received("deployable_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                                tracing::warn!("We got this amount of deployable_state {} {}", data.len(), database_name);
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
                                 let mut currently_known_deployable_state = ::entity::deployable_state::Entity::find()
                                     .filter(::entity::deployable_state::Column::Region.eq(database_name))
@@ -92,7 +93,7 @@ pub(crate) fn start_worker_deployable_state(
                                     .filter(::entity::deployable_state::Column::Region.eq(database_name))
                                     .exec(&global_app_state.conn).await {
                                         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                        tracing::error!(DeployableState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DeployableState");
+                                        tracing::error!(DeployableStateV2 = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DeployableStateV2");
                                     }
                                 }
                             }
@@ -158,7 +159,7 @@ pub(crate) fn start_worker_deployable_state(
             }
 
             if !messages_delete.is_empty() {
-                tracing::debug!("DeployableState::Remove");
+                tracing::debug!("DeployableStateV2::Remove");
                 for chunk_ids in messages_delete.chunks(1000) {
                     let chunk_ids = chunk_ids.to_vec();
                     if let Err(error) = ::entity::deployable_state::Entity::delete_many()
@@ -171,9 +172,9 @@ pub(crate) fn start_worker_deployable_state(
                         let chunk_ids_str: Vec<String> =
                             chunk_ids.iter().map(|id| id.to_string()).collect();
                         tracing::error!(
-                            DeployableState = chunk_ids_str.join(","),
+                            DeployableStateV2 = chunk_ids_str.join(","),
                             error = error.to_string(),
-                            "Could not delete DeployableState"
+                            "Could not delete DeployableStateV2"
                         );
                     }
                 }

@@ -61,8 +61,8 @@ impl trade_decline for super::RemoteReducers {
     fn on_trade_decline(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeDeclineRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeDeclineCallbackId {
         TradeDeclineCallbackId(self.imp.on_reducer(
             "trade_decline",

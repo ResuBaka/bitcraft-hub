@@ -45,6 +45,7 @@ mod m20260321_113758_inventory_pocket_jsonb;
 mod m20260330_184152_progressive_action_state;
 mod m20260503_080615_migrate_to_number_for_region_storage;
 mod m20260503_091149_remove_region_from_player_housing_state;
+mod m20260825_145603_move_to_v2_of_deployable_state;
 
 pub struct Migrator;
 
@@ -97,6 +98,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260330_184152_progressive_action_state::Migration),
             Box::new(m20260503_080615_migrate_to_number_for_region_storage::Migration),
             Box::new(m20260503_091149_remove_region_from_player_housing_state::Migration),
+            Box::new(m20260825_145603_move_to_v2_of_deployable_state::Migration),
         ]
     }
 }

@@ -72,8 +72,8 @@ impl stage_private_parameters_desc for super::RemoteReducers {
     fn on_stage_private_parameters_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PrivateParametersDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StagePrivateParametersDescCallbackId {
         StagePrivateParametersDescCallbackId(self.imp.on_reducer(
             "stage_private_parameters_desc",

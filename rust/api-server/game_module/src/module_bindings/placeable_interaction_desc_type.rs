@@ -142,7 +142,6 @@ impl __sdk::__query_builder::HasCols for PlaceableInteractionDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct PlaceableInteractionDescIxCols {
     pub id: __sdk::__query_builder::IxCol<PlaceableInteractionDesc, i32>,
-    pub placeable_id: __sdk::__query_builder::IxCol<PlaceableInteractionDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for PlaceableInteractionDesc {
@@ -150,7 +149,6 @@ impl __sdk::__query_builder::HasIxCols for PlaceableInteractionDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         PlaceableInteractionDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            placeable_id: __sdk::__query_builder::IxCol::new(table_name, "placeable_id"),
         }
     }
 }

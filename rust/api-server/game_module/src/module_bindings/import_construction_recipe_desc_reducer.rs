@@ -72,8 +72,8 @@ impl import_construction_recipe_desc for super::RemoteReducers {
     fn on_import_construction_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ConstructionRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportConstructionRecipeDescCallbackId {
         ImportConstructionRecipeDescCallbackId(self.imp.on_reducer(
             "import_construction_recipe_desc",

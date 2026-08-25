@@ -8,6 +8,7 @@ use super::extraction_recipe_desc_type::ExtractionRecipeDesc;
 use super::extraction_spawned_placeable_type::ExtractionSpawnedPlaceable;
 use super::input_item_stack_type::InputItemStack;
 use super::level_requirement_type::LevelRequirement;
+use super::placeable_self_buff_chance_type::PlaceableSelfBuffChance;
 use super::probabilistic_item_stack_type::ProbabilisticItemStack;
 use super::tool_requirement_type::ToolRequirement;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
@@ -46,18 +47,41 @@ impl StagedExtractionRecipeDescTableAccess for super::RemoteTables {
     }
 }
 
+pub struct StagedExtractionRecipeDescInitialCallbackId(__sdk::CallbackId);
 pub struct StagedExtractionRecipeDescInsertCallbackId(__sdk::CallbackId);
 pub struct StagedExtractionRecipeDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> StagedExtractionRecipeDescTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[ExtractionRecipeDesc]) + Send + 'static,
+    ) -> StagedExtractionRecipeDescInitialCallbackId {
+        StagedExtractionRecipeDescInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: StagedExtractionRecipeDescInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for StagedExtractionRecipeDescTableHandle<'ctx> {
     type Row = ExtractionRecipeDesc;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = ExtractionRecipeDesc> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = ExtractionRecipeDesc> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = StagedExtractionRecipeDescInsertCallbackId;
@@ -87,11 +111,13 @@ impl<'ctx> __sdk::Table for StagedExtractionRecipeDescTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<ExtractionRecipeDesc>("staged_extraction_recipe_desc");
+
+        let _table = client_cache.get_or_make_table::<ExtractionRecipeDesc>("staged_extraction_recipe_desc");
     _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
 }
 pub struct StagedExtractionRecipeDescUpdateCallbackId(__sdk::CallbackId);
 
@@ -121,6 +147,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `id` unique index on the table `staged_extraction_recipe_desc`,
 /// which allows point queries on the field of the same name
 /// via the [`StagedExtractionRecipeDescIdUnique::find`] method.
@@ -149,6 +176,7 @@ impl<'ctx> StagedExtractionRecipeDescIdUnique<'ctx> {
     pub fn find(&self, col_val: &i32) -> Option<ExtractionRecipeDesc> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

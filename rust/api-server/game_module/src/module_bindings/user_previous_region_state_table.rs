@@ -40,18 +40,41 @@ impl UserPreviousRegionStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct UserPreviousRegionStateInitialCallbackId(__sdk::CallbackId);
 pub struct UserPreviousRegionStateInsertCallbackId(__sdk::CallbackId);
 pub struct UserPreviousRegionStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> UserPreviousRegionStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[UserPreviousRegionState]) + Send + 'static,
+    ) -> UserPreviousRegionStateInitialCallbackId {
+        UserPreviousRegionStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: UserPreviousRegionStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for UserPreviousRegionStateTableHandle<'ctx> {
     type Row = UserPreviousRegionState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = UserPreviousRegionState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = UserPreviousRegionState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = UserPreviousRegionStateInsertCallbackId;
@@ -81,11 +104,13 @@ impl<'ctx> __sdk::Table for UserPreviousRegionStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<UserPreviousRegionState>("user_previous_region_state");
+
+        let _table = client_cache.get_or_make_table::<UserPreviousRegionState>("user_previous_region_state");
     _table.add_unique_constraint::<__sdk::Identity>("identity", |row| &row.identity);
+}
 }
 pub struct UserPreviousRegionStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -115,6 +140,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `identity` unique index on the table `user_previous_region_state`,
 /// which allows point queries on the field of the same name
 /// via the [`UserPreviousRegionStateIdentityUnique::find`] method.
@@ -131,9 +157,7 @@ impl<'ctx> UserPreviousRegionStateTableHandle<'ctx> {
     /// Get a handle on the `identity` unique index on the table `user_previous_region_state`.
     pub fn identity(&self) -> UserPreviousRegionStateIdentityUnique<'ctx> {
         UserPreviousRegionStateIdentityUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<__sdk::Identity>("identity"),
+            imp: self.imp.get_unique_constraint::<__sdk::Identity>("identity"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -145,6 +169,7 @@ impl<'ctx> UserPreviousRegionStateIdentityUnique<'ctx> {
     pub fn find(&self, col_val: &__sdk::Identity) -> Option<UserPreviousRegionState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

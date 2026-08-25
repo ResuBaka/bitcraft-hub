@@ -46,18 +46,41 @@ impl PlaceableInteractionDescTableAccess for super::RemoteTables {
     }
 }
 
+pub struct PlaceableInteractionDescInitialCallbackId(__sdk::CallbackId);
 pub struct PlaceableInteractionDescInsertCallbackId(__sdk::CallbackId);
 pub struct PlaceableInteractionDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> PlaceableInteractionDescTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[PlaceableInteractionDesc]) + Send + 'static,
+    ) -> PlaceableInteractionDescInitialCallbackId {
+        PlaceableInteractionDescInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: PlaceableInteractionDescInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for PlaceableInteractionDescTableHandle<'ctx> {
     type Row = PlaceableInteractionDesc;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = PlaceableInteractionDesc> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PlaceableInteractionDesc> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = PlaceableInteractionDescInsertCallbackId;
@@ -87,11 +110,13 @@ impl<'ctx> __sdk::Table for PlaceableInteractionDescTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<PlaceableInteractionDesc>("placeable_interaction_desc");
+
+        let _table = client_cache.get_or_make_table::<PlaceableInteractionDesc>("placeable_interaction_desc");
     _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
 }
 pub struct PlaceableInteractionDescUpdateCallbackId(__sdk::CallbackId);
 
@@ -121,6 +146,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `id` unique index on the table `placeable_interaction_desc`,
 /// which allows point queries on the field of the same name
 /// via the [`PlaceableInteractionDescIdUnique::find`] method.
@@ -150,6 +176,7 @@ impl<'ctx> PlaceableInteractionDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
 #[allow(non_camel_case_types)]
 /// Extension trait for query builder access to the table `PlaceableInteractionDesc`.
@@ -159,7 +186,7 @@ pub trait placeable_interaction_descQueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `PlaceableInteractionDesc`.
     fn placeable_interaction_desc(&self)
-        -> __sdk::__query_builder::Table<PlaceableInteractionDesc>;
+    -> __sdk::__query_builder::Table<PlaceableInteractionDesc>;
 }
 
 impl placeable_interaction_descQueryTableAccess for __sdk::QueryTableAccessor {

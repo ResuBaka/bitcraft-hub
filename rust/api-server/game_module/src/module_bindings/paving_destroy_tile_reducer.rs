@@ -47,8 +47,8 @@ pub trait paving_destroy_tile {
     fn on_paving_destroy_tile(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPavingDestroyTileRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PavingDestroyTileCallbackId;
     /// Cancel a callback previously registered by [`Self::on_paving_destroy_tile`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl paving_destroy_tile for super::RemoteReducers {
     fn on_paving_destroy_tile(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPavingDestroyTileRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PavingDestroyTileCallbackId {
         PavingDestroyTileCallbackId(self.imp.on_reducer(
             "paving_destroy_tile",

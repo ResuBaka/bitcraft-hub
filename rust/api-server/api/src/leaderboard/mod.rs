@@ -576,6 +576,8 @@ impl LeaderboardBenchHarness {
 pub struct RankingSystem {
     pub skill_leaderboards: DashMap<i64, Leaderboard>,
     pub global_leaderboard: Leaderboard,
+    pub profession_leaderboard: Leaderboard,
+    pub adventure_leaderboard: Leaderboard,
     pub xp_per_hour: Leaderboard,
     pub level_leaderboard: Leaderboard,
     pub time_played: Leaderboard,
@@ -587,6 +589,8 @@ impl Default for RankingSystem {
         Self {
             skill_leaderboards: DashMap::new(),
             global_leaderboard: Leaderboard::default(),
+            profession_leaderboard: Leaderboard::default(),
+            adventure_leaderboard: Leaderboard::default(),
             level_leaderboard: Leaderboard::default(),
             xp_per_hour: Leaderboard::default(),
             time_played: Leaderboard::default(),
@@ -683,7 +687,41 @@ pub(crate) async fn get_top_100(
         }));
     }
 
-    results.push(("Time Online".to_string(), leaderboard));
+    let entries_profession_leaderboard = state
+        .ranking_system
+        .profession_leaderboard
+        .get_range(0, 100);
+    let mut leaderboard: Vec<RankType> = Vec::new();
+
+    for (i, entry) in entries_profession_leaderboard.into_iter().enumerate() {
+        let rank = i + 1;
+        leaderboard.push(RankType::Experience(LeaderboardExperience {
+            player_id: entry.user_id,
+            player_name: None,
+            experience_per_hour: 0,
+            experience: entry.xp,
+            rank: rank as u64,
+        }));
+    }
+
+    results.push(("Professions".to_string(), leaderboard));
+
+    let entries_adventure_leaderboard =
+        state.ranking_system.adventure_leaderboard.get_range(0, 100);
+    let mut leaderboard: Vec<RankType> = Vec::new();
+
+    for (i, entry) in entries_adventure_leaderboard.into_iter().enumerate() {
+        let rank = i + 1;
+        leaderboard.push(RankType::Experience(LeaderboardExperience {
+            player_id: entry.user_id,
+            player_name: None,
+            experience_per_hour: 0,
+            experience: entry.xp,
+            rank: rank as u64,
+        }));
+    }
+
+    results.push(("Skills".to_string(), leaderboard));
 
     let entries_per_hour_xp = state.ranking_system.xp_per_hour.get_range(0, 100);
     let mut leaderboard: Vec<RankType> = Vec::new();
@@ -979,6 +1017,78 @@ pub(crate) async fn player_leaderboard(
             player_id,
             player_name: None,
             experience: total_experience,
+            experience_per_hour: 0,
+            rank: rank as u64,
+        }),
+    ));
+
+    let rank = if let Some(rank) = state
+        .ranking_system
+        .profession_leaderboard
+        .get_rank(player_id)
+    {
+        rank
+    } else {
+        tracing::warn!(player_id, "Could not find total experience rank for player");
+
+        0
+    };
+
+    let total_profession_experience = if let Some(total_profession_experience) = state
+        .ranking_system
+        .profession_leaderboard
+        .scores
+        .get(&player_id)
+    {
+        *total_profession_experience.value()
+    } else {
+        tracing::warn!(player_id, "Could not find total profession xp for player");
+
+        0
+    };
+
+    results.push((
+        "Professions".to_string(),
+        RankType::Experience(LeaderboardExperience {
+            player_id,
+            player_name: None,
+            experience: total_profession_experience,
+            experience_per_hour: 0,
+            rank: rank as u64,
+        }),
+    ));
+
+    let rank = if let Some(rank) = state
+        .ranking_system
+        .adventure_leaderboard
+        .get_rank(player_id)
+    {
+        rank
+    } else {
+        tracing::warn!(player_id, "Could not find total experience rank for player");
+
+        0
+    };
+
+    let total_adventure_experience = if let Some(total_adventure_experience) = state
+        .ranking_system
+        .adventure_leaderboard
+        .scores
+        .get(&player_id)
+    {
+        *total_adventure_experience.value()
+    } else {
+        tracing::warn!(player_id, "Could not find total adventure xp for player");
+
+        0
+    };
+
+    results.push((
+        "Skills".to_string(),
+        RankType::Experience(LeaderboardExperience {
+            player_id,
+            player_name: None,
+            experience: total_adventure_experience,
             experience_per_hour: 0,
             rank: rank as u64,
         }),

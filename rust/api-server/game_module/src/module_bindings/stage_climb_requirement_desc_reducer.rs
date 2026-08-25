@@ -37,7 +37,7 @@ pub trait stage_climb_requirement_desc {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_stage_climb_requirement_desc`] callbacks.
     fn stage_climb_requirement_desc(&self, records: Vec<ClimbRequirementDesc>)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_climb_requirement_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -67,8 +67,8 @@ impl stage_climb_requirement_desc for super::RemoteReducers {
     fn on_stage_climb_requirement_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ClimbRequirementDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageClimbRequirementDescCallbackId {
         StageClimbRequirementDescCallbackId(self.imp.on_reducer(
             "stage_climb_requirement_desc",

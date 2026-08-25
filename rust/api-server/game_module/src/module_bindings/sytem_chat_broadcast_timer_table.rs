@@ -39,18 +39,41 @@ impl SytemChatBroadcastTimerTableAccess for super::RemoteTables {
     }
 }
 
+pub struct SytemChatBroadcastTimerInitialCallbackId(__sdk::CallbackId);
 pub struct SytemChatBroadcastTimerInsertCallbackId(__sdk::CallbackId);
 pub struct SytemChatBroadcastTimerDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> SytemChatBroadcastTimerTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[SystemChatBroadcastTimer]) + Send + 'static,
+    ) -> SytemChatBroadcastTimerInitialCallbackId {
+        SytemChatBroadcastTimerInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: SytemChatBroadcastTimerInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for SytemChatBroadcastTimerTableHandle<'ctx> {
     type Row = SystemChatBroadcastTimer;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = SystemChatBroadcastTimer> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = SystemChatBroadcastTimer> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = SytemChatBroadcastTimerInsertCallbackId;
@@ -80,11 +103,13 @@ impl<'ctx> __sdk::Table for SytemChatBroadcastTimerTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<SystemChatBroadcastTimer>("sytem_chat_broadcast_timer");
+
+        let _table = client_cache.get_or_make_table::<SystemChatBroadcastTimer>("sytem_chat_broadcast_timer");
     _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+}
 }
 pub struct SytemChatBroadcastTimerUpdateCallbackId(__sdk::CallbackId);
 
@@ -114,6 +139,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `scheduled_id` unique index on the table `sytem_chat_broadcast_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`SytemChatBroadcastTimerScheduledIdUnique::find`] method.
@@ -143,6 +169,7 @@ impl<'ctx> SytemChatBroadcastTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
 #[allow(non_camel_case_types)]
 /// Extension trait for query builder access to the table `SystemChatBroadcastTimer`.
@@ -152,7 +179,7 @@ pub trait sytem_chat_broadcast_timerQueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `SystemChatBroadcastTimer`.
     fn sytem_chat_broadcast_timer(&self)
-        -> __sdk::__query_builder::Table<SystemChatBroadcastTimer>;
+    -> __sdk::__query_builder::Table<SystemChatBroadcastTimer>;
 }
 
 impl sytem_chat_broadcast_timerQueryTableAccess for __sdk::QueryTableAccessor {

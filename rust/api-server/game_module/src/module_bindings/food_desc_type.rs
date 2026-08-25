@@ -5,6 +5,7 @@
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 use super::buff_effect_type::BuffEffect;
+use super::item_stack_type::ItemStack;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
@@ -18,6 +19,8 @@ pub struct FoodDesc {
     pub teleportation_energy: f32,
     pub consumable_while_in_combat: bool,
     pub buffs: Vec<BuffEffect>,
+    pub auto_consume: bool,
+    pub output_item_stacks: Option<Vec<ItemStack>>,
 }
 
 impl __sdk::InModule for FoodDesc {
@@ -37,6 +40,8 @@ pub struct FoodDescCols {
     pub teleportation_energy: __sdk::__query_builder::Col<FoodDesc, f32>,
     pub consumable_while_in_combat: __sdk::__query_builder::Col<FoodDesc, bool>,
     pub buffs: __sdk::__query_builder::Col<FoodDesc, Vec<BuffEffect>>,
+    pub auto_consume: __sdk::__query_builder::Col<FoodDesc, bool>,
+    pub output_item_stacks: __sdk::__query_builder::Col<FoodDesc, Option<Vec<ItemStack>>>,
 }
 
 impl __sdk::__query_builder::HasCols for FoodDesc {
@@ -58,6 +63,8 @@ impl __sdk::__query_builder::HasCols for FoodDesc {
                 "consumable_while_in_combat",
             ),
             buffs: __sdk::__query_builder::Col::new(table_name, "buffs"),
+            auto_consume: __sdk::__query_builder::Col::new(table_name, "auto_consume"),
+            output_item_stacks: __sdk::__query_builder::Col::new(table_name, "output_item_stacks"),
         }
     }
 }

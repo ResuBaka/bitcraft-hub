@@ -30,14 +30,14 @@ const tier = computed(() => building.functions[0]?.level ?? "-");
           class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
         >
           <picture v-if="iconUrl.show && imageErrored !== true">
-            <source :srcset="`${iconUrl.url}.jxl`" type="image/jxl">
-            <source :srcset="`${iconUrl.url}.avif`" type="image/avif">
+            <source :srcset="`${iconUrl.url}.jxl`" type="image/jxl" />
+            <source :srcset="`${iconUrl.url}.avif`" type="image/avif" />
             <img
-                :src="`${iconUrl.url}.webp`"
-                :alt="building.name"
-                class="h-13 w-13 object-contain"
-                loading="lazy"
-                @error="imageErrored = true"
+              :src="`${iconUrl.url}.webp`"
+              :alt="building.name"
+              class="h-13 w-13 object-contain"
+              loading="lazy"
+              @error="imageErrored = true"
             />
           </picture>
           <UIcon v-else name="i-lucide-hammer" class="h-6 w-6 text-gray-400" />

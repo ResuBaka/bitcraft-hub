@@ -63,8 +63,8 @@ impl stage_terraform_recipe_desc for super::RemoteReducers {
     fn on_stage_terraform_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TerraformRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageTerraformRecipeDescCallbackId {
         StageTerraformRecipeDescCallbackId(self.imp.on_reducer(
             "stage_terraform_recipe_desc",

@@ -50,8 +50,8 @@ pub trait building_deconstruct_start {
     fn on_building_deconstruct_start(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerBuildingDeconstructRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> BuildingDeconstructStartCallbackId;
     /// Cancel a callback previously registered by [`Self::on_building_deconstruct_start`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl building_deconstruct_start for super::RemoteReducers {
     fn on_building_deconstruct_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBuildingDeconstructRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> BuildingDeconstructStartCallbackId {
         BuildingDeconstructStartCallbackId(self.imp.on_reducer(
             "building_deconstruct_start",

@@ -43,18 +43,44 @@ impl StagedDeployableAppearanceOverrideDescTableAccess for super::RemoteTables {
     }
 }
 
+pub struct StagedDeployableAppearanceOverrideDescInitialCallbackId(__sdk::CallbackId);
 pub struct StagedDeployableAppearanceOverrideDescInsertCallbackId(__sdk::CallbackId);
 pub struct StagedDeployableAppearanceOverrideDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> StagedDeployableAppearanceOverrideDescTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[DeployableAppearanceOverrideDesc]) + Send + 'static,
+    ) -> StagedDeployableAppearanceOverrideDescInitialCallbackId {
+        StagedDeployableAppearanceOverrideDescInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(
+        &self,
+        callback: StagedDeployableAppearanceOverrideDescInitialCallbackId,
+    ) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for StagedDeployableAppearanceOverrideDescTableHandle<'ctx> {
     type Row = DeployableAppearanceOverrideDesc;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = DeployableAppearanceOverrideDesc> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = DeployableAppearanceOverrideDesc> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = StagedDeployableAppearanceOverrideDescInsertCallbackId;
@@ -88,13 +114,14 @@ impl<'ctx> __sdk::Table for StagedDeployableAppearanceOverrideDescTableHandle<'c
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<DeployableAppearanceOverrideDesc>(
-        "staged_deployable_appearance_override_desc",
-    );
+
+        let _table = client_cache.get_or_make_table::<DeployableAppearanceOverrideDesc>("staged_deployable_appearance_override_desc");
     _table.add_unique_constraint::<i32>("id", |row| &row.id);
     _table.add_unique_constraint::<i32>("collectible_id", |row| &row.collectible_id);
+}
 }
 pub struct StagedDeployableAppearanceOverrideDescUpdateCallbackId(__sdk::CallbackId);
 
@@ -129,6 +156,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `id` unique index on the table `staged_deployable_appearance_override_desc`,
 /// which allows point queries on the field of the same name
 /// via the [`StagedDeployableAppearanceOverrideDescIdUnique::find`] method.
@@ -158,7 +186,9 @@ impl<'ctx> StagedDeployableAppearanceOverrideDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `collectible_id` unique index on the table `staged_deployable_appearance_override_desc`,
 /// which allows point queries on the field of the same name
 /// via the [`StagedDeployableAppearanceOverrideDescCollectibleIdUnique::find`] method.
@@ -173,9 +203,7 @@ pub struct StagedDeployableAppearanceOverrideDescCollectibleIdUnique<'ctx> {
 
 impl<'ctx> StagedDeployableAppearanceOverrideDescTableHandle<'ctx> {
     /// Get a handle on the `collectible_id` unique index on the table `staged_deployable_appearance_override_desc`.
-    pub fn collectible_id(
-        &self,
-    ) -> StagedDeployableAppearanceOverrideDescCollectibleIdUnique<'ctx> {
+    pub fn collectible_id(&self) -> StagedDeployableAppearanceOverrideDescCollectibleIdUnique<'ctx> {
         StagedDeployableAppearanceOverrideDescCollectibleIdUnique {
             imp: self.imp.get_unique_constraint::<i32>("collectible_id"),
             phantom: std::marker::PhantomData,
@@ -189,6 +217,7 @@ impl<'ctx> StagedDeployableAppearanceOverrideDescCollectibleIdUnique<'ctx> {
     pub fn find(&self, col_val: &i32) -> Option<DeployableAppearanceOverrideDesc> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

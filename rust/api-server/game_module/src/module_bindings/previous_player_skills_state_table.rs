@@ -40,18 +40,41 @@ impl PreviousPlayerSkillsStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct PreviousPlayerSkillsStateInitialCallbackId(__sdk::CallbackId);
 pub struct PreviousPlayerSkillsStateInsertCallbackId(__sdk::CallbackId);
 pub struct PreviousPlayerSkillsStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> PreviousPlayerSkillsStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[PreviousPlayerSkillsState]) + Send + 'static,
+    ) -> PreviousPlayerSkillsStateInitialCallbackId {
+        PreviousPlayerSkillsStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: PreviousPlayerSkillsStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for PreviousPlayerSkillsStateTableHandle<'ctx> {
     type Row = PreviousPlayerSkillsState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = PreviousPlayerSkillsState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PreviousPlayerSkillsState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = PreviousPlayerSkillsStateInsertCallbackId;
@@ -81,11 +104,13 @@ impl<'ctx> __sdk::Table for PreviousPlayerSkillsStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<PreviousPlayerSkillsState>("previous_player_skills_state");
+
+        let _table = client_cache.get_or_make_table::<PreviousPlayerSkillsState>("previous_player_skills_state");
     _table.add_unique_constraint::<__sdk::Identity>("identity", |row| &row.identity);
+}
 }
 pub struct PreviousPlayerSkillsStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -115,6 +140,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `identity` unique index on the table `previous_player_skills_state`,
 /// which allows point queries on the field of the same name
 /// via the [`PreviousPlayerSkillsStateIdentityUnique::find`] method.
@@ -131,9 +157,7 @@ impl<'ctx> PreviousPlayerSkillsStateTableHandle<'ctx> {
     /// Get a handle on the `identity` unique index on the table `previous_player_skills_state`.
     pub fn identity(&self) -> PreviousPlayerSkillsStateIdentityUnique<'ctx> {
         PreviousPlayerSkillsStateIdentityUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<__sdk::Identity>("identity"),
+            imp: self.imp.get_unique_constraint::<__sdk::Identity>("identity"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -145,6 +169,7 @@ impl<'ctx> PreviousPlayerSkillsStateIdentityUnique<'ctx> {
     pub fn find(&self, col_val: &__sdk::Identity) -> Option<PreviousPlayerSkillsState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

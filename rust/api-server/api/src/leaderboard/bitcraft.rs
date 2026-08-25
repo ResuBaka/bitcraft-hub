@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::leaderboard::{Leaderboard, experience_to_level};
 use crate::websocket::batched_worker::BatchedWorker;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use entity::shared::Region;
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
@@ -256,11 +256,30 @@ impl ExperienceStateWorker {
             .flat_map(|value| {
                 let id = value.entity_id;
                 let mut total_exp = 0;
+                let mut profession_exp = 0;
+                let mut adventure_exp = 0;
                 let model: Vec<::entity::experience_state::Model> = value
                     .experience_stacks
                     .iter()
                     .map(|exp_stack| {
                         total_exp.add_assign(exp_stack.quantity as i64);
+
+                        if let Some(skill_desc) = self
+                            .global_app_state
+                            .skill_desc
+                            .get(&(exp_stack.skill_id as i64))
+                        {
+                            match skill_desc.skill_category {
+                                1 => {
+                                    profession_exp.add_assign(exp_stack.quantity as i64);
+                                }
+                                2 => {
+                                    adventure_exp.add_assign(exp_stack.quantity as i64);
+                                }
+                                _ => {}
+                            }
+                        };
+
                         ::entity::experience_state::Model {
                             entity_id: id as i64,
                             skill_id: exp_stack.skill_id,
@@ -295,6 +314,32 @@ impl ExperienceStateWorker {
                         .ranking_system
                         .xp_per_hour
                         .update(value.entity_id as i64, xp_per_hour);
+                }
+
+                if let Some(xp) = self
+                    .global_app_state
+                    .ranking_system
+                    .adventure_leaderboard
+                    .get_value(&(value.entity_id as i64))
+                    && xp != adventure_exp
+                {
+                    self.global_app_state
+                        .ranking_system
+                        .adventure_leaderboard
+                        .update(value.entity_id as i64, adventure_exp);
+                }
+
+                if let Some(xp) = self
+                    .global_app_state
+                    .ranking_system
+                    .profession_leaderboard
+                    .get_value(&(value.entity_id as i64))
+                    && xp != profession_exp
+                {
+                    self.global_app_state
+                        .ranking_system
+                        .profession_leaderboard
+                        .update(value.entity_id as i64, adventure_exp);
                 }
 
                 model
@@ -351,8 +396,22 @@ impl ExperienceStateWorker {
     async fn handle_insert(&mut self, new: ExperienceState, database_name: entity::shared::Region) {
         let id = new.entity_id as i64;
         let mut total_exp = 0;
+        let mut profession_exp = 0;
+        let mut adventure_exp = 0;
         new.experience_stacks.iter().for_each(|es| {
             total_exp.add_assign(es.quantity as i64);
+            if let Some(skill_desc) = self.global_app_state.skill_desc.get(&(es.skill_id as i64)) {
+                match skill_desc.skill_category {
+                    1 => {
+                        profession_exp.add_assign(es.quantity as i64);
+                    }
+                    2 => {
+                        adventure_exp.add_assign(es.quantity as i64);
+                    }
+                    _ => {}
+                }
+            };
+
             let model = ::entity::experience_state::Model {
                 entity_id: id,
                 skill_id: es.skill_id,
@@ -398,6 +457,14 @@ impl ExperienceStateWorker {
             .ranking_system
             .xp_per_hour
             .update(new.entity_id as i64, xp_per_hour);
+        self.global_app_state
+            .ranking_system
+            .profession_leaderboard
+            .update(new.entity_id as i64, profession_exp);
+        self.global_app_state
+            .ranking_system
+            .adventure_leaderboard
+            .update(new.entity_id as i64, adventure_exp);
 
         if let Some(current_score) = current_score {
             let current_known_xp = *current_score.value();
@@ -472,18 +539,44 @@ impl ExperienceStateWorker {
         let id = new.entity_id as i64;
         let mut new_total_exp = 0;
         let mut new_total_level = 0;
+        let mut new_profession_exp = 0;
+        let mut new_adventure_exp = 0;
         new.experience_stacks.iter().for_each(|es| {
             new_total_exp.add_assign(es.quantity as i64);
             let new_level = experience_to_level(es.quantity as i64);
             new_total_level.add_assign(new_level);
+            if let Some(skill_desc) = self.global_app_state.skill_desc.get(&(es.skill_id as i64)) {
+                match skill_desc.skill_category {
+                    1 => {
+                        new_profession_exp.add_assign(es.quantity as i64);
+                    }
+                    2 => {
+                        new_adventure_exp.add_assign(es.quantity as i64);
+                    }
+                    _ => {}
+                }
+            };
         });
 
         let mut old_total_exp = 0;
         let mut old_total_level = 0;
+        let mut old_profession_exp = 0;
+        let mut old_adventure_exp = 0;
         for (index, es) in old.experience_stacks.iter().enumerate() {
             old_total_exp.add_assign(es.quantity as i64);
             let old_level = experience_to_level(es.quantity as i64);
             old_total_level.add_assign(old_level);
+            if let Some(skill_desc) = self.global_app_state.skill_desc.get(&(es.skill_id as i64)) {
+                match skill_desc.skill_category {
+                    1 => {
+                        old_profession_exp.add_assign(es.quantity as i64);
+                    }
+                    2 => {
+                        old_adventure_exp.add_assign(es.quantity as i64);
+                    }
+                    _ => {}
+                }
+            };
 
             let new_skill = if let Some(new_skill) = new.experience_stacks.get(index) {
                 if new_skill.skill_id == es.skill_id {
@@ -503,11 +596,14 @@ impl ExperienceStateWorker {
                 if let Some(skill) = self.global_app_state.skill_desc.get(&(es.skill_id as i64)) {
                     let skill_name = skill.to_owned().name;
                     if old_level != new_level {
-                        let _ = self.global_app_state.tx.send(WebSocketMessages::Level {
-                            level: new_level as u64,
-                            skill_name: skill_name.clone(),
-                            user_id: id,
-                        });
+                        let _ = self
+                            .global_app_state
+                            .tx
+                            .send(OutboundWebSocketMessages::Level {
+                                level: new_level as u64,
+                                skill_name: skill_name.clone(),
+                                user_id: id,
+                            });
                     }
                 }
 
@@ -592,16 +688,16 @@ impl ExperienceStateWorker {
                                 tracing::error!("Skill EXP {skill_name} no rank?");
                             }
                         }
-                        let _ = self
-                            .global_app_state
-                            .tx
-                            .send(WebSocketMessages::Experience {
-                                level: new_level as u64,
-                                experience: new_skill.quantity as u64,
-                                rank: post_rank.unwrap_or(0) as u64,
-                                skill_name,
-                                user_id: id,
-                            });
+                        let _ =
+                            self.global_app_state
+                                .tx
+                                .send(OutboundWebSocketMessages::Experience {
+                                    level: new_level as u64,
+                                    experience: new_skill.quantity as u64,
+                                    rank: post_rank.unwrap_or(0) as u64,
+                                    skill_name,
+                                    user_id: id,
+                                });
                     }
                 }
             }
@@ -691,12 +787,54 @@ impl ExperienceStateWorker {
             let _ = self
                 .global_app_state
                 .tx
-                .send(WebSocketMessages::TotalExperience {
+                .send(OutboundWebSocketMessages::TotalExperience {
                     experience: new_total_exp as u64,
                     user_id: id,
                     experience_per_hour: xp_per_hour as u64,
                     rank: post_rank.unwrap_or(0) as u64,
                 });
+        }
+
+        if old_adventure_exp != new_adventure_exp {
+            self.global_app_state
+                .ranking_system
+                .adventure_leaderboard
+                .update(new.entity_id as i64, new_adventure_exp);
+
+            let post_rank = self
+                .global_app_state
+                .ranking_system
+                .adventure_leaderboard
+                .get_rank(new.entity_id as i64);
+
+            let _ = self.global_app_state.tx.send(
+                OutboundWebSocketMessages::TotalAdventureExperience {
+                    experience: new_adventure_exp as u64,
+                    user_id: id,
+                    rank: post_rank.unwrap_or(0) as u64,
+                },
+            );
+        }
+
+        if old_profession_exp != new_profession_exp {
+            self.global_app_state
+                .ranking_system
+                .profession_leaderboard
+                .update(new.entity_id as i64, new_profession_exp);
+
+            let post_rank = self
+                .global_app_state
+                .ranking_system
+                .profession_leaderboard
+                .get_rank(new.entity_id as i64);
+
+            let _ = self.global_app_state.tx.send(
+                OutboundWebSocketMessages::TotalProfessionExperience {
+                    experience: new_profession_exp as u64,
+                    user_id: id,
+                    rank: post_rank.unwrap_or(0) as u64,
+                },
+            );
         }
     }
 

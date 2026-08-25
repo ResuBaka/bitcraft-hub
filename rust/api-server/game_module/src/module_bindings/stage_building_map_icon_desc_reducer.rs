@@ -63,8 +63,8 @@ impl stage_building_map_icon_desc for super::RemoteReducers {
     fn on_stage_building_map_icon_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingMapIconDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageBuildingMapIconDescCallbackId {
         StageBuildingMapIconDescCallbackId(self.imp.on_reducer(
             "stage_building_map_icon_desc",

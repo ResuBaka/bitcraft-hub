@@ -48,8 +48,8 @@ pub trait teleportation_energy_regen_agent_loop {
     fn on_teleportation_energy_regen_agent_loop(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &TeleportationEnergyRegenLoopTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TeleportationEnergyRegenAgentLoopCallbackId;
     /// Cancel a callback previously registered by [`Self::on_teleportation_energy_regen_agent_loop`],
     /// causing it not to run in the future.
@@ -72,8 +72,8 @@ impl teleportation_energy_regen_agent_loop for super::RemoteReducers {
     fn on_teleportation_energy_regen_agent_loop(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &TeleportationEnergyRegenLoopTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TeleportationEnergyRegenAgentLoopCallbackId {
         TeleportationEnergyRegenAgentLoopCallbackId(self.imp.on_reducer(
             "teleportation_energy_regen_agent_loop",

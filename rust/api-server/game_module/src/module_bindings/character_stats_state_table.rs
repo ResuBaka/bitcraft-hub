@@ -39,18 +39,41 @@ impl CharacterStatsStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct CharacterStatsStateInitialCallbackId(__sdk::CallbackId);
 pub struct CharacterStatsStateInsertCallbackId(__sdk::CallbackId);
 pub struct CharacterStatsStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> CharacterStatsStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[CharacterStatsState]) + Send + 'static,
+    ) -> CharacterStatsStateInitialCallbackId {
+        CharacterStatsStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: CharacterStatsStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for CharacterStatsStateTableHandle<'ctx> {
     type Row = CharacterStatsState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = CharacterStatsState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = CharacterStatsState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = CharacterStatsStateInsertCallbackId;
@@ -80,10 +103,13 @@ impl<'ctx> __sdk::Table for CharacterStatsStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<CharacterStatsState>("character_stats_state");
+
+        let _table = client_cache.get_or_make_table::<CharacterStatsState>("character_stats_state");
     _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
 }
 pub struct CharacterStatsStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -113,6 +139,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `entity_id` unique index on the table `character_stats_state`,
 /// which allows point queries on the field of the same name
 /// via the [`CharacterStatsStateEntityIdUnique::find`] method.
@@ -141,6 +168,7 @@ impl<'ctx> CharacterStatsStateEntityIdUnique<'ctx> {
     pub fn find(&self, col_val: &u64) -> Option<CharacterStatsState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

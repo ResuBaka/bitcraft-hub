@@ -1,6 +1,6 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchedWorker;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use entity::{claim_local_state, claim_member_state, claim_state, claim_tech_state};
 use game_module::module_bindings::{
     ClaimLocalState, ClaimMemberState, ClaimState, ClaimTechDesc, ClaimTechState,
@@ -582,7 +582,7 @@ impl ClaimLocalStateWorker {
             let _ = self
                 .global_app_state
                 .tx
-                .send(WebSocketMessages::ClaimLocalState(model.clone()));
+                .send(OutboundWebSocketMessages::ClaimLocalState(model.clone()));
 
             use std::collections::hash_map::Entry;
             match currently_known_claim_local_state.entry(model.entity_id) {
@@ -653,7 +653,7 @@ impl ClaimLocalStateWorker {
         let _ = self
             .global_app_state
             .tx
-            .send(WebSocketMessages::ClaimLocalState(model));
+            .send(OutboundWebSocketMessages::ClaimLocalState(model));
     }
 
     async fn handle_update(
@@ -703,7 +703,7 @@ impl ClaimLocalStateWorker {
         let _ = self
             .global_app_state
             .tx
-            .send(WebSocketMessages::ClaimLocalState(model));
+            .send(OutboundWebSocketMessages::ClaimLocalState(model));
     }
 
     async fn handle_remove(

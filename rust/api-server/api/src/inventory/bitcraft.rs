@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::inventory::resolve_pocket;
 use crate::websocket::batched_worker::BatchedWorker;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use chrono::DateTime;
 
 use entity::inventory::ResolvedInventory;
@@ -270,7 +270,7 @@ impl InventoryStateWorker {
         let _ = self
             .global_app_state
             .tx
-            .send(WebSocketMessages::InventoryInsert {
+            .send(OutboundWebSocketMessages::InventoryInsert {
                 resolved_inventory: ResolvedInventory {
                     entity_id: model.entity_id,
                     pockets,
@@ -358,7 +358,7 @@ impl InventoryStateWorker {
         let _ = self
             .global_app_state
             .tx
-            .send(WebSocketMessages::InventoryUpdate {
+            .send(OutboundWebSocketMessages::InventoryUpdate {
                 resolved_inventory: ResolvedInventory {
                     entity_id: model.entity_id,
                     pockets,
@@ -472,7 +472,7 @@ impl InventoryStateWorker {
         let _ = self
             .global_app_state
             .tx
-            .send(WebSocketMessages::InventoryRemove {
+            .send(OutboundWebSocketMessages::InventoryRemove {
                 resolved_inventory: ResolvedInventory {
                     entity_id: model.entity_id,
                     pockets,

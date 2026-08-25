@@ -50,8 +50,8 @@ pub trait import_exploration_chunks_state {
     fn on_import_exploration_chunks_state(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<ExplorationChunksStateV2>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportExplorationChunksStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_exploration_chunks_state`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_exploration_chunks_state for super::RemoteReducers {
     fn on_import_exploration_chunks_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ExplorationChunksStateV2>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportExplorationChunksStateCallbackId {
         ImportExplorationChunksStateCallbackId(self.imp.on_reducer(
             "import_exploration_chunks_state",

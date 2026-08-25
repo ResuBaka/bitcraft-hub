@@ -40,18 +40,41 @@ impl InterModuleMessageV3TableAccess for super::RemoteTables {
     }
 }
 
+pub struct InterModuleMessageV3InitialCallbackId(__sdk::CallbackId);
 pub struct InterModuleMessageV3InsertCallbackId(__sdk::CallbackId);
 pub struct InterModuleMessageV3DeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> InterModuleMessageV3TableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[InterModuleMessageV3]) + Send + 'static,
+    ) -> InterModuleMessageV3InitialCallbackId {
+        InterModuleMessageV3InitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: InterModuleMessageV3InitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for InterModuleMessageV3TableHandle<'ctx> {
     type Row = InterModuleMessageV3;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = InterModuleMessageV3> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = InterModuleMessageV3> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = InterModuleMessageV3InsertCallbackId;
@@ -81,10 +104,13 @@ impl<'ctx> __sdk::Table for InterModuleMessageV3TableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<InterModuleMessageV3>("inter_module_message_v3");
+
+        let _table = client_cache.get_or_make_table::<InterModuleMessageV3>("inter_module_message_v3");
     _table.add_unique_constraint::<u64>("id", |row| &row.id);
+}
 }
 pub struct InterModuleMessageV3UpdateCallbackId(__sdk::CallbackId);
 
@@ -114,6 +140,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `id` unique index on the table `inter_module_message_v3`,
 /// which allows point queries on the field of the same name
 /// via the [`InterModuleMessageV3IdUnique::find`] method.
@@ -142,6 +169,7 @@ impl<'ctx> InterModuleMessageV3IdUnique<'ctx> {
     pub fn find(&self, col_val: &u64) -> Option<InterModuleMessageV3> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

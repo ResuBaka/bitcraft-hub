@@ -72,8 +72,8 @@ impl stage_empire_notification_desc for super::RemoteReducers {
     fn on_stage_empire_notification_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EmpireNotificationDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageEmpireNotificationDescCallbackId {
         StageEmpireNotificationDescCallbackId(self.imp.on_reducer(
             "stage_empire_notification_desc",

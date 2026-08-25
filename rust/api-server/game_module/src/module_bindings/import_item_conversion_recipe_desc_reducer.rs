@@ -50,8 +50,8 @@ pub trait import_item_conversion_recipe_desc {
     fn on_import_item_conversion_recipe_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<ItemConversionRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportItemConversionRecipeDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_item_conversion_recipe_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_item_conversion_recipe_desc for super::RemoteReducers {
     fn on_import_item_conversion_recipe_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ItemConversionRecipeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportItemConversionRecipeDescCallbackId {
         ImportItemConversionRecipeDescCallbackId(self.imp.on_reducer(
             "import_item_conversion_recipe_desc",

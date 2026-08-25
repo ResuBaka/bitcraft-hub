@@ -63,8 +63,8 @@ impl cheat_experience_grant for super::RemoteReducers {
     fn on_cheat_experience_grant(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatExperienceGrantRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatExperienceGrantCallbackId {
         CheatExperienceGrantCallbackId(self.imp.on_reducer(
             "cheat_experience_grant",

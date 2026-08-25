@@ -37,7 +37,7 @@ pub trait import_building_map_icon_desc {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_import_building_map_icon_desc`] callbacks.
     fn import_building_map_icon_desc(&self, records: Vec<BuildingMapIconDesc>)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `import_building_map_icon_desc`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -70,8 +70,8 @@ impl import_building_map_icon_desc for super::RemoteReducers {
     fn on_import_building_map_icon_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingMapIconDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportBuildingMapIconDescCallbackId {
         ImportBuildingMapIconDescCallbackId(self.imp.on_reducer(
             "import_building_map_icon_desc",

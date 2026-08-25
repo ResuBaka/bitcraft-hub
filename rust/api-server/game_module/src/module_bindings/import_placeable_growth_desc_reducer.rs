@@ -63,8 +63,8 @@ impl import_placeable_growth_desc for super::RemoteReducers {
     fn on_import_placeable_growth_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<PlaceableGrowthDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportPlaceableGrowthDescCallbackId {
         ImportPlaceableGrowthDescCallbackId(self.imp.on_reducer(
             "import_placeable_growth_desc",

@@ -40,18 +40,41 @@ impl ExposedBreadcrumbsTableAccess for super::RemoteTables {
     }
 }
 
+pub struct ExposedBreadcrumbsInitialCallbackId(__sdk::CallbackId);
 pub struct ExposedBreadcrumbsInsertCallbackId(__sdk::CallbackId);
 pub struct ExposedBreadcrumbsDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> ExposedBreadcrumbsTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[CrumbTrailExposedState]) + Send + 'static,
+    ) -> ExposedBreadcrumbsInitialCallbackId {
+        ExposedBreadcrumbsInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: ExposedBreadcrumbsInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for ExposedBreadcrumbsTableHandle<'ctx> {
     type Row = CrumbTrailExposedState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = CrumbTrailExposedState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = CrumbTrailExposedState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = ExposedBreadcrumbsInsertCallbackId;
@@ -81,9 +104,12 @@ impl<'ctx> __sdk::Table for ExposedBreadcrumbsTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<CrumbTrailExposedState>("exposed_breadcrumbs");
+
+        let _table = client_cache.get_or_make_table::<CrumbTrailExposedState>("exposed_breadcrumbs");
+}
 }
 
 #[doc(hidden)]

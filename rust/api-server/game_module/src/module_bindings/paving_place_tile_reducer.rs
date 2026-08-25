@@ -47,8 +47,8 @@ pub trait paving_place_tile {
     fn on_paving_place_tile(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPavingPlaceTileRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PavingPlaceTileCallbackId;
     /// Cancel a callback previously registered by [`Self::on_paving_place_tile`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl paving_place_tile for super::RemoteReducers {
     fn on_paving_place_tile(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPavingPlaceTileRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PavingPlaceTileCallbackId {
         PavingPlaceTileCallbackId(self.imp.on_reducer(
             "paving_place_tile",

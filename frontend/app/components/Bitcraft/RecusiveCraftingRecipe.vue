@@ -258,14 +258,14 @@ const miningEffort = computed(() => {
         class="flex h-14 w-14 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
       >
         <picture v-if="iconUrl && !iconLoadError">
-          <source :srcset="`${iconUrl}.jxl`" type="image/jxl">
-          <source :srcset="`${iconUrl}.avif`" type="image/avif">
+          <source :srcset="`${iconUrl}.jxl`" type="image/jxl" />
+          <source :srcset="`${iconUrl}.avif`" type="image/avif" />
           <img
-              :src="`${iconUrl}.webp`"
-              :alt="desc.name"
-              class="h-12 w-12 object-contain"
-              loading="lazy"
-              @error="handleIconError"
+            :src="`${iconUrl}.webp`"
+            :alt="desc.name"
+            class="h-12 w-12 object-contain"
+            loading="lazy"
+            @error="handleIconError"
           />
         </picture>
         <UIcon v-else name="i-lucide-box" class="h-6 w-6 text-gray-400" />

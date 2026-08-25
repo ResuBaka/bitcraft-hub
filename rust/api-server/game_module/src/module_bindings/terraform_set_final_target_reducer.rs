@@ -50,8 +50,8 @@ pub trait terraform_set_final_target {
     fn on_terraform_set_final_target(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTerraformSetFinalTargetRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TerraformSetFinalTargetCallbackId;
     /// Cancel a callback previously registered by [`Self::on_terraform_set_final_target`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl terraform_set_final_target for super::RemoteReducers {
     fn on_terraform_set_final_target(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTerraformSetFinalTargetRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TerraformSetFinalTargetCallbackId {
         TerraformSetFinalTargetCallbackId(self.imp.on_reducer(
             "terraform_set_final_target",

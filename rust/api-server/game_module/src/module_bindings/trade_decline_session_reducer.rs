@@ -37,7 +37,7 @@ pub trait trade_decline_session {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_trade_decline_session`] callbacks.
     fn trade_decline_session(&self, request: PlayerTradeDeclineSessionRequest)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `trade_decline_session`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -48,8 +48,8 @@ pub trait trade_decline_session {
     fn on_trade_decline_session(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeDeclineSessionRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeDeclineSessionCallbackId;
     /// Cancel a callback previously registered by [`Self::on_trade_decline_session`],
     /// causing it not to run in the future.
@@ -67,8 +67,8 @@ impl trade_decline_session for super::RemoteReducers {
     fn on_trade_decline_session(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeDeclineSessionRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeDeclineSessionCallbackId {
         TradeDeclineSessionCallbackId(self.imp.on_reducer(
             "trade_decline_session",

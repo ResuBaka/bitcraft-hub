@@ -81,6 +81,34 @@ registerWebsocketMessageHandler("TotalExperience", topics_total_experience, (mes
   }
 });
 
+const topics_profession_experience = reactive<string[]>([
+  `total_profession_experience.${route.params.id}`,
+]);
+registerWebsocketMessageHandler(
+  "TotalProfessionExperience",
+  topics_profession_experience,
+  (message) => {
+    if (experienceData.value && experienceData.value["Professions"]) {
+      experienceData.value["Professions"].experience = message.experience;
+      experienceData.value["Professions"].rank = message.rank;
+    }
+  },
+);
+
+const topics_adventure_experience = reactive<string[]>([
+  `total_adventure_experience.${route.params.id}`,
+]);
+registerWebsocketMessageHandler(
+  "TotalAdventureExperience",
+  topics_adventure_experience,
+  (message) => {
+    if (experienceData.value && experienceData.value["Skills"]) {
+      experienceData.value["Skills"].experience = message.experience;
+      experienceData.value["Skills"].rank = message.rank;
+    }
+  },
+);
+
 const topicsPlayer = reactive<string[]>([`player_state.${route.params.id}`]);
 
 registerWebsocketMessageHandler("PlayerState", topicsPlayer, (message) => {
@@ -211,12 +239,22 @@ const expeirence = computed(() => {
     RankType & {
       classes: Record<string, string>;
     }
-  > = {};
+  > = {
+    Experience: {},
+    Professions: {},
+    Skills: {},
+    Level: {},
+  };
 
   for (const [skill, xp_info] of Object.entries(experienceData.value)) {
     let shouldAddClass = true;
 
-    if (skill === "Experience" || skill === "Level") {
+    if (
+      skill === "Experience" ||
+      skill === "Level" ||
+      skill === "Skills" ||
+      skill === "Professions"
+    ) {
       shouldAddClass = false;
     }
 

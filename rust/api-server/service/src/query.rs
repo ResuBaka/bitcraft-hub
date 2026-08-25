@@ -1227,6 +1227,59 @@ impl Query {
             .await
     }
 
+    pub async fn get_experience_state_top_x_by_skill_category_id(
+        db: &DbConn,
+        skills: Vec<i64>,
+        exclude: Option<Vec<i64>>,
+        limit: Option<u64>,
+    ) -> Result<Vec<(i64, i64)>, DbErr> {
+        let mut query = sea_orm::sea_query::Query::select()
+            .column((Alias::new("es"), experience_state::Column::EntityId))
+            .expr_as(
+                Expr::cust("sum(experience)"),
+                Alias::new("total_experience"),
+            )
+            .and_where(
+                Expr::col((Alias::new("es"), experience_state::Column::EntityId))
+                    .is_not_in(exclude.clone().unwrap_or(vec![0])),
+            )
+            .and_where(
+                Expr::col((Alias::new("es"), experience_state::Column::SkillId)).is_in(skills),
+            )
+            .from_as(experience_state::Entity, Alias::new("es"))
+            .join_as(
+                JoinType::InnerJoin,
+                player_state::Entity,
+                Alias::new("ps"),
+                Expr::col((Alias::new("es"), experience_state::Column::EntityId))
+                    .equals((Alias::new("ps"), player_state::Column::EntityId)),
+            )
+            .group_by_col((Alias::new("es"), experience_state::Column::EntityId))
+            .order_by_expr(Expr::cust("total_experience"), Order::Desc)
+            .to_owned();
+
+        if let Some(limit) = limit {
+            query.limit(limit);
+        }
+
+        let query = match db.get_database_backend() {
+            DbBackend::Postgres => query.to_string(PostgresQueryBuilder),
+            _ => unreachable!(),
+        };
+
+        Ok(db
+            .query_all_raw(Statement::from_string(db.get_database_backend(), query))
+            .await?
+            .into_iter()
+            .map(|row| {
+                let entity_id: i64 = row.try_get("", "entity_id").unwrap();
+                let total_experience: i64 = row.try_get("", "total_experience").unwrap();
+
+                (entity_id, total_experience)
+            })
+            .collect())
+    }
+
     pub async fn get_experience_state_player_ids_by_skill_id(
         db: &DbConn,
         skill_id: i64,

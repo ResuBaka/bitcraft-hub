@@ -39,18 +39,41 @@ impl PreviousEmpireNameStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct PreviousEmpireNameStateInitialCallbackId(__sdk::CallbackId);
 pub struct PreviousEmpireNameStateInsertCallbackId(__sdk::CallbackId);
 pub struct PreviousEmpireNameStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> PreviousEmpireNameStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[PreviousEmpireNameState]) + Send + 'static,
+    ) -> PreviousEmpireNameStateInitialCallbackId {
+        PreviousEmpireNameStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: PreviousEmpireNameStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for PreviousEmpireNameStateTableHandle<'ctx> {
     type Row = PreviousEmpireNameState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = PreviousEmpireNameState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PreviousEmpireNameState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = PreviousEmpireNameStateInsertCallbackId;
@@ -80,16 +103,15 @@ impl<'ctx> __sdk::Table for PreviousEmpireNameStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<PreviousEmpireNameState>("previous_empire_name_state");
-    _table
-        .add_unique_constraint::<__sdk::Identity>("emperor_identity", |row| &row.emperor_identity);
+
+        let _table = client_cache.get_or_make_table::<PreviousEmpireNameState>("previous_empire_name_state");
+    _table.add_unique_constraint::<__sdk::Identity>("emperor_identity", |row| &row.emperor_identity);
     _table.add_unique_constraint::<String>("empire_name", |row| &row.empire_name);
-    _table.add_unique_constraint::<String>("empire_lower_case_name", |row| {
-        &row.empire_lower_case_name
-    });
+    _table.add_unique_constraint::<String>("empire_lower_case_name", |row| &row.empire_lower_case_name);
+}
 }
 pub struct PreviousEmpireNameStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -119,6 +141,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `emperor_identity` unique index on the table `previous_empire_name_state`,
 /// which allows point queries on the field of the same name
 /// via the [`PreviousEmpireNameStateEmperorIdentityUnique::find`] method.
@@ -135,9 +158,7 @@ impl<'ctx> PreviousEmpireNameStateTableHandle<'ctx> {
     /// Get a handle on the `emperor_identity` unique index on the table `previous_empire_name_state`.
     pub fn emperor_identity(&self) -> PreviousEmpireNameStateEmperorIdentityUnique<'ctx> {
         PreviousEmpireNameStateEmperorIdentityUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<__sdk::Identity>("emperor_identity"),
+            imp: self.imp.get_unique_constraint::<__sdk::Identity>("emperor_identity"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -150,7 +171,9 @@ impl<'ctx> PreviousEmpireNameStateEmperorIdentityUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `empire_name` unique index on the table `previous_empire_name_state`,
 /// which allows point queries on the field of the same name
 /// via the [`PreviousEmpireNameStateEmpireNameUnique::find`] method.
@@ -180,7 +203,9 @@ impl<'ctx> PreviousEmpireNameStateEmpireNameUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `empire_lower_case_name` unique index on the table `previous_empire_name_state`,
 /// which allows point queries on the field of the same name
 /// via the [`PreviousEmpireNameStateEmpireLowerCaseNameUnique::find`] method.
@@ -197,9 +222,7 @@ impl<'ctx> PreviousEmpireNameStateTableHandle<'ctx> {
     /// Get a handle on the `empire_lower_case_name` unique index on the table `previous_empire_name_state`.
     pub fn empire_lower_case_name(&self) -> PreviousEmpireNameStateEmpireLowerCaseNameUnique<'ctx> {
         PreviousEmpireNameStateEmpireLowerCaseNameUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<String>("empire_lower_case_name"),
+            imp: self.imp.get_unique_constraint::<String>("empire_lower_case_name"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -211,6 +234,7 @@ impl<'ctx> PreviousEmpireNameStateEmpireLowerCaseNameUnique<'ctx> {
     pub fn find(&self, col_val: &String) -> Option<PreviousEmpireNameState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

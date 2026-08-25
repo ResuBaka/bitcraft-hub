@@ -50,8 +50,8 @@ pub trait empire_add_siege_supplies {
     fn on_empire_add_siege_supplies(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &EmpireAddSiegeSuppliesRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> EmpireAddSiegeSuppliesCallbackId;
     /// Cancel a callback previously registered by [`Self::on_empire_add_siege_supplies`],
     /// causing it not to run in the future.
@@ -71,8 +71,8 @@ impl empire_add_siege_supplies for super::RemoteReducers {
     fn on_empire_add_siege_supplies(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &EmpireAddSiegeSuppliesRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> EmpireAddSiegeSuppliesCallbackId {
         EmpireAddSiegeSuppliesCallbackId(self.imp.on_reducer(
             "empire_add_siege_supplies",

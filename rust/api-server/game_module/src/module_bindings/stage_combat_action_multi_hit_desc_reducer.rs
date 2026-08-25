@@ -50,8 +50,8 @@ pub trait stage_combat_action_multi_hit_desc {
     fn on_stage_combat_action_multi_hit_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<CombatActionMultiHitDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageCombatActionMultiHitDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_stage_combat_action_multi_hit_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl stage_combat_action_multi_hit_desc for super::RemoteReducers {
     fn on_stage_combat_action_multi_hit_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<CombatActionMultiHitDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageCombatActionMultiHitDescCallbackId {
         StageCombatActionMultiHitDescCallbackId(self.imp.on_reducer(
             "stage_combat_action_multi_hit_desc",

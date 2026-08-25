@@ -270,7 +270,7 @@ useSeoMeta({
                   <span v-if="item[1].tier > 0" :class="tierToTextClass(item[1].tier)">
                     Tier {{ item[1].tier }}
                   </span>
-                  <span v-if="item[1].tag" >
+                  <span v-if="item[1].tag">
                     {{ item[1].tag }}
                   </span>
                 </div>
@@ -327,7 +327,7 @@ useSeoMeta({
                   <span v-if="item[1].tier > 0" :class="tierToTextClass(item[1].tier)">
                     Tier {{ item[1].tier }}
                   </span>
-                  <span v-if="item[1].tag" >
+                  <span v-if="item[1].tag">
                     {{ item[1].tag }}
                   </span>
                 </div>

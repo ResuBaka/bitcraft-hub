@@ -38,14 +38,14 @@ const handleIconError = () => {
         class="relative flex h-12 w-12 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
       >
         <picture v-if="showIcon">
-          <source :srcset="`${iconUrl.url}.jxl`" type="image/jxl">
-          <source :srcset="`${iconUrl.url}.avif`" type="image/avif">
+          <source :srcset="`${iconUrl.url}.jxl`" type="image/jxl" />
+          <source :srcset="`${iconUrl.url}.avif`" type="image/avif" />
           <img
-              :src="`${iconUrl.url}.webp`"
-              :alt="item.item.name"
-              class="h-10 w-10 object-contain"
-              loading="lazy"
-              @error="handleIconError"
+            :src="`${iconUrl.url}.webp`"
+            :alt="item.item.name"
+            class="h-10 w-10 object-contain"
+            loading="lazy"
+            @error="handleIconError"
           />
         </picture>
         <UIcon v-else name="i-lucide-box" class="h-5 w-5 text-gray-400" />

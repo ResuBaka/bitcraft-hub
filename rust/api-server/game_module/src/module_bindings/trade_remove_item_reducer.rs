@@ -47,8 +47,8 @@ pub trait trade_remove_item {
     fn on_trade_remove_item(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeRemoveItemRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeRemoveItemCallbackId;
     /// Cancel a callback previously registered by [`Self::on_trade_remove_item`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl trade_remove_item for super::RemoteReducers {
     fn on_trade_remove_item(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeRemoveItemRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeRemoveItemCallbackId {
         TradeRemoveItemCallbackId(self.imp.on_reducer(
             "trade_remove_item",

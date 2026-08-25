@@ -47,8 +47,8 @@ pub trait discover_ruins {
     fn on_discover_ruins(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesSmallMessage)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DiscoverRuinsCallbackId;
     /// Cancel a callback previously registered by [`Self::on_discover_ruins`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl discover_ruins for super::RemoteReducers {
     fn on_discover_ruins(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &OffsetCoordinatesSmallMessage)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DiscoverRuinsCallbackId {
         DiscoverRuinsCallbackId(self.imp.on_reducer(
             "discover_ruins",

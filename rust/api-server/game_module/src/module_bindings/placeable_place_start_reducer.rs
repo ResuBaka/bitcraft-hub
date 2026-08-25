@@ -61,8 +61,8 @@ impl placeable_place_start for super::RemoteReducers {
     fn on_placeable_place_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPlaceablePlaceRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PlaceablePlaceStartCallbackId {
         PlaceablePlaceStartCallbackId(self.imp.on_reducer(
             "placeable_place_start",

@@ -62,8 +62,8 @@ pub trait cheat_drop_item_on_tile {
     fn on_cheat_drop_item_on_tile(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &SmallHexTileMessage, &i32, &i32, &bool, &u64)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatDropItemOnTileCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_drop_item_on_tile`],
     /// causing it not to run in the future.
@@ -92,9 +92,15 @@ impl cheat_drop_item_on_tile for super::RemoteReducers {
     }
     fn on_cheat_drop_item_on_tile(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &SmallHexTileMessage, &i32, &i32, &bool, &u64)
-            + Send
-            + 'static,
+        mut callback: impl FnMut(
+            &super::ReducerEventContext,
+            &SmallHexTileMessage,
+            &i32,
+            &i32,
+            &bool,
+            &u64,
+        ) + Send
+        + 'static,
     ) -> CheatDropItemOnTileCallbackId {
         CheatDropItemOnTileCallbackId(self.imp.on_reducer(
             "cheat_drop_item_on_tile",

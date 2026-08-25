@@ -50,8 +50,8 @@ pub trait import_hexite_exchange_entry_desc {
     fn on_import_hexite_exchange_entry_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<HexiteExchangeEntryDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportHexiteExchangeEntryDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_hexite_exchange_entry_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_hexite_exchange_entry_desc for super::RemoteReducers {
     fn on_import_hexite_exchange_entry_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<HexiteExchangeEntryDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportHexiteExchangeEntryDescCallbackId {
         ImportHexiteExchangeEntryDescCallbackId(self.imp.on_reducer(
             "import_hexite_exchange_entry_desc",

@@ -62,14 +62,14 @@ pub trait blueprint_place {
     fn on_blueprint_place(
         &self,
         callback: impl FnMut(
-                &super::ReducerEventContext,
-                &OffsetCoordinatesSmallMessage,
-                &String,
-                &String,
-                &i32,
-                &i16,
-            ) + Send
-            + 'static,
+            &super::ReducerEventContext,
+            &OffsetCoordinatesSmallMessage,
+            &String,
+            &String,
+            &i32,
+            &i16,
+        ) + Send
+        + 'static,
     ) -> BlueprintPlaceCallbackId;
     /// Cancel a callback previously registered by [`Self::on_blueprint_place`],
     /// causing it not to run in the future.
@@ -99,14 +99,14 @@ impl blueprint_place for super::RemoteReducers {
     fn on_blueprint_place(
         &self,
         mut callback: impl FnMut(
-                &super::ReducerEventContext,
-                &OffsetCoordinatesSmallMessage,
-                &String,
-                &String,
-                &i32,
-                &i16,
-            ) + Send
-            + 'static,
+            &super::ReducerEventContext,
+            &OffsetCoordinatesSmallMessage,
+            &String,
+            &String,
+            &i32,
+            &i16,
+        ) + Send
+        + 'static,
     ) -> BlueprintPlaceCallbackId {
         BlueprintPlaceCallbackId(self.imp.on_reducer(
             "blueprint_place",

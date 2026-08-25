@@ -47,8 +47,8 @@ pub trait cheat_paving_add_tile {
     fn on_cheat_paving_add_tile(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPavingPlaceTileRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatPavingAddTileCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_paving_add_tile`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl cheat_paving_add_tile for super::RemoteReducers {
     fn on_cheat_paving_add_tile(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPavingPlaceTileRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatPavingAddTileCallbackId {
         CheatPavingAddTileCallbackId(self.imp.on_reducer(
             "cheat_paving_add_tile",

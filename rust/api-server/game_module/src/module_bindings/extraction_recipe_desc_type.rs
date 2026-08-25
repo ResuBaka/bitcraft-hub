@@ -9,6 +9,7 @@ use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::extraction_spawned_placeable_type::ExtractionSpawnedPlaceable;
 use super::input_item_stack_type::InputItemStack;
 use super::level_requirement_type::LevelRequirement;
+use super::placeable_self_buff_chance_type::PlaceableSelfBuffChance;
 use super::probabilistic_item_stack_type::ProbabilisticItemStack;
 use super::tool_requirement_type::ToolRequirement;
 
@@ -38,6 +39,7 @@ pub struct ExtractionRecipeDesc {
     pub show_in_progression: bool,
     pub empire_permission_required: Option<EmpirePermission>,
     pub spawned_placeables: Option<Vec<ExtractionSpawnedPlaceable>>,
+    pub self_buffs: Option<Vec<PlaceableSelfBuffChance>>,
 }
 
 impl __sdk::InModule for ExtractionRecipeDesc {
@@ -77,6 +79,8 @@ pub struct ExtractionRecipeDescCols {
         __sdk::__query_builder::Col<ExtractionRecipeDesc, Option<EmpirePermission>>,
     pub spawned_placeables:
         __sdk::__query_builder::Col<ExtractionRecipeDesc, Option<Vec<ExtractionSpawnedPlaceable>>>,
+    pub self_buffs:
+        __sdk::__query_builder::Col<ExtractionRecipeDesc, Option<Vec<PlaceableSelfBuffChance>>>,
 }
 
 impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
@@ -139,6 +143,7 @@ impl __sdk::__query_builder::HasCols for ExtractionRecipeDesc {
                 "empire_permission_required",
             ),
             spawned_placeables: __sdk::__query_builder::Col::new(table_name, "spawned_placeables"),
+            self_buffs: __sdk::__query_builder::Col::new(table_name, "self_buffs"),
         }
     }
 }

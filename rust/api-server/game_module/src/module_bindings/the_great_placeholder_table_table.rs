@@ -47,18 +47,41 @@ impl TheGreatPlaceholderTableTableAccess for super::RemoteTables {
     }
 }
 
+pub struct TheGreatPlaceholderTableInitialCallbackId(__sdk::CallbackId);
 pub struct TheGreatPlaceholderTableInsertCallbackId(__sdk::CallbackId);
 pub struct TheGreatPlaceholderTableDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> TheGreatPlaceholderTableTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[TheGreatPlaceHolderTable]) + Send + 'static,
+    ) -> TheGreatPlaceholderTableInitialCallbackId {
+        TheGreatPlaceholderTableInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: TheGreatPlaceholderTableInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for TheGreatPlaceholderTableTableHandle<'ctx> {
     type Row = TheGreatPlaceHolderTable;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = TheGreatPlaceHolderTable> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = TheGreatPlaceHolderTable> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = TheGreatPlaceholderTableInsertCallbackId;
@@ -88,11 +111,13 @@ impl<'ctx> __sdk::Table for TheGreatPlaceholderTableTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<TheGreatPlaceHolderTable>("the_great_placeholder_table");
+
+        let _table = client_cache.get_or_make_table::<TheGreatPlaceHolderTable>("the_great_placeholder_table");
     _table.add_unique_constraint::<u64>("placeholder_id", |row| &row.placeholder_id);
+}
 }
 pub struct TheGreatPlaceholderTableUpdateCallbackId(__sdk::CallbackId);
 
@@ -122,6 +147,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `placeholder_id` unique index on the table `the_great_placeholder_table`,
 /// which allows point queries on the field of the same name
 /// via the [`TheGreatPlaceholderTablePlaceholderIdUnique::find`] method.
@@ -150,6 +176,7 @@ impl<'ctx> TheGreatPlaceholderTablePlaceholderIdUnique<'ctx> {
     pub fn find(&self, col_val: &u64) -> Option<TheGreatPlaceHolderTable> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

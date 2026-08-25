@@ -1,5 +1,7 @@
 use crate::AppState;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
+use crate::websocket::{
+    OutboundWebSocketMessages, SpacetimeUpdateMessages, record_worker_received,
+};
 use game_module::module_bindings::TravelerTaskState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
@@ -95,7 +97,7 @@ pub(crate) fn start_worker_traveler_task_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name).build();
 
-                                let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::TravelerTaskState(model.clone()));
 
                                 if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
                                     messages_delete.remove(index);
@@ -109,7 +111,7 @@ pub(crate) fn start_worker_traveler_task_state(
                             SpacetimeUpdateMessages::Update { new, database_name, .. } => {
                                 let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(new).with_region(database_name).build();
 
-                                let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskState(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::TravelerTaskState(model.clone()));
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);
@@ -127,7 +129,7 @@ pub(crate) fn start_worker_traveler_task_state(
                             SpacetimeUpdateMessages::Remove { delete, .. } => {
                                 let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(delete).build();
                                 let id = model.entity_id;
-                                let _ = global_app_state.tx.send(WebSocketMessages::TravelerTaskStateDelete(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::TravelerTaskStateDelete(model.clone()));
 
                                 if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
                                     messages.remove(index);

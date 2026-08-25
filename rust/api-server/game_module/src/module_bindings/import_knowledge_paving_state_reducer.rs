@@ -72,8 +72,8 @@ impl import_knowledge_paving_state for super::RemoteReducers {
     fn on_import_knowledge_paving_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgePavingState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportKnowledgePavingStateCallbackId {
         ImportKnowledgePavingStateCallbackId(self.imp.on_reducer(
             "import_knowledge_paving_state",

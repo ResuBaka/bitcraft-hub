@@ -47,8 +47,8 @@ pub trait item_stack_move_all {
     fn on_item_stack_move_all(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerItemStackMoveAllRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ItemStackMoveAllCallbackId;
     /// Cancel a callback previously registered by [`Self::on_item_stack_move_all`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl item_stack_move_all for super::RemoteReducers {
     fn on_item_stack_move_all(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerItemStackMoveAllRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ItemStackMoveAllCallbackId {
         ItemStackMoveAllCallbackId(self.imp.on_reducer(
             "item_stack_move_all",

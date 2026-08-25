@@ -59,8 +59,8 @@ impl attack_impact_migrated for super::RemoteReducers {
     fn on_attack_impact_migrated(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &AttackImpactTimerMigrated)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> AttackImpactMigratedCallbackId {
         AttackImpactMigratedCallbackId(self.imp.on_reducer(
             "attack_impact_migrated",

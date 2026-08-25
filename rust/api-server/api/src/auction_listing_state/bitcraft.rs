@@ -1,5 +1,7 @@
 use crate::AppState;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages, record_worker_received};
+use crate::websocket::{
+    OutboundWebSocketMessages, SpacetimeUpdateMessages, record_worker_received,
+};
 use game_module::module_bindings::AuctionListingState;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
@@ -41,7 +43,7 @@ pub(crate) fn start_worker_sell_order_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 data.into_par_iter().for_each(|value| {
                                     let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(value).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
-                                    let _ = global_app_state.tx.send(WebSocketMessages::InsertSellOrder(model.clone()));
+                                    let _ = global_app_state.tx.send(OutboundWebSocketMessages::InsertSellOrder(model.clone()));
                                     global_app_state.sell_order_state.insert(model.entity_id as i64, model);
                                 });
 
@@ -92,7 +94,7 @@ pub(crate) fn start_worker_sell_order_state(
                             SpacetimeUpdateMessages::Insert { new, database_name, reducer_name: _ , .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(new).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                 global_app_state.sell_order_state.insert(model.entity_id as i64, model.clone());
-                                let _ = global_app_state.tx.send(WebSocketMessages::InsertSellOrder(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::InsertSellOrder(model.clone()));
 
                                 // tracing::warn!("Insert sell reducer {:?}", reducer_name);
 
@@ -125,7 +127,7 @@ pub(crate) fn start_worker_sell_order_state(
                                 //     }
                                 // }
 
-                                let _ = global_app_state.tx.send(WebSocketMessages::UpdateSellOrder(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::UpdateSellOrder(model.clone()));
 
                                 // ids.push(model.entity_id);
                                 //
@@ -137,7 +139,7 @@ pub(crate) fn start_worker_sell_order_state(
                             SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name: _, .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(delete).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                 global_app_state.sell_order_state.remove(&(model.entity_id as i64));
-                                let _ = global_app_state.tx.send(WebSocketMessages::RemoveSellOrder(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::RemoveSellOrder(model.clone()));
                                 // tracing::warn!("Remove sell reducer {:?}", reducer_name);
 
 
@@ -235,7 +237,7 @@ pub(crate) fn start_worker_buy_order_state(
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 data.into_par_iter().for_each(|value| {
                                     let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(value).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
-                                    let _ = global_app_state.tx.send(WebSocketMessages::InsertBuyOrder(model.clone()));
+                                    let _ = global_app_state.tx.send(OutboundWebSocketMessages::InsertBuyOrder(model.clone()));
                                     global_app_state.buy_order_state.insert(model.entity_id as i64, model);
                                 });
 
@@ -285,7 +287,7 @@ pub(crate) fn start_worker_buy_order_state(
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, reducer_name: _, .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(new).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
-                                    let _ = global_app_state.tx.send(WebSocketMessages::InsertBuyOrder(model.clone()));
+                                    let _ = global_app_state.tx.send(OutboundWebSocketMessages::InsertBuyOrder(model.clone()));
                                 global_app_state.buy_order_state.insert(model.entity_id as i64, model);
                                 // tracing::warn!("Insert buy reducer {:?}", reducer_name);
                                 // if ids.contains(&model.entity_id) {
@@ -302,7 +304,7 @@ pub(crate) fn start_worker_buy_order_state(
                             }
                             SpacetimeUpdateMessages::Update { old: _, new, database_name, reducer_name: _,   .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(new).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
-                                let _ = global_app_state.tx.send(WebSocketMessages::UpdateBuyOrder(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::UpdateBuyOrder(model.clone()));
                                 // tracing::warn!("Update buy reducer {:?} old: {} new: {}", reducer_name, old.quantity, model.quantity);
                                 global_app_state.buy_order_state.insert(model.entity_id as i64, model);
 
@@ -329,7 +331,7 @@ pub(crate) fn start_worker_buy_order_state(
                             }
                             SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name: _, .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(delete).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
-                                let _ = global_app_state.tx.send(WebSocketMessages::RemoveBuyOrder(model.clone()));
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::RemoveBuyOrder(model.clone()));
                                 global_app_state.buy_order_state.remove(&(model.entity_id as i64));
 
                                 // tracing::warn!("Remove buy reducer {:?}", reducer_name);

@@ -76,7 +76,9 @@ const tagOptions = computed(() => {
   const tags = metaData.value?.tags ?? [];
   return [
     { label: "All tags", value: null },
-    ...tags.filter((value: string) => value.length != 0).map((value: string) => ({ label: value, value })),
+    ...tags
+      .filter((value: string) => value.length != 0)
+      .map((value: string) => ({ label: value, value })),
   ];
 });
 
@@ -298,15 +300,15 @@ useSeoMeta({
                     {{ item.name }}
                   </NuxtLink>
                   <picture v-if="item.iconUrl && !hasImageError(item.id)">
-                    <source :srcset="`${item.iconUrl}.jxl`" type="image/jxl">
-                    <source :srcset="`${item.iconUrl}.avif`" type="image/avif">
+                    <source :srcset="`${item.iconUrl}.jxl`" type="image/jxl" />
+                    <source :srcset="`${item.iconUrl}.avif`" type="image/avif" />
                     <img
-                        :ref="(element) => setItemImageElement(item.id, element as Element | null)"
-                        :src="`${item.iconUrl}.webp`"
-                        :alt="item.name"
-                        class="h-auto max-h-18 w-auto max-w-full rounded border border-gray-200 object-contain dark:border-gray-800"
-                        loading="lazy"
-                        @error="onImageError(item.id)"
+                      :ref="(element) => setItemImageElement(item.id, element as Element | null)"
+                      :src="`${item.iconUrl}.webp`"
+                      :alt="item.name"
+                      class="h-auto max-h-18 w-auto max-w-full rounded border border-gray-200 object-contain dark:border-gray-800"
+                      loading="lazy"
+                      @error="onImageError(item.id)"
                     />
                   </picture>
                 </div>

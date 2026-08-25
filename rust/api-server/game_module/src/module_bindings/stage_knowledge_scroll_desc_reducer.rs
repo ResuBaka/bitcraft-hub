@@ -63,8 +63,8 @@ impl stage_knowledge_scroll_desc for super::RemoteReducers {
     fn on_stage_knowledge_scroll_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeScrollDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StageKnowledgeScrollDescCallbackId {
         StageKnowledgeScrollDescCallbackId(self.imp.on_reducer(
             "stage_knowledge_scroll_desc",

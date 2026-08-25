@@ -45,8 +45,8 @@ pub trait dropped_inventory_despawn {
     fn on_dropped_inventory_despawn(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &DroppedInventoryDespawnTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DroppedInventoryDespawnCallbackId;
     /// Cancel a callback previously registered by [`Self::on_dropped_inventory_despawn`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl dropped_inventory_despawn for super::RemoteReducers {
     fn on_dropped_inventory_despawn(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &DroppedInventoryDespawnTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DroppedInventoryDespawnCallbackId {
         DroppedInventoryDespawnCallbackId(self.imp.on_reducer(
             "dropped_inventory_despawn",

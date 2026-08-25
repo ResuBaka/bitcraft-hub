@@ -40,18 +40,41 @@ impl EmpireSettlementStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct EmpireSettlementStateInitialCallbackId(__sdk::CallbackId);
 pub struct EmpireSettlementStateInsertCallbackId(__sdk::CallbackId);
 pub struct EmpireSettlementStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> EmpireSettlementStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[EmpireSettlementState]) + Send + 'static,
+    ) -> EmpireSettlementStateInitialCallbackId {
+        EmpireSettlementStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: EmpireSettlementStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for EmpireSettlementStateTableHandle<'ctx> {
     type Row = EmpireSettlementState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = EmpireSettlementState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = EmpireSettlementState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = EmpireSettlementStateInsertCallbackId;
@@ -81,11 +104,14 @@ impl<'ctx> __sdk::Table for EmpireSettlementStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<EmpireSettlementState>("empire_settlement_state");
+
+        let _table = client_cache.get_or_make_table::<EmpireSettlementState>("empire_settlement_state");
     _table.add_unique_constraint::<u64>("building_entity_id", |row| &row.building_entity_id);
     _table.add_unique_constraint::<u64>("claim_entity_id", |row| &row.claim_entity_id);
+}
 }
 pub struct EmpireSettlementStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -115,6 +141,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `building_entity_id` unique index on the table `empire_settlement_state`,
 /// which allows point queries on the field of the same name
 /// via the [`EmpireSettlementStateBuildingEntityIdUnique::find`] method.
@@ -144,7 +171,9 @@ impl<'ctx> EmpireSettlementStateBuildingEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `claim_entity_id` unique index on the table `empire_settlement_state`,
 /// which allows point queries on the field of the same name
 /// via the [`EmpireSettlementStateClaimEntityIdUnique::find`] method.
@@ -173,6 +202,7 @@ impl<'ctx> EmpireSettlementStateClaimEntityIdUnique<'ctx> {
     pub fn find(&self, col_val: &u64) -> Option<EmpireSettlementState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

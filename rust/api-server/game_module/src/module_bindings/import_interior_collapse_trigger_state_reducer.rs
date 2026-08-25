@@ -50,8 +50,8 @@ pub trait import_interior_collapse_trigger_state {
     fn on_import_interior_collapse_trigger_state(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorCollapseTriggerState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportInteriorCollapseTriggerStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_interior_collapse_trigger_state`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_interior_collapse_trigger_state for super::RemoteReducers {
     fn on_import_interior_collapse_trigger_state(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<InteriorCollapseTriggerState>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportInteriorCollapseTriggerStateCallbackId {
         ImportInteriorCollapseTriggerStateCallbackId(self.imp.on_reducer(
             "import_interior_collapse_trigger_state",

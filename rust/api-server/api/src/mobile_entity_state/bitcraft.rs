@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::websocket::{WebSocketMessages, record_worker_received};
+use crate::websocket::{OutboundWebSocketMessages, record_worker_received};
 use entity::mobile_entity_state;
 use game_module::module_bindings::MobileEntityState;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -35,7 +35,7 @@ pub(crate) fn start_worker_mobile_entity_state(
 
                             let _ = global_app_state
                                 .tx
-                                .send(WebSocketMessages::MobileEntityState(model));
+                                .send(OutboundWebSocketMessages::MobileEntityState(model));
                         }
                     }
                     crate::websocket::SpacetimeUpdateMessages::Insert {
@@ -54,7 +54,7 @@ pub(crate) fn start_worker_mobile_entity_state(
 
                         let _ = global_app_state
                             .tx
-                            .send(WebSocketMessages::MobileEntityState(model));
+                            .send(OutboundWebSocketMessages::MobileEntityState(model));
                     }
                     crate::websocket::SpacetimeUpdateMessages::Update {
                         new,
@@ -72,7 +72,7 @@ pub(crate) fn start_worker_mobile_entity_state(
 
                         let _ = global_app_state
                             .tx
-                            .send(WebSocketMessages::MobileEntityState(model));
+                            .send(OutboundWebSocketMessages::MobileEntityState(model));
                     }
                     crate::websocket::SpacetimeUpdateMessages::Remove { delete, .. } => {
                         global_app_state

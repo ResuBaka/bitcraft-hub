@@ -23,11 +23,17 @@ const skills = computed(() => {
   }
 
   return Object.keys(leaderboard.value?.leaderboard).filter((name) => {
-    return name !== "Experience" && name !== "Level" && name !== "Experience Per Hour";
+    return (
+      name !== "Experience" &&
+      name !== "Level" &&
+      name !== "Experience Per Hour" &&
+      name !== "Skills" &&
+      name !== "Professions"
+    );
   });
 });
 
-let selectedSkills = ref("Experience");
+let selectedSkills = ref("Professions");
 if (route.query.skill) {
   selectedSkills.value = route.query.skill as string;
 }
@@ -112,7 +118,7 @@ const totalExperienceTopics = computed(() => {
 });
 
 registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (message) => {
-  const skill = leaderboard.value?.leaderboard["Experience"].findIndex((item) => {
+  const index = leaderboard.value?.leaderboard["Experience"].findIndex((item) => {
     if (item === undefined) {
       return false;
     }
@@ -120,16 +126,98 @@ registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (messa
     return item.player_id === message.user_id;
   });
 
-  if (skill) {
-    leaderboard.value.leaderboard["Experience"][skill].experience = message.experience;
-    leaderboard.value.leaderboard["Experience"][skill].experience_per_hour =
+  if (index) {
+    leaderboard.value.leaderboard["Experience"][index].experience = message.experience;
+    leaderboard.value.leaderboard["Experience"][index].experience_per_hour =
       message.experience_per_hour;
-    leaderboard.value.leaderboard["Experience"][skill].rank = message.rank;
-    if (leaderboard.value.leaderboard["Experience"][skill].rank !== message.rank) {
-      swapArrayRank(leaderboard.value.leaderboard["Experience"], skill, Number(message.rank) - 1);
+    leaderboard.value.leaderboard["Experience"][index].rank = message.rank;
+    if (leaderboard.value.leaderboard["Experience"][index].rank !== message.rank) {
+      swapArrayRank(leaderboard.value.leaderboard["Experience"], index, Number(message.rank) - 1);
     }
   }
 });
+
+const totalProfessionExperienceTopics = computed(() => {
+  if (!leaderboard.value?.leaderboard || selectedSkills.value !== "Professions") {
+    return [];
+  }
+
+  let topicsSet = new Set<string>();
+
+  for (const player of leaderboard.value.leaderboard["Professions"]) {
+    if (player === undefined) {
+      continue;
+    }
+    topicsSet.add(`total_profession_experience.${player.player_id.toString()}`);
+  }
+
+  return Array.from(topicsSet);
+});
+
+registerWebsocketMessageHandler(
+  "TotalProfessionExperience",
+  totalProfessionExperienceTopics,
+  (message) => {
+    const index = leaderboard.value?.leaderboard["Professions"].findIndex((item) => {
+      if (item === undefined) {
+        return false;
+      }
+
+      return item.player_id === message.user_id;
+    });
+
+    if (index) {
+      leaderboard.value.leaderboard["Professions"][index].experience = message.experience;
+      leaderboard.value.leaderboard["Professions"][index].rank = message.rank;
+      if (leaderboard.value.leaderboard["Professions"][index].rank !== message.rank) {
+        swapArrayRank(
+          leaderboard.value.leaderboard["Professions"],
+          index,
+          Number(message.rank) - 1,
+        );
+      }
+    }
+  },
+);
+
+const totalAdventureExperienceTopics = computed(() => {
+  if (!leaderboard.value?.leaderboard || selectedSkills.value !== "Skills") {
+    return [];
+  }
+
+  let topicsSet = new Set<string>();
+
+  for (const player of leaderboard.value.leaderboard["Skills"]) {
+    if (player === undefined) {
+      continue;
+    }
+    topicsSet.add(`total_adventure_experience.${player.player_id.toString()}`);
+  }
+
+  return Array.from(topicsSet);
+});
+
+registerWebsocketMessageHandler(
+  "TotalAdventureExperience",
+  totalAdventureExperienceTopics,
+  (message) => {
+    const index = leaderboard.value?.leaderboard["Skills"].findIndex((item) => {
+      if (item === undefined) {
+        return false;
+      }
+
+      return item.player_id === message.user_id;
+    });
+
+    if (index) {
+      leaderboard.value.leaderboard["Skills"][index].experience = message.experience;
+      leaderboard.value.leaderboard["Skills"][index].rank = message.rank;
+      if (leaderboard.value.leaderboard["Skills"][index].rank !== message.rank) {
+        swapArrayRank(leaderboard.value.leaderboard["Skills"], index, Number(message.rank) - 1);
+      }
+    }
+  },
+);
 
 const playerStateTopics = computed(() => {
   if (!leaderboard.value?.leaderboard) {
@@ -245,6 +333,8 @@ const countDownUntilResearchIsFinished = computed(() => {
 
 const skillMenu = computed(() => {
   const menu = [
+    { value: "Professions", label: "Professions experience" },
+    { value: "Skills", label: "Skills experience" },
     { value: "Experience", label: "Total experience" },
     { value: "Level", label: "Total level" },
     // { value: "Experience Per Hour", label: "Experience Per Hour" },
@@ -396,7 +486,7 @@ const playerLinkClass = (playerId: number) => {
 };
 
 const columnsForSkill = (skill: string) => {
-  if (skill === "Experience") {
+  if (skill === "Experience" || skill === "Professions" || skill === "Skills") {
     return experienceColumns.value;
   }
 

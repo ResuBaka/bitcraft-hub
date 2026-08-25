@@ -69,17 +69,17 @@ pub trait admin_restore_player_state {
     fn on_admin_restore_player_state(
         &self,
         callback: impl FnMut(
-                &super::ReducerEventContext,
-                &String,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-            ) + Send
-            + 'static,
+            &super::ReducerEventContext,
+            &String,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+        ) + Send
+        + 'static,
     ) -> AdminRestorePlayerStateCallbackId;
     /// Cancel a callback previously registered by [`Self::on_admin_restore_player_state`],
     /// causing it not to run in the future.
@@ -115,17 +115,17 @@ impl admin_restore_player_state for super::RemoteReducers {
     fn on_admin_restore_player_state(
         &self,
         mut callback: impl FnMut(
-                &super::ReducerEventContext,
-                &String,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-                &bool,
-            ) + Send
-            + 'static,
+            &super::ReducerEventContext,
+            &String,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+            &bool,
+        ) + Send
+        + 'static,
     ) -> AdminRestorePlayerStateCallbackId {
         AdminRestorePlayerStateCallbackId(self.imp.on_reducer(
             "admin_restore_player_state",

@@ -39,18 +39,41 @@ impl PassiveCraftTimerTableAccess for super::RemoteTables {
     }
 }
 
+pub struct PassiveCraftTimerInitialCallbackId(__sdk::CallbackId);
 pub struct PassiveCraftTimerInsertCallbackId(__sdk::CallbackId);
 pub struct PassiveCraftTimerDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> PassiveCraftTimerTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[PassiveCraftTimer]) + Send + 'static,
+    ) -> PassiveCraftTimerInitialCallbackId {
+        PassiveCraftTimerInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: PassiveCraftTimerInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for PassiveCraftTimerTableHandle<'ctx> {
     type Row = PassiveCraftTimer;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = PassiveCraftTimer> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PassiveCraftTimer> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = PassiveCraftTimerInsertCallbackId;
@@ -80,11 +103,14 @@ impl<'ctx> __sdk::Table for PassiveCraftTimerTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<PassiveCraftTimer>("passive_craft_timer");
+
+        let _table = client_cache.get_or_make_table::<PassiveCraftTimer>("passive_craft_timer");
     _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
     _table.add_unique_constraint::<u64>("craft_entity_id", |row| &row.craft_entity_id);
+}
 }
 pub struct PassiveCraftTimerUpdateCallbackId(__sdk::CallbackId);
 
@@ -114,6 +140,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `scheduled_id` unique index on the table `passive_craft_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`PassiveCraftTimerScheduledIdUnique::find`] method.
@@ -143,7 +170,9 @@ impl<'ctx> PassiveCraftTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `craft_entity_id` unique index on the table `passive_craft_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`PassiveCraftTimerCraftEntityIdUnique::find`] method.
@@ -172,6 +201,7 @@ impl<'ctx> PassiveCraftTimerCraftEntityIdUnique<'ctx> {
     pub fn find(&self, col_val: &u64) -> Option<PassiveCraftTimer> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

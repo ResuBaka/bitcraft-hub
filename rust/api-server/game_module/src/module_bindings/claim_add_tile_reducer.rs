@@ -61,8 +61,8 @@ impl claim_add_tile for super::RemoteReducers {
     fn on_claim_add_tile(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimAddTileRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimAddTileCallbackId {
         ClaimAddTileCallbackId(self.imp.on_reducer(
             "claim_add_tile",

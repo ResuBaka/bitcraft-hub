@@ -47,8 +47,8 @@ pub trait claim_tech_cancel {
     fn on_claim_tech_cancel(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTechCancelRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimTechCancelCallbackId;
     /// Cancel a callback previously registered by [`Self::on_claim_tech_cancel`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl claim_tech_cancel for super::RemoteReducers {
     fn on_claim_tech_cancel(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTechCancelRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ClaimTechCancelCallbackId {
         ClaimTechCancelCallbackId(self.imp.on_reducer(
             "claim_tech_cancel",

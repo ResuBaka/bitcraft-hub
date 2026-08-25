@@ -205,31 +205,31 @@ const expUntilNextTenLevel = computed(() => {
           Experience:
           <bitcraft-animated-number :value="xp_info.experience" :formater="numberFormat.format" />
         </p>
-        <p v-if="!['Level', 'Experience'].includes(skill)">
+        <p v-if="!['Level', 'Experience', 'Skills', 'Professions'].includes(skill)">
           To next:
           <bitcraft-animated-number
             :value="expUntilNextLevel(xp_info)"
             :formater="numberFormat.format"
           />
         </p>
-        <p v-if="!['Level', 'Experience'].includes(skill)">
+        <p v-if="!['Level', 'Experience', 'Skills', 'Professions'].includes(skill)">
           To next milestone:
           <bitcraft-animated-number :value="expUntilNextTenLevel" :formater="numberFormat.format" />
         </p>
-        <p v-if="!['Experience'].includes(skill)">
+        <p v-if="!['Experience', 'Skills', 'Professions'].includes(skill)">
           Level: {{ numberFormat.format(xp_info.level ?? 0) }}
         </p>
       </div>
       <div v-if="itemForSkill" class="flex items-center gap-3 rounded-md px-2 py-1 text-right">
         <div class="flex h-13 w-13 items-center justify-center rounded bg-white dark:bg-gray-950">
           <picture v-if="itemIcon">
-            <source :srcset="`${itemIcon}.jxl`" type="image/jxl">
-            <source :srcset="`${itemIcon}.avif`" type="image/avif">
+            <source :srcset="`${itemIcon}.jxl`" type="image/jxl" />
+            <source :srcset="`${itemIcon}.avif`" type="image/avif" />
             <img
-                :src="`${itemIcon}.webp`"
-                :alt="itemForSkill!.name"
-                class="h-10 w-10 object-contain"
-                loading="lazy"
+              :src="`${itemIcon}.webp`"
+              :alt="itemForSkill!.name"
+              class="h-10 w-10 object-contain"
+              loading="lazy"
             />
           </picture>
           <UIcon v-else name="i-lucide-wrench" class="h-6 w-6 text-gray-400" />

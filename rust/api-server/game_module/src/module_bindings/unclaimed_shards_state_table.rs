@@ -39,18 +39,41 @@ impl UnclaimedShardsStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct UnclaimedShardsStateInitialCallbackId(__sdk::CallbackId);
 pub struct UnclaimedShardsStateInsertCallbackId(__sdk::CallbackId);
 pub struct UnclaimedShardsStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> UnclaimedShardsStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[UnclaimedShardsState]) + Send + 'static,
+    ) -> UnclaimedShardsStateInitialCallbackId {
+        UnclaimedShardsStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: UnclaimedShardsStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for UnclaimedShardsStateTableHandle<'ctx> {
     type Row = UnclaimedShardsState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = UnclaimedShardsState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = UnclaimedShardsState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = UnclaimedShardsStateInsertCallbackId;
@@ -80,10 +103,13 @@ impl<'ctx> __sdk::Table for UnclaimedShardsStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<UnclaimedShardsState>("unclaimed_shards_state");
+
+        let _table = client_cache.get_or_make_table::<UnclaimedShardsState>("unclaimed_shards_state");
     _table.add_unique_constraint::<__sdk::Identity>("identity", |row| &row.identity);
+}
 }
 pub struct UnclaimedShardsStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -113,6 +139,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `identity` unique index on the table `unclaimed_shards_state`,
 /// which allows point queries on the field of the same name
 /// via the [`UnclaimedShardsStateIdentityUnique::find`] method.
@@ -129,9 +156,7 @@ impl<'ctx> UnclaimedShardsStateTableHandle<'ctx> {
     /// Get a handle on the `identity` unique index on the table `unclaimed_shards_state`.
     pub fn identity(&self) -> UnclaimedShardsStateIdentityUnique<'ctx> {
         UnclaimedShardsStateIdentityUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<__sdk::Identity>("identity"),
+            imp: self.imp.get_unique_constraint::<__sdk::Identity>("identity"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -143,6 +168,7 @@ impl<'ctx> UnclaimedShardsStateIdentityUnique<'ctx> {
     pub fn find(&self, col_val: &__sdk::Identity) -> Option<UnclaimedShardsState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

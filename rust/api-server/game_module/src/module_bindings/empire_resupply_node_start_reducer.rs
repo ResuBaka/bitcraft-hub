@@ -63,8 +63,8 @@ impl empire_resupply_node_start for super::RemoteReducers {
     fn on_empire_resupply_node_start(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &EmpireResupplyNodeRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> EmpireResupplyNodeStartCallbackId {
         EmpireResupplyNodeStartCallbackId(self.imp.on_reducer(
             "empire_resupply_node_start",

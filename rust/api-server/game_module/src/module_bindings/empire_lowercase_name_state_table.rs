@@ -39,18 +39,41 @@ impl EmpireLowercaseNameStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct EmpireLowercaseNameStateInitialCallbackId(__sdk::CallbackId);
 pub struct EmpireLowercaseNameStateInsertCallbackId(__sdk::CallbackId);
 pub struct EmpireLowercaseNameStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> EmpireLowercaseNameStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[EmpireLowercaseNameState]) + Send + 'static,
+    ) -> EmpireLowercaseNameStateInitialCallbackId {
+        EmpireLowercaseNameStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: EmpireLowercaseNameStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for EmpireLowercaseNameStateTableHandle<'ctx> {
     type Row = EmpireLowercaseNameState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = EmpireLowercaseNameState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = EmpireLowercaseNameState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = EmpireLowercaseNameStateInsertCallbackId;
@@ -80,12 +103,14 @@ impl<'ctx> __sdk::Table for EmpireLowercaseNameStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<EmpireLowercaseNameState>("empire_lowercase_name_state");
+
+        let _table = client_cache.get_or_make_table::<EmpireLowercaseNameState>("empire_lowercase_name_state");
     _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
     _table.add_unique_constraint::<String>("name_lowercase", |row| &row.name_lowercase);
+}
 }
 pub struct EmpireLowercaseNameStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -115,6 +140,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `entity_id` unique index on the table `empire_lowercase_name_state`,
 /// which allows point queries on the field of the same name
 /// via the [`EmpireLowercaseNameStateEntityIdUnique::find`] method.
@@ -144,7 +170,9 @@ impl<'ctx> EmpireLowercaseNameStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `name_lowercase` unique index on the table `empire_lowercase_name_state`,
 /// which allows point queries on the field of the same name
 /// via the [`EmpireLowercaseNameStateNameLowercaseUnique::find`] method.
@@ -173,6 +201,7 @@ impl<'ctx> EmpireLowercaseNameStateNameLowercaseUnique<'ctx> {
     pub fn find(&self, col_val: &String) -> Option<EmpireLowercaseNameState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

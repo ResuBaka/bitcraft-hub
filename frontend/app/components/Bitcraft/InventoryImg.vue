@@ -55,8 +55,8 @@ const sizeValue = (value: number | string) => {
 <template>
   <div class="inventory-img" v-bind="$attrs">
     <picture v-if="!imagedErrored && iconUrl(item).show">
-      <source :srcset="`${iconUrl(item).url}.jxl`" type="image/jxl">
-      <source :srcset="`${iconUrl(item).url}.avif`" type="image/avif">
+      <source :srcset="`${iconUrl(item).url}.jxl`" type="image/jxl" />
+      <source :srcset="`${iconUrl(item).url}.avif`" type="image/avif" />
       <img
         :src="`${iconUrl(item).url}.webp`"
         :alt="item?.name ?? 'Item icon'"

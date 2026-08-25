@@ -32,8 +32,8 @@ defineProps<{
           >
             <div class="relative">
               <picture v-if="getTravelerItemIcon(shownItem)">
-                <source :srcset="`${getTravelerItemIcon(shownItem)}.jxl`" type="image/jxl">
-                <source :srcset="`${getTravelerItemIcon(shownItem)}.avif`" type="image/avif">
+                <source :srcset="`${getTravelerItemIcon(shownItem)}.jxl`" type="image/jxl" />
+                <source :srcset="`${getTravelerItemIcon(shownItem)}.avif`" type="image/avif" />
                 <img
                   :src="`${getTravelerItemIcon(shownItem)}.webp`"
                   alt=""

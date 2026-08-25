@@ -41,18 +41,41 @@ impl ResetMobileEntityTimerTableAccess for super::RemoteTables {
     }
 }
 
+pub struct ResetMobileEntityTimerInitialCallbackId(__sdk::CallbackId);
 pub struct ResetMobileEntityTimerInsertCallbackId(__sdk::CallbackId);
 pub struct ResetMobileEntityTimerDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> ResetMobileEntityTimerTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[ResetMobileEntityTimer]) + Send + 'static,
+    ) -> ResetMobileEntityTimerInitialCallbackId {
+        ResetMobileEntityTimerInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: ResetMobileEntityTimerInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for ResetMobileEntityTimerTableHandle<'ctx> {
     type Row = ResetMobileEntityTimer;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = ResetMobileEntityTimer> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = ResetMobileEntityTimer> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = ResetMobileEntityTimerInsertCallbackId;
@@ -82,11 +105,13 @@ impl<'ctx> __sdk::Table for ResetMobileEntityTimerTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<ResetMobileEntityTimer>("reset_mobile_entity_timer");
+
+        let _table = client_cache.get_or_make_table::<ResetMobileEntityTimer>("reset_mobile_entity_timer");
     _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+}
 }
 pub struct ResetMobileEntityTimerUpdateCallbackId(__sdk::CallbackId);
 
@@ -116,6 +141,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `scheduled_id` unique index on the table `reset_mobile_entity_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`ResetMobileEntityTimerScheduledIdUnique::find`] method.
@@ -144,6 +170,7 @@ impl<'ctx> ResetMobileEntityTimerScheduledIdUnique<'ctx> {
     pub fn find(&self, col_val: &u64) -> Option<ResetMobileEntityTimer> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

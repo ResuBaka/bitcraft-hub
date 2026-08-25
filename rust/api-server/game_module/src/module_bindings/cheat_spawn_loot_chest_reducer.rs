@@ -63,8 +63,8 @@ impl cheat_spawn_loot_chest for super::RemoteReducers {
     fn on_cheat_spawn_loot_chest(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &CheatSpawnLootChestRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatSpawnLootChestCallbackId {
         CheatSpawnLootChestCallbackId(self.imp.on_reducer(
             "cheat_spawn_loot_chest",

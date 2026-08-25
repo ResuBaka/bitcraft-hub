@@ -60,8 +60,8 @@ pub trait cheat_drop_item_on_entity {
     fn on_cheat_drop_item_on_entity(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &u64, &i32, &i32, &bool, &u64)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatDropItemOnEntityCallbackId;
     /// Cancel a callback previously registered by [`Self::on_cheat_drop_item_on_entity`],
     /// causing it not to run in the future.
@@ -91,8 +91,8 @@ impl cheat_drop_item_on_entity for super::RemoteReducers {
     fn on_cheat_drop_item_on_entity(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &u64, &i32, &i32, &bool, &u64)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> CheatDropItemOnEntityCallbackId {
         CheatDropItemOnEntityCallbackId(self.imp.on_reducer(
             "cheat_drop_item_on_entity",

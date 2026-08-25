@@ -1,6 +1,6 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchedWorker;
-use crate::websocket::{SpacetimeUpdateMessages, WebSocketMessages};
+use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
@@ -327,7 +327,7 @@ impl PlayerStateWorker {
             let _ = self
                 .global_app_state
                 .tx
-                .send(WebSocketMessages::TimePlayed {
+                .send(OutboundWebSocketMessages::TimePlayed {
                     user_id: model.entity_id,
                     time: model.time_played as u64,
                     rank: rank as u64,
@@ -347,7 +347,7 @@ impl PlayerStateWorker {
             let _ = self
                 .global_app_state
                 .tx
-                .send(WebSocketMessages::TimeSignedIn {
+                .send(OutboundWebSocketMessages::TimeSignedIn {
                     user_id: model.entity_id,
                     time: model.time_played as u64,
                     rank: rank as u64,
@@ -405,7 +405,7 @@ impl PlayerStateWorker {
         let _ = self
             .global_app_state
             .tx
-            .send(WebSocketMessages::PlayerState(model.clone()));
+            .send(OutboundWebSocketMessages::PlayerState(model.clone()));
         self.messages.push(model.into_active_model());
     }
 
@@ -733,7 +733,7 @@ impl PlayerUsernameStateWorker {
                             let existing_model = entry.get();
                             if &model != existing_model {
                                 let _ = self.global_app_state.tx.send(
-                                    WebSocketMessages::PlayerUsername {
+                                    OutboundWebSocketMessages::PlayerUsername {
                                         entity_id: model.entity_id,
                                         username: model.username.clone(),
                                     },
@@ -784,7 +784,7 @@ impl PlayerUsernameStateWorker {
                 let _ = self
                     .global_app_state
                     .tx
-                    .send(WebSocketMessages::PlayerUsername {
+                    .send(OutboundWebSocketMessages::PlayerUsername {
                         entity_id: model.entity_id,
                         username: model.username.clone(),
                     });
@@ -808,7 +808,7 @@ impl PlayerUsernameStateWorker {
                 let _ = self
                     .global_app_state
                     .tx
-                    .send(WebSocketMessages::PlayerUsername {
+                    .send(OutboundWebSocketMessages::PlayerUsername {
                         entity_id: model.entity_id,
                         username: model.username.clone(),
                     });

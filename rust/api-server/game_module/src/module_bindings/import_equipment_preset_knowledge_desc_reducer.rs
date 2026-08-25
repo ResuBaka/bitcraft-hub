@@ -50,8 +50,8 @@ pub trait import_equipment_preset_knowledge_desc {
     fn on_import_equipment_preset_knowledge_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<EquipmentPresetKnowledgeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportEquipmentPresetKnowledgeDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_equipment_preset_knowledge_desc`],
     /// causing it not to run in the future.
@@ -74,8 +74,8 @@ impl import_equipment_preset_knowledge_desc for super::RemoteReducers {
     fn on_import_equipment_preset_knowledge_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<EquipmentPresetKnowledgeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportEquipmentPresetKnowledgeDescCallbackId {
         ImportEquipmentPresetKnowledgeDescCallbackId(self.imp.on_reducer(
             "import_equipment_preset_knowledge_desc",

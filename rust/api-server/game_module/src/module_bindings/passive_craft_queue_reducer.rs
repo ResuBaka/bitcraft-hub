@@ -47,8 +47,8 @@ pub trait passive_craft_queue {
     fn on_passive_craft_queue(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerPassiveCraftQueueRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PassiveCraftQueueCallbackId;
     /// Cancel a callback previously registered by [`Self::on_passive_craft_queue`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl passive_craft_queue for super::RemoteReducers {
     fn on_passive_craft_queue(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPassiveCraftQueueRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> PassiveCraftQueueCallbackId {
         PassiveCraftQueueCallbackId(self.imp.on_reducer(
             "passive_craft_queue",

@@ -38,10 +38,9 @@ mod websocket;
 
 use crate::config::{Config, TechTierResearchMap};
 use crate::leaderboard::{
-    EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY, EXCLUDED_USERS_FROM_LEADERBOARD,
-    Leaderboard, RankingSystem,
+    EXCLUDED_USERS_FROM_LEADERBOARD, Leaderboard, RankingSystem, experience_to_level,
 };
-use crate::websocket::WebSocketMessages;
+use crate::websocket::OutboundWebSocketMessages;
 use axum::extract::{
     MatchedPath, Query, Request, State,
     ws::{Message, WebSocket, WebSocketUpgrade},
@@ -57,13 +56,13 @@ use axum::{
     routing::{get, get_service},
 };
 use clap::{Parser, Subcommand};
-use entity::player_username_state;
+use entity::{experience_state, player_username_state};
 use futures::{SinkExt, StreamExt};
 use kanal::AsyncSender;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
 use migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectOptions, EntityTrait};
+use sea_orm::{ColumnTrait, ConnectOptions, EntityTrait, QueryFilter, QueryOrder};
 use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
 use service::sea_orm::{Database, DatabaseConnection};
@@ -92,7 +91,7 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
     Migrator::up(&database_connection, None).await?;
 
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessages>();
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<OutboundWebSocketMessages>();
 
     let state = AppState::new(
         database_connection.clone(),
@@ -285,7 +284,7 @@ async fn websocket_handler(
 #[allow(dead_code)]
 struct ServerInstance {
     // cached_resources
-    connected_clients: HashMap<String, (UnboundedSender<WebSocketMessages>, Vec<String>)>,
+    connected_clients: HashMap<String, (UnboundedSender<OutboundWebSocketMessages>, Vec<String>)>,
     topics_listen_to: HashMap<String, Vec<String>>,
 }
 
@@ -300,7 +299,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
     let id = nanoid::nanoid!();
 
-    let (tx, rx) = kanal::bounded_async::<WebSocketMessages>(20);
+    let (tx, rx) = kanal::bounded_async::<OutboundWebSocketMessages>(20);
 
     state
         .clients_state
@@ -315,7 +314,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
     // Now send the "joined" message to all subscribers.
     let msg = format!("{id} joined.");
-    let _ = tx.send(WebSocketMessages::Message(msg)).await;
+    let _ = tx.send(OutboundWebSocketMessages::Message(msg)).await;
 
     let internal_id = id.clone();
     let inner_state = state.clone();
@@ -339,14 +338,6 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                 sender
                     .send(Message::Text(serde_json::to_string(&msg).unwrap().into()))
                     .await
-            } else if encoding == WebsocketEncoding::Toml {
-                sender
-                    .send(Message::Text(a.to_toml().unwrap().into()))
-                    .await
-            } else if encoding == WebsocketEncoding::Yaml {
-                sender
-                    .send(Message::Text(a.to_yaml().unwrap().into()))
-                    .await
             } else if encoding == WebsocketEncoding::MessagePack {
                 sender
                     .send(Message::Binary(a.to_msgpack().unwrap().into()))
@@ -368,9 +359,9 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
     let inner_state = state.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            match serde_json::from_str::<WebSocketMessages>(&text) {
+            match serde_json::from_str::<OutboundWebSocketMessages>(&text) {
                 Ok(message) => match message {
-                    WebSocketMessages::Subscribe { topics } => {
+                    OutboundWebSocketMessages::Subscribe { topics } => {
                         for topic in topics {
                             let possible_topic = topic.split_once(".");
 
@@ -393,7 +384,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
                                         if let Some(player_username) = player_username {
                                             let _ = inner_state.tx.send(
-                                                WebSocketMessages::PlayerUsername {
+                                                OutboundWebSocketMessages::PlayerUsername {
                                                     username: player_username.username,
                                                     entity_id: id,
                                                 },
@@ -416,7 +407,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                             }
                         }
                     }
-                    WebSocketMessages::Unsubscribe { topic } => {
+                    OutboundWebSocketMessages::Unsubscribe { topic } => {
                         let possible_topic = topic.split_once(".");
 
                         if let Some((topic, id)) = possible_topic {
@@ -432,7 +423,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                                 .await;
                         }
                     }
-                    WebSocketMessages::ListSubscribedTopics => {
+                    OutboundWebSocketMessages::ListSubscribedTopics => {
                         let topics = inner_state
                             .clients_state
                             .get_topics_for_client(&inner_id)
@@ -443,7 +434,9 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                         }
 
                         let topics = topics.unwrap();
-                        let _ = tx.send(WebSocketMessages::SubscribedTopics(topics)).await;
+                        let _ = tx
+                            .send(OutboundWebSocketMessages::SubscribedTopics(topics))
+                            .await;
                     }
                     _ => {}
                 },
@@ -464,7 +457,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
     state.clients_state.remove_client(&id).await;
 }
 
-async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<WebSocketMessages>) {
+async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<OutboundWebSocketMessages>) {
     let mut buffer = Vec::with_capacity(500);
 
     loop {
@@ -479,7 +472,7 @@ async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<WebSocketM
             }
 
             let topics = message.topics().unwrap();
-            let mut senders: Vec<AsyncSender<WebSocketMessages>> = vec![];
+            let mut senders: Vec<AsyncSender<OutboundWebSocketMessages>> = vec![];
 
             for (topic_name, topic_id) in topics {
                 senders.extend(
@@ -543,19 +536,6 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
         .merge(houses::get_routes())
         .merge(crafting::get_routes())
         .nest("/desc", desc_router)
-        .nest_service(
-            "/static",
-            get_service(ServeDir::new(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/static"
-            )))
-            .handle_error(|error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {error}"),
-                )
-            }),
-        )
         .route(
             "/metrics",
             get(|State(app_state): State<AppState>| async move {
@@ -765,7 +745,7 @@ fn record_app_state_metrics(app_state: &AppState) {
 struct AppState {
     tech_tier_research_map: TechTierResearchMap,
     conn: DatabaseConnection,
-    tx: UnboundedSender<WebSocketMessages>,
+    tx: UnboundedSender<OutboundWebSocketMessages>,
     connection_state: Arc<dashmap::DashMap<String, bool>>,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
@@ -809,7 +789,7 @@ struct AppState {
 impl AppState {
     fn new(
         conn: DatabaseConnection,
-        tx: UnboundedSender<WebSocketMessages>,
+        tx: UnboundedSender<OutboundWebSocketMessages>,
         tech_tier_research_map: TechTierResearchMap,
     ) -> Self {
         let metrics_registry = prometheus::Registry::new();
@@ -1039,94 +1019,119 @@ impl AppState {
                             .time_signed_in
                             .update(value.entity_id, value.time_signed_in as i64);
                     });
-
-                let entries = service::Query::get_experience_state_top_x_total_experience(
-                    &self.conn,
-                    Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-                    Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
-                    None,
-                )
-                .await
-                .unwrap_or_else(|error| {
-                    error!("Error: {error}");
-
-                    vec![]
-                });
-
-                for entry in entries.into_iter() {
-                    self.ranking_system
-                        .global_leaderboard
-                        .update(entry.0, entry.1);
-
-                    let mut xp_per_hour = 0;
-
-                    if let Some(player_state) = self.player_state.get(&entry.0)
-                        && player_state.time_signed_in >= 3600
-                    {
-                        xp_per_hour = entry.1 / (player_state.time_signed_in as i64 / 3600);
-                    }
-
-                    self.ranking_system.xp_per_hour.update(entry.0, xp_per_hour)
-                }
-            },
-            async move {
-                let generated_level_sql =
-                    generate_mysql_sum_level_sql_statement!(leaderboard::EXPERIENCE_PER_LEVEL);
-
-                let entries = service::Query::get_experience_state_top_x_total_level(
-                    &self.conn,
-                    generated_level_sql,
-                    Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-                    Some(EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY),
-                    None,
-                )
-                .await
-                .unwrap_or_else(|error| {
-                    error!("Error: {error}");
-
-                    vec![]
-                });
-
-                for entry in entries.into_iter() {
-                    self.ranking_system
-                        .level_leaderboard
-                        .update(entry.0 as i64, entry.1 as i64)
-                }
             },
         );
 
-        let _ = tokio::join!(async move {
-            for skill in self.skill_desc.iter() {
-                if skill.skill_category == 0 {
-                    continue;
-                }
-
+        for skill in self.skill_desc.iter() {
+            if skill.skill_category != 0 {
                 self.ranking_system
                     .skill_leaderboards
                     .insert(skill.id, Leaderboard::default());
-
-                let entries = service::Query::get_experience_state_top_x_by_skill_id(
-                    &self.conn,
-                    skill.id,
-                    Some(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
-                    None,
-                )
-                .await
-                .unwrap_or_else(|error| {
-                    error!("Error: {error}");
-
-                    vec![]
-                });
-
-                for entry in entries.into_iter() {
-                    self.ranking_system
-                        .skill_leaderboards
-                        .get_mut(&skill.id)
-                        .unwrap()
-                        .update(entry.entity_id, entry.experience as i64)
-                }
             }
-        },);
+        }
+
+        let items = match experience_state::Entity::find()
+            .filter(
+                experience_state::Column::EntityId
+                    .is_not_in(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
+            )
+            .order_by_asc(experience_state::Column::EntityId)
+            .order_by_asc(experience_state::Column::SkillId)
+            .all(&self.conn)
+            .await
+        {
+            Ok(items) => items,
+            Err(err) => {
+                tracing::error!(
+                    error = err.to_string(),
+                    "Error loading experience_state in fill_state_from_db"
+                );
+                return;
+            }
+        };
+
+        let update_totals = |player_id, total_xp, total_level, profession_xp, adventure_xp| {
+            self.ranking_system
+                .global_leaderboard
+                .update(player_id, total_xp);
+            self.ranking_system
+                .level_leaderboard
+                .update(player_id, total_level);
+            self.ranking_system
+                .profession_leaderboard
+                .update(player_id, profession_xp);
+            self.ranking_system
+                .adventure_leaderboard
+                .update(player_id, adventure_xp);
+
+            let xp_per_hour = self
+                .player_state
+                .get(&player_id)
+                .filter(|player| player.time_signed_in >= 3600)
+                .map_or(0, |player| {
+                    total_xp / (i64::from(player.time_signed_in) / 3600)
+                });
+            self.ranking_system
+                .xp_per_hour
+                .update(player_id, xp_per_hour);
+        };
+
+        let mut current_player_id = None;
+        let mut total_xp = 0i64;
+        let mut total_level = 0i64;
+        let mut profession_xp = 0i64;
+        let mut adventure_xp = 0i64;
+
+        for item in items {
+            let Some(skill) = self.skill_desc.get(&i64::from(item.skill_id)) else {
+                continue;
+            };
+            if skill.skill_category == 0 {
+                continue;
+            }
+
+            if current_player_id.is_some_and(|player_id| player_id != item.entity_id) {
+                update_totals(
+                    current_player_id.unwrap(),
+                    total_xp,
+                    total_level,
+                    profession_xp,
+                    adventure_xp,
+                );
+                total_xp = 0;
+                total_level = 0;
+                profession_xp = 0;
+                adventure_xp = 0;
+            }
+            current_player_id = Some(item.entity_id);
+
+            let experience = i64::from(item.experience);
+            total_xp.add_assign(experience);
+            total_level.add_assign(i64::from(experience_to_level(experience)));
+            match skill.skill_category {
+                1 => profession_xp.add_assign(experience),
+                2 => adventure_xp.add_assign(experience),
+                _ => {}
+            }
+
+            if let Some(leaderboard) = self
+                .ranking_system
+                .skill_leaderboards
+                .get_mut(&i64::from(item.skill_id))
+            {
+                leaderboard.update(item.entity_id, experience);
+            }
+        }
+
+        if let Some(player_id) = current_player_id {
+            update_totals(
+                player_id,
+                total_xp,
+                total_level,
+                profession_xp,
+                adventure_xp,
+            );
+        }
     }
 
     fn add_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
@@ -1177,8 +1182,6 @@ impl AppState {
 #[derive(Deserialize, Copy, Clone, Eq, PartialEq)]
 enum WebsocketEncoding {
     Json,
-    Toml,
-    Yaml,
     MessagePack,
 }
 
@@ -1188,12 +1191,6 @@ impl Display for WebsocketEncoding {
             WebsocketEncoding::Json => {
                 write!(f, "json")
             }
-            WebsocketEncoding::Toml => {
-                write!(f, "toml")
-            }
-            WebsocketEncoding::Yaml => {
-                write!(f, "yaml")
-            }
             WebsocketEncoding::MessagePack => {
                 write!(f, "messagepack")
             }
@@ -1202,7 +1199,7 @@ impl Display for WebsocketEncoding {
 }
 
 type WebsocketClient = (
-    AsyncSender<crate::websocket::WebSocketMessages>,
+    AsyncSender<crate::websocket::OutboundWebSocketMessages>,
     HashMap<String, HashSet<i64>>,
     WebsocketEncoding,
     HashSet<String>,
@@ -1224,7 +1221,7 @@ impl ClientsState {
     pub(crate) async fn add_client(
         &self,
         id: String,
-        tx: AsyncSender<WebSocketMessages>,
+        tx: AsyncSender<OutboundWebSocketMessages>,
         encoding: WebsocketEncoding,
     ) {
         self.clients
@@ -1347,7 +1344,7 @@ impl ClientsState {
         &self,
         topic: &String,
         topic_id: Option<i64>,
-    ) -> Vec<AsyncSender<crate::websocket::WebSocketMessages>> {
+    ) -> Vec<AsyncSender<crate::websocket::OutboundWebSocketMessages>> {
         let mut senders = vec![];
         let clients = self.clients.read().await;
 

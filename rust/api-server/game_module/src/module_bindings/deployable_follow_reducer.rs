@@ -61,8 +61,8 @@ impl deployable_follow for super::RemoteReducers {
     fn on_deployable_follow(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDeployableMoveRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> DeployableFollowCallbackId {
         DeployableFollowCallbackId(self.imp.on_reducer(
             "deployable_follow",

@@ -47,8 +47,8 @@ pub trait trade_swap_pockets {
     fn on_trade_swap_pockets(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeSwapPocketsRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeSwapPocketsCallbackId;
     /// Cancel a callback previously registered by [`Self::on_trade_swap_pockets`],
     /// causing it not to run in the future.
@@ -63,8 +63,8 @@ impl trade_swap_pockets for super::RemoteReducers {
     fn on_trade_swap_pockets(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeSwapPocketsRequest)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> TradeSwapPocketsCallbackId {
         TradeSwapPocketsCallbackId(self.imp.on_reducer(
             "trade_swap_pockets",

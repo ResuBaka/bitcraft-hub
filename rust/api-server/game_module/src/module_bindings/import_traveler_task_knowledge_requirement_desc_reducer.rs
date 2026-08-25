@@ -50,8 +50,8 @@ pub trait import_traveler_task_knowledge_requirement_desc {
     fn on_import_traveler_task_knowledge_requirement_desc(
         &self,
         callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTaskKnowledgeRequirementDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportTravelerTaskKnowledgeRequirementDescCallbackId;
     /// Cancel a callback previously registered by [`Self::on_import_traveler_task_knowledge_requirement_desc`],
     /// causing it not to run in the future.
@@ -73,9 +73,11 @@ impl import_traveler_task_knowledge_requirement_desc for super::RemoteReducers {
     }
     fn on_import_traveler_task_knowledge_requirement_desc(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTaskKnowledgeRequirementDesc>)
-            + Send
-            + 'static,
+        mut callback: impl FnMut(
+            &super::ReducerEventContext,
+            &Vec<TravelerTaskKnowledgeRequirementDesc>,
+        ) + Send
+        + 'static,
     ) -> ImportTravelerTaskKnowledgeRequirementDescCallbackId {
         ImportTravelerTaskKnowledgeRequirementDescCallbackId(
             self.imp.on_reducer(

@@ -19,7 +19,6 @@ use crate::houses::bitcraft::{
 use crate::inventory::bitcraft as inventory_bitcraft;
 use crate::item_list_desc::bitcraft::start_worker_item_list_desc;
 use crate::items::bitcraft::start_worker_item_desc;
-use crate::location_state::bitcraft::start_worker_location_state;
 use crate::resource_desc::bitcraft::start_worker_resource_desc;
 
 use crate::crafting::bitcraft::start_worker_progressive_action_state;
@@ -34,11 +33,13 @@ use crate::vault_state::bitcraft::start_worker_vault_state_collectibles;
 use crate::websocket::batched_worker::BatchedWorker;
 use game_module::module_bindings::*;
 use rand::prelude::*;
+use sea_orm::{EntityTrait, QuerySelect};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{Compression, DbContext, Error, Event, Table, TableWithPrimaryKey};
 use std::borrow::Cow;
+use std::collections::HashSet;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
@@ -110,6 +111,7 @@ fn connect_to_db(
                 .connection_state
                 .insert(tmp_db_name.clone(), true);
         })
+        .with_row_deduplication(false)
         // Register our `on_connect_error` callback, which will print a message, then exit the process.
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
@@ -251,6 +253,45 @@ macro_rules! setup_spacetime_db_listeners {
         );
 
         let temp_tx = $tx_channel.clone();
+        let labels_database_name_initial = database_name_runtime_string.clone();
+        $ctx.db.$db_table_method().on_initial(
+            // Use $state_type for the new parameter
+            move |ctx: &EventContext, new: &[$state_type]| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_initial: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone again for this label set
+                    ("database", Cow::Owned(labels_database_name_initial.clone())),
+                    ("type", Cow::Borrowed("initial")),
+                    ("reducer", reducer_name),
+                ];
+                metrics::counter!("game_message_events", &labels_initial).increment(1);
+
+                if let Event::SubscribeApplied = ctx.event {
+                } else {
+                    return;
+                }
+
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        data: new.to_vec(),
+                        database_name: $database_region,
+                    },
+                );
+            },
+        );
+
+        let temp_tx = $tx_channel.clone();
         let labels_database_name_delete = database_name_runtime_string.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
@@ -382,6 +423,45 @@ macro_rules! setup_spacetime_db_listeners_event {
         );
 
         let temp_tx = $tx_channel.clone();
+        let labels_database_name_initial = database_name_runtime_string.clone();
+        $ctx.db.$db_table_method().on_initial(
+            // Use $state_type for the new parameter
+            move |ctx: &EventContext, new: &[$state_type]| {
+                let reducer_name = match &ctx.event {
+                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
+                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
+                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
+                    Event::Disconnected => Cow::Borrowed("disconnected"),
+                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
+                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
+                    _ => Cow::Borrowed("none"),
+                };
+                let labels_initial: [(&'static str, Cow<'static, str>); 4] = [
+                    ("table", Cow::Borrowed(table_name_str)),
+                    // Clone again for this label set
+                    ("database", Cow::Owned(labels_database_name_initial.clone())),
+                    ("type", Cow::Borrowed("initial")),
+                    ("reducer", reducer_name),
+                ];
+                metrics::counter!("game_message_events", &labels_initial).increment(1);
+
+                if let Event::SubscribeApplied = ctx.event {
+                } else {
+                    return;
+                }
+
+                send_worker_message(
+                    $worker_name,
+                    &temp_tx,
+                    SpacetimeUpdateMessages::Initial {
+                        data: new.to_vec(),
+                        database_name: $database_region,
+                    },
+                );
+            },
+        );
+
+        let temp_tx = $tx_channel.clone();
         let labels_database_name_delete = database_name_runtime_string.clone();
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
@@ -465,7 +545,7 @@ async fn connect_to_db_logic(
     item_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ItemDesc>>,
     cargo_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<CargoDesc>>,
     vault_state_collectibles_tx: &UnboundedSender<SpacetimeUpdateMessages<VaultState>>,
-    deployable_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DeployableState>>,
+    deployable_state_tx: &UnboundedSender<SpacetimeUpdateMessages<DeployableStateV2>>,
     claim_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimState>>,
     claim_local_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimLocalState>>,
     claim_member_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ClaimMemberState>>,
@@ -602,12 +682,12 @@ async fn connect_to_db_logic(
     );
     setup_spacetime_db_listeners!(
         ctx,
-        deployable_state,
+        deployable_state_v_2,
         deployable_state_tx,
-        DeployableState,
+        DeployableStateV2,
         database,
         region_number,
-        "deployable_state"
+        "deployable_state_v2"
     );
     setup_spacetime_db_listeners!(
         ctx,
@@ -880,7 +960,7 @@ async fn connect_to_db_logic(
         "claim_state",
         "claim_member_state",
         "claim_local_state",
-        "deployable_state",
+        "deployable_state_v2",
         "inventory_state",
         "collectible_desc",
         "claim_tech_desc",
@@ -1028,705 +1108,706 @@ async fn connect_to_db_logic(
         "SELECT * FROM equipment_state",
         // "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id",
         // "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id",
+        // "SELECT * FROM location_state where dimension = 1",
         "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
     ];
 
-    let tmp_region_number = region_number;
-    let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
-    let tmp_player_state_tx = player_state_tx.clone();
-    let tmp_player_username_state_tx = player_username_state_tx.clone();
-    let tmp_experience_state_tx = experience_state_tx.clone();
-    let tmp_inventory_state_tx = inventory_state_tx.clone();
-    let tmp_item_desc_tx = item_desc_tx.clone();
-    let tmp_cargo_desc_tx = cargo_desc_tx.clone();
-    let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
-    let tmp_deployable_state_tx = deployable_state_tx.clone();
-    let tmp_claim_state_tx = claim_state_tx.clone();
-    let tmp_claim_local_state_tx = claim_local_state_tx.clone();
-    let tmp_claim_member_state_tx = claim_member_state_tx.clone();
-    let tmp_skill_desc_tx = skill_desc_tx.clone();
-    let tmp_claim_tech_state_tx = claim_tech_state_tx.clone();
-    let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
-    let tmp_building_state_tx = building_state_tx.clone();
-    let tmp_building_desc_tx = building_desc_tx.clone();
-    let tmp_location_state_tx = location_state_tx.clone();
-    let tmp_building_nickname_state_tx = building_nickname_state_tx.clone();
-    let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone();
-    let tmp_item_list_desc_tx = item_list_desc_tx.clone();
-    let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone();
-    let tmp_traveler_task_state_tx = traveler_task_state_tx.clone();
-    let tmp_trade_order_state_tx = trade_order_state_tx.clone();
-    let tmp_buy_order_state_tx = buy_order_state_tx.clone();
-    let tmp_sell_order_state_tx = sell_order_state_tx.clone();
-    let tmp_user_state_tx = user_state_tx.clone();
-    let tmp_npc_desc_tx = npc_desc_tx.clone();
-    let tmp_collectible_desc_tx = collectible_desc_tx.clone();
-    let tmp_interior_network_desc_tx = interior_network_desc_tx.clone();
-    let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
-    let tmp_player_housing_state_tx = player_housing_state_tx.clone();
-    let tmp_permission_state_tx = permission_state_tx.clone();
-    let tmp_portal_state_tx = portal_state_tx.clone();
-    let tmp_resource_desc_tx = resource_desc_tx.clone();
-    let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
-    let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
+    // let tmp_region_number = region_number;
+    // let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
+    // let tmp_player_state_tx = player_state_tx.clone();
+    // let tmp_player_username_state_tx = player_username_state_tx.clone();
+    // let tmp_experience_state_tx = experience_state_tx.clone();
+    // let tmp_inventory_state_tx = inventory_state_tx.clone();
+    // let tmp_item_desc_tx = item_desc_tx.clone();
+    // let tmp_cargo_desc_tx = cargo_desc_tx.clone();
+    // let tmp_vault_state_collectibles_tx = vault_state_collectibles_tx.clone();
+    // let tmp_deployable_state_tx = deployable_state_tx.clone();
+    // let tmp_claim_state_tx = claim_state_tx.clone();
+    // let tmp_claim_local_state_tx = claim_local_state_tx.clone();
+    // let tmp_claim_member_state_tx = claim_member_state_tx.clone();
+    // let tmp_skill_desc_tx = skill_desc_tx.clone();
+    // let tmp_claim_tech_state_tx = claim_tech_state_tx.clone();
+    // let tmp_claim_tech_desc_tx = claim_tech_desc_tx.clone();
+    // let tmp_building_state_tx = building_state_tx.clone();
+    // let tmp_building_desc_tx = building_desc_tx.clone();
+    // let tmp_location_state_tx = location_state_tx.clone();
+    // let tmp_building_nickname_state_tx = building_nickname_state_tx.clone();
+    // let tmp_crafting_recipe_desc_tx = crafting_recipe_desc_tx.clone();
+    // let tmp_item_list_desc_tx = item_list_desc_tx.clone();
+    // let tmp_traveler_task_desc_tx = traveler_task_desc_tx.clone();
+    // let tmp_traveler_task_state_tx = traveler_task_state_tx.clone();
+    // let tmp_trade_order_state_tx = trade_order_state_tx.clone();
+    // let tmp_buy_order_state_tx = buy_order_state_tx.clone();
+    // let tmp_sell_order_state_tx = sell_order_state_tx.clone();
+    // let tmp_user_state_tx = user_state_tx.clone();
+    // let tmp_npc_desc_tx = npc_desc_tx.clone();
+    // let tmp_collectible_desc_tx = collectible_desc_tx.clone();
+    // let tmp_interior_network_desc_tx = interior_network_desc_tx.clone();
+    // let tmp_dimension_description_state_tx = dimension_description_state_tx.clone();
+    // let tmp_player_housing_state_tx = player_housing_state_tx.clone();
+    // let tmp_permission_state_tx = permission_state_tx.clone();
+    // let tmp_portal_state_tx = portal_state_tx.clone();
+    // let tmp_resource_desc_tx = resource_desc_tx.clone();
+    // let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
+    // let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
 
     ctx.subscription_builder()
-        .on_applied(move |ctx: &SubscriptionEventContext| {
-            tracing::debug!(region = region_number, "Handle Subscription response");
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "cargo_desc".to_string())]
-            )
-            .set(ctx.db.cargo_desc().count() as f64);
-
-            let cargo_desc = ctx.db.cargo_desc().iter().collect::<Vec<_>>();
-            if !cargo_desc.is_empty() {
-                send_worker_message(
-                    "cargo_desc",
-                    &tmp_cargo_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: cargo_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "player_username_state".to_string())]
-            )
-            .set(ctx.db.player_username_state().count() as f64);
-            let player_username_state = ctx.db.player_username_state().iter().collect::<Vec<_>>();
-            if !player_username_state.is_empty() {
-                send_worker_message(
-                    "player_username_state",
-                    &tmp_player_username_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: player_username_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "claim_local_state".to_string())]
-            )
-            .set(ctx.db.claim_local_state().count() as f64);
-            let claim_local_state = ctx.db.claim_local_state().iter().collect::<Vec<_>>();
-            if !claim_local_state.is_empty() {
-                send_worker_message(
-                    "claim_local_state",
-                    &tmp_claim_local_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: claim_local_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "claim_state".to_string())]
-            )
-            .set(ctx.db.claim_state().count() as f64);
-            let claim_state = ctx.db.claim_state().iter().collect::<Vec<_>>();
-            if !claim_state.is_empty() {
-                send_worker_message(
-                    "claim_state",
-                    &tmp_claim_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: claim_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "deployable_state".to_string())]
-            )
-            .set(ctx.db.deployable_state().count() as f64);
-            let deployable_state = ctx.db.deployable_state().iter().collect::<Vec<_>>();
-            if !deployable_state.is_empty() {
-                send_worker_message(
-                    "deployable_state",
-                    &tmp_deployable_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: deployable_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "item_desc".to_string())]
-            )
-            .set(ctx.db.item_desc().count() as f64);
-            let item_desc = ctx.db.item_desc().iter().collect::<Vec<_>>();
-            if !item_desc.is_empty() {
-                send_worker_message(
-                    "item_desc",
-                    &tmp_item_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: item_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "skill_desc".to_string())]
-            )
-            .set(ctx.db.skill_desc().count() as f64);
-            let skill_desc = ctx.db.skill_desc().iter().collect::<Vec<_>>();
-            if !skill_desc.is_empty() {
-                send_worker_message(
-                    "skill_desc",
-                    &tmp_skill_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: skill_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "building_desc".to_string())]
-            )
-            .set(ctx.db.building_desc().count() as f64);
-            let building_desc = ctx.db.building_desc().iter().collect::<Vec<_>>();
-            if !building_desc.is_empty() {
-                send_worker_message(
-                    "building_desc",
-                    &tmp_building_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: building_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "claim_tech_desc".to_string())]
-            )
-            .set(ctx.db.claim_tech_desc().count() as f64);
-            let claim_tech_desc = ctx.db.claim_tech_desc().iter().collect::<Vec<_>>();
-            if !claim_tech_desc.is_empty() {
-                send_worker_message(
-                    "claim_tech_desc",
-                    &tmp_claim_tech_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: claim_tech_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "crafting_recipe_desc".to_string())]
-            )
-            .set(ctx.db.crafting_recipe_desc().count() as f64);
-            let crafting_recipe_desc = ctx.db.crafting_recipe_desc().iter().collect::<Vec<_>>();
-            if !crafting_recipe_desc.is_empty() {
-                send_worker_message(
-                    "crafting_recipe_desc",
-                    &tmp_crafting_recipe_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: crafting_recipe_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "item_list_desc".to_string())]
-            )
-            .set(ctx.db.item_list_desc().count() as f64);
-            let item_list_desc = ctx.db.item_list_desc().iter().collect::<Vec<_>>();
-            if !item_list_desc.is_empty() {
-                send_worker_message(
-                    "item_list_desc",
-                    &tmp_item_list_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: item_list_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "traveler_task_desc".to_string())]
-            )
-            .set(ctx.db.traveler_task_desc().count() as f64);
-            let traveler_task_desc = ctx.db.traveler_task_desc().iter().collect::<Vec<_>>();
-            if !traveler_task_desc.is_empty() {
-                send_worker_message(
-                    "traveler_task_desc",
-                    &tmp_traveler_task_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: traveler_task_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "npc_desc".to_string())]
-            )
-            .set(ctx.db.npc_desc().count() as f64);
-            let npc_desc = ctx.db.npc_desc().iter().collect::<Vec<_>>();
-            if !npc_desc.is_empty() {
-                send_worker_message(
-                    "npc_desc",
-                    &tmp_npc_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: npc_desc,
-                    },
-                );
-            }
-
-            let npc_desc = ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
-            if !npc_desc.is_empty() {
-                // @todo Write the SpacetimeUpdateMessages::Initial part
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "extraction_recipe_desc".to_string())]
-            )
-            .set(ctx.db.extraction_recipe_desc().count() as f64);
-            let extraction_recipe_desc = ctx.db.extraction_recipe_desc().iter().collect::<Vec<_>>();
-            if !extraction_recipe_desc.is_empty() {
-                send_worker_message(
-                    "extraction_recipe_desc",
-                    &tmp_extraction_recipe_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: extraction_recipe_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "inventory_state".to_string())]
-            )
-            .set(ctx.db.inventory_state().count() as f64);
-            let inventory_state = ctx.db.inventory_state().iter().collect::<Vec<_>>();
-            if !inventory_state.is_empty() {
-                send_worker_message(
-                    "inventory_state",
-                    &tmp_inventory_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: inventory_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "claim_member_state".to_string())]
-            )
-            .set(ctx.db.claim_member_state().count() as f64);
-            let claim_member_state = ctx.db.claim_member_state().iter().collect::<Vec<_>>();
-            if !claim_member_state.is_empty() {
-                send_worker_message(
-                    "claim_member_state",
-                    &tmp_claim_member_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: claim_member_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "experience_state".to_string())]
-            )
-            .set(ctx.db.experience_state().count() as f64);
-            let experience_state = ctx.db.experience_state().iter().collect::<Vec<_>>();
-            if !experience_state.is_empty() {
-                send_worker_message(
-                    "experience_state",
-                    &tmp_experience_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: experience_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "mobile_entity_state".to_string())]
-            )
-            .set(ctx.db.mobile_entity_state().count() as f64);
-            let mobile_entity_state = ctx.db.mobile_entity_state().iter().collect::<Vec<_>>();
-            if !mobile_entity_state.is_empty() {
-                send_worker_message(
-                    "mobile_entity_state",
-                    &tmp_mobile_entity_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: mobile_entity_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "player_state".to_string())]
-            )
-            .set(ctx.db.player_state().count() as f64);
-            let player_state = ctx.db.player_state().iter().collect::<Vec<_>>();
-            if !player_state.is_empty() {
-                send_worker_message(
-                    "player_state",
-                    &tmp_player_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: player_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "vault_state".to_string())]
-            )
-            .set(ctx.db.vault_state().count() as f64);
-            let vault_state = ctx.db.vault_state().iter().collect::<Vec<_>>();
-            if !vault_state.is_empty() {
-                send_worker_message(
-                    "vault_state",
-                    &tmp_vault_state_collectibles_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: vault_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "claim_tech_state".to_string())]
-            )
-            .set(ctx.db.claim_tech_state().count() as f64);
-            let claim_tech_state = ctx.db.claim_tech_state().iter().collect::<Vec<_>>();
-            if !claim_tech_state.is_empty() {
-                send_worker_message(
-                    "claim_tech_state",
-                    &tmp_claim_tech_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: claim_tech_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "building_state".to_string())]
-            )
-            .set(ctx.db.building_state().count() as f64);
-            let building_state = ctx.db.building_state().iter().collect::<Vec<_>>();
-            if !building_state.is_empty() {
-                send_worker_message(
-                    "building_state",
-                    &tmp_building_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: building_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "location_state".to_string())]
-            )
-            .set(ctx.db.location_state().count() as f64);
-            let location_state = ctx.db.location_state().iter().collect::<Vec<_>>();
-            if !location_state.is_empty() {
-                send_worker_message(
-                    "location_state",
-                    &tmp_location_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: location_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "building_nickname_state".to_string())]
-            )
-            .set(ctx.db.building_nickname_state().count() as f64);
-            let building_nickname_state =
-                ctx.db.building_nickname_state().iter().collect::<Vec<_>>();
-            if !building_nickname_state.is_empty() {
-                send_worker_message(
-                    "building_nickname_state",
-                    &tmp_building_nickname_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: building_nickname_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "traveler_task_state".to_string())]
-            )
-            .set(ctx.db.traveler_task_state().count() as f64);
-            let traveler_task_state = ctx.db.traveler_task_state().iter().collect::<Vec<_>>();
-            if !traveler_task_state.is_empty() {
-                send_worker_message(
-                    "traveler_task_state",
-                    &tmp_traveler_task_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: traveler_task_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "trade_order_state".to_string())]
-            )
-            .set(ctx.db.trade_order_state().count() as f64);
-            let trade_order_state = ctx.db.trade_order_state().iter().collect::<Vec<_>>();
-            if !trade_order_state.is_empty() {
-                send_worker_message(
-                    "trade_order_state",
-                    &tmp_trade_order_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: trade_order_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "user_state".to_string())]
-            )
-            .set(ctx.db.user_state().count() as f64);
-            let user_state = ctx.db.user_state().iter().collect::<Vec<_>>();
-            if !user_state.is_empty() {
-                send_worker_message(
-                    "user_state",
-                    &tmp_user_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: user_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "sell_order_state".to_string())]
-            )
-            .set(ctx.db.sell_order_state().count() as f64);
-            let sell_order_state = ctx.db.sell_order_state().iter().collect::<Vec<_>>();
-            if !sell_order_state.is_empty() {
-                send_worker_message(
-                    "sell_order_state",
-                    &tmp_sell_order_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: sell_order_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "buy_order_state".to_string())]
-            )
-            .set(ctx.db.buy_order_state().count() as f64);
-            let buy_order_state = ctx.db.buy_order_state().iter().collect::<Vec<_>>();
-            if !buy_order_state.is_empty() {
-                send_worker_message(
-                    "buy_order_state",
-                    &tmp_buy_order_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: buy_order_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "collectible_desc".to_string())]
-            )
-            .set(ctx.db.collectible_desc().count() as f64);
-            let collectible_desc = ctx.db.collectible_desc().iter().collect::<Vec<_>>();
-            if !collectible_desc.is_empty() {
-                send_worker_message(
-                    "collectible_desc",
-                    &tmp_collectible_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: collectible_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "interior_network_desc".to_string())]
-            )
-            .set(ctx.db.interior_network_desc().count() as f64);
-            let interior_network_desc = ctx.db.interior_network_desc().iter().collect::<Vec<_>>();
-            if !interior_network_desc.is_empty() {
-                send_worker_message(
-                    "interior_network_desc",
-                    &tmp_interior_network_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: interior_network_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "dimension_description_state".to_string())]
-            )
-            .set(ctx.db.dimension_description_state().count() as f64);
-            let dimension_description_state = ctx
-                .db
-                .dimension_description_state()
-                .iter()
-                .collect::<Vec<_>>();
-            if !dimension_description_state.is_empty() {
-                send_worker_message(
-                    "dimension_description_state",
-                    &tmp_dimension_description_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: dimension_description_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "player_housing_state".to_string())]
-            )
-            .set(ctx.db.player_housing_state().count() as f64);
-            let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
-            if !player_housing_state.is_empty() {
-                send_worker_message(
-                    "player_housing_state",
-                    &tmp_player_housing_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: player_housing_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "permission_state".to_string())]
-            )
-            .set(ctx.db.permission_state().count() as f64);
-            let permission_state = ctx.db.permission_state().iter().collect::<Vec<_>>();
-            if !permission_state.is_empty() {
-                send_worker_message(
-                    "permission_state",
-                    &tmp_permission_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: permission_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "portal_state".to_string())]
-            )
-            .set(ctx.db.portal_state().count() as f64);
-            let portal_state = ctx.db.portal_state().iter().collect::<Vec<_>>();
-            if !portal_state.is_empty() {
-                send_worker_message(
-                    "portal_state",
-                    &tmp_portal_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: portal_state,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "resource_desc".to_string())]
-            )
-            .set(ctx.db.resource_desc().count() as f64);
-            let resource_desc = ctx.db.resource_desc().iter().collect::<Vec<_>>();
-            if !resource_desc.is_empty() {
-                send_worker_message(
-                    "resource_desc",
-                    &tmp_resource_desc_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: resource_desc,
-                    },
-                );
-            }
-
-            metrics::gauge!(
-                "worker_queue_initial_batch_size",
-                &[("worker", "progressive_action_state".to_string())]
-            )
-            .set(ctx.db.progressive_action_state().count() as f64);
-            let progressive_action_state =
-                ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
-            if !progressive_action_state.is_empty() {
-                send_worker_message(
-                    "progressive_action_state",
-                    &tmp_progressive_action_state_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        database_name: tmp_region_number,
-                        data: progressive_action_state,
-                    },
-                );
-            }
-
-            // for resource_desc in ctx.db.user_state().iter() {
-            //     if resource_desc.entity_id == 504403158285774600 {
-            //         println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
-            //     }
-            // }
-            //
-            // for resource_desc in ctx.db.identity_role().iter() {
-            //     println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.role);
-            // }
-
-            tracing::debug!(region = region_number, "Handled Subscription response");
-        })
+        // .on_applied(move |ctx: &SubscriptionEventContext| {
+        //     tracing::debug!(region = region_number, "Handle Subscription response");
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "cargo_desc".to_string())]
+        //     )
+        //     .set(ctx.db.cargo_desc().count() as f64);
+        //
+        //     let cargo_desc = ctx.db.cargo_desc().iter().collect::<Vec<_>>();
+        //     if !cargo_desc.is_empty() {
+        //         send_worker_message(
+        //             "cargo_desc",
+        //             &tmp_cargo_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: cargo_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "player_username_state".to_string())]
+        //     )
+        //     .set(ctx.db.player_username_state().count() as f64);
+        //     let player_username_state = ctx.db.player_username_state().iter().collect::<Vec<_>>();
+        //     if !player_username_state.is_empty() {
+        //         send_worker_message(
+        //             "player_username_state",
+        //             &tmp_player_username_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: player_username_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "claim_local_state".to_string())]
+        //     )
+        //     .set(ctx.db.claim_local_state().count() as f64);
+        //     let claim_local_state = ctx.db.claim_local_state().iter().collect::<Vec<_>>();
+        //     if !claim_local_state.is_empty() {
+        //         send_worker_message(
+        //             "claim_local_state",
+        //             &tmp_claim_local_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: claim_local_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "claim_state".to_string())]
+        //     )
+        //     .set(ctx.db.claim_state().count() as f64);
+        //     let claim_state = ctx.db.claim_state().iter().collect::<Vec<_>>();
+        //     if !claim_state.is_empty() {
+        //         send_worker_message(
+        //             "claim_state",
+        //             &tmp_claim_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: claim_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "deployable_state".to_string())]
+        //     )
+        //     .set(ctx.db.deployable_state().count() as f64);
+        //     let deployable_state = ctx.db.deployable_state().iter().collect::<Vec<_>>();
+        //     if !deployable_state.is_empty() {
+        //         send_worker_message(
+        //             "deployable_state",
+        //             &tmp_deployable_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: deployable_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "item_desc".to_string())]
+        //     )
+        //     .set(ctx.db.item_desc().count() as f64);
+        //     let item_desc = ctx.db.item_desc().iter().collect::<Vec<_>>();
+        //     if !item_desc.is_empty() {
+        //         send_worker_message(
+        //             "item_desc",
+        //             &tmp_item_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: item_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "skill_desc".to_string())]
+        //     )
+        //     .set(ctx.db.skill_desc().count() as f64);
+        //     let skill_desc = ctx.db.skill_desc().iter().collect::<Vec<_>>();
+        //     if !skill_desc.is_empty() {
+        //         send_worker_message(
+        //             "skill_desc",
+        //             &tmp_skill_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: skill_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "building_desc".to_string())]
+        //     )
+        //     .set(ctx.db.building_desc().count() as f64);
+        //     let building_desc = ctx.db.building_desc().iter().collect::<Vec<_>>();
+        //     if !building_desc.is_empty() {
+        //         send_worker_message(
+        //             "building_desc",
+        //             &tmp_building_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: building_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "claim_tech_desc".to_string())]
+        //     )
+        //     .set(ctx.db.claim_tech_desc().count() as f64);
+        //     let claim_tech_desc = ctx.db.claim_tech_desc().iter().collect::<Vec<_>>();
+        //     if !claim_tech_desc.is_empty() {
+        //         send_worker_message(
+        //             "claim_tech_desc",
+        //             &tmp_claim_tech_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: claim_tech_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "crafting_recipe_desc".to_string())]
+        //     )
+        //     .set(ctx.db.crafting_recipe_desc().count() as f64);
+        //     let crafting_recipe_desc = ctx.db.crafting_recipe_desc().iter().collect::<Vec<_>>();
+        //     if !crafting_recipe_desc.is_empty() {
+        //         send_worker_message(
+        //             "crafting_recipe_desc",
+        //             &tmp_crafting_recipe_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: crafting_recipe_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "item_list_desc".to_string())]
+        //     )
+        //     .set(ctx.db.item_list_desc().count() as f64);
+        //     let item_list_desc = ctx.db.item_list_desc().iter().collect::<Vec<_>>();
+        //     if !item_list_desc.is_empty() {
+        //         send_worker_message(
+        //             "item_list_desc",
+        //             &tmp_item_list_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: item_list_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "traveler_task_desc".to_string())]
+        //     )
+        //     .set(ctx.db.traveler_task_desc().count() as f64);
+        //     let traveler_task_desc = ctx.db.traveler_task_desc().iter().collect::<Vec<_>>();
+        //     if !traveler_task_desc.is_empty() {
+        //         send_worker_message(
+        //             "traveler_task_desc",
+        //             &tmp_traveler_task_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: traveler_task_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "npc_desc".to_string())]
+        //     )
+        //     .set(ctx.db.npc_desc().count() as f64);
+        //     let npc_desc = ctx.db.npc_desc().iter().collect::<Vec<_>>();
+        //     if !npc_desc.is_empty() {
+        //         send_worker_message(
+        //             "npc_desc",
+        //             &tmp_npc_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: npc_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     let npc_desc = ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
+        //     if !npc_desc.is_empty() {
+        //         // @todo Write the SpacetimeUpdateMessages::Initial part
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "extraction_recipe_desc".to_string())]
+        //     )
+        //     .set(ctx.db.extraction_recipe_desc().count() as f64);
+        //     let extraction_recipe_desc = ctx.db.extraction_recipe_desc().iter().collect::<Vec<_>>();
+        //     if !extraction_recipe_desc.is_empty() {
+        //         send_worker_message(
+        //             "extraction_recipe_desc",
+        //             &tmp_extraction_recipe_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: extraction_recipe_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "inventory_state".to_string())]
+        //     )
+        //     .set(ctx.db.inventory_state().count() as f64);
+        //     let inventory_state = ctx.db.inventory_state().iter().collect::<Vec<_>>();
+        //     if !inventory_state.is_empty() {
+        //         send_worker_message(
+        //             "inventory_state",
+        //             &tmp_inventory_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: inventory_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "claim_member_state".to_string())]
+        //     )
+        //     .set(ctx.db.claim_member_state().count() as f64);
+        //     let claim_member_state = ctx.db.claim_member_state().iter().collect::<Vec<_>>();
+        //     if !claim_member_state.is_empty() {
+        //         send_worker_message(
+        //             "claim_member_state",
+        //             &tmp_claim_member_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: claim_member_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "experience_state".to_string())]
+        //     )
+        //     .set(ctx.db.experience_state().count() as f64);
+        //     let experience_state = ctx.db.experience_state().iter().collect::<Vec<_>>();
+        //     if !experience_state.is_empty() {
+        //         send_worker_message(
+        //             "experience_state",
+        //             &tmp_experience_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: experience_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "mobile_entity_state".to_string())]
+        //     )
+        //     .set(ctx.db.mobile_entity_state().count() as f64);
+        //     let mobile_entity_state = ctx.db.mobile_entity_state().iter().collect::<Vec<_>>();
+        //     if !mobile_entity_state.is_empty() {
+        //         send_worker_message(
+        //             "mobile_entity_state",
+        //             &tmp_mobile_entity_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: mobile_entity_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "player_state".to_string())]
+        //     )
+        //     .set(ctx.db.player_state().count() as f64);
+        //     let player_state = ctx.db.player_state().iter().collect::<Vec<_>>();
+        //     if !player_state.is_empty() {
+        //         send_worker_message(
+        //             "player_state",
+        //             &tmp_player_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: player_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "vault_state".to_string())]
+        //     )
+        //     .set(ctx.db.vault_state().count() as f64);
+        //     let vault_state = ctx.db.vault_state().iter().collect::<Vec<_>>();
+        //     if !vault_state.is_empty() {
+        //         send_worker_message(
+        //             "vault_state",
+        //             &tmp_vault_state_collectibles_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: vault_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "claim_tech_state".to_string())]
+        //     )
+        //     .set(ctx.db.claim_tech_state().count() as f64);
+        //     let claim_tech_state = ctx.db.claim_tech_state().iter().collect::<Vec<_>>();
+        //     if !claim_tech_state.is_empty() {
+        //         send_worker_message(
+        //             "claim_tech_state",
+        //             &tmp_claim_tech_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: claim_tech_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "building_state".to_string())]
+        //     )
+        //     .set(ctx.db.building_state().count() as f64);
+        //     let building_state = ctx.db.building_state().iter().collect::<Vec<_>>();
+        //     if !building_state.is_empty() {
+        //         send_worker_message(
+        //             "building_state",
+        //             &tmp_building_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: building_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "location_state".to_string())]
+        //     )
+        //     .set(ctx.db.location_state().count() as f64);
+        //     let location_state = ctx.db.location_state().iter().collect::<Vec<_>>();
+        //     if !location_state.is_empty() {
+        //         send_worker_message(
+        //             "location_state",
+        //             &tmp_location_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: location_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "building_nickname_state".to_string())]
+        //     )
+        //     .set(ctx.db.building_nickname_state().count() as f64);
+        //     let building_nickname_state =
+        //         ctx.db.building_nickname_state().iter().collect::<Vec<_>>();
+        //     if !building_nickname_state.is_empty() {
+        //         send_worker_message(
+        //             "building_nickname_state",
+        //             &tmp_building_nickname_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: building_nickname_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "traveler_task_state".to_string())]
+        //     )
+        //     .set(ctx.db.traveler_task_state().count() as f64);
+        //     let traveler_task_state = ctx.db.traveler_task_state().iter().collect::<Vec<_>>();
+        //     if !traveler_task_state.is_empty() {
+        //         send_worker_message(
+        //             "traveler_task_state",
+        //             &tmp_traveler_task_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: traveler_task_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "trade_order_state".to_string())]
+        //     )
+        //     .set(ctx.db.trade_order_state().count() as f64);
+        //     let trade_order_state = ctx.db.trade_order_state().iter().collect::<Vec<_>>();
+        //     if !trade_order_state.is_empty() {
+        //         send_worker_message(
+        //             "trade_order_state",
+        //             &tmp_trade_order_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: trade_order_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "user_state".to_string())]
+        //     )
+        //     .set(ctx.db.user_state().count() as f64);
+        //     let user_state = ctx.db.user_state().iter().collect::<Vec<_>>();
+        //     if !user_state.is_empty() {
+        //         send_worker_message(
+        //             "user_state",
+        //             &tmp_user_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: user_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "sell_order_state".to_string())]
+        //     )
+        //     .set(ctx.db.sell_order_state().count() as f64);
+        //     let sell_order_state = ctx.db.sell_order_state().iter().collect::<Vec<_>>();
+        //     if !sell_order_state.is_empty() {
+        //         send_worker_message(
+        //             "sell_order_state",
+        //             &tmp_sell_order_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: sell_order_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "buy_order_state".to_string())]
+        //     )
+        //     .set(ctx.db.buy_order_state().count() as f64);
+        //     let buy_order_state = ctx.db.buy_order_state().iter().collect::<Vec<_>>();
+        //     if !buy_order_state.is_empty() {
+        //         send_worker_message(
+        //             "buy_order_state",
+        //             &tmp_buy_order_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: buy_order_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "collectible_desc".to_string())]
+        //     )
+        //     .set(ctx.db.collectible_desc().count() as f64);
+        //     let collectible_desc = ctx.db.collectible_desc().iter().collect::<Vec<_>>();
+        //     if !collectible_desc.is_empty() {
+        //         send_worker_message(
+        //             "collectible_desc",
+        //             &tmp_collectible_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: collectible_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "interior_network_desc".to_string())]
+        //     )
+        //     .set(ctx.db.interior_network_desc().count() as f64);
+        //     let interior_network_desc = ctx.db.interior_network_desc().iter().collect::<Vec<_>>();
+        //     if !interior_network_desc.is_empty() {
+        //         send_worker_message(
+        //             "interior_network_desc",
+        //             &tmp_interior_network_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: interior_network_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "dimension_description_state".to_string())]
+        //     )
+        //     .set(ctx.db.dimension_description_state().count() as f64);
+        //     let dimension_description_state = ctx
+        //         .db
+        //         .dimension_description_state()
+        //         .iter()
+        //         .collect::<Vec<_>>();
+        //     if !dimension_description_state.is_empty() {
+        //         send_worker_message(
+        //             "dimension_description_state",
+        //             &tmp_dimension_description_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: dimension_description_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "player_housing_state".to_string())]
+        //     )
+        //     .set(ctx.db.player_housing_state().count() as f64);
+        //     let player_housing_state = ctx.db.player_housing_state().iter().collect::<Vec<_>>();
+        //     if !player_housing_state.is_empty() {
+        //         send_worker_message(
+        //             "player_housing_state",
+        //             &tmp_player_housing_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: player_housing_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "permission_state".to_string())]
+        //     )
+        //     .set(ctx.db.permission_state().count() as f64);
+        //     let permission_state = ctx.db.permission_state().iter().collect::<Vec<_>>();
+        //     if !permission_state.is_empty() {
+        //         send_worker_message(
+        //             "permission_state",
+        //             &tmp_permission_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: permission_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "portal_state".to_string())]
+        //     )
+        //     .set(ctx.db.portal_state().count() as f64);
+        //     let portal_state = ctx.db.portal_state().iter().collect::<Vec<_>>();
+        //     if !portal_state.is_empty() {
+        //         send_worker_message(
+        //             "portal_state",
+        //             &tmp_portal_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: portal_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "resource_desc".to_string())]
+        //     )
+        //     .set(ctx.db.resource_desc().count() as f64);
+        //     let resource_desc = ctx.db.resource_desc().iter().collect::<Vec<_>>();
+        //     if !resource_desc.is_empty() {
+        //         send_worker_message(
+        //             "resource_desc",
+        //             &tmp_resource_desc_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: resource_desc,
+        //             },
+        //         );
+        //     }
+        //
+        //     metrics::gauge!(
+        //         "worker_queue_initial_batch_size",
+        //         &[("worker", "progressive_action_state".to_string())]
+        //     )
+        //     .set(ctx.db.progressive_action_state().count() as f64);
+        //     let progressive_action_state =
+        //         ctx.db.progressive_action_state().iter().collect::<Vec<_>>();
+        //     if !progressive_action_state.is_empty() {
+        //         send_worker_message(
+        //             "progressive_action_state",
+        //             &tmp_progressive_action_state_tx,
+        //             SpacetimeUpdateMessages::Initial {
+        //                 database_name: tmp_region_number,
+        //                 data: progressive_action_state,
+        //             },
+        //         );
+        //     }
+        //
+        //     // for resource_desc in ctx.db.user_state().iter() {
+        //     //     if resource_desc.entity_id == 504403158285774600 {
+        //     //         println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.entity_id);
+        //     //     }
+        //     // }
+        //     //
+        //     // for resource_desc in ctx.db.identity_role().iter() {
+        //     //     println!("ID: {} Name: {:?}", resource_desc.identity, resource_desc.role);
+        //     // }
+        //
+        //     tracing::debug!(region = region_number, "Handled Subscription response");
+        // })
         .on_error(move |ctx: &ErrorContext, err: Error| {
             tracing::warn!(
                 region = region_number,
@@ -1752,6 +1833,7 @@ async fn connect_to_db_logic(
 
     let tmp_disconnect_db_name = database.to_string().clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
+
     let _ = ctx.run_async().await;
 
     metrics::gauge!(
@@ -1790,6 +1872,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let experience_state_worker = crate::leaderboard::bitcraft::ExperienceStateWorker::new(
             global_app_state.clone(),
             3000,
+            Duration::from_millis(200),
+        );
+
+        let location_state_worker = crate::location_state::bitcraft::LocationStateWorker::new(
+            global_app_state.clone(),
+            10000,
             Duration::from_millis(200),
         );
         let inventory_state_worker = inventory_bitcraft::InventoryStateWorker::new(
@@ -1865,7 +1953,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             tokio::sync::mpsc::unbounded_channel();
         let (permission_state_tx, permission_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (portal_state_tx, portal_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (location_state_tx, location_state_rx) = tokio::sync::mpsc::unbounded_channel();
         let (resource_desc_tx, resource_desc_rx) = tokio::sync::mpsc::unbounded_channel();
         let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) =
             tokio::sync::mpsc::unbounded_channel();
@@ -1928,7 +2015,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_player_housing_state_tx = player_housing_state_tx.clone();
                 let tmp_permission_state_tx = permission_state_tx.clone();
                 let tmp_portal_state_tx = portal_state_tx.clone();
-                let tmp_location_state_tx = location_state_tx.clone();
+                let tmp_location_state_tx = location_state_worker.tx();
                 let tmp_resource_desc_tx = resource_desc_tx.clone();
                 let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
                 let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
@@ -1938,6 +2025,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_database = database.clone();
 
                 tokio::spawn(async move {
+                    use sea_orm::ColumnTrait;
+                    use sea_orm::QueryFilter;
                     let startup_wait_ms = {
                         let startup_wait_ranges_ms =
                             [(0, 500), (500, 2_000), (2_000, 5_000), (5_000, 15_000)];
@@ -2072,6 +2161,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         player_state_worker.start();
         player_username_state_worker.start();
         experience_state_worker.start();
+        location_state_worker.start();
         inventory_state_worker.start();
         start_worker_vault_state_collectibles(
             global_app_state.clone(),
@@ -2117,12 +2207,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         start_worker_building_desc(
             global_app_state.clone(),
             building_desc_rx,
-            3000,
-            Duration::from_millis(200),
-        );
-        start_worker_location_state(
-            global_app_state.clone(),
-            location_state_rx,
             3000,
             Duration::from_millis(200),
         );
@@ -2301,7 +2385,7 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
 #[derive(Serialize, Deserialize, Clone, Debug, TS)]
 #[ts(export)]
 #[serde(tag = "t", content = "c")]
-pub(crate) enum WebSocketMessages {
+pub(crate) enum OutboundWebSocketMessages {
     Subscribe {
         topics: Vec<String>,
     },
@@ -2322,6 +2406,16 @@ pub(crate) enum WebSocketMessages {
         user_id: i64,
         experience: u64,
         experience_per_hour: u64,
+        rank: u64,
+    },
+    TotalProfessionExperience {
+        user_id: i64,
+        experience: u64,
+        rank: u64,
+    },
+    TotalAdventureExperience {
+        user_id: i64,
+        experience: u64,
         rank: u64,
     },
     TimePlayed {
@@ -2390,10 +2484,10 @@ pub(crate) enum WebSocketMessages {
     },
 }
 
-impl WebSocketMessages {
+impl OutboundWebSocketMessages {
     pub fn topics(&self) -> Option<Vec<(String, Option<i64>)>> {
         match self {
-            WebSocketMessages::Experience {
+            OutboundWebSocketMessages::Experience {
                 skill_name,
                 user_id,
                 ..
@@ -2401,11 +2495,11 @@ impl WebSocketMessages {
                 (format!("experience:{skill_name}"), Some(*user_id)),
                 ("experience".to_string(), Some(*user_id)),
             ]),
-            WebSocketMessages::ClaimLocalState(claim_local_state) => Some(vec![(
+            OutboundWebSocketMessages::ClaimLocalState(claim_local_state) => Some(vec![(
                 "claim_local_state".to_string(),
                 Some(claim_local_state.entity_id),
             )]),
-            WebSocketMessages::Level {
+            OutboundWebSocketMessages::Level {
                 user_id,
                 skill_name,
                 ..
@@ -2413,57 +2507,65 @@ impl WebSocketMessages {
                 (format!("level:{skill_name}"), Some(*user_id)),
                 ("level".to_string(), Some(*user_id)),
             ]),
-            WebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => Some(vec![(
+            OutboundWebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => Some(vec![(
                 "player_moved_into_claim".to_string(),
                 Some(*user_id),
             )]),
-            WebSocketMessages::PlayerMovedOutOfClaim { user_id, .. } => Some(vec![(
+            OutboundWebSocketMessages::PlayerMovedOutOfClaim { user_id, .. } => Some(vec![(
                 "player_moved_out_of_claim".to_string(),
                 Some(*user_id),
             )]),
-            WebSocketMessages::MovedOutOfClaim { claim_id, .. } => Some(vec![(
+            OutboundWebSocketMessages::MovedOutOfClaim { claim_id, .. } => Some(vec![(
                 "moved_out_of_claim".to_string(),
                 Some(*claim_id as i64),
             )]),
-            WebSocketMessages::MovedIntoClaim { claim_id, .. } => Some(vec![(
+            OutboundWebSocketMessages::MovedIntoClaim { claim_id, .. } => Some(vec![(
                 "moved_into_claim".to_string(),
                 Some(*claim_id as i64),
             )]),
-            WebSocketMessages::PlayerState(player) => {
+            OutboundWebSocketMessages::PlayerState(player) => {
                 Some(vec![("player_state".to_string(), Some(player.entity_id))])
             }
-            WebSocketMessages::PlayerUsername { entity_id, .. } => {
+            OutboundWebSocketMessages::PlayerUsername { entity_id, .. } => {
                 Some(vec![("player_username".to_string(), Some(*entity_id))])
             }
-            WebSocketMessages::MobileEntityState(mobile_entity_state) => Some(vec![(
+            OutboundWebSocketMessages::MobileEntityState(mobile_entity_state) => Some(vec![(
                 "mobile_entity_state".to_string(),
                 Some(mobile_entity_state.entity_id as i64),
             )]),
             // WebSocketMessages::ClaimDescriptionState(claim) => {
             //     Some(vec![("claim".to_string(), claim.entity_id)])
             // }
-            WebSocketMessages::TotalExperience { user_id, .. } => {
+            OutboundWebSocketMessages::TotalExperience { user_id, .. } => {
                 Some(vec![("total_experience".to_string(), Some(*user_id))])
             }
-            WebSocketMessages::TimePlayed { user_id, .. } => {
+            OutboundWebSocketMessages::TotalProfessionExperience { user_id, .. } => Some(vec![(
+                "total_profession_experience".to_string(),
+                Some(*user_id),
+            )]),
+            OutboundWebSocketMessages::TotalAdventureExperience { user_id, .. } => Some(vec![(
+                "total_adventure_experience".to_string(),
+                Some(*user_id),
+            )]),
+            OutboundWebSocketMessages::TimePlayed { user_id, .. } => {
                 Some(vec![("time_played".to_string(), Some(*user_id))])
             }
-            WebSocketMessages::TimeSignedIn { user_id, .. } => {
+            OutboundWebSocketMessages::TimeSignedIn { user_id, .. } => {
                 Some(vec![("time_signed_in".to_string(), Some(*user_id))])
             }
-            WebSocketMessages::PlayerActionState(player_action_state) => Some(vec![(
+            OutboundWebSocketMessages::PlayerActionState(player_action_state) => Some(vec![(
                 "player_action_state".to_string(),
                 Some(player_action_state.entity_id as i64),
             )]),
-            WebSocketMessages::PlayerActionStateChangeName(_, id) => Some(vec![(
+            OutboundWebSocketMessages::PlayerActionStateChangeName(_, id) => Some(vec![(
                 "player_action_state_change_name".to_string(),
                 Some(*id as i64),
             )]),
-            WebSocketMessages::ActionState(action_state) => Some(vec![(
+            OutboundWebSocketMessages::ActionState(action_state) => Some(vec![(
                 "action_state".to_string(),
                 Some(action_state.owner_entity_id as i64),
             )]),
-            WebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![
+            OutboundWebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![
                 (
                     "traveler_task_state".to_string(),
                     Some(traveler_task_state.entity_id),
@@ -2473,7 +2575,7 @@ impl WebSocketMessages {
                     Some(traveler_task_state.player_entity_id),
                 ),
             ]),
-            WebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![
+            OutboundWebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![
                 (
                     "traveler_task_state".to_string(),
                     Some(traveler_task_state.entity_id),
@@ -2483,12 +2585,12 @@ impl WebSocketMessages {
                     Some(traveler_task_state.player_entity_id),
                 ),
             ]),
-            WebSocketMessages::ListSubscribedTopics => None,
-            WebSocketMessages::Subscribe { .. } => None,
-            WebSocketMessages::SubscribedTopics(_) => None,
-            WebSocketMessages::Unsubscribe { .. } => None,
-            WebSocketMessages::Message(_) => None,
-            WebSocketMessages::InsertSellOrder(auction_listing_state) => Some(vec![
+            OutboundWebSocketMessages::ListSubscribedTopics => None,
+            OutboundWebSocketMessages::Subscribe { .. } => None,
+            OutboundWebSocketMessages::SubscribedTopics(_) => None,
+            OutboundWebSocketMessages::Unsubscribe { .. } => None,
+            OutboundWebSocketMessages::Message(_) => None,
+            OutboundWebSocketMessages::InsertSellOrder(auction_listing_state) => Some(vec![
                 (
                     "insert_sell_order".to_string(),
                     Some(auction_listing_state.entity_id as i64),
@@ -2499,7 +2601,7 @@ impl WebSocketMessages {
                 ),
                 ("insert_sell_order".to_string(), None),
             ]),
-            WebSocketMessages::UpdateSellOrder(auction_listing_state) => Some(vec![
+            OutboundWebSocketMessages::UpdateSellOrder(auction_listing_state) => Some(vec![
                 (
                     "update_sell_order".to_string(),
                     Some(auction_listing_state.entity_id as i64),
@@ -2510,7 +2612,7 @@ impl WebSocketMessages {
                 ),
                 ("update_sell_order".to_string(), None),
             ]),
-            WebSocketMessages::RemoveSellOrder(auction_listing_state) => Some(vec![
+            OutboundWebSocketMessages::RemoveSellOrder(auction_listing_state) => Some(vec![
                 (
                     "remove_sell_order".to_string(),
                     Some(auction_listing_state.entity_id as i64),
@@ -2521,7 +2623,7 @@ impl WebSocketMessages {
                 ),
                 ("remove_sell_order".to_string(), None),
             ]),
-            WebSocketMessages::InsertBuyOrder(auction_listing_state) => Some(vec![
+            OutboundWebSocketMessages::InsertBuyOrder(auction_listing_state) => Some(vec![
                 (
                     "update_buy_order".to_string(),
                     Some(auction_listing_state.entity_id as i64),
@@ -2532,7 +2634,7 @@ impl WebSocketMessages {
                 ),
                 ("update_buy_order".to_string(), None),
             ]),
-            WebSocketMessages::UpdateBuyOrder(auction_listing_state) => Some(vec![
+            OutboundWebSocketMessages::UpdateBuyOrder(auction_listing_state) => Some(vec![
                 (
                     "update_buy_order".to_string(),
                     Some(auction_listing_state.entity_id as i64),
@@ -2543,7 +2645,7 @@ impl WebSocketMessages {
                 ),
                 ("update_buy_order".to_string(), None),
             ]),
-            WebSocketMessages::RemoveBuyOrder(auction_listing_state) => Some(vec![
+            OutboundWebSocketMessages::RemoveBuyOrder(auction_listing_state) => Some(vec![
                 (
                     "remove_buy_order".to_string(),
                     Some(auction_listing_state.entity_id as i64),
@@ -2554,13 +2656,13 @@ impl WebSocketMessages {
                 ),
                 ("remove_buy_order".to_string(), None),
             ]),
-            WebSocketMessages::InventoryUpdate {
+            OutboundWebSocketMessages::InventoryUpdate {
                 resolved_inventory, ..
             } => Some(vec![(
                 "inventory_update".to_string(),
                 Some(resolved_inventory.entity_id),
             )]),
-            WebSocketMessages::InventoryRemove {
+            OutboundWebSocketMessages::InventoryRemove {
                 resolved_inventory, ..
             } => Some(vec![
                 (
@@ -2572,7 +2674,7 @@ impl WebSocketMessages {
                     Some(resolved_inventory.entity_id),
                 ),
             ]),
-            WebSocketMessages::InventoryInsert {
+            OutboundWebSocketMessages::InventoryInsert {
                 resolved_inventory,
                 player_owner_id,
                 ..

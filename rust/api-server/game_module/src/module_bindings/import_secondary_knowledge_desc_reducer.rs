@@ -72,8 +72,8 @@ impl import_secondary_knowledge_desc for super::RemoteReducers {
     fn on_import_secondary_knowledge_desc(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &Vec<SecondaryKnowledgeDesc>)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> ImportSecondaryKnowledgeDescCallbackId {
         ImportSecondaryKnowledgeDescCallbackId(self.imp.on_reducer(
             "import_secondary_knowledge_desc",

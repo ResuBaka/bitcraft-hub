@@ -61,8 +61,8 @@ impl storage_log_cleanup_loop for super::RemoteReducers {
     fn on_storage_log_cleanup_loop(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &StorageLogCleanupLoopTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> StorageLogCleanupLoopCallbackId {
         StorageLogCleanupLoopCallbackId(self.imp.on_reducer(
             "storage_log_cleanup_loop",

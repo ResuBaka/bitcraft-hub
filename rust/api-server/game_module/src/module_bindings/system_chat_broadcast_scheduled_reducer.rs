@@ -35,7 +35,7 @@ pub trait system_chat_broadcast_scheduled {
     /// The reducer will run asynchronously in the future,
     ///  and its status can be observed by listening for [`Self::on_system_chat_broadcast_scheduled`] callbacks.
     fn system_chat_broadcast_scheduled(&self, timer: SystemChatBroadcastTimer)
-        -> __sdk::Result<()>;
+    -> __sdk::Result<()>;
     /// Register a callback to run whenever we are notified of an invocation of the reducer `system_chat_broadcast_scheduled`.
     ///
     /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
@@ -68,8 +68,8 @@ impl system_chat_broadcast_scheduled for super::RemoteReducers {
     fn on_system_chat_broadcast_scheduled(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &SystemChatBroadcastTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> SystemChatBroadcastScheduledCallbackId {
         SystemChatBroadcastScheduledCallbackId(self.imp.on_reducer(
             "system_chat_broadcast_scheduled",

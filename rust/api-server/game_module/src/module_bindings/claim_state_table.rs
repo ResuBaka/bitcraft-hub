@@ -37,18 +37,41 @@ impl ClaimStateTableAccess for super::RemoteTables {
     }
 }
 
+pub struct ClaimStateInitialCallbackId(__sdk::CallbackId);
 pub struct ClaimStateInsertCallbackId(__sdk::CallbackId);
 pub struct ClaimStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> ClaimStateTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[ClaimState]) + Send + 'static,
+    ) -> ClaimStateInitialCallbackId {
+        ClaimStateInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: ClaimStateInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for ClaimStateTableHandle<'ctx> {
     type Row = ClaimState;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = ClaimState> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = ClaimState> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = ClaimStateInsertCallbackId;
@@ -78,14 +101,15 @@ impl<'ctx> __sdk::Table for ClaimStateTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<ClaimState>("claim_state");
+
+        let _table = client_cache.get_or_make_table::<ClaimState>("claim_state");
     _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
-    _table.add_unique_constraint::<u64>("owner_building_entity_id", |row| {
-        &row.owner_building_entity_id
-    });
+    _table.add_unique_constraint::<u64>("owner_building_entity_id", |row| &row.owner_building_entity_id);
     _table.add_unique_constraint::<String>("name", |row| &row.name);
+}
 }
 pub struct ClaimStateUpdateCallbackId(__sdk::CallbackId);
 
@@ -115,6 +139,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `entity_id` unique index on the table `claim_state`,
 /// which allows point queries on the field of the same name
 /// via the [`ClaimStateEntityIdUnique::find`] method.
@@ -144,7 +169,9 @@ impl<'ctx> ClaimStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `owner_building_entity_id` unique index on the table `claim_state`,
 /// which allows point queries on the field of the same name
 /// via the [`ClaimStateOwnerBuildingEntityIdUnique::find`] method.
@@ -161,9 +188,7 @@ impl<'ctx> ClaimStateTableHandle<'ctx> {
     /// Get a handle on the `owner_building_entity_id` unique index on the table `claim_state`.
     pub fn owner_building_entity_id(&self) -> ClaimStateOwnerBuildingEntityIdUnique<'ctx> {
         ClaimStateOwnerBuildingEntityIdUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<u64>("owner_building_entity_id"),
+            imp: self.imp.get_unique_constraint::<u64>("owner_building_entity_id"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -176,7 +201,9 @@ impl<'ctx> ClaimStateOwnerBuildingEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `name` unique index on the table `claim_state`,
 /// which allows point queries on the field of the same name
 /// via the [`ClaimStateNameUnique::find`] method.
@@ -205,6 +232,7 @@ impl<'ctx> ClaimStateNameUnique<'ctx> {
     pub fn find(&self, col_val: &String) -> Option<ClaimState> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]

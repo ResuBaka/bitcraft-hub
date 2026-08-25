@@ -70,8 +70,8 @@ impl interior_set_collapsed_scheduled for super::RemoteReducers {
     fn on_interior_set_collapsed_scheduled(
         &self,
         mut callback: impl FnMut(&super::ReducerEventContext, &InteriorSetCollapsedTimer)
-            + Send
-            + 'static,
+        + Send
+        + 'static,
     ) -> InteriorSetCollapsedScheduledCallbackId {
         InteriorSetCollapsedScheduledCallbackId(self.imp.on_reducer(
             "interior_set_collapsed_scheduled",

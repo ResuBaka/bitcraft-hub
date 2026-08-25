@@ -39,18 +39,41 @@ impl PlayerUseElevatorTimerTableAccess for super::RemoteTables {
     }
 }
 
+pub struct PlayerUseElevatorTimerInitialCallbackId(__sdk::CallbackId);
 pub struct PlayerUseElevatorTimerInsertCallbackId(__sdk::CallbackId);
 pub struct PlayerUseElevatorTimerDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> PlayerUseElevatorTimerTableHandle<'ctx> {
+    /// Override row reference counting and hook deduplication for this table.
+    ///
+    /// This takes precedence over [`__sdk::DbConnectionBuilder::with_row_deduplication`].
+    /// This has no effect when the SDK is built without `client-cache`, where row events are
+    /// always delivered without reference counting.
+    pub fn set_row_deduplication(&self, deduplicate_rows: bool) {
+        self.imp.set_row_deduplication(deduplicate_rows)
+    }
+
+    /// Register a callback for each initial table batch delivered by `SubscribeApplied`.
+    pub fn on_initial(
+        &self,
+        callback: impl FnMut(&super::EventContext, &[PlayerUseElevatorTimer]) + Send + 'static,
+    ) -> PlayerUseElevatorTimerInitialCallbackId {
+        PlayerUseElevatorTimerInitialCallbackId(self.imp.on_initial(callback))
+    }
+
+    /// Cancel a callback previously registered by [`Self::on_initial`].
+    pub fn remove_on_initial(&self, callback: PlayerUseElevatorTimerInitialCallbackId) {
+        self.imp.remove_on_initial(callback.0)
+    }
+}
 
 impl<'ctx> __sdk::Table for PlayerUseElevatorTimerTableHandle<'ctx> {
     type Row = PlayerUseElevatorTimer;
     type EventContext = super::EventContext;
 
-    fn count(&self) -> u64 {
-        self.imp.count()
-    }
-    fn iter(&self) -> impl Iterator<Item = PlayerUseElevatorTimer> + '_ {
-        self.imp.iter()
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PlayerUseElevatorTimer> + '_ { self.imp.iter() }
     }
 
     type InsertCallbackId = PlayerUseElevatorTimerInsertCallbackId;
@@ -80,18 +103,16 @@ impl<'ctx> __sdk::Table for PlayerUseElevatorTimerTableHandle<'ctx> {
     }
 }
 
+__sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table =
-        client_cache.get_or_make_table::<PlayerUseElevatorTimer>("player_use_elevator_timer");
+
+        let _table = client_cache.get_or_make_table::<PlayerUseElevatorTimer>("player_use_elevator_timer");
     _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
     _table.add_unique_constraint::<u64>("player_entity_id", |row| &row.player_entity_id);
-    _table.add_unique_constraint::<u64>("origin_platform_entity_id", |row| {
-        &row.origin_platform_entity_id
-    });
-    _table.add_unique_constraint::<u64>("destination_platform_entity_id", |row| {
-        &row.destination_platform_entity_id
-    });
+    _table.add_unique_constraint::<u64>("origin_platform_entity_id", |row| &row.origin_platform_entity_id);
+    _table.add_unique_constraint::<u64>("destination_platform_entity_id", |row| &row.destination_platform_entity_id);
+}
 }
 pub struct PlayerUseElevatorTimerUpdateCallbackId(__sdk::CallbackId);
 
@@ -121,6 +142,7 @@ pub(super) fn parse_table_update(
     })
 }
 
+__sdk::__if_client_cache! {
 /// Access to the `scheduled_id` unique index on the table `player_use_elevator_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`PlayerUseElevatorTimerScheduledIdUnique::find`] method.
@@ -150,7 +172,9 @@ impl<'ctx> PlayerUseElevatorTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `player_entity_id` unique index on the table `player_use_elevator_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`PlayerUseElevatorTimerPlayerEntityIdUnique::find`] method.
@@ -180,7 +204,9 @@ impl<'ctx> PlayerUseElevatorTimerPlayerEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `origin_platform_entity_id` unique index on the table `player_use_elevator_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`PlayerUseElevatorTimerOriginPlatformEntityIdUnique::find`] method.
@@ -195,13 +221,9 @@ pub struct PlayerUseElevatorTimerOriginPlatformEntityIdUnique<'ctx> {
 
 impl<'ctx> PlayerUseElevatorTimerTableHandle<'ctx> {
     /// Get a handle on the `origin_platform_entity_id` unique index on the table `player_use_elevator_timer`.
-    pub fn origin_platform_entity_id(
-        &self,
-    ) -> PlayerUseElevatorTimerOriginPlatformEntityIdUnique<'ctx> {
+    pub fn origin_platform_entity_id(&self) -> PlayerUseElevatorTimerOriginPlatformEntityIdUnique<'ctx> {
         PlayerUseElevatorTimerOriginPlatformEntityIdUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<u64>("origin_platform_entity_id"),
+            imp: self.imp.get_unique_constraint::<u64>("origin_platform_entity_id"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -214,7 +236,9 @@ impl<'ctx> PlayerUseElevatorTimerOriginPlatformEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
 
+__sdk::__if_client_cache! {
 /// Access to the `destination_platform_entity_id` unique index on the table `player_use_elevator_timer`,
 /// which allows point queries on the field of the same name
 /// via the [`PlayerUseElevatorTimerDestinationPlatformEntityIdUnique::find`] method.
@@ -229,13 +253,9 @@ pub struct PlayerUseElevatorTimerDestinationPlatformEntityIdUnique<'ctx> {
 
 impl<'ctx> PlayerUseElevatorTimerTableHandle<'ctx> {
     /// Get a handle on the `destination_platform_entity_id` unique index on the table `player_use_elevator_timer`.
-    pub fn destination_platform_entity_id(
-        &self,
-    ) -> PlayerUseElevatorTimerDestinationPlatformEntityIdUnique<'ctx> {
+    pub fn destination_platform_entity_id(&self) -> PlayerUseElevatorTimerDestinationPlatformEntityIdUnique<'ctx> {
         PlayerUseElevatorTimerDestinationPlatformEntityIdUnique {
-            imp: self
-                .imp
-                .get_unique_constraint::<u64>("destination_platform_entity_id"),
+            imp: self.imp.get_unique_constraint::<u64>("destination_platform_entity_id"),
             phantom: std::marker::PhantomData,
         }
     }
@@ -247,6 +267,7 @@ impl<'ctx> PlayerUseElevatorTimerDestinationPlatformEntityIdUnique<'ctx> {
     pub fn find(&self, col_val: &u64) -> Option<PlayerUseElevatorTimer> {
         self.imp.find(col_val)
     }
+}
 }
 
 #[allow(non_camel_case_types)]
