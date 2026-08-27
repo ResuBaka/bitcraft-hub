@@ -90,7 +90,6 @@ impl __sdk::__query_builder::HasCols for InteriorSpawnDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct InteriorSpawnDescIxCols {
     pub id: __sdk::__query_builder::IxCol<InteriorSpawnDesc, i32>,
-    pub interior_instance_id: __sdk::__query_builder::IxCol<InteriorSpawnDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for InteriorSpawnDesc {
@@ -98,10 +97,6 @@ impl __sdk::__query_builder::HasIxCols for InteriorSpawnDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         InteriorSpawnDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            interior_instance_id: __sdk::__query_builder::IxCol::new(
-                table_name,
-                "interior_instance_id",
-            ),
         }
     }
 }

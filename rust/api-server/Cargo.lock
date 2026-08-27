@@ -609,7 +609,7 @@ dependencies = [
  "sha1 0.10.6",
  "sync_wrapper",
  "tokio",
- "tokio-tungstenite 0.29.0",
+ "tokio-tungstenite",
  "tower",
  "tower-layer",
  "tower-service",
@@ -1683,7 +1683,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3806,7 +3806,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4447,7 +4447,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-bindings-macro"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "heck 0.4.1",
  "humantime",
@@ -4460,7 +4460,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-client-api-messages"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "bytes",
  "bytestring",
@@ -4481,7 +4481,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-data-structures"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "ahash 0.8.12",
  "crossbeam-queue",
@@ -4495,7 +4495,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-lib"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -4518,7 +4518,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-memory-usage"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "decorum",
  "ethnum",
@@ -4527,7 +4527,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-metrics"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "arrayvec",
  "itertools 0.12.1",
@@ -4538,7 +4538,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-primitives"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "bitflags",
  "either",
@@ -4551,7 +4551,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-query-builder"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "spacetimedb-lib",
 ]
@@ -4559,7 +4559,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-sats"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -4590,7 +4590,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-schema"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "anyhow",
  "derive_more 0.99.20",
@@ -4619,7 +4619,7 @@ dependencies = [
 [[package]]
 name = "spacetimedb-sdk"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "base64 0.21.7",
  "brotli 3.5.0",
@@ -4642,13 +4642,13 @@ dependencies = [
  "spacetimedb-schema",
  "thiserror 1.0.69",
  "tokio",
- "tokio-tungstenite 0.27.0",
+ "tokio-websockets",
 ]
 
 [[package]]
 name = "spacetimedb-sql-parser"
 version = "1.12.0"
-source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#8cc835bc7c7dd5c3584f12b64d5deea0c6b8a890"
+source = "git+https://github.com/ResuBaka/SpacetimeDB?branch=feature%2Fno-client-cache-feature#1ab1973739336f6f7b66293abbecb151513e9a18"
 dependencies = [
  "derive_more 0.99.20",
  "spacetimedb-lib",
@@ -4991,7 +4991,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5178,20 +5178,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "489a59b6730eda1b0171fcfda8b121f4bee2b35cba8645ca35c5f7ba3eb736c1"
-dependencies = [
- "futures-util",
- "log",
- "native-tls",
- "tokio",
- "tokio-native-tls",
- "tungstenite 0.27.0",
-]
-
-[[package]]
-name = "tokio-tungstenite"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f72a05e828585856dacd553fba484c242c46e391fb0e58917c942ee9202915c"
@@ -5199,7 +5185,7 @@ dependencies = [
  "futures-util",
  "log",
  "tokio",
- "tungstenite 0.29.0",
+ "tungstenite",
 ]
 
 [[package]]
@@ -5214,6 +5200,26 @@ dependencies = [
  "libc",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tokio-websockets"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52efb639344a7c6adb8e62c6f3d2c19c001ff1b79a5041ba1c6ed42e19c6aa5"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "fastrand",
+ "futures-core",
+ "futures-sink",
+ "http",
+ "httparse",
+ "openssl",
+ "simdutf8",
+ "tokio",
+ "tokio-native-tls",
+ "tokio-util",
 ]
 
 [[package]]
@@ -5472,25 +5478,6 @@ dependencies = [
 
 [[package]]
 name = "tungstenite"
-version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eadc29d668c91fcc564941132e17b28a7ceb2f3ebf0b9dae3e03fd7a6748eb0d"
-dependencies = [
- "bytes",
- "data-encoding",
- "http",
- "httparse",
- "log",
- "native-tls",
- "rand 0.9.1",
- "sha1 0.10.6",
- "thiserror 2.0.19",
- "url",
- "utf-8",
-]
-
-[[package]]
-name = "tungstenite"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c01152af293afb9c7c2a57e4b559c5620b421f6d133261c60dd2d0cdb38e6b8"
@@ -5590,12 +5577,6 @@ dependencies = [
  "idna",
  "percent-encoding",
 ]
-
-[[package]]
-name = "utf-8"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
 name = "utf8_iter"
@@ -5843,7 +5824,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

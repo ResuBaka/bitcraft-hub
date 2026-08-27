@@ -15,6 +15,8 @@ pub enum ClothingMask {
     HairBottom,
 
     HairFull,
+
+    Bald,
 }
 
 impl __sdk::InModule for ClothingMask {
