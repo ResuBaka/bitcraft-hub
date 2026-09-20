@@ -14,6 +14,8 @@ pub struct InteriorNetworkDesc {
     pub trigger_collapse_time: u32,
     pub respawn_time: u32,
     pub child_interior_instances: Vec<i32>,
+    pub start_collapsing: bool,
+    pub destroy_building_on_collapse: bool,
 }
 
 impl __sdk::InModule for InteriorNetworkDesc {
@@ -29,6 +31,8 @@ pub struct InteriorNetworkDescCols {
     pub trigger_collapse_time: __sdk::__query_builder::Col<InteriorNetworkDesc, u32>,
     pub respawn_time: __sdk::__query_builder::Col<InteriorNetworkDesc, u32>,
     pub child_interior_instances: __sdk::__query_builder::Col<InteriorNetworkDesc, Vec<i32>>,
+    pub start_collapsing: __sdk::__query_builder::Col<InteriorNetworkDesc, bool>,
+    pub destroy_building_on_collapse: __sdk::__query_builder::Col<InteriorNetworkDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for InteriorNetworkDesc {
@@ -45,6 +49,11 @@ impl __sdk::__query_builder::HasCols for InteriorNetworkDesc {
             child_interior_instances: __sdk::__query_builder::Col::new(
                 table_name,
                 "child_interior_instances",
+            ),
+            start_collapsing: __sdk::__query_builder::Col::new(table_name, "start_collapsing"),
+            destroy_building_on_collapse: __sdk::__query_builder::Col::new(
+                table_name,
+                "destroy_building_on_collapse",
             ),
         }
     }

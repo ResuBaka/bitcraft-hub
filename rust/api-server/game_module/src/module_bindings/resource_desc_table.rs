@@ -6,6 +6,7 @@ use super::footprint_tile_type::FootprintTile;
 use super::item_stack_type::ItemStack;
 use super::rarity_type::Rarity;
 use super::resource_desc_type::ResourceDesc;
+use super::resource_destroy_building_outcome_type::ResourceDestroyBuildingOutcome;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 /// Table handle for the table `resource_desc`.

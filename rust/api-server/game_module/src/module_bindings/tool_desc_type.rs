@@ -47,6 +47,7 @@ impl __sdk::__query_builder::HasCols for ToolDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct ToolDescIxCols {
     pub id: __sdk::__query_builder::IxCol<ToolDesc, i32>,
+    pub item_id: __sdk::__query_builder::IxCol<ToolDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ToolDesc {
@@ -54,6 +55,7 @@ impl __sdk::__query_builder::HasIxCols for ToolDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ToolDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            item_id: __sdk::__query_builder::IxCol::new(table_name, "item_id"),
         }
     }
 }

@@ -99,7 +99,9 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
         config.tech_tier_research_map.clone(),
     );
 
+    tracing::info!("App state initialized");
     state.fill_state_from_db().await;
+    tracing::info!("App state ready");
 
     let server_url = config.server_url();
 
@@ -1084,6 +1086,7 @@ impl AppState {
 
         for item in items {
             let Some(skill) = self.skill_desc.get(&i64::from(item.skill_id)) else {
+                tracing::error!(skill_id = item.skill_id, "This should never happen");
                 continue;
             };
             if skill.skill_category == 0 {

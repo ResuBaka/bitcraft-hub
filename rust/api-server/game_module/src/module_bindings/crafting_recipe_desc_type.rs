@@ -155,7 +155,6 @@ impl __sdk::__query_builder::HasCols for CraftingRecipeDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct CraftingRecipeDescIxCols {
     pub id: __sdk::__query_builder::IxCol<CraftingRecipeDesc, i32>,
-    pub show_in_progression: __sdk::__query_builder::IxCol<CraftingRecipeDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for CraftingRecipeDesc {
@@ -163,10 +162,6 @@ impl __sdk::__query_builder::HasIxCols for CraftingRecipeDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         CraftingRecipeDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            show_in_progression: __sdk::__query_builder::IxCol::new(
-                table_name,
-                "show_in_progression",
-            ),
         }
     }
 }

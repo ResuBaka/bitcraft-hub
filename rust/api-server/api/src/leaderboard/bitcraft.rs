@@ -339,7 +339,7 @@ impl ExperienceStateWorker {
                     self.global_app_state
                         .ranking_system
                         .profession_leaderboard
-                        .update(value.entity_id as i64, adventure_exp);
+                        .update(value.entity_id as i64, profession_exp);
                 }
 
                 model
@@ -366,6 +366,14 @@ impl ExperienceStateWorker {
                     entry.remove();
                 }
                 Entry::Vacant(_entry) => {
+                    if let Some(skill_leaderboard) = self
+                        .global_app_state
+                        .ranking_system
+                        .skill_leaderboards
+                        .get_mut(&(model.skill_id as i64))
+                    {
+                        skill_leaderboard.update(model.entity_id, model.experience as i64);
+                    }
                     local_messages.push(model.into_active_model());
                 }
             }
@@ -442,8 +450,7 @@ impl ExperienceStateWorker {
             .global_app_state
             .ranking_system
             .global_leaderboard
-            .scores
-            .get(&(new.entity_id as i64));
+            .get_value(&(new.entity_id as i64));
         let mut xp_per_hour = 0;
         if let Some(player_state) = self
             .global_app_state
@@ -467,7 +474,7 @@ impl ExperienceStateWorker {
             .update(new.entity_id as i64, adventure_exp);
 
         if let Some(current_score) = current_score {
-            let current_known_xp = *current_score.value();
+            let current_known_xp = current_score;
 
             if current_known_xp < total_exp {
                 self.global_app_state

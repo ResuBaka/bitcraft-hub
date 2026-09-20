@@ -3,7 +3,7 @@ import type { SortingState } from "@tanstack/vue-table";
 import { getSortedRowModel } from "@tanstack/vue-table";
 import type { ClaimDescriptionStateMember } from "~/types/ClaimDescriptionStateMember";
 import type { ItemExpended } from "~/types/ItemExpended";
-import { levelToColor } from "~/utils";
+import { expToLevel, levelToColor } from "~/utils";
 
 defineProps<{
   onlinePlayersCount: number;
@@ -156,7 +156,7 @@ const emit = defineEmits<{
             :class="levelToColor(row.original?.skills_ranks?.[skill] ?? 0)"
             :style="tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))"
           >
-            {{ row.original?.skills_ranks?.[skill] ?? 0 }}
+            {{ expToLevel(row.original?.skills_ranks?.[skill] ?? 0) }}
           </span>
           <span
             v-if="getToolLabel(getSkillTool(row.original, skill))"
@@ -182,7 +182,7 @@ const emit = defineEmits<{
             :class="`${levelToColor(row.original?.skills_ranks?.[skill] ?? 0)} ${skillToToolIndex[skill] ? '' : 'rounded-r-full'}`"
             :style="tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))"
           >
-            {{ row.original?.skills_ranks?.[skill] ?? 0 }}
+            {{ expToLevel(row.original?.skills_ranks?.[skill] ?? 0) }}
           </span>
           <span
             v-if="getToolLabel(getSkillTool(row.original, skill))"

@@ -7,6 +7,7 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 use super::footprint_tile_type::FootprintTile;
 use super::item_stack_type::ItemStack;
 use super::rarity_type::Rarity;
+use super::resource_destroy_building_outcome_type::ResourceDestroyBuildingOutcome;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
@@ -43,6 +44,7 @@ pub struct ResourceDesc {
     pub water_depth_min: i32,
     pub water_depth_max: i32,
     pub max_elevation_delta: i32,
+    pub on_destroy_building_outcomes: Option<Vec<ResourceDestroyBuildingOutcome>>,
 }
 
 impl __sdk::InModule for ResourceDesc {
@@ -85,6 +87,8 @@ pub struct ResourceDescCols {
     pub water_depth_min: __sdk::__query_builder::Col<ResourceDesc, i32>,
     pub water_depth_max: __sdk::__query_builder::Col<ResourceDesc, i32>,
     pub max_elevation_delta: __sdk::__query_builder::Col<ResourceDesc, i32>,
+    pub on_destroy_building_outcomes:
+        __sdk::__query_builder::Col<ResourceDesc, Option<Vec<ResourceDestroyBuildingOutcome>>>,
 }
 
 impl __sdk::__query_builder::HasCols for ResourceDesc {
@@ -140,6 +144,10 @@ impl __sdk::__query_builder::HasCols for ResourceDesc {
             max_elevation_delta: __sdk::__query_builder::Col::new(
                 table_name,
                 "max_elevation_delta",
+            ),
+            on_destroy_building_outcomes: __sdk::__query_builder::Col::new(
+                table_name,
+                "on_destroy_building_outcomes",
             ),
         }
     }

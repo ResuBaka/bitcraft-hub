@@ -82,7 +82,6 @@ impl __sdk::__query_builder::HasCols for ItemDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct ItemDescIxCols {
     pub id: __sdk::__query_builder::IxCol<ItemDesc, i32>,
-    pub tag: __sdk::__query_builder::IxCol<ItemDesc, String>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ItemDesc {
@@ -90,7 +89,6 @@ impl __sdk::__query_builder::HasIxCols for ItemDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ItemDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            tag: __sdk::__query_builder::IxCol::new(table_name, "tag"),
         }
     }
 }

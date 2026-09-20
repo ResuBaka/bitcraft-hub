@@ -185,7 +185,7 @@ pub(crate) struct ClaimDescriptionStateMember {
     pub officer_permission: bool,
     pub co_owner_permission: bool,
     pub online_state: OnlineState,
-    pub skills_ranks: Option<BTreeMap<String, i32>>,
+    pub skills_ranks: Option<BTreeMap<String, i64>>,
     pub inventory: Option<ResolvedInventory>,
 }
 
@@ -507,8 +507,8 @@ pub(crate) async fn get_claim(
 
         if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id) {
             for member in claim.members.iter_mut() {
-                let level = if let Some(a) = a.scores.get(&member.entity_id) {
-                    experience_to_level(*a)
+                let xp = if let Some(a) = a.scores.get(&member.entity_id) {
+                    *a
                 } else {
                     tracing::warn!(
                         member.entity_id,
@@ -523,7 +523,7 @@ pub(crate) async fn get_claim(
                 }
 
                 let skills_ranks = member.skills_ranks.as_mut().unwrap();
-                skills_ranks.insert(skill.name.clone(), level);
+                skills_ranks.insert(skill.name.clone(), xp);
             }
         } else {
             continue;

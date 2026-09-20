@@ -1522,6 +1522,7 @@ pub mod resource_count_table;
 pub mod resource_count_type;
 pub mod resource_desc_table;
 pub mod resource_desc_type;
+pub mod resource_destroy_building_outcome_type;
 pub mod resource_growth_recipe_desc_table;
 pub mod resource_growth_recipe_desc_type;
 pub mod resource_growth_scheduled_reducer;
@@ -4966,6 +4967,7 @@ pub use resource_count_table::*;
 pub use resource_count_type::ResourceCount;
 pub use resource_desc_table::*;
 pub use resource_desc_type::ResourceDesc;
+pub use resource_destroy_building_outcome_type::ResourceDestroyBuildingOutcome;
 pub use resource_growth_recipe_desc_table::*;
 pub use resource_growth_recipe_desc_type::ResourceGrowthRecipeDesc;
 pub use resource_growth_scheduled_reducer::{

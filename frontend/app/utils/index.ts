@@ -1,3 +1,5 @@
+import { levelMap } from "~/consts/exp";
+
 export const levelToColor = (level: number) => {
   const tier = levelToTier(level);
   return `text-tier-${tier}`;
@@ -126,4 +128,29 @@ export const useDelayedPending = (pending: Ref<boolean>, delayMs: number) => {
   });
 
   return showPending;
+};
+
+export const expToLevel = (experience: number | null) => {
+  if (experience === null || !Number.isFinite(experience) || experience < levelMap[1]) {
+    return 0;
+  }
+
+  const levels = Object.keys(levelMap).map(Number);
+  let low = 0;
+  let high = levels.length - 1;
+  let result = 0;
+
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    const level = levels[middle];
+
+    if (levelMap[level] <= experience) {
+      result = level;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+
+  return result;
 };
