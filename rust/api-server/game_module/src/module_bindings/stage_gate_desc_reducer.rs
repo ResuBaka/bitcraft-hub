@@ -24,8 +24,6 @@ impl __sdk::InModule for StageGateDescArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct StageGateDescCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `stage_gate_desc`.
 ///
@@ -35,73 +33,42 @@ pub trait stage_gate_desc {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_stage_gate_desc`] callbacks.
-    fn stage_gate_desc(&self, records: Vec<GateDesc>) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_gate_desc`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`stage_gate_desc:stage_gate_desc_then`] to run a callback after the reducer completes.
+    fn stage_gate_desc(&self, records: Vec<GateDesc>) -> __sdk::Result<()> {
+        self.stage_gate_desc_then(records, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `stage_gate_desc` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`StageGateDescCallbackId`] can be passed to [`Self::remove_on_stage_gate_desc`]
-    /// to cancel the callback.
-    fn on_stage_gate_desc(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn stage_gate_desc_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<GateDesc>) + Send + 'static,
-    ) -> StageGateDescCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_stage_gate_desc`],
-    /// causing it not to run in the future.
-    fn remove_on_stage_gate_desc(&self, callback: StageGateDescCallbackId);
+        records: Vec<GateDesc>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl stage_gate_desc for super::RemoteReducers {
-    fn stage_gate_desc(&self, records: Vec<GateDesc>) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("stage_gate_desc", StageGateDescArgs { records })
-    }
-    fn on_stage_gate_desc(
+    fn stage_gate_desc_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<GateDesc>) + Send + 'static,
-    ) -> StageGateDescCallbackId {
-        StageGateDescCallbackId(self.imp.on_reducer(
-            "stage_gate_desc",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::StageGateDesc { records },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, records)
-            }),
-        ))
-    }
-    fn remove_on_stage_gate_desc(&self, callback: StageGateDescCallbackId) {
-        self.imp.remove_on_reducer("stage_gate_desc", callback.0)
-    }
-}
+        records: Vec<GateDesc>,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `stage_gate_desc`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_stage_gate_desc {
-    /// Set the call-reducer flags for the reducer `stage_gate_desc` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn stage_gate_desc(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_stage_gate_desc for super::SetReducerFlags {
-    fn stage_gate_desc(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("stage_gate_desc", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(StageGateDescArgs { records }, callback)
     }
 }

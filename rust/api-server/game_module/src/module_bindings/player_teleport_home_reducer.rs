@@ -24,8 +24,6 @@ impl __sdk::InModule for PlayerTeleportHomeArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PlayerTeleportHomeCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `player_teleport_home`.
 ///
@@ -35,77 +33,42 @@ pub trait player_teleport_home {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_player_teleport_home`] callbacks.
-    fn player_teleport_home(&self, request: PlayerTeleportHomeRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `player_teleport_home`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`player_teleport_home:player_teleport_home_then`] to run a callback after the reducer completes.
+    fn player_teleport_home(&self, request: PlayerTeleportHomeRequest) -> __sdk::Result<()> {
+        self.player_teleport_home_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `player_teleport_home` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PlayerTeleportHomeCallbackId`] can be passed to [`Self::remove_on_player_teleport_home`]
-    /// to cancel the callback.
-    fn on_player_teleport_home(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn player_teleport_home_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerTeleportHomeRequest) + Send + 'static,
-    ) -> PlayerTeleportHomeCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_player_teleport_home`],
-    /// causing it not to run in the future.
-    fn remove_on_player_teleport_home(&self, callback: PlayerTeleportHomeCallbackId);
+        request: PlayerTeleportHomeRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl player_teleport_home for super::RemoteReducers {
-    fn player_teleport_home(&self, request: PlayerTeleportHomeRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("player_teleport_home", PlayerTeleportHomeArgs { request })
-    }
-    fn on_player_teleport_home(
+    fn player_teleport_home_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTeleportHomeRequest)
-        + Send
+        request: PlayerTeleportHomeRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> PlayerTeleportHomeCallbackId {
-        PlayerTeleportHomeCallbackId(self.imp.on_reducer(
-            "player_teleport_home",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::PlayerTeleportHome { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_player_teleport_home(&self, callback: PlayerTeleportHomeCallbackId) {
+    ) -> __sdk::Result<()> {
         self.imp
-            .remove_on_reducer("player_teleport_home", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `player_teleport_home`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_player_teleport_home {
-    /// Set the call-reducer flags for the reducer `player_teleport_home` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn player_teleport_home(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_player_teleport_home for super::SetReducerFlags {
-    fn player_teleport_home(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("player_teleport_home", flags);
+            .invoke_reducer_with_callback(PlayerTeleportHomeArgs { request }, callback)
     }
 }

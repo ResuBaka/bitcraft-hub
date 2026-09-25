@@ -24,8 +24,6 @@ impl __sdk::InModule for TargetUpdateArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct TargetUpdateCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `target_update`.
 ///
@@ -35,73 +33,42 @@ pub trait target_update {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_target_update`] callbacks.
-    fn target_update(&self, request: TargetUpdateRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `target_update`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`target_update:target_update_then`] to run a callback after the reducer completes.
+    fn target_update(&self, request: TargetUpdateRequest) -> __sdk::Result<()> {
+        self.target_update_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `target_update` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`TargetUpdateCallbackId`] can be passed to [`Self::remove_on_target_update`]
-    /// to cancel the callback.
-    fn on_target_update(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn target_update_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &TargetUpdateRequest) + Send + 'static,
-    ) -> TargetUpdateCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_target_update`],
-    /// causing it not to run in the future.
-    fn remove_on_target_update(&self, callback: TargetUpdateCallbackId);
+        request: TargetUpdateRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl target_update for super::RemoteReducers {
-    fn target_update(&self, request: TargetUpdateRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("target_update", TargetUpdateArgs { request })
-    }
-    fn on_target_update(
+    fn target_update_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &TargetUpdateRequest) + Send + 'static,
-    ) -> TargetUpdateCallbackId {
-        TargetUpdateCallbackId(self.imp.on_reducer(
-            "target_update",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::TargetUpdate { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_target_update(&self, callback: TargetUpdateCallbackId) {
-        self.imp.remove_on_reducer("target_update", callback.0)
-    }
-}
+        request: TargetUpdateRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `target_update`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_target_update {
-    /// Set the call-reducer flags for the reducer `target_update` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn target_update(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_target_update for super::SetReducerFlags {
-    fn target_update(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("target_update", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(TargetUpdateArgs { request }, callback)
     }
 }

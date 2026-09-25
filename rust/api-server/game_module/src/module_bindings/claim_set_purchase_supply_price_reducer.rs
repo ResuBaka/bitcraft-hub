@@ -24,8 +24,6 @@ impl __sdk::InModule for ClaimSetPurchaseSupplyPriceArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ClaimSetPurchaseSupplyPriceCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `claim_set_purchase_supply_price`.
 ///
@@ -35,93 +33,45 @@ pub trait claim_set_purchase_supply_price {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_claim_set_purchase_supply_price`] callbacks.
-    fn claim_set_purchase_supply_price(
-        &self,
-        request: ClaimSetPurchaseSupplyPriceRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `claim_set_purchase_supply_price`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ClaimSetPurchaseSupplyPriceCallbackId`] can be passed to [`Self::remove_on_claim_set_purchase_supply_price`]
-    /// to cancel the callback.
-    fn on_claim_set_purchase_supply_price(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &ClaimSetPurchaseSupplyPriceRequest)
-        + Send
-        + 'static,
-    ) -> ClaimSetPurchaseSupplyPriceCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_claim_set_purchase_supply_price`],
-    /// causing it not to run in the future.
-    fn remove_on_claim_set_purchase_supply_price(
-        &self,
-        callback: ClaimSetPurchaseSupplyPriceCallbackId,
-    );
-}
-
-impl claim_set_purchase_supply_price for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`claim_set_purchase_supply_price:claim_set_purchase_supply_price_then`] to run a callback after the reducer completes.
     fn claim_set_purchase_supply_price(
         &self,
         request: ClaimSetPurchaseSupplyPriceRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "claim_set_purchase_supply_price",
-            ClaimSetPurchaseSupplyPriceArgs { request },
-        )
+        self.claim_set_purchase_supply_price_then(request, |_, _| {})
     }
-    fn on_claim_set_purchase_supply_price(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &ClaimSetPurchaseSupplyPriceRequest)
-        + Send
-        + 'static,
-    ) -> ClaimSetPurchaseSupplyPriceCallbackId {
-        ClaimSetPurchaseSupplyPriceCallbackId(self.imp.on_reducer(
-            "claim_set_purchase_supply_price",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ClaimSetPurchaseSupplyPrice { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_claim_set_purchase_supply_price(
-        &self,
-        callback: ClaimSetPurchaseSupplyPriceCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("claim_set_purchase_supply_price", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `claim_set_purchase_supply_price`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_claim_set_purchase_supply_price {
-    /// Set the call-reducer flags for the reducer `claim_set_purchase_supply_price` to `flags`.
+    /// Request that the remote module invoke the reducer `claim_set_purchase_supply_price` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn claim_set_purchase_supply_price(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn claim_set_purchase_supply_price_then(
+        &self,
+        request: ClaimSetPurchaseSupplyPriceRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_claim_set_purchase_supply_price for super::SetReducerFlags {
-    fn claim_set_purchase_supply_price(&self, flags: __ws::CallReducerFlags) {
+impl claim_set_purchase_supply_price for super::RemoteReducers {
+    fn claim_set_purchase_supply_price_then(
+        &self,
+        request: ClaimSetPurchaseSupplyPriceRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("claim_set_purchase_supply_price", flags);
+            .invoke_reducer_with_callback(ClaimSetPurchaseSupplyPriceArgs { request }, callback)
     }
 }

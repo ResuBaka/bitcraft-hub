@@ -81,3 +81,5 @@ impl __sdk::__query_builder::HasIxCols for EnemyAiParamsDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EnemyAiParamsDesc {}

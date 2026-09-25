@@ -93,3 +93,5 @@ impl __sdk::__query_builder::HasIxCols for ClaimLocalState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ClaimLocalState {}

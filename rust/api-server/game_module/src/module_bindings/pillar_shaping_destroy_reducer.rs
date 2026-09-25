@@ -24,8 +24,6 @@ impl __sdk::InModule for PillarShapingDestroyArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PillarShapingDestroyCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `pillar_shaping_destroy`.
 ///
@@ -35,87 +33,45 @@ pub trait pillar_shaping_destroy {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_pillar_shaping_destroy`] callbacks.
-    fn pillar_shaping_destroy(
-        &self,
-        request: PlayerPillarShapingDestroyRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `pillar_shaping_destroy`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PillarShapingDestroyCallbackId`] can be passed to [`Self::remove_on_pillar_shaping_destroy`]
-    /// to cancel the callback.
-    fn on_pillar_shaping_destroy(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingDestroyRequest)
-        + Send
-        + 'static,
-    ) -> PillarShapingDestroyCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_pillar_shaping_destroy`],
-    /// causing it not to run in the future.
-    fn remove_on_pillar_shaping_destroy(&self, callback: PillarShapingDestroyCallbackId);
-}
-
-impl pillar_shaping_destroy for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`pillar_shaping_destroy:pillar_shaping_destroy_then`] to run a callback after the reducer completes.
     fn pillar_shaping_destroy(
         &self,
         request: PlayerPillarShapingDestroyRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "pillar_shaping_destroy",
-            PillarShapingDestroyArgs { request },
-        )
+        self.pillar_shaping_destroy_then(request, |_, _| {})
     }
-    fn on_pillar_shaping_destroy(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingDestroyRequest)
-        + Send
-        + 'static,
-    ) -> PillarShapingDestroyCallbackId {
-        PillarShapingDestroyCallbackId(self.imp.on_reducer(
-            "pillar_shaping_destroy",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::PillarShapingDestroy { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_pillar_shaping_destroy(&self, callback: PillarShapingDestroyCallbackId) {
-        self.imp
-            .remove_on_reducer("pillar_shaping_destroy", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `pillar_shaping_destroy`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_pillar_shaping_destroy {
-    /// Set the call-reducer flags for the reducer `pillar_shaping_destroy` to `flags`.
+    /// Request that the remote module invoke the reducer `pillar_shaping_destroy` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn pillar_shaping_destroy(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn pillar_shaping_destroy_then(
+        &self,
+        request: PlayerPillarShapingDestroyRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_pillar_shaping_destroy for super::SetReducerFlags {
-    fn pillar_shaping_destroy(&self, flags: __ws::CallReducerFlags) {
+impl pillar_shaping_destroy for super::RemoteReducers {
+    fn pillar_shaping_destroy_then(
+        &self,
+        request: PlayerPillarShapingDestroyRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("pillar_shaping_destroy", flags);
+            .invoke_reducer_with_callback(PillarShapingDestroyArgs { request }, callback)
     }
 }

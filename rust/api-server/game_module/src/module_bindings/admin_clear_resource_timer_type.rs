@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for AdminClearResourceTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for AdminClearResourceTimer {}

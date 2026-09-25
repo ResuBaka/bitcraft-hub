@@ -24,8 +24,6 @@ impl __sdk::InModule for OrderEditBuyOrderArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct OrderEditBuyOrderCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `order_edit_buy_order`.
 ///
@@ -35,75 +33,42 @@ pub trait order_edit_buy_order {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_order_edit_buy_order`] callbacks.
-    fn order_edit_buy_order(&self, request: PlayerEditOrderRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `order_edit_buy_order`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`order_edit_buy_order:order_edit_buy_order_then`] to run a callback after the reducer completes.
+    fn order_edit_buy_order(&self, request: PlayerEditOrderRequest) -> __sdk::Result<()> {
+        self.order_edit_buy_order_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `order_edit_buy_order` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`OrderEditBuyOrderCallbackId`] can be passed to [`Self::remove_on_order_edit_buy_order`]
-    /// to cancel the callback.
-    fn on_order_edit_buy_order(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn order_edit_buy_order_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerEditOrderRequest) + Send + 'static,
-    ) -> OrderEditBuyOrderCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_order_edit_buy_order`],
-    /// causing it not to run in the future.
-    fn remove_on_order_edit_buy_order(&self, callback: OrderEditBuyOrderCallbackId);
+        request: PlayerEditOrderRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl order_edit_buy_order for super::RemoteReducers {
-    fn order_edit_buy_order(&self, request: PlayerEditOrderRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("order_edit_buy_order", OrderEditBuyOrderArgs { request })
-    }
-    fn on_order_edit_buy_order(
+    fn order_edit_buy_order_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerEditOrderRequest) + Send + 'static,
-    ) -> OrderEditBuyOrderCallbackId {
-        OrderEditBuyOrderCallbackId(self.imp.on_reducer(
-            "order_edit_buy_order",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::OrderEditBuyOrder { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_order_edit_buy_order(&self, callback: OrderEditBuyOrderCallbackId) {
-        self.imp
-            .remove_on_reducer("order_edit_buy_order", callback.0)
-    }
-}
+        request: PlayerEditOrderRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `order_edit_buy_order`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_order_edit_buy_order {
-    /// Set the call-reducer flags for the reducer `order_edit_buy_order` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn order_edit_buy_order(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_order_edit_buy_order for super::SetReducerFlags {
-    fn order_edit_buy_order(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("order_edit_buy_order", flags);
+            .invoke_reducer_with_callback(OrderEditBuyOrderArgs { request }, callback)
     }
 }

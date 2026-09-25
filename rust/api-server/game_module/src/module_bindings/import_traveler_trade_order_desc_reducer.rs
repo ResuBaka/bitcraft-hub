@@ -24,8 +24,6 @@ impl __sdk::InModule for ImportTravelerTradeOrderDescArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ImportTravelerTradeOrderDescCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `import_traveler_trade_order_desc`.
 ///
@@ -35,91 +33,45 @@ pub trait import_traveler_trade_order_desc {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_import_traveler_trade_order_desc`] callbacks.
-    fn import_traveler_trade_order_desc(
-        &self,
-        records: Vec<TravelerTradeOrderDesc>,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `import_traveler_trade_order_desc`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ImportTravelerTradeOrderDescCallbackId`] can be passed to [`Self::remove_on_import_traveler_trade_order_desc`]
-    /// to cancel the callback.
-    fn on_import_traveler_trade_order_desc(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTradeOrderDesc>) + Send + 'static,
-    ) -> ImportTravelerTradeOrderDescCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_import_traveler_trade_order_desc`],
-    /// causing it not to run in the future.
-    fn remove_on_import_traveler_trade_order_desc(
-        &self,
-        callback: ImportTravelerTradeOrderDescCallbackId,
-    );
-}
-
-impl import_traveler_trade_order_desc for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`import_traveler_trade_order_desc:import_traveler_trade_order_desc_then`] to run a callback after the reducer completes.
     fn import_traveler_trade_order_desc(
         &self,
         records: Vec<TravelerTradeOrderDesc>,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "import_traveler_trade_order_desc",
-            ImportTravelerTradeOrderDescArgs { records },
-        )
+        self.import_traveler_trade_order_desc_then(records, |_, _| {})
     }
-    fn on_import_traveler_trade_order_desc(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTradeOrderDesc>)
-        + Send
-        + 'static,
-    ) -> ImportTravelerTradeOrderDescCallbackId {
-        ImportTravelerTradeOrderDescCallbackId(self.imp.on_reducer(
-            "import_traveler_trade_order_desc",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ImportTravelerTradeOrderDesc { records },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, records)
-            }),
-        ))
-    }
-    fn remove_on_import_traveler_trade_order_desc(
-        &self,
-        callback: ImportTravelerTradeOrderDescCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("import_traveler_trade_order_desc", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `import_traveler_trade_order_desc`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_import_traveler_trade_order_desc {
-    /// Set the call-reducer flags for the reducer `import_traveler_trade_order_desc` to `flags`.
+    /// Request that the remote module invoke the reducer `import_traveler_trade_order_desc` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn import_traveler_trade_order_desc(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn import_traveler_trade_order_desc_then(
+        &self,
+        records: Vec<TravelerTradeOrderDesc>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_import_traveler_trade_order_desc for super::SetReducerFlags {
-    fn import_traveler_trade_order_desc(&self, flags: __ws::CallReducerFlags) {
+impl import_traveler_trade_order_desc for super::RemoteReducers {
+    fn import_traveler_trade_order_desc_then(
+        &self,
+        records: Vec<TravelerTradeOrderDesc>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("import_traveler_trade_order_desc", flags);
+            .invoke_reducer_with_callback(ImportTravelerTradeOrderDescArgs { records }, callback)
     }
 }

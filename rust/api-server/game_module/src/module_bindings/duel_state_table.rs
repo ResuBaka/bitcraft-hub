@@ -18,6 +18,18 @@ pub struct DuelStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `duel_state`.
+pub struct DuelStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for DuelStateTableAccessor {
+    type Row = DuelState;
+    type Handle<'db> = DuelStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.duel_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `duel_state`.
 ///
@@ -40,6 +52,16 @@ impl DuelStateTableAccess for super::RemoteTables {
 pub struct DuelStateInitialCallbackId(__sdk::CallbackId);
 pub struct DuelStateInsertCallbackId(__sdk::CallbackId);
 pub struct DuelStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for DuelStateTableHandle<'ctx> {
+    type Row = DuelState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = DuelState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> DuelStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,16 +123,36 @@ impl<'ctx> __sdk::Table for DuelStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for DuelStateTableHandle<'ctx> {
+    type InsertCallbackId = DuelStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<DuelState>("duel_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
-    _table.add_unique_constraint::<u64>("initiator_entity_id", |row| &row.initiator_entity_id);
-    _table.add_unique_constraint::<u64>("acceptor_entity_id", |row| &row.acceptor_entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DuelStateInsertCallbackId {
+        DuelStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: DuelStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for DuelStateTableHandle<'ctx> {
+    type DeleteCallbackId = DuelStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DuelStateDeleteCallbackId {
+        DuelStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: DuelStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct DuelStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for DuelStateTableHandle<'ctx> {
@@ -128,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for DuelStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<DuelState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<DuelState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for DuelStateTableHandle<'ctx> {
+    type UpdateCallbackId = DuelStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> DuelStateUpdateCallbackId {
+        DuelStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: DuelStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -233,6 +279,28 @@ impl<'ctx> DuelStateAcceptorEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<DuelState>("duel_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    _table.add_unique_constraint::<u64>("initiator_entity_id", |row| &row.initiator_entity_id);
+    _table.add_unique_constraint::<u64>("acceptor_entity_id", |row| &row.acceptor_entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<DuelState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<DuelState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

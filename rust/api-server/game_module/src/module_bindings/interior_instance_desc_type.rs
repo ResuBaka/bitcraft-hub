@@ -99,3 +99,5 @@ impl __sdk::__query_builder::HasIxCols for InteriorInstanceDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for InteriorInstanceDesc {}

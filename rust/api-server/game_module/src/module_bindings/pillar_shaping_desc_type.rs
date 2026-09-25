@@ -103,3 +103,5 @@ impl __sdk::__query_builder::HasIxCols for PillarShapingDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PillarShapingDesc {}

@@ -56,3 +56,5 @@ impl __sdk::__query_builder::HasIxCols for BuildingClaimDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for BuildingClaimDesc {}

@@ -22,8 +22,6 @@ impl __sdk::InModule for AdminAlpha3ResetOnboardingToFourthTempleQuestArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_alpha3_reset_onboarding_to_fourth_temple_quest`.
 ///
@@ -33,98 +31,47 @@ pub trait admin_alpha_3_reset_onboarding_to_fourth_temple_quest {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_alpha_3_reset_onboarding_to_fourth_temple_quest`] callbacks.
-    fn admin_alpha_3_reset_onboarding_to_fourth_temple_quest(
-        &self,
-        entity_id: u64,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_alpha3_reset_onboarding_to_fourth_temple_quest`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId`] can be passed to [`Self::remove_on_admin_alpha_3_reset_onboarding_to_fourth_temple_quest`]
-    /// to cancel the callback.
-    fn on_admin_alpha_3_reset_onboarding_to_fourth_temple_quest(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_alpha_3_reset_onboarding_to_fourth_temple_quest`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_alpha_3_reset_onboarding_to_fourth_temple_quest(
-        &self,
-        callback: AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId,
-    );
-}
-
-impl admin_alpha_3_reset_onboarding_to_fourth_temple_quest for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_alpha_3_reset_onboarding_to_fourth_temple_quest:admin_alpha_3_reset_onboarding_to_fourth_temple_quest_then`] to run a callback after the reducer completes.
     fn admin_alpha_3_reset_onboarding_to_fourth_temple_quest(
         &self,
         entity_id: u64,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_alpha3_reset_onboarding_to_fourth_temple_quest",
-            AdminAlpha3ResetOnboardingToFourthTempleQuestArgs { entity_id },
-        )
+        self.admin_alpha_3_reset_onboarding_to_fourth_temple_quest_then(entity_id, |_, _| {})
     }
-    fn on_admin_alpha_3_reset_onboarding_to_fourth_temple_quest(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId {
-        AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId(self.imp.on_reducer(
-            "admin_alpha3_reset_onboarding_to_fourth_temple_quest",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminAlpha3ResetOnboardingToFourthTempleQuest {
-                                    entity_id,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, entity_id)
-            }),
-        ))
-    }
-    fn remove_on_admin_alpha_3_reset_onboarding_to_fourth_temple_quest(
-        &self,
-        callback: AdminAlpha3ResetOnboardingToFourthTempleQuestCallbackId,
-    ) {
-        self.imp.remove_on_reducer(
-            "admin_alpha3_reset_onboarding_to_fourth_temple_quest",
-            callback.0,
-        )
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_alpha3_reset_onboarding_to_fourth_temple_quest`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_alpha_3_reset_onboarding_to_fourth_temple_quest {
-    /// Set the call-reducer flags for the reducer `admin_alpha3_reset_onboarding_to_fourth_temple_quest` to `flags`.
+    /// Request that the remote module invoke the reducer `admin_alpha3_reset_onboarding_to_fourth_temple_quest` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_alpha_3_reset_onboarding_to_fourth_temple_quest(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_alpha_3_reset_onboarding_to_fourth_temple_quest_then(
+        &self,
+        entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_admin_alpha_3_reset_onboarding_to_fourth_temple_quest
-    for super::SetReducerFlags
-{
-    fn admin_alpha_3_reset_onboarding_to_fourth_temple_quest(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags(
-            "admin_alpha3_reset_onboarding_to_fourth_temple_quest",
-            flags,
-        );
+impl admin_alpha_3_reset_onboarding_to_fourth_temple_quest for super::RemoteReducers {
+    fn admin_alpha_3_reset_onboarding_to_fourth_temple_quest_then(
+        &self,
+        entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
+            AdminAlpha3ResetOnboardingToFourthTempleQuestArgs { entity_id },
+            callback,
+        )
     }
 }

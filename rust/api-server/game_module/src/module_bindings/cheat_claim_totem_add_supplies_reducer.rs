@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatClaimTotemAddSuppliesArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatClaimTotemAddSuppliesCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_claim_totem_add_supplies`.
 ///
@@ -35,98 +33,53 @@ pub trait cheat_claim_totem_add_supplies {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_claim_totem_add_supplies`] callbacks.
-    fn cheat_claim_totem_add_supplies(
-        &self,
-        claim_entity_id: u64,
-        amount: f32,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_claim_totem_add_supplies`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatClaimTotemAddSuppliesCallbackId`] can be passed to [`Self::remove_on_cheat_claim_totem_add_supplies`]
-    /// to cancel the callback.
-    fn on_cheat_claim_totem_add_supplies(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &f32) + Send + 'static,
-    ) -> CheatClaimTotemAddSuppliesCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_claim_totem_add_supplies`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_claim_totem_add_supplies(
-        &self,
-        callback: CheatClaimTotemAddSuppliesCallbackId,
-    );
-}
-
-impl cheat_claim_totem_add_supplies for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_claim_totem_add_supplies:cheat_claim_totem_add_supplies_then`] to run a callback after the reducer completes.
     fn cheat_claim_totem_add_supplies(
         &self,
         claim_entity_id: u64,
         amount: f32,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "cheat_claim_totem_add_supplies",
+        self.cheat_claim_totem_add_supplies_then(claim_entity_id, amount, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `cheat_claim_totem_add_supplies` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_claim_totem_add_supplies_then(
+        &self,
+        claim_entity_id: u64,
+        amount: f32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl cheat_claim_totem_add_supplies for super::RemoteReducers {
+    fn cheat_claim_totem_add_supplies_then(
+        &self,
+        claim_entity_id: u64,
+        amount: f32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             CheatClaimTotemAddSuppliesArgs {
                 claim_entity_id,
                 amount,
             },
+            callback,
         )
-    }
-    fn on_cheat_claim_totem_add_supplies(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &f32) + Send + 'static,
-    ) -> CheatClaimTotemAddSuppliesCallbackId {
-        CheatClaimTotemAddSuppliesCallbackId(self.imp.on_reducer(
-            "cheat_claim_totem_add_supplies",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::CheatClaimTotemAddSupplies {
-                                    claim_entity_id,
-                                    amount,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, claim_entity_id, amount)
-            }),
-        ))
-    }
-    fn remove_on_cheat_claim_totem_add_supplies(
-        &self,
-        callback: CheatClaimTotemAddSuppliesCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("cheat_claim_totem_add_supplies", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_claim_totem_add_supplies`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_claim_totem_add_supplies {
-    /// Set the call-reducer flags for the reducer `cheat_claim_totem_add_supplies` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_claim_totem_add_supplies(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_cheat_claim_totem_add_supplies for super::SetReducerFlags {
-    fn cheat_claim_totem_add_supplies(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("cheat_claim_totem_add_supplies", flags);
     }
 }

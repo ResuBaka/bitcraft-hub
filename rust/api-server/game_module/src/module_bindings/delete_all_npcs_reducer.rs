@@ -18,8 +18,6 @@ impl __sdk::InModule for DeleteAllNpcsArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DeleteAllNpcsCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `delete_all_npcs`.
 ///
@@ -29,73 +27,40 @@ pub trait delete_all_npcs {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_delete_all_npcs`] callbacks.
-    fn delete_all_npcs(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `delete_all_npcs`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`delete_all_npcs:delete_all_npcs_then`] to run a callback after the reducer completes.
+    fn delete_all_npcs(&self) -> __sdk::Result<()> {
+        self.delete_all_npcs_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `delete_all_npcs` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DeleteAllNpcsCallbackId`] can be passed to [`Self::remove_on_delete_all_npcs`]
-    /// to cancel the callback.
-    fn on_delete_all_npcs(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn delete_all_npcs_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> DeleteAllNpcsCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_delete_all_npcs`],
-    /// causing it not to run in the future.
-    fn remove_on_delete_all_npcs(&self, callback: DeleteAllNpcsCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl delete_all_npcs for super::RemoteReducers {
-    fn delete_all_npcs(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("delete_all_npcs", DeleteAllNpcsArgs {})
-    }
-    fn on_delete_all_npcs(
+    fn delete_all_npcs_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> DeleteAllNpcsCallbackId {
-        DeleteAllNpcsCallbackId(self.imp.on_reducer(
-            "delete_all_npcs",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::DeleteAllNpcs {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_delete_all_npcs(&self, callback: DeleteAllNpcsCallbackId) {
-        self.imp.remove_on_reducer("delete_all_npcs", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `delete_all_npcs`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_delete_all_npcs {
-    /// Set the call-reducer flags for the reducer `delete_all_npcs` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn delete_all_npcs(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_delete_all_npcs for super::SetReducerFlags {
-    fn delete_all_npcs(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("delete_all_npcs", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(DeleteAllNpcsArgs {}, callback)
     }
 }

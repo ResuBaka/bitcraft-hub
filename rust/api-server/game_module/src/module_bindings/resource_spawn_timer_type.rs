@@ -71,3 +71,5 @@ impl __sdk::__query_builder::HasIxCols for ResourceSpawnTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ResourceSpawnTimer {}

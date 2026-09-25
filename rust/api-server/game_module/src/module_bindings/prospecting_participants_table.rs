@@ -18,6 +18,18 @@ pub struct ProspectingParticipantsTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `prospecting_participants`.
+pub struct ProspectingParticipantsTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for ProspectingParticipantsTableAccessor {
+    type Row = ProspectingParticipant;
+    type Handle<'db> = ProspectingParticipantsTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.prospecting_participants()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `prospecting_participants`.
 ///
@@ -42,6 +54,16 @@ impl ProspectingParticipantsTableAccess for super::RemoteTables {
 pub struct ProspectingParticipantsInitialCallbackId(__sdk::CallbackId);
 pub struct ProspectingParticipantsInsertCallbackId(__sdk::CallbackId);
 pub struct ProspectingParticipantsDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for ProspectingParticipantsTableHandle<'ctx> {
+    type Row = ProspectingParticipant;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = ProspectingParticipant> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> ProspectingParticipantsTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,6 +125,36 @@ impl<'ctx> __sdk::Table for ProspectingParticipantsTableHandle<'ctx> {
     }
 }
 
+impl<'ctx> __sdk::WithInsert for ProspectingParticipantsTableHandle<'ctx> {
+    type InsertCallbackId = ProspectingParticipantsInsertCallbackId;
+
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ProspectingParticipantsInsertCallbackId {
+        ProspectingParticipantsInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: ProspectingParticipantsInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
+}
+
+impl<'ctx> __sdk::WithDelete for ProspectingParticipantsTableHandle<'ctx> {
+    type DeleteCallbackId = ProspectingParticipantsDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ProspectingParticipantsDeleteCallbackId {
+        ProspectingParticipantsDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: ProspectingParticipantsDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
+}
+
 __sdk::__if_client_cache! {
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
@@ -113,7 +165,7 @@ pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::Remote
 
 #[doc(hidden)]
 pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
+    raw_updates: __ws::v2::TableUpdate,
 ) -> __sdk::Result<__sdk::TableUpdate<ProspectingParticipant>> {
     __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
         __sdk::InternalError::failed_parse("TableUpdate<ProspectingParticipant>", "TableUpdate")

@@ -22,8 +22,6 @@ impl __sdk::InModule for RequestStageRewardArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct RequestStageRewardCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `request_stage_reward`.
 ///
@@ -33,75 +31,42 @@ pub trait request_stage_reward {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_request_stage_reward`] callbacks.
-    fn request_stage_reward(&self, reward_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `request_stage_reward`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`request_stage_reward:request_stage_reward_then`] to run a callback after the reducer completes.
+    fn request_stage_reward(&self, reward_id: i32) -> __sdk::Result<()> {
+        self.request_stage_reward_then(reward_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `request_stage_reward` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`RequestStageRewardCallbackId`] can be passed to [`Self::remove_on_request_stage_reward`]
-    /// to cancel the callback.
-    fn on_request_stage_reward(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn request_stage_reward_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> RequestStageRewardCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_request_stage_reward`],
-    /// causing it not to run in the future.
-    fn remove_on_request_stage_reward(&self, callback: RequestStageRewardCallbackId);
+        reward_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl request_stage_reward for super::RemoteReducers {
-    fn request_stage_reward(&self, reward_id: i32) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("request_stage_reward", RequestStageRewardArgs { reward_id })
-    }
-    fn on_request_stage_reward(
+    fn request_stage_reward_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> RequestStageRewardCallbackId {
-        RequestStageRewardCallbackId(self.imp.on_reducer(
-            "request_stage_reward",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::RequestStageReward { reward_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, reward_id)
-            }),
-        ))
-    }
-    fn remove_on_request_stage_reward(&self, callback: RequestStageRewardCallbackId) {
-        self.imp
-            .remove_on_reducer("request_stage_reward", callback.0)
-    }
-}
+        reward_id: i32,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `request_stage_reward`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_request_stage_reward {
-    /// Set the call-reducer flags for the reducer `request_stage_reward` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn request_stage_reward(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_request_stage_reward for super::SetReducerFlags {
-    fn request_stage_reward(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("request_stage_reward", flags);
+            .invoke_reducer_with_callback(RequestStageRewardArgs { reward_id }, callback)
     }
 }

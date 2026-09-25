@@ -22,8 +22,6 @@ impl __sdk::InModule for DiscoverEnemyArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DiscoverEnemyCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `discover_enemy`.
 ///
@@ -33,73 +31,42 @@ pub trait discover_enemy {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_discover_enemy`] callbacks.
-    fn discover_enemy(&self, enemy_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `discover_enemy`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`discover_enemy:discover_enemy_then`] to run a callback after the reducer completes.
+    fn discover_enemy(&self, enemy_id: i32) -> __sdk::Result<()> {
+        self.discover_enemy_then(enemy_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `discover_enemy` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DiscoverEnemyCallbackId`] can be passed to [`Self::remove_on_discover_enemy`]
-    /// to cancel the callback.
-    fn on_discover_enemy(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn discover_enemy_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverEnemyCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_discover_enemy`],
-    /// causing it not to run in the future.
-    fn remove_on_discover_enemy(&self, callback: DiscoverEnemyCallbackId);
+        enemy_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl discover_enemy for super::RemoteReducers {
-    fn discover_enemy(&self, enemy_id: i32) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("discover_enemy", DiscoverEnemyArgs { enemy_id })
-    }
-    fn on_discover_enemy(
+    fn discover_enemy_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverEnemyCallbackId {
-        DiscoverEnemyCallbackId(self.imp.on_reducer(
-            "discover_enemy",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::DiscoverEnemy { enemy_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, enemy_id)
-            }),
-        ))
-    }
-    fn remove_on_discover_enemy(&self, callback: DiscoverEnemyCallbackId) {
-        self.imp.remove_on_reducer("discover_enemy", callback.0)
-    }
-}
+        enemy_id: i32,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `discover_enemy`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_discover_enemy {
-    /// Set the call-reducer flags for the reducer `discover_enemy` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn discover_enemy(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_discover_enemy for super::SetReducerFlags {
-    fn discover_enemy(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("discover_enemy", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(DiscoverEnemyArgs { enemy_id }, callback)
     }
 }

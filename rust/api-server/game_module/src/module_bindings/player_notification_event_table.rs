@@ -19,6 +19,18 @@ pub struct PlayerNotificationEventTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `player_notification_event`.
+pub struct PlayerNotificationEventTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for PlayerNotificationEventTableAccessor {
+    type Row = PlayerNotificationEvent;
+    type Handle<'db> = PlayerNotificationEventTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.player_notification_event()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `player_notification_event`.
 ///
@@ -43,6 +55,16 @@ impl PlayerNotificationEventTableAccess for super::RemoteTables {
 pub struct PlayerNotificationEventInitialCallbackId(__sdk::CallbackId);
 pub struct PlayerNotificationEventInsertCallbackId(__sdk::CallbackId);
 pub struct PlayerNotificationEventDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for PlayerNotificationEventTableHandle<'ctx> {
+    type Row = PlayerNotificationEvent;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PlayerNotificationEvent> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> PlayerNotificationEventTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,14 +126,36 @@ impl<'ctx> __sdk::Table for PlayerNotificationEventTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for PlayerNotificationEventTableHandle<'ctx> {
+    type InsertCallbackId = PlayerNotificationEventInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<PlayerNotificationEvent>("player_notification_event");
-    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerNotificationEventInsertCallbackId {
+        PlayerNotificationEventInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: PlayerNotificationEventInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for PlayerNotificationEventTableHandle<'ctx> {
+    type DeleteCallbackId = PlayerNotificationEventDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerNotificationEventDeleteCallbackId {
+        PlayerNotificationEventDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: PlayerNotificationEventDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct PlayerNotificationEventUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for PlayerNotificationEventTableHandle<'ctx> {
@@ -129,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for PlayerNotificationEventTableHandle<'ct
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<PlayerNotificationEvent>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<PlayerNotificationEvent>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for PlayerNotificationEventTableHandle<'ctx> {
+    type UpdateCallbackId = PlayerNotificationEventUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> PlayerNotificationEventUpdateCallbackId {
+        PlayerNotificationEventUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: PlayerNotificationEventUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -170,6 +218,26 @@ impl<'ctx> PlayerNotificationEventScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<PlayerNotificationEvent>("player_notification_event");
+    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<PlayerNotificationEvent>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<PlayerNotificationEvent>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

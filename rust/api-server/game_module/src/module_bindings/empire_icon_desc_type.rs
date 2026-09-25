@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for EmpireIconDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EmpireIconDesc {}

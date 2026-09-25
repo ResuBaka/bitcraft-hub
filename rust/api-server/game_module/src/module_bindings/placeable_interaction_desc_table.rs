@@ -25,6 +25,18 @@ pub struct PlaceableInteractionDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `placeable_interaction_desc`.
+pub struct PlaceableInteractionDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for PlaceableInteractionDescTableAccessor {
+    type Row = PlaceableInteractionDesc;
+    type Handle<'db> = PlaceableInteractionDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.placeable_interaction_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `placeable_interaction_desc`.
 ///
@@ -49,6 +61,16 @@ impl PlaceableInteractionDescTableAccess for super::RemoteTables {
 pub struct PlaceableInteractionDescInitialCallbackId(__sdk::CallbackId);
 pub struct PlaceableInteractionDescInsertCallbackId(__sdk::CallbackId);
 pub struct PlaceableInteractionDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for PlaceableInteractionDescTableHandle<'ctx> {
+    type Row = PlaceableInteractionDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PlaceableInteractionDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> PlaceableInteractionDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -110,14 +132,36 @@ impl<'ctx> __sdk::Table for PlaceableInteractionDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for PlaceableInteractionDescTableHandle<'ctx> {
+    type InsertCallbackId = PlaceableInteractionDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<PlaceableInteractionDesc>("placeable_interaction_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlaceableInteractionDescInsertCallbackId {
+        PlaceableInteractionDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: PlaceableInteractionDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for PlaceableInteractionDescTableHandle<'ctx> {
+    type DeleteCallbackId = PlaceableInteractionDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlaceableInteractionDescDeleteCallbackId {
+        PlaceableInteractionDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: PlaceableInteractionDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct PlaceableInteractionDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for PlaceableInteractionDescTableHandle<'ctx> {
@@ -135,15 +179,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for PlaceableInteractionDescTableHandle<'c
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<PlaceableInteractionDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<PlaceableInteractionDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for PlaceableInteractionDescTableHandle<'ctx> {
+    type UpdateCallbackId = PlaceableInteractionDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> PlaceableInteractionDescUpdateCallbackId {
+        PlaceableInteractionDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: PlaceableInteractionDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -176,6 +224,26 @@ impl<'ctx> PlaceableInteractionDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<PlaceableInteractionDesc>("placeable_interaction_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<PlaceableInteractionDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<PlaceableInteractionDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

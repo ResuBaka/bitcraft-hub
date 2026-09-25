@@ -154,3 +154,5 @@ impl __sdk::__query_builder::HasIxCols for PlaceableInteractionDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlaceableInteractionDesc {}

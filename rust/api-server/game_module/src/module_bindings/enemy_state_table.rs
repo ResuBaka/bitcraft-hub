@@ -20,6 +20,18 @@ pub struct EnemyStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `enemy_state`.
+pub struct EnemyStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for EnemyStateTableAccessor {
+    type Row = EnemyState;
+    type Handle<'db> = EnemyStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.enemy_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `enemy_state`.
 ///
@@ -42,6 +54,16 @@ impl EnemyStateTableAccess for super::RemoteTables {
 pub struct EnemyStateInitialCallbackId(__sdk::CallbackId);
 pub struct EnemyStateInsertCallbackId(__sdk::CallbackId);
 pub struct EnemyStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for EnemyStateTableHandle<'ctx> {
+    type Row = EnemyState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = EnemyState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> EnemyStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for EnemyStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for EnemyStateTableHandle<'ctx> {
+    type InsertCallbackId = EnemyStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<EnemyState>("enemy_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EnemyStateInsertCallbackId {
+        EnemyStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: EnemyStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for EnemyStateTableHandle<'ctx> {
+    type DeleteCallbackId = EnemyStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EnemyStateDeleteCallbackId {
+        EnemyStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: EnemyStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct EnemyStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for EnemyStateTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for EnemyStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<EnemyState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<EnemyState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for EnemyStateTableHandle<'ctx> {
+    type UpdateCallbackId = EnemyStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> EnemyStateUpdateCallbackId {
+        EnemyStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: EnemyStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> EnemyStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<EnemyState>("enemy_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<EnemyState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<EnemyState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

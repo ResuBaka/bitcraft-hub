@@ -18,8 +18,6 @@ impl __sdk::InModule for SkipOnboardingArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct SkipOnboardingCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `skip_onboarding`.
 ///
@@ -29,73 +27,40 @@ pub trait skip_onboarding {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_skip_onboarding`] callbacks.
-    fn skip_onboarding(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `skip_onboarding`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`skip_onboarding:skip_onboarding_then`] to run a callback after the reducer completes.
+    fn skip_onboarding(&self) -> __sdk::Result<()> {
+        self.skip_onboarding_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `skip_onboarding` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`SkipOnboardingCallbackId`] can be passed to [`Self::remove_on_skip_onboarding`]
-    /// to cancel the callback.
-    fn on_skip_onboarding(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn skip_onboarding_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> SkipOnboardingCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_skip_onboarding`],
-    /// causing it not to run in the future.
-    fn remove_on_skip_onboarding(&self, callback: SkipOnboardingCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl skip_onboarding for super::RemoteReducers {
-    fn skip_onboarding(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("skip_onboarding", SkipOnboardingArgs {})
-    }
-    fn on_skip_onboarding(
+    fn skip_onboarding_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> SkipOnboardingCallbackId {
-        SkipOnboardingCallbackId(self.imp.on_reducer(
-            "skip_onboarding",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::SkipOnboarding {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_skip_onboarding(&self, callback: SkipOnboardingCallbackId) {
-        self.imp.remove_on_reducer("skip_onboarding", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `skip_onboarding`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_skip_onboarding {
-    /// Set the call-reducer flags for the reducer `skip_onboarding` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn skip_onboarding(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_skip_onboarding for super::SetReducerFlags {
-    fn skip_onboarding(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("skip_onboarding", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(SkipOnboardingArgs {}, callback)
     }
 }

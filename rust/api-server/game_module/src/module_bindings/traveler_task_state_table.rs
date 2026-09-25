@@ -18,6 +18,18 @@ pub struct TravelerTaskStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `traveler_task_state`.
+pub struct TravelerTaskStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for TravelerTaskStateTableAccessor {
+    type Row = TravelerTaskState;
+    type Handle<'db> = TravelerTaskStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.traveler_task_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `traveler_task_state`.
 ///
@@ -42,6 +54,16 @@ impl TravelerTaskStateTableAccess for super::RemoteTables {
 pub struct TravelerTaskStateInitialCallbackId(__sdk::CallbackId);
 pub struct TravelerTaskStateInsertCallbackId(__sdk::CallbackId);
 pub struct TravelerTaskStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for TravelerTaskStateTableHandle<'ctx> {
+    type Row = TravelerTaskState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = TravelerTaskState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> TravelerTaskStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for TravelerTaskStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for TravelerTaskStateTableHandle<'ctx> {
+    type InsertCallbackId = TravelerTaskStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<TravelerTaskState>("traveler_task_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TravelerTaskStateInsertCallbackId {
+        TravelerTaskStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: TravelerTaskStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for TravelerTaskStateTableHandle<'ctx> {
+    type DeleteCallbackId = TravelerTaskStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TravelerTaskStateDeleteCallbackId {
+        TravelerTaskStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: TravelerTaskStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct TravelerTaskStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for TravelerTaskStateTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for TravelerTaskStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<TravelerTaskState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<TravelerTaskState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for TravelerTaskStateTableHandle<'ctx> {
+    type UpdateCallbackId = TravelerTaskStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> TravelerTaskStateUpdateCallbackId {
+        TravelerTaskStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: TravelerTaskStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> TravelerTaskStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<TravelerTaskState>("traveler_task_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<TravelerTaskState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<TravelerTaskState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

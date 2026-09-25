@@ -18,6 +18,18 @@ pub struct RegionControlInfoTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `region_control_info`.
+pub struct RegionControlInfoTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for RegionControlInfoTableAccessor {
+    type Row = RegionControlInfo;
+    type Handle<'db> = RegionControlInfoTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.region_control_info()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `region_control_info`.
 ///
@@ -42,6 +54,16 @@ impl RegionControlInfoTableAccess for super::RemoteTables {
 pub struct RegionControlInfoInitialCallbackId(__sdk::CallbackId);
 pub struct RegionControlInfoInsertCallbackId(__sdk::CallbackId);
 pub struct RegionControlInfoDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for RegionControlInfoTableHandle<'ctx> {
+    type Row = RegionControlInfo;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = RegionControlInfo> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> RegionControlInfoTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for RegionControlInfoTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for RegionControlInfoTableHandle<'ctx> {
+    type InsertCallbackId = RegionControlInfoInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<RegionControlInfo>("region_control_info");
-    _table.add_unique_constraint::<u8>("region_id", |row| &row.region_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> RegionControlInfoInsertCallbackId {
+        RegionControlInfoInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: RegionControlInfoInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for RegionControlInfoTableHandle<'ctx> {
+    type DeleteCallbackId = RegionControlInfoDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> RegionControlInfoDeleteCallbackId {
+        RegionControlInfoDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: RegionControlInfoDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct RegionControlInfoUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for RegionControlInfoTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for RegionControlInfoTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<RegionControlInfo>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<RegionControlInfo>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for RegionControlInfoTableHandle<'ctx> {
+    type UpdateCallbackId = RegionControlInfoUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> RegionControlInfoUpdateCallbackId {
+        RegionControlInfoUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: RegionControlInfoUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> RegionControlInfoRegionIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<RegionControlInfo>("region_control_info");
+    _table.add_unique_constraint::<u8>("region_id", |row| &row.region_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<RegionControlInfo>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<RegionControlInfo>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

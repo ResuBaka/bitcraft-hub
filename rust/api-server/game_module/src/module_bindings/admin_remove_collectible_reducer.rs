@@ -26,8 +26,6 @@ impl __sdk::InModule for AdminRemoveCollectibleArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminRemoveCollectibleCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_remove_collectible`.
 ///
@@ -37,96 +35,57 @@ pub trait admin_remove_collectible {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_remove_collectible`] callbacks.
-    fn admin_remove_collectible(
-        &self,
-        identity: String,
-        collectible_id: i32,
-        quantity: u32,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_remove_collectible`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminRemoveCollectibleCallbackId`] can be passed to [`Self::remove_on_admin_remove_collectible`]
-    /// to cancel the callback.
-    fn on_admin_remove_collectible(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &String, &i32, &u32) + Send + 'static,
-    ) -> AdminRemoveCollectibleCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_remove_collectible`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_remove_collectible(&self, callback: AdminRemoveCollectibleCallbackId);
-}
-
-impl admin_remove_collectible for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_remove_collectible:admin_remove_collectible_then`] to run a callback after the reducer completes.
     fn admin_remove_collectible(
         &self,
         identity: String,
         collectible_id: i32,
         quantity: u32,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_remove_collectible",
+        self.admin_remove_collectible_then(identity, collectible_id, quantity, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_remove_collectible` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_remove_collectible_then(
+        &self,
+        identity: String,
+        collectible_id: i32,
+        quantity: u32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl admin_remove_collectible for super::RemoteReducers {
+    fn admin_remove_collectible_then(
+        &self,
+        identity: String,
+        collectible_id: i32,
+        quantity: u32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminRemoveCollectibleArgs {
                 identity,
                 collectible_id,
                 quantity,
             },
+            callback,
         )
-    }
-    fn on_admin_remove_collectible(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &String, &i32, &u32) + Send + 'static,
-    ) -> AdminRemoveCollectibleCallbackId {
-        AdminRemoveCollectibleCallbackId(self.imp.on_reducer(
-            "admin_remove_collectible",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminRemoveCollectible {
-                                    identity,
-                                    collectible_id,
-                                    quantity,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, identity, collectible_id, quantity)
-            }),
-        ))
-    }
-    fn remove_on_admin_remove_collectible(&self, callback: AdminRemoveCollectibleCallbackId) {
-        self.imp
-            .remove_on_reducer("admin_remove_collectible", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_remove_collectible`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_remove_collectible {
-    /// Set the call-reducer flags for the reducer `admin_remove_collectible` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_remove_collectible(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_remove_collectible for super::SetReducerFlags {
-    fn admin_remove_collectible(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_remove_collectible", flags);
     }
 }

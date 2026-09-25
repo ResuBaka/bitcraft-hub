@@ -24,8 +24,6 @@ impl __sdk::InModule for PlayerClimbStartArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PlayerClimbStartCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `player_climb_start`.
 ///
@@ -35,73 +33,42 @@ pub trait player_climb_start {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_player_climb_start`] callbacks.
-    fn player_climb_start(&self, request: PlayerClimbRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `player_climb_start`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`player_climb_start:player_climb_start_then`] to run a callback after the reducer completes.
+    fn player_climb_start(&self, request: PlayerClimbRequest) -> __sdk::Result<()> {
+        self.player_climb_start_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `player_climb_start` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PlayerClimbStartCallbackId`] can be passed to [`Self::remove_on_player_climb_start`]
-    /// to cancel the callback.
-    fn on_player_climb_start(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn player_climb_start_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerClimbRequest) + Send + 'static,
-    ) -> PlayerClimbStartCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_player_climb_start`],
-    /// causing it not to run in the future.
-    fn remove_on_player_climb_start(&self, callback: PlayerClimbStartCallbackId);
+        request: PlayerClimbRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl player_climb_start for super::RemoteReducers {
-    fn player_climb_start(&self, request: PlayerClimbRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("player_climb_start", PlayerClimbStartArgs { request })
-    }
-    fn on_player_climb_start(
+    fn player_climb_start_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClimbRequest) + Send + 'static,
-    ) -> PlayerClimbStartCallbackId {
-        PlayerClimbStartCallbackId(self.imp.on_reducer(
-            "player_climb_start",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::PlayerClimbStart { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_player_climb_start(&self, callback: PlayerClimbStartCallbackId) {
-        self.imp.remove_on_reducer("player_climb_start", callback.0)
-    }
-}
+        request: PlayerClimbRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `player_climb_start`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_player_climb_start {
-    /// Set the call-reducer flags for the reducer `player_climb_start` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn player_climb_start(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_player_climb_start for super::SetReducerFlags {
-    fn player_climb_start(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("player_climb_start", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(PlayerClimbStartArgs { request }, callback)
     }
 }

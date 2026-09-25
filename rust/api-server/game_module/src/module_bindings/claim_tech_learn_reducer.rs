@@ -24,8 +24,6 @@ impl __sdk::InModule for ClaimTechLearnArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ClaimTechLearnCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `claim_tech_learn`.
 ///
@@ -35,75 +33,42 @@ pub trait claim_tech_learn {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_claim_tech_learn`] callbacks.
-    fn claim_tech_learn(&self, request: PlayerClaimTechLearnRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `claim_tech_learn`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`claim_tech_learn:claim_tech_learn_then`] to run a callback after the reducer completes.
+    fn claim_tech_learn(&self, request: PlayerClaimTechLearnRequest) -> __sdk::Result<()> {
+        self.claim_tech_learn_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `claim_tech_learn` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ClaimTechLearnCallbackId`] can be passed to [`Self::remove_on_claim_tech_learn`]
-    /// to cancel the callback.
-    fn on_claim_tech_learn(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn claim_tech_learn_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTechLearnRequest) + Send + 'static,
-    ) -> ClaimTechLearnCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_claim_tech_learn`],
-    /// causing it not to run in the future.
-    fn remove_on_claim_tech_learn(&self, callback: ClaimTechLearnCallbackId);
+        request: PlayerClaimTechLearnRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl claim_tech_learn for super::RemoteReducers {
-    fn claim_tech_learn(&self, request: PlayerClaimTechLearnRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("claim_tech_learn", ClaimTechLearnArgs { request })
-    }
-    fn on_claim_tech_learn(
+    fn claim_tech_learn_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTechLearnRequest)
-        + Send
+        request: PlayerClaimTechLearnRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ClaimTechLearnCallbackId {
-        ClaimTechLearnCallbackId(self.imp.on_reducer(
-            "claim_tech_learn",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ClaimTechLearn { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_claim_tech_learn(&self, callback: ClaimTechLearnCallbackId) {
-        self.imp.remove_on_reducer("claim_tech_learn", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `claim_tech_learn`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_claim_tech_learn {
-    /// Set the call-reducer flags for the reducer `claim_tech_learn` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn claim_tech_learn(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_claim_tech_learn for super::SetReducerFlags {
-    fn claim_tech_learn(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("claim_tech_learn", flags);
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ClaimTechLearnArgs { request }, callback)
     }
 }

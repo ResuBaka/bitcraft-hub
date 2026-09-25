@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for PlayerHousingMovingCostState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlayerHousingMovingCostState {}

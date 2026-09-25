@@ -66,3 +66,5 @@ impl __sdk::__query_builder::HasIxCols for WeaponDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for WeaponDesc {}

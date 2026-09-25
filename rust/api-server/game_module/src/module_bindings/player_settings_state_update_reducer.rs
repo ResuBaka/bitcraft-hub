@@ -24,8 +24,6 @@ impl __sdk::InModule for PlayerSettingsStateUpdateArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PlayerSettingsStateUpdateCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `player_settings_state_update`.
 ///
@@ -35,91 +33,49 @@ pub trait player_settings_state_update {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_player_settings_state_update`] callbacks.
-    fn player_settings_state_update(
-        &self,
-        player_settings_state: PlayerSettingsState,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `player_settings_state_update`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PlayerSettingsStateUpdateCallbackId`] can be passed to [`Self::remove_on_player_settings_state_update`]
-    /// to cancel the callback.
-    fn on_player_settings_state_update(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerSettingsState) + Send + 'static,
-    ) -> PlayerSettingsStateUpdateCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_player_settings_state_update`],
-    /// causing it not to run in the future.
-    fn remove_on_player_settings_state_update(&self, callback: PlayerSettingsStateUpdateCallbackId);
-}
-
-impl player_settings_state_update for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`player_settings_state_update:player_settings_state_update_then`] to run a callback after the reducer completes.
     fn player_settings_state_update(
         &self,
         player_settings_state: PlayerSettingsState,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "player_settings_state_update",
+        self.player_settings_state_update_then(player_settings_state, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `player_settings_state_update` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn player_settings_state_update_then(
+        &self,
+        player_settings_state: PlayerSettingsState,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl player_settings_state_update for super::RemoteReducers {
+    fn player_settings_state_update_then(
+        &self,
+        player_settings_state: PlayerSettingsState,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             PlayerSettingsStateUpdateArgs {
                 player_settings_state,
             },
+            callback,
         )
-    }
-    fn on_player_settings_state_update(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerSettingsState) + Send + 'static,
-    ) -> PlayerSettingsStateUpdateCallbackId {
-        PlayerSettingsStateUpdateCallbackId(self.imp.on_reducer(
-            "player_settings_state_update",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::PlayerSettingsStateUpdate {
-                                    player_settings_state,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, player_settings_state)
-            }),
-        ))
-    }
-    fn remove_on_player_settings_state_update(
-        &self,
-        callback: PlayerSettingsStateUpdateCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("player_settings_state_update", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `player_settings_state_update`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_player_settings_state_update {
-    /// Set the call-reducer flags for the reducer `player_settings_state_update` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn player_settings_state_update(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_player_settings_state_update for super::SetReducerFlags {
-    fn player_settings_state_update(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("player_settings_state_update", flags);
     }
 }

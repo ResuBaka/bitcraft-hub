@@ -70,3 +70,5 @@ impl __sdk::__query_builder::HasIxCols for BuildingState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for BuildingState {}

@@ -18,6 +18,18 @@ pub struct DroppedInventoryDespawnTimerTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `dropped_inventory_despawn_timer`.
+pub struct DroppedInventoryDespawnTimerTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for DroppedInventoryDespawnTimerTableAccessor {
+    type Row = DroppedInventoryDespawnTimer;
+    type Handle<'db> = DroppedInventoryDespawnTimerTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.dropped_inventory_despawn_timer()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `dropped_inventory_despawn_timer`.
 ///
@@ -42,6 +54,16 @@ impl DroppedInventoryDespawnTimerTableAccess for super::RemoteTables {
 pub struct DroppedInventoryDespawnTimerInitialCallbackId(__sdk::CallbackId);
 pub struct DroppedInventoryDespawnTimerInsertCallbackId(__sdk::CallbackId);
 pub struct DroppedInventoryDespawnTimerDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for DroppedInventoryDespawnTimerTableHandle<'ctx> {
+    type Row = DroppedInventoryDespawnTimer;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = DroppedInventoryDespawnTimer> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> DroppedInventoryDespawnTimerTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for DroppedInventoryDespawnTimerTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for DroppedInventoryDespawnTimerTableHandle<'ctx> {
+    type InsertCallbackId = DroppedInventoryDespawnTimerInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<DroppedInventoryDespawnTimer>("dropped_inventory_despawn_timer");
-    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DroppedInventoryDespawnTimerInsertCallbackId {
+        DroppedInventoryDespawnTimerInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: DroppedInventoryDespawnTimerInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for DroppedInventoryDespawnTimerTableHandle<'ctx> {
+    type DeleteCallbackId = DroppedInventoryDespawnTimerDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DroppedInventoryDespawnTimerDeleteCallbackId {
+        DroppedInventoryDespawnTimerDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: DroppedInventoryDespawnTimerDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct DroppedInventoryDespawnTimerUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for DroppedInventoryDespawnTimerTableHandle<'ctx> {
@@ -128,18 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for DroppedInventoryDespawnTimerTableHandl
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<DroppedInventoryDespawnTimer>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse(
-            "TableUpdate<DroppedInventoryDespawnTimer>",
-            "TableUpdate",
-        )
-        .with_cause(e)
-        .into()
-    })
+impl<'ctx> __sdk::WithUpdate for DroppedInventoryDespawnTimerTableHandle<'ctx> {
+    type UpdateCallbackId = DroppedInventoryDespawnTimerUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> DroppedInventoryDespawnTimerUpdateCallbackId {
+        DroppedInventoryDespawnTimerUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: DroppedInventoryDespawnTimerUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -172,6 +217,29 @@ impl<'ctx> DroppedInventoryDespawnTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<DroppedInventoryDespawnTimer>("dropped_inventory_despawn_timer");
+    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<DroppedInventoryDespawnTimer>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse(
+            "TableUpdate<DroppedInventoryDespawnTimer>",
+            "TableUpdate",
+        )
+        .with_cause(e)
+        .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

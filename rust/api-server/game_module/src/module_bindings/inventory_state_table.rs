@@ -19,6 +19,18 @@ pub struct InventoryStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `inventory_state`.
+pub struct InventoryStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for InventoryStateTableAccessor {
+    type Row = InventoryState;
+    type Handle<'db> = InventoryStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.inventory_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `inventory_state`.
 ///
@@ -41,6 +53,16 @@ impl InventoryStateTableAccess for super::RemoteTables {
 pub struct InventoryStateInitialCallbackId(__sdk::CallbackId);
 pub struct InventoryStateInsertCallbackId(__sdk::CallbackId);
 pub struct InventoryStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for InventoryStateTableHandle<'ctx> {
+    type Row = InventoryState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = InventoryState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> InventoryStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -102,14 +124,36 @@ impl<'ctx> __sdk::Table for InventoryStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for InventoryStateTableHandle<'ctx> {
+    type InsertCallbackId = InventoryStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<InventoryState>("inventory_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InventoryStateInsertCallbackId {
+        InventoryStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: InventoryStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for InventoryStateTableHandle<'ctx> {
+    type DeleteCallbackId = InventoryStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InventoryStateDeleteCallbackId {
+        InventoryStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: InventoryStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct InventoryStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for InventoryStateTableHandle<'ctx> {
@@ -127,15 +171,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for InventoryStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<InventoryState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<InventoryState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for InventoryStateTableHandle<'ctx> {
+    type UpdateCallbackId = InventoryStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> InventoryStateUpdateCallbackId {
+        InventoryStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: InventoryStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -168,6 +216,26 @@ impl<'ctx> InventoryStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<InventoryState>("inventory_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<InventoryState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<InventoryState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

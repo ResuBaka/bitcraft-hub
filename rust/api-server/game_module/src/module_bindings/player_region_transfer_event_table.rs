@@ -18,6 +18,18 @@ pub struct PlayerRegionTransferEventTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `player_region_transfer_event`.
+pub struct PlayerRegionTransferEventTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for PlayerRegionTransferEventTableAccessor {
+    type Row = PlayerRegionTransferEvent;
+    type Handle<'db> = PlayerRegionTransferEventTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.player_region_transfer_event()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `player_region_transfer_event`.
 ///
@@ -42,6 +54,16 @@ impl PlayerRegionTransferEventTableAccess for super::RemoteTables {
 pub struct PlayerRegionTransferEventInitialCallbackId(__sdk::CallbackId);
 pub struct PlayerRegionTransferEventInsertCallbackId(__sdk::CallbackId);
 pub struct PlayerRegionTransferEventDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for PlayerRegionTransferEventTableHandle<'ctx> {
+    type Row = PlayerRegionTransferEvent;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PlayerRegionTransferEvent> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> PlayerRegionTransferEventTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for PlayerRegionTransferEventTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for PlayerRegionTransferEventTableHandle<'ctx> {
+    type InsertCallbackId = PlayerRegionTransferEventInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<PlayerRegionTransferEvent>("player_region_transfer_event");
-    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerRegionTransferEventInsertCallbackId {
+        PlayerRegionTransferEventInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: PlayerRegionTransferEventInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for PlayerRegionTransferEventTableHandle<'ctx> {
+    type DeleteCallbackId = PlayerRegionTransferEventDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerRegionTransferEventDeleteCallbackId {
+        PlayerRegionTransferEventDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: PlayerRegionTransferEventDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct PlayerRegionTransferEventUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for PlayerRegionTransferEventTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for PlayerRegionTransferEventTableHandle<'
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<PlayerRegionTransferEvent>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<PlayerRegionTransferEvent>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for PlayerRegionTransferEventTableHandle<'ctx> {
+    type UpdateCallbackId = PlayerRegionTransferEventUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> PlayerRegionTransferEventUpdateCallbackId {
+        PlayerRegionTransferEventUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: PlayerRegionTransferEventUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> PlayerRegionTransferEventScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<PlayerRegionTransferEvent>("player_region_transfer_event");
+    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<PlayerRegionTransferEvent>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<PlayerRegionTransferEvent>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

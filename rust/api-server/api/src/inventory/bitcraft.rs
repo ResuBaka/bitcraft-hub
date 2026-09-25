@@ -320,7 +320,6 @@ impl InventoryStateWorker {
             match event.reducer.reducer_name() {
                 "inventory_sort" => {}
                 _ => {
-                    caller_identity = Some(event.caller_identity);
                     timestamp = Some(event.timestamp);
                 }
             }

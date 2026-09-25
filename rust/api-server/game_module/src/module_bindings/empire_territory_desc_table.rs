@@ -18,6 +18,18 @@ pub struct EmpireTerritoryDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `empire_territory_desc`.
+pub struct EmpireTerritoryDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for EmpireTerritoryDescTableAccessor {
+    type Row = EmpireTerritoryDesc;
+    type Handle<'db> = EmpireTerritoryDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.empire_territory_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `empire_territory_desc`.
 ///
@@ -42,6 +54,16 @@ impl EmpireTerritoryDescTableAccess for super::RemoteTables {
 pub struct EmpireTerritoryDescInitialCallbackId(__sdk::CallbackId);
 pub struct EmpireTerritoryDescInsertCallbackId(__sdk::CallbackId);
 pub struct EmpireTerritoryDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for EmpireTerritoryDescTableHandle<'ctx> {
+    type Row = EmpireTerritoryDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = EmpireTerritoryDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> EmpireTerritoryDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for EmpireTerritoryDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for EmpireTerritoryDescTableHandle<'ctx> {
+    type InsertCallbackId = EmpireTerritoryDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<EmpireTerritoryDesc>("empire_territory_desc");
-    _table.add_unique_constraint::<u8>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EmpireTerritoryDescInsertCallbackId {
+        EmpireTerritoryDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: EmpireTerritoryDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for EmpireTerritoryDescTableHandle<'ctx> {
+    type DeleteCallbackId = EmpireTerritoryDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EmpireTerritoryDescDeleteCallbackId {
+        EmpireTerritoryDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: EmpireTerritoryDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct EmpireTerritoryDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for EmpireTerritoryDescTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for EmpireTerritoryDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<EmpireTerritoryDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<EmpireTerritoryDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for EmpireTerritoryDescTableHandle<'ctx> {
+    type UpdateCallbackId = EmpireTerritoryDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> EmpireTerritoryDescUpdateCallbackId {
+        EmpireTerritoryDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: EmpireTerritoryDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> EmpireTerritoryDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<EmpireTerritoryDesc>("empire_territory_desc");
+    _table.add_unique_constraint::<u8>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<EmpireTerritoryDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<EmpireTerritoryDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

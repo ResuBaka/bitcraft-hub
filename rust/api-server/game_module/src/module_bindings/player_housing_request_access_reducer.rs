@@ -24,8 +24,6 @@ impl __sdk::InModule for PlayerHousingRequestAccessArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PlayerHousingRequestAccessCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `player_housing_request_access`.
 ///
@@ -35,93 +33,45 @@ pub trait player_housing_request_access {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_player_housing_request_access`] callbacks.
-    fn player_housing_request_access(
-        &self,
-        request: PlayerHousingRequestAccessRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `player_housing_request_access`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PlayerHousingRequestAccessCallbackId`] can be passed to [`Self::remove_on_player_housing_request_access`]
-    /// to cancel the callback.
-    fn on_player_housing_request_access(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingRequestAccessRequest)
-        + Send
-        + 'static,
-    ) -> PlayerHousingRequestAccessCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_player_housing_request_access`],
-    /// causing it not to run in the future.
-    fn remove_on_player_housing_request_access(
-        &self,
-        callback: PlayerHousingRequestAccessCallbackId,
-    );
-}
-
-impl player_housing_request_access for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`player_housing_request_access:player_housing_request_access_then`] to run a callback after the reducer completes.
     fn player_housing_request_access(
         &self,
         request: PlayerHousingRequestAccessRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "player_housing_request_access",
-            PlayerHousingRequestAccessArgs { request },
-        )
+        self.player_housing_request_access_then(request, |_, _| {})
     }
-    fn on_player_housing_request_access(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerHousingRequestAccessRequest)
-        + Send
-        + 'static,
-    ) -> PlayerHousingRequestAccessCallbackId {
-        PlayerHousingRequestAccessCallbackId(self.imp.on_reducer(
-            "player_housing_request_access",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::PlayerHousingRequestAccess { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_player_housing_request_access(
-        &self,
-        callback: PlayerHousingRequestAccessCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("player_housing_request_access", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `player_housing_request_access`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_player_housing_request_access {
-    /// Set the call-reducer flags for the reducer `player_housing_request_access` to `flags`.
+    /// Request that the remote module invoke the reducer `player_housing_request_access` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn player_housing_request_access(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn player_housing_request_access_then(
+        &self,
+        request: PlayerHousingRequestAccessRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_player_housing_request_access for super::SetReducerFlags {
-    fn player_housing_request_access(&self, flags: __ws::CallReducerFlags) {
+impl player_housing_request_access for super::RemoteReducers {
+    fn player_housing_request_access_then(
+        &self,
+        request: PlayerHousingRequestAccessRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("player_housing_request_access", flags);
+            .invoke_reducer_with_callback(PlayerHousingRequestAccessArgs { request }, callback)
     }
 }

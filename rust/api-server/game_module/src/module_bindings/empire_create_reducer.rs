@@ -24,8 +24,6 @@ impl __sdk::InModule for EmpireCreateArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct EmpireCreateCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `empire_create`.
 ///
@@ -35,73 +33,42 @@ pub trait empire_create {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_empire_create`] callbacks.
-    fn empire_create(&self, request: EmpireCreateRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `empire_create`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`empire_create:empire_create_then`] to run a callback after the reducer completes.
+    fn empire_create(&self, request: EmpireCreateRequest) -> __sdk::Result<()> {
+        self.empire_create_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `empire_create` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`EmpireCreateCallbackId`] can be passed to [`Self::remove_on_empire_create`]
-    /// to cancel the callback.
-    fn on_empire_create(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn empire_create_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &EmpireCreateRequest) + Send + 'static,
-    ) -> EmpireCreateCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_empire_create`],
-    /// causing it not to run in the future.
-    fn remove_on_empire_create(&self, callback: EmpireCreateCallbackId);
+        request: EmpireCreateRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl empire_create for super::RemoteReducers {
-    fn empire_create(&self, request: EmpireCreateRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("empire_create", EmpireCreateArgs { request })
-    }
-    fn on_empire_create(
+    fn empire_create_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &EmpireCreateRequest) + Send + 'static,
-    ) -> EmpireCreateCallbackId {
-        EmpireCreateCallbackId(self.imp.on_reducer(
-            "empire_create",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::EmpireCreate { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_empire_create(&self, callback: EmpireCreateCallbackId) {
-        self.imp.remove_on_reducer("empire_create", callback.0)
-    }
-}
+        request: EmpireCreateRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `empire_create`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_empire_create {
-    /// Set the call-reducer flags for the reducer `empire_create` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn empire_create(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_empire_create for super::SetReducerFlags {
-    fn empire_create(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("empire_create", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(EmpireCreateArgs { request }, callback)
     }
 }

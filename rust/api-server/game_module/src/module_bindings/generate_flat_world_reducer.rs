@@ -18,8 +18,6 @@ impl __sdk::InModule for GenerateFlatWorldArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct GenerateFlatWorldCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `generate_flat_world`.
 ///
@@ -29,75 +27,40 @@ pub trait generate_flat_world {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_generate_flat_world`] callbacks.
-    fn generate_flat_world(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `generate_flat_world`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`generate_flat_world:generate_flat_world_then`] to run a callback after the reducer completes.
+    fn generate_flat_world(&self) -> __sdk::Result<()> {
+        self.generate_flat_world_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `generate_flat_world` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`GenerateFlatWorldCallbackId`] can be passed to [`Self::remove_on_generate_flat_world`]
-    /// to cancel the callback.
-    fn on_generate_flat_world(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn generate_flat_world_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> GenerateFlatWorldCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_generate_flat_world`],
-    /// causing it not to run in the future.
-    fn remove_on_generate_flat_world(&self, callback: GenerateFlatWorldCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl generate_flat_world for super::RemoteReducers {
-    fn generate_flat_world(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("generate_flat_world", GenerateFlatWorldArgs {})
-    }
-    fn on_generate_flat_world(
+    fn generate_flat_world_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> GenerateFlatWorldCallbackId {
-        GenerateFlatWorldCallbackId(self.imp.on_reducer(
-            "generate_flat_world",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::GenerateFlatWorld {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_generate_flat_world(&self, callback: GenerateFlatWorldCallbackId) {
-        self.imp
-            .remove_on_reducer("generate_flat_world", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `generate_flat_world`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_generate_flat_world {
-    /// Set the call-reducer flags for the reducer `generate_flat_world` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn generate_flat_world(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_generate_flat_world for super::SetReducerFlags {
-    fn generate_flat_world(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("generate_flat_world", flags);
+            .invoke_reducer_with_callback(GenerateFlatWorldArgs {}, callback)
     }
 }

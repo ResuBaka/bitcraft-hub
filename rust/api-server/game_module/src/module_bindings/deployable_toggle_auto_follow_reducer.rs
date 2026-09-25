@@ -22,8 +22,6 @@ impl __sdk::InModule for DeployableToggleAutoFollowArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DeployableToggleAutoFollowCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `deployable_toggle_auto_follow`.
 ///
@@ -33,84 +31,44 @@ pub trait deployable_toggle_auto_follow {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_deployable_toggle_auto_follow`] callbacks.
-    fn deployable_toggle_auto_follow(&self, deployable_desc_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `deployable_toggle_auto_follow`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`deployable_toggle_auto_follow:deployable_toggle_auto_follow_then`] to run a callback after the reducer completes.
+    fn deployable_toggle_auto_follow(&self, deployable_desc_id: i32) -> __sdk::Result<()> {
+        self.deployable_toggle_auto_follow_then(deployable_desc_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `deployable_toggle_auto_follow` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DeployableToggleAutoFollowCallbackId`] can be passed to [`Self::remove_on_deployable_toggle_auto_follow`]
-    /// to cancel the callback.
-    fn on_deployable_toggle_auto_follow(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn deployable_toggle_auto_follow_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DeployableToggleAutoFollowCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_deployable_toggle_auto_follow`],
-    /// causing it not to run in the future.
-    fn remove_on_deployable_toggle_auto_follow(
-        &self,
-        callback: DeployableToggleAutoFollowCallbackId,
-    );
+        deployable_desc_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl deployable_toggle_auto_follow for super::RemoteReducers {
-    fn deployable_toggle_auto_follow(&self, deployable_desc_id: i32) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "deployable_toggle_auto_follow",
+    fn deployable_toggle_auto_follow_then(
+        &self,
+        deployable_desc_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             DeployableToggleAutoFollowArgs { deployable_desc_id },
+            callback,
         )
-    }
-    fn on_deployable_toggle_auto_follow(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DeployableToggleAutoFollowCallbackId {
-        DeployableToggleAutoFollowCallbackId(self.imp.on_reducer(
-            "deployable_toggle_auto_follow",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::DeployableToggleAutoFollow { deployable_desc_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, deployable_desc_id)
-            }),
-        ))
-    }
-    fn remove_on_deployable_toggle_auto_follow(
-        &self,
-        callback: DeployableToggleAutoFollowCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("deployable_toggle_auto_follow", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `deployable_toggle_auto_follow`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_deployable_toggle_auto_follow {
-    /// Set the call-reducer flags for the reducer `deployable_toggle_auto_follow` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn deployable_toggle_auto_follow(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_deployable_toggle_auto_follow for super::SetReducerFlags {
-    fn deployable_toggle_auto_follow(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("deployable_toggle_auto_follow", flags);
     }
 }

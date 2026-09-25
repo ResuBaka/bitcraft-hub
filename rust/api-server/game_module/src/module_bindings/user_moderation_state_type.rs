@@ -71,3 +71,5 @@ impl __sdk::__query_builder::HasIxCols for UserModerationState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for UserModerationState {}

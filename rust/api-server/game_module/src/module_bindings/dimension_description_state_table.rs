@@ -19,6 +19,18 @@ pub struct DimensionDescriptionStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `dimension_description_state`.
+pub struct DimensionDescriptionStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for DimensionDescriptionStateTableAccessor {
+    type Row = DimensionDescriptionState;
+    type Handle<'db> = DimensionDescriptionStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.dimension_description_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `dimension_description_state`.
 ///
@@ -43,6 +55,16 @@ impl DimensionDescriptionStateTableAccess for super::RemoteTables {
 pub struct DimensionDescriptionStateInitialCallbackId(__sdk::CallbackId);
 pub struct DimensionDescriptionStateInsertCallbackId(__sdk::CallbackId);
 pub struct DimensionDescriptionStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for DimensionDescriptionStateTableHandle<'ctx> {
+    type Row = DimensionDescriptionState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = DimensionDescriptionState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> DimensionDescriptionStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,15 +126,36 @@ impl<'ctx> __sdk::Table for DimensionDescriptionStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for DimensionDescriptionStateTableHandle<'ctx> {
+    type InsertCallbackId = DimensionDescriptionStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<DimensionDescriptionState>("dimension_description_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
-    _table.add_unique_constraint::<u32>("dimension_id", |row| &row.dimension_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DimensionDescriptionStateInsertCallbackId {
+        DimensionDescriptionStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: DimensionDescriptionStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for DimensionDescriptionStateTableHandle<'ctx> {
+    type DeleteCallbackId = DimensionDescriptionStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DimensionDescriptionStateDeleteCallbackId {
+        DimensionDescriptionStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: DimensionDescriptionStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct DimensionDescriptionStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for DimensionDescriptionStateTableHandle<'ctx> {
@@ -130,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for DimensionDescriptionStateTableHandle<'
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<DimensionDescriptionState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<DimensionDescriptionState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for DimensionDescriptionStateTableHandle<'ctx> {
+    type UpdateCallbackId = DimensionDescriptionStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> DimensionDescriptionStateUpdateCallbackId {
+        DimensionDescriptionStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: DimensionDescriptionStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -203,6 +250,27 @@ impl<'ctx> DimensionDescriptionStateDimensionIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<DimensionDescriptionState>("dimension_description_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    _table.add_unique_constraint::<u32>("dimension_id", |row| &row.dimension_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<DimensionDescriptionState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<DimensionDescriptionState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

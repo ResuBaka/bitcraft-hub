@@ -24,8 +24,6 @@ impl __sdk::InModule for AdminModifyChatMessageArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminModifyChatMessageCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_modify_chat_message`.
 ///
@@ -35,92 +33,53 @@ pub trait admin_modify_chat_message {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_modify_chat_message`] callbacks.
-    fn admin_modify_chat_message(
-        &self,
-        entity_id: u64,
-        new_message_text: String,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_modify_chat_message`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminModifyChatMessageCallbackId`] can be passed to [`Self::remove_on_admin_modify_chat_message`]
-    /// to cancel the callback.
-    fn on_admin_modify_chat_message(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &String) + Send + 'static,
-    ) -> AdminModifyChatMessageCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_modify_chat_message`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_modify_chat_message(&self, callback: AdminModifyChatMessageCallbackId);
-}
-
-impl admin_modify_chat_message for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_modify_chat_message:admin_modify_chat_message_then`] to run a callback after the reducer completes.
     fn admin_modify_chat_message(
         &self,
         entity_id: u64,
         new_message_text: String,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_modify_chat_message",
+        self.admin_modify_chat_message_then(entity_id, new_message_text, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_modify_chat_message` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_modify_chat_message_then(
+        &self,
+        entity_id: u64,
+        new_message_text: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl admin_modify_chat_message for super::RemoteReducers {
+    fn admin_modify_chat_message_then(
+        &self,
+        entity_id: u64,
+        new_message_text: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminModifyChatMessageArgs {
                 entity_id,
                 new_message_text,
             },
+            callback,
         )
-    }
-    fn on_admin_modify_chat_message(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &String) + Send + 'static,
-    ) -> AdminModifyChatMessageCallbackId {
-        AdminModifyChatMessageCallbackId(self.imp.on_reducer(
-            "admin_modify_chat_message",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminModifyChatMessage {
-                                    entity_id,
-                                    new_message_text,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, entity_id, new_message_text)
-            }),
-        ))
-    }
-    fn remove_on_admin_modify_chat_message(&self, callback: AdminModifyChatMessageCallbackId) {
-        self.imp
-            .remove_on_reducer("admin_modify_chat_message", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_modify_chat_message`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_modify_chat_message {
-    /// Set the call-reducer flags for the reducer `admin_modify_chat_message` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_modify_chat_message(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_modify_chat_message for super::SetReducerFlags {
-    fn admin_modify_chat_message(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_modify_chat_message", flags);
     }
 }

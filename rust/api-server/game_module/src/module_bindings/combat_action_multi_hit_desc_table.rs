@@ -19,6 +19,18 @@ pub struct CombatActionMultiHitDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `combat_action_multi_hit_desc`.
+pub struct CombatActionMultiHitDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for CombatActionMultiHitDescTableAccessor {
+    type Row = CombatActionMultiHitDesc;
+    type Handle<'db> = CombatActionMultiHitDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.combat_action_multi_hit_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `combat_action_multi_hit_desc`.
 ///
@@ -43,6 +55,16 @@ impl CombatActionMultiHitDescTableAccess for super::RemoteTables {
 pub struct CombatActionMultiHitDescInitialCallbackId(__sdk::CallbackId);
 pub struct CombatActionMultiHitDescInsertCallbackId(__sdk::CallbackId);
 pub struct CombatActionMultiHitDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for CombatActionMultiHitDescTableHandle<'ctx> {
+    type Row = CombatActionMultiHitDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = CombatActionMultiHitDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> CombatActionMultiHitDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,14 +126,36 @@ impl<'ctx> __sdk::Table for CombatActionMultiHitDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for CombatActionMultiHitDescTableHandle<'ctx> {
+    type InsertCallbackId = CombatActionMultiHitDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<CombatActionMultiHitDesc>("combat_action_multi_hit_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> CombatActionMultiHitDescInsertCallbackId {
+        CombatActionMultiHitDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: CombatActionMultiHitDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for CombatActionMultiHitDescTableHandle<'ctx> {
+    type DeleteCallbackId = CombatActionMultiHitDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> CombatActionMultiHitDescDeleteCallbackId {
+        CombatActionMultiHitDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: CombatActionMultiHitDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct CombatActionMultiHitDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for CombatActionMultiHitDescTableHandle<'ctx> {
@@ -129,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for CombatActionMultiHitDescTableHandle<'c
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<CombatActionMultiHitDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<CombatActionMultiHitDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for CombatActionMultiHitDescTableHandle<'ctx> {
+    type UpdateCallbackId = CombatActionMultiHitDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> CombatActionMultiHitDescUpdateCallbackId {
+        CombatActionMultiHitDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: CombatActionMultiHitDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -170,6 +218,26 @@ impl<'ctx> CombatActionMultiHitDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<CombatActionMultiHitDesc>("combat_action_multi_hit_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<CombatActionMultiHitDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<CombatActionMultiHitDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

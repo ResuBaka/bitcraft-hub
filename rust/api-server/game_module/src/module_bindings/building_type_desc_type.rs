@@ -56,3 +56,5 @@ impl __sdk::__query_builder::HasIxCols for BuildingTypeDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for BuildingTypeDesc {}

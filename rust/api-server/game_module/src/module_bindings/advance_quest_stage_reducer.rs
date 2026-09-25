@@ -22,8 +22,6 @@ impl __sdk::InModule for AdvanceQuestStageArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdvanceQuestStageCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `advance_quest_stage`.
 ///
@@ -33,75 +31,42 @@ pub trait advance_quest_stage {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_advance_quest_stage`] callbacks.
-    fn advance_quest_stage(&self, chain_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `advance_quest_stage`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`advance_quest_stage:advance_quest_stage_then`] to run a callback after the reducer completes.
+    fn advance_quest_stage(&self, chain_id: i32) -> __sdk::Result<()> {
+        self.advance_quest_stage_then(chain_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `advance_quest_stage` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdvanceQuestStageCallbackId`] can be passed to [`Self::remove_on_advance_quest_stage`]
-    /// to cancel the callback.
-    fn on_advance_quest_stage(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn advance_quest_stage_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> AdvanceQuestStageCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_advance_quest_stage`],
-    /// causing it not to run in the future.
-    fn remove_on_advance_quest_stage(&self, callback: AdvanceQuestStageCallbackId);
+        chain_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl advance_quest_stage for super::RemoteReducers {
-    fn advance_quest_stage(&self, chain_id: i32) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("advance_quest_stage", AdvanceQuestStageArgs { chain_id })
-    }
-    fn on_advance_quest_stage(
+    fn advance_quest_stage_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> AdvanceQuestStageCallbackId {
-        AdvanceQuestStageCallbackId(self.imp.on_reducer(
-            "advance_quest_stage",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::AdvanceQuestStage { chain_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, chain_id)
-            }),
-        ))
-    }
-    fn remove_on_advance_quest_stage(&self, callback: AdvanceQuestStageCallbackId) {
-        self.imp
-            .remove_on_reducer("advance_quest_stage", callback.0)
-    }
-}
+        chain_id: i32,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `advance_quest_stage`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_advance_quest_stage {
-    /// Set the call-reducer flags for the reducer `advance_quest_stage` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn advance_quest_stage(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_advance_quest_stage for super::SetReducerFlags {
-    fn advance_quest_stage(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("advance_quest_stage", flags);
+            .invoke_reducer_with_callback(AdvanceQuestStageArgs { chain_id }, callback)
     }
 }

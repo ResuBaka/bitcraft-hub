@@ -19,6 +19,18 @@ pub struct EmpireNotificationDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `empire_notification_desc`.
+pub struct EmpireNotificationDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for EmpireNotificationDescTableAccessor {
+    type Row = EmpireNotificationDesc;
+    type Handle<'db> = EmpireNotificationDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.empire_notification_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `empire_notification_desc`.
 ///
@@ -43,6 +55,16 @@ impl EmpireNotificationDescTableAccess for super::RemoteTables {
 pub struct EmpireNotificationDescInitialCallbackId(__sdk::CallbackId);
 pub struct EmpireNotificationDescInsertCallbackId(__sdk::CallbackId);
 pub struct EmpireNotificationDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for EmpireNotificationDescTableHandle<'ctx> {
+    type Row = EmpireNotificationDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = EmpireNotificationDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> EmpireNotificationDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,14 +126,36 @@ impl<'ctx> __sdk::Table for EmpireNotificationDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for EmpireNotificationDescTableHandle<'ctx> {
+    type InsertCallbackId = EmpireNotificationDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<EmpireNotificationDesc>("empire_notification_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EmpireNotificationDescInsertCallbackId {
+        EmpireNotificationDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: EmpireNotificationDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for EmpireNotificationDescTableHandle<'ctx> {
+    type DeleteCallbackId = EmpireNotificationDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EmpireNotificationDescDeleteCallbackId {
+        EmpireNotificationDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: EmpireNotificationDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct EmpireNotificationDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for EmpireNotificationDescTableHandle<'ctx> {
@@ -129,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for EmpireNotificationDescTableHandle<'ctx
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<EmpireNotificationDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<EmpireNotificationDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for EmpireNotificationDescTableHandle<'ctx> {
+    type UpdateCallbackId = EmpireNotificationDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> EmpireNotificationDescUpdateCallbackId {
+        EmpireNotificationDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: EmpireNotificationDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -170,6 +218,26 @@ impl<'ctx> EmpireNotificationDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<EmpireNotificationDesc>("empire_notification_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<EmpireNotificationDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<EmpireNotificationDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

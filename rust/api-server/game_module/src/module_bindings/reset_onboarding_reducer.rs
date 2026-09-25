@@ -18,8 +18,6 @@ impl __sdk::InModule for ResetOnboardingArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ResetOnboardingCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `reset_onboarding`.
 ///
@@ -29,73 +27,40 @@ pub trait reset_onboarding {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_reset_onboarding`] callbacks.
-    fn reset_onboarding(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `reset_onboarding`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`reset_onboarding:reset_onboarding_then`] to run a callback after the reducer completes.
+    fn reset_onboarding(&self) -> __sdk::Result<()> {
+        self.reset_onboarding_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `reset_onboarding` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ResetOnboardingCallbackId`] can be passed to [`Self::remove_on_reset_onboarding`]
-    /// to cancel the callback.
-    fn on_reset_onboarding(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn reset_onboarding_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> ResetOnboardingCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_reset_onboarding`],
-    /// causing it not to run in the future.
-    fn remove_on_reset_onboarding(&self, callback: ResetOnboardingCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl reset_onboarding for super::RemoteReducers {
-    fn reset_onboarding(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("reset_onboarding", ResetOnboardingArgs {})
-    }
-    fn on_reset_onboarding(
+    fn reset_onboarding_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> ResetOnboardingCallbackId {
-        ResetOnboardingCallbackId(self.imp.on_reducer(
-            "reset_onboarding",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ResetOnboarding {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_reset_onboarding(&self, callback: ResetOnboardingCallbackId) {
-        self.imp.remove_on_reducer("reset_onboarding", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `reset_onboarding`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_reset_onboarding {
-    /// Set the call-reducer flags for the reducer `reset_onboarding` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn reset_onboarding(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_reset_onboarding for super::SetReducerFlags {
-    fn reset_onboarding(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("reset_onboarding", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ResetOnboardingArgs {}, callback)
     }
 }

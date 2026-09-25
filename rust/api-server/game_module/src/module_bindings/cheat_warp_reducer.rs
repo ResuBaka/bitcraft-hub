@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatWarpArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatWarpCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_warp`.
 ///
@@ -35,73 +33,42 @@ pub trait cheat_warp {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_warp`] callbacks.
-    fn cheat_warp(&self, request: CheatWarpRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_warp`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_warp:cheat_warp_then`] to run a callback after the reducer completes.
+    fn cheat_warp(&self, request: CheatWarpRequest) -> __sdk::Result<()> {
+        self.cheat_warp_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `cheat_warp` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatWarpCallbackId`] can be passed to [`Self::remove_on_cheat_warp`]
-    /// to cancel the callback.
-    fn on_cheat_warp(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_warp_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &CheatWarpRequest) + Send + 'static,
-    ) -> CheatWarpCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_warp`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_warp(&self, callback: CheatWarpCallbackId);
+        request: CheatWarpRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl cheat_warp for super::RemoteReducers {
-    fn cheat_warp(&self, request: CheatWarpRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("cheat_warp", CheatWarpArgs { request })
-    }
-    fn on_cheat_warp(
+    fn cheat_warp_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &CheatWarpRequest) + Send + 'static,
-    ) -> CheatWarpCallbackId {
-        CheatWarpCallbackId(self.imp.on_reducer(
-            "cheat_warp",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::CheatWarp { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_cheat_warp(&self, callback: CheatWarpCallbackId) {
-        self.imp.remove_on_reducer("cheat_warp", callback.0)
-    }
-}
+        request: CheatWarpRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_warp`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_warp {
-    /// Set the call-reducer flags for the reducer `cheat_warp` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_warp(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_cheat_warp for super::SetReducerFlags {
-    fn cheat_warp(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("cheat_warp", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(CheatWarpArgs { request }, callback)
     }
 }

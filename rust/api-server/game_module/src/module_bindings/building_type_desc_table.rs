@@ -19,6 +19,18 @@ pub struct BuildingTypeDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `building_type_desc`.
+pub struct BuildingTypeDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for BuildingTypeDescTableAccessor {
+    type Row = BuildingTypeDesc;
+    type Handle<'db> = BuildingTypeDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.building_type_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `building_type_desc`.
 ///
@@ -41,6 +53,16 @@ impl BuildingTypeDescTableAccess for super::RemoteTables {
 pub struct BuildingTypeDescInitialCallbackId(__sdk::CallbackId);
 pub struct BuildingTypeDescInsertCallbackId(__sdk::CallbackId);
 pub struct BuildingTypeDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for BuildingTypeDescTableHandle<'ctx> {
+    type Row = BuildingTypeDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = BuildingTypeDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> BuildingTypeDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -102,14 +124,36 @@ impl<'ctx> __sdk::Table for BuildingTypeDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for BuildingTypeDescTableHandle<'ctx> {
+    type InsertCallbackId = BuildingTypeDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<BuildingTypeDesc>("building_type_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> BuildingTypeDescInsertCallbackId {
+        BuildingTypeDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: BuildingTypeDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for BuildingTypeDescTableHandle<'ctx> {
+    type DeleteCallbackId = BuildingTypeDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> BuildingTypeDescDeleteCallbackId {
+        BuildingTypeDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: BuildingTypeDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct BuildingTypeDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for BuildingTypeDescTableHandle<'ctx> {
@@ -127,15 +171,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for BuildingTypeDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<BuildingTypeDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<BuildingTypeDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for BuildingTypeDescTableHandle<'ctx> {
+    type UpdateCallbackId = BuildingTypeDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> BuildingTypeDescUpdateCallbackId {
+        BuildingTypeDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: BuildingTypeDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -168,6 +216,26 @@ impl<'ctx> BuildingTypeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<BuildingTypeDesc>("building_type_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<BuildingTypeDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<BuildingTypeDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

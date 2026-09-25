@@ -18,8 +18,6 @@ impl __sdk::InModule for MigrateAutoAttacksArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct MigrateAutoAttacksCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `migrate_auto_attacks`.
 ///
@@ -29,75 +27,40 @@ pub trait migrate_auto_attacks {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_migrate_auto_attacks`] callbacks.
-    fn migrate_auto_attacks(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `migrate_auto_attacks`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`migrate_auto_attacks:migrate_auto_attacks_then`] to run a callback after the reducer completes.
+    fn migrate_auto_attacks(&self) -> __sdk::Result<()> {
+        self.migrate_auto_attacks_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `migrate_auto_attacks` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`MigrateAutoAttacksCallbackId`] can be passed to [`Self::remove_on_migrate_auto_attacks`]
-    /// to cancel the callback.
-    fn on_migrate_auto_attacks(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn migrate_auto_attacks_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> MigrateAutoAttacksCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_migrate_auto_attacks`],
-    /// causing it not to run in the future.
-    fn remove_on_migrate_auto_attacks(&self, callback: MigrateAutoAttacksCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl migrate_auto_attacks for super::RemoteReducers {
-    fn migrate_auto_attacks(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("migrate_auto_attacks", MigrateAutoAttacksArgs {})
-    }
-    fn on_migrate_auto_attacks(
+    fn migrate_auto_attacks_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> MigrateAutoAttacksCallbackId {
-        MigrateAutoAttacksCallbackId(self.imp.on_reducer(
-            "migrate_auto_attacks",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::MigrateAutoAttacks {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_migrate_auto_attacks(&self, callback: MigrateAutoAttacksCallbackId) {
-        self.imp
-            .remove_on_reducer("migrate_auto_attacks", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `migrate_auto_attacks`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_migrate_auto_attacks {
-    /// Set the call-reducer flags for the reducer `migrate_auto_attacks` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn migrate_auto_attacks(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_migrate_auto_attacks for super::SetReducerFlags {
-    fn migrate_auto_attacks(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("migrate_auto_attacks", flags);
+            .invoke_reducer_with_callback(MigrateAutoAttacksArgs {}, callback)
     }
 }

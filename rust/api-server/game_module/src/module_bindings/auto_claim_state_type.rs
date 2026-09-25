@@ -48,3 +48,5 @@ impl __sdk::__query_builder::HasIxCols for AutoClaimState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for AutoClaimState {}

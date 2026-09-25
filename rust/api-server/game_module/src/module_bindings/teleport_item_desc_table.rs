@@ -18,6 +18,18 @@ pub struct TeleportItemDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `teleport_item_desc`.
+pub struct TeleportItemDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for TeleportItemDescTableAccessor {
+    type Row = TeleportItemDesc;
+    type Handle<'db> = TeleportItemDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.teleport_item_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `teleport_item_desc`.
 ///
@@ -40,6 +52,16 @@ impl TeleportItemDescTableAccess for super::RemoteTables {
 pub struct TeleportItemDescInitialCallbackId(__sdk::CallbackId);
 pub struct TeleportItemDescInsertCallbackId(__sdk::CallbackId);
 pub struct TeleportItemDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for TeleportItemDescTableHandle<'ctx> {
+    type Row = TeleportItemDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = TeleportItemDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> TeleportItemDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,14 +123,36 @@ impl<'ctx> __sdk::Table for TeleportItemDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for TeleportItemDescTableHandle<'ctx> {
+    type InsertCallbackId = TeleportItemDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<TeleportItemDesc>("teleport_item_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TeleportItemDescInsertCallbackId {
+        TeleportItemDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: TeleportItemDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for TeleportItemDescTableHandle<'ctx> {
+    type DeleteCallbackId = TeleportItemDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TeleportItemDescDeleteCallbackId {
+        TeleportItemDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: TeleportItemDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct TeleportItemDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for TeleportItemDescTableHandle<'ctx> {
@@ -126,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for TeleportItemDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<TeleportItemDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<TeleportItemDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for TeleportItemDescTableHandle<'ctx> {
+    type UpdateCallbackId = TeleportItemDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> TeleportItemDescUpdateCallbackId {
+        TeleportItemDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: TeleportItemDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -167,6 +215,26 @@ impl<'ctx> TeleportItemDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<TeleportItemDesc>("teleport_item_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<TeleportItemDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<TeleportItemDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

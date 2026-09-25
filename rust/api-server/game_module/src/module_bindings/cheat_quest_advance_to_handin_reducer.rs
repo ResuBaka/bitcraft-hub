@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatQuestAdvanceToHandinArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatQuestAdvanceToHandinCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_quest_advance_to_handin`.
 ///
@@ -35,98 +33,53 @@ pub trait cheat_quest_advance_to_handin {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_quest_advance_to_handin`] callbacks.
-    fn cheat_quest_advance_to_handin(
-        &self,
-        player_entity_id: u64,
-        quest_desc_id: i32,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_quest_advance_to_handin`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatQuestAdvanceToHandinCallbackId`] can be passed to [`Self::remove_on_cheat_quest_advance_to_handin`]
-    /// to cancel the callback.
-    fn on_cheat_quest_advance_to_handin(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> CheatQuestAdvanceToHandinCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_quest_advance_to_handin`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_quest_advance_to_handin(
-        &self,
-        callback: CheatQuestAdvanceToHandinCallbackId,
-    );
-}
-
-impl cheat_quest_advance_to_handin for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_quest_advance_to_handin:cheat_quest_advance_to_handin_then`] to run a callback after the reducer completes.
     fn cheat_quest_advance_to_handin(
         &self,
         player_entity_id: u64,
         quest_desc_id: i32,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "cheat_quest_advance_to_handin",
+        self.cheat_quest_advance_to_handin_then(player_entity_id, quest_desc_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `cheat_quest_advance_to_handin` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_quest_advance_to_handin_then(
+        &self,
+        player_entity_id: u64,
+        quest_desc_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl cheat_quest_advance_to_handin for super::RemoteReducers {
+    fn cheat_quest_advance_to_handin_then(
+        &self,
+        player_entity_id: u64,
+        quest_desc_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             CheatQuestAdvanceToHandinArgs {
                 player_entity_id,
                 quest_desc_id,
             },
+            callback,
         )
-    }
-    fn on_cheat_quest_advance_to_handin(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> CheatQuestAdvanceToHandinCallbackId {
-        CheatQuestAdvanceToHandinCallbackId(self.imp.on_reducer(
-            "cheat_quest_advance_to_handin",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::CheatQuestAdvanceToHandin {
-                                    player_entity_id,
-                                    quest_desc_id,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, player_entity_id, quest_desc_id)
-            }),
-        ))
-    }
-    fn remove_on_cheat_quest_advance_to_handin(
-        &self,
-        callback: CheatQuestAdvanceToHandinCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("cheat_quest_advance_to_handin", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_quest_advance_to_handin`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_quest_advance_to_handin {
-    /// Set the call-reducer flags for the reducer `cheat_quest_advance_to_handin` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_quest_advance_to_handin(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_cheat_quest_advance_to_handin for super::SetReducerFlags {
-    fn cheat_quest_advance_to_handin(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("cheat_quest_advance_to_handin", flags);
     }
 }

@@ -22,8 +22,6 @@ impl __sdk::InModule for AdminResourcesDeleteVerySlowArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminResourcesDeleteVerySlowCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_resources_delete_very_slow`.
 ///
@@ -33,83 +31,44 @@ pub trait admin_resources_delete_very_slow {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_resources_delete_very_slow`] callbacks.
-    fn admin_resources_delete_very_slow(&self, resource_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_resources_delete_very_slow`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_resources_delete_very_slow:admin_resources_delete_very_slow_then`] to run a callback after the reducer completes.
+    fn admin_resources_delete_very_slow(&self, resource_id: i32) -> __sdk::Result<()> {
+        self.admin_resources_delete_very_slow_then(resource_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_resources_delete_very_slow` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminResourcesDeleteVerySlowCallbackId`] can be passed to [`Self::remove_on_admin_resources_delete_very_slow`]
-    /// to cancel the callback.
-    fn on_admin_resources_delete_very_slow(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_resources_delete_very_slow_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> AdminResourcesDeleteVerySlowCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_resources_delete_very_slow`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_resources_delete_very_slow(
-        &self,
-        callback: AdminResourcesDeleteVerySlowCallbackId,
-    );
+        resource_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl admin_resources_delete_very_slow for super::RemoteReducers {
-    fn admin_resources_delete_very_slow(&self, resource_id: i32) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_resources_delete_very_slow",
+    fn admin_resources_delete_very_slow_then(
+        &self,
+        resource_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminResourcesDeleteVerySlowArgs { resource_id },
+            callback,
         )
-    }
-    fn on_admin_resources_delete_very_slow(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> AdminResourcesDeleteVerySlowCallbackId {
-        AdminResourcesDeleteVerySlowCallbackId(self.imp.on_reducer(
-            "admin_resources_delete_very_slow",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::AdminResourcesDeleteVerySlow { resource_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, resource_id)
-            }),
-        ))
-    }
-    fn remove_on_admin_resources_delete_very_slow(
-        &self,
-        callback: AdminResourcesDeleteVerySlowCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("admin_resources_delete_very_slow", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_resources_delete_very_slow`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_resources_delete_very_slow {
-    /// Set the call-reducer flags for the reducer `admin_resources_delete_very_slow` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_resources_delete_very_slow(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_resources_delete_very_slow for super::SetReducerFlags {
-    fn admin_resources_delete_very_slow(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_resources_delete_very_slow", flags);
     }
 }

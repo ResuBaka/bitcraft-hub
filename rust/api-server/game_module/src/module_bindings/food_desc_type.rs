@@ -84,3 +84,5 @@ impl __sdk::__query_builder::HasIxCols for FoodDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for FoodDesc {}

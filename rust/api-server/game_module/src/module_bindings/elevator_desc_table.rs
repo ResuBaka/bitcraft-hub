@@ -18,6 +18,18 @@ pub struct ElevatorDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `elevator_desc`.
+pub struct ElevatorDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for ElevatorDescTableAccessor {
+    type Row = ElevatorDesc;
+    type Handle<'db> = ElevatorDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.elevator_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `elevator_desc`.
 ///
@@ -40,6 +52,16 @@ impl ElevatorDescTableAccess for super::RemoteTables {
 pub struct ElevatorDescInitialCallbackId(__sdk::CallbackId);
 pub struct ElevatorDescInsertCallbackId(__sdk::CallbackId);
 pub struct ElevatorDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for ElevatorDescTableHandle<'ctx> {
+    type Row = ElevatorDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = ElevatorDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> ElevatorDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,14 +123,36 @@ impl<'ctx> __sdk::Table for ElevatorDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for ElevatorDescTableHandle<'ctx> {
+    type InsertCallbackId = ElevatorDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<ElevatorDesc>("elevator_desc");
-    _table.add_unique_constraint::<i32>("building_id", |row| &row.building_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ElevatorDescInsertCallbackId {
+        ElevatorDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: ElevatorDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for ElevatorDescTableHandle<'ctx> {
+    type DeleteCallbackId = ElevatorDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ElevatorDescDeleteCallbackId {
+        ElevatorDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: ElevatorDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct ElevatorDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for ElevatorDescTableHandle<'ctx> {
@@ -126,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for ElevatorDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<ElevatorDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<ElevatorDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for ElevatorDescTableHandle<'ctx> {
+    type UpdateCallbackId = ElevatorDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> ElevatorDescUpdateCallbackId {
+        ElevatorDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: ElevatorDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -167,6 +215,26 @@ impl<'ctx> ElevatorDescBuildingIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<ElevatorDesc>("elevator_desc");
+    _table.add_unique_constraint::<i32>("building_id", |row| &row.building_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<ElevatorDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<ElevatorDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

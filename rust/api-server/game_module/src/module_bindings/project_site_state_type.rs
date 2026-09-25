@@ -82,3 +82,5 @@ impl __sdk::__query_builder::HasIxCols for ProjectSiteState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ProjectSiteState {}

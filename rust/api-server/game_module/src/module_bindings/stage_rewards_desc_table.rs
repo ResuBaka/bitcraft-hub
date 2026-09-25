@@ -19,6 +19,18 @@ pub struct StageRewardsDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `stage_rewards_desc`.
+pub struct StageRewardsDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for StageRewardsDescTableAccessor {
+    type Row = StageRewardsDesc;
+    type Handle<'db> = StageRewardsDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.stage_rewards_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `stage_rewards_desc`.
 ///
@@ -41,6 +53,16 @@ impl StageRewardsDescTableAccess for super::RemoteTables {
 pub struct StageRewardsDescInitialCallbackId(__sdk::CallbackId);
 pub struct StageRewardsDescInsertCallbackId(__sdk::CallbackId);
 pub struct StageRewardsDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for StageRewardsDescTableHandle<'ctx> {
+    type Row = StageRewardsDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = StageRewardsDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> StageRewardsDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -102,14 +124,36 @@ impl<'ctx> __sdk::Table for StageRewardsDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for StageRewardsDescTableHandle<'ctx> {
+    type InsertCallbackId = StageRewardsDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<StageRewardsDesc>("stage_rewards_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> StageRewardsDescInsertCallbackId {
+        StageRewardsDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: StageRewardsDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for StageRewardsDescTableHandle<'ctx> {
+    type DeleteCallbackId = StageRewardsDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> StageRewardsDescDeleteCallbackId {
+        StageRewardsDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: StageRewardsDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct StageRewardsDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for StageRewardsDescTableHandle<'ctx> {
@@ -127,15 +171,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for StageRewardsDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<StageRewardsDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<StageRewardsDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for StageRewardsDescTableHandle<'ctx> {
+    type UpdateCallbackId = StageRewardsDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> StageRewardsDescUpdateCallbackId {
+        StageRewardsDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: StageRewardsDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -168,6 +216,26 @@ impl<'ctx> StageRewardsDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<StageRewardsDesc>("stage_rewards_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<StageRewardsDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<StageRewardsDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

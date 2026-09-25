@@ -24,8 +24,6 @@ impl __sdk::InModule for PillarShapingPlacePillarStartArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PillarShapingPlacePillarStartCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `pillar_shaping_place_pillar_start`.
 ///
@@ -35,93 +33,45 @@ pub trait pillar_shaping_place_pillar_start {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_pillar_shaping_place_pillar_start`] callbacks.
-    fn pillar_shaping_place_pillar_start(
-        &self,
-        request: PlayerPillarShapingPlaceRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `pillar_shaping_place_pillar_start`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PillarShapingPlacePillarStartCallbackId`] can be passed to [`Self::remove_on_pillar_shaping_place_pillar_start`]
-    /// to cancel the callback.
-    fn on_pillar_shaping_place_pillar_start(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingPlaceRequest)
-        + Send
-        + 'static,
-    ) -> PillarShapingPlacePillarStartCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_pillar_shaping_place_pillar_start`],
-    /// causing it not to run in the future.
-    fn remove_on_pillar_shaping_place_pillar_start(
-        &self,
-        callback: PillarShapingPlacePillarStartCallbackId,
-    );
-}
-
-impl pillar_shaping_place_pillar_start for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`pillar_shaping_place_pillar_start:pillar_shaping_place_pillar_start_then`] to run a callback after the reducer completes.
     fn pillar_shaping_place_pillar_start(
         &self,
         request: PlayerPillarShapingPlaceRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "pillar_shaping_place_pillar_start",
-            PillarShapingPlacePillarStartArgs { request },
-        )
+        self.pillar_shaping_place_pillar_start_then(request, |_, _| {})
     }
-    fn on_pillar_shaping_place_pillar_start(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerPillarShapingPlaceRequest)
-        + Send
-        + 'static,
-    ) -> PillarShapingPlacePillarStartCallbackId {
-        PillarShapingPlacePillarStartCallbackId(self.imp.on_reducer(
-            "pillar_shaping_place_pillar_start",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::PillarShapingPlacePillarStart { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_pillar_shaping_place_pillar_start(
-        &self,
-        callback: PillarShapingPlacePillarStartCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("pillar_shaping_place_pillar_start", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `pillar_shaping_place_pillar_start`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_pillar_shaping_place_pillar_start {
-    /// Set the call-reducer flags for the reducer `pillar_shaping_place_pillar_start` to `flags`.
+    /// Request that the remote module invoke the reducer `pillar_shaping_place_pillar_start` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn pillar_shaping_place_pillar_start(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn pillar_shaping_place_pillar_start_then(
+        &self,
+        request: PlayerPillarShapingPlaceRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_pillar_shaping_place_pillar_start for super::SetReducerFlags {
-    fn pillar_shaping_place_pillar_start(&self, flags: __ws::CallReducerFlags) {
+impl pillar_shaping_place_pillar_start for super::RemoteReducers {
+    fn pillar_shaping_place_pillar_start_then(
+        &self,
+        request: PlayerPillarShapingPlaceRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("pillar_shaping_place_pillar_start", flags);
+            .invoke_reducer_with_callback(PillarShapingPlacePillarStartArgs { request }, callback)
     }
 }

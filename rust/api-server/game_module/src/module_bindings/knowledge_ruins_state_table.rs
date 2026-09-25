@@ -19,6 +19,18 @@ pub struct KnowledgeRuinsStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `knowledge_ruins_state`.
+pub struct KnowledgeRuinsStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for KnowledgeRuinsStateTableAccessor {
+    type Row = KnowledgeRuinsState;
+    type Handle<'db> = KnowledgeRuinsStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.knowledge_ruins_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `knowledge_ruins_state`.
 ///
@@ -43,6 +55,16 @@ impl KnowledgeRuinsStateTableAccess for super::RemoteTables {
 pub struct KnowledgeRuinsStateInitialCallbackId(__sdk::CallbackId);
 pub struct KnowledgeRuinsStateInsertCallbackId(__sdk::CallbackId);
 pub struct KnowledgeRuinsStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for KnowledgeRuinsStateTableHandle<'ctx> {
+    type Row = KnowledgeRuinsState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = KnowledgeRuinsState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> KnowledgeRuinsStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,14 +126,36 @@ impl<'ctx> __sdk::Table for KnowledgeRuinsStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for KnowledgeRuinsStateTableHandle<'ctx> {
+    type InsertCallbackId = KnowledgeRuinsStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<KnowledgeRuinsState>("knowledge_ruins_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> KnowledgeRuinsStateInsertCallbackId {
+        KnowledgeRuinsStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: KnowledgeRuinsStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for KnowledgeRuinsStateTableHandle<'ctx> {
+    type DeleteCallbackId = KnowledgeRuinsStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> KnowledgeRuinsStateDeleteCallbackId {
+        KnowledgeRuinsStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: KnowledgeRuinsStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct KnowledgeRuinsStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for KnowledgeRuinsStateTableHandle<'ctx> {
@@ -129,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for KnowledgeRuinsStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<KnowledgeRuinsState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<KnowledgeRuinsState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for KnowledgeRuinsStateTableHandle<'ctx> {
+    type UpdateCallbackId = KnowledgeRuinsStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> KnowledgeRuinsStateUpdateCallbackId {
+        KnowledgeRuinsStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: KnowledgeRuinsStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -170,6 +218,26 @@ impl<'ctx> KnowledgeRuinsStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<KnowledgeRuinsState>("knowledge_ruins_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<KnowledgeRuinsState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<KnowledgeRuinsState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

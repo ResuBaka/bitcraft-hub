@@ -46,8 +46,6 @@ impl __sdk::InModule for WorldPlaceNpcWatchtowersArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct WorldPlaceNpcWatchtowersCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `world_place_npc_watchtowers`.
 ///
@@ -57,54 +55,8 @@ pub trait world_place_npc_watchtowers {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_world_place_npc_watchtowers`] callbacks.
-    fn world_place_npc_watchtowers(
-        &self,
-        watchtower_positions: Vec<OffsetCoordinatesSmallMessage>,
-        watchtower_chunk_indexes: Vec<Vec<u64>>,
-        energy: i32,
-        upkeep: i32,
-        building_desc_id: i32,
-        biomes: Vec<i32>,
-        dry_run: bool,
-        log_results: bool,
-        clear_and_level_ground: bool,
-        ignore_biomes: bool,
-        ignore_claims: bool,
-        ignore_dimension_rules: bool,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `world_place_npc_watchtowers`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`WorldPlaceNpcWatchtowersCallbackId`] can be passed to [`Self::remove_on_world_place_npc_watchtowers`]
-    /// to cancel the callback.
-    fn on_world_place_npc_watchtowers(
-        &self,
-        callback: impl FnMut(
-            &super::ReducerEventContext,
-            &Vec<OffsetCoordinatesSmallMessage>,
-            &Vec<Vec<u64>>,
-            &i32,
-            &i32,
-            &i32,
-            &Vec<i32>,
-            &bool,
-            &bool,
-            &bool,
-            &bool,
-            &bool,
-            &bool,
-        ) + Send
-        + 'static,
-    ) -> WorldPlaceNpcWatchtowersCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_world_place_npc_watchtowers`],
-    /// causing it not to run in the future.
-    fn remove_on_world_place_npc_watchtowers(&self, callback: WorldPlaceNpcWatchtowersCallbackId);
-}
-
-impl world_place_npc_watchtowers for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`world_place_npc_watchtowers:world_place_npc_watchtowers_then`] to run a callback after the reducer completes.
     fn world_place_npc_watchtowers(
         &self,
         watchtower_positions: Vec<OffsetCoordinatesSmallMessage>,
@@ -120,8 +72,75 @@ impl world_place_npc_watchtowers for super::RemoteReducers {
         ignore_claims: bool,
         ignore_dimension_rules: bool,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "world_place_npc_watchtowers",
+        self.world_place_npc_watchtowers_then(
+            watchtower_positions,
+            watchtower_chunk_indexes,
+            energy,
+            upkeep,
+            building_desc_id,
+            biomes,
+            dry_run,
+            log_results,
+            clear_and_level_ground,
+            ignore_biomes,
+            ignore_claims,
+            ignore_dimension_rules,
+            |_, _| {},
+        )
+    }
+
+    /// Request that the remote module invoke the reducer `world_place_npc_watchtowers` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn world_place_npc_watchtowers_then(
+        &self,
+        watchtower_positions: Vec<OffsetCoordinatesSmallMessage>,
+        watchtower_chunk_indexes: Vec<Vec<u64>>,
+        energy: i32,
+        upkeep: i32,
+        building_desc_id: i32,
+        biomes: Vec<i32>,
+        dry_run: bool,
+        log_results: bool,
+        clear_and_level_ground: bool,
+        ignore_biomes: bool,
+        ignore_claims: bool,
+        ignore_dimension_rules: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl world_place_npc_watchtowers for super::RemoteReducers {
+    fn world_place_npc_watchtowers_then(
+        &self,
+        watchtower_positions: Vec<OffsetCoordinatesSmallMessage>,
+        watchtower_chunk_indexes: Vec<Vec<u64>>,
+        energy: i32,
+        upkeep: i32,
+        building_desc_id: i32,
+        biomes: Vec<i32>,
+        dry_run: bool,
+        log_results: bool,
+        clear_and_level_ground: bool,
+        ignore_biomes: bool,
+        ignore_claims: bool,
+        ignore_dimension_rules: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             WorldPlaceNpcWatchtowersArgs {
                 watchtower_positions,
                 watchtower_chunk_indexes,
@@ -136,97 +155,7 @@ impl world_place_npc_watchtowers for super::RemoteReducers {
                 ignore_claims,
                 ignore_dimension_rules,
             },
+            callback,
         )
-    }
-    fn on_world_place_npc_watchtowers(
-        &self,
-        mut callback: impl FnMut(
-            &super::ReducerEventContext,
-            &Vec<OffsetCoordinatesSmallMessage>,
-            &Vec<Vec<u64>>,
-            &i32,
-            &i32,
-            &i32,
-            &Vec<i32>,
-            &bool,
-            &bool,
-            &bool,
-            &bool,
-            &bool,
-            &bool,
-        ) + Send
-        + 'static,
-    ) -> WorldPlaceNpcWatchtowersCallbackId {
-        WorldPlaceNpcWatchtowersCallbackId(self.imp.on_reducer(
-            "world_place_npc_watchtowers",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::WorldPlaceNpcWatchtowers {
-                                    watchtower_positions,
-                                    watchtower_chunk_indexes,
-                                    energy,
-                                    upkeep,
-                                    building_desc_id,
-                                    biomes,
-                                    dry_run,
-                                    log_results,
-                                    clear_and_level_ground,
-                                    ignore_biomes,
-                                    ignore_claims,
-                                    ignore_dimension_rules,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(
-                    ctx,
-                    watchtower_positions,
-                    watchtower_chunk_indexes,
-                    energy,
-                    upkeep,
-                    building_desc_id,
-                    biomes,
-                    dry_run,
-                    log_results,
-                    clear_and_level_ground,
-                    ignore_biomes,
-                    ignore_claims,
-                    ignore_dimension_rules,
-                )
-            }),
-        ))
-    }
-    fn remove_on_world_place_npc_watchtowers(&self, callback: WorldPlaceNpcWatchtowersCallbackId) {
-        self.imp
-            .remove_on_reducer("world_place_npc_watchtowers", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `world_place_npc_watchtowers`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_world_place_npc_watchtowers {
-    /// Set the call-reducer flags for the reducer `world_place_npc_watchtowers` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn world_place_npc_watchtowers(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_world_place_npc_watchtowers for super::SetReducerFlags {
-    fn world_place_npc_watchtowers(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("world_place_npc_watchtowers", flags);
     }
 }

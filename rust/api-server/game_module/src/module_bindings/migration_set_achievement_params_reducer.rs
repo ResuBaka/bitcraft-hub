@@ -24,8 +24,6 @@ impl __sdk::InModule for MigrationSetAchievementParamsArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct MigrationSetAchievementParamsCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `migration_set_achievement_params`.
 ///
@@ -35,98 +33,57 @@ pub trait migration_set_achievement_params {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_migration_set_achievement_params`] callbacks.
-    fn migration_set_achievement_params(
-        &self,
-        allow_destructive: bool,
-        grant_if_already_owned: bool,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `migration_set_achievement_params`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`MigrationSetAchievementParamsCallbackId`] can be passed to [`Self::remove_on_migration_set_achievement_params`]
-    /// to cancel the callback.
-    fn on_migration_set_achievement_params(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &bool, &bool) + Send + 'static,
-    ) -> MigrationSetAchievementParamsCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_migration_set_achievement_params`],
-    /// causing it not to run in the future.
-    fn remove_on_migration_set_achievement_params(
-        &self,
-        callback: MigrationSetAchievementParamsCallbackId,
-    );
-}
-
-impl migration_set_achievement_params for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`migration_set_achievement_params:migration_set_achievement_params_then`] to run a callback after the reducer completes.
     fn migration_set_achievement_params(
         &self,
         allow_destructive: bool,
         grant_if_already_owned: bool,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "migration_set_achievement_params",
+        self.migration_set_achievement_params_then(
+            allow_destructive,
+            grant_if_already_owned,
+            |_, _| {},
+        )
+    }
+
+    /// Request that the remote module invoke the reducer `migration_set_achievement_params` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn migration_set_achievement_params_then(
+        &self,
+        allow_destructive: bool,
+        grant_if_already_owned: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl migration_set_achievement_params for super::RemoteReducers {
+    fn migration_set_achievement_params_then(
+        &self,
+        allow_destructive: bool,
+        grant_if_already_owned: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             MigrationSetAchievementParamsArgs {
                 allow_destructive,
                 grant_if_already_owned,
             },
+            callback,
         )
-    }
-    fn on_migration_set_achievement_params(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &bool, &bool) + Send + 'static,
-    ) -> MigrationSetAchievementParamsCallbackId {
-        MigrationSetAchievementParamsCallbackId(self.imp.on_reducer(
-            "migration_set_achievement_params",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::MigrationSetAchievementParams {
-                                    allow_destructive,
-                                    grant_if_already_owned,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, allow_destructive, grant_if_already_owned)
-            }),
-        ))
-    }
-    fn remove_on_migration_set_achievement_params(
-        &self,
-        callback: MigrationSetAchievementParamsCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("migration_set_achievement_params", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `migration_set_achievement_params`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_migration_set_achievement_params {
-    /// Set the call-reducer flags for the reducer `migration_set_achievement_params` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn migration_set_achievement_params(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_migration_set_achievement_params for super::SetReducerFlags {
-    fn migration_set_achievement_params(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("migration_set_achievement_params", flags);
     }
 }

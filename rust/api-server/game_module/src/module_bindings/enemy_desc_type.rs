@@ -212,3 +212,5 @@ impl __sdk::__query_builder::HasIxCols for EnemyDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EnemyDesc {}

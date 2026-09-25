@@ -199,3 +199,5 @@ impl __sdk::__query_builder::HasIxCols for ProspectingDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ProspectingDesc {}

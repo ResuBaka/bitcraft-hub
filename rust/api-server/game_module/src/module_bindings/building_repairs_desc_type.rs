@@ -48,3 +48,5 @@ impl __sdk::__query_builder::HasIxCols for BuildingRepairsDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for BuildingRepairsDesc {}

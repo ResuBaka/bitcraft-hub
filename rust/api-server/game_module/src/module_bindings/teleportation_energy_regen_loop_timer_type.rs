@@ -49,3 +49,5 @@ impl __sdk::__query_builder::HasIxCols for TeleportationEnergyRegenLoopTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for TeleportationEnergyRegenLoopTimer {}

@@ -24,8 +24,6 @@ impl __sdk::InModule for BarterStallSetMarketModeEnabledArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct BarterStallSetMarketModeEnabledCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `barter_stall_set_market_mode_enabled`.
 ///
@@ -35,93 +33,45 @@ pub trait barter_stall_set_market_mode_enabled {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_barter_stall_set_market_mode_enabled`] callbacks.
-    fn barter_stall_set_market_mode_enabled(
-        &self,
-        request: BarterStallSetMarketModeEnabledRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `barter_stall_set_market_mode_enabled`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`BarterStallSetMarketModeEnabledCallbackId`] can be passed to [`Self::remove_on_barter_stall_set_market_mode_enabled`]
-    /// to cancel the callback.
-    fn on_barter_stall_set_market_mode_enabled(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &BarterStallSetMarketModeEnabledRequest)
-        + Send
-        + 'static,
-    ) -> BarterStallSetMarketModeEnabledCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_barter_stall_set_market_mode_enabled`],
-    /// causing it not to run in the future.
-    fn remove_on_barter_stall_set_market_mode_enabled(
-        &self,
-        callback: BarterStallSetMarketModeEnabledCallbackId,
-    );
-}
-
-impl barter_stall_set_market_mode_enabled for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`barter_stall_set_market_mode_enabled:barter_stall_set_market_mode_enabled_then`] to run a callback after the reducer completes.
     fn barter_stall_set_market_mode_enabled(
         &self,
         request: BarterStallSetMarketModeEnabledRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "barter_stall_set_market_mode_enabled",
-            BarterStallSetMarketModeEnabledArgs { request },
-        )
+        self.barter_stall_set_market_mode_enabled_then(request, |_, _| {})
     }
-    fn on_barter_stall_set_market_mode_enabled(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &BarterStallSetMarketModeEnabledRequest)
-        + Send
-        + 'static,
-    ) -> BarterStallSetMarketModeEnabledCallbackId {
-        BarterStallSetMarketModeEnabledCallbackId(self.imp.on_reducer(
-            "barter_stall_set_market_mode_enabled",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::BarterStallSetMarketModeEnabled { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_barter_stall_set_market_mode_enabled(
-        &self,
-        callback: BarterStallSetMarketModeEnabledCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("barter_stall_set_market_mode_enabled", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `barter_stall_set_market_mode_enabled`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_barter_stall_set_market_mode_enabled {
-    /// Set the call-reducer flags for the reducer `barter_stall_set_market_mode_enabled` to `flags`.
+    /// Request that the remote module invoke the reducer `barter_stall_set_market_mode_enabled` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn barter_stall_set_market_mode_enabled(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn barter_stall_set_market_mode_enabled_then(
+        &self,
+        request: BarterStallSetMarketModeEnabledRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_barter_stall_set_market_mode_enabled for super::SetReducerFlags {
-    fn barter_stall_set_market_mode_enabled(&self, flags: __ws::CallReducerFlags) {
+impl barter_stall_set_market_mode_enabled for super::RemoteReducers {
+    fn barter_stall_set_market_mode_enabled_then(
+        &self,
+        request: BarterStallSetMarketModeEnabledRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("barter_stall_set_market_mode_enabled", flags);
+            .invoke_reducer_with_callback(BarterStallSetMarketModeEnabledArgs { request }, callback)
     }
 }

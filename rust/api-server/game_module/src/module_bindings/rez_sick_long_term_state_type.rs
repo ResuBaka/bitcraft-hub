@@ -45,3 +45,5 @@ impl __sdk::__query_builder::HasIxCols for RezSickLongTermState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for RezSickLongTermState {}

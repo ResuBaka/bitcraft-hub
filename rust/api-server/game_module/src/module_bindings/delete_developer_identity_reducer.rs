@@ -22,8 +22,6 @@ impl __sdk::InModule for DeleteDeveloperIdentityArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DeleteDeveloperIdentityCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `delete_developer_identity`.
 ///
@@ -33,77 +31,42 @@ pub trait delete_developer_identity {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_delete_developer_identity`] callbacks.
-    fn delete_developer_identity(&self, identity: String) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `delete_developer_identity`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`delete_developer_identity:delete_developer_identity_then`] to run a callback after the reducer completes.
+    fn delete_developer_identity(&self, identity: String) -> __sdk::Result<()> {
+        self.delete_developer_identity_then(identity, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `delete_developer_identity` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DeleteDeveloperIdentityCallbackId`] can be passed to [`Self::remove_on_delete_developer_identity`]
-    /// to cancel the callback.
-    fn on_delete_developer_identity(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn delete_developer_identity_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &String) + Send + 'static,
-    ) -> DeleteDeveloperIdentityCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_delete_developer_identity`],
-    /// causing it not to run in the future.
-    fn remove_on_delete_developer_identity(&self, callback: DeleteDeveloperIdentityCallbackId);
+        identity: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl delete_developer_identity for super::RemoteReducers {
-    fn delete_developer_identity(&self, identity: String) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "delete_developer_identity",
-            DeleteDeveloperIdentityArgs { identity },
-        )
-    }
-    fn on_delete_developer_identity(
+    fn delete_developer_identity_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &String) + Send + 'static,
-    ) -> DeleteDeveloperIdentityCallbackId {
-        DeleteDeveloperIdentityCallbackId(self.imp.on_reducer(
-            "delete_developer_identity",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::DeleteDeveloperIdentity { identity },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, identity)
-            }),
-        ))
-    }
-    fn remove_on_delete_developer_identity(&self, callback: DeleteDeveloperIdentityCallbackId) {
-        self.imp
-            .remove_on_reducer("delete_developer_identity", callback.0)
-    }
-}
+        identity: String,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `delete_developer_identity`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_delete_developer_identity {
-    /// Set the call-reducer flags for the reducer `delete_developer_identity` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn delete_developer_identity(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_delete_developer_identity for super::SetReducerFlags {
-    fn delete_developer_identity(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("delete_developer_identity", flags);
+            .invoke_reducer_with_callback(DeleteDeveloperIdentityArgs { identity }, callback)
     }
 }

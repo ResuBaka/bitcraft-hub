@@ -18,6 +18,18 @@ pub struct PublicProgressiveActionStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `public_progressive_action_state`.
+pub struct PublicProgressiveActionStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for PublicProgressiveActionStateTableAccessor {
+    type Row = PublicProgressiveActionState;
+    type Handle<'db> = PublicProgressiveActionStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.public_progressive_action_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `public_progressive_action_state`.
 ///
@@ -42,6 +54,16 @@ impl PublicProgressiveActionStateTableAccess for super::RemoteTables {
 pub struct PublicProgressiveActionStateInitialCallbackId(__sdk::CallbackId);
 pub struct PublicProgressiveActionStateInsertCallbackId(__sdk::CallbackId);
 pub struct PublicProgressiveActionStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for PublicProgressiveActionStateTableHandle<'ctx> {
+    type Row = PublicProgressiveActionState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PublicProgressiveActionState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> PublicProgressiveActionStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for PublicProgressiveActionStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for PublicProgressiveActionStateTableHandle<'ctx> {
+    type InsertCallbackId = PublicProgressiveActionStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<PublicProgressiveActionState>("public_progressive_action_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PublicProgressiveActionStateInsertCallbackId {
+        PublicProgressiveActionStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: PublicProgressiveActionStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for PublicProgressiveActionStateTableHandle<'ctx> {
+    type DeleteCallbackId = PublicProgressiveActionStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PublicProgressiveActionStateDeleteCallbackId {
+        PublicProgressiveActionStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: PublicProgressiveActionStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct PublicProgressiveActionStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for PublicProgressiveActionStateTableHandle<'ctx> {
@@ -128,18 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for PublicProgressiveActionStateTableHandl
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<PublicProgressiveActionState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse(
-            "TableUpdate<PublicProgressiveActionState>",
-            "TableUpdate",
-        )
-        .with_cause(e)
-        .into()
-    })
+impl<'ctx> __sdk::WithUpdate for PublicProgressiveActionStateTableHandle<'ctx> {
+    type UpdateCallbackId = PublicProgressiveActionStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> PublicProgressiveActionStateUpdateCallbackId {
+        PublicProgressiveActionStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: PublicProgressiveActionStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -172,6 +217,29 @@ impl<'ctx> PublicProgressiveActionStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<PublicProgressiveActionState>("public_progressive_action_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<PublicProgressiveActionState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse(
+            "TableUpdate<PublicProgressiveActionState>",
+            "TableUpdate",
+        )
+        .with_cause(e)
+        .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

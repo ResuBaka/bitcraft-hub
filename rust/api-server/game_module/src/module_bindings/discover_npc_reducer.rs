@@ -22,8 +22,6 @@ impl __sdk::InModule for DiscoverNpcArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DiscoverNpcCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `discover_npc`.
 ///
@@ -33,73 +31,42 @@ pub trait discover_npc {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_discover_npc`] callbacks.
-    fn discover_npc(&self, npc_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `discover_npc`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`discover_npc:discover_npc_then`] to run a callback after the reducer completes.
+    fn discover_npc(&self, npc_id: i32) -> __sdk::Result<()> {
+        self.discover_npc_then(npc_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `discover_npc` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DiscoverNpcCallbackId`] can be passed to [`Self::remove_on_discover_npc`]
-    /// to cancel the callback.
-    fn on_discover_npc(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn discover_npc_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverNpcCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_discover_npc`],
-    /// causing it not to run in the future.
-    fn remove_on_discover_npc(&self, callback: DiscoverNpcCallbackId);
+        npc_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl discover_npc for super::RemoteReducers {
-    fn discover_npc(&self, npc_id: i32) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("discover_npc", DiscoverNpcArgs { npc_id })
-    }
-    fn on_discover_npc(
+    fn discover_npc_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverNpcCallbackId {
-        DiscoverNpcCallbackId(self.imp.on_reducer(
-            "discover_npc",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::DiscoverNpc { npc_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, npc_id)
-            }),
-        ))
-    }
-    fn remove_on_discover_npc(&self, callback: DiscoverNpcCallbackId) {
-        self.imp.remove_on_reducer("discover_npc", callback.0)
-    }
-}
+        npc_id: i32,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `discover_npc`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_discover_npc {
-    /// Set the call-reducer flags for the reducer `discover_npc` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn discover_npc(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_discover_npc for super::SetReducerFlags {
-    fn discover_npc(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("discover_npc", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(DiscoverNpcArgs { npc_id }, callback)
     }
 }

@@ -24,8 +24,6 @@ impl __sdk::InModule for StageTravelerTaskDescArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct StageTravelerTaskDescCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `stage_traveler_task_desc`.
 ///
@@ -35,77 +33,42 @@ pub trait stage_traveler_task_desc {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_stage_traveler_task_desc`] callbacks.
-    fn stage_traveler_task_desc(&self, records: Vec<TravelerTaskDesc>) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_traveler_task_desc`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`stage_traveler_task_desc:stage_traveler_task_desc_then`] to run a callback after the reducer completes.
+    fn stage_traveler_task_desc(&self, records: Vec<TravelerTaskDesc>) -> __sdk::Result<()> {
+        self.stage_traveler_task_desc_then(records, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `stage_traveler_task_desc` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`StageTravelerTaskDescCallbackId`] can be passed to [`Self::remove_on_stage_traveler_task_desc`]
-    /// to cancel the callback.
-    fn on_stage_traveler_task_desc(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn stage_traveler_task_desc_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTaskDesc>) + Send + 'static,
-    ) -> StageTravelerTaskDescCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_stage_traveler_task_desc`],
-    /// causing it not to run in the future.
-    fn remove_on_stage_traveler_task_desc(&self, callback: StageTravelerTaskDescCallbackId);
+        records: Vec<TravelerTaskDesc>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl stage_traveler_task_desc for super::RemoteReducers {
-    fn stage_traveler_task_desc(&self, records: Vec<TravelerTaskDesc>) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "stage_traveler_task_desc",
-            StageTravelerTaskDescArgs { records },
-        )
-    }
-    fn on_stage_traveler_task_desc(
+    fn stage_traveler_task_desc_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<TravelerTaskDesc>) + Send + 'static,
-    ) -> StageTravelerTaskDescCallbackId {
-        StageTravelerTaskDescCallbackId(self.imp.on_reducer(
-            "stage_traveler_task_desc",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::StageTravelerTaskDesc { records },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, records)
-            }),
-        ))
-    }
-    fn remove_on_stage_traveler_task_desc(&self, callback: StageTravelerTaskDescCallbackId) {
-        self.imp
-            .remove_on_reducer("stage_traveler_task_desc", callback.0)
-    }
-}
+        records: Vec<TravelerTaskDesc>,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `stage_traveler_task_desc`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_stage_traveler_task_desc {
-    /// Set the call-reducer flags for the reducer `stage_traveler_task_desc` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn stage_traveler_task_desc(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_stage_traveler_task_desc for super::SetReducerFlags {
-    fn stage_traveler_task_desc(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("stage_traveler_task_desc", flags);
+            .invoke_reducer_with_callback(StageTravelerTaskDescArgs { records }, callback)
     }
 }

@@ -19,6 +19,18 @@ pub struct IdentityRoleTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `identity_role`.
+pub struct IdentityRoleTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for IdentityRoleTableAccessor {
+    type Row = IdentityRole;
+    type Handle<'db> = IdentityRoleTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.identity_role()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `identity_role`.
 ///
@@ -41,6 +53,16 @@ impl IdentityRoleTableAccess for super::RemoteTables {
 pub struct IdentityRoleInitialCallbackId(__sdk::CallbackId);
 pub struct IdentityRoleInsertCallbackId(__sdk::CallbackId);
 pub struct IdentityRoleDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for IdentityRoleTableHandle<'ctx> {
+    type Row = IdentityRole;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = IdentityRole> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> IdentityRoleTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -102,14 +124,36 @@ impl<'ctx> __sdk::Table for IdentityRoleTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for IdentityRoleTableHandle<'ctx> {
+    type InsertCallbackId = IdentityRoleInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<IdentityRole>("identity_role");
-    _table.add_unique_constraint::<__sdk::Identity>("identity", |row| &row.identity);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> IdentityRoleInsertCallbackId {
+        IdentityRoleInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: IdentityRoleInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for IdentityRoleTableHandle<'ctx> {
+    type DeleteCallbackId = IdentityRoleDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> IdentityRoleDeleteCallbackId {
+        IdentityRoleDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: IdentityRoleDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct IdentityRoleUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for IdentityRoleTableHandle<'ctx> {
@@ -127,15 +171,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for IdentityRoleTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<IdentityRole>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<IdentityRole>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for IdentityRoleTableHandle<'ctx> {
+    type UpdateCallbackId = IdentityRoleUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> IdentityRoleUpdateCallbackId {
+        IdentityRoleUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: IdentityRoleUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -168,6 +216,26 @@ impl<'ctx> IdentityRoleIdentityUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<IdentityRole>("identity_role");
+    _table.add_unique_constraint::<__sdk::Identity>("identity", |row| &row.identity);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<IdentityRole>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<IdentityRole>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

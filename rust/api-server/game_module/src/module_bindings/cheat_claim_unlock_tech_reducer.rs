@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatClaimUnlockTechArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatClaimUnlockTechCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_claim_unlock_tech`.
 ///
@@ -35,84 +33,49 @@ pub trait cheat_claim_unlock_tech {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_claim_unlock_tech`] callbacks.
-    fn cheat_claim_unlock_tech(&self, claim_entity_id: u64, tech_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_claim_unlock_tech`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_claim_unlock_tech:cheat_claim_unlock_tech_then`] to run a callback after the reducer completes.
+    fn cheat_claim_unlock_tech(&self, claim_entity_id: u64, tech_id: i32) -> __sdk::Result<()> {
+        self.cheat_claim_unlock_tech_then(claim_entity_id, tech_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `cheat_claim_unlock_tech` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatClaimUnlockTechCallbackId`] can be passed to [`Self::remove_on_cheat_claim_unlock_tech`]
-    /// to cancel the callback.
-    fn on_cheat_claim_unlock_tech(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_claim_unlock_tech_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> CheatClaimUnlockTechCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_claim_unlock_tech`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_claim_unlock_tech(&self, callback: CheatClaimUnlockTechCallbackId);
+        claim_entity_id: u64,
+        tech_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl cheat_claim_unlock_tech for super::RemoteReducers {
-    fn cheat_claim_unlock_tech(&self, claim_entity_id: u64, tech_id: i32) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "cheat_claim_unlock_tech",
+    fn cheat_claim_unlock_tech_then(
+        &self,
+        claim_entity_id: u64,
+        tech_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             CheatClaimUnlockTechArgs {
                 claim_entity_id,
                 tech_id,
             },
+            callback,
         )
-    }
-    fn on_cheat_claim_unlock_tech(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> CheatClaimUnlockTechCallbackId {
-        CheatClaimUnlockTechCallbackId(self.imp.on_reducer(
-            "cheat_claim_unlock_tech",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::CheatClaimUnlockTech {
-                                    claim_entity_id,
-                                    tech_id,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, claim_entity_id, tech_id)
-            }),
-        ))
-    }
-    fn remove_on_cheat_claim_unlock_tech(&self, callback: CheatClaimUnlockTechCallbackId) {
-        self.imp
-            .remove_on_reducer("cheat_claim_unlock_tech", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_claim_unlock_tech`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_claim_unlock_tech {
-    /// Set the call-reducer flags for the reducer `cheat_claim_unlock_tech` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_claim_unlock_tech(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_cheat_claim_unlock_tech for super::SetReducerFlags {
-    fn cheat_claim_unlock_tech(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("cheat_claim_unlock_tech", flags);
     }
 }

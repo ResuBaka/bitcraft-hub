@@ -57,3 +57,5 @@ impl __sdk::__query_builder::HasIxCols for LootChestDespawnTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for LootChestDespawnTimer {}

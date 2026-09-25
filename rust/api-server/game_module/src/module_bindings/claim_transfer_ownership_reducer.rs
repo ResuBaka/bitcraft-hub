@@ -24,8 +24,6 @@ impl __sdk::InModule for ClaimTransferOwnershipArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ClaimTransferOwnershipCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `claim_transfer_ownership`.
 ///
@@ -35,87 +33,45 @@ pub trait claim_transfer_ownership {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_claim_transfer_ownership`] callbacks.
-    fn claim_transfer_ownership(
-        &self,
-        request: PlayerClaimTransferOwnershipRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `claim_transfer_ownership`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ClaimTransferOwnershipCallbackId`] can be passed to [`Self::remove_on_claim_transfer_ownership`]
-    /// to cancel the callback.
-    fn on_claim_transfer_ownership(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTransferOwnershipRequest)
-        + Send
-        + 'static,
-    ) -> ClaimTransferOwnershipCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_claim_transfer_ownership`],
-    /// causing it not to run in the future.
-    fn remove_on_claim_transfer_ownership(&self, callback: ClaimTransferOwnershipCallbackId);
-}
-
-impl claim_transfer_ownership for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`claim_transfer_ownership:claim_transfer_ownership_then`] to run a callback after the reducer completes.
     fn claim_transfer_ownership(
         &self,
         request: PlayerClaimTransferOwnershipRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "claim_transfer_ownership",
-            ClaimTransferOwnershipArgs { request },
-        )
+        self.claim_transfer_ownership_then(request, |_, _| {})
     }
-    fn on_claim_transfer_ownership(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimTransferOwnershipRequest)
-        + Send
-        + 'static,
-    ) -> ClaimTransferOwnershipCallbackId {
-        ClaimTransferOwnershipCallbackId(self.imp.on_reducer(
-            "claim_transfer_ownership",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ClaimTransferOwnership { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_claim_transfer_ownership(&self, callback: ClaimTransferOwnershipCallbackId) {
-        self.imp
-            .remove_on_reducer("claim_transfer_ownership", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `claim_transfer_ownership`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_claim_transfer_ownership {
-    /// Set the call-reducer flags for the reducer `claim_transfer_ownership` to `flags`.
+    /// Request that the remote module invoke the reducer `claim_transfer_ownership` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn claim_transfer_ownership(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn claim_transfer_ownership_then(
+        &self,
+        request: PlayerClaimTransferOwnershipRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_claim_transfer_ownership for super::SetReducerFlags {
-    fn claim_transfer_ownership(&self, flags: __ws::CallReducerFlags) {
+impl claim_transfer_ownership for super::RemoteReducers {
+    fn claim_transfer_ownership_then(
+        &self,
+        request: PlayerClaimTransferOwnershipRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("claim_transfer_ownership", flags);
+            .invoke_reducer_with_callback(ClaimTransferOwnershipArgs { request }, callback)
     }
 }

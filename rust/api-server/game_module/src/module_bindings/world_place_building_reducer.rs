@@ -24,8 +24,6 @@ impl __sdk::InModule for WorldPlaceBuildingArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct WorldPlaceBuildingCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `world_place_building`.
 ///
@@ -35,77 +33,42 @@ pub trait world_place_building {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_world_place_building`] callbacks.
-    fn world_place_building(&self, request: WorldPlaceBuildingRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `world_place_building`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`world_place_building:world_place_building_then`] to run a callback after the reducer completes.
+    fn world_place_building(&self, request: WorldPlaceBuildingRequest) -> __sdk::Result<()> {
+        self.world_place_building_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `world_place_building` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`WorldPlaceBuildingCallbackId`] can be passed to [`Self::remove_on_world_place_building`]
-    /// to cancel the callback.
-    fn on_world_place_building(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn world_place_building_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &WorldPlaceBuildingRequest) + Send + 'static,
-    ) -> WorldPlaceBuildingCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_world_place_building`],
-    /// causing it not to run in the future.
-    fn remove_on_world_place_building(&self, callback: WorldPlaceBuildingCallbackId);
+        request: WorldPlaceBuildingRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl world_place_building for super::RemoteReducers {
-    fn world_place_building(&self, request: WorldPlaceBuildingRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("world_place_building", WorldPlaceBuildingArgs { request })
-    }
-    fn on_world_place_building(
+    fn world_place_building_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &WorldPlaceBuildingRequest)
-        + Send
+        request: WorldPlaceBuildingRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> WorldPlaceBuildingCallbackId {
-        WorldPlaceBuildingCallbackId(self.imp.on_reducer(
-            "world_place_building",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::WorldPlaceBuilding { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_world_place_building(&self, callback: WorldPlaceBuildingCallbackId) {
+    ) -> __sdk::Result<()> {
         self.imp
-            .remove_on_reducer("world_place_building", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `world_place_building`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_world_place_building {
-    /// Set the call-reducer flags for the reducer `world_place_building` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn world_place_building(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_world_place_building for super::SetReducerFlags {
-    fn world_place_building(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("world_place_building", flags);
+            .invoke_reducer_with_callback(WorldPlaceBuildingArgs { request }, callback)
     }
 }

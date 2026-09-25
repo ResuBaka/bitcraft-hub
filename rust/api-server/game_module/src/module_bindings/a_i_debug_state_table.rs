@@ -19,6 +19,18 @@ pub struct AIDebugStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `a_i_debug_state`.
+pub struct AIDebugStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for AIDebugStateTableAccessor {
+    type Row = AiDebugState;
+    type Handle<'db> = AIDebugStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.a_i_debug_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `a_i_debug_state`.
 ///
@@ -41,6 +53,16 @@ impl AIDebugStateTableAccess for super::RemoteTables {
 pub struct AIDebugStateInitialCallbackId(__sdk::CallbackId);
 pub struct AIDebugStateInsertCallbackId(__sdk::CallbackId);
 pub struct AIDebugStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for AIDebugStateTableHandle<'ctx> {
+    type Row = AiDebugState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = AiDebugState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> AIDebugStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -102,14 +124,36 @@ impl<'ctx> __sdk::Table for AIDebugStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for AIDebugStateTableHandle<'ctx> {
+    type InsertCallbackId = AIDebugStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<AiDebugState>("a_i_debug_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> AIDebugStateInsertCallbackId {
+        AIDebugStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: AIDebugStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for AIDebugStateTableHandle<'ctx> {
+    type DeleteCallbackId = AIDebugStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> AIDebugStateDeleteCallbackId {
+        AIDebugStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: AIDebugStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct AIDebugStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for AIDebugStateTableHandle<'ctx> {
@@ -127,15 +171,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for AIDebugStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<AiDebugState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<AiDebugState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for AIDebugStateTableHandle<'ctx> {
+    type UpdateCallbackId = AIDebugStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> AIDebugStateUpdateCallbackId {
+        AIDebugStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: AIDebugStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -168,6 +216,26 @@ impl<'ctx> AIDebugStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<AiDebugState>("a_i_debug_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<AiDebugState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<AiDebugState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

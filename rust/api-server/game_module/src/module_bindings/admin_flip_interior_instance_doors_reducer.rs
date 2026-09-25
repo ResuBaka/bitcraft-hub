@@ -22,8 +22,6 @@ impl __sdk::InModule for AdminFlipInteriorInstanceDoorsArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminFlipInteriorInstanceDoorsCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_flip_interior_instance_doors`.
 ///
@@ -33,88 +31,46 @@ pub trait admin_flip_interior_instance_doors {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_flip_interior_instance_doors`] callbacks.
-    fn admin_flip_interior_instance_doors(&self, interior_instance_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_flip_interior_instance_doors`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_flip_interior_instance_doors:admin_flip_interior_instance_doors_then`] to run a callback after the reducer completes.
+    fn admin_flip_interior_instance_doors(&self, interior_instance_id: i32) -> __sdk::Result<()> {
+        self.admin_flip_interior_instance_doors_then(interior_instance_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_flip_interior_instance_doors` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminFlipInteriorInstanceDoorsCallbackId`] can be passed to [`Self::remove_on_admin_flip_interior_instance_doors`]
-    /// to cancel the callback.
-    fn on_admin_flip_interior_instance_doors(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_flip_interior_instance_doors_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> AdminFlipInteriorInstanceDoorsCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_flip_interior_instance_doors`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_flip_interior_instance_doors(
-        &self,
-        callback: AdminFlipInteriorInstanceDoorsCallbackId,
-    );
+        interior_instance_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl admin_flip_interior_instance_doors for super::RemoteReducers {
-    fn admin_flip_interior_instance_doors(&self, interior_instance_id: i32) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_flip_interior_instance_doors",
+    fn admin_flip_interior_instance_doors_then(
+        &self,
+        interior_instance_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminFlipInteriorInstanceDoorsArgs {
                 interior_instance_id,
             },
+            callback,
         )
-    }
-    fn on_admin_flip_interior_instance_doors(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> AdminFlipInteriorInstanceDoorsCallbackId {
-        AdminFlipInteriorInstanceDoorsCallbackId(self.imp.on_reducer(
-            "admin_flip_interior_instance_doors",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminFlipInteriorInstanceDoors {
-                                    interior_instance_id,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, interior_instance_id)
-            }),
-        ))
-    }
-    fn remove_on_admin_flip_interior_instance_doors(
-        &self,
-        callback: AdminFlipInteriorInstanceDoorsCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("admin_flip_interior_instance_doors", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_flip_interior_instance_doors`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_flip_interior_instance_doors {
-    /// Set the call-reducer flags for the reducer `admin_flip_interior_instance_doors` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_flip_interior_instance_doors(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_flip_interior_instance_doors for super::SetReducerFlags {
-    fn admin_flip_interior_instance_doors(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_flip_interior_instance_doors", flags);
     }
 }

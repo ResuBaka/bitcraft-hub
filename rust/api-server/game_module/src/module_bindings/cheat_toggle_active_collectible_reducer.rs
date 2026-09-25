@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatToggleActiveCollectibleArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatToggleActiveCollectibleCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_toggle_active_collectible`.
 ///
@@ -35,93 +33,45 @@ pub trait cheat_toggle_active_collectible {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_toggle_active_collectible`] callbacks.
-    fn cheat_toggle_active_collectible(
-        &self,
-        request: CheatToggleActiveCollectibleRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_toggle_active_collectible`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatToggleActiveCollectibleCallbackId`] can be passed to [`Self::remove_on_cheat_toggle_active_collectible`]
-    /// to cancel the callback.
-    fn on_cheat_toggle_active_collectible(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &CheatToggleActiveCollectibleRequest)
-        + Send
-        + 'static,
-    ) -> CheatToggleActiveCollectibleCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_toggle_active_collectible`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_toggle_active_collectible(
-        &self,
-        callback: CheatToggleActiveCollectibleCallbackId,
-    );
-}
-
-impl cheat_toggle_active_collectible for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_toggle_active_collectible:cheat_toggle_active_collectible_then`] to run a callback after the reducer completes.
     fn cheat_toggle_active_collectible(
         &self,
         request: CheatToggleActiveCollectibleRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "cheat_toggle_active_collectible",
-            CheatToggleActiveCollectibleArgs { request },
-        )
+        self.cheat_toggle_active_collectible_then(request, |_, _| {})
     }
-    fn on_cheat_toggle_active_collectible(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &CheatToggleActiveCollectibleRequest)
-        + Send
-        + 'static,
-    ) -> CheatToggleActiveCollectibleCallbackId {
-        CheatToggleActiveCollectibleCallbackId(self.imp.on_reducer(
-            "cheat_toggle_active_collectible",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::CheatToggleActiveCollectible { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_cheat_toggle_active_collectible(
-        &self,
-        callback: CheatToggleActiveCollectibleCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("cheat_toggle_active_collectible", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_toggle_active_collectible`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_toggle_active_collectible {
-    /// Set the call-reducer flags for the reducer `cheat_toggle_active_collectible` to `flags`.
+    /// Request that the remote module invoke the reducer `cheat_toggle_active_collectible` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_toggle_active_collectible(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_toggle_active_collectible_then(
+        &self,
+        request: CheatToggleActiveCollectibleRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_cheat_toggle_active_collectible for super::SetReducerFlags {
-    fn cheat_toggle_active_collectible(&self, flags: __ws::CallReducerFlags) {
+impl cheat_toggle_active_collectible for super::RemoteReducers {
+    fn cheat_toggle_active_collectible_then(
+        &self,
+        request: CheatToggleActiveCollectibleRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("cheat_toggle_active_collectible", flags);
+            .invoke_reducer_with_callback(CheatToggleActiveCollectibleArgs { request }, callback)
     }
 }

@@ -18,6 +18,18 @@ pub struct ExtractOutcomeStateV1TableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `extract_outcome_state_v1`.
+pub struct ExtractOutcomeStateV1TableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for ExtractOutcomeStateV1TableAccessor {
+    type Row = ExtractOutcomeState;
+    type Handle<'db> = ExtractOutcomeStateV1TableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.extract_outcome_state_v_1()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `extract_outcome_state_v1`.
 ///
@@ -42,6 +54,16 @@ impl ExtractOutcomeStateV1TableAccess for super::RemoteTables {
 pub struct ExtractOutcomeStateV1InitialCallbackId(__sdk::CallbackId);
 pub struct ExtractOutcomeStateV1InsertCallbackId(__sdk::CallbackId);
 pub struct ExtractOutcomeStateV1DeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for ExtractOutcomeStateV1TableHandle<'ctx> {
+    type Row = ExtractOutcomeState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = ExtractOutcomeState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> ExtractOutcomeStateV1TableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for ExtractOutcomeStateV1TableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for ExtractOutcomeStateV1TableHandle<'ctx> {
+    type InsertCallbackId = ExtractOutcomeStateV1InsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<ExtractOutcomeState>("extract_outcome_state_v1");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ExtractOutcomeStateV1InsertCallbackId {
+        ExtractOutcomeStateV1InsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: ExtractOutcomeStateV1InsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for ExtractOutcomeStateV1TableHandle<'ctx> {
+    type DeleteCallbackId = ExtractOutcomeStateV1DeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ExtractOutcomeStateV1DeleteCallbackId {
+        ExtractOutcomeStateV1DeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: ExtractOutcomeStateV1DeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct ExtractOutcomeStateV1UpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for ExtractOutcomeStateV1TableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for ExtractOutcomeStateV1TableHandle<'ctx>
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<ExtractOutcomeState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<ExtractOutcomeState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for ExtractOutcomeStateV1TableHandle<'ctx> {
+    type UpdateCallbackId = ExtractOutcomeStateV1UpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> ExtractOutcomeStateV1UpdateCallbackId {
+        ExtractOutcomeStateV1UpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: ExtractOutcomeStateV1UpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -171,18 +219,38 @@ impl<'ctx> ExtractOutcomeStateV1EntityIdUnique<'ctx> {
 }
 }
 
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<ExtractOutcomeState>("extract_outcome_state_v1");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<ExtractOutcomeState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<ExtractOutcomeState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for query builder access to the table `ExtractOutcomeState`.
 ///
 /// Implemented for [`__sdk::QueryTableAccessor`].
-pub trait extract_outcome_state_v1QueryTableAccess {
+pub trait extract_outcome_state_v_1QueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `ExtractOutcomeState`.
-    fn extract_outcome_state_v1(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState>;
+    fn extract_outcome_state_v_1(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState>;
 }
 
-impl extract_outcome_state_v1QueryTableAccess for __sdk::QueryTableAccessor {
-    fn extract_outcome_state_v1(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState> {
+impl extract_outcome_state_v_1QueryTableAccess for __sdk::QueryTableAccessor {
+    fn extract_outcome_state_v_1(&self) -> __sdk::__query_builder::Table<ExtractOutcomeState> {
         __sdk::__query_builder::Table::new("extract_outcome_state_v1")
     }
 }

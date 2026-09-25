@@ -24,8 +24,6 @@ impl __sdk::InModule for EmpireDeploySiegeEngineStartArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct EmpireDeploySiegeEngineStartCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `empire_deploy_siege_engine_start`.
 ///
@@ -35,89 +33,45 @@ pub trait empire_deploy_siege_engine_start {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_empire_deploy_siege_engine_start`] callbacks.
-    fn empire_deploy_siege_engine_start(
-        &self,
-        request: EmpireStartSiegeRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `empire_deploy_siege_engine_start`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`EmpireDeploySiegeEngineStartCallbackId`] can be passed to [`Self::remove_on_empire_deploy_siege_engine_start`]
-    /// to cancel the callback.
-    fn on_empire_deploy_siege_engine_start(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &EmpireStartSiegeRequest) + Send + 'static,
-    ) -> EmpireDeploySiegeEngineStartCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_empire_deploy_siege_engine_start`],
-    /// causing it not to run in the future.
-    fn remove_on_empire_deploy_siege_engine_start(
-        &self,
-        callback: EmpireDeploySiegeEngineStartCallbackId,
-    );
-}
-
-impl empire_deploy_siege_engine_start for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`empire_deploy_siege_engine_start:empire_deploy_siege_engine_start_then`] to run a callback after the reducer completes.
     fn empire_deploy_siege_engine_start(
         &self,
         request: EmpireStartSiegeRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "empire_deploy_siege_engine_start",
-            EmpireDeploySiegeEngineStartArgs { request },
-        )
+        self.empire_deploy_siege_engine_start_then(request, |_, _| {})
     }
-    fn on_empire_deploy_siege_engine_start(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &EmpireStartSiegeRequest) + Send + 'static,
-    ) -> EmpireDeploySiegeEngineStartCallbackId {
-        EmpireDeploySiegeEngineStartCallbackId(self.imp.on_reducer(
-            "empire_deploy_siege_engine_start",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::EmpireDeploySiegeEngineStart { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_empire_deploy_siege_engine_start(
-        &self,
-        callback: EmpireDeploySiegeEngineStartCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("empire_deploy_siege_engine_start", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `empire_deploy_siege_engine_start`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_empire_deploy_siege_engine_start {
-    /// Set the call-reducer flags for the reducer `empire_deploy_siege_engine_start` to `flags`.
+    /// Request that the remote module invoke the reducer `empire_deploy_siege_engine_start` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn empire_deploy_siege_engine_start(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn empire_deploy_siege_engine_start_then(
+        &self,
+        request: EmpireStartSiegeRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_empire_deploy_siege_engine_start for super::SetReducerFlags {
-    fn empire_deploy_siege_engine_start(&self, flags: __ws::CallReducerFlags) {
+impl empire_deploy_siege_engine_start for super::RemoteReducers {
+    fn empire_deploy_siege_engine_start_then(
+        &self,
+        request: EmpireStartSiegeRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("empire_deploy_siege_engine_start", flags);
+            .invoke_reducer_with_callback(EmpireDeploySiegeEngineStartArgs { request }, callback)
     }
 }

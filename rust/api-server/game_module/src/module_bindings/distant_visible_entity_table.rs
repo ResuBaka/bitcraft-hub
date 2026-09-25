@@ -18,6 +18,18 @@ pub struct DistantVisibleEntityTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `distant_visible_entity`.
+pub struct DistantVisibleEntityTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for DistantVisibleEntityTableAccessor {
+    type Row = DistantVisibleEntity;
+    type Handle<'db> = DistantVisibleEntityTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.distant_visible_entity()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `distant_visible_entity`.
 ///
@@ -42,6 +54,16 @@ impl DistantVisibleEntityTableAccess for super::RemoteTables {
 pub struct DistantVisibleEntityInitialCallbackId(__sdk::CallbackId);
 pub struct DistantVisibleEntityInsertCallbackId(__sdk::CallbackId);
 pub struct DistantVisibleEntityDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for DistantVisibleEntityTableHandle<'ctx> {
+    type Row = DistantVisibleEntity;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = DistantVisibleEntity> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> DistantVisibleEntityTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for DistantVisibleEntityTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for DistantVisibleEntityTableHandle<'ctx> {
+    type InsertCallbackId = DistantVisibleEntityInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<DistantVisibleEntity>("distant_visible_entity");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DistantVisibleEntityInsertCallbackId {
+        DistantVisibleEntityInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: DistantVisibleEntityInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for DistantVisibleEntityTableHandle<'ctx> {
+    type DeleteCallbackId = DistantVisibleEntityDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DistantVisibleEntityDeleteCallbackId {
+        DistantVisibleEntityDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: DistantVisibleEntityDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct DistantVisibleEntityUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for DistantVisibleEntityTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for DistantVisibleEntityTableHandle<'ctx> 
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<DistantVisibleEntity>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<DistantVisibleEntity>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for DistantVisibleEntityTableHandle<'ctx> {
+    type UpdateCallbackId = DistantVisibleEntityUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> DistantVisibleEntityUpdateCallbackId {
+        DistantVisibleEntityUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: DistantVisibleEntityUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> DistantVisibleEntityEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<DistantVisibleEntity>("distant_visible_entity");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<DistantVisibleEntity>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<DistantVisibleEntity>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

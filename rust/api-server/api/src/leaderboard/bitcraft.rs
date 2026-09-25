@@ -216,11 +216,9 @@ impl ExperienceStateWorker {
             SpacetimeUpdateMessages::Remove {
                 delete,
                 database_name,
-                reducer_name,
                 ..
             } => {
-                self.handle_remove(delete, database_name, reducer_name)
-                    .await;
+                self.handle_remove(delete, database_name).await;
             }
         }
     }
@@ -849,16 +847,7 @@ impl ExperienceStateWorker {
         &mut self,
         delete: ExperienceState,
         database_name: entity::shared::Region,
-        reducer_name: Option<&'static str>,
     ) {
-        #[allow(clippy::single_match)]
-        match reducer_name {
-            Some("transfer_player_delayed") => {
-                return;
-            }
-            _ => {}
-        }
-
         let id = delete.entity_id as i64;
         let mut total_exp = 0;
         let vec_es = delete

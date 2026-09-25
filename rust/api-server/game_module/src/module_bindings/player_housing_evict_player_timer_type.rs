@@ -56,3 +56,5 @@ impl __sdk::__query_builder::HasIxCols for PlayerHousingEvictPlayerTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlayerHousingEvictPlayerTimer {}

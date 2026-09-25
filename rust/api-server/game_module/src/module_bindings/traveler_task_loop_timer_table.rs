@@ -18,6 +18,18 @@ pub struct TravelerTaskLoopTimerTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `traveler_task_loop_timer`.
+pub struct TravelerTaskLoopTimerTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for TravelerTaskLoopTimerTableAccessor {
+    type Row = TravelerTaskLoopTimer;
+    type Handle<'db> = TravelerTaskLoopTimerTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.traveler_task_loop_timer()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `traveler_task_loop_timer`.
 ///
@@ -42,6 +54,16 @@ impl TravelerTaskLoopTimerTableAccess for super::RemoteTables {
 pub struct TravelerTaskLoopTimerInitialCallbackId(__sdk::CallbackId);
 pub struct TravelerTaskLoopTimerInsertCallbackId(__sdk::CallbackId);
 pub struct TravelerTaskLoopTimerDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for TravelerTaskLoopTimerTableHandle<'ctx> {
+    type Row = TravelerTaskLoopTimer;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = TravelerTaskLoopTimer> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> TravelerTaskLoopTimerTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for TravelerTaskLoopTimerTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for TravelerTaskLoopTimerTableHandle<'ctx> {
+    type InsertCallbackId = TravelerTaskLoopTimerInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<TravelerTaskLoopTimer>("traveler_task_loop_timer");
-    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TravelerTaskLoopTimerInsertCallbackId {
+        TravelerTaskLoopTimerInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: TravelerTaskLoopTimerInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for TravelerTaskLoopTimerTableHandle<'ctx> {
+    type DeleteCallbackId = TravelerTaskLoopTimerDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TravelerTaskLoopTimerDeleteCallbackId {
+        TravelerTaskLoopTimerDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: TravelerTaskLoopTimerDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct TravelerTaskLoopTimerUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for TravelerTaskLoopTimerTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for TravelerTaskLoopTimerTableHandle<'ctx>
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<TravelerTaskLoopTimer>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<TravelerTaskLoopTimer>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for TravelerTaskLoopTimerTableHandle<'ctx> {
+    type UpdateCallbackId = TravelerTaskLoopTimerUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> TravelerTaskLoopTimerUpdateCallbackId {
+        TravelerTaskLoopTimerUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: TravelerTaskLoopTimerUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> TravelerTaskLoopTimerScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<TravelerTaskLoopTimer>("traveler_task_loop_timer");
+    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<TravelerTaskLoopTimer>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<TravelerTaskLoopTimer>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

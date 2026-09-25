@@ -54,3 +54,5 @@ impl __sdk::__query_builder::HasIxCols for EmpireRankDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EmpireRankDesc {}

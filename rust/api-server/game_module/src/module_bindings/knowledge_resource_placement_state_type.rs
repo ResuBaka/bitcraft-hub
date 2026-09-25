@@ -50,3 +50,5 @@ impl __sdk::__query_builder::HasIxCols for KnowledgeResourcePlacementState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for KnowledgeResourcePlacementState {}

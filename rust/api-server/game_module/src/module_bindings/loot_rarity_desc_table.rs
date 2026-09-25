@@ -18,6 +18,18 @@ pub struct LootRarityDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `loot_rarity_desc`.
+pub struct LootRarityDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for LootRarityDescTableAccessor {
+    type Row = LootRarityDesc;
+    type Handle<'db> = LootRarityDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.loot_rarity_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `loot_rarity_desc`.
 ///
@@ -40,6 +52,16 @@ impl LootRarityDescTableAccess for super::RemoteTables {
 pub struct LootRarityDescInitialCallbackId(__sdk::CallbackId);
 pub struct LootRarityDescInsertCallbackId(__sdk::CallbackId);
 pub struct LootRarityDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for LootRarityDescTableHandle<'ctx> {
+    type Row = LootRarityDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = LootRarityDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> LootRarityDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,14 +123,36 @@ impl<'ctx> __sdk::Table for LootRarityDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for LootRarityDescTableHandle<'ctx> {
+    type InsertCallbackId = LootRarityDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<LootRarityDesc>("loot_rarity_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> LootRarityDescInsertCallbackId {
+        LootRarityDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: LootRarityDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for LootRarityDescTableHandle<'ctx> {
+    type DeleteCallbackId = LootRarityDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> LootRarityDescDeleteCallbackId {
+        LootRarityDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: LootRarityDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct LootRarityDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for LootRarityDescTableHandle<'ctx> {
@@ -126,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for LootRarityDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<LootRarityDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<LootRarityDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for LootRarityDescTableHandle<'ctx> {
+    type UpdateCallbackId = LootRarityDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> LootRarityDescUpdateCallbackId {
+        LootRarityDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: LootRarityDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -167,6 +215,26 @@ impl<'ctx> LootRarityDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<LootRarityDesc>("loot_rarity_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<LootRarityDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<LootRarityDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

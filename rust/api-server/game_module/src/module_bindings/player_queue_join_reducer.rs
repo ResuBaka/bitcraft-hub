@@ -18,8 +18,6 @@ impl __sdk::InModule for PlayerQueueJoinArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PlayerQueueJoinCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `player_queue_join`.
 ///
@@ -29,73 +27,40 @@ pub trait player_queue_join {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_player_queue_join`] callbacks.
-    fn player_queue_join(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `player_queue_join`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`player_queue_join:player_queue_join_then`] to run a callback after the reducer completes.
+    fn player_queue_join(&self) -> __sdk::Result<()> {
+        self.player_queue_join_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `player_queue_join` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PlayerQueueJoinCallbackId`] can be passed to [`Self::remove_on_player_queue_join`]
-    /// to cancel the callback.
-    fn on_player_queue_join(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn player_queue_join_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> PlayerQueueJoinCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_player_queue_join`],
-    /// causing it not to run in the future.
-    fn remove_on_player_queue_join(&self, callback: PlayerQueueJoinCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl player_queue_join for super::RemoteReducers {
-    fn player_queue_join(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("player_queue_join", PlayerQueueJoinArgs {})
-    }
-    fn on_player_queue_join(
+    fn player_queue_join_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> PlayerQueueJoinCallbackId {
-        PlayerQueueJoinCallbackId(self.imp.on_reducer(
-            "player_queue_join",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::PlayerQueueJoin {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_player_queue_join(&self, callback: PlayerQueueJoinCallbackId) {
-        self.imp.remove_on_reducer("player_queue_join", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `player_queue_join`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_player_queue_join {
-    /// Set the call-reducer flags for the reducer `player_queue_join` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn player_queue_join(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_player_queue_join for super::SetReducerFlags {
-    fn player_queue_join(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("player_queue_join", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(PlayerQueueJoinArgs {}, callback)
     }
 }

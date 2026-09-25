@@ -22,8 +22,6 @@ impl __sdk::InModule for DiscoverResourceArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DiscoverResourceCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `discover_resource`.
 ///
@@ -33,73 +31,42 @@ pub trait discover_resource {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_discover_resource`] callbacks.
-    fn discover_resource(&self, resource_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `discover_resource`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`discover_resource:discover_resource_then`] to run a callback after the reducer completes.
+    fn discover_resource(&self, resource_id: i32) -> __sdk::Result<()> {
+        self.discover_resource_then(resource_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `discover_resource` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DiscoverResourceCallbackId`] can be passed to [`Self::remove_on_discover_resource`]
-    /// to cancel the callback.
-    fn on_discover_resource(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn discover_resource_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverResourceCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_discover_resource`],
-    /// causing it not to run in the future.
-    fn remove_on_discover_resource(&self, callback: DiscoverResourceCallbackId);
+        resource_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl discover_resource for super::RemoteReducers {
-    fn discover_resource(&self, resource_id: i32) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("discover_resource", DiscoverResourceArgs { resource_id })
-    }
-    fn on_discover_resource(
+    fn discover_resource_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverResourceCallbackId {
-        DiscoverResourceCallbackId(self.imp.on_reducer(
-            "discover_resource",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::DiscoverResource { resource_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, resource_id)
-            }),
-        ))
-    }
-    fn remove_on_discover_resource(&self, callback: DiscoverResourceCallbackId) {
-        self.imp.remove_on_reducer("discover_resource", callback.0)
-    }
-}
+        resource_id: i32,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `discover_resource`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_discover_resource {
-    /// Set the call-reducer flags for the reducer `discover_resource` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn discover_resource(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_discover_resource for super::SetReducerFlags {
-    fn discover_resource(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("discover_resource", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(DiscoverResourceArgs { resource_id }, callback)
     }
 }

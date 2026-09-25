@@ -18,6 +18,18 @@ pub struct WeaponTypeDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `weapon_type_desc`.
+pub struct WeaponTypeDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for WeaponTypeDescTableAccessor {
+    type Row = WeaponTypeDesc;
+    type Handle<'db> = WeaponTypeDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.weapon_type_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `weapon_type_desc`.
 ///
@@ -40,6 +52,16 @@ impl WeaponTypeDescTableAccess for super::RemoteTables {
 pub struct WeaponTypeDescInitialCallbackId(__sdk::CallbackId);
 pub struct WeaponTypeDescInsertCallbackId(__sdk::CallbackId);
 pub struct WeaponTypeDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for WeaponTypeDescTableHandle<'ctx> {
+    type Row = WeaponTypeDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = WeaponTypeDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> WeaponTypeDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,14 +123,36 @@ impl<'ctx> __sdk::Table for WeaponTypeDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for WeaponTypeDescTableHandle<'ctx> {
+    type InsertCallbackId = WeaponTypeDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<WeaponTypeDesc>("weapon_type_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> WeaponTypeDescInsertCallbackId {
+        WeaponTypeDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: WeaponTypeDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for WeaponTypeDescTableHandle<'ctx> {
+    type DeleteCallbackId = WeaponTypeDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> WeaponTypeDescDeleteCallbackId {
+        WeaponTypeDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: WeaponTypeDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct WeaponTypeDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for WeaponTypeDescTableHandle<'ctx> {
@@ -126,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for WeaponTypeDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<WeaponTypeDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<WeaponTypeDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for WeaponTypeDescTableHandle<'ctx> {
+    type UpdateCallbackId = WeaponTypeDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> WeaponTypeDescUpdateCallbackId {
+        WeaponTypeDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: WeaponTypeDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -167,6 +215,26 @@ impl<'ctx> WeaponTypeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<WeaponTypeDesc>("weapon_type_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<WeaponTypeDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<WeaponTypeDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

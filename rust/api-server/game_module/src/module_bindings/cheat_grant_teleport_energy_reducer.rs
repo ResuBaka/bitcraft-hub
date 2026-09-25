@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatGrantTeleportEnergyArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatGrantTeleportEnergyCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_grant_teleport_energy`.
 ///
@@ -35,84 +33,49 @@ pub trait cheat_grant_teleport_energy {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_grant_teleport_energy`] callbacks.
-    fn cheat_grant_teleport_energy(&self, player_entity_id: u64, amount: f32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_grant_teleport_energy`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_grant_teleport_energy:cheat_grant_teleport_energy_then`] to run a callback after the reducer completes.
+    fn cheat_grant_teleport_energy(&self, player_entity_id: u64, amount: f32) -> __sdk::Result<()> {
+        self.cheat_grant_teleport_energy_then(player_entity_id, amount, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `cheat_grant_teleport_energy` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatGrantTeleportEnergyCallbackId`] can be passed to [`Self::remove_on_cheat_grant_teleport_energy`]
-    /// to cancel the callback.
-    fn on_cheat_grant_teleport_energy(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_grant_teleport_energy_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &f32) + Send + 'static,
-    ) -> CheatGrantTeleportEnergyCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_grant_teleport_energy`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_grant_teleport_energy(&self, callback: CheatGrantTeleportEnergyCallbackId);
+        player_entity_id: u64,
+        amount: f32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl cheat_grant_teleport_energy for super::RemoteReducers {
-    fn cheat_grant_teleport_energy(&self, player_entity_id: u64, amount: f32) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "cheat_grant_teleport_energy",
+    fn cheat_grant_teleport_energy_then(
+        &self,
+        player_entity_id: u64,
+        amount: f32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             CheatGrantTeleportEnergyArgs {
                 player_entity_id,
                 amount,
             },
+            callback,
         )
-    }
-    fn on_cheat_grant_teleport_energy(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &f32) + Send + 'static,
-    ) -> CheatGrantTeleportEnergyCallbackId {
-        CheatGrantTeleportEnergyCallbackId(self.imp.on_reducer(
-            "cheat_grant_teleport_energy",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::CheatGrantTeleportEnergy {
-                                    player_entity_id,
-                                    amount,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, player_entity_id, amount)
-            }),
-        ))
-    }
-    fn remove_on_cheat_grant_teleport_energy(&self, callback: CheatGrantTeleportEnergyCallbackId) {
-        self.imp
-            .remove_on_reducer("cheat_grant_teleport_energy", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_grant_teleport_energy`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_grant_teleport_energy {
-    /// Set the call-reducer flags for the reducer `cheat_grant_teleport_energy` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_grant_teleport_energy(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_cheat_grant_teleport_energy for super::SetReducerFlags {
-    fn cheat_grant_teleport_energy(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("cheat_grant_teleport_energy", flags);
     }
 }

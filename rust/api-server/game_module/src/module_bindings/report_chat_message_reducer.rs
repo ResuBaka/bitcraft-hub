@@ -24,8 +24,6 @@ impl __sdk::InModule for ReportChatMessageArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ReportChatMessageCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `report_chat_message`.
 ///
@@ -35,75 +33,42 @@ pub trait report_chat_message {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_report_chat_message`] callbacks.
-    fn report_chat_message(&self, request: ReportPlayerChatMessage) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `report_chat_message`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`report_chat_message:report_chat_message_then`] to run a callback after the reducer completes.
+    fn report_chat_message(&self, request: ReportPlayerChatMessage) -> __sdk::Result<()> {
+        self.report_chat_message_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `report_chat_message` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ReportChatMessageCallbackId`] can be passed to [`Self::remove_on_report_chat_message`]
-    /// to cancel the callback.
-    fn on_report_chat_message(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn report_chat_message_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &ReportPlayerChatMessage) + Send + 'static,
-    ) -> ReportChatMessageCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_report_chat_message`],
-    /// causing it not to run in the future.
-    fn remove_on_report_chat_message(&self, callback: ReportChatMessageCallbackId);
+        request: ReportPlayerChatMessage,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl report_chat_message for super::RemoteReducers {
-    fn report_chat_message(&self, request: ReportPlayerChatMessage) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("report_chat_message", ReportChatMessageArgs { request })
-    }
-    fn on_report_chat_message(
+    fn report_chat_message_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &ReportPlayerChatMessage) + Send + 'static,
-    ) -> ReportChatMessageCallbackId {
-        ReportChatMessageCallbackId(self.imp.on_reducer(
-            "report_chat_message",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ReportChatMessage { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_report_chat_message(&self, callback: ReportChatMessageCallbackId) {
-        self.imp
-            .remove_on_reducer("report_chat_message", callback.0)
-    }
-}
+        request: ReportPlayerChatMessage,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `report_chat_message`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_report_chat_message {
-    /// Set the call-reducer flags for the reducer `report_chat_message` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn report_chat_message(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_report_chat_message for super::SetReducerFlags {
-    fn report_chat_message(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("report_chat_message", flags);
+            .invoke_reducer_with_callback(ReportChatMessageArgs { request }, callback)
     }
 }

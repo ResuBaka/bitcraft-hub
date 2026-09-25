@@ -18,6 +18,18 @@ pub struct RentStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `rent_state`.
+pub struct RentStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for RentStateTableAccessor {
+    type Row = RentState;
+    type Handle<'db> = RentStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.rent_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `rent_state`.
 ///
@@ -40,6 +52,16 @@ impl RentStateTableAccess for super::RemoteTables {
 pub struct RentStateInitialCallbackId(__sdk::CallbackId);
 pub struct RentStateInsertCallbackId(__sdk::CallbackId);
 pub struct RentStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for RentStateTableHandle<'ctx> {
+    type Row = RentState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = RentState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> RentStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,15 +123,36 @@ impl<'ctx> __sdk::Table for RentStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for RentStateTableHandle<'ctx> {
+    type InsertCallbackId = RentStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<RentState>("rent_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
-    _table.add_unique_constraint::<u64>("dimension_network_id", |row| &row.dimension_network_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> RentStateInsertCallbackId {
+        RentStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: RentStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for RentStateTableHandle<'ctx> {
+    type DeleteCallbackId = RentStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> RentStateDeleteCallbackId {
+        RentStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: RentStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct RentStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for RentStateTableHandle<'ctx> {
@@ -127,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for RentStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<RentState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<RentState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for RentStateTableHandle<'ctx> {
+    type UpdateCallbackId = RentStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> RentStateUpdateCallbackId {
+        RentStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: RentStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -200,6 +247,27 @@ impl<'ctx> RentStateDimensionNetworkIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<RentState>("rent_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    _table.add_unique_constraint::<u64>("dimension_network_id", |row| &row.dimension_network_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<RentState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<RentState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

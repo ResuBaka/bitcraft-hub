@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for TeleportItemDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for TeleportItemDesc {}

@@ -64,3 +64,5 @@ impl __sdk::__query_builder::HasIxCols for PermissionState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PermissionState {}

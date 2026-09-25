@@ -19,6 +19,18 @@ pub struct InterModuleMessageTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `inter_module_message`.
+pub struct InterModuleMessageTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for InterModuleMessageTableAccessor {
+    type Row = InterModuleMessage;
+    type Handle<'db> = InterModuleMessageTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.inter_module_message()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `inter_module_message`.
 ///
@@ -43,6 +55,16 @@ impl InterModuleMessageTableAccess for super::RemoteTables {
 pub struct InterModuleMessageInitialCallbackId(__sdk::CallbackId);
 pub struct InterModuleMessageInsertCallbackId(__sdk::CallbackId);
 pub struct InterModuleMessageDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for InterModuleMessageTableHandle<'ctx> {
+    type Row = InterModuleMessage;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = InterModuleMessage> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> InterModuleMessageTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,14 +126,36 @@ impl<'ctx> __sdk::Table for InterModuleMessageTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for InterModuleMessageTableHandle<'ctx> {
+    type InsertCallbackId = InterModuleMessageInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<InterModuleMessage>("inter_module_message");
-    _table.add_unique_constraint::<u64>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InterModuleMessageInsertCallbackId {
+        InterModuleMessageInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: InterModuleMessageInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for InterModuleMessageTableHandle<'ctx> {
+    type DeleteCallbackId = InterModuleMessageDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InterModuleMessageDeleteCallbackId {
+        InterModuleMessageDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: InterModuleMessageDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct InterModuleMessageUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for InterModuleMessageTableHandle<'ctx> {
@@ -129,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for InterModuleMessageTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<InterModuleMessage>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<InterModuleMessage>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for InterModuleMessageTableHandle<'ctx> {
+    type UpdateCallbackId = InterModuleMessageUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> InterModuleMessageUpdateCallbackId {
+        InterModuleMessageUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: InterModuleMessageUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -170,6 +218,26 @@ impl<'ctx> InterModuleMessageIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<InterModuleMessage>("inter_module_message");
+    _table.add_unique_constraint::<u64>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<InterModuleMessage>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<InterModuleMessage>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

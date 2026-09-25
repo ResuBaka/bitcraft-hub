@@ -65,3 +65,5 @@ impl __sdk::__query_builder::HasIxCols for AiDebugState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for AiDebugState {}

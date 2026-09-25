@@ -22,8 +22,6 @@ impl __sdk::InModule for ActivateBuildingBuffArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ActivateBuildingBuffCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `activate_building_buff`.
 ///
@@ -33,77 +31,42 @@ pub trait activate_building_buff {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_activate_building_buff`] callbacks.
-    fn activate_building_buff(&self, building_entity_id: u64) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `activate_building_buff`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`activate_building_buff:activate_building_buff_then`] to run a callback after the reducer completes.
+    fn activate_building_buff(&self, building_entity_id: u64) -> __sdk::Result<()> {
+        self.activate_building_buff_then(building_entity_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `activate_building_buff` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ActivateBuildingBuffCallbackId`] can be passed to [`Self::remove_on_activate_building_buff`]
-    /// to cancel the callback.
-    fn on_activate_building_buff(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn activate_building_buff_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> ActivateBuildingBuffCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_activate_building_buff`],
-    /// causing it not to run in the future.
-    fn remove_on_activate_building_buff(&self, callback: ActivateBuildingBuffCallbackId);
+        building_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl activate_building_buff for super::RemoteReducers {
-    fn activate_building_buff(&self, building_entity_id: u64) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "activate_building_buff",
-            ActivateBuildingBuffArgs { building_entity_id },
-        )
-    }
-    fn on_activate_building_buff(
+    fn activate_building_buff_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> ActivateBuildingBuffCallbackId {
-        ActivateBuildingBuffCallbackId(self.imp.on_reducer(
-            "activate_building_buff",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ActivateBuildingBuff { building_entity_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, building_entity_id)
-            }),
-        ))
-    }
-    fn remove_on_activate_building_buff(&self, callback: ActivateBuildingBuffCallbackId) {
-        self.imp
-            .remove_on_reducer("activate_building_buff", callback.0)
-    }
-}
+        building_entity_id: u64,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `activate_building_buff`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_activate_building_buff {
-    /// Set the call-reducer flags for the reducer `activate_building_buff` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn activate_building_buff(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_activate_building_buff for super::SetReducerFlags {
-    fn activate_building_buff(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("activate_building_buff", flags);
+            .invoke_reducer_with_callback(ActivateBuildingBuffArgs { building_entity_id }, callback)
     }
 }

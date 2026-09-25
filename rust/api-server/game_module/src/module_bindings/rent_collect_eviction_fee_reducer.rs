@@ -22,8 +22,6 @@ impl __sdk::InModule for RentCollectEvictionFeeArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct RentCollectEvictionFeeCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `rent_collect_eviction_fee`.
 ///
@@ -33,77 +31,42 @@ pub trait rent_collect_eviction_fee {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_rent_collect_eviction_fee`] callbacks.
-    fn rent_collect_eviction_fee(&self, rent_entity_id: u64) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `rent_collect_eviction_fee`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`rent_collect_eviction_fee:rent_collect_eviction_fee_then`] to run a callback after the reducer completes.
+    fn rent_collect_eviction_fee(&self, rent_entity_id: u64) -> __sdk::Result<()> {
+        self.rent_collect_eviction_fee_then(rent_entity_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `rent_collect_eviction_fee` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`RentCollectEvictionFeeCallbackId`] can be passed to [`Self::remove_on_rent_collect_eviction_fee`]
-    /// to cancel the callback.
-    fn on_rent_collect_eviction_fee(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn rent_collect_eviction_fee_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> RentCollectEvictionFeeCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_rent_collect_eviction_fee`],
-    /// causing it not to run in the future.
-    fn remove_on_rent_collect_eviction_fee(&self, callback: RentCollectEvictionFeeCallbackId);
+        rent_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl rent_collect_eviction_fee for super::RemoteReducers {
-    fn rent_collect_eviction_fee(&self, rent_entity_id: u64) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "rent_collect_eviction_fee",
-            RentCollectEvictionFeeArgs { rent_entity_id },
-        )
-    }
-    fn on_rent_collect_eviction_fee(
+    fn rent_collect_eviction_fee_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> RentCollectEvictionFeeCallbackId {
-        RentCollectEvictionFeeCallbackId(self.imp.on_reducer(
-            "rent_collect_eviction_fee",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::RentCollectEvictionFee { rent_entity_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, rent_entity_id)
-            }),
-        ))
-    }
-    fn remove_on_rent_collect_eviction_fee(&self, callback: RentCollectEvictionFeeCallbackId) {
-        self.imp
-            .remove_on_reducer("rent_collect_eviction_fee", callback.0)
-    }
-}
+        rent_entity_id: u64,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `rent_collect_eviction_fee`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_rent_collect_eviction_fee {
-    /// Set the call-reducer flags for the reducer `rent_collect_eviction_fee` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn rent_collect_eviction_fee(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_rent_collect_eviction_fee for super::SetReducerFlags {
-    fn rent_collect_eviction_fee(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("rent_collect_eviction_fee", flags);
+            .invoke_reducer_with_callback(RentCollectEvictionFeeArgs { rent_entity_id }, callback)
     }
 }

@@ -18,6 +18,18 @@ pub struct InteriorCollapseTriggerStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `interior_collapse_trigger_state`.
+pub struct InteriorCollapseTriggerStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for InteriorCollapseTriggerStateTableAccessor {
+    type Row = InteriorCollapseTriggerState;
+    type Handle<'db> = InteriorCollapseTriggerStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.interior_collapse_trigger_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `interior_collapse_trigger_state`.
 ///
@@ -42,6 +54,16 @@ impl InteriorCollapseTriggerStateTableAccess for super::RemoteTables {
 pub struct InteriorCollapseTriggerStateInitialCallbackId(__sdk::CallbackId);
 pub struct InteriorCollapseTriggerStateInsertCallbackId(__sdk::CallbackId);
 pub struct InteriorCollapseTriggerStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for InteriorCollapseTriggerStateTableHandle<'ctx> {
+    type Row = InteriorCollapseTriggerState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = InteriorCollapseTriggerState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> InteriorCollapseTriggerStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for InteriorCollapseTriggerStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for InteriorCollapseTriggerStateTableHandle<'ctx> {
+    type InsertCallbackId = InteriorCollapseTriggerStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<InteriorCollapseTriggerState>("interior_collapse_trigger_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InteriorCollapseTriggerStateInsertCallbackId {
+        InteriorCollapseTriggerStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: InteriorCollapseTriggerStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for InteriorCollapseTriggerStateTableHandle<'ctx> {
+    type DeleteCallbackId = InteriorCollapseTriggerStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InteriorCollapseTriggerStateDeleteCallbackId {
+        InteriorCollapseTriggerStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: InteriorCollapseTriggerStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct InteriorCollapseTriggerStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for InteriorCollapseTriggerStateTableHandle<'ctx> {
@@ -128,18 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for InteriorCollapseTriggerStateTableHandl
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<InteriorCollapseTriggerState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse(
-            "TableUpdate<InteriorCollapseTriggerState>",
-            "TableUpdate",
-        )
-        .with_cause(e)
-        .into()
-    })
+impl<'ctx> __sdk::WithUpdate for InteriorCollapseTriggerStateTableHandle<'ctx> {
+    type UpdateCallbackId = InteriorCollapseTriggerStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> InteriorCollapseTriggerStateUpdateCallbackId {
+        InteriorCollapseTriggerStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: InteriorCollapseTriggerStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -172,6 +217,29 @@ impl<'ctx> InteriorCollapseTriggerStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<InteriorCollapseTriggerState>("interior_collapse_trigger_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<InteriorCollapseTriggerState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse(
+            "TableUpdate<InteriorCollapseTriggerState>",
+            "TableUpdate",
+        )
+        .with_cause(e)
+        .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

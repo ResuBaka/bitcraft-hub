@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for PartialExperienceState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PartialExperienceState {}

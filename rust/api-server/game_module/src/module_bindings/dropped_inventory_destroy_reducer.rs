@@ -22,8 +22,6 @@ impl __sdk::InModule for DroppedInventoryDestroyArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DroppedInventoryDestroyCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `dropped_inventory_destroy`.
 ///
@@ -33,82 +31,46 @@ pub trait dropped_inventory_destroy {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_dropped_inventory_destroy`] callbacks.
-    fn dropped_inventory_destroy(&self, dropped_inventory_entity_id: u64) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `dropped_inventory_destroy`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`dropped_inventory_destroy:dropped_inventory_destroy_then`] to run a callback after the reducer completes.
+    fn dropped_inventory_destroy(&self, dropped_inventory_entity_id: u64) -> __sdk::Result<()> {
+        self.dropped_inventory_destroy_then(dropped_inventory_entity_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `dropped_inventory_destroy` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DroppedInventoryDestroyCallbackId`] can be passed to [`Self::remove_on_dropped_inventory_destroy`]
-    /// to cancel the callback.
-    fn on_dropped_inventory_destroy(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn dropped_inventory_destroy_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> DroppedInventoryDestroyCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_dropped_inventory_destroy`],
-    /// causing it not to run in the future.
-    fn remove_on_dropped_inventory_destroy(&self, callback: DroppedInventoryDestroyCallbackId);
+        dropped_inventory_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl dropped_inventory_destroy for super::RemoteReducers {
-    fn dropped_inventory_destroy(&self, dropped_inventory_entity_id: u64) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "dropped_inventory_destroy",
+    fn dropped_inventory_destroy_then(
+        &self,
+        dropped_inventory_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             DroppedInventoryDestroyArgs {
                 dropped_inventory_entity_id,
             },
+            callback,
         )
-    }
-    fn on_dropped_inventory_destroy(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> DroppedInventoryDestroyCallbackId {
-        DroppedInventoryDestroyCallbackId(self.imp.on_reducer(
-            "dropped_inventory_destroy",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::DroppedInventoryDestroy {
-                                    dropped_inventory_entity_id,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, dropped_inventory_entity_id)
-            }),
-        ))
-    }
-    fn remove_on_dropped_inventory_destroy(&self, callback: DroppedInventoryDestroyCallbackId) {
-        self.imp
-            .remove_on_reducer("dropped_inventory_destroy", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `dropped_inventory_destroy`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_dropped_inventory_destroy {
-    /// Set the call-reducer flags for the reducer `dropped_inventory_destroy` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn dropped_inventory_destroy(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_dropped_inventory_destroy for super::SetReducerFlags {
-    fn dropped_inventory_destroy(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("dropped_inventory_destroy", flags);
     }
 }

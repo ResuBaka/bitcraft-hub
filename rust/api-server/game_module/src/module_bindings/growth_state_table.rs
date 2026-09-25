@@ -18,6 +18,18 @@ pub struct GrowthStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `growth_state`.
+pub struct GrowthStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for GrowthStateTableAccessor {
+    type Row = GrowthState;
+    type Handle<'db> = GrowthStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.growth_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `growth_state`.
 ///
@@ -40,6 +52,16 @@ impl GrowthStateTableAccess for super::RemoteTables {
 pub struct GrowthStateInitialCallbackId(__sdk::CallbackId);
 pub struct GrowthStateInsertCallbackId(__sdk::CallbackId);
 pub struct GrowthStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for GrowthStateTableHandle<'ctx> {
+    type Row = GrowthState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = GrowthState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> GrowthStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,14 +123,36 @@ impl<'ctx> __sdk::Table for GrowthStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for GrowthStateTableHandle<'ctx> {
+    type InsertCallbackId = GrowthStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<GrowthState>("growth_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> GrowthStateInsertCallbackId {
+        GrowthStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: GrowthStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for GrowthStateTableHandle<'ctx> {
+    type DeleteCallbackId = GrowthStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> GrowthStateDeleteCallbackId {
+        GrowthStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: GrowthStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct GrowthStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for GrowthStateTableHandle<'ctx> {
@@ -126,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for GrowthStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<GrowthState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<GrowthState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for GrowthStateTableHandle<'ctx> {
+    type UpdateCallbackId = GrowthStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> GrowthStateUpdateCallbackId {
+        GrowthStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: GrowthStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -167,6 +215,26 @@ impl<'ctx> GrowthStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<GrowthState>("growth_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<GrowthState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<GrowthState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

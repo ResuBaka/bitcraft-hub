@@ -38,9 +38,9 @@ pub struct MobileEntityStateCols {
     pub destination_z: __sdk::__query_builder::Col<MobileEntityState, i32>,
     pub dimension: __sdk::__query_builder::Col<MobileEntityState, u32>,
     pub is_walking: __sdk::__query_builder::Col<MobileEntityState, bool>,
-    pub _pad1: __sdk::__query_builder::Col<MobileEntityState, u8>,
-    pub _pad2: __sdk::__query_builder::Col<MobileEntityState, u8>,
-    pub _pad3: __sdk::__query_builder::Col<MobileEntityState, u8>,
+    pub pad_1: __sdk::__query_builder::Col<MobileEntityState, u8>,
+    pub pad_2: __sdk::__query_builder::Col<MobileEntityState, u8>,
+    pub pad_3: __sdk::__query_builder::Col<MobileEntityState, u8>,
 }
 
 impl __sdk::__query_builder::HasCols for MobileEntityState {
@@ -56,9 +56,9 @@ impl __sdk::__query_builder::HasCols for MobileEntityState {
             destination_z: __sdk::__query_builder::Col::new(table_name, "destination_z"),
             dimension: __sdk::__query_builder::Col::new(table_name, "dimension"),
             is_walking: __sdk::__query_builder::Col::new(table_name, "is_walking"),
-            _pad1: __sdk::__query_builder::Col::new(table_name, "_pad1"),
-            _pad2: __sdk::__query_builder::Col::new(table_name, "_pad2"),
-            _pad3: __sdk::__query_builder::Col::new(table_name, "_pad3"),
+            pad_1: __sdk::__query_builder::Col::new(table_name, "pad_1"),
+            pad_2: __sdk::__query_builder::Col::new(table_name, "pad_2"),
+            pad_3: __sdk::__query_builder::Col::new(table_name, "pad_3"),
         }
     }
 }
@@ -82,3 +82,5 @@ impl __sdk::__query_builder::HasIxCols for MobileEntityState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for MobileEntityState {}

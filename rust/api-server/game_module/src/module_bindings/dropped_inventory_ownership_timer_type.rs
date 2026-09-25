@@ -57,3 +57,5 @@ impl __sdk::__query_builder::HasIxCols for DroppedInventoryOwnershipTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for DroppedInventoryOwnershipTimer {}

@@ -80,3 +80,5 @@ impl __sdk::__query_builder::HasIxCols for TerrainChunkState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for TerrainChunkState {}

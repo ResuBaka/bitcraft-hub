@@ -20,6 +20,18 @@ pub struct EnemyMobMonitorStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `enemy_mob_monitor_state`.
+pub struct EnemyMobMonitorStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for EnemyMobMonitorStateTableAccessor {
+    type Row = EnemyMobMonitorState;
+    type Handle<'db> = EnemyMobMonitorStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.enemy_mob_monitor_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `enemy_mob_monitor_state`.
 ///
@@ -44,6 +56,16 @@ impl EnemyMobMonitorStateTableAccess for super::RemoteTables {
 pub struct EnemyMobMonitorStateInitialCallbackId(__sdk::CallbackId);
 pub struct EnemyMobMonitorStateInsertCallbackId(__sdk::CallbackId);
 pub struct EnemyMobMonitorStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for EnemyMobMonitorStateTableHandle<'ctx> {
+    type Row = EnemyMobMonitorState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = EnemyMobMonitorState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> EnemyMobMonitorStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -105,14 +127,36 @@ impl<'ctx> __sdk::Table for EnemyMobMonitorStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for EnemyMobMonitorStateTableHandle<'ctx> {
+    type InsertCallbackId = EnemyMobMonitorStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<EnemyMobMonitorState>("enemy_mob_monitor_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EnemyMobMonitorStateInsertCallbackId {
+        EnemyMobMonitorStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: EnemyMobMonitorStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for EnemyMobMonitorStateTableHandle<'ctx> {
+    type DeleteCallbackId = EnemyMobMonitorStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EnemyMobMonitorStateDeleteCallbackId {
+        EnemyMobMonitorStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: EnemyMobMonitorStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct EnemyMobMonitorStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for EnemyMobMonitorStateTableHandle<'ctx> {
@@ -130,15 +174,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for EnemyMobMonitorStateTableHandle<'ctx> 
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<EnemyMobMonitorState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<EnemyMobMonitorState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for EnemyMobMonitorStateTableHandle<'ctx> {
+    type UpdateCallbackId = EnemyMobMonitorStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> EnemyMobMonitorStateUpdateCallbackId {
+        EnemyMobMonitorStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: EnemyMobMonitorStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -171,6 +219,26 @@ impl<'ctx> EnemyMobMonitorStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<EnemyMobMonitorState>("enemy_mob_monitor_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<EnemyMobMonitorState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<EnemyMobMonitorState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

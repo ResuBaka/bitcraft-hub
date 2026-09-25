@@ -24,8 +24,6 @@ impl __sdk::InModule for CraftSetPublicArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CraftSetPublicCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `craft_set_public`.
 ///
@@ -35,90 +33,53 @@ pub trait craft_set_public {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_craft_set_public`] callbacks.
-    fn craft_set_public(
-        &self,
-        progressive_action_entity_id: u64,
-        is_public: bool,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `craft_set_public`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CraftSetPublicCallbackId`] can be passed to [`Self::remove_on_craft_set_public`]
-    /// to cancel the callback.
-    fn on_craft_set_public(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &bool) + Send + 'static,
-    ) -> CraftSetPublicCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_craft_set_public`],
-    /// causing it not to run in the future.
-    fn remove_on_craft_set_public(&self, callback: CraftSetPublicCallbackId);
-}
-
-impl craft_set_public for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`craft_set_public:craft_set_public_then`] to run a callback after the reducer completes.
     fn craft_set_public(
         &self,
         progressive_action_entity_id: u64,
         is_public: bool,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "craft_set_public",
+        self.craft_set_public_then(progressive_action_entity_id, is_public, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `craft_set_public` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn craft_set_public_then(
+        &self,
+        progressive_action_entity_id: u64,
+        is_public: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl craft_set_public for super::RemoteReducers {
+    fn craft_set_public_then(
+        &self,
+        progressive_action_entity_id: u64,
+        is_public: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             CraftSetPublicArgs {
                 progressive_action_entity_id,
                 is_public,
             },
+            callback,
         )
-    }
-    fn on_craft_set_public(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &bool) + Send + 'static,
-    ) -> CraftSetPublicCallbackId {
-        CraftSetPublicCallbackId(self.imp.on_reducer(
-            "craft_set_public",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::CraftSetPublic {
-                                    progressive_action_entity_id,
-                                    is_public,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, progressive_action_entity_id, is_public)
-            }),
-        ))
-    }
-    fn remove_on_craft_set_public(&self, callback: CraftSetPublicCallbackId) {
-        self.imp.remove_on_reducer("craft_set_public", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `craft_set_public`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_craft_set_public {
-    /// Set the call-reducer flags for the reducer `craft_set_public` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn craft_set_public(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_craft_set_public for super::SetReducerFlags {
-    fn craft_set_public(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("craft_set_public", flags);
     }
 }

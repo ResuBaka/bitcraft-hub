@@ -24,8 +24,6 @@ impl __sdk::InModule for CraftInitiateArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CraftInitiateCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `craft_initiate`.
 ///
@@ -35,75 +33,42 @@ pub trait craft_initiate {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_craft_initiate`] callbacks.
-    fn craft_initiate(&self, request: PlayerCraftInitiateRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `craft_initiate`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`craft_initiate:craft_initiate_then`] to run a callback after the reducer completes.
+    fn craft_initiate(&self, request: PlayerCraftInitiateRequest) -> __sdk::Result<()> {
+        self.craft_initiate_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `craft_initiate` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CraftInitiateCallbackId`] can be passed to [`Self::remove_on_craft_initiate`]
-    /// to cancel the callback.
-    fn on_craft_initiate(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn craft_initiate_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftInitiateRequest) + Send + 'static,
-    ) -> CraftInitiateCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_craft_initiate`],
-    /// causing it not to run in the future.
-    fn remove_on_craft_initiate(&self, callback: CraftInitiateCallbackId);
+        request: PlayerCraftInitiateRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl craft_initiate for super::RemoteReducers {
-    fn craft_initiate(&self, request: PlayerCraftInitiateRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("craft_initiate", CraftInitiateArgs { request })
-    }
-    fn on_craft_initiate(
+    fn craft_initiate_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerCraftInitiateRequest)
-        + Send
+        request: PlayerCraftInitiateRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> CraftInitiateCallbackId {
-        CraftInitiateCallbackId(self.imp.on_reducer(
-            "craft_initiate",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::CraftInitiate { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_craft_initiate(&self, callback: CraftInitiateCallbackId) {
-        self.imp.remove_on_reducer("craft_initiate", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `craft_initiate`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_craft_initiate {
-    /// Set the call-reducer flags for the reducer `craft_initiate` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn craft_initiate(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_craft_initiate for super::SetReducerFlags {
-    fn craft_initiate(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("craft_initiate", flags);
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(CraftInitiateArgs { request }, callback)
     }
 }

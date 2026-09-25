@@ -18,6 +18,18 @@ pub struct PlayerUsernameStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `player_username_state`.
+pub struct PlayerUsernameStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for PlayerUsernameStateTableAccessor {
+    type Row = PlayerUsernameState;
+    type Handle<'db> = PlayerUsernameStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.player_username_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `player_username_state`.
 ///
@@ -42,6 +54,16 @@ impl PlayerUsernameStateTableAccess for super::RemoteTables {
 pub struct PlayerUsernameStateInitialCallbackId(__sdk::CallbackId);
 pub struct PlayerUsernameStateInsertCallbackId(__sdk::CallbackId);
 pub struct PlayerUsernameStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for PlayerUsernameStateTableHandle<'ctx> {
+    type Row = PlayerUsernameState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PlayerUsernameState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> PlayerUsernameStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,15 +125,36 @@ impl<'ctx> __sdk::Table for PlayerUsernameStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for PlayerUsernameStateTableHandle<'ctx> {
+    type InsertCallbackId = PlayerUsernameStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<PlayerUsernameState>("player_username_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
-    _table.add_unique_constraint::<String>("username", |row| &row.username);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerUsernameStateInsertCallbackId {
+        PlayerUsernameStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: PlayerUsernameStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for PlayerUsernameStateTableHandle<'ctx> {
+    type DeleteCallbackId = PlayerUsernameStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerUsernameStateDeleteCallbackId {
+        PlayerUsernameStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: PlayerUsernameStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct PlayerUsernameStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for PlayerUsernameStateTableHandle<'ctx> {
@@ -129,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for PlayerUsernameStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<PlayerUsernameState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<PlayerUsernameState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for PlayerUsernameStateTableHandle<'ctx> {
+    type UpdateCallbackId = PlayerUsernameStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> PlayerUsernameStateUpdateCallbackId {
+        PlayerUsernameStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: PlayerUsernameStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -202,6 +249,27 @@ impl<'ctx> PlayerUsernameStateUsernameUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<PlayerUsernameState>("player_username_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    _table.add_unique_constraint::<String>("username", |row| &row.username);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<PlayerUsernameState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<PlayerUsernameState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

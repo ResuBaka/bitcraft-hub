@@ -18,6 +18,18 @@ pub struct InteriorPortalConnectionsDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `interior_portal_connections_desc`.
+pub struct InteriorPortalConnectionsDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for InteriorPortalConnectionsDescTableAccessor {
+    type Row = InteriorPortalConnectionsDesc;
+    type Handle<'db> = InteriorPortalConnectionsDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.interior_portal_connections_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `interior_portal_connections_desc`.
 ///
@@ -42,6 +54,16 @@ impl InteriorPortalConnectionsDescTableAccess for super::RemoteTables {
 pub struct InteriorPortalConnectionsDescInitialCallbackId(__sdk::CallbackId);
 pub struct InteriorPortalConnectionsDescInsertCallbackId(__sdk::CallbackId);
 pub struct InteriorPortalConnectionsDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for InteriorPortalConnectionsDescTableHandle<'ctx> {
+    type Row = InteriorPortalConnectionsDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = InteriorPortalConnectionsDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> InteriorPortalConnectionsDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for InteriorPortalConnectionsDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for InteriorPortalConnectionsDescTableHandle<'ctx> {
+    type InsertCallbackId = InteriorPortalConnectionsDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<InteriorPortalConnectionsDesc>("interior_portal_connections_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InteriorPortalConnectionsDescInsertCallbackId {
+        InteriorPortalConnectionsDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: InteriorPortalConnectionsDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for InteriorPortalConnectionsDescTableHandle<'ctx> {
+    type DeleteCallbackId = InteriorPortalConnectionsDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InteriorPortalConnectionsDescDeleteCallbackId {
+        InteriorPortalConnectionsDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: InteriorPortalConnectionsDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct InteriorPortalConnectionsDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for InteriorPortalConnectionsDescTableHandle<'ctx> {
@@ -128,18 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for InteriorPortalConnectionsDescTableHand
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<InteriorPortalConnectionsDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse(
-            "TableUpdate<InteriorPortalConnectionsDesc>",
-            "TableUpdate",
-        )
-        .with_cause(e)
-        .into()
-    })
+impl<'ctx> __sdk::WithUpdate for InteriorPortalConnectionsDescTableHandle<'ctx> {
+    type UpdateCallbackId = InteriorPortalConnectionsDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> InteriorPortalConnectionsDescUpdateCallbackId {
+        InteriorPortalConnectionsDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: InteriorPortalConnectionsDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -172,6 +217,29 @@ impl<'ctx> InteriorPortalConnectionsDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<InteriorPortalConnectionsDesc>("interior_portal_connections_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<InteriorPortalConnectionsDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse(
+            "TableUpdate<InteriorPortalConnectionsDesc>",
+            "TableUpdate",
+        )
+        .with_cause(e)
+        .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

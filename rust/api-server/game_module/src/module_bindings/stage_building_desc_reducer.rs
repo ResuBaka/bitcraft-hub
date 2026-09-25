@@ -24,8 +24,6 @@ impl __sdk::InModule for StageBuildingDescArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct StageBuildingDescCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `stage_building_desc`.
 ///
@@ -35,75 +33,42 @@ pub trait stage_building_desc {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_stage_building_desc`] callbacks.
-    fn stage_building_desc(&self, records: Vec<BuildingDesc>) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_building_desc`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`stage_building_desc:stage_building_desc_then`] to run a callback after the reducer completes.
+    fn stage_building_desc(&self, records: Vec<BuildingDesc>) -> __sdk::Result<()> {
+        self.stage_building_desc_then(records, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `stage_building_desc` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`StageBuildingDescCallbackId`] can be passed to [`Self::remove_on_stage_building_desc`]
-    /// to cancel the callback.
-    fn on_stage_building_desc(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn stage_building_desc_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingDesc>) + Send + 'static,
-    ) -> StageBuildingDescCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_stage_building_desc`],
-    /// causing it not to run in the future.
-    fn remove_on_stage_building_desc(&self, callback: StageBuildingDescCallbackId);
+        records: Vec<BuildingDesc>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl stage_building_desc for super::RemoteReducers {
-    fn stage_building_desc(&self, records: Vec<BuildingDesc>) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("stage_building_desc", StageBuildingDescArgs { records })
-    }
-    fn on_stage_building_desc(
+    fn stage_building_desc_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<BuildingDesc>) + Send + 'static,
-    ) -> StageBuildingDescCallbackId {
-        StageBuildingDescCallbackId(self.imp.on_reducer(
-            "stage_building_desc",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::StageBuildingDesc { records },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, records)
-            }),
-        ))
-    }
-    fn remove_on_stage_building_desc(&self, callback: StageBuildingDescCallbackId) {
-        self.imp
-            .remove_on_reducer("stage_building_desc", callback.0)
-    }
-}
+        records: Vec<BuildingDesc>,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `stage_building_desc`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_stage_building_desc {
-    /// Set the call-reducer flags for the reducer `stage_building_desc` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn stage_building_desc(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_stage_building_desc for super::SetReducerFlags {
-    fn stage_building_desc(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("stage_building_desc", flags);
+            .invoke_reducer_with_callback(StageBuildingDescArgs { records }, callback)
     }
 }

@@ -24,8 +24,6 @@ impl __sdk::InModule for ImportKnowledgeBuildingStateArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ImportKnowledgeBuildingStateCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `import_knowledge_building_state`.
 ///
@@ -35,91 +33,45 @@ pub trait import_knowledge_building_state {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_import_knowledge_building_state`] callbacks.
-    fn import_knowledge_building_state(
-        &self,
-        records: Vec<KnowledgeBuildingState>,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `import_knowledge_building_state`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ImportKnowledgeBuildingStateCallbackId`] can be passed to [`Self::remove_on_import_knowledge_building_state`]
-    /// to cancel the callback.
-    fn on_import_knowledge_building_state(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeBuildingState>) + Send + 'static,
-    ) -> ImportKnowledgeBuildingStateCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_import_knowledge_building_state`],
-    /// causing it not to run in the future.
-    fn remove_on_import_knowledge_building_state(
-        &self,
-        callback: ImportKnowledgeBuildingStateCallbackId,
-    );
-}
-
-impl import_knowledge_building_state for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`import_knowledge_building_state:import_knowledge_building_state_then`] to run a callback after the reducer completes.
     fn import_knowledge_building_state(
         &self,
         records: Vec<KnowledgeBuildingState>,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "import_knowledge_building_state",
-            ImportKnowledgeBuildingStateArgs { records },
-        )
+        self.import_knowledge_building_state_then(records, |_, _| {})
     }
-    fn on_import_knowledge_building_state(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<KnowledgeBuildingState>)
-        + Send
-        + 'static,
-    ) -> ImportKnowledgeBuildingStateCallbackId {
-        ImportKnowledgeBuildingStateCallbackId(self.imp.on_reducer(
-            "import_knowledge_building_state",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ImportKnowledgeBuildingState { records },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, records)
-            }),
-        ))
-    }
-    fn remove_on_import_knowledge_building_state(
-        &self,
-        callback: ImportKnowledgeBuildingStateCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("import_knowledge_building_state", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `import_knowledge_building_state`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_import_knowledge_building_state {
-    /// Set the call-reducer flags for the reducer `import_knowledge_building_state` to `flags`.
+    /// Request that the remote module invoke the reducer `import_knowledge_building_state` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn import_knowledge_building_state(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn import_knowledge_building_state_then(
+        &self,
+        records: Vec<KnowledgeBuildingState>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_import_knowledge_building_state for super::SetReducerFlags {
-    fn import_knowledge_building_state(&self, flags: __ws::CallReducerFlags) {
+impl import_knowledge_building_state for super::RemoteReducers {
+    fn import_knowledge_building_state_then(
+        &self,
+        records: Vec<KnowledgeBuildingState>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("import_knowledge_building_state", flags);
+            .invoke_reducer_with_callback(ImportKnowledgeBuildingStateArgs { records }, callback)
     }
 }

@@ -24,8 +24,6 @@ impl __sdk::InModule for TerraformSetFinalTargetArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct TerraformSetFinalTargetCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `terraform_set_final_target`.
 ///
@@ -35,87 +33,45 @@ pub trait terraform_set_final_target {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_terraform_set_final_target`] callbacks.
-    fn terraform_set_final_target(
-        &self,
-        request: PlayerTerraformSetFinalTargetRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `terraform_set_final_target`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`TerraformSetFinalTargetCallbackId`] can be passed to [`Self::remove_on_terraform_set_final_target`]
-    /// to cancel the callback.
-    fn on_terraform_set_final_target(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerTerraformSetFinalTargetRequest)
-        + Send
-        + 'static,
-    ) -> TerraformSetFinalTargetCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_terraform_set_final_target`],
-    /// causing it not to run in the future.
-    fn remove_on_terraform_set_final_target(&self, callback: TerraformSetFinalTargetCallbackId);
-}
-
-impl terraform_set_final_target for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`terraform_set_final_target:terraform_set_final_target_then`] to run a callback after the reducer completes.
     fn terraform_set_final_target(
         &self,
         request: PlayerTerraformSetFinalTargetRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "terraform_set_final_target",
-            TerraformSetFinalTargetArgs { request },
-        )
+        self.terraform_set_final_target_then(request, |_, _| {})
     }
-    fn on_terraform_set_final_target(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTerraformSetFinalTargetRequest)
-        + Send
-        + 'static,
-    ) -> TerraformSetFinalTargetCallbackId {
-        TerraformSetFinalTargetCallbackId(self.imp.on_reducer(
-            "terraform_set_final_target",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::TerraformSetFinalTarget { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_terraform_set_final_target(&self, callback: TerraformSetFinalTargetCallbackId) {
-        self.imp
-            .remove_on_reducer("terraform_set_final_target", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `terraform_set_final_target`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_terraform_set_final_target {
-    /// Set the call-reducer flags for the reducer `terraform_set_final_target` to `flags`.
+    /// Request that the remote module invoke the reducer `terraform_set_final_target` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn terraform_set_final_target(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn terraform_set_final_target_then(
+        &self,
+        request: PlayerTerraformSetFinalTargetRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_terraform_set_final_target for super::SetReducerFlags {
-    fn terraform_set_final_target(&self, flags: __ws::CallReducerFlags) {
+impl terraform_set_final_target for super::RemoteReducers {
+    fn terraform_set_final_target_then(
+        &self,
+        request: PlayerTerraformSetFinalTargetRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("terraform_set_final_target", flags);
+            .invoke_reducer_with_callback(TerraformSetFinalTargetArgs { request }, callback)
     }
 }

@@ -48,3 +48,5 @@ impl __sdk::__query_builder::HasIxCols for ClaimTileCost {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ClaimTileCost {}

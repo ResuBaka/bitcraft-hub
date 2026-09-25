@@ -18,6 +18,18 @@ pub struct KnowledgeScrollDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `knowledge_scroll_desc`.
+pub struct KnowledgeScrollDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for KnowledgeScrollDescTableAccessor {
+    type Row = KnowledgeScrollDesc;
+    type Handle<'db> = KnowledgeScrollDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.knowledge_scroll_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `knowledge_scroll_desc`.
 ///
@@ -42,6 +54,16 @@ impl KnowledgeScrollDescTableAccess for super::RemoteTables {
 pub struct KnowledgeScrollDescInitialCallbackId(__sdk::CallbackId);
 pub struct KnowledgeScrollDescInsertCallbackId(__sdk::CallbackId);
 pub struct KnowledgeScrollDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for KnowledgeScrollDescTableHandle<'ctx> {
+    type Row = KnowledgeScrollDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = KnowledgeScrollDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> KnowledgeScrollDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for KnowledgeScrollDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for KnowledgeScrollDescTableHandle<'ctx> {
+    type InsertCallbackId = KnowledgeScrollDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<KnowledgeScrollDesc>("knowledge_scroll_desc");
-    _table.add_unique_constraint::<i32>("item_id", |row| &row.item_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> KnowledgeScrollDescInsertCallbackId {
+        KnowledgeScrollDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: KnowledgeScrollDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for KnowledgeScrollDescTableHandle<'ctx> {
+    type DeleteCallbackId = KnowledgeScrollDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> KnowledgeScrollDescDeleteCallbackId {
+        KnowledgeScrollDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: KnowledgeScrollDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct KnowledgeScrollDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for KnowledgeScrollDescTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for KnowledgeScrollDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<KnowledgeScrollDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<KnowledgeScrollDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for KnowledgeScrollDescTableHandle<'ctx> {
+    type UpdateCallbackId = KnowledgeScrollDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> KnowledgeScrollDescUpdateCallbackId {
+        KnowledgeScrollDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: KnowledgeScrollDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> KnowledgeScrollDescItemIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<KnowledgeScrollDesc>("knowledge_scroll_desc");
+    _table.add_unique_constraint::<i32>("item_id", |row| &row.item_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<KnowledgeScrollDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<KnowledgeScrollDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

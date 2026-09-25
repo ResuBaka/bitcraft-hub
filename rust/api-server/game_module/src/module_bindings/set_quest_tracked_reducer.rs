@@ -24,8 +24,6 @@ impl __sdk::InModule for SetQuestTrackedArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct SetQuestTrackedCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `set_quest_tracked`.
 ///
@@ -35,73 +33,44 @@ pub trait set_quest_tracked {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_set_quest_tracked`] callbacks.
-    fn set_quest_tracked(&self, id: i32, tracked: bool) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `set_quest_tracked`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`set_quest_tracked:set_quest_tracked_then`] to run a callback after the reducer completes.
+    fn set_quest_tracked(&self, id: i32, tracked: bool) -> __sdk::Result<()> {
+        self.set_quest_tracked_then(id, tracked, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `set_quest_tracked` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`SetQuestTrackedCallbackId`] can be passed to [`Self::remove_on_set_quest_tracked`]
-    /// to cancel the callback.
-    fn on_set_quest_tracked(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn set_quest_tracked_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32, &bool) + Send + 'static,
-    ) -> SetQuestTrackedCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_set_quest_tracked`],
-    /// causing it not to run in the future.
-    fn remove_on_set_quest_tracked(&self, callback: SetQuestTrackedCallbackId);
+        id: i32,
+        tracked: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl set_quest_tracked for super::RemoteReducers {
-    fn set_quest_tracked(&self, id: i32, tracked: bool) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("set_quest_tracked", SetQuestTrackedArgs { id, tracked })
-    }
-    fn on_set_quest_tracked(
+    fn set_quest_tracked_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32, &bool) + Send + 'static,
-    ) -> SetQuestTrackedCallbackId {
-        SetQuestTrackedCallbackId(self.imp.on_reducer(
-            "set_quest_tracked",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::SetQuestTracked { id, tracked },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, id, tracked)
-            }),
-        ))
-    }
-    fn remove_on_set_quest_tracked(&self, callback: SetQuestTrackedCallbackId) {
-        self.imp.remove_on_reducer("set_quest_tracked", callback.0)
-    }
-}
+        id: i32,
+        tracked: bool,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `set_quest_tracked`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_set_quest_tracked {
-    /// Set the call-reducer flags for the reducer `set_quest_tracked` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn set_quest_tracked(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_set_quest_tracked for super::SetReducerFlags {
-    fn set_quest_tracked(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("set_quest_tracked", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(SetQuestTrackedArgs { id, tracked }, callback)
     }
 }

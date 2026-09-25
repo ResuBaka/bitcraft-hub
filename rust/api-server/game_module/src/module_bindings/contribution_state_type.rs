@@ -56,3 +56,5 @@ impl __sdk::__query_builder::HasIxCols for ContributionState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ContributionState {}

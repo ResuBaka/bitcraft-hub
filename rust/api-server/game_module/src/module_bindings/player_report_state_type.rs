@@ -89,3 +89,5 @@ impl __sdk::__query_builder::HasIxCols for PlayerReportState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlayerReportState {}

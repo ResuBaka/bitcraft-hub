@@ -50,3 +50,5 @@ impl __sdk::__query_builder::HasIxCols for KnowledgeBattleActionState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for KnowledgeBattleActionState {}

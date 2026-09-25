@@ -18,6 +18,18 @@ pub struct EmpireNodeSiegeStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `empire_node_siege_state`.
+pub struct EmpireNodeSiegeStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for EmpireNodeSiegeStateTableAccessor {
+    type Row = EmpireNodeSiegeState;
+    type Handle<'db> = EmpireNodeSiegeStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.empire_node_siege_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `empire_node_siege_state`.
 ///
@@ -42,6 +54,16 @@ impl EmpireNodeSiegeStateTableAccess for super::RemoteTables {
 pub struct EmpireNodeSiegeStateInitialCallbackId(__sdk::CallbackId);
 pub struct EmpireNodeSiegeStateInsertCallbackId(__sdk::CallbackId);
 pub struct EmpireNodeSiegeStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for EmpireNodeSiegeStateTableHandle<'ctx> {
+    type Row = EmpireNodeSiegeState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = EmpireNodeSiegeState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> EmpireNodeSiegeStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for EmpireNodeSiegeStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for EmpireNodeSiegeStateTableHandle<'ctx> {
+    type InsertCallbackId = EmpireNodeSiegeStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<EmpireNodeSiegeState>("empire_node_siege_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EmpireNodeSiegeStateInsertCallbackId {
+        EmpireNodeSiegeStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: EmpireNodeSiegeStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for EmpireNodeSiegeStateTableHandle<'ctx> {
+    type DeleteCallbackId = EmpireNodeSiegeStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> EmpireNodeSiegeStateDeleteCallbackId {
+        EmpireNodeSiegeStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: EmpireNodeSiegeStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct EmpireNodeSiegeStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for EmpireNodeSiegeStateTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for EmpireNodeSiegeStateTableHandle<'ctx> 
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<EmpireNodeSiegeState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<EmpireNodeSiegeState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for EmpireNodeSiegeStateTableHandle<'ctx> {
+    type UpdateCallbackId = EmpireNodeSiegeStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> EmpireNodeSiegeStateUpdateCallbackId {
+        EmpireNodeSiegeStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: EmpireNodeSiegeStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> EmpireNodeSiegeStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<EmpireNodeSiegeState>("empire_node_siege_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<EmpireNodeSiegeState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<EmpireNodeSiegeState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

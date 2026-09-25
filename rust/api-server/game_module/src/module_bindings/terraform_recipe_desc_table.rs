@@ -20,6 +20,18 @@ pub struct TerraformRecipeDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `terraform_recipe_desc`.
+pub struct TerraformRecipeDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for TerraformRecipeDescTableAccessor {
+    type Row = TerraformRecipeDesc;
+    type Handle<'db> = TerraformRecipeDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.terraform_recipe_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `terraform_recipe_desc`.
 ///
@@ -44,6 +56,16 @@ impl TerraformRecipeDescTableAccess for super::RemoteTables {
 pub struct TerraformRecipeDescInitialCallbackId(__sdk::CallbackId);
 pub struct TerraformRecipeDescInsertCallbackId(__sdk::CallbackId);
 pub struct TerraformRecipeDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for TerraformRecipeDescTableHandle<'ctx> {
+    type Row = TerraformRecipeDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = TerraformRecipeDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> TerraformRecipeDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -105,14 +127,36 @@ impl<'ctx> __sdk::Table for TerraformRecipeDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for TerraformRecipeDescTableHandle<'ctx> {
+    type InsertCallbackId = TerraformRecipeDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<TerraformRecipeDesc>("terraform_recipe_desc");
-    _table.add_unique_constraint::<i16>("difference", |row| &row.difference);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TerraformRecipeDescInsertCallbackId {
+        TerraformRecipeDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: TerraformRecipeDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for TerraformRecipeDescTableHandle<'ctx> {
+    type DeleteCallbackId = TerraformRecipeDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TerraformRecipeDescDeleteCallbackId {
+        TerraformRecipeDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: TerraformRecipeDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct TerraformRecipeDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for TerraformRecipeDescTableHandle<'ctx> {
@@ -130,15 +174,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for TerraformRecipeDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<TerraformRecipeDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<TerraformRecipeDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for TerraformRecipeDescTableHandle<'ctx> {
+    type UpdateCallbackId = TerraformRecipeDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> TerraformRecipeDescUpdateCallbackId {
+        TerraformRecipeDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: TerraformRecipeDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -171,6 +219,26 @@ impl<'ctx> TerraformRecipeDescDifferenceUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<TerraformRecipeDesc>("terraform_recipe_desc");
+    _table.add_unique_constraint::<i16>("difference", |row| &row.difference);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<TerraformRecipeDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<TerraformRecipeDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

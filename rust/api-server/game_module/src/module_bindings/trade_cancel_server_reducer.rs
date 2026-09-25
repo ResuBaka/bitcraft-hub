@@ -24,8 +24,6 @@ impl __sdk::InModule for TradeCancelServerArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct TradeCancelServerCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `trade_cancel_server`.
 ///
@@ -35,92 +33,53 @@ pub trait trade_cancel_server {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_trade_cancel_server`] callbacks.
-    fn trade_cancel_server(
-        &self,
-        session_entity_id: u64,
-        resolution_message: String,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `trade_cancel_server`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`TradeCancelServerCallbackId`] can be passed to [`Self::remove_on_trade_cancel_server`]
-    /// to cancel the callback.
-    fn on_trade_cancel_server(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &String) + Send + 'static,
-    ) -> TradeCancelServerCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_trade_cancel_server`],
-    /// causing it not to run in the future.
-    fn remove_on_trade_cancel_server(&self, callback: TradeCancelServerCallbackId);
-}
-
-impl trade_cancel_server for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`trade_cancel_server:trade_cancel_server_then`] to run a callback after the reducer completes.
     fn trade_cancel_server(
         &self,
         session_entity_id: u64,
         resolution_message: String,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "trade_cancel_server",
+        self.trade_cancel_server_then(session_entity_id, resolution_message, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `trade_cancel_server` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn trade_cancel_server_then(
+        &self,
+        session_entity_id: u64,
+        resolution_message: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl trade_cancel_server for super::RemoteReducers {
+    fn trade_cancel_server_then(
+        &self,
+        session_entity_id: u64,
+        resolution_message: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             TradeCancelServerArgs {
                 session_entity_id,
                 resolution_message,
             },
+            callback,
         )
-    }
-    fn on_trade_cancel_server(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &String) + Send + 'static,
-    ) -> TradeCancelServerCallbackId {
-        TradeCancelServerCallbackId(self.imp.on_reducer(
-            "trade_cancel_server",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::TradeCancelServer {
-                                    session_entity_id,
-                                    resolution_message,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, session_entity_id, resolution_message)
-            }),
-        ))
-    }
-    fn remove_on_trade_cancel_server(&self, callback: TradeCancelServerCallbackId) {
-        self.imp
-            .remove_on_reducer("trade_cancel_server", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `trade_cancel_server`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_trade_cancel_server {
-    /// Set the call-reducer flags for the reducer `trade_cancel_server` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn trade_cancel_server(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_trade_cancel_server for super::SetReducerFlags {
-    fn trade_cancel_server(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("trade_cancel_server", flags);
     }
 }

@@ -48,9 +48,9 @@ pub struct PlayerActionStateCols {
     pub last_action_result: __sdk::__query_builder::Col<PlayerActionState, PlayerActionResult>,
     pub client_cancel: __sdk::__query_builder::Col<PlayerActionState, bool>,
     pub was_consumed: __sdk::__query_builder::Col<PlayerActionState, bool>,
-    pub _pad1: __sdk::__query_builder::Col<PlayerActionState, u8>,
-    pub _pad2: __sdk::__query_builder::Col<PlayerActionState, u8>,
-    pub _pad3: __sdk::__query_builder::Col<PlayerActionState, u8>,
+    pub pad_1: __sdk::__query_builder::Col<PlayerActionState, u8>,
+    pub pad_2: __sdk::__query_builder::Col<PlayerActionState, u8>,
+    pub pad_3: __sdk::__query_builder::Col<PlayerActionState, u8>,
 }
 
 impl __sdk::__query_builder::HasCols for PlayerActionState {
@@ -69,9 +69,9 @@ impl __sdk::__query_builder::HasCols for PlayerActionState {
             last_action_result: __sdk::__query_builder::Col::new(table_name, "last_action_result"),
             client_cancel: __sdk::__query_builder::Col::new(table_name, "client_cancel"),
             was_consumed: __sdk::__query_builder::Col::new(table_name, "was_consumed"),
-            _pad1: __sdk::__query_builder::Col::new(table_name, "_pad1"),
-            _pad2: __sdk::__query_builder::Col::new(table_name, "_pad2"),
-            _pad3: __sdk::__query_builder::Col::new(table_name, "_pad3"),
+            pad_1: __sdk::__query_builder::Col::new(table_name, "pad_1"),
+            pad_2: __sdk::__query_builder::Col::new(table_name, "pad_2"),
+            pad_3: __sdk::__query_builder::Col::new(table_name, "pad_3"),
         }
     }
 }
@@ -95,3 +95,5 @@ impl __sdk::__query_builder::HasIxCols for PlayerActionState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlayerActionState {}

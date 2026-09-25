@@ -61,3 +61,5 @@ impl __sdk::__query_builder::HasIxCols for EquipmentPresetState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EquipmentPresetState {}

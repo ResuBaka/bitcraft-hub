@@ -24,8 +24,6 @@ impl __sdk::InModule for ChatPostMessageArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ChatPostMessageCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `chat_post_message`.
 ///
@@ -35,77 +33,42 @@ pub trait chat_post_message {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_chat_post_message`] callbacks.
-    fn chat_post_message(&self, request: PlayerChatPostMessageRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `chat_post_message`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`chat_post_message:chat_post_message_then`] to run a callback after the reducer completes.
+    fn chat_post_message(&self, request: PlayerChatPostMessageRequest) -> __sdk::Result<()> {
+        self.chat_post_message_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `chat_post_message` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ChatPostMessageCallbackId`] can be passed to [`Self::remove_on_chat_post_message`]
-    /// to cancel the callback.
-    fn on_chat_post_message(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn chat_post_message_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerChatPostMessageRequest)
-        + Send
+        request: PlayerChatPostMessageRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ChatPostMessageCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_chat_post_message`],
-    /// causing it not to run in the future.
-    fn remove_on_chat_post_message(&self, callback: ChatPostMessageCallbackId);
+    ) -> __sdk::Result<()>;
 }
 
 impl chat_post_message for super::RemoteReducers {
-    fn chat_post_message(&self, request: PlayerChatPostMessageRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("chat_post_message", ChatPostMessageArgs { request })
-    }
-    fn on_chat_post_message(
+    fn chat_post_message_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerChatPostMessageRequest)
-        + Send
+        request: PlayerChatPostMessageRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ChatPostMessageCallbackId {
-        ChatPostMessageCallbackId(self.imp.on_reducer(
-            "chat_post_message",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ChatPostMessage { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_chat_post_message(&self, callback: ChatPostMessageCallbackId) {
-        self.imp.remove_on_reducer("chat_post_message", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `chat_post_message`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_chat_post_message {
-    /// Set the call-reducer flags for the reducer `chat_post_message` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn chat_post_message(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_chat_post_message for super::SetReducerFlags {
-    fn chat_post_message(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("chat_post_message", flags);
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ChatPostMessageArgs { request }, callback)
     }
 }

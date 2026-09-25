@@ -63,3 +63,5 @@ impl __sdk::__query_builder::HasIxCols for ClaimRecruitmentState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ClaimRecruitmentState {}

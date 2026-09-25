@@ -149,3 +149,5 @@ impl __sdk::__query_builder::HasIxCols for ResourcePlacementRecipeDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ResourcePlacementRecipeDesc {}

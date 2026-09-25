@@ -24,8 +24,6 @@ impl __sdk::InModule for ImportClaimTechStateArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ImportClaimTechStateCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `import_claim_tech_state`.
 ///
@@ -35,77 +33,42 @@ pub trait import_claim_tech_state {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_import_claim_tech_state`] callbacks.
-    fn import_claim_tech_state(&self, records: Vec<ClaimTechState>) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `import_claim_tech_state`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`import_claim_tech_state:import_claim_tech_state_then`] to run a callback after the reducer completes.
+    fn import_claim_tech_state(&self, records: Vec<ClaimTechState>) -> __sdk::Result<()> {
+        self.import_claim_tech_state_then(records, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `import_claim_tech_state` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ImportClaimTechStateCallbackId`] can be passed to [`Self::remove_on_import_claim_tech_state`]
-    /// to cancel the callback.
-    fn on_import_claim_tech_state(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn import_claim_tech_state_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<ClaimTechState>) + Send + 'static,
-    ) -> ImportClaimTechStateCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_import_claim_tech_state`],
-    /// causing it not to run in the future.
-    fn remove_on_import_claim_tech_state(&self, callback: ImportClaimTechStateCallbackId);
+        records: Vec<ClaimTechState>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl import_claim_tech_state for super::RemoteReducers {
-    fn import_claim_tech_state(&self, records: Vec<ClaimTechState>) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "import_claim_tech_state",
-            ImportClaimTechStateArgs { records },
-        )
-    }
-    fn on_import_claim_tech_state(
+    fn import_claim_tech_state_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<ClaimTechState>) + Send + 'static,
-    ) -> ImportClaimTechStateCallbackId {
-        ImportClaimTechStateCallbackId(self.imp.on_reducer(
-            "import_claim_tech_state",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ImportClaimTechState { records },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, records)
-            }),
-        ))
-    }
-    fn remove_on_import_claim_tech_state(&self, callback: ImportClaimTechStateCallbackId) {
-        self.imp
-            .remove_on_reducer("import_claim_tech_state", callback.0)
-    }
-}
+        records: Vec<ClaimTechState>,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `import_claim_tech_state`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_import_claim_tech_state {
-    /// Set the call-reducer flags for the reducer `import_claim_tech_state` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn import_claim_tech_state(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_import_claim_tech_state for super::SetReducerFlags {
-    fn import_claim_tech_state(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("import_claim_tech_state", flags);
+            .invoke_reducer_with_callback(ImportClaimTechStateArgs { records }, callback)
     }
 }

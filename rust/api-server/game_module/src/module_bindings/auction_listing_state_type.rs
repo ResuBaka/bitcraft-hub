@@ -71,3 +71,5 @@ impl __sdk::__query_builder::HasIxCols for AuctionListingState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for AuctionListingState {}

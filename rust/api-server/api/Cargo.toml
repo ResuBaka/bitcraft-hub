@@ -39,11 +39,11 @@ tower-http = { version = "0.7.1", features = ["fs", "cors", "compression-full"] 
 tower-cookies = "0.11.0"
 dotenvy = "0.15.7"
 metrics = { version = "0.24.6", default-features = false }
-metrics-exporter-prometheus = { version = "0.17.2", default-features = false }
+metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 nanoid = "0.5.0"
 config = "0.15.25"
 kanal = "0.1.1"
-prometheus = "0.13.4"
+prometheus = "0.14.0"
 metrics-process = "2.4.3"
 chrono =  { workspace = true }
 sea-orm-cli =  { workspace = true }

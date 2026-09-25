@@ -48,3 +48,5 @@ impl __sdk::__query_builder::HasIxCols for UserAuthenticationState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for UserAuthenticationState {}

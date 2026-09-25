@@ -19,6 +19,18 @@ pub struct InterModuleMessageV5TableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `inter_module_message_v5`.
+pub struct InterModuleMessageV5TableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for InterModuleMessageV5TableAccessor {
+    type Row = InterModuleMessageV5;
+    type Handle<'db> = InterModuleMessageV5TableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.inter_module_message_v_5()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `inter_module_message_v5`.
 ///
@@ -43,6 +55,16 @@ impl InterModuleMessageV5TableAccess for super::RemoteTables {
 pub struct InterModuleMessageV5InitialCallbackId(__sdk::CallbackId);
 pub struct InterModuleMessageV5InsertCallbackId(__sdk::CallbackId);
 pub struct InterModuleMessageV5DeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for InterModuleMessageV5TableHandle<'ctx> {
+    type Row = InterModuleMessageV5;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = InterModuleMessageV5> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> InterModuleMessageV5TableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,14 +126,36 @@ impl<'ctx> __sdk::Table for InterModuleMessageV5TableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for InterModuleMessageV5TableHandle<'ctx> {
+    type InsertCallbackId = InterModuleMessageV5InsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<InterModuleMessageV5>("inter_module_message_v5");
-    _table.add_unique_constraint::<u64>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InterModuleMessageV5InsertCallbackId {
+        InterModuleMessageV5InsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: InterModuleMessageV5InsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for InterModuleMessageV5TableHandle<'ctx> {
+    type DeleteCallbackId = InterModuleMessageV5DeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> InterModuleMessageV5DeleteCallbackId {
+        InterModuleMessageV5DeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: InterModuleMessageV5DeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct InterModuleMessageV5UpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for InterModuleMessageV5TableHandle<'ctx> {
@@ -129,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for InterModuleMessageV5TableHandle<'ctx> 
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<InterModuleMessageV5>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<InterModuleMessageV5>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for InterModuleMessageV5TableHandle<'ctx> {
+    type UpdateCallbackId = InterModuleMessageV5UpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> InterModuleMessageV5UpdateCallbackId {
+        InterModuleMessageV5UpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: InterModuleMessageV5UpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -172,18 +220,38 @@ impl<'ctx> InterModuleMessageV5IdUnique<'ctx> {
 }
 }
 
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<InterModuleMessageV5>("inter_module_message_v5");
+    _table.add_unique_constraint::<u64>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<InterModuleMessageV5>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<InterModuleMessageV5>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for query builder access to the table `InterModuleMessageV5`.
 ///
 /// Implemented for [`__sdk::QueryTableAccessor`].
-pub trait inter_module_message_v5QueryTableAccess {
+pub trait inter_module_message_v_5QueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `InterModuleMessageV5`.
-    fn inter_module_message_v5(&self) -> __sdk::__query_builder::Table<InterModuleMessageV5>;
+    fn inter_module_message_v_5(&self) -> __sdk::__query_builder::Table<InterModuleMessageV5>;
 }
 
-impl inter_module_message_v5QueryTableAccess for __sdk::QueryTableAccessor {
-    fn inter_module_message_v5(&self) -> __sdk::__query_builder::Table<InterModuleMessageV5> {
+impl inter_module_message_v_5QueryTableAccess for __sdk::QueryTableAccessor {
+    fn inter_module_message_v_5(&self) -> __sdk::__query_builder::Table<InterModuleMessageV5> {
         __sdk::__query_builder::Table::new("inter_module_message_v5")
     }
 }

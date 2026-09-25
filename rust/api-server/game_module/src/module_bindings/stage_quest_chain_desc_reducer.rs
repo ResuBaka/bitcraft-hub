@@ -24,8 +24,6 @@ impl __sdk::InModule for StageQuestChainDescArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct StageQuestChainDescCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `stage_quest_chain_desc`.
 ///
@@ -35,77 +33,42 @@ pub trait stage_quest_chain_desc {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_stage_quest_chain_desc`] callbacks.
-    fn stage_quest_chain_desc(&self, records: Vec<QuestChainDesc>) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `stage_quest_chain_desc`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`stage_quest_chain_desc:stage_quest_chain_desc_then`] to run a callback after the reducer completes.
+    fn stage_quest_chain_desc(&self, records: Vec<QuestChainDesc>) -> __sdk::Result<()> {
+        self.stage_quest_chain_desc_then(records, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `stage_quest_chain_desc` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`StageQuestChainDescCallbackId`] can be passed to [`Self::remove_on_stage_quest_chain_desc`]
-    /// to cancel the callback.
-    fn on_stage_quest_chain_desc(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn stage_quest_chain_desc_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &Vec<QuestChainDesc>) + Send + 'static,
-    ) -> StageQuestChainDescCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_stage_quest_chain_desc`],
-    /// causing it not to run in the future.
-    fn remove_on_stage_quest_chain_desc(&self, callback: StageQuestChainDescCallbackId);
+        records: Vec<QuestChainDesc>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl stage_quest_chain_desc for super::RemoteReducers {
-    fn stage_quest_chain_desc(&self, records: Vec<QuestChainDesc>) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "stage_quest_chain_desc",
-            StageQuestChainDescArgs { records },
-        )
-    }
-    fn on_stage_quest_chain_desc(
+    fn stage_quest_chain_desc_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &Vec<QuestChainDesc>) + Send + 'static,
-    ) -> StageQuestChainDescCallbackId {
-        StageQuestChainDescCallbackId(self.imp.on_reducer(
-            "stage_quest_chain_desc",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::StageQuestChainDesc { records },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, records)
-            }),
-        ))
-    }
-    fn remove_on_stage_quest_chain_desc(&self, callback: StageQuestChainDescCallbackId) {
-        self.imp
-            .remove_on_reducer("stage_quest_chain_desc", callback.0)
-    }
-}
+        records: Vec<QuestChainDesc>,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `stage_quest_chain_desc`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_stage_quest_chain_desc {
-    /// Set the call-reducer flags for the reducer `stage_quest_chain_desc` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn stage_quest_chain_desc(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_stage_quest_chain_desc for super::SetReducerFlags {
-    fn stage_quest_chain_desc(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("stage_quest_chain_desc", flags);
+            .invoke_reducer_with_callback(StageQuestChainDescArgs { records }, callback)
     }
 }

@@ -54,3 +54,5 @@ impl __sdk::__query_builder::HasIxCols for BuildingMapIconDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for BuildingMapIconDesc {}

@@ -24,8 +24,6 @@ impl __sdk::InModule for AdminSetSignTextArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminSetSignTextCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_set_sign_text`.
 ///
@@ -35,84 +33,49 @@ pub trait admin_set_sign_text {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_set_sign_text`] callbacks.
-    fn admin_set_sign_text(&self, deployable_name: String, new_name: String) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_set_sign_text`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_set_sign_text:admin_set_sign_text_then`] to run a callback after the reducer completes.
+    fn admin_set_sign_text(&self, deployable_name: String, new_name: String) -> __sdk::Result<()> {
+        self.admin_set_sign_text_then(deployable_name, new_name, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_set_sign_text` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminSetSignTextCallbackId`] can be passed to [`Self::remove_on_admin_set_sign_text`]
-    /// to cancel the callback.
-    fn on_admin_set_sign_text(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_set_sign_text_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &String, &String) + Send + 'static,
-    ) -> AdminSetSignTextCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_set_sign_text`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_set_sign_text(&self, callback: AdminSetSignTextCallbackId);
+        deployable_name: String,
+        new_name: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl admin_set_sign_text for super::RemoteReducers {
-    fn admin_set_sign_text(&self, deployable_name: String, new_name: String) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_set_sign_text",
+    fn admin_set_sign_text_then(
+        &self,
+        deployable_name: String,
+        new_name: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminSetSignTextArgs {
                 deployable_name,
                 new_name,
             },
+            callback,
         )
-    }
-    fn on_admin_set_sign_text(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &String, &String) + Send + 'static,
-    ) -> AdminSetSignTextCallbackId {
-        AdminSetSignTextCallbackId(self.imp.on_reducer(
-            "admin_set_sign_text",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminSetSignText {
-                                    deployable_name,
-                                    new_name,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, deployable_name, new_name)
-            }),
-        ))
-    }
-    fn remove_on_admin_set_sign_text(&self, callback: AdminSetSignTextCallbackId) {
-        self.imp
-            .remove_on_reducer("admin_set_sign_text", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_set_sign_text`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_set_sign_text {
-    /// Set the call-reducer flags for the reducer `admin_set_sign_text` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_set_sign_text(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_set_sign_text for super::SetReducerFlags {
-    fn admin_set_sign_text(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_set_sign_text", flags);
     }
 }

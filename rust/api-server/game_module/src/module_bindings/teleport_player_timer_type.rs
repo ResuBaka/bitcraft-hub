@@ -60,3 +60,5 @@ impl __sdk::__query_builder::HasIxCols for TeleportPlayerTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for TeleportPlayerTimer {}

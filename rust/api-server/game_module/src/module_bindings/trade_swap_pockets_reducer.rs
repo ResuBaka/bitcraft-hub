@@ -24,8 +24,6 @@ impl __sdk::InModule for TradeSwapPocketsArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct TradeSwapPocketsCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `trade_swap_pockets`.
 ///
@@ -35,77 +33,42 @@ pub trait trade_swap_pockets {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_trade_swap_pockets`] callbacks.
-    fn trade_swap_pockets(&self, request: PlayerTradeSwapPocketsRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `trade_swap_pockets`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`trade_swap_pockets:trade_swap_pockets_then`] to run a callback after the reducer completes.
+    fn trade_swap_pockets(&self, request: PlayerTradeSwapPocketsRequest) -> __sdk::Result<()> {
+        self.trade_swap_pockets_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `trade_swap_pockets` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`TradeSwapPocketsCallbackId`] can be passed to [`Self::remove_on_trade_swap_pockets`]
-    /// to cancel the callback.
-    fn on_trade_swap_pockets(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn trade_swap_pockets_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeSwapPocketsRequest)
-        + Send
+        request: PlayerTradeSwapPocketsRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> TradeSwapPocketsCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_trade_swap_pockets`],
-    /// causing it not to run in the future.
-    fn remove_on_trade_swap_pockets(&self, callback: TradeSwapPocketsCallbackId);
+    ) -> __sdk::Result<()>;
 }
 
 impl trade_swap_pockets for super::RemoteReducers {
-    fn trade_swap_pockets(&self, request: PlayerTradeSwapPocketsRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("trade_swap_pockets", TradeSwapPocketsArgs { request })
-    }
-    fn on_trade_swap_pockets(
+    fn trade_swap_pockets_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerTradeSwapPocketsRequest)
-        + Send
+        request: PlayerTradeSwapPocketsRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> TradeSwapPocketsCallbackId {
-        TradeSwapPocketsCallbackId(self.imp.on_reducer(
-            "trade_swap_pockets",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::TradeSwapPockets { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_trade_swap_pockets(&self, callback: TradeSwapPocketsCallbackId) {
-        self.imp.remove_on_reducer("trade_swap_pockets", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `trade_swap_pockets`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_trade_swap_pockets {
-    /// Set the call-reducer flags for the reducer `trade_swap_pockets` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn trade_swap_pockets(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_trade_swap_pockets for super::SetReducerFlags {
-    fn trade_swap_pockets(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("trade_swap_pockets", flags);
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(TradeSwapPocketsArgs { request }, callback)
     }
 }

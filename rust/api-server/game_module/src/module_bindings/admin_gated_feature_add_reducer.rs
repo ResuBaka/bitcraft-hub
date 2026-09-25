@@ -22,8 +22,6 @@ impl __sdk::InModule for AdminGatedFeatureAddArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminGatedFeatureAddCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_gated_feature_add`.
 ///
@@ -33,77 +31,42 @@ pub trait admin_gated_feature_add {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_gated_feature_add`] callbacks.
-    fn admin_gated_feature_add(&self, feature: String) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_gated_feature_add`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_gated_feature_add:admin_gated_feature_add_then`] to run a callback after the reducer completes.
+    fn admin_gated_feature_add(&self, feature: String) -> __sdk::Result<()> {
+        self.admin_gated_feature_add_then(feature, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_gated_feature_add` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminGatedFeatureAddCallbackId`] can be passed to [`Self::remove_on_admin_gated_feature_add`]
-    /// to cancel the callback.
-    fn on_admin_gated_feature_add(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_gated_feature_add_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &String) + Send + 'static,
-    ) -> AdminGatedFeatureAddCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_gated_feature_add`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_gated_feature_add(&self, callback: AdminGatedFeatureAddCallbackId);
+        feature: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl admin_gated_feature_add for super::RemoteReducers {
-    fn admin_gated_feature_add(&self, feature: String) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_gated_feature_add",
-            AdminGatedFeatureAddArgs { feature },
-        )
-    }
-    fn on_admin_gated_feature_add(
+    fn admin_gated_feature_add_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &String) + Send + 'static,
-    ) -> AdminGatedFeatureAddCallbackId {
-        AdminGatedFeatureAddCallbackId(self.imp.on_reducer(
-            "admin_gated_feature_add",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::AdminGatedFeatureAdd { feature },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, feature)
-            }),
-        ))
-    }
-    fn remove_on_admin_gated_feature_add(&self, callback: AdminGatedFeatureAddCallbackId) {
-        self.imp
-            .remove_on_reducer("admin_gated_feature_add", callback.0)
-    }
-}
+        feature: String,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_gated_feature_add`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_gated_feature_add {
-    /// Set the call-reducer flags for the reducer `admin_gated_feature_add` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_gated_feature_add(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_gated_feature_add for super::SetReducerFlags {
-    fn admin_gated_feature_add(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("admin_gated_feature_add", flags);
+            .invoke_reducer_with_callback(AdminGatedFeatureAddArgs { feature }, callback)
     }
 }

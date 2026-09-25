@@ -18,6 +18,18 @@ pub struct ClaimTileCostTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `claim_tile_cost`.
+pub struct ClaimTileCostTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for ClaimTileCostTableAccessor {
+    type Row = ClaimTileCost;
+    type Handle<'db> = ClaimTileCostTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.claim_tile_cost()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `claim_tile_cost`.
 ///
@@ -40,6 +52,16 @@ impl ClaimTileCostTableAccess for super::RemoteTables {
 pub struct ClaimTileCostInitialCallbackId(__sdk::CallbackId);
 pub struct ClaimTileCostInsertCallbackId(__sdk::CallbackId);
 pub struct ClaimTileCostDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for ClaimTileCostTableHandle<'ctx> {
+    type Row = ClaimTileCost;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = ClaimTileCost> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> ClaimTileCostTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -101,14 +123,36 @@ impl<'ctx> __sdk::Table for ClaimTileCostTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for ClaimTileCostTableHandle<'ctx> {
+    type InsertCallbackId = ClaimTileCostInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<ClaimTileCost>("claim_tile_cost");
-    _table.add_unique_constraint::<i32>("tile_count", |row| &row.tile_count);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ClaimTileCostInsertCallbackId {
+        ClaimTileCostInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: ClaimTileCostInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for ClaimTileCostTableHandle<'ctx> {
+    type DeleteCallbackId = ClaimTileCostDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> ClaimTileCostDeleteCallbackId {
+        ClaimTileCostDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: ClaimTileCostDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct ClaimTileCostUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for ClaimTileCostTableHandle<'ctx> {
@@ -126,15 +170,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for ClaimTileCostTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<ClaimTileCost>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<ClaimTileCost>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for ClaimTileCostTableHandle<'ctx> {
+    type UpdateCallbackId = ClaimTileCostUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> ClaimTileCostUpdateCallbackId {
+        ClaimTileCostUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: ClaimTileCostUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -167,6 +215,26 @@ impl<'ctx> ClaimTileCostTileCountUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<ClaimTileCost>("claim_tile_cost");
+    _table.add_unique_constraint::<i32>("tile_count", |row| &row.tile_count);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<ClaimTileCost>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<ClaimTileCost>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

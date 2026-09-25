@@ -20,8 +20,6 @@ impl __sdk::InModule for StartQuestChainArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct StartQuestChainCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `start_quest_chain`.
 ///
@@ -31,73 +29,42 @@ pub trait start_quest_chain {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_start_quest_chain`] callbacks.
-    fn start_quest_chain(&self, id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `start_quest_chain`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`start_quest_chain:start_quest_chain_then`] to run a callback after the reducer completes.
+    fn start_quest_chain(&self, id: i32) -> __sdk::Result<()> {
+        self.start_quest_chain_then(id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `start_quest_chain` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`StartQuestChainCallbackId`] can be passed to [`Self::remove_on_start_quest_chain`]
-    /// to cancel the callback.
-    fn on_start_quest_chain(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn start_quest_chain_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> StartQuestChainCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_start_quest_chain`],
-    /// causing it not to run in the future.
-    fn remove_on_start_quest_chain(&self, callback: StartQuestChainCallbackId);
+        id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl start_quest_chain for super::RemoteReducers {
-    fn start_quest_chain(&self, id: i32) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("start_quest_chain", StartQuestChainArgs { id })
-    }
-    fn on_start_quest_chain(
+    fn start_quest_chain_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> StartQuestChainCallbackId {
-        StartQuestChainCallbackId(self.imp.on_reducer(
-            "start_quest_chain",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::StartQuestChain { id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, id)
-            }),
-        ))
-    }
-    fn remove_on_start_quest_chain(&self, callback: StartQuestChainCallbackId) {
-        self.imp.remove_on_reducer("start_quest_chain", callback.0)
-    }
-}
+        id: i32,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `start_quest_chain`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_start_quest_chain {
-    /// Set the call-reducer flags for the reducer `start_quest_chain` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn start_quest_chain(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_start_quest_chain for super::SetReducerFlags {
-    fn start_quest_chain(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("start_quest_chain", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(StartQuestChainArgs { id }, callback)
     }
 }

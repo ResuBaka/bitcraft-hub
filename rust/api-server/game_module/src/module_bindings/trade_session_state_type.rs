@@ -82,3 +82,5 @@ impl __sdk::__query_builder::HasIxCols for TradeSessionState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for TradeSessionState {}

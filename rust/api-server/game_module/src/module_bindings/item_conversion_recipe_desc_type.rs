@@ -89,3 +89,5 @@ impl __sdk::__query_builder::HasIxCols for ItemConversionRecipeDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ItemConversionRecipeDesc {}

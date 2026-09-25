@@ -73,3 +73,5 @@ impl __sdk::__query_builder::HasIxCols for TradeOrderState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for TradeOrderState {}

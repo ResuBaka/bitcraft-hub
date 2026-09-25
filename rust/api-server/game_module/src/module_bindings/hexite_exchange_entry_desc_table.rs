@@ -18,6 +18,18 @@ pub struct HexiteExchangeEntryDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `hexite_exchange_entry_desc`.
+pub struct HexiteExchangeEntryDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for HexiteExchangeEntryDescTableAccessor {
+    type Row = HexiteExchangeEntryDesc;
+    type Handle<'db> = HexiteExchangeEntryDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.hexite_exchange_entry_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `hexite_exchange_entry_desc`.
 ///
@@ -42,6 +54,16 @@ impl HexiteExchangeEntryDescTableAccess for super::RemoteTables {
 pub struct HexiteExchangeEntryDescInitialCallbackId(__sdk::CallbackId);
 pub struct HexiteExchangeEntryDescInsertCallbackId(__sdk::CallbackId);
 pub struct HexiteExchangeEntryDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for HexiteExchangeEntryDescTableHandle<'ctx> {
+    type Row = HexiteExchangeEntryDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = HexiteExchangeEntryDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> HexiteExchangeEntryDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for HexiteExchangeEntryDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for HexiteExchangeEntryDescTableHandle<'ctx> {
+    type InsertCallbackId = HexiteExchangeEntryDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<HexiteExchangeEntryDesc>("hexite_exchange_entry_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> HexiteExchangeEntryDescInsertCallbackId {
+        HexiteExchangeEntryDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: HexiteExchangeEntryDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for HexiteExchangeEntryDescTableHandle<'ctx> {
+    type DeleteCallbackId = HexiteExchangeEntryDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> HexiteExchangeEntryDescDeleteCallbackId {
+        HexiteExchangeEntryDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: HexiteExchangeEntryDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct HexiteExchangeEntryDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for HexiteExchangeEntryDescTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for HexiteExchangeEntryDescTableHandle<'ct
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<HexiteExchangeEntryDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<HexiteExchangeEntryDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for HexiteExchangeEntryDescTableHandle<'ctx> {
+    type UpdateCallbackId = HexiteExchangeEntryDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> HexiteExchangeEntryDescUpdateCallbackId {
+        HexiteExchangeEntryDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: HexiteExchangeEntryDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> HexiteExchangeEntryDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<HexiteExchangeEntryDesc>("hexite_exchange_entry_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<HexiteExchangeEntryDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<HexiteExchangeEntryDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

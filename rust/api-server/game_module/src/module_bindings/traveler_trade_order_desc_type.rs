@@ -110,3 +110,5 @@ impl __sdk::__query_builder::HasIxCols for TravelerTradeOrderDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for TravelerTradeOrderDesc {}

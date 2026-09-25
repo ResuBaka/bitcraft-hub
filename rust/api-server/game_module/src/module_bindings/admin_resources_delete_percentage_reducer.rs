@@ -26,8 +26,6 @@ impl __sdk::InModule for AdminResourcesDeletePercentageArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminResourcesDeletePercentageCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_resources_delete_percentage`.
 ///
@@ -37,102 +35,62 @@ pub trait admin_resources_delete_percentage {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_resources_delete_percentage`] callbacks.
-    fn admin_resources_delete_percentage(
-        &self,
-        resource_id: i32,
-        percentage: f32,
-        update_resources_log: bool,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_resources_delete_percentage`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminResourcesDeletePercentageCallbackId`] can be passed to [`Self::remove_on_admin_resources_delete_percentage`]
-    /// to cancel the callback.
-    fn on_admin_resources_delete_percentage(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32, &f32, &bool) + Send + 'static,
-    ) -> AdminResourcesDeletePercentageCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_resources_delete_percentage`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_resources_delete_percentage(
-        &self,
-        callback: AdminResourcesDeletePercentageCallbackId,
-    );
-}
-
-impl admin_resources_delete_percentage for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_resources_delete_percentage:admin_resources_delete_percentage_then`] to run a callback after the reducer completes.
     fn admin_resources_delete_percentage(
         &self,
         resource_id: i32,
         percentage: f32,
         update_resources_log: bool,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_resources_delete_percentage",
+        self.admin_resources_delete_percentage_then(
+            resource_id,
+            percentage,
+            update_resources_log,
+            |_, _| {},
+        )
+    }
+
+    /// Request that the remote module invoke the reducer `admin_resources_delete_percentage` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_resources_delete_percentage_then(
+        &self,
+        resource_id: i32,
+        percentage: f32,
+        update_resources_log: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl admin_resources_delete_percentage for super::RemoteReducers {
+    fn admin_resources_delete_percentage_then(
+        &self,
+        resource_id: i32,
+        percentage: f32,
+        update_resources_log: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminResourcesDeletePercentageArgs {
                 resource_id,
                 percentage,
                 update_resources_log,
             },
+            callback,
         )
-    }
-    fn on_admin_resources_delete_percentage(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32, &f32, &bool) + Send + 'static,
-    ) -> AdminResourcesDeletePercentageCallbackId {
-        AdminResourcesDeletePercentageCallbackId(self.imp.on_reducer(
-            "admin_resources_delete_percentage",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminResourcesDeletePercentage {
-                                    resource_id,
-                                    percentage,
-                                    update_resources_log,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, resource_id, percentage, update_resources_log)
-            }),
-        ))
-    }
-    fn remove_on_admin_resources_delete_percentage(
-        &self,
-        callback: AdminResourcesDeletePercentageCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("admin_resources_delete_percentage", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_resources_delete_percentage`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_resources_delete_percentage {
-    /// Set the call-reducer flags for the reducer `admin_resources_delete_percentage` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_resources_delete_percentage(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_resources_delete_percentage for super::SetReducerFlags {
-    fn admin_resources_delete_percentage(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_resources_delete_percentage", flags);
     }
 }

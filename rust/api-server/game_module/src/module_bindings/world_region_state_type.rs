@@ -72,3 +72,5 @@ impl __sdk::__query_builder::HasIxCols for WorldRegionState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for WorldRegionState {}

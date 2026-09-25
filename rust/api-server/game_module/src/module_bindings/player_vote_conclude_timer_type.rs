@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for PlayerVoteConcludeTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlayerVoteConcludeTimer {}

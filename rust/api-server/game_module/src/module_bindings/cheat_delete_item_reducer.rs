@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatDeleteItemArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatDeleteItemCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_delete_item`.
 ///
@@ -35,82 +33,49 @@ pub trait cheat_delete_item {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_delete_item`] callbacks.
-    fn cheat_delete_item(&self, inventory_entity_id: u64, pocket_index: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_delete_item`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_delete_item:cheat_delete_item_then`] to run a callback after the reducer completes.
+    fn cheat_delete_item(&self, inventory_entity_id: u64, pocket_index: i32) -> __sdk::Result<()> {
+        self.cheat_delete_item_then(inventory_entity_id, pocket_index, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `cheat_delete_item` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatDeleteItemCallbackId`] can be passed to [`Self::remove_on_cheat_delete_item`]
-    /// to cancel the callback.
-    fn on_cheat_delete_item(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_delete_item_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> CheatDeleteItemCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_delete_item`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_delete_item(&self, callback: CheatDeleteItemCallbackId);
+        inventory_entity_id: u64,
+        pocket_index: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl cheat_delete_item for super::RemoteReducers {
-    fn cheat_delete_item(&self, inventory_entity_id: u64, pocket_index: i32) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "cheat_delete_item",
+    fn cheat_delete_item_then(
+        &self,
+        inventory_entity_id: u64,
+        pocket_index: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             CheatDeleteItemArgs {
                 inventory_entity_id,
                 pocket_index,
             },
+            callback,
         )
-    }
-    fn on_cheat_delete_item(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> CheatDeleteItemCallbackId {
-        CheatDeleteItemCallbackId(self.imp.on_reducer(
-            "cheat_delete_item",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::CheatDeleteItem {
-                                    inventory_entity_id,
-                                    pocket_index,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, inventory_entity_id, pocket_index)
-            }),
-        ))
-    }
-    fn remove_on_cheat_delete_item(&self, callback: CheatDeleteItemCallbackId) {
-        self.imp.remove_on_reducer("cheat_delete_item", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_delete_item`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_delete_item {
-    /// Set the call-reducer flags for the reducer `cheat_delete_item` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_delete_item(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_cheat_delete_item for super::SetReducerFlags {
-    fn cheat_delete_item(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("cheat_delete_item", flags);
     }
 }

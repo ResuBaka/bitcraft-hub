@@ -62,3 +62,5 @@ impl __sdk::__query_builder::HasIxCols for InteriorShapeDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for InteriorShapeDesc {}

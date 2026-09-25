@@ -32,8 +32,6 @@ impl __sdk::InModule for PlayerClearActionStateArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PlayerClearActionStateCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `player_clear_action_state`.
 ///
@@ -43,38 +41,8 @@ pub trait player_clear_action_state {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_player_clear_action_state`] callbacks.
-    fn player_clear_action_state(
-        &self,
-        actor_id: u64,
-        current_action: PlayerActionType,
-        layer: PlayerActionLayer,
-        last_action_result: PlayerActionResult,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `player_clear_action_state`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PlayerClearActionStateCallbackId`] can be passed to [`Self::remove_on_player_clear_action_state`]
-    /// to cancel the callback.
-    fn on_player_clear_action_state(
-        &self,
-        callback: impl FnMut(
-            &super::ReducerEventContext,
-            &u64,
-            &PlayerActionType,
-            &PlayerActionLayer,
-            &PlayerActionResult,
-        ) + Send
-        + 'static,
-    ) -> PlayerClearActionStateCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_player_clear_action_state`],
-    /// causing it not to run in the future.
-    fn remove_on_player_clear_action_state(&self, callback: PlayerClearActionStateCallbackId);
-}
-
-impl player_clear_action_state for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`player_clear_action_state:player_clear_action_state_then`] to run a callback after the reducer completes.
     fn player_clear_action_state(
         &self,
         actor_id: u64,
@@ -82,75 +50,58 @@ impl player_clear_action_state for super::RemoteReducers {
         layer: PlayerActionLayer,
         last_action_result: PlayerActionResult,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "player_clear_action_state",
+        self.player_clear_action_state_then(
+            actor_id,
+            current_action,
+            layer,
+            last_action_result,
+            |_, _| {},
+        )
+    }
+
+    /// Request that the remote module invoke the reducer `player_clear_action_state` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn player_clear_action_state_then(
+        &self,
+        actor_id: u64,
+        current_action: PlayerActionType,
+        layer: PlayerActionLayer,
+        last_action_result: PlayerActionResult,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl player_clear_action_state for super::RemoteReducers {
+    fn player_clear_action_state_then(
+        &self,
+        actor_id: u64,
+        current_action: PlayerActionType,
+        layer: PlayerActionLayer,
+        last_action_result: PlayerActionResult,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             PlayerClearActionStateArgs {
                 actor_id,
                 current_action,
                 layer,
                 last_action_result,
             },
+            callback,
         )
-    }
-    fn on_player_clear_action_state(
-        &self,
-        mut callback: impl FnMut(
-            &super::ReducerEventContext,
-            &u64,
-            &PlayerActionType,
-            &PlayerActionLayer,
-            &PlayerActionResult,
-        ) + Send
-        + 'static,
-    ) -> PlayerClearActionStateCallbackId {
-        PlayerClearActionStateCallbackId(self.imp.on_reducer(
-            "player_clear_action_state",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::PlayerClearActionState {
-                                    actor_id,
-                                    current_action,
-                                    layer,
-                                    last_action_result,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, actor_id, current_action, layer, last_action_result)
-            }),
-        ))
-    }
-    fn remove_on_player_clear_action_state(&self, callback: PlayerClearActionStateCallbackId) {
-        self.imp
-            .remove_on_reducer("player_clear_action_state", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `player_clear_action_state`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_player_clear_action_state {
-    /// Set the call-reducer flags for the reducer `player_clear_action_state` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn player_clear_action_state(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_player_clear_action_state for super::SetReducerFlags {
-    fn player_clear_action_state(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("player_clear_action_state", flags);
     }
 }

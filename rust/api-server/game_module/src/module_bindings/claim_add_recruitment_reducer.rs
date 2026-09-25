@@ -24,8 +24,6 @@ impl __sdk::InModule for ClaimAddRecruitmentArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ClaimAddRecruitmentCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `claim_add_recruitment`.
 ///
@@ -35,83 +33,45 @@ pub trait claim_add_recruitment {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_claim_add_recruitment`] callbacks.
-    fn claim_add_recruitment(&self, request: PlayerClaimAddRecruitmentRequest)
-    -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `claim_add_recruitment`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ClaimAddRecruitmentCallbackId`] can be passed to [`Self::remove_on_claim_add_recruitment`]
-    /// to cancel the callback.
-    fn on_claim_add_recruitment(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimAddRecruitmentRequest)
-        + Send
-        + 'static,
-    ) -> ClaimAddRecruitmentCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_claim_add_recruitment`],
-    /// causing it not to run in the future.
-    fn remove_on_claim_add_recruitment(&self, callback: ClaimAddRecruitmentCallbackId);
-}
-
-impl claim_add_recruitment for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`claim_add_recruitment:claim_add_recruitment_then`] to run a callback after the reducer completes.
     fn claim_add_recruitment(
         &self,
         request: PlayerClaimAddRecruitmentRequest,
     ) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("claim_add_recruitment", ClaimAddRecruitmentArgs { request })
+        self.claim_add_recruitment_then(request, |_, _| {})
     }
-    fn on_claim_add_recruitment(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimAddRecruitmentRequest)
-        + Send
-        + 'static,
-    ) -> ClaimAddRecruitmentCallbackId {
-        ClaimAddRecruitmentCallbackId(self.imp.on_reducer(
-            "claim_add_recruitment",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ClaimAddRecruitment { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_claim_add_recruitment(&self, callback: ClaimAddRecruitmentCallbackId) {
-        self.imp
-            .remove_on_reducer("claim_add_recruitment", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `claim_add_recruitment`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_claim_add_recruitment {
-    /// Set the call-reducer flags for the reducer `claim_add_recruitment` to `flags`.
+    /// Request that the remote module invoke the reducer `claim_add_recruitment` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn claim_add_recruitment(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn claim_add_recruitment_then(
+        &self,
+        request: PlayerClaimAddRecruitmentRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_claim_add_recruitment for super::SetReducerFlags {
-    fn claim_add_recruitment(&self, flags: __ws::CallReducerFlags) {
+impl claim_add_recruitment for super::RemoteReducers {
+    fn claim_add_recruitment_then(
+        &self,
+        request: PlayerClaimAddRecruitmentRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("claim_add_recruitment", flags);
+            .invoke_reducer_with_callback(ClaimAddRecruitmentArgs { request }, callback)
     }
 }

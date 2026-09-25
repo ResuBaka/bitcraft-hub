@@ -18,8 +18,6 @@ impl __sdk::InModule for AdminAddSpecificBuildingTypeStatesArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminAddSpecificBuildingTypeStatesCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_add_specific_building_type_states`.
 ///
@@ -29,83 +27,40 @@ pub trait admin_add_specific_building_type_states {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_add_specific_building_type_states`] callbacks.
-    fn admin_add_specific_building_type_states(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_add_specific_building_type_states`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_add_specific_building_type_states:admin_add_specific_building_type_states_then`] to run a callback after the reducer completes.
+    fn admin_add_specific_building_type_states(&self) -> __sdk::Result<()> {
+        self.admin_add_specific_building_type_states_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_add_specific_building_type_states` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminAddSpecificBuildingTypeStatesCallbackId`] can be passed to [`Self::remove_on_admin_add_specific_building_type_states`]
-    /// to cancel the callback.
-    fn on_admin_add_specific_building_type_states(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_add_specific_building_type_states_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> AdminAddSpecificBuildingTypeStatesCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_add_specific_building_type_states`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_add_specific_building_type_states(
-        &self,
-        callback: AdminAddSpecificBuildingTypeStatesCallbackId,
-    );
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl admin_add_specific_building_type_states for super::RemoteReducers {
-    fn admin_add_specific_building_type_states(&self) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_add_specific_building_type_states",
-            AdminAddSpecificBuildingTypeStatesArgs {},
-        )
-    }
-    fn on_admin_add_specific_building_type_states(
+    fn admin_add_specific_building_type_states_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> AdminAddSpecificBuildingTypeStatesCallbackId {
-        AdminAddSpecificBuildingTypeStatesCallbackId(self.imp.on_reducer(
-            "admin_add_specific_building_type_states",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::AdminAddSpecificBuildingTypeStates {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_admin_add_specific_building_type_states(
-        &self,
-        callback: AdminAddSpecificBuildingTypeStatesCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("admin_add_specific_building_type_states", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_add_specific_building_type_states`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_add_specific_building_type_states {
-    /// Set the call-reducer flags for the reducer `admin_add_specific_building_type_states` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_add_specific_building_type_states(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_add_specific_building_type_states for super::SetReducerFlags {
-    fn admin_add_specific_building_type_states(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("admin_add_specific_building_type_states", flags);
+            .invoke_reducer_with_callback(AdminAddSpecificBuildingTypeStatesArgs {}, callback)
     }
 }

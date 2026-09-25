@@ -18,8 +18,6 @@ impl __sdk::InModule for MigratePlayerSettingsArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct MigratePlayerSettingsCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `migrate_player_settings`.
 ///
@@ -29,75 +27,40 @@ pub trait migrate_player_settings {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_migrate_player_settings`] callbacks.
-    fn migrate_player_settings(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `migrate_player_settings`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`migrate_player_settings:migrate_player_settings_then`] to run a callback after the reducer completes.
+    fn migrate_player_settings(&self) -> __sdk::Result<()> {
+        self.migrate_player_settings_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `migrate_player_settings` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`MigratePlayerSettingsCallbackId`] can be passed to [`Self::remove_on_migrate_player_settings`]
-    /// to cancel the callback.
-    fn on_migrate_player_settings(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn migrate_player_settings_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> MigratePlayerSettingsCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_migrate_player_settings`],
-    /// causing it not to run in the future.
-    fn remove_on_migrate_player_settings(&self, callback: MigratePlayerSettingsCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl migrate_player_settings for super::RemoteReducers {
-    fn migrate_player_settings(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("migrate_player_settings", MigratePlayerSettingsArgs {})
-    }
-    fn on_migrate_player_settings(
+    fn migrate_player_settings_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> MigratePlayerSettingsCallbackId {
-        MigratePlayerSettingsCallbackId(self.imp.on_reducer(
-            "migrate_player_settings",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::MigratePlayerSettings {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_migrate_player_settings(&self, callback: MigratePlayerSettingsCallbackId) {
-        self.imp
-            .remove_on_reducer("migrate_player_settings", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `migrate_player_settings`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_migrate_player_settings {
-    /// Set the call-reducer flags for the reducer `migrate_player_settings` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn migrate_player_settings(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_migrate_player_settings for super::SetReducerFlags {
-    fn migrate_player_settings(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("migrate_player_settings", flags);
+            .invoke_reducer_with_callback(MigratePlayerSettingsArgs {}, callback)
     }
 }

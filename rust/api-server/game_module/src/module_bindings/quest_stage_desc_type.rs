@@ -60,3 +60,5 @@ impl __sdk::__query_builder::HasIxCols for QuestStageDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for QuestStageDesc {}

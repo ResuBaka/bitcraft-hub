@@ -54,3 +54,5 @@ impl __sdk::__query_builder::HasIxCols for PlayerRegionTransferEvent {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlayerRegionTransferEvent {}

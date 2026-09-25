@@ -18,6 +18,18 @@ pub struct PlayerSetNameOutcomeEventTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `player_set_name_outcome_event`.
+pub struct PlayerSetNameOutcomeEventTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for PlayerSetNameOutcomeEventTableAccessor {
+    type Row = PlayerSetNameOutcomeEvent;
+    type Handle<'db> = PlayerSetNameOutcomeEventTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.player_set_name_outcome_event()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `player_set_name_outcome_event`.
 ///
@@ -42,6 +54,16 @@ impl PlayerSetNameOutcomeEventTableAccess for super::RemoteTables {
 pub struct PlayerSetNameOutcomeEventInitialCallbackId(__sdk::CallbackId);
 pub struct PlayerSetNameOutcomeEventInsertCallbackId(__sdk::CallbackId);
 pub struct PlayerSetNameOutcomeEventDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for PlayerSetNameOutcomeEventTableHandle<'ctx> {
+    type Row = PlayerSetNameOutcomeEvent;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = PlayerSetNameOutcomeEvent> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> PlayerSetNameOutcomeEventTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for PlayerSetNameOutcomeEventTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for PlayerSetNameOutcomeEventTableHandle<'ctx> {
+    type InsertCallbackId = PlayerSetNameOutcomeEventInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<PlayerSetNameOutcomeEvent>("player_set_name_outcome_event");
-    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerSetNameOutcomeEventInsertCallbackId {
+        PlayerSetNameOutcomeEventInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: PlayerSetNameOutcomeEventInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for PlayerSetNameOutcomeEventTableHandle<'ctx> {
+    type DeleteCallbackId = PlayerSetNameOutcomeEventDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> PlayerSetNameOutcomeEventDeleteCallbackId {
+        PlayerSetNameOutcomeEventDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: PlayerSetNameOutcomeEventDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct PlayerSetNameOutcomeEventUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for PlayerSetNameOutcomeEventTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for PlayerSetNameOutcomeEventTableHandle<'
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<PlayerSetNameOutcomeEvent>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<PlayerSetNameOutcomeEvent>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for PlayerSetNameOutcomeEventTableHandle<'ctx> {
+    type UpdateCallbackId = PlayerSetNameOutcomeEventUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> PlayerSetNameOutcomeEventUpdateCallbackId {
+        PlayerSetNameOutcomeEventUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: PlayerSetNameOutcomeEventUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> PlayerSetNameOutcomeEventScheduledIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<PlayerSetNameOutcomeEvent>("player_set_name_outcome_event");
+    _table.add_unique_constraint::<u64>("scheduled_id", |row| &row.scheduled_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<PlayerSetNameOutcomeEvent>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<PlayerSetNameOutcomeEvent>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

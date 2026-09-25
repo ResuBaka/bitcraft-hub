@@ -24,8 +24,6 @@ impl __sdk::InModule for AdminRespawnBuildingSpawnDescArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminRespawnBuildingSpawnDescCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_respawn_building_spawn_desc`.
 ///
@@ -35,98 +33,53 @@ pub trait admin_respawn_building_spawn_desc {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_respawn_building_spawn_desc`] callbacks.
-    fn admin_respawn_building_spawn_desc(
-        &self,
-        building_spawn_desc_id: i32,
-        commit: bool,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_respawn_building_spawn_desc`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminRespawnBuildingSpawnDescCallbackId`] can be passed to [`Self::remove_on_admin_respawn_building_spawn_desc`]
-    /// to cancel the callback.
-    fn on_admin_respawn_building_spawn_desc(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32, &bool) + Send + 'static,
-    ) -> AdminRespawnBuildingSpawnDescCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_respawn_building_spawn_desc`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_respawn_building_spawn_desc(
-        &self,
-        callback: AdminRespawnBuildingSpawnDescCallbackId,
-    );
-}
-
-impl admin_respawn_building_spawn_desc for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_respawn_building_spawn_desc:admin_respawn_building_spawn_desc_then`] to run a callback after the reducer completes.
     fn admin_respawn_building_spawn_desc(
         &self,
         building_spawn_desc_id: i32,
         commit: bool,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_respawn_building_spawn_desc",
+        self.admin_respawn_building_spawn_desc_then(building_spawn_desc_id, commit, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_respawn_building_spawn_desc` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_respawn_building_spawn_desc_then(
+        &self,
+        building_spawn_desc_id: i32,
+        commit: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl admin_respawn_building_spawn_desc for super::RemoteReducers {
+    fn admin_respawn_building_spawn_desc_then(
+        &self,
+        building_spawn_desc_id: i32,
+        commit: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminRespawnBuildingSpawnDescArgs {
                 building_spawn_desc_id,
                 commit,
             },
+            callback,
         )
-    }
-    fn on_admin_respawn_building_spawn_desc(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32, &bool) + Send + 'static,
-    ) -> AdminRespawnBuildingSpawnDescCallbackId {
-        AdminRespawnBuildingSpawnDescCallbackId(self.imp.on_reducer(
-            "admin_respawn_building_spawn_desc",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminRespawnBuildingSpawnDesc {
-                                    building_spawn_desc_id,
-                                    commit,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, building_spawn_desc_id, commit)
-            }),
-        ))
-    }
-    fn remove_on_admin_respawn_building_spawn_desc(
-        &self,
-        callback: AdminRespawnBuildingSpawnDescCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("admin_respawn_building_spawn_desc", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_respawn_building_spawn_desc`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_respawn_building_spawn_desc {
-    /// Set the call-reducer flags for the reducer `admin_respawn_building_spawn_desc` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_respawn_building_spawn_desc(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_respawn_building_spawn_desc for super::SetReducerFlags {
-    fn admin_respawn_building_spawn_desc(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_respawn_building_spawn_desc", flags);
     }
 }

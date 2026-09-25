@@ -24,8 +24,6 @@ impl __sdk::InModule for OnInterModuleMessageProcessedArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct OnInterModuleMessageProcessedCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `on_inter_module_message_processed`.
 ///
@@ -35,91 +33,48 @@ pub trait on_inter_module_message_processed {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_on_inter_module_message_processed`] callbacks.
-    fn on_inter_module_message_processed(
-        &self,
-        id: u64,
-        error: Option<String>,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `on_inter_module_message_processed`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`OnInterModuleMessageProcessedCallbackId`] can be passed to [`Self::remove_on_on_inter_module_message_processed`]
-    /// to cancel the callback.
-    fn on_on_inter_module_message_processed(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &Option<String>) + Send + 'static,
-    ) -> OnInterModuleMessageProcessedCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_on_inter_module_message_processed`],
-    /// causing it not to run in the future.
-    fn remove_on_on_inter_module_message_processed(
-        &self,
-        callback: OnInterModuleMessageProcessedCallbackId,
-    );
-}
-
-impl on_inter_module_message_processed for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`on_inter_module_message_processed:on_inter_module_message_processed_then`] to run a callback after the reducer completes.
     fn on_inter_module_message_processed(
         &self,
         id: u64,
         error: Option<String>,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "on_inter_module_message_processed",
-            OnInterModuleMessageProcessedArgs { id, error },
-        )
+        self.on_inter_module_message_processed_then(id, error, |_, _| {})
     }
-    fn on_on_inter_module_message_processed(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &Option<String>) + Send + 'static,
-    ) -> OnInterModuleMessageProcessedCallbackId {
-        OnInterModuleMessageProcessedCallbackId(self.imp.on_reducer(
-            "on_inter_module_message_processed",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::OnInterModuleMessageProcessed { id, error },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, id, error)
-            }),
-        ))
-    }
-    fn remove_on_on_inter_module_message_processed(
-        &self,
-        callback: OnInterModuleMessageProcessedCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("on_inter_module_message_processed", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `on_inter_module_message_processed`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_on_inter_module_message_processed {
-    /// Set the call-reducer flags for the reducer `on_inter_module_message_processed` to `flags`.
+    /// Request that the remote module invoke the reducer `on_inter_module_message_processed` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn on_inter_module_message_processed(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn on_inter_module_message_processed_then(
+        &self,
+        id: u64,
+        error: Option<String>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_on_inter_module_message_processed for super::SetReducerFlags {
-    fn on_inter_module_message_processed(&self, flags: __ws::CallReducerFlags) {
+impl on_inter_module_message_processed for super::RemoteReducers {
+    fn on_inter_module_message_processed_then(
+        &self,
+        id: u64,
+        error: Option<String>,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("on_inter_module_message_processed", flags);
+            .invoke_reducer_with_callback(OnInterModuleMessageProcessedArgs { id, error }, callback)
     }
 }

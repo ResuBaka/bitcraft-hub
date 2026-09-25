@@ -18,8 +18,6 @@ impl __sdk::InModule for AdminResetAllHerdLocationsArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminResetAllHerdLocationsCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_reset_all_herd_locations`.
 ///
@@ -29,83 +27,40 @@ pub trait admin_reset_all_herd_locations {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_reset_all_herd_locations`] callbacks.
-    fn admin_reset_all_herd_locations(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_reset_all_herd_locations`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_reset_all_herd_locations:admin_reset_all_herd_locations_then`] to run a callback after the reducer completes.
+    fn admin_reset_all_herd_locations(&self) -> __sdk::Result<()> {
+        self.admin_reset_all_herd_locations_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `admin_reset_all_herd_locations` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminResetAllHerdLocationsCallbackId`] can be passed to [`Self::remove_on_admin_reset_all_herd_locations`]
-    /// to cancel the callback.
-    fn on_admin_reset_all_herd_locations(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_reset_all_herd_locations_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> AdminResetAllHerdLocationsCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_reset_all_herd_locations`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_reset_all_herd_locations(
-        &self,
-        callback: AdminResetAllHerdLocationsCallbackId,
-    );
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl admin_reset_all_herd_locations for super::RemoteReducers {
-    fn admin_reset_all_herd_locations(&self) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_reset_all_herd_locations",
-            AdminResetAllHerdLocationsArgs {},
-        )
-    }
-    fn on_admin_reset_all_herd_locations(
+    fn admin_reset_all_herd_locations_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> AdminResetAllHerdLocationsCallbackId {
-        AdminResetAllHerdLocationsCallbackId(self.imp.on_reducer(
-            "admin_reset_all_herd_locations",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::AdminResetAllHerdLocations {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_admin_reset_all_herd_locations(
-        &self,
-        callback: AdminResetAllHerdLocationsCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("admin_reset_all_herd_locations", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_reset_all_herd_locations`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_reset_all_herd_locations {
-    /// Set the call-reducer flags for the reducer `admin_reset_all_herd_locations` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_reset_all_herd_locations(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_reset_all_herd_locations for super::SetReducerFlags {
-    fn admin_reset_all_herd_locations(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("admin_reset_all_herd_locations", flags);
+            .invoke_reducer_with_callback(AdminResetAllHerdLocationsArgs {}, callback)
     }
 }

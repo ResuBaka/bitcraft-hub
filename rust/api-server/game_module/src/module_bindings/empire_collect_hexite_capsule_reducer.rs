@@ -24,8 +24,6 @@ impl __sdk::InModule for EmpireCollectHexiteCapsuleArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct EmpireCollectHexiteCapsuleCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `empire_collect_hexite_capsule`.
 ///
@@ -35,93 +33,45 @@ pub trait empire_collect_hexite_capsule {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_empire_collect_hexite_capsule`] callbacks.
-    fn empire_collect_hexite_capsule(
-        &self,
-        request: EmpireCollectHexiteCapsuleRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `empire_collect_hexite_capsule`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`EmpireCollectHexiteCapsuleCallbackId`] can be passed to [`Self::remove_on_empire_collect_hexite_capsule`]
-    /// to cancel the callback.
-    fn on_empire_collect_hexite_capsule(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &EmpireCollectHexiteCapsuleRequest)
-        + Send
-        + 'static,
-    ) -> EmpireCollectHexiteCapsuleCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_empire_collect_hexite_capsule`],
-    /// causing it not to run in the future.
-    fn remove_on_empire_collect_hexite_capsule(
-        &self,
-        callback: EmpireCollectHexiteCapsuleCallbackId,
-    );
-}
-
-impl empire_collect_hexite_capsule for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`empire_collect_hexite_capsule:empire_collect_hexite_capsule_then`] to run a callback after the reducer completes.
     fn empire_collect_hexite_capsule(
         &self,
         request: EmpireCollectHexiteCapsuleRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "empire_collect_hexite_capsule",
-            EmpireCollectHexiteCapsuleArgs { request },
-        )
+        self.empire_collect_hexite_capsule_then(request, |_, _| {})
     }
-    fn on_empire_collect_hexite_capsule(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &EmpireCollectHexiteCapsuleRequest)
-        + Send
-        + 'static,
-    ) -> EmpireCollectHexiteCapsuleCallbackId {
-        EmpireCollectHexiteCapsuleCallbackId(self.imp.on_reducer(
-            "empire_collect_hexite_capsule",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::EmpireCollectHexiteCapsule { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_empire_collect_hexite_capsule(
-        &self,
-        callback: EmpireCollectHexiteCapsuleCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("empire_collect_hexite_capsule", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `empire_collect_hexite_capsule`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_empire_collect_hexite_capsule {
-    /// Set the call-reducer flags for the reducer `empire_collect_hexite_capsule` to `flags`.
+    /// Request that the remote module invoke the reducer `empire_collect_hexite_capsule` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn empire_collect_hexite_capsule(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn empire_collect_hexite_capsule_then(
+        &self,
+        request: EmpireCollectHexiteCapsuleRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_empire_collect_hexite_capsule for super::SetReducerFlags {
-    fn empire_collect_hexite_capsule(&self, flags: __ws::CallReducerFlags) {
+impl empire_collect_hexite_capsule for super::RemoteReducers {
+    fn empire_collect_hexite_capsule_then(
+        &self,
+        request: EmpireCollectHexiteCapsuleRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("empire_collect_hexite_capsule", flags);
+            .invoke_reducer_with_callback(EmpireCollectHexiteCapsuleArgs { request }, callback)
     }
 }

@@ -24,8 +24,6 @@ impl __sdk::InModule for CheatCompendiumPlaceEnemyArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct CheatCompendiumPlaceEnemyCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `cheat_compendium_place_enemy`.
 ///
@@ -35,90 +33,45 @@ pub trait cheat_compendium_place_enemy {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_cheat_compendium_place_enemy`] callbacks.
-    fn cheat_compendium_place_enemy(
-        &self,
-        request: CheatCompendiumEnemyPlaceRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `cheat_compendium_place_enemy`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`CheatCompendiumPlaceEnemyCallbackId`] can be passed to [`Self::remove_on_cheat_compendium_place_enemy`]
-    /// to cancel the callback.
-    fn on_cheat_compendium_place_enemy(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &CheatCompendiumEnemyPlaceRequest)
-        + Send
-        + 'static,
-    ) -> CheatCompendiumPlaceEnemyCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_cheat_compendium_place_enemy`],
-    /// causing it not to run in the future.
-    fn remove_on_cheat_compendium_place_enemy(&self, callback: CheatCompendiumPlaceEnemyCallbackId);
-}
-
-impl cheat_compendium_place_enemy for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`cheat_compendium_place_enemy:cheat_compendium_place_enemy_then`] to run a callback after the reducer completes.
     fn cheat_compendium_place_enemy(
         &self,
         request: CheatCompendiumEnemyPlaceRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "cheat_compendium_place_enemy",
-            CheatCompendiumPlaceEnemyArgs { request },
-        )
+        self.cheat_compendium_place_enemy_then(request, |_, _| {})
     }
-    fn on_cheat_compendium_place_enemy(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &CheatCompendiumEnemyPlaceRequest)
-        + Send
-        + 'static,
-    ) -> CheatCompendiumPlaceEnemyCallbackId {
-        CheatCompendiumPlaceEnemyCallbackId(self.imp.on_reducer(
-            "cheat_compendium_place_enemy",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::CheatCompendiumPlaceEnemy { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_cheat_compendium_place_enemy(
-        &self,
-        callback: CheatCompendiumPlaceEnemyCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("cheat_compendium_place_enemy", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `cheat_compendium_place_enemy`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_cheat_compendium_place_enemy {
-    /// Set the call-reducer flags for the reducer `cheat_compendium_place_enemy` to `flags`.
+    /// Request that the remote module invoke the reducer `cheat_compendium_place_enemy` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn cheat_compendium_place_enemy(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn cheat_compendium_place_enemy_then(
+        &self,
+        request: CheatCompendiumEnemyPlaceRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_cheat_compendium_place_enemy for super::SetReducerFlags {
-    fn cheat_compendium_place_enemy(&self, flags: __ws::CallReducerFlags) {
+impl cheat_compendium_place_enemy for super::RemoteReducers {
+    fn cheat_compendium_place_enemy_then(
+        &self,
+        request: CheatCompendiumEnemyPlaceRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("cheat_compendium_place_enemy", flags);
+            .invoke_reducer_with_callback(CheatCompendiumPlaceEnemyArgs { request }, callback)
     }
 }

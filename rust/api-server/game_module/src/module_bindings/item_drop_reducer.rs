@@ -24,8 +24,6 @@ impl __sdk::InModule for ItemDropArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ItemDropCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `item_drop`.
 ///
@@ -35,72 +33,42 @@ pub trait item_drop {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_item_drop`] callbacks.
-    fn item_drop(&self, request: PlayerItemDropRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `item_drop`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`item_drop:item_drop_then`] to run a callback after the reducer completes.
+    fn item_drop(&self, request: PlayerItemDropRequest) -> __sdk::Result<()> {
+        self.item_drop_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `item_drop` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ItemDropCallbackId`] can be passed to [`Self::remove_on_item_drop`]
-    /// to cancel the callback.
-    fn on_item_drop(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn item_drop_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerItemDropRequest) + Send + 'static,
-    ) -> ItemDropCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_item_drop`],
-    /// causing it not to run in the future.
-    fn remove_on_item_drop(&self, callback: ItemDropCallbackId);
+        request: PlayerItemDropRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl item_drop for super::RemoteReducers {
-    fn item_drop(&self, request: PlayerItemDropRequest) -> __sdk::Result<()> {
-        self.imp.call_reducer("item_drop", ItemDropArgs { request })
-    }
-    fn on_item_drop(
+    fn item_drop_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerItemDropRequest) + Send + 'static,
-    ) -> ItemDropCallbackId {
-        ItemDropCallbackId(self.imp.on_reducer(
-            "item_drop",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ItemDrop { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_item_drop(&self, callback: ItemDropCallbackId) {
-        self.imp.remove_on_reducer("item_drop", callback.0)
-    }
-}
+        request: PlayerItemDropRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `item_drop`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_item_drop {
-    /// Set the call-reducer flags for the reducer `item_drop` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn item_drop(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_item_drop for super::SetReducerFlags {
-    fn item_drop(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("item_drop", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ItemDropArgs { request }, callback)
     }
 }

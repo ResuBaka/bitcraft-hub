@@ -85,3 +85,5 @@ impl __sdk::__query_builder::HasIxCols for EmpireState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EmpireState {}

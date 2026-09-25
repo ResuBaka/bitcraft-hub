@@ -22,8 +22,6 @@ impl __sdk::InModule for DeployableMoveOffClaimArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DeployableMoveOffClaimCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `deployable_move_off_claim`.
 ///
@@ -33,82 +31,46 @@ pub trait deployable_move_off_claim {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_deployable_move_off_claim`] callbacks.
-    fn deployable_move_off_claim(&self, deployable_entity_id: u64) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `deployable_move_off_claim`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`deployable_move_off_claim:deployable_move_off_claim_then`] to run a callback after the reducer completes.
+    fn deployable_move_off_claim(&self, deployable_entity_id: u64) -> __sdk::Result<()> {
+        self.deployable_move_off_claim_then(deployable_entity_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `deployable_move_off_claim` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DeployableMoveOffClaimCallbackId`] can be passed to [`Self::remove_on_deployable_move_off_claim`]
-    /// to cancel the callback.
-    fn on_deployable_move_off_claim(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn deployable_move_off_claim_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> DeployableMoveOffClaimCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_deployable_move_off_claim`],
-    /// causing it not to run in the future.
-    fn remove_on_deployable_move_off_claim(&self, callback: DeployableMoveOffClaimCallbackId);
+        deployable_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl deployable_move_off_claim for super::RemoteReducers {
-    fn deployable_move_off_claim(&self, deployable_entity_id: u64) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "deployable_move_off_claim",
+    fn deployable_move_off_claim_then(
+        &self,
+        deployable_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             DeployableMoveOffClaimArgs {
                 deployable_entity_id,
             },
+            callback,
         )
-    }
-    fn on_deployable_move_off_claim(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> DeployableMoveOffClaimCallbackId {
-        DeployableMoveOffClaimCallbackId(self.imp.on_reducer(
-            "deployable_move_off_claim",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::DeployableMoveOffClaim {
-                                    deployable_entity_id,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, deployable_entity_id)
-            }),
-        ))
-    }
-    fn remove_on_deployable_move_off_claim(&self, callback: DeployableMoveOffClaimCallbackId) {
-        self.imp
-            .remove_on_reducer("deployable_move_off_claim", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `deployable_move_off_claim`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_deployable_move_off_claim {
-    /// Set the call-reducer flags for the reducer `deployable_move_off_claim` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn deployable_move_off_claim(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_deployable_move_off_claim for super::SetReducerFlags {
-    fn deployable_move_off_claim(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("deployable_move_off_claim", flags);
     }
 }

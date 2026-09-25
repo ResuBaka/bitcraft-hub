@@ -32,8 +32,6 @@ impl __sdk::InModule for BlueprintPlaceArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct BlueprintPlaceCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `blueprint_place`.
 ///
@@ -43,40 +41,8 @@ pub trait blueprint_place {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_blueprint_place`] callbacks.
-    fn blueprint_place(
-        &self,
-        center: OffsetCoordinatesSmallMessage,
-        blueprint_json: String,
-        settings_json: String,
-        rotation: i32,
-        elevation_offset: i16,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `blueprint_place`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`BlueprintPlaceCallbackId`] can be passed to [`Self::remove_on_blueprint_place`]
-    /// to cancel the callback.
-    fn on_blueprint_place(
-        &self,
-        callback: impl FnMut(
-            &super::ReducerEventContext,
-            &OffsetCoordinatesSmallMessage,
-            &String,
-            &String,
-            &i32,
-            &i16,
-        ) + Send
-        + 'static,
-    ) -> BlueprintPlaceCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_blueprint_place`],
-    /// causing it not to run in the future.
-    fn remove_on_blueprint_place(&self, callback: BlueprintPlaceCallbackId);
-}
-
-impl blueprint_place for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`blueprint_place:blueprint_place_then`] to run a callback after the reducer completes.
     fn blueprint_place(
         &self,
         center: OffsetCoordinatesSmallMessage,
@@ -85,8 +51,54 @@ impl blueprint_place for super::RemoteReducers {
         rotation: i32,
         elevation_offset: i16,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "blueprint_place",
+        self.blueprint_place_then(
+            center,
+            blueprint_json,
+            settings_json,
+            rotation,
+            elevation_offset,
+            |_, _| {},
+        )
+    }
+
+    /// Request that the remote module invoke the reducer `blueprint_place` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn blueprint_place_then(
+        &self,
+        center: OffsetCoordinatesSmallMessage,
+        blueprint_json: String,
+        settings_json: String,
+        rotation: i32,
+        elevation_offset: i16,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl blueprint_place for super::RemoteReducers {
+    fn blueprint_place_then(
+        &self,
+        center: OffsetCoordinatesSmallMessage,
+        blueprint_json: String,
+        settings_json: String,
+        rotation: i32,
+        elevation_offset: i16,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             BlueprintPlaceArgs {
                 center,
                 blueprint_json,
@@ -94,74 +106,7 @@ impl blueprint_place for super::RemoteReducers {
                 rotation,
                 elevation_offset,
             },
+            callback,
         )
-    }
-    fn on_blueprint_place(
-        &self,
-        mut callback: impl FnMut(
-            &super::ReducerEventContext,
-            &OffsetCoordinatesSmallMessage,
-            &String,
-            &String,
-            &i32,
-            &i16,
-        ) + Send
-        + 'static,
-    ) -> BlueprintPlaceCallbackId {
-        BlueprintPlaceCallbackId(self.imp.on_reducer(
-            "blueprint_place",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::BlueprintPlace {
-                                    center,
-                                    blueprint_json,
-                                    settings_json,
-                                    rotation,
-                                    elevation_offset,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(
-                    ctx,
-                    center,
-                    blueprint_json,
-                    settings_json,
-                    rotation,
-                    elevation_offset,
-                )
-            }),
-        ))
-    }
-    fn remove_on_blueprint_place(&self, callback: BlueprintPlaceCallbackId) {
-        self.imp.remove_on_reducer("blueprint_place", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `blueprint_place`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_blueprint_place {
-    /// Set the call-reducer flags for the reducer `blueprint_place` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn blueprint_place(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_blueprint_place for super::SetReducerFlags {
-    fn blueprint_place(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("blueprint_place", flags);
     }
 }

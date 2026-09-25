@@ -39,8 +39,8 @@ pub struct PlayerVoteStateCols {
     pub initiator_name: __sdk::__query_builder::Col<PlayerVoteState, String>,
     pub pass_threshold: __sdk::__query_builder::Col<PlayerVoteState, f32>,
     pub outcome: __sdk::__query_builder::Col<PlayerVoteState, PlayerVoteAnswer>,
-    pub argument1: __sdk::__query_builder::Col<PlayerVoteState, u64>,
-    pub argument2: __sdk::__query_builder::Col<PlayerVoteState, u64>,
+    pub argument_1: __sdk::__query_builder::Col<PlayerVoteState, u64>,
+    pub argument_2: __sdk::__query_builder::Col<PlayerVoteState, u64>,
     pub outcome_str: __sdk::__query_builder::Col<PlayerVoteState, String>,
 }
 
@@ -62,8 +62,8 @@ impl __sdk::__query_builder::HasCols for PlayerVoteState {
             initiator_name: __sdk::__query_builder::Col::new(table_name, "initiator_name"),
             pass_threshold: __sdk::__query_builder::Col::new(table_name, "pass_threshold"),
             outcome: __sdk::__query_builder::Col::new(table_name, "outcome"),
-            argument1: __sdk::__query_builder::Col::new(table_name, "argument1"),
-            argument2: __sdk::__query_builder::Col::new(table_name, "argument2"),
+            argument_1: __sdk::__query_builder::Col::new(table_name, "argument_1"),
+            argument_2: __sdk::__query_builder::Col::new(table_name, "argument_2"),
             outcome_str: __sdk::__query_builder::Col::new(table_name, "outcome_str"),
         }
     }
@@ -84,3 +84,5 @@ impl __sdk::__query_builder::HasIxCols for PlayerVoteState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlayerVoteState {}

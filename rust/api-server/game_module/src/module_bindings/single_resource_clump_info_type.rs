@@ -54,3 +54,5 @@ impl __sdk::__query_builder::HasIxCols for SingleResourceClumpInfo {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for SingleResourceClumpInfo {}

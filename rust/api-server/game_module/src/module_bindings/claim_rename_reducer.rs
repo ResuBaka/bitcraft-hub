@@ -24,8 +24,6 @@ impl __sdk::InModule for ClaimRenameArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ClaimRenameCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `claim_rename`.
 ///
@@ -35,75 +33,42 @@ pub trait claim_rename {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_claim_rename`] callbacks.
-    fn claim_rename(&self, request: PlayerClaimRenameRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `claim_rename`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`claim_rename:claim_rename_then`] to run a callback after the reducer completes.
+    fn claim_rename(&self, request: PlayerClaimRenameRequest) -> __sdk::Result<()> {
+        self.claim_rename_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `claim_rename` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ClaimRenameCallbackId`] can be passed to [`Self::remove_on_claim_rename`]
-    /// to cancel the callback.
-    fn on_claim_rename(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn claim_rename_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRenameRequest) + Send + 'static,
-    ) -> ClaimRenameCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_claim_rename`],
-    /// causing it not to run in the future.
-    fn remove_on_claim_rename(&self, callback: ClaimRenameCallbackId);
+        request: PlayerClaimRenameRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl claim_rename for super::RemoteReducers {
-    fn claim_rename(&self, request: PlayerClaimRenameRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("claim_rename", ClaimRenameArgs { request })
-    }
-    fn on_claim_rename(
+    fn claim_rename_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimRenameRequest)
-        + Send
+        request: PlayerClaimRenameRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ClaimRenameCallbackId {
-        ClaimRenameCallbackId(self.imp.on_reducer(
-            "claim_rename",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ClaimRename { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_claim_rename(&self, callback: ClaimRenameCallbackId) {
-        self.imp.remove_on_reducer("claim_rename", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `claim_rename`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_claim_rename {
-    /// Set the call-reducer flags for the reducer `claim_rename` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn claim_rename(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_claim_rename for super::SetReducerFlags {
-    fn claim_rename(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("claim_rename", flags);
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ClaimRenameArgs { request }, callback)
     }
 }

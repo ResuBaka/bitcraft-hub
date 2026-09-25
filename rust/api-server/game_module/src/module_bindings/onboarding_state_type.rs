@@ -54,3 +54,5 @@ impl __sdk::__query_builder::HasIxCols for OnboardingState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for OnboardingState {}

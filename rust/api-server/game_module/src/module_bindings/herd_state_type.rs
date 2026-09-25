@@ -74,3 +74,5 @@ impl __sdk::__query_builder::HasIxCols for HerdState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for HerdState {}

@@ -18,8 +18,6 @@ impl __sdk::InModule for ClearStagedStaticDataArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ClearStagedStaticDataCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `clear_staged_static_data`.
 ///
@@ -29,75 +27,40 @@ pub trait clear_staged_static_data {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_clear_staged_static_data`] callbacks.
-    fn clear_staged_static_data(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `clear_staged_static_data`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`clear_staged_static_data:clear_staged_static_data_then`] to run a callback after the reducer completes.
+    fn clear_staged_static_data(&self) -> __sdk::Result<()> {
+        self.clear_staged_static_data_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `clear_staged_static_data` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ClearStagedStaticDataCallbackId`] can be passed to [`Self::remove_on_clear_staged_static_data`]
-    /// to cancel the callback.
-    fn on_clear_staged_static_data(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn clear_staged_static_data_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> ClearStagedStaticDataCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_clear_staged_static_data`],
-    /// causing it not to run in the future.
-    fn remove_on_clear_staged_static_data(&self, callback: ClearStagedStaticDataCallbackId);
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl clear_staged_static_data for super::RemoteReducers {
-    fn clear_staged_static_data(&self) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("clear_staged_static_data", ClearStagedStaticDataArgs {})
-    }
-    fn on_clear_staged_static_data(
+    fn clear_staged_static_data_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> ClearStagedStaticDataCallbackId {
-        ClearStagedStaticDataCallbackId(self.imp.on_reducer(
-            "clear_staged_static_data",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ClearStagedStaticData {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_clear_staged_static_data(&self, callback: ClearStagedStaticDataCallbackId) {
-        self.imp
-            .remove_on_reducer("clear_staged_static_data", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `clear_staged_static_data`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_clear_staged_static_data {
-    /// Set the call-reducer flags for the reducer `clear_staged_static_data` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn clear_staged_static_data(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_clear_staged_static_data for super::SetReducerFlags {
-    fn clear_staged_static_data(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("clear_staged_static_data", flags);
+            .invoke_reducer_with_callback(ClearStagedStaticDataArgs {}, callback)
     }
 }

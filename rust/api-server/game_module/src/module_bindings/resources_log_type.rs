@@ -64,3 +64,5 @@ impl __sdk::__query_builder::HasIxCols for ResourcesLog {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ResourcesLog {}

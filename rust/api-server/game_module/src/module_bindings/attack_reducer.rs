@@ -24,8 +24,6 @@ impl __sdk::InModule for AttackArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AttackCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `attack`.
 ///
@@ -35,72 +33,42 @@ pub trait attack {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_attack`] callbacks.
-    fn attack(&self, request: EntityAttackRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `attack`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`attack:attack_then`] to run a callback after the reducer completes.
+    fn attack(&self, request: EntityAttackRequest) -> __sdk::Result<()> {
+        self.attack_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `attack` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AttackCallbackId`] can be passed to [`Self::remove_on_attack`]
-    /// to cancel the callback.
-    fn on_attack(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn attack_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &EntityAttackRequest) + Send + 'static,
-    ) -> AttackCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_attack`],
-    /// causing it not to run in the future.
-    fn remove_on_attack(&self, callback: AttackCallbackId);
+        request: EntityAttackRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl attack for super::RemoteReducers {
-    fn attack(&self, request: EntityAttackRequest) -> __sdk::Result<()> {
-        self.imp.call_reducer("attack", AttackArgs { request })
-    }
-    fn on_attack(
+    fn attack_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &EntityAttackRequest) + Send + 'static,
-    ) -> AttackCallbackId {
-        AttackCallbackId(self.imp.on_reducer(
-            "attack",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::Attack { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_attack(&self, callback: AttackCallbackId) {
-        self.imp.remove_on_reducer("attack", callback.0)
-    }
-}
+        request: EntityAttackRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `attack`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_attack {
-    /// Set the call-reducer flags for the reducer `attack` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn attack(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_attack for super::SetReducerFlags {
-    fn attack(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("attack", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(AttackArgs { request }, callback)
     }
 }

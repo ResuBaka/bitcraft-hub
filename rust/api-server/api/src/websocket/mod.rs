@@ -147,7 +147,7 @@ fn connect_to_db(
         // so we can re-authenticate as the same `Identity`.
         .with_token(Some(token.trim()))
         // Set the database name we chose when we called `spacetime publish`.
-        .with_module_name(db_name)
+        .with_database_name(db_name)
         // Set the URI of the SpacetimeDB host that's running our database.
         .with_uri(db_host)
         // Finalize configuration and connect!
@@ -177,7 +177,7 @@ macro_rules! setup_spacetime_db_listeners {
                     Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
                     Event::Disconnected => Cow::Borrowed("disconnected"),
                     Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
+                    Event::Transaction => Cow::Borrowed("transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_update: [(&'static str, Cow<'static, str>); 4] = [
@@ -218,7 +218,7 @@ macro_rules! setup_spacetime_db_listeners {
                     Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
                     Event::Disconnected => Cow::Borrowed("disconnected"),
                     Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
+                    Event::Transaction => Cow::Borrowed("transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_insert: [(&'static str, Cow<'static, str>); 4] = [
@@ -263,7 +263,7 @@ macro_rules! setup_spacetime_db_listeners {
                     Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
                     Event::Disconnected => Cow::Borrowed("disconnected"),
                     Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
+                    Event::Transaction => Cow::Borrowed("transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_initial: [(&'static str, Cow<'static, str>); 4] = [
@@ -302,7 +302,7 @@ macro_rules! setup_spacetime_db_listeners {
                     Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
                     Event::Disconnected => Cow::Borrowed("disconnected"),
                     Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
+                    Event::Transaction => Cow::Borrowed("transaction"),
                     _ => Cow::Borrowed("none"),
                 };
                 let labels_delete: [(&'static str, Cow<'static, str>); 4] = [
@@ -323,176 +323,6 @@ macro_rules! setup_spacetime_db_listeners {
                     &temp_tx,
                     SpacetimeUpdateMessages::Remove {
                         event: None,
-                        database_name: $database_region,
-                        delete: new.clone(),
-                        reducer_name: reducer_name.clone(),
-                    },
-                );
-            },
-        );
-    };
-}
-
-macro_rules! setup_spacetime_db_listeners_event {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $database_region:expr, $worker_name:expr) => {
-        let table_name_str = stringify!($db_table_method);
-        let database_name_runtime_string = $database_name_expr.to_string();
-
-        let temp_tx = $tx_channel.clone();
-        let labels_database_name_update = database_name_runtime_string.clone();
-        $ctx.db.$db_table_method().on_update(
-            // Use $state_type for the old and new parameters
-            move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_update: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone the runtime string for this specific label set
-                    ("database", Cow::Owned(labels_database_name_update.clone())),
-                    ("type", Cow::Borrowed("update")),
-                    ("reducer", reducer_name),
-                ];
-                metrics::counter!("game_message_events", &labels_update).increment(1);
-
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
-                    _ => None,
-                };
-                send_worker_message(
-                    $worker_name,
-                    &temp_tx,
-                    SpacetimeUpdateMessages::Update {
-                        event: Some(Box::new(ctx.event.clone())),
-                        database_name: $database_region,
-                        old: old.clone(),
-                        new: new.clone(),
-                        reducer_name: reducer_name.clone(),
-                    },
-                );
-            },
-        );
-
-        let temp_tx = $tx_channel.clone();
-        let labels_database_name_insert = database_name_runtime_string.clone();
-        $ctx.db.$db_table_method().on_insert(
-            // Use $state_type for the new parameter
-            move |ctx: &EventContext, new: &$state_type| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_insert: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone again for this label set
-                    ("database", Cow::Owned(labels_database_name_insert.clone())),
-                    ("type", Cow::Borrowed("insert")),
-                    ("reducer", reducer_name),
-                ];
-                metrics::counter!("game_message_events", &labels_insert).increment(1);
-
-                if let Event::SubscribeApplied = ctx.event {
-                    return;
-                }
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
-                    _ => None,
-                };
-                send_worker_message(
-                    $worker_name,
-                    &temp_tx,
-                    SpacetimeUpdateMessages::Insert {
-                        event: Some(Box::new(ctx.event.clone())),
-                        database_name: $database_region,
-                        new: new.clone(),
-                        reducer_name: reducer_name.clone(),
-                    },
-                );
-            },
-        );
-
-        let temp_tx = $tx_channel.clone();
-        let labels_database_name_initial = database_name_runtime_string.clone();
-        $ctx.db.$db_table_method().on_initial(
-            // Use $state_type for the new parameter
-            move |ctx: &EventContext, new: &[$state_type]| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_initial: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone again for this label set
-                    ("database", Cow::Owned(labels_database_name_initial.clone())),
-                    ("type", Cow::Borrowed("initial")),
-                    ("reducer", reducer_name),
-                ];
-                metrics::counter!("game_message_events", &labels_initial).increment(1);
-
-                if let Event::SubscribeApplied = ctx.event {
-                } else {
-                    return;
-                }
-
-                send_worker_message(
-                    $worker_name,
-                    &temp_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        data: new.to_vec(),
-                        database_name: $database_region,
-                    },
-                );
-            },
-        );
-
-        let temp_tx = $tx_channel.clone();
-        let labels_database_name_delete = database_name_runtime_string.clone();
-        $ctx.db.$db_table_method().on_delete(
-            // Use $state_type for the new parameter
-            move |ctx: &EventContext, new: &$state_type| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::UnknownTransaction => Cow::Borrowed("unknown_transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_delete: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone for the final label set
-                    ("database", Cow::Owned(labels_database_name_delete.clone())),
-                    ("type", Cow::Borrowed("delete")),
-                    ("reducer", reducer_name),
-                ];
-
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
-                    _ => None,
-                };
-                metrics::counter!("game_message_events", &labels_delete).increment(1);
-                send_worker_message(
-                    $worker_name,
-                    &temp_tx,
-                    SpacetimeUpdateMessages::Remove {
-                        event: Some(Box::new(ctx.event.clone())),
                         database_name: $database_region,
                         delete: new.clone(),
                         reducer_name: reducer_name.clone(),
@@ -626,7 +456,7 @@ async fn connect_to_db_logic(
         region_number,
         "player_username_state"
     );
-    setup_spacetime_db_listeners_event!(
+    setup_spacetime_db_listeners!(
         ctx,
         experience_state,
         experience_state_tx,
@@ -635,7 +465,7 @@ async fn connect_to_db_logic(
         region_number,
         "experience_state"
     );
-    setup_spacetime_db_listeners_event!(
+    setup_spacetime_db_listeners!(
         ctx,
         inventory_state,
         inventory_state_tx,

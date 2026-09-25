@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for PavedTileState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PavedTileState {}

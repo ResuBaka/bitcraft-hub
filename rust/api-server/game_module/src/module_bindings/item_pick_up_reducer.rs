@@ -24,8 +24,6 @@ impl __sdk::InModule for ItemPickUpArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ItemPickUpCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `item_pick_up`.
 ///
@@ -35,77 +33,42 @@ pub trait item_pick_up {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_item_pick_up`] callbacks.
-    fn item_pick_up(&self, request: PlayerDroppedInventoryPickUpRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `item_pick_up`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`item_pick_up:item_pick_up_then`] to run a callback after the reducer completes.
+    fn item_pick_up(&self, request: PlayerDroppedInventoryPickUpRequest) -> __sdk::Result<()> {
+        self.item_pick_up_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `item_pick_up` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ItemPickUpCallbackId`] can be passed to [`Self::remove_on_item_pick_up`]
-    /// to cancel the callback.
-    fn on_item_pick_up(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn item_pick_up_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerDroppedInventoryPickUpRequest)
-        + Send
+        request: PlayerDroppedInventoryPickUpRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ItemPickUpCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_item_pick_up`],
-    /// causing it not to run in the future.
-    fn remove_on_item_pick_up(&self, callback: ItemPickUpCallbackId);
+    ) -> __sdk::Result<()>;
 }
 
 impl item_pick_up for super::RemoteReducers {
-    fn item_pick_up(&self, request: PlayerDroppedInventoryPickUpRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("item_pick_up", ItemPickUpArgs { request })
-    }
-    fn on_item_pick_up(
+    fn item_pick_up_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerDroppedInventoryPickUpRequest)
-        + Send
+        request: PlayerDroppedInventoryPickUpRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ItemPickUpCallbackId {
-        ItemPickUpCallbackId(self.imp.on_reducer(
-            "item_pick_up",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ItemPickUp { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_item_pick_up(&self, callback: ItemPickUpCallbackId) {
-        self.imp.remove_on_reducer("item_pick_up", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `item_pick_up`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_item_pick_up {
-    /// Set the call-reducer flags for the reducer `item_pick_up` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn item_pick_up(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_item_pick_up for super::SetReducerFlags {
-    fn item_pick_up(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("item_pick_up", flags);
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ItemPickUpArgs { request }, callback)
     }
 }

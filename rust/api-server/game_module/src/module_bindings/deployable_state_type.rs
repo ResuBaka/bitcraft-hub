@@ -70,3 +70,5 @@ impl __sdk::__query_builder::HasIxCols for DeployableState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for DeployableState {}

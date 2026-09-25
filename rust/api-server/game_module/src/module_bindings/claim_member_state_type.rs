@@ -76,3 +76,5 @@ impl __sdk::__query_builder::HasIxCols for ClaimMemberState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ClaimMemberState {}

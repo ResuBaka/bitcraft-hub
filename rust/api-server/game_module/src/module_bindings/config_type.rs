@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for Config {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for Config {}

@@ -18,6 +18,18 @@ pub struct CombatImmunityStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `combat_immunity_state`.
+pub struct CombatImmunityStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for CombatImmunityStateTableAccessor {
+    type Row = CombatImmunityState;
+    type Handle<'db> = CombatImmunityStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.combat_immunity_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `combat_immunity_state`.
 ///
@@ -42,6 +54,16 @@ impl CombatImmunityStateTableAccess for super::RemoteTables {
 pub struct CombatImmunityStateInitialCallbackId(__sdk::CallbackId);
 pub struct CombatImmunityStateInsertCallbackId(__sdk::CallbackId);
 pub struct CombatImmunityStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for CombatImmunityStateTableHandle<'ctx> {
+    type Row = CombatImmunityState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = CombatImmunityState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> CombatImmunityStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for CombatImmunityStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for CombatImmunityStateTableHandle<'ctx> {
+    type InsertCallbackId = CombatImmunityStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<CombatImmunityState>("combat_immunity_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> CombatImmunityStateInsertCallbackId {
+        CombatImmunityStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: CombatImmunityStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for CombatImmunityStateTableHandle<'ctx> {
+    type DeleteCallbackId = CombatImmunityStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> CombatImmunityStateDeleteCallbackId {
+        CombatImmunityStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: CombatImmunityStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct CombatImmunityStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for CombatImmunityStateTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for CombatImmunityStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<CombatImmunityState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<CombatImmunityState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for CombatImmunityStateTableHandle<'ctx> {
+    type UpdateCallbackId = CombatImmunityStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> CombatImmunityStateUpdateCallbackId {
+        CombatImmunityStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: CombatImmunityStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> CombatImmunityStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<CombatImmunityState>("combat_immunity_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<CombatImmunityState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<CombatImmunityState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

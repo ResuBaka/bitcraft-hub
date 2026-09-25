@@ -21,6 +21,18 @@ pub struct TravelerTradeOrderDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `traveler_trade_order_desc`.
+pub struct TravelerTradeOrderDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for TravelerTradeOrderDescTableAccessor {
+    type Row = TravelerTradeOrderDesc;
+    type Handle<'db> = TravelerTradeOrderDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.traveler_trade_order_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `traveler_trade_order_desc`.
 ///
@@ -45,6 +57,16 @@ impl TravelerTradeOrderDescTableAccess for super::RemoteTables {
 pub struct TravelerTradeOrderDescInitialCallbackId(__sdk::CallbackId);
 pub struct TravelerTradeOrderDescInsertCallbackId(__sdk::CallbackId);
 pub struct TravelerTradeOrderDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for TravelerTradeOrderDescTableHandle<'ctx> {
+    type Row = TravelerTradeOrderDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = TravelerTradeOrderDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> TravelerTradeOrderDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -106,14 +128,36 @@ impl<'ctx> __sdk::Table for TravelerTradeOrderDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for TravelerTradeOrderDescTableHandle<'ctx> {
+    type InsertCallbackId = TravelerTradeOrderDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<TravelerTradeOrderDesc>("traveler_trade_order_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TravelerTradeOrderDescInsertCallbackId {
+        TravelerTradeOrderDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: TravelerTradeOrderDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for TravelerTradeOrderDescTableHandle<'ctx> {
+    type DeleteCallbackId = TravelerTradeOrderDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TravelerTradeOrderDescDeleteCallbackId {
+        TravelerTradeOrderDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: TravelerTradeOrderDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct TravelerTradeOrderDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for TravelerTradeOrderDescTableHandle<'ctx> {
@@ -131,15 +175,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for TravelerTradeOrderDescTableHandle<'ctx
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<TravelerTradeOrderDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<TravelerTradeOrderDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for TravelerTradeOrderDescTableHandle<'ctx> {
+    type UpdateCallbackId = TravelerTradeOrderDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> TravelerTradeOrderDescUpdateCallbackId {
+        TravelerTradeOrderDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: TravelerTradeOrderDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -172,6 +220,26 @@ impl<'ctx> TravelerTradeOrderDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<TravelerTradeOrderDesc>("traveler_trade_order_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<TravelerTradeOrderDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<TravelerTradeOrderDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

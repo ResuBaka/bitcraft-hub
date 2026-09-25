@@ -59,3 +59,5 @@ impl __sdk::__query_builder::HasIxCols for MountingState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for MountingState {}

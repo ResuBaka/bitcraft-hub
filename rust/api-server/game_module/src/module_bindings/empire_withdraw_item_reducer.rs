@@ -28,8 +28,6 @@ impl __sdk::InModule for EmpireWithdrawItemArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct EmpireWithdrawItemCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `empire_withdraw_item`.
 ///
@@ -39,96 +37,57 @@ pub trait empire_withdraw_item {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_empire_withdraw_item`] callbacks.
-    fn empire_withdraw_item(
-        &self,
-        item_id: i32,
-        item_type: ItemType,
-        amount: u32,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `empire_withdraw_item`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`EmpireWithdrawItemCallbackId`] can be passed to [`Self::remove_on_empire_withdraw_item`]
-    /// to cancel the callback.
-    fn on_empire_withdraw_item(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32, &ItemType, &u32) + Send + 'static,
-    ) -> EmpireWithdrawItemCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_empire_withdraw_item`],
-    /// causing it not to run in the future.
-    fn remove_on_empire_withdraw_item(&self, callback: EmpireWithdrawItemCallbackId);
-}
-
-impl empire_withdraw_item for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`empire_withdraw_item:empire_withdraw_item_then`] to run a callback after the reducer completes.
     fn empire_withdraw_item(
         &self,
         item_id: i32,
         item_type: ItemType,
         amount: u32,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "empire_withdraw_item",
+        self.empire_withdraw_item_then(item_id, item_type, amount, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `empire_withdraw_item` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn empire_withdraw_item_then(
+        &self,
+        item_id: i32,
+        item_type: ItemType,
+        amount: u32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl empire_withdraw_item for super::RemoteReducers {
+    fn empire_withdraw_item_then(
+        &self,
+        item_id: i32,
+        item_type: ItemType,
+        amount: u32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             EmpireWithdrawItemArgs {
                 item_id,
                 item_type,
                 amount,
             },
+            callback,
         )
-    }
-    fn on_empire_withdraw_item(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32, &ItemType, &u32) + Send + 'static,
-    ) -> EmpireWithdrawItemCallbackId {
-        EmpireWithdrawItemCallbackId(self.imp.on_reducer(
-            "empire_withdraw_item",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::EmpireWithdrawItem {
-                                    item_id,
-                                    item_type,
-                                    amount,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, item_id, item_type, amount)
-            }),
-        ))
-    }
-    fn remove_on_empire_withdraw_item(&self, callback: EmpireWithdrawItemCallbackId) {
-        self.imp
-            .remove_on_reducer("empire_withdraw_item", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `empire_withdraw_item`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_empire_withdraw_item {
-    /// Set the call-reducer flags for the reducer `empire_withdraw_item` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn empire_withdraw_item(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_empire_withdraw_item for super::SetReducerFlags {
-    fn empire_withdraw_item(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("empire_withdraw_item", flags);
     }
 }

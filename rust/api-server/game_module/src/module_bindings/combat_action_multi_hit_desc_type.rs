@@ -62,3 +62,5 @@ impl __sdk::__query_builder::HasIxCols for CombatActionMultiHitDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for CombatActionMultiHitDesc {}

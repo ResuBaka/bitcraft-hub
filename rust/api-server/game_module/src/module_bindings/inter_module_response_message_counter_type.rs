@@ -52,3 +52,5 @@ impl __sdk::__query_builder::HasIxCols for InterModuleResponseMessageCounter {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for InterModuleResponseMessageCounter {}

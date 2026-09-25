@@ -79,3 +79,5 @@ impl __sdk::__query_builder::HasIxCols for ProgressiveActionState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ProgressiveActionState {}

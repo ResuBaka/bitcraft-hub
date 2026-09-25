@@ -24,8 +24,6 @@ impl __sdk::InModule for ConvertDeedToCollectibleArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ConvertDeedToCollectibleCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `convert_deed_to_collectible`.
 ///
@@ -35,87 +33,45 @@ pub trait convert_deed_to_collectible {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_convert_deed_to_collectible`] callbacks.
-    fn convert_deed_to_collectible(
-        &self,
-        request: PlayerConvertDeedToCollectibleRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `convert_deed_to_collectible`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ConvertDeedToCollectibleCallbackId`] can be passed to [`Self::remove_on_convert_deed_to_collectible`]
-    /// to cancel the callback.
-    fn on_convert_deed_to_collectible(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerConvertDeedToCollectibleRequest)
-        + Send
-        + 'static,
-    ) -> ConvertDeedToCollectibleCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_convert_deed_to_collectible`],
-    /// causing it not to run in the future.
-    fn remove_on_convert_deed_to_collectible(&self, callback: ConvertDeedToCollectibleCallbackId);
-}
-
-impl convert_deed_to_collectible for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`convert_deed_to_collectible:convert_deed_to_collectible_then`] to run a callback after the reducer completes.
     fn convert_deed_to_collectible(
         &self,
         request: PlayerConvertDeedToCollectibleRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "convert_deed_to_collectible",
-            ConvertDeedToCollectibleArgs { request },
-        )
+        self.convert_deed_to_collectible_then(request, |_, _| {})
     }
-    fn on_convert_deed_to_collectible(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerConvertDeedToCollectibleRequest)
-        + Send
-        + 'static,
-    ) -> ConvertDeedToCollectibleCallbackId {
-        ConvertDeedToCollectibleCallbackId(self.imp.on_reducer(
-            "convert_deed_to_collectible",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ConvertDeedToCollectible { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_convert_deed_to_collectible(&self, callback: ConvertDeedToCollectibleCallbackId) {
-        self.imp
-            .remove_on_reducer("convert_deed_to_collectible", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `convert_deed_to_collectible`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_convert_deed_to_collectible {
-    /// Set the call-reducer flags for the reducer `convert_deed_to_collectible` to `flags`.
+    /// Request that the remote module invoke the reducer `convert_deed_to_collectible` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn convert_deed_to_collectible(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn convert_deed_to_collectible_then(
+        &self,
+        request: PlayerConvertDeedToCollectibleRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_convert_deed_to_collectible for super::SetReducerFlags {
-    fn convert_deed_to_collectible(&self, flags: __ws::CallReducerFlags) {
+impl convert_deed_to_collectible for super::RemoteReducers {
+    fn convert_deed_to_collectible_then(
+        &self,
+        request: PlayerConvertDeedToCollectibleRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("convert_deed_to_collectible", flags);
+            .invoke_reducer_with_callback(ConvertDeedToCollectibleArgs { request }, callback)
     }
 }

@@ -53,3 +53,5 @@ impl __sdk::__query_builder::HasIxCols for ToolTypeDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ToolTypeDesc {}

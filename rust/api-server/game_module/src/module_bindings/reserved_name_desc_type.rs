@@ -45,3 +45,5 @@ impl __sdk::__query_builder::HasIxCols for ReservedNameDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ReservedNameDesc {}

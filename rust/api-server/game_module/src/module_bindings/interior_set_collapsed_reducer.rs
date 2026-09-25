@@ -24,8 +24,6 @@ impl __sdk::InModule for InteriorSetCollapsedArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct InteriorSetCollapsedCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `interior_set_collapsed`.
 ///
@@ -35,92 +33,53 @@ pub trait interior_set_collapsed {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_interior_set_collapsed`] callbacks.
-    fn interior_set_collapsed(
-        &self,
-        dimension_network_entity_id: u64,
-        is_collapsed: bool,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `interior_set_collapsed`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`InteriorSetCollapsedCallbackId`] can be passed to [`Self::remove_on_interior_set_collapsed`]
-    /// to cancel the callback.
-    fn on_interior_set_collapsed(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &bool) + Send + 'static,
-    ) -> InteriorSetCollapsedCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_interior_set_collapsed`],
-    /// causing it not to run in the future.
-    fn remove_on_interior_set_collapsed(&self, callback: InteriorSetCollapsedCallbackId);
-}
-
-impl interior_set_collapsed for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`interior_set_collapsed:interior_set_collapsed_then`] to run a callback after the reducer completes.
     fn interior_set_collapsed(
         &self,
         dimension_network_entity_id: u64,
         is_collapsed: bool,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "interior_set_collapsed",
+        self.interior_set_collapsed_then(dimension_network_entity_id, is_collapsed, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `interior_set_collapsed` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn interior_set_collapsed_then(
+        &self,
+        dimension_network_entity_id: u64,
+        is_collapsed: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl interior_set_collapsed for super::RemoteReducers {
+    fn interior_set_collapsed_then(
+        &self,
+        dimension_network_entity_id: u64,
+        is_collapsed: bool,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             InteriorSetCollapsedArgs {
                 dimension_network_entity_id,
                 is_collapsed,
             },
+            callback,
         )
-    }
-    fn on_interior_set_collapsed(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &bool) + Send + 'static,
-    ) -> InteriorSetCollapsedCallbackId {
-        InteriorSetCollapsedCallbackId(self.imp.on_reducer(
-            "interior_set_collapsed",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::InteriorSetCollapsed {
-                                    dimension_network_entity_id,
-                                    is_collapsed,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, dimension_network_entity_id, is_collapsed)
-            }),
-        ))
-    }
-    fn remove_on_interior_set_collapsed(&self, callback: InteriorSetCollapsedCallbackId) {
-        self.imp
-            .remove_on_reducer("interior_set_collapsed", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `interior_set_collapsed`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_interior_set_collapsed {
-    /// Set the call-reducer flags for the reducer `interior_set_collapsed` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn interior_set_collapsed(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_interior_set_collapsed for super::SetReducerFlags {
-    fn interior_set_collapsed(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("interior_set_collapsed", flags);
     }
 }

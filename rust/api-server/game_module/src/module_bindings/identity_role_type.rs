@@ -50,3 +50,5 @@ impl __sdk::__query_builder::HasIxCols for IdentityRole {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for IdentityRole {}

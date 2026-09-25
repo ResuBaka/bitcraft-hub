@@ -24,8 +24,6 @@ impl __sdk::InModule for BarterStallOrderDeleteArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct BarterStallOrderDeleteCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `barter_stall_order_delete`.
 ///
@@ -35,87 +33,45 @@ pub trait barter_stall_order_delete {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_barter_stall_order_delete`] callbacks.
-    fn barter_stall_order_delete(
-        &self,
-        request: PlayerBarterStallOrderDeleteRequest,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `barter_stall_order_delete`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`BarterStallOrderDeleteCallbackId`] can be passed to [`Self::remove_on_barter_stall_order_delete`]
-    /// to cancel the callback.
-    fn on_barter_stall_order_delete(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerBarterStallOrderDeleteRequest)
-        + Send
-        + 'static,
-    ) -> BarterStallOrderDeleteCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_barter_stall_order_delete`],
-    /// causing it not to run in the future.
-    fn remove_on_barter_stall_order_delete(&self, callback: BarterStallOrderDeleteCallbackId);
-}
-
-impl barter_stall_order_delete for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`barter_stall_order_delete:barter_stall_order_delete_then`] to run a callback after the reducer completes.
     fn barter_stall_order_delete(
         &self,
         request: PlayerBarterStallOrderDeleteRequest,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "barter_stall_order_delete",
-            BarterStallOrderDeleteArgs { request },
-        )
+        self.barter_stall_order_delete_then(request, |_, _| {})
     }
-    fn on_barter_stall_order_delete(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerBarterStallOrderDeleteRequest)
-        + Send
-        + 'static,
-    ) -> BarterStallOrderDeleteCallbackId {
-        BarterStallOrderDeleteCallbackId(self.imp.on_reducer(
-            "barter_stall_order_delete",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::BarterStallOrderDelete { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_barter_stall_order_delete(&self, callback: BarterStallOrderDeleteCallbackId) {
-        self.imp
-            .remove_on_reducer("barter_stall_order_delete", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `barter_stall_order_delete`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_barter_stall_order_delete {
-    /// Set the call-reducer flags for the reducer `barter_stall_order_delete` to `flags`.
+    /// Request that the remote module invoke the reducer `barter_stall_order_delete` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn barter_stall_order_delete(&self, flags: __ws::CallReducerFlags);
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn barter_stall_order_delete_then(
+        &self,
+        request: PlayerBarterStallOrderDeleteRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
-impl set_flags_for_barter_stall_order_delete for super::SetReducerFlags {
-    fn barter_stall_order_delete(&self, flags: __ws::CallReducerFlags) {
+impl barter_stall_order_delete for super::RemoteReducers {
+    fn barter_stall_order_delete_then(
+        &self,
+        request: PlayerBarterStallOrderDeleteRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("barter_stall_order_delete", flags);
+            .invoke_reducer_with_callback(BarterStallOrderDeleteArgs { request }, callback)
     }
 }

@@ -24,8 +24,6 @@ impl __sdk::InModule for PlayerHousingChangeEntranceArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct PlayerHousingChangeEntranceCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `player_housing_change_entrance`.
 ///
@@ -35,98 +33,53 @@ pub trait player_housing_change_entrance {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_player_housing_change_entrance`] callbacks.
-    fn player_housing_change_entrance(
-        &self,
-        building_entity_id: u64,
-        expected_time_cost: i32,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `player_housing_change_entrance`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`PlayerHousingChangeEntranceCallbackId`] can be passed to [`Self::remove_on_player_housing_change_entrance`]
-    /// to cancel the callback.
-    fn on_player_housing_change_entrance(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> PlayerHousingChangeEntranceCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_player_housing_change_entrance`],
-    /// causing it not to run in the future.
-    fn remove_on_player_housing_change_entrance(
-        &self,
-        callback: PlayerHousingChangeEntranceCallbackId,
-    );
-}
-
-impl player_housing_change_entrance for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`player_housing_change_entrance:player_housing_change_entrance_then`] to run a callback after the reducer completes.
     fn player_housing_change_entrance(
         &self,
         building_entity_id: u64,
         expected_time_cost: i32,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "player_housing_change_entrance",
+        self.player_housing_change_entrance_then(building_entity_id, expected_time_cost, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `player_housing_change_entrance` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn player_housing_change_entrance_then(
+        &self,
+        building_entity_id: u64,
+        expected_time_cost: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl player_housing_change_entrance for super::RemoteReducers {
+    fn player_housing_change_entrance_then(
+        &self,
+        building_entity_id: u64,
+        expected_time_cost: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             PlayerHousingChangeEntranceArgs {
                 building_entity_id,
                 expected_time_cost,
             },
+            callback,
         )
-    }
-    fn on_player_housing_change_entrance(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64, &i32) + Send + 'static,
-    ) -> PlayerHousingChangeEntranceCallbackId {
-        PlayerHousingChangeEntranceCallbackId(self.imp.on_reducer(
-            "player_housing_change_entrance",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::PlayerHousingChangeEntrance {
-                                    building_entity_id,
-                                    expected_time_cost,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, building_entity_id, expected_time_cost)
-            }),
-        ))
-    }
-    fn remove_on_player_housing_change_entrance(
-        &self,
-        callback: PlayerHousingChangeEntranceCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("player_housing_change_entrance", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `player_housing_change_entrance`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_player_housing_change_entrance {
-    /// Set the call-reducer flags for the reducer `player_housing_change_entrance` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn player_housing_change_entrance(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_player_housing_change_entrance for super::SetReducerFlags {
-    fn player_housing_change_entrance(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("player_housing_change_entrance", flags);
     }
 }

@@ -24,8 +24,6 @@ impl __sdk::InModule for ScrollReadArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ScrollReadCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `scroll_read`.
 ///
@@ -35,73 +33,42 @@ pub trait scroll_read {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_scroll_read`] callbacks.
-    fn scroll_read(&self, request: PlayerScrollReadRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `scroll_read`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`scroll_read:scroll_read_then`] to run a callback after the reducer completes.
+    fn scroll_read(&self, request: PlayerScrollReadRequest) -> __sdk::Result<()> {
+        self.scroll_read_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `scroll_read` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ScrollReadCallbackId`] can be passed to [`Self::remove_on_scroll_read`]
-    /// to cancel the callback.
-    fn on_scroll_read(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn scroll_read_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerScrollReadRequest) + Send + 'static,
-    ) -> ScrollReadCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_scroll_read`],
-    /// causing it not to run in the future.
-    fn remove_on_scroll_read(&self, callback: ScrollReadCallbackId);
+        request: PlayerScrollReadRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl scroll_read for super::RemoteReducers {
-    fn scroll_read(&self, request: PlayerScrollReadRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("scroll_read", ScrollReadArgs { request })
-    }
-    fn on_scroll_read(
+    fn scroll_read_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerScrollReadRequest) + Send + 'static,
-    ) -> ScrollReadCallbackId {
-        ScrollReadCallbackId(self.imp.on_reducer(
-            "scroll_read",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ScrollRead { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_scroll_read(&self, callback: ScrollReadCallbackId) {
-        self.imp.remove_on_reducer("scroll_read", callback.0)
-    }
-}
+        request: PlayerScrollReadRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `scroll_read`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_scroll_read {
-    /// Set the call-reducer flags for the reducer `scroll_read` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn scroll_read(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_scroll_read for super::SetReducerFlags {
-    fn scroll_read(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("scroll_read", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ScrollReadArgs { request }, callback)
     }
 }

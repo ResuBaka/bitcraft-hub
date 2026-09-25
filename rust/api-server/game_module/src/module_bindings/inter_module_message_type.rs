@@ -53,3 +53,5 @@ impl __sdk::__query_builder::HasIxCols for InterModuleMessage {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for InterModuleMessage {}

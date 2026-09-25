@@ -18,8 +18,6 @@ impl __sdk::InModule for MigrateGrantDefaultCollectiblesArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct MigrateGrantDefaultCollectiblesCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `migrate_grant_default_collectibles`.
 ///
@@ -29,83 +27,40 @@ pub trait migrate_grant_default_collectibles {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_migrate_grant_default_collectibles`] callbacks.
-    fn migrate_grant_default_collectibles(&self) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `migrate_grant_default_collectibles`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`migrate_grant_default_collectibles:migrate_grant_default_collectibles_then`] to run a callback after the reducer completes.
+    fn migrate_grant_default_collectibles(&self) -> __sdk::Result<()> {
+        self.migrate_grant_default_collectibles_then(|_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `migrate_grant_default_collectibles` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`MigrateGrantDefaultCollectiblesCallbackId`] can be passed to [`Self::remove_on_migrate_grant_default_collectibles`]
-    /// to cancel the callback.
-    fn on_migrate_grant_default_collectibles(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn migrate_grant_default_collectibles_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> MigrateGrantDefaultCollectiblesCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_migrate_grant_default_collectibles`],
-    /// causing it not to run in the future.
-    fn remove_on_migrate_grant_default_collectibles(
-        &self,
-        callback: MigrateGrantDefaultCollectiblesCallbackId,
-    );
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl migrate_grant_default_collectibles for super::RemoteReducers {
-    fn migrate_grant_default_collectibles(&self) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "migrate_grant_default_collectibles",
-            MigrateGrantDefaultCollectiblesArgs {},
-        )
-    }
-    fn on_migrate_grant_default_collectibles(
+    fn migrate_grant_default_collectibles_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext) + Send + 'static,
-    ) -> MigrateGrantDefaultCollectiblesCallbackId {
-        MigrateGrantDefaultCollectiblesCallbackId(self.imp.on_reducer(
-            "migrate_grant_default_collectibles",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::MigrateGrantDefaultCollectibles {},
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx)
-            }),
-        ))
-    }
-    fn remove_on_migrate_grant_default_collectibles(
-        &self,
-        callback: MigrateGrantDefaultCollectiblesCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("migrate_grant_default_collectibles", callback.0)
-    }
-}
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `migrate_grant_default_collectibles`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_migrate_grant_default_collectibles {
-    /// Set the call-reducer flags for the reducer `migrate_grant_default_collectibles` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn migrate_grant_default_collectibles(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_migrate_grant_default_collectibles for super::SetReducerFlags {
-    fn migrate_grant_default_collectibles(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("migrate_grant_default_collectibles", flags);
+            .invoke_reducer_with_callback(MigrateGrantDefaultCollectiblesArgs {}, callback)
     }
 }

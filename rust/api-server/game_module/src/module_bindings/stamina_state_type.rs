@@ -55,3 +55,5 @@ impl __sdk::__query_builder::HasIxCols for StaminaState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for StaminaState {}

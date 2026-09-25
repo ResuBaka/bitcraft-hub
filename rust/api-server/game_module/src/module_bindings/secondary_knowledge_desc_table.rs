@@ -18,6 +18,18 @@ pub struct SecondaryKnowledgeDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `secondary_knowledge_desc`.
+pub struct SecondaryKnowledgeDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for SecondaryKnowledgeDescTableAccessor {
+    type Row = SecondaryKnowledgeDesc;
+    type Handle<'db> = SecondaryKnowledgeDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.secondary_knowledge_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `secondary_knowledge_desc`.
 ///
@@ -42,6 +54,16 @@ impl SecondaryKnowledgeDescTableAccess for super::RemoteTables {
 pub struct SecondaryKnowledgeDescInitialCallbackId(__sdk::CallbackId);
 pub struct SecondaryKnowledgeDescInsertCallbackId(__sdk::CallbackId);
 pub struct SecondaryKnowledgeDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for SecondaryKnowledgeDescTableHandle<'ctx> {
+    type Row = SecondaryKnowledgeDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = SecondaryKnowledgeDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> SecondaryKnowledgeDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for SecondaryKnowledgeDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for SecondaryKnowledgeDescTableHandle<'ctx> {
+    type InsertCallbackId = SecondaryKnowledgeDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<SecondaryKnowledgeDesc>("secondary_knowledge_desc");
-    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> SecondaryKnowledgeDescInsertCallbackId {
+        SecondaryKnowledgeDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: SecondaryKnowledgeDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for SecondaryKnowledgeDescTableHandle<'ctx> {
+    type DeleteCallbackId = SecondaryKnowledgeDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> SecondaryKnowledgeDescDeleteCallbackId {
+        SecondaryKnowledgeDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: SecondaryKnowledgeDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct SecondaryKnowledgeDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for SecondaryKnowledgeDescTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for SecondaryKnowledgeDescTableHandle<'ctx
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<SecondaryKnowledgeDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<SecondaryKnowledgeDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for SecondaryKnowledgeDescTableHandle<'ctx> {
+    type UpdateCallbackId = SecondaryKnowledgeDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> SecondaryKnowledgeDescUpdateCallbackId {
+        SecondaryKnowledgeDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: SecondaryKnowledgeDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> SecondaryKnowledgeDescIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<SecondaryKnowledgeDesc>("secondary_knowledge_desc");
+    _table.add_unique_constraint::<i32>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<SecondaryKnowledgeDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<SecondaryKnowledgeDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

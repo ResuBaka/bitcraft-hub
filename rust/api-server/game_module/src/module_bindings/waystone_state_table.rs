@@ -19,6 +19,18 @@ pub struct WaystoneStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `waystone_state`.
+pub struct WaystoneStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for WaystoneStateTableAccessor {
+    type Row = WaystoneState;
+    type Handle<'db> = WaystoneStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.waystone_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `waystone_state`.
 ///
@@ -41,6 +53,16 @@ impl WaystoneStateTableAccess for super::RemoteTables {
 pub struct WaystoneStateInitialCallbackId(__sdk::CallbackId);
 pub struct WaystoneStateInsertCallbackId(__sdk::CallbackId);
 pub struct WaystoneStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for WaystoneStateTableHandle<'ctx> {
+    type Row = WaystoneState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = WaystoneState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> WaystoneStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -102,14 +124,36 @@ impl<'ctx> __sdk::Table for WaystoneStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for WaystoneStateTableHandle<'ctx> {
+    type InsertCallbackId = WaystoneStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<WaystoneState>("waystone_state");
-    _table.add_unique_constraint::<u64>("building_entity_id", |row| &row.building_entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> WaystoneStateInsertCallbackId {
+        WaystoneStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: WaystoneStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for WaystoneStateTableHandle<'ctx> {
+    type DeleteCallbackId = WaystoneStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> WaystoneStateDeleteCallbackId {
+        WaystoneStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: WaystoneStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct WaystoneStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for WaystoneStateTableHandle<'ctx> {
@@ -127,15 +171,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for WaystoneStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<WaystoneState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<WaystoneState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for WaystoneStateTableHandle<'ctx> {
+    type UpdateCallbackId = WaystoneStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> WaystoneStateUpdateCallbackId {
+        WaystoneStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: WaystoneStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -168,6 +216,26 @@ impl<'ctx> WaystoneStateBuildingEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<WaystoneState>("waystone_state");
+    _table.add_unique_constraint::<u64>("building_entity_id", |row| &row.building_entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<WaystoneState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<WaystoneState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

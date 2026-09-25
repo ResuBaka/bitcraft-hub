@@ -19,6 +19,18 @@ pub struct OnboardingRewardDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `onboarding_reward_desc`.
+pub struct OnboardingRewardDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for OnboardingRewardDescTableAccessor {
+    type Row = OnboardingRewardDesc;
+    type Handle<'db> = OnboardingRewardDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.onboarding_reward_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `onboarding_reward_desc`.
 ///
@@ -43,6 +55,16 @@ impl OnboardingRewardDescTableAccess for super::RemoteTables {
 pub struct OnboardingRewardDescInitialCallbackId(__sdk::CallbackId);
 pub struct OnboardingRewardDescInsertCallbackId(__sdk::CallbackId);
 pub struct OnboardingRewardDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for OnboardingRewardDescTableHandle<'ctx> {
+    type Row = OnboardingRewardDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = OnboardingRewardDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> OnboardingRewardDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -104,14 +126,36 @@ impl<'ctx> __sdk::Table for OnboardingRewardDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for OnboardingRewardDescTableHandle<'ctx> {
+    type InsertCallbackId = OnboardingRewardDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<OnboardingRewardDesc>("onboarding_reward_desc");
-    _table.add_unique_constraint::<u16>("state_id", |row| &row.state_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> OnboardingRewardDescInsertCallbackId {
+        OnboardingRewardDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: OnboardingRewardDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for OnboardingRewardDescTableHandle<'ctx> {
+    type DeleteCallbackId = OnboardingRewardDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> OnboardingRewardDescDeleteCallbackId {
+        OnboardingRewardDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: OnboardingRewardDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct OnboardingRewardDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for OnboardingRewardDescTableHandle<'ctx> {
@@ -129,15 +173,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for OnboardingRewardDescTableHandle<'ctx> 
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<OnboardingRewardDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<OnboardingRewardDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for OnboardingRewardDescTableHandle<'ctx> {
+    type UpdateCallbackId = OnboardingRewardDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> OnboardingRewardDescUpdateCallbackId {
+        OnboardingRewardDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: OnboardingRewardDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -170,6 +218,26 @@ impl<'ctx> OnboardingRewardDescStateIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<OnboardingRewardDesc>("onboarding_reward_desc");
+    _table.add_unique_constraint::<u16>("state_id", |row| &row.state_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<OnboardingRewardDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<OnboardingRewardDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

@@ -69,3 +69,5 @@ impl __sdk::__query_builder::HasIxCols for DeployableDismountTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for DeployableDismountTimer {}

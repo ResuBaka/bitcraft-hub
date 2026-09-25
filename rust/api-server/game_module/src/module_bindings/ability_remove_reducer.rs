@@ -24,8 +24,6 @@ impl __sdk::InModule for AbilityRemoveArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AbilityRemoveCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `ability_remove`.
 ///
@@ -35,82 +33,49 @@ pub trait ability_remove {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_ability_remove`] callbacks.
-    fn ability_remove(&self, action_bar_index: u8, local_ability_index: u8) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `ability_remove`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`ability_remove:ability_remove_then`] to run a callback after the reducer completes.
+    fn ability_remove(&self, action_bar_index: u8, local_ability_index: u8) -> __sdk::Result<()> {
+        self.ability_remove_then(action_bar_index, local_ability_index, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `ability_remove` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AbilityRemoveCallbackId`] can be passed to [`Self::remove_on_ability_remove`]
-    /// to cancel the callback.
-    fn on_ability_remove(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn ability_remove_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u8, &u8) + Send + 'static,
-    ) -> AbilityRemoveCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_ability_remove`],
-    /// causing it not to run in the future.
-    fn remove_on_ability_remove(&self, callback: AbilityRemoveCallbackId);
+        action_bar_index: u8,
+        local_ability_index: u8,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl ability_remove for super::RemoteReducers {
-    fn ability_remove(&self, action_bar_index: u8, local_ability_index: u8) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "ability_remove",
+    fn ability_remove_then(
+        &self,
+        action_bar_index: u8,
+        local_ability_index: u8,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AbilityRemoveArgs {
                 action_bar_index,
                 local_ability_index,
             },
+            callback,
         )
-    }
-    fn on_ability_remove(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u8, &u8) + Send + 'static,
-    ) -> AbilityRemoveCallbackId {
-        AbilityRemoveCallbackId(self.imp.on_reducer(
-            "ability_remove",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AbilityRemove {
-                                    action_bar_index,
-                                    local_ability_index,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, action_bar_index, local_ability_index)
-            }),
-        ))
-    }
-    fn remove_on_ability_remove(&self, callback: AbilityRemoveCallbackId) {
-        self.imp.remove_on_reducer("ability_remove", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `ability_remove`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_ability_remove {
-    /// Set the call-reducer flags for the reducer `ability_remove` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn ability_remove(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_ability_remove for super::SetReducerFlags {
-    fn ability_remove(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("ability_remove", flags);
     }
 }

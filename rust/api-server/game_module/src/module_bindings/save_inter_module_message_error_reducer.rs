@@ -26,8 +26,6 @@ impl __sdk::InModule for SaveInterModuleMessageErrorArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct SaveInterModuleMessageErrorCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `save_inter_module_message_error`.
 ///
@@ -37,102 +35,57 @@ pub trait save_inter_module_message_error {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_save_inter_module_message_error`] callbacks.
-    fn save_inter_module_message_error(
-        &self,
-        sender: u8,
-        message_id: u64,
-        error: String,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `save_inter_module_message_error`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`SaveInterModuleMessageErrorCallbackId`] can be passed to [`Self::remove_on_save_inter_module_message_error`]
-    /// to cancel the callback.
-    fn on_save_inter_module_message_error(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u8, &u64, &String) + Send + 'static,
-    ) -> SaveInterModuleMessageErrorCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_save_inter_module_message_error`],
-    /// causing it not to run in the future.
-    fn remove_on_save_inter_module_message_error(
-        &self,
-        callback: SaveInterModuleMessageErrorCallbackId,
-    );
-}
-
-impl save_inter_module_message_error for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`save_inter_module_message_error:save_inter_module_message_error_then`] to run a callback after the reducer completes.
     fn save_inter_module_message_error(
         &self,
         sender: u8,
         message_id: u64,
         error: String,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "save_inter_module_message_error",
+        self.save_inter_module_message_error_then(sender, message_id, error, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `save_inter_module_message_error` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn save_inter_module_message_error_then(
+        &self,
+        sender: u8,
+        message_id: u64,
+        error: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl save_inter_module_message_error for super::RemoteReducers {
+    fn save_inter_module_message_error_then(
+        &self,
+        sender: u8,
+        message_id: u64,
+        error: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             SaveInterModuleMessageErrorArgs {
                 sender,
                 message_id,
                 error,
             },
+            callback,
         )
-    }
-    fn on_save_inter_module_message_error(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u8, &u64, &String) + Send + 'static,
-    ) -> SaveInterModuleMessageErrorCallbackId {
-        SaveInterModuleMessageErrorCallbackId(self.imp.on_reducer(
-            "save_inter_module_message_error",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::SaveInterModuleMessageError {
-                                    sender,
-                                    message_id,
-                                    error,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, sender, message_id, error)
-            }),
-        ))
-    }
-    fn remove_on_save_inter_module_message_error(
-        &self,
-        callback: SaveInterModuleMessageErrorCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("save_inter_module_message_error", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `save_inter_module_message_error`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_save_inter_module_message_error {
-    /// Set the call-reducer flags for the reducer `save_inter_module_message_error` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn save_inter_module_message_error(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_save_inter_module_message_error for super::SetReducerFlags {
-    fn save_inter_module_message_error(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("save_inter_module_message_error", flags);
     }
 }

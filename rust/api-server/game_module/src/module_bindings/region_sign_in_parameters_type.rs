@@ -72,3 +72,5 @@ impl __sdk::__query_builder::HasIxCols for RegionSignInParameters {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for RegionSignInParameters {}

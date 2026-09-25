@@ -24,8 +24,6 @@ impl __sdk::InModule for ProjectSiteCancelArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ProjectSiteCancelCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `project_site_cancel`.
 ///
@@ -35,79 +33,42 @@ pub trait project_site_cancel {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_project_site_cancel`] callbacks.
-    fn project_site_cancel(&self, request: PlayerProjectSiteCancelRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `project_site_cancel`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`project_site_cancel:project_site_cancel_then`] to run a callback after the reducer completes.
+    fn project_site_cancel(&self, request: PlayerProjectSiteCancelRequest) -> __sdk::Result<()> {
+        self.project_site_cancel_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `project_site_cancel` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ProjectSiteCancelCallbackId`] can be passed to [`Self::remove_on_project_site_cancel`]
-    /// to cancel the callback.
-    fn on_project_site_cancel(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn project_site_cancel_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteCancelRequest)
-        + Send
+        request: PlayerProjectSiteCancelRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ProjectSiteCancelCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_project_site_cancel`],
-    /// causing it not to run in the future.
-    fn remove_on_project_site_cancel(&self, callback: ProjectSiteCancelCallbackId);
+    ) -> __sdk::Result<()>;
 }
 
 impl project_site_cancel for super::RemoteReducers {
-    fn project_site_cancel(&self, request: PlayerProjectSiteCancelRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("project_site_cancel", ProjectSiteCancelArgs { request })
-    }
-    fn on_project_site_cancel(
+    fn project_site_cancel_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerProjectSiteCancelRequest)
-        + Send
+        request: PlayerProjectSiteCancelRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
         + 'static,
-    ) -> ProjectSiteCancelCallbackId {
-        ProjectSiteCancelCallbackId(self.imp.on_reducer(
-            "project_site_cancel",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ProjectSiteCancel { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_project_site_cancel(&self, callback: ProjectSiteCancelCallbackId) {
+    ) -> __sdk::Result<()> {
         self.imp
-            .remove_on_reducer("project_site_cancel", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `project_site_cancel`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_project_site_cancel {
-    /// Set the call-reducer flags for the reducer `project_site_cancel` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn project_site_cancel(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_project_site_cancel for super::SetReducerFlags {
-    fn project_site_cancel(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("project_site_cancel", flags);
+            .invoke_reducer_with_callback(ProjectSiteCancelArgs { request }, callback)
     }
 }

@@ -28,8 +28,6 @@ impl __sdk::InModule for AdminCreateEntityNameReportArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct AdminCreateEntityNameReportCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `admin_create_entity_name_report`.
 ///
@@ -39,36 +37,8 @@ pub trait admin_create_entity_name_report {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_admin_create_entity_name_report`] callbacks.
-    fn admin_create_entity_name_report(
-        &self,
-        report_type: String,
-        entity_id: u64,
-        entity_name: String,
-        message: String,
-    ) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `admin_create_entity_name_report`.
-    ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`AdminCreateEntityNameReportCallbackId`] can be passed to [`Self::remove_on_admin_create_entity_name_report`]
-    /// to cancel the callback.
-    fn on_admin_create_entity_name_report(
-        &self,
-        callback: impl FnMut(&super::ReducerEventContext, &String, &u64, &String, &String)
-        + Send
-        + 'static,
-    ) -> AdminCreateEntityNameReportCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_admin_create_entity_name_report`],
-    /// causing it not to run in the future.
-    fn remove_on_admin_create_entity_name_report(
-        &self,
-        callback: AdminCreateEntityNameReportCallbackId,
-    );
-}
-
-impl admin_create_entity_name_report for super::RemoteReducers {
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`admin_create_entity_name_report:admin_create_entity_name_report_then`] to run a callback after the reducer completes.
     fn admin_create_entity_name_report(
         &self,
         report_type: String,
@@ -76,73 +46,58 @@ impl admin_create_entity_name_report for super::RemoteReducers {
         entity_name: String,
         message: String,
     ) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "admin_create_entity_name_report",
+        self.admin_create_entity_name_report_then(
+            report_type,
+            entity_id,
+            entity_name,
+            message,
+            |_, _| {},
+        )
+    }
+
+    /// Request that the remote module invoke the reducer `admin_create_entity_name_report` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
+    ///
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn admin_create_entity_name_report_then(
+        &self,
+        report_type: String,
+        entity_id: u64,
+        entity_name: String,
+        message: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
+}
+
+impl admin_create_entity_name_report for super::RemoteReducers {
+    fn admin_create_entity_name_report_then(
+        &self,
+        report_type: String,
+        entity_id: u64,
+        entity_name: String,
+        message: String,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             AdminCreateEntityNameReportArgs {
                 report_type,
                 entity_id,
                 entity_name,
                 message,
             },
+            callback,
         )
-    }
-    fn on_admin_create_entity_name_report(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &String, &u64, &String, &String)
-        + Send
-        + 'static,
-    ) -> AdminCreateEntityNameReportCallbackId {
-        AdminCreateEntityNameReportCallbackId(self.imp.on_reducer(
-            "admin_create_entity_name_report",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::AdminCreateEntityNameReport {
-                                    report_type,
-                                    entity_id,
-                                    entity_name,
-                                    message,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, report_type, entity_id, entity_name, message)
-            }),
-        ))
-    }
-    fn remove_on_admin_create_entity_name_report(
-        &self,
-        callback: AdminCreateEntityNameReportCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("admin_create_entity_name_report", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `admin_create_entity_name_report`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_admin_create_entity_name_report {
-    /// Set the call-reducer flags for the reducer `admin_create_entity_name_report` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn admin_create_entity_name_report(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_admin_create_entity_name_report for super::SetReducerFlags {
-    fn admin_create_entity_name_report(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("admin_create_entity_name_report", flags);
     }
 }

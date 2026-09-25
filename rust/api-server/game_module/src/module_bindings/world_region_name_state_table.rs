@@ -18,6 +18,18 @@ pub struct WorldRegionNameStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `world_region_name_state`.
+pub struct WorldRegionNameStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for WorldRegionNameStateTableAccessor {
+    type Row = WorldRegionNameState;
+    type Handle<'db> = WorldRegionNameStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.world_region_name_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `world_region_name_state`.
 ///
@@ -42,6 +54,16 @@ impl WorldRegionNameStateTableAccess for super::RemoteTables {
 pub struct WorldRegionNameStateInitialCallbackId(__sdk::CallbackId);
 pub struct WorldRegionNameStateInsertCallbackId(__sdk::CallbackId);
 pub struct WorldRegionNameStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for WorldRegionNameStateTableHandle<'ctx> {
+    type Row = WorldRegionNameState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = WorldRegionNameState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> WorldRegionNameStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for WorldRegionNameStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for WorldRegionNameStateTableHandle<'ctx> {
+    type InsertCallbackId = WorldRegionNameStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<WorldRegionNameState>("world_region_name_state");
-    _table.add_unique_constraint::<u16>("id", |row| &row.id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> WorldRegionNameStateInsertCallbackId {
+        WorldRegionNameStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: WorldRegionNameStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for WorldRegionNameStateTableHandle<'ctx> {
+    type DeleteCallbackId = WorldRegionNameStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> WorldRegionNameStateDeleteCallbackId {
+        WorldRegionNameStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: WorldRegionNameStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct WorldRegionNameStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for WorldRegionNameStateTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for WorldRegionNameStateTableHandle<'ctx> 
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<WorldRegionNameState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<WorldRegionNameState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for WorldRegionNameStateTableHandle<'ctx> {
+    type UpdateCallbackId = WorldRegionNameStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> WorldRegionNameStateUpdateCallbackId {
+        WorldRegionNameStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: WorldRegionNameStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> WorldRegionNameStateIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<WorldRegionNameState>("world_region_name_state");
+    _table.add_unique_constraint::<u16>("id", |row| &row.id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<WorldRegionNameState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<WorldRegionNameState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

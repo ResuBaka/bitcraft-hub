@@ -24,8 +24,6 @@ impl __sdk::InModule for ClaimLeaveArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ClaimLeaveCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `claim_leave`.
 ///
@@ -35,73 +33,42 @@ pub trait claim_leave {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_claim_leave`] callbacks.
-    fn claim_leave(&self, request: PlayerClaimLeaveRequest) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `claim_leave`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`claim_leave:claim_leave_then`] to run a callback after the reducer completes.
+    fn claim_leave(&self, request: PlayerClaimLeaveRequest) -> __sdk::Result<()> {
+        self.claim_leave_then(request, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `claim_leave` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ClaimLeaveCallbackId`] can be passed to [`Self::remove_on_claim_leave`]
-    /// to cancel the callback.
-    fn on_claim_leave(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn claim_leave_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimLeaveRequest) + Send + 'static,
-    ) -> ClaimLeaveCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_claim_leave`],
-    /// causing it not to run in the future.
-    fn remove_on_claim_leave(&self, callback: ClaimLeaveCallbackId);
+        request: PlayerClaimLeaveRequest,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl claim_leave for super::RemoteReducers {
-    fn claim_leave(&self, request: PlayerClaimLeaveRequest) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("claim_leave", ClaimLeaveArgs { request })
-    }
-    fn on_claim_leave(
+    fn claim_leave_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &PlayerClaimLeaveRequest) + Send + 'static,
-    ) -> ClaimLeaveCallbackId {
-        ClaimLeaveCallbackId(self.imp.on_reducer(
-            "claim_leave",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::ClaimLeave { request },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, request)
-            }),
-        ))
-    }
-    fn remove_on_claim_leave(&self, callback: ClaimLeaveCallbackId) {
-        self.imp.remove_on_reducer("claim_leave", callback.0)
-    }
-}
+        request: PlayerClaimLeaveRequest,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `claim_leave`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_claim_leave {
-    /// Set the call-reducer flags for the reducer `claim_leave` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn claim_leave(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_claim_leave for super::SetReducerFlags {
-    fn claim_leave(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("claim_leave", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(ClaimLeaveArgs { request }, callback)
     }
 }

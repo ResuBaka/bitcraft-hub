@@ -24,8 +24,6 @@ impl __sdk::InModule for GenerateWorldArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct GenerateWorldCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `generate_world`.
 ///
@@ -35,73 +33,42 @@ pub trait generate_world {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_generate_world`] callbacks.
-    fn generate_world(&self, world_definition: WorldGenWorldDefinition) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `generate_world`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`generate_world:generate_world_then`] to run a callback after the reducer completes.
+    fn generate_world(&self, world_definition: WorldGenWorldDefinition) -> __sdk::Result<()> {
+        self.generate_world_then(world_definition, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `generate_world` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`GenerateWorldCallbackId`] can be passed to [`Self::remove_on_generate_world`]
-    /// to cancel the callback.
-    fn on_generate_world(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn generate_world_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &WorldGenWorldDefinition) + Send + 'static,
-    ) -> GenerateWorldCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_generate_world`],
-    /// causing it not to run in the future.
-    fn remove_on_generate_world(&self, callback: GenerateWorldCallbackId);
+        world_definition: WorldGenWorldDefinition,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl generate_world for super::RemoteReducers {
-    fn generate_world(&self, world_definition: WorldGenWorldDefinition) -> __sdk::Result<()> {
-        self.imp
-            .call_reducer("generate_world", GenerateWorldArgs { world_definition })
-    }
-    fn on_generate_world(
+    fn generate_world_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &WorldGenWorldDefinition) + Send + 'static,
-    ) -> GenerateWorldCallbackId {
-        GenerateWorldCallbackId(self.imp.on_reducer(
-            "generate_world",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::GenerateWorld { world_definition },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, world_definition)
-            }),
-        ))
-    }
-    fn remove_on_generate_world(&self, callback: GenerateWorldCallbackId) {
-        self.imp.remove_on_reducer("generate_world", callback.0)
-    }
-}
+        world_definition: WorldGenWorldDefinition,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `generate_world`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_generate_world {
-    /// Set the call-reducer flags for the reducer `generate_world` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn generate_world(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_generate_world for super::SetReducerFlags {
-    fn generate_world(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("generate_world", flags);
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp
+            .invoke_reducer_with_callback(GenerateWorldArgs { world_definition }, callback)
     }
 }

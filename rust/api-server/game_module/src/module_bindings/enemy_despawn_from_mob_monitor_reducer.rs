@@ -22,8 +22,6 @@ impl __sdk::InModule for EnemyDespawnFromMobMonitorArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct EnemyDespawnFromMobMonitorCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `enemy_despawn_from_mob_monitor`.
 ///
@@ -33,83 +31,44 @@ pub trait enemy_despawn_from_mob_monitor {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_enemy_despawn_from_mob_monitor`] callbacks.
-    fn enemy_despawn_from_mob_monitor(&self, enemy_entity_id: u64) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `enemy_despawn_from_mob_monitor`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`enemy_despawn_from_mob_monitor:enemy_despawn_from_mob_monitor_then`] to run a callback after the reducer completes.
+    fn enemy_despawn_from_mob_monitor(&self, enemy_entity_id: u64) -> __sdk::Result<()> {
+        self.enemy_despawn_from_mob_monitor_then(enemy_entity_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `enemy_despawn_from_mob_monitor` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`EnemyDespawnFromMobMonitorCallbackId`] can be passed to [`Self::remove_on_enemy_despawn_from_mob_monitor`]
-    /// to cancel the callback.
-    fn on_enemy_despawn_from_mob_monitor(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn enemy_despawn_from_mob_monitor_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> EnemyDespawnFromMobMonitorCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_enemy_despawn_from_mob_monitor`],
-    /// causing it not to run in the future.
-    fn remove_on_enemy_despawn_from_mob_monitor(
-        &self,
-        callback: EnemyDespawnFromMobMonitorCallbackId,
-    );
+        enemy_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl enemy_despawn_from_mob_monitor for super::RemoteReducers {
-    fn enemy_despawn_from_mob_monitor(&self, enemy_entity_id: u64) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "enemy_despawn_from_mob_monitor",
+    fn enemy_despawn_from_mob_monitor_then(
+        &self,
+        enemy_entity_id: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             EnemyDespawnFromMobMonitorArgs { enemy_entity_id },
+            callback,
         )
-    }
-    fn on_enemy_despawn_from_mob_monitor(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &u64) + Send + 'static,
-    ) -> EnemyDespawnFromMobMonitorCallbackId {
-        EnemyDespawnFromMobMonitorCallbackId(self.imp.on_reducer(
-            "enemy_despawn_from_mob_monitor",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::EnemyDespawnFromMobMonitor { enemy_entity_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, enemy_entity_id)
-            }),
-        ))
-    }
-    fn remove_on_enemy_despawn_from_mob_monitor(
-        &self,
-        callback: EnemyDespawnFromMobMonitorCallbackId,
-    ) {
-        self.imp
-            .remove_on_reducer("enemy_despawn_from_mob_monitor", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `enemy_despawn_from_mob_monitor`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_enemy_despawn_from_mob_monitor {
-    /// Set the call-reducer flags for the reducer `enemy_despawn_from_mob_monitor` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn enemy_despawn_from_mob_monitor(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_enemy_despawn_from_mob_monitor for super::SetReducerFlags {
-    fn enemy_despawn_from_mob_monitor(&self, flags: __ws::CallReducerFlags) {
-        self.imp
-            .set_call_reducer_flags("enemy_despawn_from_mob_monitor", flags);
     }
 }

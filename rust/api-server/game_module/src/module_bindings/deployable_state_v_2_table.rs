@@ -18,6 +18,18 @@ pub struct DeployableStateV2TableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `deployable_state_v2`.
+pub struct DeployableStateV2TableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for DeployableStateV2TableAccessor {
+    type Row = DeployableStateV2;
+    type Handle<'db> = DeployableStateV2TableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.deployable_state_v_2()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `deployable_state_v2`.
 ///
@@ -42,6 +54,16 @@ impl DeployableStateV2TableAccess for super::RemoteTables {
 pub struct DeployableStateV2InitialCallbackId(__sdk::CallbackId);
 pub struct DeployableStateV2InsertCallbackId(__sdk::CallbackId);
 pub struct DeployableStateV2DeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for DeployableStateV2TableHandle<'ctx> {
+    type Row = DeployableStateV2;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = DeployableStateV2> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> DeployableStateV2TableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for DeployableStateV2TableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for DeployableStateV2TableHandle<'ctx> {
+    type InsertCallbackId = DeployableStateV2InsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<DeployableStateV2>("deployable_state_v2");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DeployableStateV2InsertCallbackId {
+        DeployableStateV2InsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: DeployableStateV2InsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for DeployableStateV2TableHandle<'ctx> {
+    type DeleteCallbackId = DeployableStateV2DeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> DeployableStateV2DeleteCallbackId {
+        DeployableStateV2DeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: DeployableStateV2DeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct DeployableStateV2UpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for DeployableStateV2TableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for DeployableStateV2TableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<DeployableStateV2>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<DeployableStateV2>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for DeployableStateV2TableHandle<'ctx> {
+    type UpdateCallbackId = DeployableStateV2UpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> DeployableStateV2UpdateCallbackId {
+        DeployableStateV2UpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: DeployableStateV2UpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -171,18 +219,38 @@ impl<'ctx> DeployableStateV2EntityIdUnique<'ctx> {
 }
 }
 
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<DeployableStateV2>("deployable_state_v2");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<DeployableStateV2>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<DeployableStateV2>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for query builder access to the table `DeployableStateV2`.
 ///
 /// Implemented for [`__sdk::QueryTableAccessor`].
-pub trait deployable_state_v2QueryTableAccess {
+pub trait deployable_state_v_2QueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `DeployableStateV2`.
-    fn deployable_state_v2(&self) -> __sdk::__query_builder::Table<DeployableStateV2>;
+    fn deployable_state_v_2(&self) -> __sdk::__query_builder::Table<DeployableStateV2>;
 }
 
-impl deployable_state_v2QueryTableAccess for __sdk::QueryTableAccessor {
-    fn deployable_state_v2(&self) -> __sdk::__query_builder::Table<DeployableStateV2> {
+impl deployable_state_v_2QueryTableAccess for __sdk::QueryTableAccessor {
+    fn deployable_state_v_2(&self) -> __sdk::__query_builder::Table<DeployableStateV2> {
         __sdk::__query_builder::Table::new("deployable_state_v2")
     }
 }

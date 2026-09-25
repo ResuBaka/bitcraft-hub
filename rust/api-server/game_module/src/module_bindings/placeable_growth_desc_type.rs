@@ -31,7 +31,7 @@ pub struct PlaceableGrowthDescCols {
     pub time: __sdk::__query_builder::Col<PlaceableGrowthDesc, Vec<f32>>,
     pub outcomes: __sdk::__query_builder::Col<PlaceableGrowthDesc, Vec<PlaceableGrowthOutcome>>,
     pub show_time_left: __sdk::__query_builder::Col<PlaceableGrowthDesc, bool>,
-    pub outcomes_v2:
+    pub outcomes_v_2:
         __sdk::__query_builder::Col<PlaceableGrowthDesc, Option<Vec<PlaceableGrowthOutcomeV2>>>,
 }
 
@@ -44,7 +44,7 @@ impl __sdk::__query_builder::HasCols for PlaceableGrowthDesc {
             time: __sdk::__query_builder::Col::new(table_name, "time"),
             outcomes: __sdk::__query_builder::Col::new(table_name, "outcomes"),
             show_time_left: __sdk::__query_builder::Col::new(table_name, "show_time_left"),
-            outcomes_v2: __sdk::__query_builder::Col::new(table_name, "outcomes_v2"),
+            outcomes_v_2: __sdk::__query_builder::Col::new(table_name, "outcomes_v_2"),
         }
     }
 }
@@ -66,3 +66,5 @@ impl __sdk::__query_builder::HasIxCols for PlaceableGrowthDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for PlaceableGrowthDesc {}

@@ -22,7 +22,7 @@ impl __sdk::InModule for EmpireColorDesc {
 pub struct EmpireColorDescCols {
     pub id: __sdk::__query_builder::Col<EmpireColorDesc, i32>,
     pub color_argb: __sdk::__query_builder::Col<EmpireColorDesc, u64>,
-    pub color2_argb: __sdk::__query_builder::Col<EmpireColorDesc, Option<u64>>,
+    pub color_2_argb: __sdk::__query_builder::Col<EmpireColorDesc, Option<u64>>,
 }
 
 impl __sdk::__query_builder::HasCols for EmpireColorDesc {
@@ -31,7 +31,7 @@ impl __sdk::__query_builder::HasCols for EmpireColorDesc {
         EmpireColorDescCols {
             id: __sdk::__query_builder::Col::new(table_name, "id"),
             color_argb: __sdk::__query_builder::Col::new(table_name, "color_argb"),
-            color2_argb: __sdk::__query_builder::Col::new(table_name, "color2_argb"),
+            color_2_argb: __sdk::__query_builder::Col::new(table_name, "color_2_argb"),
         }
     }
 }
@@ -51,3 +51,5 @@ impl __sdk::__query_builder::HasIxCols for EmpireColorDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EmpireColorDesc {}

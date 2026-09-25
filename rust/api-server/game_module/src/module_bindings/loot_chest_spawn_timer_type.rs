@@ -54,3 +54,5 @@ impl __sdk::__query_builder::HasIxCols for LootChestSpawnTimer {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for LootChestSpawnTimer {}

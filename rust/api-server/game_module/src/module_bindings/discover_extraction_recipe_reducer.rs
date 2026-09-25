@@ -22,8 +22,6 @@ impl __sdk::InModule for DiscoverExtractionRecipeArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct DiscoverExtractionRecipeCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `discover_extraction_recipe`.
 ///
@@ -33,77 +31,42 @@ pub trait discover_extraction_recipe {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_discover_extraction_recipe`] callbacks.
-    fn discover_extraction_recipe(&self, extract_id: i32) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `discover_extraction_recipe`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`discover_extraction_recipe:discover_extraction_recipe_then`] to run a callback after the reducer completes.
+    fn discover_extraction_recipe(&self, extract_id: i32) -> __sdk::Result<()> {
+        self.discover_extraction_recipe_then(extract_id, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `discover_extraction_recipe` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`DiscoverExtractionRecipeCallbackId`] can be passed to [`Self::remove_on_discover_extraction_recipe`]
-    /// to cancel the callback.
-    fn on_discover_extraction_recipe(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn discover_extraction_recipe_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverExtractionRecipeCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_discover_extraction_recipe`],
-    /// causing it not to run in the future.
-    fn remove_on_discover_extraction_recipe(&self, callback: DiscoverExtractionRecipeCallbackId);
+        extract_id: i32,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl discover_extraction_recipe for super::RemoteReducers {
-    fn discover_extraction_recipe(&self, extract_id: i32) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "discover_extraction_recipe",
-            DiscoverExtractionRecipeArgs { extract_id },
-        )
-    }
-    fn on_discover_extraction_recipe(
+    fn discover_extraction_recipe_then(
         &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32) + Send + 'static,
-    ) -> DiscoverExtractionRecipeCallbackId {
-        DiscoverExtractionRecipeCallbackId(self.imp.on_reducer(
-            "discover_extraction_recipe",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer: super::Reducer::DiscoverExtractionRecipe { extract_id },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, extract_id)
-            }),
-        ))
-    }
-    fn remove_on_discover_extraction_recipe(&self, callback: DiscoverExtractionRecipeCallbackId) {
-        self.imp
-            .remove_on_reducer("discover_extraction_recipe", callback.0)
-    }
-}
+        extract_id: i32,
 
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `discover_extraction_recipe`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_discover_extraction_recipe {
-    /// Set the call-reducer flags for the reducer `discover_extraction_recipe` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn discover_extraction_recipe(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_discover_extraction_recipe for super::SetReducerFlags {
-    fn discover_extraction_recipe(&self, flags: __ws::CallReducerFlags) {
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
         self.imp
-            .set_call_reducer_flags("discover_extraction_recipe", flags);
+            .invoke_reducer_with_callback(DiscoverExtractionRecipeArgs { extract_id }, callback)
     }
 }

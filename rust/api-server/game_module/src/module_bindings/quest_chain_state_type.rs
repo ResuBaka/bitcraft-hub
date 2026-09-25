@@ -71,3 +71,5 @@ impl __sdk::__query_builder::HasIxCols for QuestChainState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for QuestChainState {}

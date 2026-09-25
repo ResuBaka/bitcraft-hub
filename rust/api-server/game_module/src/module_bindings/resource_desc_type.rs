@@ -168,3 +168,5 @@ impl __sdk::__query_builder::HasIxCols for ResourceDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for ResourceDesc {}

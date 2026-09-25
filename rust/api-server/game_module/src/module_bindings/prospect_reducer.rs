@@ -24,8 +24,6 @@ impl __sdk::InModule for ProspectArgs {
     type Module = super::RemoteModule;
 }
 
-pub struct ProspectCallbackId(__sdk::CallbackId);
-
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the reducer `prospect`.
 ///
@@ -35,82 +33,49 @@ pub trait prospect {
     ///
     /// This method returns immediately, and errors only if we are unable to send the request.
     /// The reducer will run asynchronously in the future,
-    ///  and its status can be observed by listening for [`Self::on_prospect`] callbacks.
-    fn prospect(&self, prospecting_id: i32, timestamp: u64) -> __sdk::Result<()>;
-    /// Register a callback to run whenever we are notified of an invocation of the reducer `prospect`.
+    ///  and this method provides no way to listen for its completion status.
+    /// /// Use [`prospect:prospect_then`] to run a callback after the reducer completes.
+    fn prospect(&self, prospecting_id: i32, timestamp: u64) -> __sdk::Result<()> {
+        self.prospect_then(prospecting_id, timestamp, |_, _| {})
+    }
+
+    /// Request that the remote module invoke the reducer `prospect` to run as soon as possible,
+    /// registering `callback` to run when we are notified that the reducer completed.
     ///
-    /// Callbacks should inspect the [`__sdk::ReducerEvent`] contained in the [`super::ReducerEventContext`]
-    /// to determine the reducer's status.
-    ///
-    /// The returned [`ProspectCallbackId`] can be passed to [`Self::remove_on_prospect`]
-    /// to cancel the callback.
-    fn on_prospect(
+    /// This method returns immediately, and errors only if we are unable to send the request.
+    /// The reducer will run asynchronously in the future,
+    ///  and its status can be observed with the `callback`.
+    fn prospect_then(
         &self,
-        callback: impl FnMut(&super::ReducerEventContext, &i32, &u64) + Send + 'static,
-    ) -> ProspectCallbackId;
-    /// Cancel a callback previously registered by [`Self::on_prospect`],
-    /// causing it not to run in the future.
-    fn remove_on_prospect(&self, callback: ProspectCallbackId);
+        prospecting_id: i32,
+        timestamp: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()>;
 }
 
 impl prospect for super::RemoteReducers {
-    fn prospect(&self, prospecting_id: i32, timestamp: u64) -> __sdk::Result<()> {
-        self.imp.call_reducer(
-            "prospect",
+    fn prospect_then(
+        &self,
+        prospecting_id: i32,
+        timestamp: u64,
+
+        callback: impl FnOnce(
+            &super::ReducerEventContext,
+            Result<Result<(), String>, __sdk::InternalError>,
+        ) + Send
+        + 'static,
+    ) -> __sdk::Result<()> {
+        self.imp.invoke_reducer_with_callback(
             ProspectArgs {
                 prospecting_id,
                 timestamp,
             },
+            callback,
         )
-    }
-    fn on_prospect(
-        &self,
-        mut callback: impl FnMut(&super::ReducerEventContext, &i32, &u64) + Send + 'static,
-    ) -> ProspectCallbackId {
-        ProspectCallbackId(self.imp.on_reducer(
-            "prospect",
-            Box::new(move |ctx: &super::ReducerEventContext| {
-                #[allow(irrefutable_let_patterns)]
-                let super::ReducerEventContext {
-                    event:
-                        __sdk::ReducerEvent {
-                            reducer:
-                                super::Reducer::Prospect {
-                                    prospecting_id,
-                                    timestamp,
-                                },
-                            ..
-                        },
-                    ..
-                } = ctx
-                else {
-                    unreachable!()
-                };
-                callback(ctx, prospecting_id, timestamp)
-            }),
-        ))
-    }
-    fn remove_on_prospect(&self, callback: ProspectCallbackId) {
-        self.imp.remove_on_reducer("prospect", callback.0)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[doc(hidden)]
-/// Extension trait for setting the call-flags for the reducer `prospect`.
-///
-/// Implemented for [`super::SetReducerFlags`].
-///
-/// This type is currently unstable and may be removed without a major version bump.
-pub trait set_flags_for_prospect {
-    /// Set the call-reducer flags for the reducer `prospect` to `flags`.
-    ///
-    /// This type is currently unstable and may be removed without a major version bump.
-    fn prospect(&self, flags: __ws::CallReducerFlags);
-}
-
-impl set_flags_for_prospect for super::SetReducerFlags {
-    fn prospect(&self, flags: __ws::CallReducerFlags) {
-        self.imp.set_call_reducer_flags("prospect", flags);
     }
 }

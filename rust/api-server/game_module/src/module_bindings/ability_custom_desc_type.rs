@@ -98,3 +98,5 @@ impl __sdk::__query_builder::HasIxCols for AbilityCustomDesc {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for AbilityCustomDesc {}

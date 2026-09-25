@@ -20,6 +20,18 @@ pub struct TradeSessionStateTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `trade_session_state`.
+pub struct TradeSessionStateTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for TradeSessionStateTableAccessor {
+    type Row = TradeSessionState;
+    type Handle<'db> = TradeSessionStateTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.trade_session_state()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `trade_session_state`.
 ///
@@ -44,6 +56,16 @@ impl TradeSessionStateTableAccess for super::RemoteTables {
 pub struct TradeSessionStateInitialCallbackId(__sdk::CallbackId);
 pub struct TradeSessionStateInsertCallbackId(__sdk::CallbackId);
 pub struct TradeSessionStateDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for TradeSessionStateTableHandle<'ctx> {
+    type Row = TradeSessionState;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = TradeSessionState> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> TradeSessionStateTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -105,14 +127,36 @@ impl<'ctx> __sdk::Table for TradeSessionStateTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for TradeSessionStateTableHandle<'ctx> {
+    type InsertCallbackId = TradeSessionStateInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<TradeSessionState>("trade_session_state");
-    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TradeSessionStateInsertCallbackId {
+        TradeSessionStateInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: TradeSessionStateInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for TradeSessionStateTableHandle<'ctx> {
+    type DeleteCallbackId = TradeSessionStateDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> TradeSessionStateDeleteCallbackId {
+        TradeSessionStateDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: TradeSessionStateDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct TradeSessionStateUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for TradeSessionStateTableHandle<'ctx> {
@@ -130,15 +174,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for TradeSessionStateTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<TradeSessionState>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<TradeSessionState>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for TradeSessionStateTableHandle<'ctx> {
+    type UpdateCallbackId = TradeSessionStateUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> TradeSessionStateUpdateCallbackId {
+        TradeSessionStateUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: TradeSessionStateUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -171,6 +219,26 @@ impl<'ctx> TradeSessionStateEntityIdUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<TradeSessionState>("trade_session_state");
+    _table.add_unique_constraint::<u64>("entity_id", |row| &row.entity_id);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<TradeSessionState>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<TradeSessionState>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]

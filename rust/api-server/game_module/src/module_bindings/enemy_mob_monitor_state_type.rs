@@ -58,3 +58,5 @@ impl __sdk::__query_builder::HasIxCols for EnemyMobMonitorState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for EnemyMobMonitorState {}

@@ -57,3 +57,5 @@ impl __sdk::__query_builder::HasIxCols for HealthState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for HealthState {}

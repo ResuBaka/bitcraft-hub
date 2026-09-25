@@ -79,3 +79,5 @@ impl __sdk::__query_builder::HasIxCols for RentState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for RentState {}

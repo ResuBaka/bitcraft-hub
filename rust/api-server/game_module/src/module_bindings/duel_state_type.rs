@@ -77,3 +77,5 @@ impl __sdk::__query_builder::HasIxCols for DuelState {
         }
     }
 }
+
+impl __sdk::__query_builder::CanBeLookupTable for DuelState {}

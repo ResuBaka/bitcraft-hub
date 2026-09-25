@@ -18,6 +18,18 @@ pub struct CharacterStatDescTableHandle<'ctx> {
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
+/// Lifetime-aware accessor marker for the table `character_stat_desc`.
+pub struct CharacterStatDescTableAccessor;
+
+impl __sdk::TableAccessor<super::RemoteTables> for CharacterStatDescTableAccessor {
+    type Row = CharacterStatDesc;
+    type Handle<'db> = CharacterStatDescTableHandle<'db>;
+
+    fn get<'db>(db: &'db super::RemoteTables) -> Self::Handle<'db> {
+        db.character_stat_desc()
+    }
+}
+
 #[allow(non_camel_case_types)]
 /// Extension trait for access to the table `character_stat_desc`.
 ///
@@ -42,6 +54,16 @@ impl CharacterStatDescTableAccess for super::RemoteTables {
 pub struct CharacterStatDescInitialCallbackId(__sdk::CallbackId);
 pub struct CharacterStatDescInsertCallbackId(__sdk::CallbackId);
 pub struct CharacterStatDescDeleteCallbackId(__sdk::CallbackId);
+
+impl<'ctx> __sdk::TableLike for CharacterStatDescTableHandle<'ctx> {
+    type Row = CharacterStatDesc;
+    type EventContext = super::EventContext;
+
+    __sdk::__if_client_cache! {
+        fn count(&self) -> u64 { self.imp.count() }
+        fn iter(&self) -> impl Iterator<Item = CharacterStatDesc> + '_ { self.imp.iter() }
+    }
+}
 
 impl<'ctx> CharacterStatDescTableHandle<'ctx> {
     /// Override row reference counting and hook deduplication for this table.
@@ -103,14 +125,36 @@ impl<'ctx> __sdk::Table for CharacterStatDescTableHandle<'ctx> {
     }
 }
 
-__sdk::__if_client_cache! {
-#[doc(hidden)]
-pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+impl<'ctx> __sdk::WithInsert for CharacterStatDescTableHandle<'ctx> {
+    type InsertCallbackId = CharacterStatDescInsertCallbackId;
 
-        let _table = client_cache.get_or_make_table::<CharacterStatDesc>("character_stat_desc");
-    _table.add_unique_constraint::<i32>("stat_type", |row| &row.stat_type);
+    fn on_insert(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> CharacterStatDescInsertCallbackId {
+        CharacterStatDescInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    }
+
+    fn remove_on_insert(&self, callback: CharacterStatDescInsertCallbackId) {
+        self.imp.remove_on_insert(callback.0)
+    }
 }
+
+impl<'ctx> __sdk::WithDelete for CharacterStatDescTableHandle<'ctx> {
+    type DeleteCallbackId = CharacterStatDescDeleteCallbackId;
+
+    fn on_delete(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
+    ) -> CharacterStatDescDeleteCallbackId {
+        CharacterStatDescDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    }
+
+    fn remove_on_delete(&self, callback: CharacterStatDescDeleteCallbackId) {
+        self.imp.remove_on_delete(callback.0)
+    }
 }
+
 pub struct CharacterStatDescUpdateCallbackId(__sdk::CallbackId);
 
 impl<'ctx> __sdk::TableWithPrimaryKey for CharacterStatDescTableHandle<'ctx> {
@@ -128,15 +172,19 @@ impl<'ctx> __sdk::TableWithPrimaryKey for CharacterStatDescTableHandle<'ctx> {
     }
 }
 
-#[doc(hidden)]
-pub(super) fn parse_table_update(
-    raw_updates: __ws::TableUpdate<__ws::BsatnFormat>,
-) -> __sdk::Result<__sdk::TableUpdate<CharacterStatDesc>> {
-    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
-        __sdk::InternalError::failed_parse("TableUpdate<CharacterStatDesc>", "TableUpdate")
-            .with_cause(e)
-            .into()
-    })
+impl<'ctx> __sdk::WithUpdate for CharacterStatDescTableHandle<'ctx> {
+    type UpdateCallbackId = CharacterStatDescUpdateCallbackId;
+
+    fn on_update(
+        &self,
+        callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
+    ) -> CharacterStatDescUpdateCallbackId {
+        CharacterStatDescUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    }
+
+    fn remove_on_update(&self, callback: CharacterStatDescUpdateCallbackId) {
+        self.imp.remove_on_update(callback.0)
+    }
 }
 
 __sdk::__if_client_cache! {
@@ -169,6 +217,26 @@ impl<'ctx> CharacterStatDescStatTypeUnique<'ctx> {
         self.imp.find(col_val)
     }
 }
+}
+
+__sdk::__if_client_cache! {
+#[doc(hidden)]
+pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
+
+    let _table = client_cache.get_or_make_table::<CharacterStatDesc>("character_stat_desc");
+    _table.add_unique_constraint::<i32>("stat_type", |row| &row.stat_type);
+}
+}
+
+#[doc(hidden)]
+pub(super) fn parse_table_update(
+    raw_updates: __ws::v2::TableUpdate,
+) -> __sdk::Result<__sdk::TableUpdate<CharacterStatDesc>> {
+    __sdk::TableUpdate::parse_table_update(raw_updates).map_err(|e| {
+        __sdk::InternalError::failed_parse("TableUpdate<CharacterStatDesc>", "TableUpdate")
+            .with_cause(e)
+            .into()
+    })
 }
 
 #[allow(non_camel_case_types)]
