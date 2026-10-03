@@ -1,7 +1,8 @@
 import { useWebSocket } from "@vueuse/core";
 import { unpack } from "msgpackr/unpack";
 import type { WebSocketHandlerMessage, WebSocketMessageHandlers } from "~/types";
-import type { WebSocketMessages } from "~/types/WebSocketMessages";
+import type { InboundWebSocketMessages } from "~/types/InboundWebSocketMessages";
+import type { OutboundWebSocketMessages } from "~/types/OutboundWebSocketMessages";
 
 export const useWebsocketStore = defineStore("websocket", () => {
   const configStore = useConfigStore();
@@ -28,7 +29,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
         if (import.meta.env.DEV) {
           console.log("Connected to websocket", topics_currently_subscribed.value);
         }
-        sendMessage("Subscribe", { topics: topics_currently_subscribed.value });
+        sendMessage({ t: "Subscribe", c: { topics: topics_currently_subscribed.value } });
       },
     },
   );
@@ -40,7 +41,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
   });
 
   async function handleMessage(_ws: WebSocket, event: MessageEvent) {
-    let message: WebSocketMessages | undefined;
+    let message: OutboundWebSocketMessages | undefined;
     if (typeof event.data === "string") {
       if (event.data.startsWith("{")) {
         message = JSON.parse(event.data);
@@ -81,19 +82,15 @@ export const useWebsocketStore = defineStore("websocket", () => {
     }
   }
 
-  function sendMessage(topic: string, message: any) {
+  function sendMessage(message: InboundWebSocketMessages) {
     if (status.value !== "OPEN") {
       return;
     }
 
-    if (message) {
-      send(JSON.stringify({ t: topic, c: message }));
-    } else {
-      send(JSON.stringify({ t: topic }));
-    }
+    send(JSON.stringify(message));
   }
 
-  function subscribe<T extends WebSocketMessages["t"]>(
+  function subscribe<T extends OutboundWebSocketMessages["t"]>(
     eventType: T,
     topic: MaybeRefOrGetter<string | string[]>,
     handler: (message: WebSocketHandlerMessage<T>) => void,
@@ -120,12 +117,12 @@ export const useWebsocketStore = defineStore("websocket", () => {
     if (!websocket_message_event_handler[eventType]) {
       websocket_message_event_handler[eventType] = new Map();
       if (!lazy && newTopics.length > 0) {
-        sendMessage("Subscribe", { topics: newTopics });
+        sendMessage({ t: "Subscribe", c: { topics: newTopics } });
       }
       websocket_message_event_handler[eventType].set(instanceId, handler);
     } else {
       if (!lazy && newTopics.length > 0) {
-        sendMessage("Subscribe", { topics: newTopics });
+        sendMessage({ t: "Subscribe", c: { topics: newTopics } });
       }
       websocket_message_event_handler[eventType].set(instanceId, handler);
     }
@@ -150,11 +147,11 @@ export const useWebsocketStore = defineStore("websocket", () => {
     }
 
     if (!lazy && newTopics.length > 0) {
-      sendMessage("Subscribe", { topics: newTopics });
+      sendMessage({ t: "Subscribe", c: { topics: newTopics } });
     }
   }
 
-  function unsubscribe<T extends WebSocketMessages["t"]>(
+  function unsubscribe<T extends OutboundWebSocketMessages["t"]>(
     eventType: T,
     topic: MaybeRefOrGetter<string | string[]>,
     instanceId: string,
@@ -176,7 +173,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
     }
 
     for (const topic of topicsToUnsubscribe) {
-      sendMessage("Unsubscribe", { topic: topic });
+      sendMessage({ t: "Unsubscribe", c: { topic: topic } });
       if (topics_currently_subscribed.value.includes(topic)) {
         topics_currently_subscribed.value.splice(
           topics_currently_subscribed.value.indexOf(topic),

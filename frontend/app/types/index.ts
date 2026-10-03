@@ -1,24 +1,28 @@
-import type { WebSocketMessages } from "~/types/WebSocketMessages";
+import type { OutboundWebSocketMessages } from "~/types/OutboundWebSocketMessages";
 
-export type MessageContentType<T extends WebSocketMessages["t"]> = T extends WebSocketMessages["t"]
-  ? Extract<WebSocketMessages, { t: T }> extends { c: infer C }
-    ? C
-    : never
-  : never;
+export type MessageContentType<T extends OutboundWebSocketMessages["t"]> =
+  T extends OutboundWebSocketMessages["t"]
+    ? Extract<OutboundWebSocketMessages, { t: T }> extends { c: infer C }
+      ? C
+      : never
+    : never;
 
-export type RefinedMessageContentType<T extends WebSocketMessages["t"]> =
-  T extends WebSocketMessages["t"]
-    ? Extract<WebSocketMessages, { t: T }> extends { c: infer C }
+export type RefinedMessageContentType<T extends OutboundWebSocketMessages["t"]> =
+  T extends OutboundWebSocketMessages["t"]
+    ? Extract<OutboundWebSocketMessages, { t: T }> extends { c: infer C }
       ? C
       : undefined
     : undefined;
 
-export type WebSocketHandlerMessage<T extends WebSocketMessages["t"]> =
+export type WebSocketHandlerMessage<T extends OutboundWebSocketMessages["t"]> =
   | RefinedMessageContentType<T>
   | undefined;
 
 export type WebSocketMessageHandlers = {
-  [K in WebSocketMessages["t"]]?: Map<string, (message: WebSocketHandlerMessage<K>) => void>;
+  [K in OutboundWebSocketMessages["t"]]?: Map<
+    string,
+    (message: WebSocketHandlerMessage<K>) => void
+  >;
 };
 
 export * from "./HouseResponse";

@@ -2192,15 +2192,17 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
 #[derive(Serialize, Deserialize, Clone, Debug, TS)]
 #[ts(export)]
 #[serde(tag = "t", content = "c")]
-pub(crate) enum OutboundWebSocketMessages {
-    Subscribe {
-        topics: Vec<String>,
-    },
+pub(crate) enum InboundWebSocketMessages {
+    Subscribe { topics: Vec<String> },
     ListSubscribedTopics,
+    Unsubscribe { topic: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, TS)]
+#[ts(export)]
+#[serde(tag = "t", content = "c")]
+pub(crate) enum OutboundWebSocketMessages {
     SubscribedTopics(Vec<String>),
-    Unsubscribe {
-        topic: String,
-    },
     MobileEntityState(entity::mobile_entity_state::Model),
     Experience {
         experience: u64,
@@ -2392,10 +2394,7 @@ impl OutboundWebSocketMessages {
                     Some(traveler_task_state.player_entity_id),
                 ),
             ]),
-            OutboundWebSocketMessages::ListSubscribedTopics => None,
-            OutboundWebSocketMessages::Subscribe { .. } => None,
             OutboundWebSocketMessages::SubscribedTopics(_) => None,
-            OutboundWebSocketMessages::Unsubscribe { .. } => None,
             OutboundWebSocketMessages::Message(_) => None,
             OutboundWebSocketMessages::InsertSellOrder(auction_listing_state) => Some(vec![
                 (
@@ -2500,5 +2499,67 @@ impl OutboundWebSocketMessages {
                 ),
             ]),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{InboundWebSocketMessages, OutboundWebSocketMessages};
+    use serde_json::json;
+
+    #[test]
+    fn inbound_commands_preserve_wire_format() {
+        let cases = [
+            (
+                InboundWebSocketMessages::Subscribe {
+                    topics: vec!["player_state.42".to_string()],
+                },
+                json!({"t": "Subscribe", "c": {"topics": ["player_state.42"]}}),
+            ),
+            (
+                InboundWebSocketMessages::Unsubscribe {
+                    topic: "player_state.42".to_string(),
+                },
+                json!({"t": "Unsubscribe", "c": {"topic": "player_state.42"}}),
+            ),
+            (
+                InboundWebSocketMessages::ListSubscribedTopics,
+                json!({"t": "ListSubscribedTopics"}),
+            ),
+        ];
+
+        for (message, expected) in cases {
+            assert_eq!(serde_json::to_value(&message).unwrap(), expected);
+            let parsed: InboundWebSocketMessages =
+                serde_json::from_value(expected.clone()).unwrap();
+            assert_eq!(serde_json::to_value(parsed).unwrap(), expected);
+            assert!(serde_json::from_value::<OutboundWebSocketMessages>(expected).is_err());
+        }
+    }
+
+    #[test]
+    fn inbound_messages_reject_server_responses() {
+        for message in [
+            json!({"t": "SubscribedTopics", "c": ["player_state.42"]}),
+            json!({"t": "Message", "c": "joined"}),
+            json!({"t": "PlayerUsername", "c": {"entity_id": 42, "username": "player"}}),
+        ] {
+            assert!(serde_json::from_value::<InboundWebSocketMessages>(message).is_err());
+        }
+    }
+
+    #[test]
+    fn direct_responses_preserve_wire_format_and_have_no_broadcast_topics() {
+        let message =
+            OutboundWebSocketMessages::SubscribedTopics(vec!["player_state.42".to_string()]);
+        assert_eq!(
+            serde_json::to_value(&message).unwrap(),
+            json!({"t": "SubscribedTopics", "c": ["player_state.42"]})
+        );
+        assert_eq!(message.topics(), None);
+        assert_eq!(
+            OutboundWebSocketMessages::Message("joined".to_string()).topics(),
+            None
+        );
     }
 }

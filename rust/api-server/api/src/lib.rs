@@ -39,7 +39,7 @@ use crate::config::{Config, TechTierResearchMap};
 use crate::leaderboard::{
     EXCLUDED_USERS_FROM_LEADERBOARD, Leaderboard, RankingSystem, experience_to_level,
 };
-use crate::websocket::OutboundWebSocketMessages;
+use crate::websocket::{InboundWebSocketMessages, OutboundWebSocketMessages};
 use axum::extract::{
     MatchedPath, Query, Request, State,
     ws::{Message, WebSocket, WebSocketUpgrade},
@@ -354,9 +354,9 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
     let inner_state = state.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            match serde_json::from_str::<OutboundWebSocketMessages>(&text) {
+            match serde_json::from_str::<InboundWebSocketMessages>(&text) {
                 Ok(message) => match message {
-                    OutboundWebSocketMessages::Subscribe { topics } => {
+                    InboundWebSocketMessages::Subscribe { topics } => {
                         for topic in topics {
                             let possible_topic = topic.split_once(".");
 
@@ -402,7 +402,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                             }
                         }
                     }
-                    OutboundWebSocketMessages::Unsubscribe { topic } => {
+                    InboundWebSocketMessages::Unsubscribe { topic } => {
                         let possible_topic = topic.split_once(".");
 
                         if let Some((topic, id)) = possible_topic {
@@ -418,7 +418,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                                 .await;
                         }
                     }
-                    OutboundWebSocketMessages::ListSubscribedTopics => {
+                    InboundWebSocketMessages::ListSubscribedTopics => {
                         let topics = inner_state
                             .clients_state
                             .get_topics_for_client(&inner_id)
@@ -433,7 +433,6 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                             .send(OutboundWebSocketMessages::SubscribedTopics(topics))
                             .await;
                     }
-                    _ => {}
                 },
                 Err(error) => {
                     tracing::error!("Error handling websocket message from client: {error}");
