@@ -1,16 +1,13 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchedWorker;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::SpacetimeUpdateMessages;
 use entity::shared::Region;
 use game_module::module_bindings::LocationState;
-use migration::{OnConflict, sea_query};
-use sea_orm::{
-    ColumnTrait, EntityOrSelect, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, QueryTrait,
-};
-use std::collections::{HashMap, HashSet};
+use migration::OnConflict;
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect};
+use std::collections::HashSet;
 use std::time::Duration;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
-use tokio::time::sleep;
 
 // pub(crate) async fn insert_many_location_state(
 //     global_app_state: &AppState,

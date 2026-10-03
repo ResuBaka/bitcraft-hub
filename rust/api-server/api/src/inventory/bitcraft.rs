@@ -312,7 +312,7 @@ impl InventoryStateWorker {
         >,
         database_name: entity::shared::Region,
     ) {
-        let mut caller_identity = None;
+        let caller_identity = None;
         let mut timestamp = None;
         if let Some(event) = &event
             && let Event::Reducer(event) = &**event

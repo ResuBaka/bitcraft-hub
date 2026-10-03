@@ -53,7 +53,7 @@ use axum::{
     Router,
     http::StatusCode,
     middleware,
-    routing::{get, get_service},
+    routing::get,
 };
 use clap::{Parser, Subcommand};
 use entity::{experience_state, player_username_state};
@@ -80,7 +80,6 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tower_cookies::CookieManagerLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::services::ServeDir;
 use tracing::error;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt;

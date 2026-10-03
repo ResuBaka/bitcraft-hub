@@ -33,13 +33,11 @@ use crate::vault_state::bitcraft::start_worker_vault_state_collectibles;
 use crate::websocket::batched_worker::BatchedWorker;
 use game_module::module_bindings::*;
 use rand::prelude::*;
-use sea_orm::{EntityTrait, QuerySelect};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{Compression, DbContext, Error, Event, Table, TableWithPrimaryKey};
 use std::borrow::Cow;
-use std::collections::HashSet;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
@@ -1855,8 +1853,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_database = database.clone();
 
                 tokio::spawn(async move {
-                    use sea_orm::ColumnTrait;
-                    use sea_orm::QueryFilter;
                     let startup_wait_ms = {
                         let startup_wait_ranges_ms =
                             [(0, 500), (500, 2_000), (2_000, 5_000), (5_000, 15_000)];

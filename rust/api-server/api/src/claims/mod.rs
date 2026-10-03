@@ -4,7 +4,6 @@ pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
 
 use crate::inventory::{InventoryChangesParams, resolve_contents, resolve_pocket};
-use crate::leaderboard::experience_to_level;
 use crate::{AppRouter, AppState};
 use axum::Router;
 use axum::extract::{Path, Query, State};
