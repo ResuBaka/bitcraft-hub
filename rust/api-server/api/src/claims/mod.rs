@@ -374,7 +374,7 @@ pub(crate) async fn get_claim(
         .filter(::entity::player_username_state::Column::EntityId.is_in(player_ids))
         .all(&state.conn)
         .await
-        .map_or(vec![], |aa| aa)
+        .unwrap_or(vec![])
         .into_iter()
         .map(|value| (value.entity_id, value.username))
         .collect::<HashMap<_, _>>();

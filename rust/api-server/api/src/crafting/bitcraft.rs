@@ -133,17 +133,9 @@ pub(crate) fn start_worker_progressive_action_state(
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name, .. } => {
                                 let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(delete).with_region(database_name).build();
                                 let id = model.entity_id;
-
-                                #[allow(clippy::single_match)]
-                                match reducer_name {
-                                    Some("transfer_player_delayed") => {
-                                        continue
-                                    }
-                                    _ => {}
-                                }
 
                                 if ids.contains(&id) && let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
                                     messages.remove(index);

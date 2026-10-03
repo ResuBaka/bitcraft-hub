@@ -842,7 +842,7 @@ pub(crate) async fn get_top_100(
         }
     }
 
-    for (_, top) in leaderboard_result.iter_mut() {
+    for top in leaderboard_result.values_mut() {
         for x in top.iter_mut() {
             match x {
                 RankType::Skill(x) => {
@@ -1135,7 +1135,7 @@ pub(crate) async fn player_leaderboard(
         .map(|x| (x.entity_id, x.username))
         .collect::<HashMap<i64, String>>();
 
-    for (_, top) in leaderboard_result.iter_mut() {
+    for top in leaderboard_result.values_mut() {
         match top {
             RankType::Skill(x) => {
                 x.player_name = players_name_by_id
@@ -1406,7 +1406,7 @@ pub(crate) async fn get_claim_leaderboard(
         .map(|x| (x.entity_id, x.username))
         .collect::<HashMap<i64, String>>();
 
-    for (_, top) in leaderboard_result.iter_mut() {
+    for top in leaderboard_result.values_mut() {
         for x in top.iter_mut() {
             match x {
                 RankType::Skill(x) => {

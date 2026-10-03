@@ -2,16 +2,14 @@ use crate::AppState;
 use crate::inventory::resolve_pocket;
 use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
-use chrono::DateTime;
+// use chrono::DateTime;
 
 use entity::inventory::ResolvedInventory;
-use entity::inventory_changelog::TypeOfChange;
+// use entity::inventory_changelog::TypeOfChange;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, NotSet, Set};
-use spacetimedb_sdk::__codegen::Reducer;
-use spacetimedb_sdk::Event;
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
@@ -152,11 +150,10 @@ impl InventoryStateWorker {
             SpacetimeUpdateMessages::Update {
                 new,
                 old,
-                event,
                 database_name,
                 ..
             } => {
-                self.handle_update(new, old, event, database_name).await;
+                self.handle_update(new, old, database_name).await;
             }
             SpacetimeUpdateMessages::Remove {
                 delete,
@@ -306,26 +303,13 @@ impl InventoryStateWorker {
     async fn handle_update(
         &mut self,
         new: InventoryState,
-        old: InventoryState,
-        event: Option<
-            Box<spacetimedb_sdk::__codegen::Event<game_module::module_bindings::Reducer>>,
-        >,
+        _old: InventoryState,
         database_name: entity::shared::Region,
     ) {
-        let caller_identity = None;
-        let mut timestamp = None;
-        if let Some(event) = &event
-            && let Event::Reducer(event) = &**event
-        {
-            match event.reducer.reducer_name() {
-                "inventory_sort" => {}
-                _ => {
-                    timestamp = Some(event.timestamp);
-                }
-            }
-        }
+        // let caller_identity = None;
+        // let mut timestamp = None;
 
-        let new_model = new.clone();
+        // let new_model = new.clone();
         let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new)
             .with_region(database_name)
             .build();
@@ -372,77 +356,77 @@ impl InventoryStateWorker {
 
         self.messages.push(model.into_active_model());
 
-        if let Some(caller_identity) = caller_identity {
-            let user_id = self
-                .global_app_state
-                .user_state
-                .get(&caller_identity)
-                .map(|entity_id| entity_id.to_owned() as i64);
-            for (pocket_index, new_pocket) in new_model.pockets.iter().enumerate() {
-                if pocket_index >= old.pockets.len() {
-                    tracing::warn!(
-                        "Inventory new pocket amount is less then before ?!? Player {}, EntityId {}, OwnerEntityId {}, Pockets New {}, Pockets Old {} :: {} {}",
-                        new_model.player_owner_entity_id,
-                        new_model.entity_id,
-                        new_model.owner_entity_id,
-                        new_model.pockets.len(),
-                        old.pockets.len(),
-                        old.pockets.len(),
-                        pocket_index
-                    );
-                    break;
-                }
-
-                let old_pocket = &old.pockets[pocket_index];
-
-                let new_item_id = new_pocket.contents.as_ref().map(|c| c.item_id);
-                let new_item_type = new_pocket.contents.as_ref().map(|c| c.item_type.into());
-                let new_item_quantity = new_pocket.contents.as_ref().map(|c| c.quantity);
-
-                let old_item_id = old_pocket.contents.as_ref().map(|c| c.item_id);
-                let old_item_type = old_pocket.contents.as_ref().map(|c| c.item_type.into());
-                let old_item_quantity = old_pocket.contents.as_ref().map(|c| c.quantity);
-
-                if new_item_id == old_item_id
-                    && new_item_type == old_item_type
-                    && new_item_quantity == old_item_quantity
-                {
-                    continue;
-                }
-
-                let type_of_change = match (old_item_id, new_item_id) {
-                    (Some(_), None) => TypeOfChange::Remove,
-                    (None, Some(_)) => TypeOfChange::Add,
-                    (Some(old), Some(new)) => {
-                        if old != new {
-                            TypeOfChange::AddAndRemove
-                        } else {
-                            TypeOfChange::Update
-                        }
-                    }
-                    _ => unreachable!("This type of change should never happen for an inventory"),
-                };
-
-                self.messages_changed
-                    .push(::entity::inventory_changelog::ActiveModel {
-                        id: NotSet,
-                        entity_id: Set(new_model.entity_id as i64),
-                        user_id: Set(user_id),
-                        pocket_number: Set(pocket_index as i32),
-                        old_item_id: Set(old_item_id),
-                        old_item_type: Set(old_item_type),
-                        old_item_quantity: Set(old_item_quantity),
-                        new_item_id: Set(new_item_id),
-                        new_item_type: Set(new_item_type),
-                        new_item_quantity: Set(new_item_quantity),
-                        type_of_change: Set(type_of_change),
-                        timestamp: Set(DateTime::from_timestamp_micros(
-                            timestamp.unwrap().to_micros_since_unix_epoch(),
-                        )
-                        .unwrap()),
-                    })
-            }
-        }
+        // if let Some(caller_identity) = caller_identity {
+        //     let user_id = self
+        //         .global_app_state
+        //         .user_state
+        //         .get(&caller_identity)
+        //         .map(|entity_id| entity_id.to_owned() as i64);
+        //     for (pocket_index, new_pocket) in new_model.pockets.iter().enumerate() {
+        //         if pocket_index >= old.pockets.len() {
+        //             tracing::warn!(
+        //                 "Inventory new pocket amount is less then before ?!? Player {}, EntityId {}, OwnerEntityId {}, Pockets New {}, Pockets Old {} :: {} {}",
+        //                 new_model.player_owner_entity_id,
+        //                 new_model.entity_id,
+        //                 new_model.owner_entity_id,
+        //                 new_model.pockets.len(),
+        //                 old.pockets.len(),
+        //                 old.pockets.len(),
+        //                 pocket_index
+        //             );
+        //             break;
+        //         }
+        //
+        //         let old_pocket = &old.pockets[pocket_index];
+        //
+        //         let new_item_id = new_pocket.contents.as_ref().map(|c| c.item_id);
+        //         let new_item_type = new_pocket.contents.as_ref().map(|c| c.item_type.into());
+        //         let new_item_quantity = new_pocket.contents.as_ref().map(|c| c.quantity);
+        //
+        //         let old_item_id = old_pocket.contents.as_ref().map(|c| c.item_id);
+        //         let old_item_type = old_pocket.contents.as_ref().map(|c| c.item_type.into());
+        //         let old_item_quantity = old_pocket.contents.as_ref().map(|c| c.quantity);
+        //
+        //         if new_item_id == old_item_id
+        //             && new_item_type == old_item_type
+        //             && new_item_quantity == old_item_quantity
+        //         {
+        //             continue;
+        //         }
+        //
+        //         let type_of_change = match (old_item_id, new_item_id) {
+        //             (Some(_), None) => TypeOfChange::Remove,
+        //             (None, Some(_)) => TypeOfChange::Add,
+        //             (Some(old), Some(new)) => {
+        //                 if old != new {
+        //                     TypeOfChange::AddAndRemove
+        //                 } else {
+        //                     TypeOfChange::Update
+        //                 }
+        //             }
+        //             _ => unreachable!("This type of change should never happen for an inventory"),
+        //         };
+        //
+        //         self.messages_changed
+        //             .push(::entity::inventory_changelog::ActiveModel {
+        //                 id: NotSet,
+        //                 entity_id: Set(new_model.entity_id as i64),
+        //                 user_id: Set(user_id),
+        //                 pocket_number: Set(pocket_index as i32),
+        //                 old_item_id: Set(old_item_id),
+        //                 old_item_type: Set(old_item_type),
+        //                 old_item_quantity: Set(old_item_quantity),
+        //                 new_item_id: Set(new_item_id),
+        //                 new_item_type: Set(new_item_type),
+        //                 new_item_quantity: Set(new_item_quantity),
+        //                 type_of_change: Set(type_of_change),
+        //                 timestamp: Set(DateTime::from_timestamp_micros(
+        //                     timestamp.unwrap().to_micros_since_unix_epoch(),
+        //                 )
+        //                 .unwrap()),
+        //             })
+        //     }
+        // }
 
         if self.messages_changed.len() >= self.batch_size {
             self.flush_changes().await;

@@ -1,6 +1,6 @@
 use crate::AppState;
-use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::SpacetimeUpdateMessages;
+use crate::websocket::batched_worker::BatchedWorker;
 use entity::shared::Region;
 use game_module::module_bindings::LocationState;
 use migration::OnConflict;
@@ -250,7 +250,7 @@ impl LocationStateWorker {
         let mut currently_known_location_state = ::entity::location_state::Entity::find()
             .select_only()
             .column(::entity::location_state::Column::EntityId)
-            .filter(::entity::location_state::Column::Region.eq(&database_name))
+            .filter(::entity::location_state::Column::Region.eq(database_name))
             .into_tuple()
             .all(&self.global_app_state.conn)
             .await
@@ -267,17 +267,14 @@ impl LocationStateWorker {
         for model in data.into_iter().map(|value| {
             let model: ::entity::location_state::Model =
                 ::entity::location_state::ModelBuilder::new(value)
-                    .with_region(database_name.clone())
+                    .with_region(database_name)
                     .build();
 
             model
         }) {
-            match currently_known_location_state.contains(&model.entity_id) {
-                true => {
-                    currently_known_location_state.remove(&model.entity_id);
-                    local_messages.push(model.into_active_model());
-                }
-                false => {}
+            if currently_known_location_state.contains(&model.entity_id) {
+                currently_known_location_state.remove(&model.entity_id);
+                local_messages.push(model.into_active_model());
             }
             if local_messages.len() >= self.batch_size {
                 let messages = std::mem::replace(
@@ -305,7 +302,7 @@ impl LocationStateWorker {
     async fn handle_insert(&mut self, new: LocationState, database_name: Region) {
         let model: ::entity::location_state::Model =
             ::entity::location_state::ModelBuilder::new(new)
-                .with_region(database_name.clone())
+                .with_region(database_name)
                 .build();
 
         if let Some(index) = self
@@ -329,7 +326,7 @@ impl LocationStateWorker {
     async fn handle_update(&mut self, new: LocationState, database_name: Region) {
         let model: ::entity::location_state::Model =
             ::entity::location_state::ModelBuilder::new(new)
-                .with_region(database_name.clone())
+                .with_region(database_name)
                 .build();
         if let Some(index) = self
             .messages_delete
@@ -344,7 +341,7 @@ impl LocationStateWorker {
     async fn handle_remove(&mut self, delete: LocationState, database_name: Region) {
         let model: ::entity::location_state::Model =
             ::entity::location_state::ModelBuilder::new(delete)
-                .with_region(database_name.clone())
+                .with_region(database_name)
                 .build();
         let id = model.entity_id;
 

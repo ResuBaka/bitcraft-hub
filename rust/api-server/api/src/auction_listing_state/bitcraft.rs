@@ -46,116 +46,23 @@ pub(crate) fn start_worker_sell_order_state(
                                     let _ = global_app_state.tx.send(OutboundWebSocketMessages::InsertSellOrder(model.clone()));
                                     global_app_state.sell_order_state.insert(model.entity_id as i64, model);
                                 });
-
-                                // let mut local_messages = vec![];
-                                // let mut trade_order = ::entity::trade_order::Entity::find()
-                                //     .filter(::entity::trade_order::Column::Region.eq(database_name))
-                                //     .all(&global_app_state.conn)
-                                //     .await
-                                //     .map_or(vec![], |aa| aa)
-                                //     .into_iter()
-                                //     .map(|value| (value.entity_id, value))
-                                //     .collect::<HashMap<_, _>>();
-                                //
-                                // for model in data.into_iter().map(|value| {
-                                //     let model: ::entity::trade_order::Model = ::entity::trade_order::ModelBuilder::new(value).with_region(database_name).build();
-                                //
-                                //     model
-                                // }) {
-                                //     use std::collections::hash_map::Entry;
-                                //     match trade_order.entry(model.entity_id) {
-                                //         Entry::Occupied(entry) => {
-                                //             let existing_model = entry.get();
-                                //             if &model != existing_model {
-                                //                 local_messages.push(model.into_active_model());
-                                //             }
-                                //             entry.remove();
-                                //         }
-                                //         Entry::Vacant(_entry) => {
-                                //             local_messages.push(model.into_active_model());
-                                //         }
-                                //     }
-                                //     if local_messages.len() >= batch_size {
-                                //        // trade_order(&global_app_state, &on_conflict, &mut local_messages).await;
-                                //     }
-                                // };
-                                // if !local_messages.is_empty() {
-                                //     // trade_order(&global_app_state, &on_conflict, &mut local_messages).await;
-                                // }
-                                //
-                                // for chunk_ids in trade_order.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                //     let chunk_ids = chunk_ids.to_vec();
-                                //     if let Err(error) = ::entity::trade_order::Entity::delete_many().filter(::entity::trade_order::Column::EntityId.is_in(chunk_ids.clone())).exec(&global_app_state.conn).await {
-                                //         let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                //         tracing::error!(TradeOrder = chunk_ids_str.join(","), error = error.to_string(), "Could not delete TradeOrder");
-                                //     }
-                                // }
                             }
-                            SpacetimeUpdateMessages::Insert { new, database_name, reducer_name: _ , .. } => {
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(new).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                 global_app_state.sell_order_state.insert(model.entity_id as i64, model.clone());
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::InsertSellOrder(model.clone()));
-
-                                // tracing::warn!("Insert sell reducer {:?}", reducer_name);
-
-                                // if ids.contains(&model.entity_id) {
-                                //     if let Some(index) = messages.iter().position(|value: &::entity::trade_order::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
-                                //         messages.remove(index);
-                                //     }
-                                // }
-                                //
-                                // ids.push(model.entity_id);
-                                // messages.push(model.into_active_model());
-                                // if messages.len() >= batch_size {
-                                //     break;
-                                // }
                             }
-                            SpacetimeUpdateMessages::Update { old: _, new, database_name, reducer_name: _,   .. } => {
+                            SpacetimeUpdateMessages::Update { old: _, new, database_name,    .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(new).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                 global_app_state.sell_order_state.insert(model.entity_id as i64, model.clone());
 
-                                // tracing::warn!("Update sell reducer {:?} old: {} new: {}", reducer_name, old.quantity, model.quantity);
-                                // match event {
-                                //     spacetimedb_sdk::Event::Reducer(reducer) => {
-                                //         println!("sell_order_state -> {:?}", reducer.reducer.reducer_name());
-                                //     }
-                                //     _ => {}
-                                // }
-                                // if ids.contains(&model.entity_id) {
-                                //     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                //         messages.remove(index);
-                                //     }
-                                // }
-
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::UpdateSellOrder(model.clone()));
 
-                                // ids.push(model.entity_id);
-                                //
-                                // messages.push(model.into_active_model());
-                                // if messages.len() >= batch_size {
-                                //     break;
-                                // }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name: _, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name,  .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(delete).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                 global_app_state.sell_order_state.remove(&(model.entity_id as i64));
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::RemoveSellOrder(model.clone()));
-                                // tracing::warn!("Remove sell reducer {:?}", reducer_name);
-
-
-                                // let id = model.entity_id;
-                                //
-                                // if ids.contains(&id) {
-                                //     if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                //         messages.remove(index);
-                                //     }
-                                // }
-                                //
-                                // if let Err(error) = model.delete(&global_app_state.conn).await {
-                                //     tracing::error!(TradeOrder = id, error = error.to_string(), "Could not delete TradeOrder");
-                                // }
-                                //
-                                // tracing::debug!("TradeOrder::Remove");
                             }
                         }
                     }
@@ -285,7 +192,7 @@ pub(crate) fn start_worker_buy_order_state(
                                 //     }
                                 // }
                             }
-                            SpacetimeUpdateMessages::Insert { new, database_name, reducer_name: _, .. } => {
+                            SpacetimeUpdateMessages::Insert { new, database_name,  .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(new).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                     let _ = global_app_state.tx.send(OutboundWebSocketMessages::InsertBuyOrder(model.clone()));
                                 global_app_state.buy_order_state.insert(model.entity_id as i64, model);
@@ -302,7 +209,7 @@ pub(crate) fn start_worker_buy_order_state(
                                 //     break;
                                 // }
                             }
-                            SpacetimeUpdateMessages::Update { old: _, new, database_name, reducer_name: _,   .. } => {
+                            SpacetimeUpdateMessages::Update { old: _, new, database_name,    .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(new).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::UpdateBuyOrder(model.clone()));
                                 // tracing::warn!("Update buy reducer {:?} old: {} new: {}", reducer_name, old.quantity, model.quantity);
@@ -329,7 +236,7 @@ pub(crate) fn start_worker_buy_order_state(
                                 //     break;
                                 // }
                             }
-                            SpacetimeUpdateMessages::Remove { delete, database_name, reducer_name: _, .. } => {
+                            SpacetimeUpdateMessages::Remove { delete, database_name,  .. } => {
                                 let model: ::entity::auction_listing_state::AuctionListingState = ::entity::auction_listing_state::AuctionListingStateBuilder::new(delete).with_region(database_name.to_string().replace("bitcraft-live-", "").parse().unwrap()).build();
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::RemoveBuyOrder(model.clone()));
                                 global_app_state.buy_order_state.remove(&(model.entity_id as i64));

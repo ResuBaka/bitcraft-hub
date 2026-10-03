@@ -55,7 +55,7 @@ pub(crate) async fn get_all(
     let currently_known_player_username_state = ::entity::player_username_state::Entity::find()
         .all(&state.conn)
         .await
-        .map_or(vec![], |aa| aa)
+        .unwrap_or(vec![])
         .into_iter()
         .map(|value| (value.entity_id.to_string(), value.username))
         .collect::<HashMap<_, _>>();

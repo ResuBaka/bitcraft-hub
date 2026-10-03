@@ -128,11 +128,9 @@ impl PlayerStateWorker {
             SpacetimeUpdateMessages::Remove {
                 delete,
                 database_name,
-                reducer_name,
                 ..
             } => {
-                self.handle_remove(delete, database_name, reducer_name)
-                    .await;
+                self.handle_remove(delete, database_name).await;
             }
         }
     }
@@ -409,33 +407,12 @@ impl PlayerStateWorker {
         self.messages.push(model.into_active_model());
     }
 
-    async fn handle_remove(
-        &mut self,
-        delete: PlayerState,
-        database_name: entity::shared::Region,
-        reducer_name: Option<&'static str>,
-    ) {
+    async fn handle_remove(&mut self, delete: PlayerState, database_name: entity::shared::Region) {
         let model: ::entity::player_state::Model =
             ::entity::player_state::ModelBuilder::new(delete)
                 .with_region(database_name)
                 .build();
         let id = model.entity_id;
-
-        #[allow(clippy::single_match)]
-        match reducer_name {
-            Some("transfer_player_delayed") => {
-                metrics::gauge!(
-                    "players_current_state",
-                    &[
-                        ("online", model.signed_in.to_string()),
-                        ("region", database_name.to_string())
-                    ]
-                )
-                .decrement(1);
-                return;
-            }
-            _ => {}
-        }
 
         if self.ids.contains(&id)
             && let Some(index) = self
@@ -817,7 +794,6 @@ impl PlayerUsernameStateWorker {
             SpacetimeUpdateMessages::Remove {
                 delete,
                 database_name,
-                reducer_name,
                 ..
             } => {
                 let model: ::entity::player_username_state::Model =
@@ -825,14 +801,6 @@ impl PlayerUsernameStateWorker {
                         .with_region(database_name)
                         .build();
                 let id = model.entity_id;
-
-                #[allow(clippy::single_match)]
-                match reducer_name {
-                    Some("transfer_player_delayed") => {
-                        return;
-                    }
-                    _ => {}
-                }
 
                 if self.ids.contains(&id)
                     && let Some(index) = self

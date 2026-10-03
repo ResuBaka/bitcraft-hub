@@ -25,7 +25,6 @@ mod mobile_entity_state;
 mod npc_desc;
 mod player_state;
 mod recipes;
-mod reducer_event_handler;
 mod resource_desc;
 mod skill_descriptions;
 mod trading_orders;
@@ -49,12 +48,7 @@ use axum::http::{HeaderValue, Version};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum::routing::any;
-use axum::{
-    Router,
-    http::StatusCode,
-    middleware,
-    routing::get,
-};
+use axum::{Router, http::StatusCode, middleware, routing::get};
 use clap::{Parser, Subcommand};
 use entity::{experience_state, player_username_state};
 use futures::{SinkExt, StreamExt};
@@ -309,7 +303,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
             tx.clone(),
             websocket_options
                 .encoding
-                .map_or(WebsocketEncoding::Json, |value| value),
+                .unwrap_or(WebsocketEncoding::Json),
         )
         .await;
 
@@ -1350,7 +1344,7 @@ impl ClientsState {
         let mut senders = vec![];
         let clients = self.clients.read().await;
 
-        for (_, (tx, topics, _, topic_with_out_id)) in clients.iter() {
+        for (tx, topics, _, topic_with_out_id) in clients.values() {
             if topic_id.is_none() && topic_with_out_id.contains(topic) {
                 senders.push(tx.clone());
             } else if let Some(found_topic) = topics.get(topic)

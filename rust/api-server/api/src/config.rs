@@ -218,13 +218,11 @@ impl Config {
     }
 
     pub fn server_url(&self) -> anyhow::Result<SocketAddr> {
-        match resolve_socket_addrs(self.host.as_str(), self.port) {
-            Ok(addrs) => {
-                if let Some(addr) = addrs.into_iter().next() {
-                    return Ok(addr);
-                }
+        {
+            let addrs = resolve_socket_addrs(self.host.as_str(), self.port)?;
+            if let Some(addr) = addrs.into_iter().next() {
+                return Ok(addr);
             }
-            Err(err) => return Err(err.into()),
         }
 
         Err(anyhow::anyhow!("Server URL resolution failed"))

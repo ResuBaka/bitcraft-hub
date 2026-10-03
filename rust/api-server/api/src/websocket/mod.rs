@@ -187,10 +187,6 @@ macro_rules! setup_spacetime_db_listeners {
                 ];
                 metrics::counter!("game_message_events", &labels_update).increment(1);
 
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
-                    _ => None,
-                };
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -199,7 +195,6 @@ macro_rules! setup_spacetime_db_listeners {
                         database_name: $database_region,
                         old: old.clone(),
                         new: new.clone(),
-                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -232,11 +227,6 @@ macro_rules! setup_spacetime_db_listeners {
                     return;
                 }
 
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
-                    _ => None,
-                };
-
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -244,7 +234,6 @@ macro_rules! setup_spacetime_db_listeners {
                         event: None,
                         database_name: $database_region,
                         new: new.clone(),
-                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -312,10 +301,6 @@ macro_rules! setup_spacetime_db_listeners {
                 ];
                 metrics::counter!("game_message_events", &labels_delete).increment(1);
 
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Some(reducer.reducer.reducer_name()),
-                    _ => None,
-                };
                 send_worker_message(
                     $worker_name,
                     &temp_tx,
@@ -323,7 +308,6 @@ macro_rules! setup_spacetime_db_listeners {
                         event: None,
                         database_name: $database_region,
                         delete: new.clone(),
-                        reducer_name: reducer_name.clone(),
                     },
                 );
             },
@@ -2191,20 +2175,17 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
         event: Option<Box<__sdk::Event<game_module::module_bindings::Reducer>>>,
         new: T,
         database_name: entity::shared::Region,
-        reducer_name: Option<&'static str>,
     },
     Update {
         event: Option<Box<__sdk::Event<game_module::module_bindings::Reducer>>>,
         old: T,
         new: T,
         database_name: entity::shared::Region,
-        reducer_name: Option<&'static str>,
     },
     Remove {
         event: Option<Box<__sdk::Event<game_module::module_bindings::Reducer>>>,
         delete: T,
         database_name: entity::shared::Region,
-        reducer_name: Option<&'static str>,
     },
 }
 
