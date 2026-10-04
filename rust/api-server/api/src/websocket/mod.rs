@@ -411,6 +411,8 @@ async fn connect_to_db_logic(
         .unwrap()
         .parse::<entity::shared::Region>()?;
 
+    crate::claims::events::register_listeners(&ctx, global_app_state.clone(), region_number);
+
     setup_spacetime_db_listeners!(
         ctx,
         mobile_entity_state,
@@ -773,6 +775,7 @@ async fn connect_to_db_logic(
         "claim_member_state",
         "claim_local_state",
         "deployable_state_v2",
+        "claim_treasury_event",
         "inventory_state",
         "collectible_desc",
         "claim_tech_desc",

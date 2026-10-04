@@ -2,6 +2,7 @@ pub(crate) mod bitcraft;
 pub(crate) mod claim_local_state;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
+pub(crate) mod events;
 
 use crate::inventory::{InventoryChangesParams, resolve_contents, resolve_pocket};
 use crate::{AppRouter, AppState};
@@ -26,6 +27,14 @@ use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
+        .route(
+            "/claims/{id}/events",
+            axum_codec::routing::get(events::list).into(),
+        )
+        .route(
+            "/api/bitcraft/claims/{id}/events",
+            axum_codec::routing::get(events::list).into(),
+        )
         .route("/claims", axum_codec::routing::get(list_claims).into())
         .route(
             "/claims/names",

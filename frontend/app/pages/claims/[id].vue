@@ -5,6 +5,7 @@ import { watchThrottled } from "@vueuse/shared";
 const toast = useToast();
 
 import ClaimTabBuildings from "~/components/Bitcraft/Claim/ClaimTabBuildings.vue";
+import ClaimTabEvents from "~/components/Bitcraft/Claim/ClaimTabEvents.vue";
 import ClaimTabInventoryChangelogs from "~/components/Bitcraft/Claim/ClaimTabInventoryChangelogs.vue";
 import ClaimTabLeaderboards from "~/components/Bitcraft/Claim/ClaimTabLeaderboards.vue";
 import ClaimTabMembers from "~/components/Bitcraft/Claim/ClaimTabMembers.vue";
@@ -521,6 +522,7 @@ const validTabs = new Set([
   "leaderboards",
   "upgrades",
   "inventory_changelogs",
+  "events",
   "traveler_tasks",
   "marketplace",
 ]);
@@ -744,6 +746,7 @@ const tabItems = computed(() => {
       label: `Inventory changes (${InventoryChangelogFetch.value?.length || 0})`,
     },
     { value: "traveler_tasks", label: "Traveler tasks" },
+    { value: "events", label: "Events" },
   ];
 });
 
@@ -1351,6 +1354,12 @@ watch(
                 :tier-to-color="tierToColor"
                 :number-format="numberFormat"
                 :get-traveler-item-icon="getTravelerItemIcon"
+              />
+              <ClaimTabEvents
+                v-else-if="tab === 'events'"
+                :claim-id="route.params.id.toString()"
+                :region="claim.region"
+                :members="claimFetch.members"
               />
             </div>
           </div>

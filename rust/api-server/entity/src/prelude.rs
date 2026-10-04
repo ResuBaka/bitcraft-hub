@@ -4,6 +4,7 @@ pub use super::building_desc::Entity as BuildingDesc;
 pub use super::building_state::Entity as BuildingState;
 pub use super::cargo_desc::Entity as CargoDescription;
 pub use super::cargo_state::Entity as CargoState;
+pub use super::claim_event::Entity as ClaimEvent;
 // pub use super::claim_description_state::Entity as ClaimDescription;
 pub use super::claim_tech_desc::Entity as ClaimTechDesc;
 pub use super::claim_tech_state::Entity as ClaimTechState;

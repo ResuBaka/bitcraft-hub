@@ -9,6 +9,7 @@ pub mod building_nickname_state;
 pub mod building_state;
 pub mod cargo_desc;
 pub mod cargo_state;
+pub mod claim_event;
 pub mod claim_local_state;
 pub mod claim_member_state;
 pub mod claim_state;
