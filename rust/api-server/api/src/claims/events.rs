@@ -2,11 +2,12 @@ use crate::AppState;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
-use entity::claim_event::{self, ClaimEventType};
+use entity::claim_event::{self, ClaimEventType, ClaimMemberPermissions};
 use entity::shared::Region;
 use game_module::module_bindings::{
-    BuildingState, BuildingStateTableAccess, ClaimTechStateTableAccess, ClaimTreasuryChangeReason,
-    ClaimTreasuryEvent, ClaimTreasuryEventTableAccess, DbConnection, Reducer,
+    BuildingState, BuildingStateTableAccess, ClaimMemberState, ClaimMemberStateTableAccess,
+    ClaimTechStateTableAccess, ClaimTreasuryChangeReason, ClaimTreasuryEvent,
+    ClaimTreasuryEventTableAccess, DbConnection, Reducer,
 };
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set};
 use serde::{Deserialize, Serialize};
@@ -102,6 +103,9 @@ fn new_event(
         building_entity_id: Set(None),
         building_description_id: Set(None),
         subject_name: Set(None),
+        member_entity_id: Set(None),
+        permissions_before: Set(None),
+        permissions_after: Set(None),
         ..Default::default()
     }
 }
@@ -152,6 +156,78 @@ fn building_event(
     }
     // The constructor is not necessarily the player who removed the building.
     Some(event)
+}
+
+fn member_permissions(value: &ClaimMemberState) -> ClaimMemberPermissions {
+    ClaimMemberPermissions {
+        inventory_permission: value.inventory_permission,
+        build_permission: value.build_permission,
+        officer_permission: value.officer_permission,
+        co_owner_permission: value.co_owner_permission,
+    }
+}
+
+fn member_event(
+    value: &ClaimMemberState,
+    region: Region,
+    source: &Event<Reducer>,
+    added: bool,
+) -> Option<claim_event::ActiveModel> {
+    if value.claim_entity_id == 0 || !live_event(source) {
+        return None;
+    }
+    let mut event = new_event(
+        value.claim_entity_id,
+        region,
+        event_timestamp(source),
+        if added {
+            ClaimEventType::MemberAdded
+        } else {
+            ClaimEventType::MemberRemoved
+        },
+    );
+    // This is the affected player, not necessarily the player making the change.
+    event.member_entity_id = Set(Some(value.player_entity_id as i64));
+    event.subject_name = Set(Some(value.user_name.clone()));
+    if added {
+        event.permissions_after = Set(Some(member_permissions(value)));
+    } else {
+        event.permissions_before = Set(Some(member_permissions(value)));
+    }
+    Some(event)
+}
+
+fn member_update_events(
+    old: &ClaimMemberState,
+    new: &ClaimMemberState,
+    region: Region,
+    source: &Event<Reducer>,
+) -> Vec<claim_event::ActiveModel> {
+    if !live_event(source) {
+        return vec![];
+    }
+    if old.claim_entity_id != new.claim_entity_id || old.player_entity_id != new.player_entity_id {
+        return member_event(old, region, source, false)
+            .into_iter()
+            .chain(member_event(new, region, source, true))
+            .collect();
+    }
+    let before = member_permissions(old);
+    let after = member_permissions(new);
+    if new.claim_entity_id == 0 || before == after {
+        return vec![];
+    }
+    let mut event = new_event(
+        new.claim_entity_id,
+        region,
+        event_timestamp(source),
+        ClaimEventType::MemberPermissionsChanged,
+    );
+    event.member_entity_id = Set(Some(new.player_entity_id as i64));
+    event.subject_name = Set(Some(new.user_name.clone()));
+    event.permissions_before = Set(Some(before));
+    event.permissions_after = Set(Some(after));
+    vec![event]
 }
 
 fn queue(tx: &UnboundedSender<claim_event::ActiveModel>, event: claim_event::ActiveModel) {
@@ -279,6 +355,31 @@ pub(crate) fn register_listeners(ctx: &DbConnection, state: AppState, region: Re
             }
         });
 
+    let member_tx = tx.clone();
+    ctx.db
+        .claim_member_state()
+        .on_insert(move |context, value| {
+            if let Some(event) = member_event(value, region, &context.event, true) {
+                queue(&member_tx, event);
+            }
+        });
+    let member_tx = tx.clone();
+    ctx.db
+        .claim_member_state()
+        .on_delete(move |context, value| {
+            if let Some(event) = member_event(value, region, &context.event, false) {
+                queue(&member_tx, event);
+            }
+        });
+    let member_tx = tx.clone();
+    ctx.db
+        .claim_member_state()
+        .on_update(move |context, old, new| {
+            for event in member_update_events(old, new, region, &context.event) {
+                queue(&member_tx, event);
+            }
+        });
+
     let building_tx = tx.clone();
     let building_state = state.clone();
     ctx.db.building_state().on_insert(move |context, value| {
@@ -304,6 +405,105 @@ pub(crate) fn register_listeners(ctx: &DbConnection, state: AppState, region: Re
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn member() -> ClaimMemberState {
+        ClaimMemberState {
+            entity_id: 10,
+            claim_entity_id: 42,
+            player_entity_id: 7,
+            user_name: "Member".into(),
+            inventory_permission: true,
+            build_permission: true,
+            officer_permission: false,
+            co_owner_permission: false,
+        }
+    }
+
+    #[test]
+    fn member_events_record_affected_player_and_permissions() {
+        let value = member();
+        let added = member_event(&value, 2, &Event::Transaction, true).unwrap();
+        assert_eq!(added.event_type, Set(ClaimEventType::MemberAdded));
+        assert_eq!(added.claim_entity_id, Set(42));
+        assert_eq!(added.region, Set(2));
+        assert_eq!(added.member_entity_id, Set(Some(7)));
+        assert_eq!(added.actor_entity_id, Set(None));
+        assert_eq!(added.subject_name, Set(Some("Member".into())));
+        assert_eq!(added.permissions_before, Set(None));
+        assert_eq!(
+            added.permissions_after,
+            Set(Some(member_permissions(&value)))
+        );
+        let removed = member_event(&value, 2, &Event::Transaction, false).unwrap();
+        assert_eq!(removed.event_type, Set(ClaimEventType::MemberRemoved));
+        assert_eq!(
+            removed.permissions_before,
+            Set(Some(member_permissions(&value)))
+        );
+        assert_eq!(removed.permissions_after, Set(None));
+    }
+
+    #[test]
+    fn each_member_permission_change_records_before_and_after() {
+        let old = member();
+        for permission in 0..4 {
+            let mut new = old.clone();
+            match permission {
+                0 => new.inventory_permission = !old.inventory_permission,
+                1 => new.build_permission = !old.build_permission,
+                2 => new.officer_permission = !old.officer_permission,
+                _ => new.co_owner_permission = !old.co_owner_permission,
+            }
+            let events = member_update_events(&old, &new, 2, &Event::Transaction);
+            assert_eq!(events.len(), 1);
+            assert_eq!(
+                events[0].event_type,
+                Set(ClaimEventType::MemberPermissionsChanged)
+            );
+            assert_eq!(events[0].member_entity_id, Set(Some(7)));
+            assert_eq!(
+                events[0].permissions_before,
+                Set(Some(member_permissions(&old)))
+            );
+            assert_eq!(
+                events[0].permissions_after,
+                Set(Some(member_permissions(&new)))
+            );
+        }
+    }
+
+    #[test]
+    fn member_events_ignore_sync_disconnect_and_name_only_changes() {
+        let old = member();
+        let mut new = old.clone();
+        new.user_name = "Renamed".into();
+        assert!(member_update_events(&old, &new, 2, &Event::Transaction).is_empty());
+        new.officer_permission = true;
+        for source in [
+            Event::SubscribeApplied,
+            Event::UnsubscribeApplied,
+            Event::Disconnected,
+        ] {
+            assert!(member_event(&old, 2, &source, true).is_none());
+            assert!(member_event(&old, 2, &source, false).is_none());
+            assert!(member_update_events(&old, &new, 2, &source).is_empty());
+        }
+        new.claim_entity_id = 0;
+        assert!(member_event(&new, 2, &Event::Transaction, true).is_none());
+    }
+
+    #[test]
+    fn moving_a_member_logs_removal_and_addition() {
+        let old = member();
+        let mut new = old.clone();
+        new.claim_entity_id = 43;
+        let events = member_update_events(&old, &new, 2, &Event::Transaction);
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].event_type, Set(ClaimEventType::MemberRemoved));
+        assert_eq!(events[0].claim_entity_id, Set(42));
+        assert_eq!(events[1].event_type, Set(ClaimEventType::MemberAdded));
+        assert_eq!(events[1].claim_entity_id, Set(43));
+    }
 
     #[test]
     fn replicated_building_events_only_persist_in_the_claim_main_region() {

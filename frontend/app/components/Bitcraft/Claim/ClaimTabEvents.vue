@@ -29,6 +29,9 @@ const labels = {
   ResearchCompleted: "Research completed",
   BuildingPlaced: "Building placed",
   BuildingRemoved: "Building removed",
+  MemberAdded: "Member added",
+  MemberRemoved: "Member removed",
+  MemberPermissionsChanged: "Member permissions changed",
 };
 
 const columns: TableColumn<ClaimEvent>[] = [
@@ -47,6 +50,25 @@ const columns: TableColumn<ClaimEvent>[] = [
     header: "Details",
     cell: ({ row }) => {
       const event = row.original;
+      if (event.member_entity_id !== null) {
+        const name = event.subject_name ?? `Player #${event.member_entity_id}`;
+        if (event.permissions_before && event.permissions_after) {
+          const permissionLabels = {
+            inventory_permission: "Inventory",
+            build_permission: "Build",
+            officer_permission: "Officer",
+            co_owner_permission: "Co-owner",
+          };
+          const changes = (Object.keys(permissionLabels) as (keyof typeof permissionLabels)[])
+            .filter((key) => event.permissions_before![key] !== event.permissions_after![key])
+            .map(
+              (key) =>
+                `${permissionLabels[key]}: ${event.permissions_after![key] ? "granted" : "revoked"}`,
+            );
+          return `${name} — ${changes.join(", ")}`;
+        }
+        return name;
+      }
       if (event.amount !== null) {
         const sign = event.event_type === "TreasuryWithdrawal" ? "−" : "+";
         return `${sign}${Number(event.amount).toLocaleString()} coins`;
@@ -75,8 +97,8 @@ const columns: TableColumn<ClaimEvent>[] = [
   <div class="flex flex-col gap-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-gray-500">
-        Deposits, withdrawals, completed research and building changes. XP-generated coins are
-        excluded. History starts when tracking is enabled.
+        Deposits, withdrawals, completed research, building and member changes. XP-generated coins
+        are excluded.
       </p>
       <UButton
         label="Refresh"

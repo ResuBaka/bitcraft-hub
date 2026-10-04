@@ -12,6 +12,18 @@ pub enum ClaimEventType {
     ResearchCompleted = 2,
     BuildingPlaced = 3,
     BuildingRemoved = 4,
+    MemberAdded = 5,
+    MemberRemoved = 6,
+    MemberPermissionsChanged = 7,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, sea_orm::FromJsonQueryResult, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ClaimMemberPermissions {
+    pub inventory_permission: bool,
+    pub build_permission: bool,
+    pub officer_permission: bool,
+    pub co_owner_permission: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, TS)]
@@ -31,6 +43,9 @@ pub struct Model {
     pub building_entity_id: Option<i64>,
     pub building_description_id: Option<i32>,
     pub subject_name: Option<String>,
+    pub member_entity_id: Option<i64>,
+    pub permissions_before: Option<ClaimMemberPermissions>,
+    pub permissions_after: Option<ClaimMemberPermissions>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

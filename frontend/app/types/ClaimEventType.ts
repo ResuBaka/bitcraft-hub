@@ -5,4 +5,7 @@ export type ClaimEventType =
   | "TreasuryWithdrawal"
   | "ResearchCompleted"
   | "BuildingPlaced"
-  | "BuildingRemoved";
+  | "BuildingRemoved"
+  | "MemberAdded"
+  | "MemberRemoved"
+  | "MemberPermissionsChanged";
