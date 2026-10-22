@@ -1,10 +1,11 @@
 use crate::AppState;
+use crate::websocket::initial_sync::{composite_filter, reconcile};
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::vault_state_collectibles;
 use game_module::module_bindings::VaultState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -39,58 +40,31 @@ pub(crate) fn start_worker_vault_state_collectibles(
                         record_worker_received("vault_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known_vault_state_collectibles = ::entity::vault_state_collectibles::Entity::find()
-                                    .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .unwrap_or_else(|error| {
-                                        tracing::error!(
-                                            error = error.to_string(),
-                                            "Error while query whole vault_state_collectibles state"
-                                        );
-                                        vec![]
+                                // Older live events must not be written after the newer snapshot.
+                                insert_multiple_vault_state_collectibles(&global_app_state, &on_conflict, &mut messages).await;
+                                delete_collectibles(&global_app_state, &mut messages_delete).await;
+                                let incoming = data.into_iter().flat_map(|vault| {
+                                    let entity_id = vault.entity_id as i64;
+                                    vault.collectibles.into_iter().map(move |collectible| vault_state_collectibles::Model {
+                                        entity_id,
+                                        id: collectible.id,
+                                        activated: collectible.activated,
+                                        count: collectible.count,
+                                        region: database_name,
                                     })
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().flat_map(|value| {
-                                    let model: ::entity::vault_state_collectibles::RawVaultState = value.into();
-
-                                    model.to_model_collectibles(database_name)
-                                }) {
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known_vault_state_collectibles.entry(model.entity_id) {
-                                        Entry::Occupied(entry) => {
-                                            let existing_model = entry.get();
-                                            if &model != existing_model {
-                                                local_messages.push(model.into_active_model());
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_entry) => {
-                                            local_messages.push(model.into_active_model());
-                                        }
-                                    }
-                                    if local_messages.len() >= batch_size {
-                                       insert_multiple_vault_state_collectibles(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    }
-                                };
-                                if !local_messages.is_empty() {
-                                    insert_multiple_vault_state_collectibles(&global_app_state, &on_conflict, &mut local_messages).await;
-                                }
-
-                                for chunk_ids in currently_known_vault_state_collectibles.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::vault_state_collectibles::Entity::delete_many()
-                                        .filter(::entity::vault_state_collectibles::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .filter(::entity::vault_state_collectibles::Column::Region.eq(database_name))
-                                        .exec(&global_app_state.conn).await
-                                    {
-                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                        tracing::error!(VaultState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete VaultState");
-                                    }
+                                });
+                                if let Err(error) = reconcile::<vault_state_collectibles::Entity, _, _, _, _, _>(
+                                    &global_app_state.conn,
+                                    vault_state_collectibles::Column::Region,
+                                    database_name,
+                                    &on_conflict,
+                                    batch_size,
+                                    incoming,
+                                    |model| (model.entity_id, model.id),
+                                    |keys| composite_filter(vault_state_collectibles::Column::EntityId, vault_state_collectibles::Column::Id, keys),
+                                    |_, _| {},
+                                ).await {
+                                    tracing::error!(%error, region = database_name, "Could not reconcile initial vault collectibles");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -98,34 +72,24 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                 let models = raw_model.to_model_collectibles(database_name);
 
                                 for model in models {
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-                                    if let Some(index) = messages.iter().position(|value: &::entity::vault_state_collectibles::ActiveModel| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
-
-                                    messages.push(model.into_active_model());
+                                    queue_collectible(&mut messages, &mut messages_delete, model);
                                 }
 
-                                if messages.len() >= batch_size {
+                                if messages.len() + messages_delete.len() >= batch_size.max(1) {
                                     break;
                                 }
                             }
-                            SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                            SpacetimeUpdateMessages::Update { old, new, database_name, .. } => {
+                                let removed = removed_collectibles(&old, &new);
+                                for id in removed {
+                                    queue_collectible_delete(&mut messages, &mut messages_delete, database_name, new.entity_id as i64, id);
+                                }
                                 let raw_model: ::entity::vault_state_collectibles::RawVaultState = new.into();
                                 let models = raw_model.to_model_collectibles(database_name);
                                 for model in models {
-                                    if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                        messages_delete.remove(index);
-                                    }
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
-
-                                    messages.push(model.into_active_model());
+                                    queue_collectible(&mut messages, &mut messages_delete, model);
                                 }
-                                if messages.len() >= batch_size {
+                                if messages.len() + messages_delete.len() >= batch_size.max(1) {
                                     break;
                                 }
                             }
@@ -134,16 +98,13 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                 let models= raw_model.to_model_collectibles(database_name);
                                 for model in models {
 
-                                    let id = model.entity_id;
-
-                                    if let Some(index) = messages.iter().position(|value| value.entity_id.as_ref() == &model.entity_id) {
-                                        messages.remove(index);
-                                    }
-
-                                    messages_delete.push(id);
+                                    queue_collectible_delete(&mut messages, &mut messages_delete, database_name, model.entity_id, model.id);
                                 }
 
                                 tracing::debug!("VaultState::Remove");
+                                if messages.len() + messages_delete.len() >= batch_size.max(1) {
+                                    break;
+                                }
                             }
                         }
                     }
@@ -170,26 +131,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
             }
 
             if !messages_delete.is_empty() {
-                for chunk_ids in messages_delete.chunks(1000) {
-                    let chunk_ids = chunk_ids.to_vec();
-                    if let Err(error) = ::entity::vault_state_collectibles::Entity::delete_many()
-                        .filter(
-                            ::entity::vault_state_collectibles::Column::EntityId
-                                .is_in(chunk_ids.clone()),
-                        )
-                        .exec(&global_app_state.conn)
-                        .await
-                    {
-                        let chunk_ids_str: Vec<String> =
-                            chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(
-                            VaultState = chunk_ids_str.join(","),
-                            error = error.to_string(),
-                            "Could not delete VaultState"
-                        );
-                    }
-                }
-                messages_delete.clear();
+                delete_collectibles(&global_app_state, &mut messages_delete).await;
             }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
@@ -205,7 +147,10 @@ async fn insert_multiple_vault_state_collectibles(
     on_conflict: &sea_query::OnConflict,
     messages: &mut Vec<::entity::vault_state_collectibles::ActiveModel>,
 ) {
-    let insert = ::entity::vault_state_collectibles::Entity::insert_many(messages.clone())
+    if messages.is_empty() {
+        return;
+    }
+    let insert = ::entity::vault_state_collectibles::Entity::insert_many(std::mem::take(messages))
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -213,6 +158,153 @@ async fn insert_multiple_vault_state_collectibles(
     if let Err(err) = insert {
         tracing::error!("Error inserting VaultState: {}", err)
     }
+}
 
-    messages.clear();
+type CollectibleDelete = (entity::shared::Region, i64, i32);
+
+fn queue_collectible(
+    messages: &mut Vec<vault_state_collectibles::ActiveModel>,
+    deletes: &mut Vec<CollectibleDelete>,
+    model: vault_state_collectibles::Model,
+) {
+    deletes.retain(|&(region, entity_id, id)| {
+        (region, entity_id, id) != (model.region, model.entity_id, model.id)
+    });
+    messages.retain(|value| {
+        (*value.entity_id.as_ref(), *value.id.as_ref()) != (model.entity_id, model.id)
+    });
+    messages.push(model.into_active_model());
+}
+
+fn queue_collectible_delete(
+    messages: &mut Vec<vault_state_collectibles::ActiveModel>,
+    deletes: &mut Vec<CollectibleDelete>,
+    region: entity::shared::Region,
+    entity_id: i64,
+    id: i32,
+) {
+    messages.retain(|value| (*value.entity_id.as_ref(), *value.id.as_ref()) != (entity_id, id));
+    if !deletes.contains(&(region, entity_id, id)) {
+        deletes.push((region, entity_id, id));
+    }
+}
+
+fn removed_collectibles(old: &VaultState, new: &VaultState) -> Vec<i32> {
+    let new_ids = new
+        .collectibles
+        .iter()
+        .map(|value| value.id)
+        .collect::<HashSet<_>>();
+    old.collectibles
+        .iter()
+        .filter(|value| !new_ids.contains(&value.id))
+        .map(|value| value.id)
+        .collect()
+}
+
+async fn delete_collectibles(state: &AppState, deletes: &mut Vec<CollectibleDelete>) {
+    for chunk in std::mem::take(deletes).chunks(1_000) {
+        // Group by region so no deletion can affect a replicated/moved row elsewhere.
+        let regions = chunk.iter().map(|value| value.0).collect::<HashSet<_>>();
+        for region in regions {
+            let keys = chunk
+                .iter()
+                .filter(|value| value.0 == region)
+                .map(|value| (value.1, value.2))
+                .collect::<Vec<_>>();
+            if let Err(error) = vault_state_collectibles::Entity::delete_many()
+                .filter(vault_state_collectibles::Column::Region.eq(region))
+                .filter(composite_filter(
+                    vault_state_collectibles::Column::EntityId,
+                    vault_state_collectibles::Column::Id,
+                    &keys,
+                ))
+                .exec(&state.conn)
+                .await
+            {
+                tracing::error!(%error, region, "Could not delete vault collectibles");
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use game_module::module_bindings::VaultCollectible;
+
+    fn model(entity_id: i64, id: i32, count: i32) -> vault_state_collectibles::Model {
+        vault_state_collectibles::Model {
+            entity_id,
+            id,
+            activated: true,
+            count,
+            region: 7,
+        }
+    }
+
+    #[test]
+    fn live_upserts_keep_multiple_collectibles_for_the_same_vault() {
+        let mut messages = Vec::new();
+        let mut deletes = Vec::new();
+        queue_collectible(&mut messages, &mut deletes, model(1, 10, 1));
+        queue_collectible(&mut messages, &mut deletes, model(1, 11, 1));
+        queue_collectible(&mut messages, &mut deletes, model(1, 10, 5));
+        assert_eq!(messages.len(), 2);
+        assert!(messages.contains(&model(1, 10, 5).into_active_model()));
+        assert!(messages.contains(&model(1, 11, 1).into_active_model()));
+    }
+
+    #[test]
+    fn deleting_one_collectible_keeps_other_collectibles_and_vaults() {
+        let mut messages = Vec::new();
+        let mut deletes = Vec::new();
+        for (entity, id) in [(1, 10), (1, 11), (2, 10)] {
+            queue_collectible(&mut messages, &mut deletes, model(entity, id, 1));
+        }
+        queue_collectible_delete(&mut messages, &mut deletes, 7, 1, 10);
+        assert_eq!(messages.len(), 2);
+        assert!(messages.contains(&model(1, 11, 1).into_active_model()));
+        assert!(messages.contains(&model(2, 10, 1).into_active_model()));
+        assert_eq!(deletes, [(7, 1, 10)]);
+        queue_collectible_delete(&mut messages, &mut deletes, 7, 1, 10);
+        assert_eq!(deletes.len(), 1);
+        queue_collectible(&mut messages, &mut deletes, model(1, 10, 2));
+        assert!(deletes.is_empty());
+        assert_eq!(messages.len(), 3);
+    }
+
+    #[test]
+    fn upserts_do_not_cancel_deletes_for_another_region() {
+        let mut messages = Vec::new();
+        let mut deletes = vec![(8, 1, 10)];
+        queue_collectible(&mut messages, &mut deletes, model(1, 10, 1));
+        assert_eq!(deletes, [(8, 1, 10)]);
+    }
+
+    #[test]
+    fn updates_detect_collectibles_removed_from_a_vault_including_empty_vaults() {
+        let old = VaultState {
+            entity_id: 1,
+            collectibles: vec![
+                VaultCollectible {
+                    id: 10,
+                    activated: true,
+                    count: 1,
+                },
+                VaultCollectible {
+                    id: 11,
+                    activated: true,
+                    count: 2,
+                },
+            ],
+        };
+        let mut new = old.clone();
+        new.collectibles.remove(0);
+        assert_eq!(removed_collectibles(&old, &new), [10]);
+        new.collectibles[0].count = 3;
+        assert_eq!(removed_collectibles(&old, &new), [10]);
+        new.collectibles.clear();
+        assert_eq!(removed_collectibles(&old, &new), [10, 11]);
+    }
 }

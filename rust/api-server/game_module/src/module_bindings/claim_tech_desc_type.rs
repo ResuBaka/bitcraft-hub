@@ -80,7 +80,6 @@ impl __sdk::__query_builder::HasCols for ClaimTechDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct ClaimTechDescIxCols {
     pub id: __sdk::__query_builder::IxCol<ClaimTechDesc, i32>,
-    pub tier: __sdk::__query_builder::IxCol<ClaimTechDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ClaimTechDesc {
@@ -88,7 +87,6 @@ impl __sdk::__query_builder::HasIxCols for ClaimTechDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ClaimTechDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            tier: __sdk::__query_builder::IxCol::new(table_name, "tier"),
         }
     }
 }

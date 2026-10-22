@@ -25,6 +25,7 @@ pub struct PlaceableDesc {
     pub spawns_in_water: bool,
     pub water_depth_min: i32,
     pub water_depth_max: i32,
+    pub enemy_params_id: Option<Vec<i32>>,
 }
 
 impl __sdk::InModule for PlaceableDesc {
@@ -51,6 +52,7 @@ pub struct PlaceableDescCols {
     pub spawns_in_water: __sdk::__query_builder::Col<PlaceableDesc, bool>,
     pub water_depth_min: __sdk::__query_builder::Col<PlaceableDesc, i32>,
     pub water_depth_max: __sdk::__query_builder::Col<PlaceableDesc, i32>,
+    pub enemy_params_id: __sdk::__query_builder::Col<PlaceableDesc, Option<Vec<i32>>>,
 }
 
 impl __sdk::__query_builder::HasCols for PlaceableDesc {
@@ -73,6 +75,7 @@ impl __sdk::__query_builder::HasCols for PlaceableDesc {
             spawns_in_water: __sdk::__query_builder::Col::new(table_name, "spawns_in_water"),
             water_depth_min: __sdk::__query_builder::Col::new(table_name, "water_depth_min"),
             water_depth_max: __sdk::__query_builder::Col::new(table_name, "water_depth_max"),
+            enemy_params_id: __sdk::__query_builder::Col::new(table_name, "enemy_params_id"),
         }
     }
 }

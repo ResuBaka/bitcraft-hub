@@ -5,6 +5,9 @@
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 use super::buff_effect_type::BuffEffect;
+use super::extraction_spawned_placeable_type::ExtractionSpawnedPlaceable;
+use super::input_item_stack_type::InputItemStack;
+use super::probabilistic_item_stack_type::ProbabilisticItemStack;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
@@ -26,6 +29,15 @@ pub struct AbilityCustomDesc {
     pub linked_ability_buff_desc_id: i32,
     pub animation: String,
     pub icon_path: String,
+    pub required_buff_ids: Option<Vec<i32>>,
+    pub consume_required_buff: bool,
+    pub perform_profession_hit: bool,
+    pub profession_hit_bonus_damage: i32,
+    pub profession_hit_skill_id: i32,
+    pub description: String,
+    pub input_item_stacks: Option<Vec<InputItemStack>>,
+    pub output_item_stacks: Option<Vec<ProbabilisticItemStack>>,
+    pub spawned_placeables: Option<Vec<ExtractionSpawnedPlaceable>>,
 }
 
 impl __sdk::InModule for AbilityCustomDesc {
@@ -53,6 +65,18 @@ pub struct AbilityCustomDescCols {
     pub linked_ability_buff_desc_id: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
     pub animation: __sdk::__query_builder::Col<AbilityCustomDesc, String>,
     pub icon_path: __sdk::__query_builder::Col<AbilityCustomDesc, String>,
+    pub required_buff_ids: __sdk::__query_builder::Col<AbilityCustomDesc, Option<Vec<i32>>>,
+    pub consume_required_buff: __sdk::__query_builder::Col<AbilityCustomDesc, bool>,
+    pub perform_profession_hit: __sdk::__query_builder::Col<AbilityCustomDesc, bool>,
+    pub profession_hit_bonus_damage: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
+    pub profession_hit_skill_id: __sdk::__query_builder::Col<AbilityCustomDesc, i32>,
+    pub description: __sdk::__query_builder::Col<AbilityCustomDesc, String>,
+    pub input_item_stacks:
+        __sdk::__query_builder::Col<AbilityCustomDesc, Option<Vec<InputItemStack>>>,
+    pub output_item_stacks:
+        __sdk::__query_builder::Col<AbilityCustomDesc, Option<Vec<ProbabilisticItemStack>>>,
+    pub spawned_placeables:
+        __sdk::__query_builder::Col<AbilityCustomDesc, Option<Vec<ExtractionSpawnedPlaceable>>>,
 }
 
 impl __sdk::__query_builder::HasCols for AbilityCustomDesc {
@@ -79,6 +103,27 @@ impl __sdk::__query_builder::HasCols for AbilityCustomDesc {
             ),
             animation: __sdk::__query_builder::Col::new(table_name, "animation"),
             icon_path: __sdk::__query_builder::Col::new(table_name, "icon_path"),
+            required_buff_ids: __sdk::__query_builder::Col::new(table_name, "required_buff_ids"),
+            consume_required_buff: __sdk::__query_builder::Col::new(
+                table_name,
+                "consume_required_buff",
+            ),
+            perform_profession_hit: __sdk::__query_builder::Col::new(
+                table_name,
+                "perform_profession_hit",
+            ),
+            profession_hit_bonus_damage: __sdk::__query_builder::Col::new(
+                table_name,
+                "profession_hit_bonus_damage",
+            ),
+            profession_hit_skill_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "profession_hit_skill_id",
+            ),
+            description: __sdk::__query_builder::Col::new(table_name, "description"),
+            input_item_stacks: __sdk::__query_builder::Col::new(table_name, "input_item_stacks"),
+            output_item_stacks: __sdk::__query_builder::Col::new(table_name, "output_item_stacks"),
+            spawned_placeables: __sdk::__query_builder::Col::new(table_name, "spawned_placeables"),
         }
     }
 }

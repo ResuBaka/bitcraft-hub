@@ -39,68 +39,32 @@ pub(crate) fn start_worker_building_state(
                         record_worker_received("building_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known_building_state = ::entity::building_state::Entity::find()
-                                    .filter(::entity::building_state::Column::Region.eq(database_name))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .unwrap_or_else(|error| {
-                                        tracing::error!(
-                                            error = error.to_string(),
-                                            "Error while query whole building_state state"
-                                        );
-                                        vec![]
-                                    })
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    let model: ::entity::building_state::Model = ::entity::building_state::ModelBuilder::new(value).with_region(database_name).build();
-
-                                    model
-                                }) {
-                                    use std::collections::hash_map::Entry;
-
-                                    match currently_known_building_state.entry(model.entity_id) {
-                                        Entry::Occupied(entry) => {
-                                            let existing_model = entry.get();
-                                            if &model != existing_model {
-                                                local_messages.push(model.into_active_model());
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_entry) => {
-                                            local_messages.push(model.into_active_model());
-                                        }
-                                    }
-
-                                    if local_messages.len() >= batch_size {
-                                       let insert = insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
-
-                                        if let Err(err) = insert {
-                                            tracing::error!("Error inserting ItemListDesc: {}", err)
-                                        }
-                                    }
-                                };
-                                if !local_messages.is_empty() {
-                                    let insert = insert_multiple_building_state(&global_app_state, &on_conflict, &mut local_messages).await;
-
-                                    if let Err(err) = insert {
-                                        tracing::error!("Error inserting ItemListDesc: {}", err)
+                                // Flush older live events before applying a newer snapshot.
+                                if !messages.is_empty() {
+                                    if let Err(error) = insert_multiple_building_state(&global_app_state, &on_conflict, &mut messages).await {
+                                        tracing::error!(%error, "Could not flush building updates before initial sync");
                                     }
                                 }
-
-                                for chunk_ids in currently_known_building_state.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
+                                if !messages_delete.is_empty() {
                                     if let Err(error) = ::entity::building_state::Entity::delete_many()
-                                        .filter(::entity::building_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .filter(::entity::building_state::Column::Region.eq(database_name))
-                                        .exec(&global_app_state.conn).await
-                                    {
-                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                        tracing::error!(BuildingState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete BuildingState");
+                                        .filter(::entity::building_state::Column::EntityId.is_in(std::mem::take(&mut messages_delete)))
+                                        .exec(&global_app_state.conn).await {
+                                        tracing::error!(%error, "Could not flush building deletes before initial sync");
                                     }
+                                }
+                                let incoming = data.into_iter().map(|value| ::entity::building_state::ModelBuilder::new(value).with_region(database_name).build());
+                                if let Err(error) = crate::websocket::initial_sync::reconcile::<::entity::building_state::Entity, _, _, _, _, _>(
+                                    &global_app_state.conn,
+                                    ::entity::building_state::Column::Region,
+                                    database_name,
+                                    &on_conflict,
+                                    batch_size,
+                                    incoming,
+                                    |model| model.entity_id,
+                                    |ids| sea_query::Condition::all().add(::entity::building_state::Column::EntityId.is_in(ids.iter().copied())),
+                                    |_, _| {},
+                                ).await {
+                                    tracing::error!(%error, region = database_name, "Could not reconcile initial buildings");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -210,12 +174,10 @@ async fn insert_multiple_building_state(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::building_state::ActiveModel>,
 ) -> Result<InsertManyResult<ActiveModel>, DbErr> {
-    let insert = ::entity::building_state::Entity::insert_many(messages.clone())
+    let insert = ::entity::building_state::Entity::insert_many(std::mem::take(messages))
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
-
-    messages.clear();
 
     insert
 }

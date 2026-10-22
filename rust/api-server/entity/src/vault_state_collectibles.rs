@@ -9,6 +9,7 @@ use ts_rs::TS;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub entity_id: i64,
+    #[sea_orm(primary_key, auto_increment = false)]
     pub id: i32,
     pub activated: bool,
     pub count: i32,

@@ -38,12 +38,43 @@ use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{Compression, DbContext, Error, Event, Table, TableWithPrimaryKey};
 use std::borrow::Cow;
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
 use ts_rs::TS;
 
 pub(crate) mod batched_worker;
+pub(crate) mod initial_sync;
+
+const MAX_RECONNECT_RETRIES: u32 = 15;
+const STABLE_CONNECTION_DURATION: Duration = Duration::from_secs(120);
+
+#[derive(Clone, Default)]
+struct ConnectionTiming(Arc<Mutex<Option<Instant>>>);
+
+impl ConnectionTiming {
+    fn connected(&self) {
+        *self.0.lock().unwrap() = Some(Instant::now());
+    }
+
+    fn uptime(&self) -> Option<Duration> {
+        self.0.lock().unwrap().map(|connected| connected.elapsed())
+    }
+}
+
+fn next_reconnect_failure_count(previous: u32, uptime: Option<Duration>) -> u32 {
+    if uptime.is_some_and(|uptime| uptime >= STABLE_CONNECTION_DURATION) {
+        0
+    } else {
+        previous.saturating_add(1)
+    }
+}
+
+fn reconnect_delay(tries: u32, jitter_secs: u64) -> Duration {
+    let base_wait_secs = (u64::from(tries.max(1)) * 45).min(300);
+    Duration::from_secs(base_wait_secs + jitter_secs.min(90))
+}
 
 fn send_worker_message<T>(
     worker_name: &str,
@@ -86,6 +117,7 @@ fn connect_to_db(
     token: String,
     db_name: &str,
     db_host: &str,
+    timing: ConnectionTiming,
 ) -> spacetimedb_sdk::Result<DbConnection> {
     let tmp_global_app_state = global_app_state.clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
@@ -95,6 +127,7 @@ fn connect_to_db(
     DbConnection::builder()
         // Register our `on_connect` callback, which will save our auth token.
         .on_connect(move |_ctx, identity, _token| {
+            timing.connected();
             tracing::debug!(
                 region = tmp_db_name,
                 "Connected to server {tmp_db_name} with {identity}"
@@ -325,6 +358,7 @@ fn connect_to_db_global(
         config.spacetimedb.password.clone(),
         database,
         config.spacetimedb_url().as_ref(),
+        ConnectionTiming::default(),
     )?;
 
     if !ctx.is_active() {
@@ -333,11 +367,13 @@ fn connect_to_db_global(
             "Could not connect to the bitcraft server {} with module {database}",
             config.spacetimedb_url()
         );
-        return Ok(());
+        anyhow::bail!("Connection to {database} is inactive");
     }
 
     tokio::spawn(async move {
-        let _ = ctx.run_async().await;
+        if let Err(error) = ctx.run_async().await {
+            tracing::error!(%error, "Global database connection failed");
+        }
     });
 
     Ok(())
@@ -349,6 +385,8 @@ async fn connect_to_db_logic(
     config: &Config,
     database: &str,
     remove_desc: &bool,
+    timing: ConnectionTiming,
+    claim_event_tx: &tokio::sync::mpsc::Sender<entity::claim_event::ActiveModel>,
     mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
     player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
@@ -394,6 +432,7 @@ async fn connect_to_db_logic(
         config.spacetimedb.password.clone(),
         database,
         config.spacetimedb_url().as_ref(),
+        timing,
     )?;
 
     if !ctx.is_active() {
@@ -402,7 +441,7 @@ async fn connect_to_db_logic(
             "Could not connect to the bitcraft server {} with module {database}",
             config.spacetimedb_url()
         );
-        return Ok(());
+        anyhow::bail!("Connection to {database} is inactive");
     }
 
     let region_number = database
@@ -411,7 +450,12 @@ async fn connect_to_db_logic(
         .unwrap()
         .parse::<entity::shared::Region>()?;
 
-    crate::claims::events::register_listeners(&ctx, global_app_state.clone(), region_number);
+    crate::claims::events::register_listeners(
+        &ctx,
+        global_app_state.clone(),
+        region_number,
+        claim_event_tx.clone(),
+    );
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -1649,7 +1693,7 @@ async fn connect_to_db_logic(
     let tmp_disconnect_db_name = database.to_string().clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
 
-    let _ = ctx.run_async().await;
+    let result = ctx.run_async().await;
 
     metrics::gauge!(
         "bitcraft_database_connected",
@@ -1661,7 +1705,7 @@ async fn connect_to_db_logic(
         .connection_state
         .insert(tmp_disconnect_db_name.clone(), false);
 
-    Ok(())
+    result.map_err(anyhow::Error::from)
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
@@ -1862,6 +1906,23 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
                     let mut tries = 0;
 
+                    let region = match tmp_database
+                        .split('-')
+                        .next_back()
+                        .unwrap_or_default()
+                        .parse::<entity::shared::Region>()
+                    {
+                        Ok(region) => region,
+                        Err(error) => {
+                            tracing::error!(%error, database = tmp_database, "Invalid database region");
+                            return;
+                        }
+                    };
+                    let claim_event_tx = crate::claims::events::start_persistence_worker(
+                        tmp_global_app_state.clone(),
+                        region,
+                    );
+
                     loop {
                         metrics::gauge!(
                             "bitcraft_database_connected",
@@ -1869,13 +1930,18 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         )
                         .set(0);
 
-                        let last_connected = Instant::now();
+                        let timing = ConnectionTiming::default();
+                        tmp_global_app_state
+                            .connection_state
+                            .insert(tmp_database.clone(), false);
 
                         let result = connect_to_db_logic(
                             tmp_global_app_state.clone(),
                             &tmp_conf,
                             &tmp_database,
                             &tmp_remove_desc,
+                            timing.clone(),
+                            &claim_event_tx,
                             &tmp_mobile_entity_state_tx,
                             &tmp_player_state_tx,
                             &tmp_player_username_state_tx,
@@ -1920,50 +1986,40 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             tracing::error!(
                                 region = tmp_database,
                                 error = error.to_string(),
-                                "Error creating connection to {tmp_database} on {}",
+                                "Connection to {tmp_database} on {} failed",
                                 tmp_conf.spacetimedb_url()
                             );
 
-                            if tries > 10 {
-                                tracing::error!(
-                                    region = tmp_database,
-                                    tries,
-                                    database_name = tmp_database.clone(),
-                                    spacetime_url = tmp_conf.spacetimedb_url(),
-                                    "We tried all tries and with that don't retry"
-                                );
-                                break;
-                            }
-                        } else if last_connected.elapsed().as_secs() > 120 {
-                            tries = 0;
-                        } else {
-                            tries += 1;
-                        };
+                        }
 
-                        if tries > 15 {
+                        // Count every unsuccessful/short-lived attempt, including
+                        // build errors and clean disconnects. Only actual connected
+                        // uptime can reset the budget, not time spent connecting.
+                        tries = next_reconnect_failure_count(tries, timing.uptime());
+
+                        if tries > MAX_RECONNECT_RETRIES {
                             tracing::error!(
                                 region = tmp_database,
                                 tries,
                                 database_name = tmp_database.clone(),
                                 spacetime_url = tmp_conf.spacetimedb_url(),
-                                "We tried all tries and with that don't retry"
+                                "Websocket reconnect retry budget exhausted"
                             );
                             break;
                         }
 
-                        let base_wait_secs = (tries.max(1) * 45).min(300);
                         let jitter_secs = rand::rng().random_range(0..=90);
-                        let wait_secs = base_wait_secs + jitter_secs;
+                        let wait = reconnect_delay(tries, jitter_secs);
 
                         tracing::warn!(
                             region = tmp_database,
                             tries,
-                            wait = wait_secs,
+                            wait = wait.as_secs(),
                             database_name = tmp_database.clone(),
                             spacetime_url = tmp_conf.spacetimedb_url(),
-                            "We are retrying to connecect again"
+                            "Retrying websocket connection"
                         );
-                        tokio::time::sleep(Duration::from_secs(wait_secs)).await;
+                        tokio::time::sleep(wait).await;
                     }
                 });
 
@@ -2507,8 +2563,62 @@ impl OutboundWebSocketMessages {
 
 #[cfg(test)]
 mod tests {
-    use super::{InboundWebSocketMessages, OutboundWebSocketMessages};
+    use super::{
+        ConnectionTiming, Duration, InboundWebSocketMessages, MAX_RECONNECT_RETRIES,
+        OutboundWebSocketMessages, STABLE_CONNECTION_DURATION, next_reconnect_failure_count,
+        reconnect_delay,
+    };
     use serde_json::json;
+
+    #[test]
+    fn failed_connections_exhaust_the_retry_budget() {
+        let mut tries = 0;
+        // Initial attempt plus fifteen retries, including build/handshake errors
+        // where on_connect never ran.
+        for attempt in 1..=MAX_RECONNECT_RETRIES + 1 {
+            tries = next_reconnect_failure_count(tries, None);
+            assert_eq!(tries, attempt);
+            assert_eq!(tries > MAX_RECONNECT_RETRIES, attempt == 16);
+        }
+    }
+
+    #[test]
+    fn short_connections_count_regardless_of_disconnect_reason() {
+        for uptime in [Duration::ZERO, Duration::from_secs(119)] {
+            assert_eq!(next_reconnect_failure_count(4, Some(uptime)), 5);
+        }
+    }
+
+    #[test]
+    fn stable_connections_reset_the_retry_budget() {
+        for uptime in [STABLE_CONNECTION_DURATION, Duration::from_secs(600)] {
+            assert_eq!(next_reconnect_failure_count(14, Some(uptime)), 0);
+        }
+        // A failed connection after recovery starts counting again.
+        assert_eq!(next_reconnect_failure_count(0, None), 1);
+    }
+
+    #[test]
+    fn connection_timing_starts_only_after_on_connect() {
+        let timing = ConnectionTiming::default();
+        let callback_timing = timing.clone();
+        assert_eq!(timing.uptime(), None);
+        callback_timing.connected();
+        assert!(timing.uptime().is_some());
+    }
+
+    #[test]
+    fn reconnect_backoff_is_capped_and_jitter_is_bounded() {
+        assert_eq!(reconnect_delay(0, 0), Duration::from_secs(45));
+        assert_eq!(reconnect_delay(1, 90), Duration::from_secs(135));
+        assert_eq!(reconnect_delay(2, 0), Duration::from_secs(90));
+        assert_eq!(reconnect_delay(7, 0), Duration::from_secs(300));
+        assert_eq!(
+            reconnect_delay(u32::MAX, u64::MAX),
+            Duration::from_secs(390)
+        );
+        assert_eq!(next_reconnect_failure_count(u32::MAX, None), u32::MAX);
+    }
 
     #[test]
     fn inbound_commands_preserve_wire_format() {

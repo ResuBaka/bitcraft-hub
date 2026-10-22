@@ -5,7 +5,6 @@ use game_module::module_bindings::DeployableStateV2;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel};
-use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -41,60 +40,27 @@ pub(crate) fn start_worker_deployable_state(
                         record_worker_received("deployable_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                tracing::warn!("We got this amount of deployable_state {} {}", data.len(), database_name);
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known_deployable_state = ::entity::deployable_state::Entity::find()
-                                    .filter(::entity::deployable_state::Column::Region.eq(database_name))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .unwrap_or_else(|error| {
-                                        tracing::error!(
-                                            error = error.to_string(),
-                                            "Error while query whole deployable_state state"
-                                        );
-                                        vec![]
-                                    })
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    let model: ::entity::deployable_state::Model = ::entity::deployable_state::ModelBuilder::new(value).with_region(database_name).build();
-
-                                    global_app_state.deployable_state.insert(model.entity_id, model.clone());
-
-                                    model
-                                }) {
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known_deployable_state.entry(model.entity_id) {
-                                        Entry::Occupied(entry) => {
-                                            let existing_model = entry.get();
-                                            if &model != existing_model {
-                                                local_messages.push(model.into_active_model());
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_entry) => {
-                                            local_messages.push(model.into_active_model());
-                                        }
+                                insert_multiple_deployable_state(&global_app_state, &on_conflict, &mut messages).await;
+                                if !messages_delete.is_empty() {
+                                    if let Err(error) = deployable_state::Entity::delete_many()
+                                        .filter(deployable_state::Column::EntityId.is_in(std::mem::take(&mut messages_delete)))
+                                        .exec(&global_app_state.conn).await {
+                                        tracing::error!(%error, "Could not flush deployable deletes before initial sync");
                                     }
-                                    if local_messages.len() >= batch_size {
-                                       insert_multiple_deployable_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    }
-                                };
-                                if !local_messages.is_empty() {
-                                    insert_multiple_deployable_state(&global_app_state, &on_conflict, &mut local_messages).await;
                                 }
-
-                                for chunk_ids in currently_known_deployable_state.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
-                                    if let Err(error) = ::entity::deployable_state::Entity::delete_many()
-                                    .filter(::entity::deployable_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                    .filter(::entity::deployable_state::Column::Region.eq(database_name))
-                                    .exec(&global_app_state.conn).await {
-                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                        tracing::error!(DeployableStateV2 = chunk_ids_str.join(","), error = error.to_string(), "Could not delete DeployableStateV2");
-                                    }
+                                let incoming = data.into_iter().map(|value| deployable_state::ModelBuilder::new(value).with_region(database_name).build());
+                                if let Err(error) = crate::websocket::initial_sync::reconcile::<deployable_state::Entity, _, _, _, _, _>(
+                                    &global_app_state.conn,
+                                    deployable_state::Column::Region,
+                                    database_name,
+                                    &on_conflict,
+                                    batch_size,
+                                    incoming,
+                                    |model| model.entity_id,
+                                    |ids| sea_query::Condition::all().add(deployable_state::Column::EntityId.is_in(ids.iter().copied())),
+                                    |model, _| { global_app_state.deployable_state.insert(model.entity_id, model.clone()); },
+                                ).await {
+                                    tracing::error!(%error, region = database_name, "Could not reconcile initial deployables");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -194,7 +160,10 @@ async fn insert_multiple_deployable_state(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::deployable_state::ActiveModel>,
 ) {
-    let insert = ::entity::deployable_state::Entity::insert_many(messages.clone())
+    if messages.is_empty() {
+        return;
+    }
+    let insert = ::entity::deployable_state::Entity::insert_many(std::mem::take(messages))
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -202,6 +171,4 @@ async fn insert_multiple_deployable_state(
     if let Err(err) = insert {
         tracing::error!("Error inserting deployable_state: {}", err)
     }
-
-    messages.clear();
 }

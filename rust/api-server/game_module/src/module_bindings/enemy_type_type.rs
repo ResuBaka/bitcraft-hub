@@ -95,6 +95,26 @@ pub enum EnemyType {
     DeerSwift,
 
     CrystalizedHexiteCrab,
+
+    DistractedSagiBird,
+
+    DistractedNubiGoat,
+
+    DistractedCervus,
+
+    DistractedScrofa,
+
+    DistractedOx,
+
+    DistractedYagiGoat,
+
+    DistractedJungleTerrorBird,
+
+    DistractedElderScrofa,
+
+    DistractedTundraOx,
+
+    DistractedDesertTerrorbird,
 }
 
 impl __sdk::InModule for EnemyType {

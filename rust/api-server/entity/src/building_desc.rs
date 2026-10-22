@@ -184,6 +184,7 @@ pub enum FootprintType {
     Walkable,
     Perimeter,
     WalkableResource,
+    Platform,
 }
 
 impl From<game_module::module_bindings::FootprintType> for FootprintType {
@@ -195,6 +196,7 @@ impl From<game_module::module_bindings::FootprintType> for FootprintType {
             game_module::module_bindings::FootprintType::WalkableResource => {
                 FootprintType::WalkableResource
             }
+            game_module::module_bindings::FootprintType::Platform => FootprintType::Platform,
         }
     }
 }

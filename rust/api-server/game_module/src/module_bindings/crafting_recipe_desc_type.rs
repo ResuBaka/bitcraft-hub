@@ -9,6 +9,7 @@ use super::experience_stack_f_32_type::ExperienceStackF32;
 use super::input_item_stack_type::InputItemStack;
 use super::item_stack_type::ItemStack;
 use super::level_requirement_type::LevelRequirement;
+use super::placeable_self_buff_chance_type::PlaceableSelfBuffChance;
 use super::tool_requirement_type::ToolRequirement;
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
@@ -38,6 +39,7 @@ pub struct CraftingRecipeDesc {
     pub allow_use_hands: bool,
     pub is_passive: bool,
     pub show_in_progression: bool,
+    pub self_buffs: Option<Vec<PlaceableSelfBuffChance>>,
 }
 
 impl __sdk::InModule for CraftingRecipeDesc {
@@ -74,6 +76,8 @@ pub struct CraftingRecipeDescCols {
     pub allow_use_hands: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
     pub is_passive: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
     pub show_in_progression: __sdk::__query_builder::Col<CraftingRecipeDesc, bool>,
+    pub self_buffs:
+        __sdk::__query_builder::Col<CraftingRecipeDesc, Option<Vec<PlaceableSelfBuffChance>>>,
 }
 
 impl __sdk::__query_builder::HasCols for CraftingRecipeDesc {
@@ -146,6 +150,7 @@ impl __sdk::__query_builder::HasCols for CraftingRecipeDesc {
                 table_name,
                 "show_in_progression",
             ),
+            self_buffs: __sdk::__query_builder::Col::new(table_name, "self_buffs"),
         }
     }
 }
@@ -155,7 +160,6 @@ impl __sdk::__query_builder::HasCols for CraftingRecipeDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct CraftingRecipeDescIxCols {
     pub id: __sdk::__query_builder::IxCol<CraftingRecipeDesc, i32>,
-    pub show_in_progression: __sdk::__query_builder::IxCol<CraftingRecipeDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasIxCols for CraftingRecipeDesc {
@@ -163,10 +167,6 @@ impl __sdk::__query_builder::HasIxCols for CraftingRecipeDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         CraftingRecipeDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            show_in_progression: __sdk::__query_builder::IxCol::new(
-                table_name,
-                "show_in_progression",
-            ),
         }
     }
 }

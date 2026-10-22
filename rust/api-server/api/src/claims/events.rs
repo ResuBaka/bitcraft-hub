@@ -12,7 +12,9 @@ use game_module::module_bindings::{
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set};
 use serde::{Deserialize, Serialize};
 use spacetimedb_sdk::{Event, EventTable, Table, TableWithPrimaryKey};
-use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use std::future::Future;
+use std::time::Duration;
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 use ts_rs::TS;
 
 #[derive(Deserialize)]
@@ -230,9 +232,15 @@ fn member_update_events(
     vec![event]
 }
 
-fn queue(tx: &UnboundedSender<claim_event::ActiveModel>, event: claim_event::ActiveModel) {
-    if let Err(error) = tx.send(event) {
-        tracing::error!(%error, "Could not queue claim event");
+const CLAIM_EVENT_QUEUE_CAPACITY: usize = 5_000;
+const CLAIM_EVENT_BATCH_SIZE: usize = 100;
+const CLAIM_EVENT_MAX_ATTEMPTS: usize = 3;
+
+fn queue(tx: &Sender<claim_event::ActiveModel>, event: claim_event::ActiveModel) {
+    if let Err(error) = tx.try_send(event) {
+        metrics::counter!("claim_events_dropped_total", "reason" => "queue_unavailable")
+            .increment(1);
+        tracing::error!(%error, "Dropping claim event: persistence queue is full or closed");
     }
 }
 
@@ -293,34 +301,80 @@ async fn filter_building_regions(
         .collect())
 }
 
-pub(crate) fn register_listeners(ctx: &DbConnection, state: AppState, region: Region) {
-    let (tx, mut rx) = unbounded_channel::<claim_event::ActiveModel>();
-    let conn = state.conn.clone();
-    let persistence_state = state.clone();
+/// Start once per region, outside the connection/reconnect lifecycle.
+pub(crate) fn start_persistence_worker(
+    state: AppState,
+    region: Region,
+) -> Sender<claim_event::ActiveModel> {
+    let (tx, rx) = channel(CLAIM_EVENT_QUEUE_CAPACITY);
     tokio::spawn(async move {
-        let mut batch = Vec::with_capacity(100);
-        while rx.recv_many(&mut batch, 100).await != 0 {
-            loop {
-                let result = async {
-                    let events = filter_building_regions(&persistence_state, &batch).await?;
+        run_persistence_worker(
+            rx,
+            region,
+            |batch| {
+                let state = &state;
+                async move {
+                    let events = filter_building_regions(state, &batch).await?;
                     if !events.is_empty() {
-                        claim_event::Entity::insert_many(events).exec(&conn).await?;
+                        claim_event::Entity::insert_many(events)
+                            .exec(&state.conn)
+                            .await?;
                     }
                     Ok::<_, sea_orm::DbErr>(())
                 }
-                .await;
-                match result {
-                    Ok(_) => break,
-                    Err(error) => {
-                        tracing::error!(%error, region, "Could not persist claim events; retrying");
-                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                    }
+            },
+            Duration::from_secs(5),
+            Duration::from_secs(30),
+        )
+        .await;
+    });
+    tx
+}
+
+async fn run_persistence_worker<F, Fut>(
+    mut rx: Receiver<claim_event::ActiveModel>,
+    region: Region,
+    mut persist: F,
+    retry_delay: Duration,
+    attempt_timeout: Duration,
+) where
+    F: FnMut(Vec<claim_event::ActiveModel>) -> Fut,
+    Fut: Future<Output = Result<(), sea_orm::DbErr>>,
+{
+    let mut batch = Vec::with_capacity(CLAIM_EVENT_BATCH_SIZE);
+    while rx.recv_many(&mut batch, CLAIM_EVENT_BATCH_SIZE).await != 0 {
+        for attempt in 1..=CLAIM_EVENT_MAX_ATTEMPTS {
+            match tokio::time::timeout(attempt_timeout, persist(batch.clone())).await {
+                Ok(Ok(())) => break,
+                Ok(Err(error)) => {
+                    tracing::error!(%error, region, attempt, "Could not persist claim event batch");
+                }
+                Err(_) => {
+                    tracing::error!(region, attempt, "Claim event persistence timed out");
                 }
             }
-            batch.clear();
+            if attempt == CLAIM_EVENT_MAX_ATTEMPTS {
+                metrics::counter!("claim_events_dropped_total", "reason" => "persistence_failed")
+                    .increment(batch.len() as u64);
+                tracing::error!(
+                    region,
+                    count = batch.len(),
+                    "Dropping claim event batch after retry limit"
+                );
+            } else {
+                tokio::time::sleep(retry_delay).await;
+            }
         }
-    });
+        batch.clear();
+    }
+}
 
+pub(crate) fn register_listeners(
+    ctx: &DbConnection,
+    state: AppState,
+    region: Region,
+    tx: Sender<claim_event::ActiveModel>,
+) {
     let treasury_tx = tx.clone();
     EventTable::on_insert(&ctx.db.claim_treasury_event(), move |context, value| {
         if live_event(&context.event) {
@@ -405,6 +459,112 @@ pub(crate) fn register_listeners(ctx: &DbConnection, state: AppState, region: Re
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn persistence_event(claim_id: u64) -> claim_event::ActiveModel {
+        new_event(claim_id, 2, Utc::now(), ClaimEventType::MemberAdded)
+    }
+
+    #[test]
+    fn persistence_queue_is_bounded_and_keeps_existing_events_on_overflow() {
+        let (tx, mut rx) = channel(CLAIM_EVENT_QUEUE_CAPACITY);
+        for _ in 0..CLAIM_EVENT_QUEUE_CAPACITY {
+            queue(&tx, persistence_event(42));
+        }
+        queue(&tx, persistence_event(43));
+        assert_eq!(rx.len(), CLAIM_EVENT_QUEUE_CAPACITY);
+        while let Ok(event) = rx.try_recv() {
+            assert_eq!(event.claim_entity_id, Set(42));
+        }
+    }
+
+    #[tokio::test]
+    async fn failing_batch_is_dropped_and_next_batch_is_processed() {
+        let (tx, rx) = channel(CLAIM_EVENT_BATCH_SIZE + 1);
+        for _ in 0..CLAIM_EVENT_BATCH_SIZE {
+            queue(&tx, persistence_event(42));
+        }
+        // A replacement connection uses the same queue, not a new worker.
+        let replacement_tx = tx.clone();
+        drop(tx);
+        queue(&replacement_tx, persistence_event(43));
+        drop(replacement_tx);
+
+        let mut attempts = 0;
+        let mut persisted = Vec::new();
+        tokio::time::timeout(
+            Duration::from_secs(1),
+            run_persistence_worker(
+                rx,
+                2,
+                |batch| {
+                    attempts += 1;
+                    let result = if batch[0].claim_entity_id == Set(42) {
+                        Err(sea_orm::DbErr::Custom("permanent failure".to_string()))
+                    } else {
+                        persisted.extend(batch);
+                        Ok(())
+                    };
+                    std::future::ready(result)
+                },
+                Duration::ZERO,
+                Duration::from_secs(1),
+            ),
+        )
+        .await
+        .expect("worker must drain and exit after all connections drop their senders");
+
+        assert_eq!(attempts, CLAIM_EVENT_MAX_ATTEMPTS + 1);
+        assert_eq!(persisted.len(), 1);
+        assert_eq!(persisted[0].claim_entity_id, Set(43));
+    }
+
+    #[tokio::test]
+    async fn stalled_persistence_has_bounded_attempts_and_worker_exits() {
+        let (tx, rx) = channel(1);
+        queue(&tx, persistence_event(42));
+        drop(tx);
+        let mut attempts = 0;
+        tokio::time::timeout(
+            Duration::from_secs(1),
+            run_persistence_worker(
+                rx,
+                2,
+                |_| {
+                    attempts += 1;
+                    std::future::pending::<Result<(), sea_orm::DbErr>>()
+                },
+                Duration::ZERO,
+                Duration::from_millis(1),
+            ),
+        )
+        .await
+        .expect("stalled database must not keep a worker alive indefinitely");
+        assert_eq!(attempts, CLAIM_EVENT_MAX_ATTEMPTS);
+    }
+
+    #[tokio::test]
+    async fn transient_persistence_failure_is_retried() {
+        let (tx, rx) = channel(1);
+        queue(&tx, persistence_event(42));
+        drop(tx);
+        let mut attempts = 0;
+        run_persistence_worker(
+            rx,
+            2,
+            |_| {
+                attempts += 1;
+                std::future::ready(if attempts == 1 {
+                    Err(sea_orm::DbErr::Custom("temporary failure".to_string()))
+                } else {
+                    Ok(())
+                })
+            },
+            Duration::ZERO,
+            Duration::from_secs(1),
+        )
+        .await;
+        assert_eq!(attempts, 2);
+    }
 
     fn member() -> ClaimMemberState {
         ClaimMemberState {

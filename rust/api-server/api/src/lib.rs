@@ -294,7 +294,9 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
     let id = nanoid::nanoid!();
 
-    let (tx, rx) = kanal::bounded_async::<OutboundWebSocketMessages>(20);
+    // Reserve one slot for the message currently being written to the socket.
+    let (tx, rx) =
+        kanal::bounded_async::<OutboundWebSocketMessages>(WEBSOCKET_CLIENT_MAX_IN_FLIGHT - 1);
 
     state
         .clients_state
@@ -329,23 +331,31 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
             let encoding = encoding.unwrap();
 
-            let send_result = if encoding == WebsocketEncoding::Json {
-                sender
-                    .send(Message::Text(serde_json::to_string(&msg).unwrap().into()))
-                    .await
+            let message = if encoding == WebsocketEncoding::Json {
+                Message::Text(serde_json::to_string(&msg).unwrap().into())
             } else if encoding == WebsocketEncoding::MessagePack {
-                sender
-                    .send(Message::Binary(a.to_msgpack().unwrap().into()))
-                    .await
+                Message::Binary(a.to_msgpack().unwrap().into())
             } else {
                 tracing::warn!("Unsupported encoding {encoding}");
                 continue;
             };
 
-            // In any websocket error, break loop.
-            if let Err(error) = send_result {
-                tracing::error!("Error sending message to client: {error}");
-                break;
+            let send_result =
+                tokio::time::timeout(WEBSOCKET_CLIENT_WRITE_TIMEOUT, sender.send(message)).await;
+
+            match send_result {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => {
+                    tracing::error!("Error sending message to client: {error}");
+                    break;
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        client = internal_id,
+                        "Disconnecting client after websocket write timeout"
+                    );
+                    break;
+                }
             }
         }
     });
@@ -477,14 +487,81 @@ async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<OutboundWe
                 );
             }
 
-            futures::future::join_all(senders.into_iter().map(|sender| {
-                let message = message.clone();
-                async move {
-                    let _ = sender.send(message).await;
-                }
-            }))
-            .await;
+            broadcast_to_clients(senders, &message);
         }
+    }
+}
+
+// This bounds application-owned messages; OS/socket buffers are managed separately.
+const WEBSOCKET_CLIENT_MAX_IN_FLIGHT: usize = 2_000;
+const WEBSOCKET_CLIENT_WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+fn broadcast_to_clients(
+    senders: Vec<AsyncSender<OutboundWebSocketMessages>>,
+    message: &OutboundWebSocketMessages,
+) {
+    for sender in senders {
+        match sender.try_send(message.clone()) {
+            Ok(true) => {}
+            Ok(false) => {
+                // A missing update would leave the client out of sync. Close instead,
+                // dropping its backlog and waking its receive loop. A stalled socket
+                // write is bounded by WEBSOCKET_CLIENT_WRITE_TIMEOUT.
+                let _ = sender.close();
+                metrics::counter!("websocket_slow_client_disconnects_total").increment(1);
+                tracing::warn!("Disconnecting websocket client with a full outgoing queue");
+            }
+            Err(_) => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod websocket_broadcast_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn full_client_is_closed_without_blocking_healthy_clients() {
+        let (slow_tx, slow_rx) = kanal::bounded_async(WEBSOCKET_CLIENT_MAX_IN_FLIGHT - 1);
+        let (healthy_tx, healthy_rx) = kanal::bounded_async(WEBSOCKET_CLIENT_MAX_IN_FLIGHT - 1);
+        let message = OutboundWebSocketMessages::Message("update".to_string());
+
+        // One socket write plus this queue is at most 2,000 in-flight messages.
+        for _ in 0..WEBSOCKET_CLIENT_MAX_IN_FLIGHT - 1 {
+            assert!(slow_tx.try_send(message.clone()).unwrap());
+        }
+        assert_eq!(slow_tx.len(), 1_999);
+
+        broadcast_to_clients(vec![slow_tx.clone(), healthy_tx], &message);
+
+        assert!(slow_rx.is_closed());
+        assert_eq!(slow_tx.len(), 0, "disconnect must release the backlog");
+        assert!(matches!(
+            healthy_rx.recv().await.unwrap(),
+            OutboundWebSocketMessages::Message(value) if value == "update"
+        ));
+    }
+
+    #[tokio::test]
+    async fn closed_client_does_not_prevent_delivery_and_order_is_preserved() {
+        let (closed_tx, closed_rx) = kanal::bounded_async(1);
+        closed_rx.close().unwrap();
+        let (healthy_tx, healthy_rx) = kanal::bounded_async(2);
+
+        for value in ["first", "second"] {
+            broadcast_to_clients(
+                vec![closed_tx.clone(), healthy_tx.clone()],
+                &OutboundWebSocketMessages::Message(value.to_string()),
+            );
+        }
+
+        for expected in ["first", "second"] {
+            assert!(matches!(
+                healthy_rx.recv().await.unwrap(),
+                OutboundWebSocketMessages::Message(value) if value == expected
+            ));
+        }
+        assert!(!healthy_rx.is_closed());
     }
 }
 

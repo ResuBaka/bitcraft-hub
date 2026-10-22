@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::inventory::resolve_pocket;
+use crate::inventory::resolve_pockets_for_sync;
 use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 // use chrono::DateTime;
@@ -9,8 +9,8 @@ use entity::inventory::ResolvedInventory;
 use game_module::module_bindings::InventoryState;
 use migration::{OnConflict, sea_query};
 use sea_orm::QueryFilter;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel};
-use std::collections::HashMap;
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QuerySelect};
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
 
@@ -171,85 +171,86 @@ impl InventoryStateWorker {
         database_name: entity::shared::Region,
     ) {
         tracing::debug!("Count of inventory amount to work on {}", data.len());
-        let mut local_messages = Vec::with_capacity(self.batch_size + 10);
-        let mut currently_known_inventory = ::entity::inventory::Entity::find()
+        // Keep only IDs for stale-row detection, not another region-wide copy of
+        // every inventory's pockets. Full existing rows are fetched one batch at a time.
+        let mut known_ids = match ::entity::inventory::Entity::find()
+            .select_only()
+            .column(::entity::inventory::Column::EntityId)
             .filter(::entity::inventory::Column::Region.eq(database_name))
+            .into_tuple::<i64>()
             .all(&self.global_app_state.conn)
             .await
-            .unwrap_or_else(|error| {
+        {
+            Ok(ids) => ids.into_iter().collect::<HashSet<_>>(),
+            Err(error) => {
                 tracing::error!(
-                    error = error.to_string(),
-                    "Error while query whole inventory state"
+                    %error,
+                    region = database_name,
+                    "Could not load inventory IDs; skipping initial reconciliation"
                 );
-                vec![]
-            })
-            .into_iter()
-            .map(|value| (value.entity_id, value))
-            .collect::<HashMap<_, _>>();
+                return;
+            }
+        };
 
-        for model in data.into_iter().map(|value| {
-            let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(value)
-                .with_region(database_name)
-                .build();
+        let mut incoming = data.into_iter();
+        loop {
+            let batch = incoming
+                .by_ref()
+                .take(self.batch_size.max(1))
+                .map(|value| {
+                    ::entity::inventory::ModelBuilder::new(value)
+                        .with_region(database_name)
+                        .build()
+                })
+                .collect::<Vec<_>>();
+            if batch.is_empty() {
+                break;
+            }
 
-            model
-        }) {
-            use std::collections::hash_map::Entry;
-            match currently_known_inventory.entry(model.entity_id) {
-                Entry::Occupied(entry) => {
-                    let existing_model = entry.get();
-                    if &model != existing_model {
-                        local_messages.push(model.into_active_model());
+            let existing_ids = batch
+                .iter()
+                .map(|model| model.entity_id)
+                .filter(|id| known_ids.contains(id))
+                .collect::<Vec<_>>();
+            let existing = if existing_ids.is_empty() {
+                // A fresh region/all-new batch needs no pocket data read at all.
+                Vec::new()
+            } else {
+                match ::entity::inventory::Entity::find()
+                    .filter(::entity::inventory::Column::Region.eq(database_name))
+                    .filter(::entity::inventory::Column::EntityId.is_in(existing_ids))
+                    .all(&self.global_app_state.conn)
+                    .await
+                {
+                    Ok(existing) => existing,
+                    Err(error) => {
+                        // Never delete stale rows after an incomplete comparison.
+                        tracing::error!(%error, region = database_name, "Could not compare inventory batch; stopping initial reconciliation");
+                        return;
                     }
-                    entry.remove();
                 }
-                Entry::Vacant(_entry) => {
-                    local_messages.push(model.into_active_model());
-                }
-            }
-            if local_messages.len() >= self.batch_size {
-                insert_multiple_inventory(
-                    &self.global_app_state,
-                    &self.on_conflict,
-                    &mut local_messages,
-                )
+            };
+            let mut changes = reconcile_initial_batch(batch, existing, &mut known_ids);
+            insert_multiple_inventory(&self.global_app_state, &self.on_conflict, &mut changes)
                 .await;
+        }
+
+        tracing::debug!("Count of inventory amount to delete {}", known_ids.len());
+
+        let mut stale_ids = known_ids.into_iter();
+        loop {
+            let ids = stale_ids.by_ref().take(1_000).collect::<Vec<_>>();
+            if ids.is_empty() {
+                break;
             }
+            self.queue_region_deletes(ids, database_name).await;
         }
-        if !local_messages.is_empty() {
-            insert_multiple_inventory(
-                &self.global_app_state,
-                &self.on_conflict,
-                &mut local_messages,
-            )
-            .await;
-        }
-
-        tracing::debug!(
-            "Count of inventory amount to delete {}",
-            currently_known_inventory.len()
-        );
-
-        self.queue_region_deletes(
-            currently_known_inventory.into_keys().collect(),
-            database_name,
-        )
-        .await;
     }
 
     async fn handle_insert(&mut self, new: InventoryState, database_name: entity::shared::Region) {
         let model: ::entity::inventory::Model = ::entity::inventory::ModelBuilder::new(new)
             .with_region(database_name)
             .build();
-
-        let mut pockets = vec![];
-        for pocket in &model.pockets {
-            pockets.push(resolve_pocket(
-                pocket,
-                &self.global_app_state.item_desc,
-                &self.global_app_state.cargo_desc,
-            ));
-        }
 
         let mut player_owner_id = model.player_owner_entity_id;
         let mut nickname = None;
@@ -264,22 +265,28 @@ impl InventoryStateWorker {
             nickname = Some(deployable_state.nickname.clone());
         }
 
-        let _ = self
-            .global_app_state
-            .tx
-            .send(OutboundWebSocketMessages::InventoryInsert {
-                resolved_inventory: ResolvedInventory {
-                    entity_id: model.entity_id,
-                    pockets,
-                    inventory_index: model.inventory_index,
-                    cargo_index: model.cargo_index,
-                    owner_entity_id: model.owner_entity_id,
-                    player_owner_entity_id: model.player_owner_entity_id,
-                    nickname,
-                    claim: None,
-                },
-                player_owner_id,
-            });
+        if let Some(pockets) = resolve_pockets_for_sync(
+            &model.pockets,
+            &self.global_app_state.item_desc,
+            &self.global_app_state.cargo_desc,
+        ) {
+            let _ = self
+                .global_app_state
+                .tx
+                .send(OutboundWebSocketMessages::InventoryInsert {
+                    resolved_inventory: ResolvedInventory {
+                        entity_id: model.entity_id,
+                        pockets,
+                        inventory_index: model.inventory_index,
+                        cargo_index: model.cargo_index,
+                        owner_entity_id: model.owner_entity_id,
+                        player_owner_entity_id: model.player_owner_entity_id,
+                        nickname,
+                        claim: None,
+                    },
+                    player_owner_id,
+                });
+        }
 
         if let Some(index) = self
             .messages_delete
@@ -329,30 +336,27 @@ impl InventoryStateWorker {
             self.messages.remove(index);
         }
 
-        let mut pockets = vec![];
-        for pocket in &model.pockets {
-            pockets.push(resolve_pocket(
-                pocket,
-                &self.global_app_state.item_desc,
-                &self.global_app_state.cargo_desc,
-            ));
+        if let Some(pockets) = resolve_pockets_for_sync(
+            &model.pockets,
+            &self.global_app_state.item_desc,
+            &self.global_app_state.cargo_desc,
+        ) {
+            let _ = self
+                .global_app_state
+                .tx
+                .send(OutboundWebSocketMessages::InventoryUpdate {
+                    resolved_inventory: ResolvedInventory {
+                        entity_id: model.entity_id,
+                        pockets,
+                        inventory_index: model.inventory_index,
+                        cargo_index: model.cargo_index,
+                        owner_entity_id: model.owner_entity_id,
+                        player_owner_entity_id: model.player_owner_entity_id,
+                        nickname: None,
+                        claim: None,
+                    },
+                });
         }
-
-        let _ = self
-            .global_app_state
-            .tx
-            .send(OutboundWebSocketMessages::InventoryUpdate {
-                resolved_inventory: ResolvedInventory {
-                    entity_id: model.entity_id,
-                    pockets,
-                    inventory_index: model.inventory_index,
-                    cargo_index: model.cargo_index,
-                    owner_entity_id: model.owner_entity_id,
-                    player_owner_entity_id: model.player_owner_entity_id,
-                    nickname: None,
-                    claim: None,
-                },
-            });
 
         self.messages.push(model.into_active_model());
 
@@ -443,30 +447,27 @@ impl InventoryStateWorker {
             .build();
         let id = model.entity_id;
 
-        let mut pockets = vec![];
-        for pocket in &model.pockets {
-            pockets.push(resolve_pocket(
-                pocket,
-                &self.global_app_state.item_desc,
-                &self.global_app_state.cargo_desc,
-            ));
+        if let Some(pockets) = resolve_pockets_for_sync(
+            &model.pockets,
+            &self.global_app_state.item_desc,
+            &self.global_app_state.cargo_desc,
+        ) {
+            let _ = self
+                .global_app_state
+                .tx
+                .send(OutboundWebSocketMessages::InventoryRemove {
+                    resolved_inventory: ResolvedInventory {
+                        entity_id: model.entity_id,
+                        pockets,
+                        inventory_index: model.inventory_index,
+                        cargo_index: model.cargo_index,
+                        owner_entity_id: model.owner_entity_id,
+                        player_owner_entity_id: model.player_owner_entity_id,
+                        nickname: None,
+                        claim: None,
+                    },
+                });
         }
-
-        let _ = self
-            .global_app_state
-            .tx
-            .send(OutboundWebSocketMessages::InventoryRemove {
-                resolved_inventory: ResolvedInventory {
-                    entity_id: model.entity_id,
-                    pockets,
-                    inventory_index: model.inventory_index,
-                    cargo_index: model.cargo_index,
-                    owner_entity_id: model.owner_entity_id,
-                    player_owner_entity_id: model.player_owner_entity_id,
-                    nickname: None,
-                    claim: None,
-                },
-            });
 
         if let Some(index) = self
             .messages
@@ -556,6 +557,28 @@ impl BatchedWorker for InventoryStateWorker {
         self.flush_changes().await;
         self.flush_deletes().await;
     }
+}
+
+fn reconcile_initial_batch(
+    incoming: Vec<::entity::inventory::Model>,
+    existing: Vec<::entity::inventory::Model>,
+    known_ids: &mut HashSet<i64>,
+) -> Vec<::entity::inventory::ActiveModel> {
+    let mut existing = existing
+        .into_iter()
+        .map(|model| (model.entity_id, model))
+        .collect::<HashMap<_, _>>();
+    incoming
+        .into_iter()
+        .filter_map(|model| {
+            known_ids.remove(&model.entity_id);
+            if existing.remove(&model.entity_id).as_ref() == Some(&model) {
+                None
+            } else {
+                Some(model.into_active_model())
+            }
+        })
+        .collect()
 }
 
 fn start_inventory_state_db_worker(global_app_state: AppState) -> Sender<InventoryDbOperation> {
@@ -668,7 +691,7 @@ async fn insert_multiple_inventory(
         return;
     }
 
-    let insert = ::entity::inventory::Entity::insert_many(messages.clone())
+    let insert = ::entity::inventory::Entity::insert_many(std::mem::take(messages))
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -676,8 +699,6 @@ async fn insert_multiple_inventory(
     if let Err(e) = insert {
         tracing::error!("Error inserting InventoryState chunk: {}", e);
     }
-
-    messages.clear();
 }
 
 async fn insert_multiple_inventory_changelog(
@@ -699,4 +720,134 @@ async fn insert_multiple_inventory_changelog(
     }
 
     messages.clear();
+}
+
+#[cfg(test)]
+mod initial_reconciliation_tests {
+    use super::*;
+    use entity::inventory::{ItemStack, ItemType, Model, Pocket};
+
+    fn inventory(id: i64) -> Model {
+        Model {
+            entity_id: id,
+            pockets: vec![Pocket {
+                volume: 20,
+                contents: Some(ItemStack {
+                    item_id: 1,
+                    quantity: 5,
+                    item_type: ItemType::Item,
+                    durability: Some(100),
+                }),
+                locked: false,
+            }],
+            inventory_index: 0,
+            cargo_index: 0,
+            owner_entity_id: 10,
+            player_owner_entity_id: 20,
+            region: 1,
+        }
+    }
+
+    #[test]
+    fn only_new_and_changed_rows_are_upserted_and_missing_ids_remain() {
+        let unchanged = inventory(1);
+        let mut changed = inventory(2);
+        changed.pockets[0].contents.as_mut().unwrap().quantity = 10;
+        let mut known_ids = HashSet::from([1, 2, 3]);
+
+        let changes = reconcile_initial_batch(
+            vec![unchanged.clone(), changed.clone(), inventory(4)],
+            vec![unchanged, inventory(2)],
+            &mut known_ids,
+        );
+
+        assert_eq!(
+            changes,
+            vec![
+                changed.into_active_model(),
+                inventory(4).into_active_model()
+            ]
+        );
+        assert_eq!(known_ids, HashSet::from([3]));
+    }
+
+    #[test]
+    fn metadata_and_pocket_changes_are_not_ignored() {
+        let original = inventory(1);
+        let mut variants = vec![original.clone(); 7];
+        variants[0].inventory_index += 1;
+        variants[1].cargo_index += 1;
+        variants[2].owner_entity_id += 1;
+        variants[3].player_owner_entity_id += 1;
+        variants[4].region += 1;
+        variants[5].pockets[0].locked = true;
+        variants[6].pockets[0].contents = None;
+
+        for changed in variants {
+            let changes = reconcile_initial_batch(
+                vec![changed.clone()],
+                vec![original.clone()],
+                &mut HashSet::from([1]),
+            );
+            assert_eq!(changes, vec![changed.into_active_model()]);
+        }
+    }
+
+    #[test]
+    fn batched_comparison_matches_whole_snapshot_comparison() {
+        let existing = (0..200).map(inventory).collect::<Vec<_>>();
+        let incoming = (20..220)
+            .map(|id| {
+                let mut model = inventory(id);
+                if id % 3 == 0 {
+                    model.pockets[0].volume += 1;
+                }
+                model
+            })
+            .collect::<Vec<_>>();
+
+        let mut whole_snapshot = existing
+            .iter()
+            .cloned()
+            .map(|model| (model.entity_id, model))
+            .collect::<HashMap<_, _>>();
+        let expected = incoming
+            .iter()
+            .filter_map(|model| {
+                (whole_snapshot.remove(&model.entity_id).as_ref() != Some(model))
+                    .then(|| model.clone().into_active_model())
+            })
+            .collect::<Vec<_>>();
+        let expected_deletes = whole_snapshot.into_keys().collect::<HashSet<_>>();
+
+        for batch_size in [1, 7, 100, 3_000] {
+            let mut known_ids = existing.iter().map(|model| model.entity_id).collect();
+            let mut changes = Vec::new();
+            for batch in incoming.chunks(batch_size) {
+                let batch_ids = batch
+                    .iter()
+                    .map(|model| model.entity_id)
+                    .collect::<HashSet<_>>();
+                let existing_batch = existing
+                    .iter()
+                    .filter(|model| batch_ids.contains(&model.entity_id))
+                    .cloned()
+                    .collect();
+                changes.extend(reconcile_initial_batch(
+                    batch.to_vec(),
+                    existing_batch,
+                    &mut known_ids,
+                ));
+            }
+            assert_eq!(changes, expected);
+            assert_eq!(known_ids, expected_deletes);
+        }
+    }
+
+    #[test]
+    fn empty_snapshot_leaves_all_existing_ids_for_deletion() {
+        let mut known_ids = HashSet::from([1, 2]);
+        assert!(reconcile_initial_batch(vec![], vec![], &mut known_ids).is_empty());
+        assert_eq!(known_ids, HashSet::from([1, 2]));
+    }
 }

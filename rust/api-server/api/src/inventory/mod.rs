@@ -521,7 +521,7 @@ pub(crate) fn resolve_contents(
         if content.item_type == ItemType::Item {
             return Some(ExpendedRefrence {
                 item_id: content.item_id,
-                item: ItemExpended::Item(item_desc.get(&content.item_id).unwrap().clone()),
+                item: ItemExpended::Item(item_desc.get(&content.item_id)?.clone()),
                 quantity: content.quantity,
                 item_type: ItemType::Item,
                 durability: content.durability,
@@ -529,7 +529,7 @@ pub(crate) fn resolve_contents(
         } else {
             return Some(ExpendedRefrence {
                 item_id: content.item_id,
-                item: ItemExpended::Cargo(cargo_desc.get(&content.item_id).unwrap().clone()),
+                item: ItemExpended::Cargo(cargo_desc.get(&content.item_id)?.clone()),
                 quantity: content.quantity,
                 item_type: ItemType::Cargo,
                 durability: content.durability,
@@ -537,4 +537,167 @@ pub(crate) fn resolve_contents(
         }
     }
     None
+}
+
+/// Sync may receive inventories before the description workers have loaded.
+/// Skip the entire notification instead of presenting unresolved contents as empty
+/// pockets. Raw inventory persistence must continue independently of this result.
+pub(crate) fn resolve_pockets_for_sync(
+    pockets: &[inventory::Pocket],
+    item_desc: &Arc<dashmap::DashMap<i32, item_desc::Model>>,
+    cargo_desc: &Arc<dashmap::DashMap<i32, cargo_desc::Model>>,
+) -> Option<Vec<ItemSlotResolved>> {
+    if item_desc.is_empty() || cargo_desc.is_empty() {
+        return None;
+    }
+
+    pockets
+        .iter()
+        .map(|pocket| {
+            let contents = match &pocket.contents {
+                Some(_) => Some(resolve_contents(&pocket.contents, item_desc, cargo_desc)?),
+                None => None,
+            };
+            Some(ItemSlotResolved {
+                volume: pocket.volume as i64,
+                contents,
+                locked: pocket.locked,
+            })
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod resolution_tests {
+    use super::*;
+
+    fn item_description() -> item_desc::Model {
+        item_desc::Model {
+            id: 1,
+            name: "Item".to_string(),
+            description: String::new(),
+            volume: 1,
+            durability: 100,
+            convert_to_on_durability_zero: 0,
+            secondary_knowledge_id: 0,
+            model_asset_name: String::new(),
+            icon_asset_name: String::new(),
+            tier: 1,
+            tag: String::new(),
+            rarity: entity::shared::JsonRarity::Common,
+            compendium_entry: false,
+            item_list_id: 0,
+        }
+    }
+
+    fn cargo_description() -> cargo_desc::Model {
+        cargo_desc::Model {
+            id: 2,
+            name: "Cargo".to_string(),
+            description: String::new(),
+            volume: 1,
+            secondary_knowledge_id: 0,
+            model_asset_name: String::new(),
+            icon_asset_name: String::new(),
+            carried_model_asset_name: String::new(),
+            pick_up_animation_start: String::new(),
+            pick_up_animation_end: String::new(),
+            drop_animation_start: String::new(),
+            drop_animation_end: String::new(),
+            pick_up_time: 0.0,
+            place_time: 0.0,
+            animator_state: String::new(),
+            movement_modifier: 1.0,
+            blocks_path: false,
+            on_destroy_yield_cargos: vec![],
+            despawn_time: 0.0,
+            tier: 1,
+            tag: String::new(),
+            rarity: entity::shared::JsonRarity::Common,
+            not_pickupable: false,
+        }
+    }
+
+    fn pocket(item_id: i32, item_type: ItemType) -> inventory::Pocket {
+        inventory::Pocket {
+            volume: 20,
+            contents: Some(inventory::ItemStack {
+                item_id,
+                quantity: 3,
+                item_type,
+                durability: Some(75),
+            }),
+            locked: true,
+        }
+    }
+
+    #[test]
+    fn missing_descriptions_return_none_without_panicking() {
+        let items = Arc::new(dashmap::DashMap::new());
+        let cargos = Arc::new(dashmap::DashMap::new());
+        for pocket in [pocket(1, ItemType::Item), pocket(2, ItemType::Cargo)] {
+            assert!(resolve_contents(&pocket.contents, &items, &cargos).is_none());
+            assert!(resolve_pocket(&pocket, &items, &cargos).contents.is_none());
+        }
+        assert!(resolve_contents(&None, &items, &cargos).is_none());
+    }
+
+    #[test]
+    fn sync_skips_resolution_until_both_description_caches_are_available() {
+        let items = Arc::new(dashmap::DashMap::new());
+        let cargos = Arc::new(dashmap::DashMap::new());
+        let pockets = [pocket(1, ItemType::Item)];
+        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+        items.insert(1, item_description());
+        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+        cargos.insert(2, cargo_description());
+        items.clear();
+        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+        items.insert(1, item_description());
+        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_some());
+    }
+
+    #[test]
+    fn sync_skips_whole_notification_if_any_description_is_missing() {
+        let items = Arc::new(dashmap::DashMap::new());
+        let cargos = Arc::new(dashmap::DashMap::new());
+        items.insert(1, item_description());
+        cargos.insert(2, cargo_description());
+        for missing_type in [ItemType::Item, ItemType::Cargo] {
+            let pockets = [pocket(1, ItemType::Item), pocket(999, missing_type)];
+            assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+        }
+    }
+
+    #[test]
+    fn sync_preserves_item_cargo_and_empty_pocket_contents() {
+        let items = Arc::new(dashmap::DashMap::new());
+        let cargos = Arc::new(dashmap::DashMap::new());
+        items.insert(1, item_description());
+        cargos.insert(2, cargo_description());
+        let pockets = [
+            pocket(1, ItemType::Item),
+            pocket(2, ItemType::Cargo),
+            inventory::Pocket {
+                volume: 5,
+                contents: None,
+                locked: false,
+            },
+        ];
+        let resolved = resolve_pockets_for_sync(&pockets, &items, &cargos).unwrap();
+        assert_eq!(resolved.len(), 3);
+        for (pocket, resolved) in pockets.iter().zip(&resolved) {
+            assert_eq!(*resolved, resolve_pocket(pocket, &items, &cargos));
+            assert_eq!(resolved.volume, pocket.volume as i64);
+            assert_eq!(resolved.locked, pocket.locked);
+        }
+        let item = resolved[0].contents.as_ref().unwrap();
+        assert!(matches!(&item.item, ItemExpended::Item(desc) if desc.id == 1));
+        assert_eq!(item.quantity, 3);
+        assert_eq!(item.durability, Some(75));
+        assert!(
+            matches!(&resolved[1].contents.as_ref().unwrap().item, ItemExpended::Cargo(desc) if desc.id == 2)
+        );
+        assert!(resolved[2].contents.is_none());
+    }
 }

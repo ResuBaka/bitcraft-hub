@@ -21,6 +21,8 @@ pub enum InteriorSpawnType {
     Enemy,
 
     Paving,
+
+    InteriorSpawnRandomGroup,
 }
 
 impl __sdk::InModule for InteriorSpawnType {

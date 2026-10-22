@@ -5,10 +5,7 @@ use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use entity::shared::Region;
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
 use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, IntoActiveModel, QueryFilter};
-use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::time::Duration;
 use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
@@ -16,11 +13,7 @@ use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unb
 enum ExperienceStateDbOperation {
     Upsert(Vec<::entity::experience_state::ActiveModel>),
     Delete(Vec<(i64, i32)>),
-    DeleteForRegion {
-        ids: Vec<String>,
-        #[allow(dead_code)]
-        region: Region,
-    },
+    Barrier(tokio::sync::oneshot::Sender<()>),
 }
 
 pub(crate) struct ExperienceStateWorker {
@@ -33,6 +26,175 @@ pub(crate) struct ExperienceStateWorker {
     messages: Vec<::entity::experience_state::ActiveModel>,
     ids: Vec<i64>,
     messages_delete: Vec<(i64, i32)>,
+}
+
+/// Flatten lazily: do not allocate a second region-wide experience row vector.
+fn initial_experience_rows(
+    state: &AppState,
+    data: Vec<ExperienceState>,
+    region: Region,
+) -> impl Iterator<Item = ::entity::experience_state::Model> + Send + '_ {
+    data.into_iter().flat_map(move |value| {
+        let id = value.entity_id as i64;
+        let mut total_exp = 0;
+        let mut profession_exp = 0;
+        let mut adventure_exp = 0;
+        for stack in &value.experience_stacks {
+            total_exp += i64::from(stack.quantity);
+            if let Some(skill) = state.skill_desc.get(&i64::from(stack.skill_id)) {
+                match skill.skill_category {
+                    1 => profession_exp += i64::from(stack.quantity),
+                    2 => adventure_exp += i64::from(stack.quantity),
+                    _ => {}
+                }
+            }
+        }
+        if let Some(xp) = state.ranking_system.global_leaderboard.get_value(&id)
+            && xp != total_exp
+        {
+            state
+                .ranking_system
+                .global_leaderboard
+                .update(id, total_exp);
+            let xp_per_hour = state
+                .player_state
+                .get(&id)
+                .filter(|player| player.time_signed_in >= 3_600)
+                .map_or(0, |player| {
+                    total_exp / (i64::from(player.time_signed_in) / 3_600)
+                });
+            state.ranking_system.xp_per_hour.update(id, xp_per_hour);
+        }
+        if let Some(xp) = state.ranking_system.adventure_leaderboard.get_value(&id)
+            && xp != adventure_exp
+        {
+            state
+                .ranking_system
+                .adventure_leaderboard
+                .update(id, adventure_exp);
+        }
+        if let Some(xp) = state.ranking_system.profession_leaderboard.get_value(&id)
+            && xp != profession_exp
+        {
+            state
+                .ranking_system
+                .profession_leaderboard
+                .update(id, profession_exp);
+        }
+        value
+            .experience_stacks
+            .into_iter()
+            .map(move |stack| ::entity::experience_state::Model {
+                entity_id: id,
+                skill_id: stack.skill_id,
+                experience: stack.quantity,
+                region,
+            })
+    })
+}
+
+#[cfg(test)]
+mod initial_tests {
+    use super::*;
+    use game_module::module_bindings::ExperienceStack;
+
+    #[test]
+    fn experience_rows_are_flattened_lazily_without_losing_totals() {
+        let (tx, _rx) = unbounded_channel();
+        let state = AppState::new(
+            sea_orm::DatabaseConnection::default(),
+            tx,
+            Default::default(),
+        );
+        state.ranking_system.global_leaderboard.update(1, 1);
+        state.ranking_system.global_leaderboard.update(2, 1);
+        let data = vec![
+            ExperienceState {
+                entity_id: 1,
+                experience_stacks: vec![
+                    ExperienceStack {
+                        skill_id: 10,
+                        quantity: 100,
+                    },
+                    ExperienceStack {
+                        skill_id: 11,
+                        quantity: 200,
+                    },
+                ],
+            },
+            ExperienceState {
+                entity_id: 2,
+                experience_stacks: vec![ExperienceStack {
+                    skill_id: 10,
+                    quantity: 400,
+                }],
+            },
+        ];
+        let mut rows = initial_experience_rows(&state, data, 7);
+        assert_eq!(
+            state.ranking_system.global_leaderboard.get_value(&1),
+            Some(1)
+        );
+        let first = rows.next().unwrap();
+        assert_eq!(
+            (
+                first.entity_id,
+                first.skill_id,
+                first.experience,
+                first.region
+            ),
+            (1, 10, 100, 7)
+        );
+        assert_eq!(
+            state.ranking_system.global_leaderboard.get_value(&1),
+            Some(300)
+        );
+        assert_eq!(
+            state.ranking_system.global_leaderboard.get_value(&2),
+            Some(1)
+        );
+        assert_eq!(rows.next().unwrap().skill_id, 11);
+        assert_eq!(rows.next().unwrap().experience, 400);
+        assert_eq!(
+            state.ranking_system.global_leaderboard.get_value(&2),
+            Some(400)
+        );
+        assert!(rows.next().is_none());
+    }
+
+    #[tokio::test]
+    async fn initial_sync_barrier_waits_for_preceding_live_writes() {
+        let model = ::entity::experience_state::Model {
+            entity_id: 1,
+            skill_id: 10,
+            experience: 100,
+            region: 7,
+        };
+        let db = sea_orm::MockDatabase::new(sea_orm::DbBackend::Postgres)
+            .append_query_results([vec![model.clone()]])
+            .into_connection();
+        let (tx, _rx) = unbounded_channel();
+        let state = AppState::new(db.clone(), tx, Default::default());
+        let worker = start_experience_state_db_worker(state);
+        worker
+            .send(ExperienceStateDbOperation::Upsert(vec![
+                model.into_active_model(),
+            ]))
+            .await
+            .unwrap();
+        let (done, drained) = tokio::sync::oneshot::channel();
+        worker
+            .send(ExperienceStateDbOperation::Barrier(done))
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(1), drained)
+            .await
+            .unwrap()
+            .unwrap();
+        let log = db.into_transaction_log();
+        assert_eq!(log.len(), 1);
+        assert!(format!("{:?}", log[0]).contains("INSERT INTO"));
+    }
 }
 
 fn start_experience_state_db_worker(
@@ -86,34 +248,8 @@ fn start_experience_state_db_worker(
                         }
                     }
                 }
-                ExperienceStateDbOperation::DeleteForRegion { ids, region: _ } => {
-                    let mut query = sea_query::Condition::any();
-                    for chunk_id in &ids {
-                        let (entity_id, skill_id) = chunk_id.split_once(":").unwrap();
-                        query = query.add(
-                            ::entity::experience_state::Column::EntityId
-                                .eq(entity_id.parse::<i64>().unwrap())
-                                .and(
-                                    ::entity::experience_state::Column::SkillId
-                                        .eq(skill_id.parse::<i32>().unwrap()),
-                                ),
-                        );
-                    }
-
-                    let chunk_ids = ids.to_vec();
-                    if let Err(error) = ::entity::experience_state::Entity::delete_many()
-                        .filter(query)
-                        .exec(&global_app_state.conn)
-                        .await
-                    {
-                        let chunk_ids_str: Vec<String> =
-                            chunk_ids.iter().map(|id| id.to_string()).collect();
-                        tracing::error!(
-                            ExperienceState = chunk_ids_str.join(","),
-                            error = error.to_string(),
-                            "Could not delete ExperienceState"
-                        );
-                    }
+                ExperienceStateDbOperation::Barrier(done) => {
+                    let _ = done.send(());
                 }
             }
         }
@@ -174,23 +310,6 @@ impl ExperienceStateWorker {
         }
     }
 
-    async fn queue_region_deletes(&self, ids: Vec<String>, region: entity::shared::Region) {
-        if ids.is_empty() {
-            return;
-        }
-
-        if let Err(error) = self
-            .db_tx
-            .send(ExperienceStateDbOperation::DeleteForRegion { ids, region })
-            .await
-        {
-            tracing::error!(
-                error = error.to_string(),
-                "Could not queue ExperienceState region deletes"
-            );
-        }
-    }
-
     async fn process_message(&mut self, msg: SpacetimeUpdateMessages<ExperienceState>) {
         match msg {
             SpacetimeUpdateMessages::Initial {
@@ -229,169 +348,70 @@ impl ExperienceStateWorker {
         database_name: entity::shared::Region,
     ) {
         tracing::debug!("Processed Initial ExperienceState {}", data.len());
-        let mut local_messages = Vec::with_capacity(self.batch_size + 10);
-        let mut currently_known_experience_state = ::entity::experience_state::Entity::find()
-            .filter(::entity::experience_state::Column::Region.eq(database_name))
-            .all(&self.global_app_state.conn)
+        // Drain previously queued live writes before comparing a newer snapshot.
+        self.flush_messages().await;
+        self.flush_deletes().await;
+        let (done, drained) = tokio::sync::oneshot::channel();
+        if self
+            .db_tx
+            .send(ExperienceStateDbOperation::Barrier(done))
             .await
-            .unwrap_or_else(|error| {
-                tracing::error!(
-                    error = error.to_string(),
-                    "Error while query whole experience_state state"
-                );
-                vec![]
-            })
-            .into_par_iter()
-            .map(|value| {
-                let entity_id = value.entity_id;
-                let skill_id = value.skill_id;
-                (format!("{entity_id}:{skill_id}"), value)
-            })
-            .collect::<HashMap<_, _>>();
-
-        for model in data
-            .into_iter()
-            .flat_map(|value| {
-                let id = value.entity_id;
-                let mut total_exp = 0;
-                let mut profession_exp = 0;
-                let mut adventure_exp = 0;
-                let model: Vec<::entity::experience_state::Model> = value
-                    .experience_stacks
-                    .iter()
-                    .map(|exp_stack| {
-                        total_exp.add_assign(exp_stack.quantity as i64);
-
-                        if let Some(skill_desc) = self
-                            .global_app_state
-                            .skill_desc
-                            .get(&(exp_stack.skill_id as i64))
-                        {
-                            match skill_desc.skill_category {
-                                1 => {
-                                    profession_exp.add_assign(exp_stack.quantity as i64);
-                                }
-                                2 => {
-                                    adventure_exp.add_assign(exp_stack.quantity as i64);
-                                }
-                                _ => {}
-                            }
-                        };
-
-                        ::entity::experience_state::Model {
-                            entity_id: id as i64,
-                            skill_id: exp_stack.skill_id,
-                            experience: exp_stack.quantity,
-                            region: database_name,
-                        }
-                    })
-                    .collect();
-
-                if let Some(xp) = self
-                    .global_app_state
-                    .ranking_system
-                    .global_leaderboard
-                    .get_value(&(value.entity_id as i64))
-                    && xp != total_exp
-                {
-                    self.global_app_state
-                        .ranking_system
-                        .global_leaderboard
-                        .update(value.entity_id as i64, total_exp);
-
-                    let mut xp_per_hour = 0;
-                    if let Some(player_state) = self
-                        .global_app_state
-                        .player_state
-                        .get(&(value.entity_id as i64))
-                        && player_state.time_signed_in >= 3600
-                    {
-                        xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
-                    }
-                    self.global_app_state
-                        .ranking_system
-                        .xp_per_hour
-                        .update(value.entity_id as i64, xp_per_hour);
-                }
-
-                if let Some(xp) = self
-                    .global_app_state
-                    .ranking_system
-                    .adventure_leaderboard
-                    .get_value(&(value.entity_id as i64))
-                    && xp != adventure_exp
-                {
-                    self.global_app_state
-                        .ranking_system
-                        .adventure_leaderboard
-                        .update(value.entity_id as i64, adventure_exp);
-                }
-
-                if let Some(xp) = self
-                    .global_app_state
-                    .ranking_system
-                    .profession_leaderboard
-                    .get_value(&(value.entity_id as i64))
-                    && xp != profession_exp
-                {
-                    self.global_app_state
-                        .ranking_system
-                        .profession_leaderboard
-                        .update(value.entity_id as i64, profession_exp);
-                }
-
-                model
-            })
-            .collect::<Vec<_>>()
+            .is_err()
+            || drained.await.is_err()
         {
-            let key = format!("{}:{}", model.entity_id, model.skill_id);
-            use std::collections::hash_map::Entry;
-            match currently_known_experience_state.entry(key) {
-                Entry::Occupied(entry) => {
-                    let existing_model = entry.get();
-                    if &model != existing_model {
-                        if let Some(skill_leaderboard) = self
-                            .global_app_state
-                            .ranking_system
-                            .skill_leaderboards
-                            .get_mut(&(model.skill_id as i64))
-                        {
-                            skill_leaderboard.update(model.entity_id, model.experience as i64);
-                        }
-
-                        local_messages.push(model.into_active_model());
-                    }
-                    entry.remove();
-                }
-                Entry::Vacant(_entry) => {
-                    if let Some(skill_leaderboard) = self
-                        .global_app_state
+            tracing::error!(
+                region = database_name,
+                "Experience persistence worker stopped before initial sync"
+            );
+            return;
+        }
+        let on_conflict = sea_query::OnConflict::columns([
+            ::entity::experience_state::Column::EntityId,
+            ::entity::experience_state::Column::SkillId,
+        ])
+        .update_columns([
+            ::entity::experience_state::Column::Experience,
+            ::entity::experience_state::Column::Region,
+        ])
+        .to_owned();
+        let state = &self.global_app_state;
+        if let Err(error) = crate::websocket::initial_sync::reconcile::<
+            ::entity::experience_state::Entity,
+            _,
+            _,
+            _,
+            _,
+            _,
+        >(
+            &state.conn,
+            ::entity::experience_state::Column::Region,
+            database_name,
+            &on_conflict,
+            self.batch_size,
+            initial_experience_rows(state, data, database_name),
+            |model| (model.entity_id, model.skill_id),
+            |keys| {
+                crate::websocket::initial_sync::composite_filter(
+                    ::entity::experience_state::Column::EntityId,
+                    ::entity::experience_state::Column::SkillId,
+                    keys,
+                )
+            },
+            |model, changed| {
+                if changed {
+                    if let Some(board) = state
                         .ranking_system
                         .skill_leaderboards
-                        .get_mut(&(model.skill_id as i64))
+                        .get(&(model.skill_id as i64))
                     {
-                        skill_leaderboard.update(model.entity_id, model.experience as i64);
+                        board.update(model.entity_id, model.experience as i64);
                     }
-                    local_messages.push(model.into_active_model());
                 }
-            }
-            if local_messages.len() >= self.batch_size {
-                self.queue_upserts(std::mem::take(&mut local_messages))
-                    .await;
-                local_messages = Vec::with_capacity(self.batch_size + 10);
-            }
-        }
-        if !local_messages.is_empty() {
-            self.queue_upserts(local_messages).await;
-        }
-
-        for chunk_ids in currently_known_experience_state
-            .into_keys()
-            .collect::<Vec<_>>()
-            .chunks(100)
+            },
+        )
+        .await
         {
-            self.queue_region_deletes(chunk_ids.to_vec(), database_name)
-                .await;
+            tracing::error!(%error, region = database_name, "Could not reconcile initial experience");
         }
         tracing::debug!(
             "Processed Initial ExperienceState {}",

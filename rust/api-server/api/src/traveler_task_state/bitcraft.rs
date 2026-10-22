@@ -5,7 +5,6 @@ use crate::websocket::{
 use game_module::module_bindings::TravelerTaskState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
-use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::sleep;
@@ -40,58 +39,27 @@ pub(crate) fn start_worker_traveler_task_state(
                         record_worker_received("traveler_task_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
-                                let mut local_messages = Vec::with_capacity(batch_size + 10);
-                                let mut currently_known_traveler_task_state = ::entity::traveler_task_state::Entity::find()
-                                    .filter(::entity::traveler_task_state::Column::Region.eq(database_name))
-                                    .all(&global_app_state.conn)
-                                    .await
-                                    .unwrap_or_else(|error| {
-                                        tracing::error!(
-                                            error = error.to_string(),
-                                            "Error while query whole traveler_task_state state"
-                                        );
-                                        vec![]
-                                    })
-                                    .into_iter()
-                                    .map(|value| (value.entity_id, value))
-                                    .collect::<HashMap<_, _>>();
-
-                                for model in data.into_iter().map(|value| {
-                                    let model: ::entity::traveler_task_state::Model = ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name).build();
-
-                                    model
-                                }) {
-                                    use std::collections::hash_map::Entry;
-                                    match currently_known_traveler_task_state.entry(model.entity_id) {
-                                        Entry::Occupied(entry) => {
-                                            let existing_model = entry.get();
-                                            if &model != existing_model {
-                                                local_messages.push(model);
-                                            }
-                                            entry.remove();
-                                        }
-                                        Entry::Vacant(_entry) => {
-                                            local_messages.push(model);
-                                        }
-                                    }
-                                    if local_messages.len() >= batch_size {
-                                       insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                    }
-                                };
-                                if !local_messages.is_empty() {
-                                    insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut local_messages).await;
-                                }
-
-                                for chunk_ids in currently_known_traveler_task_state.into_keys().collect::<Vec<_>>().chunks(1000) {
-                                    let chunk_ids = chunk_ids.to_vec();
+                                insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages).await;
+                                if !messages_delete.is_empty() {
                                     if let Err(error) = ::entity::traveler_task_state::Entity::delete_many()
-                                        .filter(::entity::traveler_task_state::Column::EntityId.is_in(chunk_ids.clone()))
-                                        .filter(::entity::traveler_task_state::Column::Region.eq(database_name))
-                                        .exec(&global_app_state.conn).await
-                                    {
-                                        let chunk_ids_str: Vec<String> = chunk_ids.iter().map(|id| id.to_string()).collect();
-                                        tracing::error!(TravelerTaskState = chunk_ids_str.join(","), error = error.to_string(), "Could not delete TravelerTaskState");
+                                        .filter(::entity::traveler_task_state::Column::EntityId.is_in(std::mem::take(&mut messages_delete)))
+                                        .exec(&global_app_state.conn).await {
+                                        tracing::error!(%error, "Could not flush traveler task deletes before initial sync");
                                     }
+                                }
+                                let incoming = data.into_iter().map(|value| ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name).build());
+                                if let Err(error) = crate::websocket::initial_sync::reconcile::<::entity::traveler_task_state::Entity, _, _, _, _, _>(
+                                    &global_app_state.conn,
+                                    ::entity::traveler_task_state::Column::Region,
+                                    database_name,
+                                    &on_conflict,
+                                    batch_size,
+                                    incoming,
+                                    |model| model.entity_id,
+                                    |ids| sea_query::Condition::all().add(::entity::traveler_task_state::Column::EntityId.is_in(ids.iter().copied())),
+                                    |_, _| {},
+                                ).await {
+                                    tracing::error!(%error, region = database_name, "Could not reconcile initial traveler tasks");
                                 }
                             }
                             SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
@@ -192,10 +160,13 @@ async fn insert_multiple_traveler_task_state(
     on_conflict: &sea_query::OnConflict,
     messages: &mut Vec<::entity::traveler_task_state::Model>,
 ) {
+    if messages.is_empty() {
+        return;
+    }
     let insert = ::entity::traveler_task_state::Entity::insert_many(
-        messages
-            .iter()
-            .map(|model| model.clone().into_active_model()),
+        std::mem::take(messages)
+            .into_iter()
+            .map(|model| model.into_active_model()),
     )
     .on_conflict(on_conflict.clone())
     .exec(&global_app_state.conn)
@@ -204,6 +175,4 @@ async fn insert_multiple_traveler_task_state(
     if let Err(err) = insert {
         tracing::error!("Error inserting TravelerTaskState: {}", err)
     }
-
-    messages.clear();
 }

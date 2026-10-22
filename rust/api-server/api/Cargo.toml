@@ -53,6 +53,7 @@ parking_lot = "0.12.5"
 
 [dev-dependencies]
 criterion = "0.8.2"
+sea-orm = { workspace = true, features = ["mock"] }
 
 [[bench]]
 name = "leaderboard_get_rank"

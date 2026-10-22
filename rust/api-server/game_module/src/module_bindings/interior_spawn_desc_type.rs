@@ -27,6 +27,7 @@ pub struct InteriorSpawnDesc {
     pub traveler_ruin_entity_id: i32,
     pub respawn: bool,
     pub collapse_trigger: bool,
+    pub interior_spawn_random_group_id: i32,
 }
 
 impl __sdk::InModule for InteriorSpawnDesc {
@@ -53,6 +54,7 @@ pub struct InteriorSpawnDescCols {
     pub traveler_ruin_entity_id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
     pub respawn: __sdk::__query_builder::Col<InteriorSpawnDesc, bool>,
     pub collapse_trigger: __sdk::__query_builder::Col<InteriorSpawnDesc, bool>,
+    pub interior_spawn_random_group_id: __sdk::__query_builder::Col<InteriorSpawnDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasCols for InteriorSpawnDesc {
@@ -81,6 +83,10 @@ impl __sdk::__query_builder::HasCols for InteriorSpawnDesc {
             ),
             respawn: __sdk::__query_builder::Col::new(table_name, "respawn"),
             collapse_trigger: __sdk::__query_builder::Col::new(table_name, "collapse_trigger"),
+            interior_spawn_random_group_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "interior_spawn_random_group_id",
+            ),
         }
     }
 }

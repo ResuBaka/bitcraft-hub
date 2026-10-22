@@ -4,6 +4,9 @@
 #![allow(unused, clippy::all)]
 use super::ability_custom_desc_type::AbilityCustomDesc;
 use super::buff_effect_type::BuffEffect;
+use super::extraction_spawned_placeable_type::ExtractionSpawnedPlaceable;
+use super::input_item_stack_type::InputItemStack;
+use super::probabilistic_item_stack_type::ProbabilisticItemStack;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 /// Table handle for the table `ability_custom_desc`.

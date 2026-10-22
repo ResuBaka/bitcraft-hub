@@ -678,6 +678,8 @@ pub mod extraction_recipe_desc_table;
 pub mod extraction_recipe_desc_type;
 pub mod extraction_spawned_placeable_type;
 pub mod float_hex_tile_message_type;
+pub mod floating_platform_desc_table;
+pub mod floating_platform_desc_type;
 pub mod food_desc_table;
 pub mod food_desc_type;
 pub mod footprint_tile_state_table;
@@ -785,6 +787,7 @@ pub mod import_equipment_state_reducer;
 pub mod import_experience_state_reducer;
 pub mod import_exploration_chunks_state_reducer;
 pub mod import_extraction_recipe_desc_reducer;
+pub mod import_floating_platform_desc_reducer;
 pub mod import_food_desc_reducer;
 pub mod import_footprint_tile_state_reducer;
 pub mod import_gate_desc_reducer;
@@ -801,6 +804,8 @@ pub mod import_interior_network_desc_reducer;
 pub mod import_interior_portal_connections_desc_reducer;
 pub mod import_interior_shape_desc_reducer;
 pub mod import_interior_spawn_desc_reducer;
+pub mod import_interior_spawn_destroy_trigger_desc_reducer;
+pub mod import_interior_spawn_random_group_desc_reducer;
 pub mod import_inventory_state_reducer;
 pub mod import_item_conversion_recipe_desc_reducer;
 pub mod import_item_desc_reducer;
@@ -941,7 +946,12 @@ pub mod interior_shape_desc_table;
 pub mod interior_shape_desc_type;
 pub mod interior_spawn_desc_table;
 pub mod interior_spawn_desc_type;
+pub mod interior_spawn_destroy_trigger_desc_table;
+pub mod interior_spawn_destroy_trigger_desc_type;
+pub mod interior_spawn_random_group_desc_table;
+pub mod interior_spawn_random_group_desc_type;
 pub mod interior_spawn_type_type;
+pub mod interior_spawned_resource_state_type;
 pub mod inventory_create_personal_reducer;
 pub mod inventory_sort_reducer;
 pub mod inventory_state_table;
@@ -1054,6 +1064,7 @@ pub mod message_contents_v_5_type;
 pub mod migrate_auto_attacks_reducer;
 pub mod migrate_character_stats_reducer;
 pub mod migrate_claim_tech_reducer;
+pub mod migrate_duplicate_equipment_slots_reducer;
 pub mod migrate_equipment_slots_reducer;
 pub mod migrate_exploration_achievement_counts_reducer;
 pub mod migrate_grant_default_collectibles_reducer;
@@ -1401,6 +1412,7 @@ pub mod project_site_cancel_reducer;
 pub mod project_site_place_reducer;
 pub mod project_site_state_table;
 pub mod project_site_state_type;
+pub mod prospect_cancel_reducer;
 pub mod prospect_reducer;
 pub mod prospect_start_event_table;
 pub mod prospect_start_event_type;
@@ -1425,6 +1437,7 @@ pub mod quest_stage_desc_table;
 pub mod quest_stage_desc_type;
 pub mod rarity_type;
 pub mod recover_deployable_msg_type;
+pub mod refresh_player_knowledges_timer_type;
 pub mod region_connection_info_op_type;
 pub mod region_connection_info_table;
 pub mod region_connection_info_type;
@@ -1593,6 +1606,7 @@ pub mod stage_environment_debuff_desc_reducer;
 pub mod stage_equipment_desc_reducer;
 pub mod stage_equipment_preset_knowledge_desc_reducer;
 pub mod stage_extraction_recipe_desc_reducer;
+pub mod stage_floating_platform_desc_reducer;
 pub mod stage_food_desc_reducer;
 pub mod stage_gate_desc_reducer;
 pub mod stage_hexite_exchange_entry_desc_reducer;
@@ -1602,6 +1616,8 @@ pub mod stage_interior_network_desc_reducer;
 pub mod stage_interior_portal_connections_desc_reducer;
 pub mod stage_interior_shape_desc_reducer;
 pub mod stage_interior_spawn_desc_reducer;
+pub mod stage_interior_spawn_destroy_trigger_desc_reducer;
+pub mod stage_interior_spawn_random_group_desc_reducer;
 pub mod stage_item_conversion_recipe_desc_reducer;
 pub mod stage_item_desc_reducer;
 pub mod stage_item_list_desc_reducer;
@@ -2486,6 +2502,8 @@ pub use extraction_recipe_desc_table::*;
 pub use extraction_recipe_desc_type::ExtractionRecipeDesc;
 pub use extraction_spawned_placeable_type::ExtractionSpawnedPlaceable;
 pub use float_hex_tile_message_type::FloatHexTileMessage;
+pub use floating_platform_desc_table::*;
+pub use floating_platform_desc_type::FloatingPlatformDesc;
 pub use food_desc_table::*;
 pub use food_desc_type::FoodDesc;
 pub use footprint_tile_state_table::*;
@@ -2593,6 +2611,7 @@ pub use import_equipment_state_reducer::import_equipment_state;
 pub use import_experience_state_reducer::import_experience_state;
 pub use import_exploration_chunks_state_reducer::import_exploration_chunks_state;
 pub use import_extraction_recipe_desc_reducer::import_extraction_recipe_desc;
+pub use import_floating_platform_desc_reducer::import_floating_platform_desc;
 pub use import_food_desc_reducer::import_food_desc;
 pub use import_footprint_tile_state_reducer::import_footprint_tile_state;
 pub use import_gate_desc_reducer::import_gate_desc;
@@ -2609,6 +2628,8 @@ pub use import_interior_network_desc_reducer::import_interior_network_desc;
 pub use import_interior_portal_connections_desc_reducer::import_interior_portal_connections_desc;
 pub use import_interior_shape_desc_reducer::import_interior_shape_desc;
 pub use import_interior_spawn_desc_reducer::import_interior_spawn_desc;
+pub use import_interior_spawn_destroy_trigger_desc_reducer::import_interior_spawn_destroy_trigger_desc;
+pub use import_interior_spawn_random_group_desc_reducer::import_interior_spawn_random_group_desc;
 pub use import_inventory_state_reducer::import_inventory_state;
 pub use import_item_conversion_recipe_desc_reducer::import_item_conversion_recipe_desc;
 pub use import_item_desc_reducer::import_item_desc;
@@ -2749,7 +2770,12 @@ pub use interior_shape_desc_table::*;
 pub use interior_shape_desc_type::InteriorShapeDesc;
 pub use interior_spawn_desc_table::*;
 pub use interior_spawn_desc_type::InteriorSpawnDesc;
+pub use interior_spawn_destroy_trigger_desc_table::*;
+pub use interior_spawn_destroy_trigger_desc_type::InteriorSpawnDestroyTriggerDesc;
+pub use interior_spawn_random_group_desc_table::*;
+pub use interior_spawn_random_group_desc_type::InteriorSpawnRandomGroupDesc;
 pub use interior_spawn_type_type::InteriorSpawnType;
+pub use interior_spawned_resource_state_type::InteriorSpawnedResourceState;
 pub use inventory_create_personal_reducer::inventory_create_personal;
 pub use inventory_sort_reducer::inventory_sort;
 pub use inventory_state_table::*;
@@ -2862,6 +2888,7 @@ pub use message_contents_v_5_type::MessageContentsV5;
 pub use migrate_auto_attacks_reducer::migrate_auto_attacks;
 pub use migrate_character_stats_reducer::migrate_character_stats;
 pub use migrate_claim_tech_reducer::migrate_claim_tech;
+pub use migrate_duplicate_equipment_slots_reducer::migrate_duplicate_equipment_slots;
 pub use migrate_equipment_slots_reducer::migrate_equipment_slots;
 pub use migrate_exploration_achievement_counts_reducer::migrate_exploration_achievement_counts;
 pub use migrate_grant_default_collectibles_reducer::migrate_grant_default_collectibles;
@@ -3209,6 +3236,7 @@ pub use project_site_cancel_reducer::project_site_cancel;
 pub use project_site_place_reducer::project_site_place;
 pub use project_site_state_table::*;
 pub use project_site_state_type::ProjectSiteState;
+pub use prospect_cancel_reducer::prospect_cancel;
 pub use prospect_reducer::prospect;
 pub use prospect_start_event_table::*;
 pub use prospect_start_event_type::ProspectStartEvent;
@@ -3233,6 +3261,7 @@ pub use quest_stage_desc_table::*;
 pub use quest_stage_desc_type::QuestStageDesc;
 pub use rarity_type::Rarity;
 pub use recover_deployable_msg_type::RecoverDeployableMsg;
+pub use refresh_player_knowledges_timer_type::RefreshPlayerKnowledgesTimer;
 pub use region_connection_info_op_type::RegionConnectionInfoOp;
 pub use region_connection_info_table::*;
 pub use region_connection_info_type::RegionConnectionInfo;
@@ -3401,6 +3430,7 @@ pub use stage_environment_debuff_desc_reducer::stage_environment_debuff_desc;
 pub use stage_equipment_desc_reducer::stage_equipment_desc;
 pub use stage_equipment_preset_knowledge_desc_reducer::stage_equipment_preset_knowledge_desc;
 pub use stage_extraction_recipe_desc_reducer::stage_extraction_recipe_desc;
+pub use stage_floating_platform_desc_reducer::stage_floating_platform_desc;
 pub use stage_food_desc_reducer::stage_food_desc;
 pub use stage_gate_desc_reducer::stage_gate_desc;
 pub use stage_hexite_exchange_entry_desc_reducer::stage_hexite_exchange_entry_desc;
@@ -3410,6 +3440,8 @@ pub use stage_interior_network_desc_reducer::stage_interior_network_desc;
 pub use stage_interior_portal_connections_desc_reducer::stage_interior_portal_connections_desc;
 pub use stage_interior_shape_desc_reducer::stage_interior_shape_desc;
 pub use stage_interior_spawn_desc_reducer::stage_interior_spawn_desc;
+pub use stage_interior_spawn_destroy_trigger_desc_reducer::stage_interior_spawn_destroy_trigger_desc;
+pub use stage_interior_spawn_random_group_desc_reducer::stage_interior_spawn_random_group_desc;
 pub use stage_item_conversion_recipe_desc_reducer::stage_item_conversion_recipe_desc;
 pub use stage_item_desc_reducer::stage_item_desc;
 pub use stage_item_list_desc_reducer::stage_item_list_desc;
@@ -4669,6 +4701,9 @@ pub enum Reducer {
     ImportExtractionRecipeDesc {
         records: Vec<ExtractionRecipeDesc>,
     },
+    ImportFloatingPlatformDesc {
+        records: Vec<FloatingPlatformDesc>,
+    },
     ImportFoodDesc {
         records: Vec<FoodDesc>,
     },
@@ -4716,6 +4751,12 @@ pub enum Reducer {
     },
     ImportInteriorSpawnDesc {
         records: Vec<InteriorSpawnDesc>,
+    },
+    ImportInteriorSpawnDestroyTriggerDesc {
+        records: Vec<InteriorSpawnDestroyTriggerDesc>,
+    },
+    ImportInteriorSpawnRandomGroupDesc {
+        records: Vec<InteriorSpawnRandomGroupDesc>,
     },
     ImportInventoryState {
         records: Vec<InventoryState>,
@@ -5090,6 +5131,7 @@ pub enum Reducer {
     MigrateAutoAttacks,
     MigrateCharacterStats,
     MigrateClaimTech,
+    MigrateDuplicateEquipmentSlots,
     MigrateEquipmentSlots,
     MigrateExplorationAchievementCounts,
     MigrateGrantDefaultCollectibles,
@@ -5286,6 +5328,7 @@ pub enum Reducer {
         prospecting_id: i32,
         timestamp: u64,
     },
+    ProspectCancel,
     ProspectStart {
         prospecting_id: i32,
         timestamp: u64,
@@ -5508,6 +5551,9 @@ pub enum Reducer {
     StageExtractionRecipeDesc {
         records: Vec<ExtractionRecipeDesc>,
     },
+    StageFloatingPlatformDesc {
+        records: Vec<FloatingPlatformDesc>,
+    },
     StageFoodDesc {
         records: Vec<FoodDesc>,
     },
@@ -5534,6 +5580,12 @@ pub enum Reducer {
     },
     StageInteriorSpawnDesc {
         records: Vec<InteriorSpawnDesc>,
+    },
+    StageInteriorSpawnDestroyTriggerDesc {
+        records: Vec<InteriorSpawnDestroyTriggerDesc>,
+    },
+    StageInteriorSpawnRandomGroupDesc {
+        records: Vec<InteriorSpawnRandomGroupDesc>,
     },
     StageItemConversionRecipeDesc {
         records: Vec<ItemConversionRecipeDesc>,
@@ -6163,6 +6215,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::ImportExperienceState { .. } => "import_experience_state",
             Reducer::ImportExplorationChunksState { .. } => "import_exploration_chunks_state",
             Reducer::ImportExtractionRecipeDesc { .. } => "import_extraction_recipe_desc",
+            Reducer::ImportFloatingPlatformDesc { .. } => "import_floating_platform_desc",
             Reducer::ImportFoodDesc { .. } => "import_food_desc",
             Reducer::ImportFootprintTileState { .. } => "import_footprint_tile_state",
             Reducer::ImportGateDesc { .. } => "import_gate_desc",
@@ -6183,6 +6236,12 @@ impl __sdk::Reducer for Reducer {
             }
             Reducer::ImportInteriorShapeDesc { .. } => "import_interior_shape_desc",
             Reducer::ImportInteriorSpawnDesc { .. } => "import_interior_spawn_desc",
+            Reducer::ImportInteriorSpawnDestroyTriggerDesc { .. } => {
+                "import_interior_spawn_destroy_trigger_desc"
+            }
+            Reducer::ImportInteriorSpawnRandomGroupDesc { .. } => {
+                "import_interior_spawn_random_group_desc"
+            }
             Reducer::ImportInventoryState { .. } => "import_inventory_state",
             Reducer::ImportItemConversionRecipeDesc { .. } => "import_item_conversion_recipe_desc",
             Reducer::ImportItemDesc { .. } => "import_item_desc",
@@ -6321,6 +6380,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::MigrateAutoAttacks => "migrate_auto_attacks",
             Reducer::MigrateCharacterStats => "migrate_character_stats",
             Reducer::MigrateClaimTech => "migrate_claim_tech",
+            Reducer::MigrateDuplicateEquipmentSlots => "migrate_duplicate_equipment_slots",
             Reducer::MigrateEquipmentSlots => "migrate_equipment_slots",
             Reducer::MigrateExplorationAchievementCounts => {
                 "migrate_exploration_achievement_counts"
@@ -6393,6 +6453,7 @@ impl __sdk::Reducer for Reducer {
             Reducer::ProjectSiteCancel { .. } => "project_site_cancel",
             Reducer::ProjectSitePlace { .. } => "project_site_place",
             Reducer::Prospect { .. } => "prospect",
+            Reducer::ProspectCancel => "prospect_cancel",
             Reducer::ProspectStart { .. } => "prospect_start",
             Reducer::RentAddListing { .. } => "rent_add_listing",
             Reducer::RentAddTenant { .. } => "rent_add_tenant",
@@ -6473,6 +6534,7 @@ impl __sdk::Reducer for Reducer {
                 "stage_equipment_preset_knowledge_desc"
             }
             Reducer::StageExtractionRecipeDesc { .. } => "stage_extraction_recipe_desc",
+            Reducer::StageFloatingPlatformDesc { .. } => "stage_floating_platform_desc",
             Reducer::StageFoodDesc { .. } => "stage_food_desc",
             Reducer::StageGateDesc { .. } => "stage_gate_desc",
             Reducer::StageHexiteExchangeEntryDesc { .. } => "stage_hexite_exchange_entry_desc",
@@ -6484,6 +6546,12 @@ impl __sdk::Reducer for Reducer {
             }
             Reducer::StageInteriorShapeDesc { .. } => "stage_interior_shape_desc",
             Reducer::StageInteriorSpawnDesc { .. } => "stage_interior_spawn_desc",
+            Reducer::StageInteriorSpawnDestroyTriggerDesc { .. } => {
+                "stage_interior_spawn_destroy_trigger_desc"
+            }
+            Reducer::StageInteriorSpawnRandomGroupDesc { .. } => {
+                "stage_interior_spawn_random_group_desc"
+            }
             Reducer::StageItemConversionRecipeDesc { .. } => "stage_item_conversion_recipe_desc",
             Reducer::StageItemDesc { .. } => "stage_item_desc",
             Reducer::StageItemListDesc { .. } => "stage_item_list_desc",
@@ -8349,6 +8417,11 @@ Reducer::GenerateWorld{
 }             => __sats::bsatn::to_vec(&import_extraction_recipe_desc_reducer::ImportExtractionRecipeDescArgs {
                 records: records.clone(),
 }),
+            Reducer::ImportFloatingPlatformDesc{
+                records,
+}             => __sats::bsatn::to_vec(&import_floating_platform_desc_reducer::ImportFloatingPlatformDescArgs {
+                records: records.clone(),
+}),
             Reducer::ImportFoodDesc{
                 records,
 }             => __sats::bsatn::to_vec(&import_food_desc_reducer::ImportFoodDescArgs {
@@ -8427,6 +8500,16 @@ Reducer::GenerateWorld{
             Reducer::ImportInteriorSpawnDesc{
                 records,
 }             => __sats::bsatn::to_vec(&import_interior_spawn_desc_reducer::ImportInteriorSpawnDescArgs {
+                records: records.clone(),
+}),
+            Reducer::ImportInteriorSpawnDestroyTriggerDesc{
+                records,
+}             => __sats::bsatn::to_vec(&import_interior_spawn_destroy_trigger_desc_reducer::ImportInteriorSpawnDestroyTriggerDescArgs {
+                records: records.clone(),
+}),
+            Reducer::ImportInteriorSpawnRandomGroupDesc{
+                records,
+}             => __sats::bsatn::to_vec(&import_interior_spawn_random_group_desc_reducer::ImportInteriorSpawnRandomGroupDescArgs {
                 records: records.clone(),
 }),
             Reducer::ImportInventoryState{
@@ -9056,6 +9139,8 @@ Reducer::MigrateCharacterStats => __sats::bsatn::to_vec(&migrate_character_stats
                 }),
 Reducer::MigrateClaimTech => __sats::bsatn::to_vec(&migrate_claim_tech_reducer::MigrateClaimTechArgs {
                 }),
+Reducer::MigrateDuplicateEquipmentSlots => __sats::bsatn::to_vec(&migrate_duplicate_equipment_slots_reducer::MigrateDuplicateEquipmentSlotsArgs {
+                }),
 Reducer::MigrateEquipmentSlots => __sats::bsatn::to_vec(&migrate_equipment_slots_reducer::MigrateEquipmentSlotsArgs {
                 }),
 Reducer::MigrateExplorationAchievementCounts => __sats::bsatn::to_vec(&migrate_exploration_achievement_counts_reducer::MigrateExplorationAchievementCountsArgs {
@@ -9389,7 +9474,9 @@ Reducer::PlayerRerollTravelerTask{
                 prospecting_id: prospecting_id.clone(),
                 timestamp: timestamp.clone(),
 }),
-            Reducer::ProspectStart{
+            Reducer::ProspectCancel => __sats::bsatn::to_vec(&prospect_cancel_reducer::ProspectCancelArgs {
+                }),
+Reducer::ProspectStart{
                 prospecting_id,
                 timestamp,
 }             => __sats::bsatn::to_vec(&prospect_start_reducer::ProspectStartArgs {
@@ -9762,6 +9849,11 @@ Reducer::Sleep{
 }             => __sats::bsatn::to_vec(&stage_extraction_recipe_desc_reducer::StageExtractionRecipeDescArgs {
                 records: records.clone(),
 }),
+            Reducer::StageFloatingPlatformDesc{
+                records,
+}             => __sats::bsatn::to_vec(&stage_floating_platform_desc_reducer::StageFloatingPlatformDescArgs {
+                records: records.clone(),
+}),
             Reducer::StageFoodDesc{
                 records,
 }             => __sats::bsatn::to_vec(&stage_food_desc_reducer::StageFoodDescArgs {
@@ -9805,6 +9897,16 @@ Reducer::Sleep{
             Reducer::StageInteriorSpawnDesc{
                 records,
 }             => __sats::bsatn::to_vec(&stage_interior_spawn_desc_reducer::StageInteriorSpawnDescArgs {
+                records: records.clone(),
+}),
+            Reducer::StageInteriorSpawnDestroyTriggerDesc{
+                records,
+}             => __sats::bsatn::to_vec(&stage_interior_spawn_destroy_trigger_desc_reducer::StageInteriorSpawnDestroyTriggerDescArgs {
+                records: records.clone(),
+}),
+            Reducer::StageInteriorSpawnRandomGroupDesc{
+                records,
+}             => __sats::bsatn::to_vec(&stage_interior_spawn_random_group_desc_reducer::StageInteriorSpawnRandomGroupDescArgs {
                 records: records.clone(),
 }),
             Reducer::StageItemConversionRecipeDesc{
@@ -10355,6 +10457,7 @@ pub struct DbUpdate {
     extract_outcome_state_v_1: __sdk::TableUpdate<ExtractOutcomeState>,
     extract_start_event: __sdk::TableUpdate<ExtractStartEvent>,
     extraction_recipe_desc: __sdk::TableUpdate<ExtractionRecipeDesc>,
+    floating_platform_desc: __sdk::TableUpdate<FloatingPlatformDesc>,
     food_desc: __sdk::TableUpdate<FoodDesc>,
     footprint_tile_state: __sdk::TableUpdate<FootprintTileState>,
     gate_desc: __sdk::TableUpdate<GateDesc>,
@@ -10378,6 +10481,8 @@ pub struct DbUpdate {
     interior_portal_connections_desc: __sdk::TableUpdate<InteriorPortalConnectionsDesc>,
     interior_shape_desc: __sdk::TableUpdate<InteriorShapeDesc>,
     interior_spawn_desc: __sdk::TableUpdate<InteriorSpawnDesc>,
+    interior_spawn_destroy_trigger_desc: __sdk::TableUpdate<InteriorSpawnDestroyTriggerDesc>,
+    interior_spawn_random_group_desc: __sdk::TableUpdate<InteriorSpawnRandomGroupDesc>,
     inventory_state: __sdk::TableUpdate<InventoryState>,
     item_conversion_recipe_desc: __sdk::TableUpdate<ItemConversionRecipeDesc>,
     item_convert_start_event: __sdk::TableUpdate<ItemConvertStartEvent>,
@@ -10989,6 +11094,9 @@ impl TryFrom<__ws::v2::TransactionUpdate> for DbUpdate {
                 "extraction_recipe_desc" => db_update.extraction_recipe_desc.append(
                     extraction_recipe_desc_table::parse_table_update(table_update)?,
                 ),
+                "floating_platform_desc" => db_update.floating_platform_desc.append(
+                    floating_platform_desc_table::parse_table_update(table_update)?,
+                ),
                 "food_desc" => db_update
                     .food_desc
                     .append(food_desc_table::parse_table_update(table_update)?),
@@ -11062,6 +11170,18 @@ impl TryFrom<__ws::v2::TransactionUpdate> for DbUpdate {
                 "interior_spawn_desc" => db_update
                     .interior_spawn_desc
                     .append(interior_spawn_desc_table::parse_table_update(table_update)?),
+                "interior_spawn_destroy_trigger_desc" => {
+                    db_update.interior_spawn_destroy_trigger_desc.append(
+                        interior_spawn_destroy_trigger_desc_table::parse_table_update(
+                            table_update,
+                        )?,
+                    )
+                }
+                "interior_spawn_random_group_desc" => {
+                    db_update.interior_spawn_random_group_desc.append(
+                        interior_spawn_random_group_desc_table::parse_table_update(table_update)?,
+                    )
+                }
                 "inventory_state" => db_update
                     .inventory_state
                     .append(inventory_state_table::parse_table_update(table_update)?),
@@ -12532,6 +12652,14 @@ impl __sdk::DbUpdate for DbUpdate {
                 deduplicate_rows,
             )
             .with_updates_by_pk(|row| &row.id);
+        diff.floating_platform_desc = cache
+            .apply_diff_to_table_with_pk_and_deduplication::<FloatingPlatformDesc, _>(
+                "floating_platform_desc",
+                &self.floating_platform_desc,
+                |row| &row.building_id,
+                deduplicate_rows,
+            )
+            .with_updates_by_pk(|row| &row.building_id);
         diff.food_desc = cache
             .apply_diff_to_table_with_pk_and_deduplication::<FoodDesc, _>(
                 "food_desc",
@@ -12712,6 +12840,22 @@ impl __sdk::DbUpdate for DbUpdate {
             .apply_diff_to_table_with_pk_and_deduplication::<InteriorSpawnDesc, _>(
                 "interior_spawn_desc",
                 &self.interior_spawn_desc,
+                |row| &row.id,
+                deduplicate_rows,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.interior_spawn_destroy_trigger_desc = cache
+            .apply_diff_to_table_with_pk_and_deduplication::<InteriorSpawnDestroyTriggerDesc, _>(
+                "interior_spawn_destroy_trigger_desc",
+                &self.interior_spawn_destroy_trigger_desc,
+                |row| &row.id,
+                deduplicate_rows,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.interior_spawn_random_group_desc = cache
+            .apply_diff_to_table_with_pk_and_deduplication::<InteriorSpawnRandomGroupDesc, _>(
+                "interior_spawn_random_group_desc",
+                &self.interior_spawn_random_group_desc,
                 |row| &row.id,
                 deduplicate_rows,
             )
@@ -14027,6 +14171,7 @@ impl __sdk::DbUpdate for DbUpdate {
         self.extract_outcome_state_v_1.mark_initial();
         self.extract_start_event.mark_initial();
         self.extraction_recipe_desc.mark_initial();
+        self.floating_platform_desc.mark_initial();
         self.food_desc.mark_initial();
         self.footprint_tile_state.mark_initial();
         self.gate_desc.mark_initial();
@@ -14050,6 +14195,8 @@ impl __sdk::DbUpdate for DbUpdate {
         self.interior_portal_connections_desc.mark_initial();
         self.interior_shape_desc.mark_initial();
         self.interior_spawn_desc.mark_initial();
+        self.interior_spawn_destroy_trigger_desc.mark_initial();
+        self.interior_spawn_random_group_desc.mark_initial();
         self.inventory_state.mark_initial();
         self.item_conversion_recipe_desc.mark_initial();
         self.item_convert_start_event.mark_initial();
@@ -14626,6 +14773,9 @@ impl __sdk::DbUpdate for DbUpdate {
                 "extraction_recipe_desc" => db_update
                     .extraction_recipe_desc
                     .append(__sdk::parse_row_list_as_inserts(table_rows.rows)?),
+                "floating_platform_desc" => db_update
+                    .floating_platform_desc
+                    .append(__sdk::parse_row_list_as_inserts(table_rows.rows)?),
                 "food_desc" => db_update
                     .food_desc
                     .append(__sdk::parse_row_list_as_inserts(table_rows.rows)?),
@@ -14694,6 +14844,12 @@ impl __sdk::DbUpdate for DbUpdate {
                     .append(__sdk::parse_row_list_as_inserts(table_rows.rows)?),
                 "interior_spawn_desc" => db_update
                     .interior_spawn_desc
+                    .append(__sdk::parse_row_list_as_inserts(table_rows.rows)?),
+                "interior_spawn_destroy_trigger_desc" => db_update
+                    .interior_spawn_destroy_trigger_desc
+                    .append(__sdk::parse_row_list_as_inserts(table_rows.rows)?),
+                "interior_spawn_random_group_desc" => db_update
+                    .interior_spawn_random_group_desc
                     .append(__sdk::parse_row_list_as_inserts(table_rows.rows)?),
                 "inventory_state" => db_update
                     .inventory_state
@@ -15611,6 +15767,9 @@ impl __sdk::DbUpdate for DbUpdate {
                 "extraction_recipe_desc" => db_update
                     .extraction_recipe_desc
                     .append(__sdk::parse_row_list_as_deletes(table_rows.rows)?),
+                "floating_platform_desc" => db_update
+                    .floating_platform_desc
+                    .append(__sdk::parse_row_list_as_deletes(table_rows.rows)?),
                 "food_desc" => db_update
                     .food_desc
                     .append(__sdk::parse_row_list_as_deletes(table_rows.rows)?),
@@ -15679,6 +15838,12 @@ impl __sdk::DbUpdate for DbUpdate {
                     .append(__sdk::parse_row_list_as_deletes(table_rows.rows)?),
                 "interior_spawn_desc" => db_update
                     .interior_spawn_desc
+                    .append(__sdk::parse_row_list_as_deletes(table_rows.rows)?),
+                "interior_spawn_destroy_trigger_desc" => db_update
+                    .interior_spawn_destroy_trigger_desc
+                    .append(__sdk::parse_row_list_as_deletes(table_rows.rows)?),
+                "interior_spawn_random_group_desc" => db_update
+                    .interior_spawn_random_group_desc
                     .append(__sdk::parse_row_list_as_deletes(table_rows.rows)?),
                 "inventory_state" => db_update
                     .inventory_state
@@ -16333,6 +16498,7 @@ pub struct AppliedDiff<'r> {
     extract_outcome_state_v_1: __sdk::TableAppliedDiff<'r, ExtractOutcomeState>,
     extract_start_event: __sdk::TableAppliedDiff<'r, ExtractStartEvent>,
     extraction_recipe_desc: __sdk::TableAppliedDiff<'r, ExtractionRecipeDesc>,
+    floating_platform_desc: __sdk::TableAppliedDiff<'r, FloatingPlatformDesc>,
     food_desc: __sdk::TableAppliedDiff<'r, FoodDesc>,
     footprint_tile_state: __sdk::TableAppliedDiff<'r, FootprintTileState>,
     gate_desc: __sdk::TableAppliedDiff<'r, GateDesc>,
@@ -16356,6 +16522,9 @@ pub struct AppliedDiff<'r> {
     interior_portal_connections_desc: __sdk::TableAppliedDiff<'r, InteriorPortalConnectionsDesc>,
     interior_shape_desc: __sdk::TableAppliedDiff<'r, InteriorShapeDesc>,
     interior_spawn_desc: __sdk::TableAppliedDiff<'r, InteriorSpawnDesc>,
+    interior_spawn_destroy_trigger_desc:
+        __sdk::TableAppliedDiff<'r, InteriorSpawnDestroyTriggerDesc>,
+    interior_spawn_random_group_desc: __sdk::TableAppliedDiff<'r, InteriorSpawnRandomGroupDesc>,
     inventory_state: __sdk::TableAppliedDiff<'r, InventoryState>,
     item_conversion_recipe_desc: __sdk::TableAppliedDiff<'r, ItemConversionRecipeDesc>,
     item_convert_start_event: __sdk::TableAppliedDiff<'r, ItemConvertStartEvent>,
@@ -17482,6 +17651,13 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
                 event,
             );
         }
+        if callbacks.has_callbacks("floating_platform_desc") {
+            callbacks.invoke_table_row_callbacks::<FloatingPlatformDesc>(
+                "floating_platform_desc",
+                &self.floating_platform_desc,
+                event,
+            );
+        }
         if callbacks.has_callbacks("food_desc") {
             callbacks.invoke_table_row_callbacks::<FoodDesc>("food_desc", &self.food_desc, event);
         }
@@ -17628,6 +17804,20 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             callbacks.invoke_table_row_callbacks::<InteriorSpawnDesc>(
                 "interior_spawn_desc",
                 &self.interior_spawn_desc,
+                event,
+            );
+        }
+        if callbacks.has_callbacks("interior_spawn_destroy_trigger_desc") {
+            callbacks.invoke_table_row_callbacks::<InteriorSpawnDestroyTriggerDesc>(
+                "interior_spawn_destroy_trigger_desc",
+                &self.interior_spawn_destroy_trigger_desc,
+                event,
+            );
+        }
+        if callbacks.has_callbacks("interior_spawn_random_group_desc") {
+            callbacks.invoke_table_row_callbacks::<InteriorSpawnRandomGroupDesc>(
+                "interior_spawn_random_group_desc",
+                &self.interior_spawn_random_group_desc,
                 event,
             );
         }
@@ -19569,6 +19759,7 @@ impl __sdk::SpacetimeModule for RemoteModule {
             extract_outcome_state_v_1_table::register_table(client_cache);
             extract_start_event_table::register_table(client_cache);
             extraction_recipe_desc_table::register_table(client_cache);
+            floating_platform_desc_table::register_table(client_cache);
             food_desc_table::register_table(client_cache);
             footprint_tile_state_table::register_table(client_cache);
             gate_desc_table::register_table(client_cache);
@@ -19592,6 +19783,8 @@ impl __sdk::SpacetimeModule for RemoteModule {
             interior_portal_connections_desc_table::register_table(client_cache);
             interior_shape_desc_table::register_table(client_cache);
             interior_spawn_desc_table::register_table(client_cache);
+            interior_spawn_destroy_trigger_desc_table::register_table(client_cache);
+            interior_spawn_random_group_desc_table::register_table(client_cache);
             inventory_state_table::register_table(client_cache);
             item_conversion_recipe_desc_table::register_table(client_cache);
             item_convert_start_event_table::register_table(client_cache);
@@ -19896,6 +20089,7 @@ impl __sdk::SpacetimeModule for RemoteModule {
         "extract_outcome_state_v1",
         "extract_start_event",
         "extraction_recipe_desc",
+        "floating_platform_desc",
         "food_desc",
         "footprint_tile_state",
         "gate_desc",
@@ -19919,6 +20113,8 @@ impl __sdk::SpacetimeModule for RemoteModule {
         "interior_portal_connections_desc",
         "interior_shape_desc",
         "interior_spawn_desc",
+        "interior_spawn_destroy_trigger_desc",
+        "interior_spawn_random_group_desc",
         "inventory_state",
         "item_conversion_recipe_desc",
         "item_convert_start_event",

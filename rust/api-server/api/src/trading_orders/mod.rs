@@ -24,32 +24,40 @@ async fn get_trade_orders(
             .trade_order_state
             .iter()
             .filter(|trade_order| trade_order.traveler_trade_order_id.is_none())
-            .map(|trade_order| TradeOrdersWithExpendedRefrence {
-                entity_id: trade_order.entity_id,
-                remaining_stock: trade_order.remaining_stock,
-                offer_items: trade_order
-                    .offer_items
-                    .iter()
-                    .map(|offer_items| {
-                        let a = Some(offer_items.clone());
-                        resolve_contents(&a, &state.item_desc, &state.cargo_desc).unwrap()
-                    })
-                    .collect(),
-                offer_cargo_id: trade_order.offer_cargo_id.clone(),
-                required_items: trade_order
-                    .required_items
-                    .iter()
-                    .map(|required_items| {
-                        let a = Some(required_items.clone());
-                        resolve_contents(&a, &state.item_desc, &state.cargo_desc).unwrap()
-                    })
-                    .collect(),
-                required_cargo_id: trade_order.required_cargo_id.clone(),
-                region: trade_order.region,
-                shop_entity_id: trade_order.shop_entity_id,
-                traveler_trade_order_id: trade_order.traveler_trade_order_id,
+            .map(|trade_order| {
+                Ok::<_, (StatusCode, &'static str)>(TradeOrdersWithExpendedRefrence {
+                    entity_id: trade_order.entity_id,
+                    remaining_stock: trade_order.remaining_stock,
+                    offer_items: trade_order
+                        .offer_items
+                        .iter()
+                        .map(|offer_items| {
+                            let a = Some(offer_items.clone());
+                            resolve_contents(&a, &state.item_desc, &state.cargo_desc).ok_or((
+                                StatusCode::SERVICE_UNAVAILABLE,
+                                "Item or cargo descriptions are not available yet",
+                            ))
+                        })
+                        .collect::<Result<_, _>>()?,
+                    offer_cargo_id: trade_order.offer_cargo_id.clone(),
+                    required_items: trade_order
+                        .required_items
+                        .iter()
+                        .map(|required_items| {
+                            let a = Some(required_items.clone());
+                            resolve_contents(&a, &state.item_desc, &state.cargo_desc).ok_or((
+                                StatusCode::SERVICE_UNAVAILABLE,
+                                "Item or cargo descriptions are not available yet",
+                            ))
+                        })
+                        .collect::<Result<_, _>>()?,
+                    required_cargo_id: trade_order.required_cargo_id.clone(),
+                    region: trade_order.region,
+                    shop_entity_id: trade_order.shop_entity_id,
+                    traveler_trade_order_id: trade_order.traveler_trade_order_id,
+                })
             })
-            .collect(),
+            .collect::<Result<_, _>>()?,
         total: state.trade_order_state.len() as u64,
         page: 1,
         per_page: 50,

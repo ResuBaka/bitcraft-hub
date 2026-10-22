@@ -15,6 +15,8 @@ pub enum FootprintType {
     Perimeter,
 
     WalkableResource,
+
+    Platform,
 }
 
 impl __sdk::InModule for FootprintType {
