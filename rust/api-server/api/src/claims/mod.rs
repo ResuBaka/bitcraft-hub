@@ -3,6 +3,7 @@ pub(crate) mod claim_local_state;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
 pub(crate) mod events;
+pub(crate) mod member_cache;
 
 use crate::inventory::{InventoryChangesParams, resolve_contents, resolve_pocket};
 use crate::{AppRouter, AppState};
@@ -374,7 +375,7 @@ pub(crate) async fn get_claim(
         .get(&(claim.entity_id as u64))
         .map_or(vec![], |claim_members| {
             claim_members
-                .iter()
+                .values()
                 .map(|member| member.player_entity_id)
                 .collect()
         });
@@ -393,7 +394,7 @@ pub(crate) async fn get_claim(
         .get(&(claim.entity_id as u64))
         .map_or(vec![], |claim_members| {
             claim_members
-                .iter()
+                .values()
                 .map(|member| ClaimDescriptionStateMember {
                     entity_id: member.player_entity_id,
                     user_name: currently_known_player_username_state
@@ -515,8 +516,8 @@ pub(crate) async fn get_claim(
 
         if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id) {
             for member in claim.members.iter_mut() {
-                let xp = if let Some(a) = a.scores.get(&member.entity_id) {
-                    *a
+                let xp = if let Some(xp) = a.get_value(&member.entity_id) {
+                    xp
                 } else {
                     tracing::warn!(
                         member.entity_id,
@@ -975,7 +976,7 @@ pub(crate) async fn list_claims(
                 .get(&(claim_description.entity_id as u64))
                 .map_or(vec![], |claim_members| {
                     claim_members
-                        .iter()
+                        .values()
                         .map(|member| ClaimDescriptionStateMember {
                             entity_id: member.player_entity_id,
                             user_name: member.user_name.clone(),

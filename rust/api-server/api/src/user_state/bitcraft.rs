@@ -1,13 +1,13 @@
 use crate::AppState;
+use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::UserState;
-use tokio::sync::mpsc::UnboundedReceiver;
 
 pub(crate) fn start_worker_user_state(
     global_app_state: AppState,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<UserState>>,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(update) = rx.recv().await {
             record_worker_received("user_state", 1);
             match update {

@@ -1,4 +1,6 @@
 use crate::AppState;
+use crate::websocket::batched_worker::BatchTimer;
+use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{
     OutboundWebSocketMessages, SpacetimeUpdateMessages, record_worker_received,
 };
@@ -6,8 +8,6 @@ use game_module::module_bindings::TravelerTaskState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time::sleep;
 
 pub(crate) fn start_worker_traveler_task_state(
     global_app_state: AppState,
@@ -15,7 +15,7 @@ pub(crate) fn start_worker_traveler_task_state(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict =
             sea_query::OnConflict::column(::entity::traveler_task_state::Column::EntityId)
                 .update_columns([
@@ -27,15 +27,16 @@ pub(crate) fn start_worker_traveler_task_state(
                 ])
                 .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("traveler_task_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
@@ -67,10 +68,7 @@ pub(crate) fn start_worker_traveler_task_state(
 
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::TravelerTaskState(model.clone()));
 
-                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                    messages_delete.remove(index);
-                                }
-                                messages.push(model);
+                                queue_upsert(&mut messages, &mut messages_delete, model);
                                 if messages.len() >= batch_size {
                                     insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
                                         .await;
@@ -81,14 +79,7 @@ pub(crate) fn start_worker_traveler_task_state(
 
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::TravelerTaskState(model.clone()));
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
-                                    messages.remove(index);
-                                }
-
-                                if let Some(index) = messages_delete.iter().position(|value| *value == model.entity_id) {
-                                    messages_delete.remove(index);
-                                }
-                                messages.push(model);
+                                queue_upsert(&mut messages, &mut messages_delete, model);
                                 if messages.len() >= batch_size {
                                     insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages)
                                         .await;
@@ -99,18 +90,14 @@ pub(crate) fn start_worker_traveler_task_state(
                                 let id = model.entity_id;
                                 let _ = global_app_state.tx.send(OutboundWebSocketMessages::TravelerTaskStateDelete(model.clone()));
 
-                                if let Some(index) = messages.iter().position(|value| value.entity_id == model.entity_id) {
-                                    messages.remove(index);
-                                }
-
-                                messages_delete.push(id);
+                                queue_delete(&mut messages, &mut messages_delete, id);
                                 if messages_delete.len() >= batch_size {
                                     break;
                                 }
                             }
                         }
                     }
-                    _ = &mut timer => {
+                    _ = timer.elapsed() => {
                         break;
                     }
                     else => {
@@ -148,11 +135,36 @@ pub(crate) fn start_worker_traveler_task_state(
                 messages_delete.clear();
             }
 
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }
     });
+}
+
+// PostgreSQL rejects duplicate conflict keys within a single upsert statement.
+// Both Insert and Update events must coalesce, including repeated regional or
+// reconnect delivery. A later operation supersedes all earlier ones for that ID.
+fn queue_upsert(
+    messages: &mut Vec<::entity::traveler_task_state::Model>,
+    deletes: &mut Vec<i64>,
+    model: ::entity::traveler_task_state::Model,
+) {
+    messages.retain(|pending| pending.entity_id != model.entity_id);
+    deletes.retain(|id| *id != model.entity_id);
+    messages.push(model);
+}
+
+fn queue_delete(
+    messages: &mut Vec<::entity::traveler_task_state::Model>,
+    deletes: &mut Vec<i64>,
+    id: i64,
+) {
+    messages.retain(|pending| pending.entity_id != id);
+    if !deletes.contains(&id) {
+        deletes.push(id);
+    }
 }
 
 async fn insert_multiple_traveler_task_state(
@@ -174,5 +186,70 @@ async fn insert_multiple_traveler_task_state(
 
     if let Err(err) = insert {
         tracing::error!("Error inserting TravelerTaskState: {}", err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use entity::traveler_task_state::{Column, Entity, Model};
+    use sea_orm::{DbBackend, MockDatabase, QueryTrait, Transaction};
+
+    fn task(entity_id: i64, completed: bool) -> Model {
+        Model {
+            entity_id,
+            player_entity_id: 20,
+            traveler_id: 30,
+            task_id: 40,
+            completed,
+            region: 7,
+        }
+    }
+
+    #[tokio::test]
+    async fn repeated_inserts_and_updates_write_only_the_latest_row_per_entity() {
+        let mut messages = Vec::new();
+        let mut deletes = Vec::new();
+        queue_upsert(&mut messages, &mut deletes, task(1, false));
+        queue_upsert(&mut messages, &mut deletes, task(2, false));
+        queue_upsert(&mut messages, &mut deletes, task(1, true));
+        queue_upsert(&mut messages, &mut deletes, task(1, true));
+        assert_eq!(messages, [task(2, false), task(1, true)]);
+        assert!(deletes.is_empty());
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![task(1, true)]])
+            .into_connection();
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db, tx, Default::default());
+        let on_conflict = sea_query::OnConflict::column(Column::EntityId)
+            .update_column(Column::Completed)
+            .to_owned();
+        let mut expected = Entity::insert_many(
+            [task(2, false), task(1, true)].map(IntoActiveModel::into_active_model),
+        )
+        .on_conflict(on_conflict.clone())
+        .build(DbBackend::Postgres);
+        expected.sql.push_str(" RETURNING \"entity_id\"");
+        insert_multiple_traveler_task_state(&state, &on_conflict, &mut messages).await;
+        assert!(messages.is_empty());
+        assert_eq!(
+            state.conn.into_transaction_log(),
+            [Transaction::one(expected)]
+        );
+    }
+
+    #[test]
+    fn later_upserts_and_deletes_supersede_all_pending_operations_for_the_id() {
+        let mut messages = vec![task(1, false), task(2, false), task(1, true)];
+        let mut deletes = Vec::new();
+        queue_delete(&mut messages, &mut deletes, 1);
+        queue_delete(&mut messages, &mut deletes, 1);
+        assert_eq!(messages, [task(2, false)]);
+        assert_eq!(deletes, [1]);
+        deletes.push(1); // also cancel every copy of a pre-existing delete
+        queue_upsert(&mut messages, &mut deletes, task(1, true));
+        assert_eq!(messages, [task(2, false), task(1, true)]);
+        assert!(deletes.is_empty());
     }
 }

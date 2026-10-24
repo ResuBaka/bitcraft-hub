@@ -45,6 +45,11 @@ chrono = "0.4.45"
 rand = "0.10.3"
 
 
+[features]
+# Use Rust's system allocator so Heaptrack can intercept individual allocations.
+# Keep mimalloc as the default for normal server builds.
+system-allocator = []
+
 [dependencies]
 api = { path = "api" }
 tokio = { version = "1.53.1", features = [ "full" ] }

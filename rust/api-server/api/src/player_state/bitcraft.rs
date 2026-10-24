@@ -1,12 +1,13 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchedWorker;
+use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
 use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use game_module::module_bindings::{PlayerState, PlayerUsernameState};
 use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
+use tokio::sync::mpsc::{Sender, channel};
 
 enum PlayerStateDbOperation {
     Upsert(Vec<::entity::player_state::ActiveModel>),
@@ -41,7 +42,8 @@ pub(crate) struct PlayerStateWorker {
 impl PlayerStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_player_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -50,9 +52,9 @@ impl PlayerStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            ids: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            ids: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -214,7 +216,6 @@ impl PlayerStateWorker {
             if local_messages.len() >= self.batch_size {
                 self.queue_upserts(std::mem::take(&mut local_messages))
                     .await;
-                local_messages = Vec::with_capacity(self.batch_size + 10);
             }
         }
 
@@ -440,8 +441,7 @@ impl PlayerStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages).await;
     }
 
@@ -451,10 +451,7 @@ impl PlayerStateWorker {
         }
 
         tracing::debug!("PlayerState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete).await;
     }
 }
@@ -572,7 +569,7 @@ fn start_player_state_db_worker(global_app_state: AppState) -> Sender<PlayerStat
         ])
         .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 PlayerStateDbOperation::Upsert(messages) => {
@@ -606,7 +603,8 @@ pub(crate) struct PlayerUsernameStateWorker {
 impl PlayerUsernameStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_player_username_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -615,9 +613,9 @@ impl PlayerUsernameStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            ids: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            ids: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -726,7 +724,6 @@ impl PlayerUsernameStateWorker {
                     if local_messages.len() >= self.batch_size {
                         self.queue_upserts(std::mem::take(&mut local_messages))
                             .await;
-                        local_messages = Vec::with_capacity(self.batch_size + 10);
                     }
                 }
                 if !local_messages.is_empty() {
@@ -821,8 +818,7 @@ impl PlayerUsernameStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages).await;
     }
 
@@ -832,10 +828,7 @@ impl PlayerUsernameStateWorker {
         }
 
         tracing::debug!("PlayerUsernameState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete).await;
     }
 }
@@ -949,7 +942,7 @@ fn start_player_username_state_db_worker(
             ])
             .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 PlayerUsernameStateDbOperation::Upsert(messages) => {

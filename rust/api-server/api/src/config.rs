@@ -14,6 +14,7 @@ pub(crate) struct Config {
     pub(crate) log_type: LogType,
     pub(crate) log_level: LogLevel,
     pub(crate) spacetimedb: SpacetimeDbConfig,
+    pub(crate) shutdown: ShutdownConfig,
     #[serde(default)]
     pub(crate) origins: AllowedOriginConfig,
     #[serde(alias = "liveupdatesws")]
@@ -41,10 +42,45 @@ impl Default for Config {
             log_type: LogType::default(),
             log_level: LogLevel::default(),
             spacetimedb: SpacetimeDbConfig::default(),
+            shutdown: ShutdownConfig::default(),
             origins: AllowedOriginConfig::default(),
             live_updates_ws: false,
             tech_tier_research_map,
         }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub(crate) struct ShutdownConfig {
+    /// Stop ingestion/HTTP after this many seconds of serving. None disables it.
+    pub(crate) after_seconds: Option<u64>,
+    /// Additional time allowed to drain accepted work.
+    pub(crate) grace_seconds: u64,
+}
+
+impl Default for ShutdownConfig {
+    fn default() -> Self {
+        Self {
+            after_seconds: None,
+            grace_seconds: 60,
+        }
+    }
+}
+
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+    #[test]
+    fn default_is_unlimited_and_six_minute_config_is_explicit() {
+        let default: Config = serde_json::from_str("{}").unwrap();
+        assert_eq!(default.shutdown.after_seconds, None);
+        assert_eq!(default.shutdown.grace_seconds, 60);
+        let timed: Config =
+            serde_json::from_str(r#"{"shutdown":{"after_seconds":360,"grace_seconds":90}}"#)
+                .unwrap();
+        assert_eq!(timed.shutdown.after_seconds, Some(360));
+        assert_eq!(timed.shutdown.grace_seconds, 90);
     }
 }
 
@@ -103,6 +139,12 @@ impl Default for DatabaseConfig {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(default)]
 pub(crate) struct SpacetimeDbConfig {
+    /// Application-side initial snapshot chunks for inventory/vault only.
+    /// Zero restores the original single-vector handoff for A/B comparisons.
+    pub(crate) initial_batch_rows: usize,
+    /// Temporary RSS isolation: keep connections/workers but subscribe to nothing.
+    /// Set false to restore state-table synchronization for the comparison.
+    pub(crate) skip_state_tables: bool,
     pub(crate) domain: String,
     pub(crate) protocol: String,
     pub(crate) database: String,
@@ -115,6 +157,9 @@ pub(crate) struct SpacetimeDbConfig {
 impl Default for SpacetimeDbConfig {
     fn default() -> Self {
         Self {
+            // TEMPORARY: zero subscriptions by default while diagnosing sync RSS.
+            skip_state_tables: false,
+            initial_batch_rows: 1_000,
             domain: "localhost".to_string(),
             protocol: "https://".to_string(),
             database: "".to_string(),
@@ -158,6 +203,7 @@ pub(crate) struct CliConfigParameters {
     pub(crate) storage_path: Option<String>,
     pub(crate) config_path: Option<String>,
     pub(crate) live_updates_ws: Option<bool>,
+    pub(crate) shutdown_after_seconds: Option<u64>,
 }
 
 impl Config {
@@ -196,6 +242,9 @@ impl Config {
 
             if let Some(live_updates_ws) = cli_config_parameters.live_updates_ws {
                 cli_overrides = cli_overrides.set_default("live_updates_ws", live_updates_ws)?;
+            }
+            if let Some(seconds) = cli_config_parameters.shutdown_after_seconds {
+                cli_overrides = cli_overrides.set_default("shutdown.after_seconds", seconds)?;
             }
 
             config.add_source(cli_overrides.build()?)

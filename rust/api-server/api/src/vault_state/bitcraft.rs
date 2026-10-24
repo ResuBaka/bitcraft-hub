@@ -1,14 +1,15 @@
 use crate::AppState;
-use crate::websocket::initial_sync::{composite_filter, reconcile};
+use crate::websocket::batched_worker::BatchTimer;
+use crate::websocket::initial_sync::{composite_filter, reconcile_stream};
+use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::vault_state_collectibles;
+use futures::TryStreamExt;
 use game_module::module_bindings::VaultState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use std::collections::HashSet;
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time::sleep;
 
 pub(crate) fn start_worker_vault_state_collectibles(
     global_app_state: AppState,
@@ -16,7 +17,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict = sea_query::OnConflict::columns([
             vault_state_collectibles::Column::EntityId,
             vault_state_collectibles::Column::Id,
@@ -28,32 +29,33 @@ pub(crate) fn start_worker_vault_state_collectibles(
         ])
         .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("vault_state", 1);
                         match msg {
-                            SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
+                            SpacetimeUpdateMessages::Initial { data, database_name, batches } => {
                                 // Older live events must not be written after the newer snapshot.
                                 insert_multiple_vault_state_collectibles(&global_app_state, &on_conflict, &mut messages).await;
                                 delete_collectibles(&global_app_state, &mut messages_delete).await;
-                                let incoming = data.into_iter().flat_map(|vault| {
+                                let incoming = crate::websocket::initial_batches::rows(data, batches).map_ok(|vault| {
                                     let entity_id = vault.entity_id as i64;
-                                    vault.collectibles.into_iter().map(move |collectible| vault_state_collectibles::Model {
+                                    futures::stream::iter(vault.collectibles.into_iter().map(move |collectible| Ok::<_, sea_orm::DbErr>(vault_state_collectibles::Model {
                                         entity_id,
                                         id: collectible.id,
                                         activated: collectible.activated,
                                         count: collectible.count,
                                         region: database_name,
-                                    })
-                                });
-                                if let Err(error) = reconcile::<vault_state_collectibles::Entity, _, _, _, _, _>(
+                                    })))
+                                }).try_flatten();
+                                if let Err(error) = reconcile_stream::<vault_state_collectibles::Entity, _, _, _, _, _>(
                                     &global_app_state.conn,
                                     vault_state_collectibles::Column::Region,
                                     database_name,
@@ -108,7 +110,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                             }
                         }
                     }
-                    _ = &mut timer => {
+                    _ = timer.elapsed() => {
                         // Time limit reached
                         break;
                     }
@@ -135,7 +137,8 @@ pub(crate) fn start_worker_vault_state_collectibles(
             }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }

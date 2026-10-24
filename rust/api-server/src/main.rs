@@ -1,9 +1,9 @@
 // Note that the standalone server is invoked through standaline/src/main.rs, so you will
 // also want to set the allocator there.
-#[cfg(not(target_env = "msvc"))]
+#[cfg(all(not(target_env = "msvc"), not(feature = "system-allocator")))]
 use mimalloc_safe::MiMalloc;
 
-#[cfg(not(target_env = "msvc"))]
+#[cfg(all(not(target_env = "msvc"), not(feature = "system-allocator")))]
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 

@@ -1,5 +1,6 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchedWorker;
+use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
 use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use entity::{claim_local_state, claim_member_state, claim_state, claim_tech_state};
 use game_module::module_bindings::{
@@ -10,7 +11,7 @@ use sea_orm::QueryFilter;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, TryIntoModel};
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
+use tokio::sync::mpsc::{Sender, UnboundedSender as TokioUnboundedSender, channel};
 
 enum ClaimStateDbOperation {
     Upsert(Vec<::entity::claim_state::ActiveModel>),
@@ -35,7 +36,8 @@ pub(crate) struct ClaimStateWorker {
 impl ClaimStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_claim_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -44,8 +46,8 @@ impl ClaimStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -268,8 +270,7 @@ impl ClaimStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages).await;
     }
 
@@ -279,10 +280,7 @@ impl ClaimStateWorker {
         }
 
         tracing::debug!("ClaimState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete).await;
     }
 }
@@ -338,7 +336,7 @@ fn start_claim_state_db_worker(global_app_state: AppState) -> Sender<ClaimStateD
         ])
         .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 ClaimStateDbOperation::Upsert(messages) => {
@@ -405,7 +403,7 @@ async fn insert_multiple_claim_state(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::claim_state::ActiveModel>,
 ) {
-    let insert = ::entity::claim_state::Entity::insert_many(messages.clone())
+    let insert = ::entity::claim_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -432,7 +430,7 @@ pub(crate) struct ClaimLocalStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<ClaimLocalStateDbOperation>,
+    db_tx: TokioUnboundedSender<ClaimLocalStateDbOperation>,
     messages: Vec<::entity::claim_local_state::ActiveModel>,
     messages_delete: Vec<i64>,
 }
@@ -440,7 +438,8 @@ pub(crate) struct ClaimLocalStateWorker {
 impl ClaimLocalStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_claim_local_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -449,8 +448,8 @@ impl ClaimLocalStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -735,8 +734,7 @@ impl ClaimLocalStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages);
     }
 
@@ -746,10 +744,7 @@ impl ClaimLocalStateWorker {
         }
 
         tracing::debug!("ClaimLocalState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete);
     }
 }
@@ -795,8 +790,8 @@ impl BatchedWorker for ClaimLocalStateWorker {
 
 fn start_claim_local_state_db_worker(
     global_app_state: AppState,
-) -> UnboundedSender<ClaimLocalStateDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+) -> TokioUnboundedSender<ClaimLocalStateDbOperation> {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let on_conflict = sea_query::OnConflict::column(claim_local_state::Column::EntityId)
         .update_columns([
             claim_local_state::Column::Supplies,
@@ -813,7 +808,7 @@ fn start_claim_local_state_db_worker(
         ])
         .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 ClaimLocalStateDbOperation::Upsert(messages) => {
@@ -885,7 +880,7 @@ async fn insert_multiple_claim_local_state(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::claim_local_state::ActiveModel>,
 ) {
-    let insert = ::entity::claim_local_state::Entity::insert_many(messages.clone())
+    let insert = ::entity::claim_local_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -912,7 +907,7 @@ pub(crate) struct ClaimMemberStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<ClaimMemberStateDbOperation>,
+    db_tx: TokioUnboundedSender<ClaimMemberStateDbOperation>,
     messages: Vec<::entity::claim_member_state::ActiveModel>,
     messages_delete: Vec<i64>,
 }
@@ -920,7 +915,8 @@ pub(crate) struct ClaimMemberStateWorker {
 impl ClaimMemberStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_claim_member_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -929,8 +925,8 @@ impl ClaimMemberStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -1169,8 +1165,7 @@ impl ClaimMemberStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages);
     }
 
@@ -1180,10 +1175,7 @@ impl ClaimMemberStateWorker {
         }
 
         tracing::debug!("ClaimMemberState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete);
     }
 }
@@ -1229,8 +1221,8 @@ impl BatchedWorker for ClaimMemberStateWorker {
 
 fn start_claim_member_state_db_worker(
     global_app_state: AppState,
-) -> UnboundedSender<ClaimMemberStateDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+) -> TokioUnboundedSender<ClaimMemberStateDbOperation> {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let on_conflict = sea_query::OnConflict::column(claim_member_state::Column::EntityId)
         .update_columns([
             claim_member_state::Column::ClaimEntityId,
@@ -1244,7 +1236,7 @@ fn start_claim_member_state_db_worker(
         ])
         .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 ClaimMemberStateDbOperation::Upsert(messages) => {
@@ -1351,7 +1343,7 @@ pub(crate) struct ClaimTechStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<ClaimTechStateDbOperation>,
+    db_tx: TokioUnboundedSender<ClaimTechStateDbOperation>,
     messages: Vec<::entity::claim_tech_state::ActiveModel>,
     messages_delete: Vec<i64>,
 }
@@ -1359,7 +1351,8 @@ pub(crate) struct ClaimTechStateWorker {
 impl ClaimTechStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_claim_tech_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -1368,8 +1361,8 @@ impl ClaimTechStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -1597,8 +1590,7 @@ impl ClaimTechStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages);
     }
 
@@ -1608,10 +1600,7 @@ impl ClaimTechStateWorker {
         }
 
         tracing::debug!("ClaimTechState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete);
     }
 }
@@ -1657,8 +1646,8 @@ impl BatchedWorker for ClaimTechStateWorker {
 
 fn start_claim_tech_state_db_worker(
     global_app_state: AppState,
-) -> UnboundedSender<ClaimTechStateDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+) -> TokioUnboundedSender<ClaimTechStateDbOperation> {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let on_conflict = sea_query::OnConflict::columns([claim_tech_state::Column::EntityId])
         .update_columns([
             claim_tech_state::Column::Learned,
@@ -1669,7 +1658,7 @@ fn start_claim_tech_state_db_worker(
         ])
         .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 ClaimTechStateDbOperation::Upsert(messages) => {
@@ -1741,7 +1730,7 @@ async fn insert_multiple_claim_tech_state(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::claim_tech_state::ActiveModel>,
 ) {
-    let insert = ::entity::claim_tech_state::Entity::insert_many(messages.clone())
+    let insert = ::entity::claim_tech_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;
@@ -1764,7 +1753,7 @@ pub(crate) struct ClaimTechDescWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<ClaimTechDescDbOperation>,
+    db_tx: TokioUnboundedSender<ClaimTechDescDbOperation>,
     messages: Vec<::entity::claim_tech_desc::ActiveModel>,
     messages_delete: Vec<i32>,
 }
@@ -1772,7 +1761,8 @@ pub(crate) struct ClaimTechDescWorker {
 impl ClaimTechDescWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_claim_tech_desc_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -1781,8 +1771,8 @@ impl ClaimTechDescWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -1942,8 +1932,7 @@ impl ClaimTechDescWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages);
     }
 
@@ -1953,10 +1942,7 @@ impl ClaimTechDescWorker {
         }
 
         tracing::debug!("ClaimTechDesc::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete);
     }
 }
@@ -2002,8 +1988,8 @@ impl BatchedWorker for ClaimTechDescWorker {
 
 fn start_claim_tech_desc_db_worker(
     global_app_state: AppState,
-) -> UnboundedSender<ClaimTechDescDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+) -> TokioUnboundedSender<ClaimTechDescDbOperation> {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let on_conflict = sea_query::OnConflict::columns([::entity::claim_tech_desc::Column::Id])
         .update_columns([
             ::entity::claim_tech_desc::Column::Description,
@@ -2019,7 +2005,7 @@ fn start_claim_tech_desc_db_worker(
         ])
         .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 ClaimTechDescDbOperation::Upsert(messages) => {
@@ -2060,7 +2046,7 @@ async fn insert_multiple_claim_tech_desc(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::claim_tech_desc::ActiveModel>,
 ) {
-    let insert = ::entity::claim_tech_desc::Entity::insert_many(messages.clone())
+    let insert = ::entity::claim_tech_desc::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;

@@ -307,7 +307,7 @@ pub(crate) fn start_persistence_worker(
     region: Region,
 ) -> Sender<claim_event::ActiveModel> {
     let (tx, rx) = channel(CLAIM_EVENT_QUEUE_CAPACITY);
-    tokio::spawn(async move {
+    state.shutdown.clone().spawn_worker(async move {
         run_persistence_worker(
             rx,
             region,

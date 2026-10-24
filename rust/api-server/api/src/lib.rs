@@ -26,7 +26,12 @@ mod npc_desc;
 mod player_state;
 mod recipes;
 mod resource_desc;
+mod shutdown;
+#[cfg(test)]
+mod shutdown_tests;
 mod skill_descriptions;
+mod startup_memory;
+mod state_loading;
 mod trading_orders;
 mod traveler_task_desc;
 mod traveler_task_state;
@@ -51,12 +56,12 @@ use axum::routing::any;
 use axum::{Router, http::StatusCode, middleware, routing::get};
 use clap::{Parser, Subcommand};
 use entity::{experience_state, player_username_state};
-use futures::{SinkExt, StreamExt};
+use futures::{SinkExt, StreamExt, TryStreamExt};
 use kanal::AsyncSender;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
 use migration::{Migrator, MigratorTrait};
-use sea_orm::{ColumnTrait, ConnectOptions, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, ConnectOptions, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
 use sea_orm_cli::MigrateSubcommands;
 use serde::Deserialize;
 use service::sea_orm::{Database, DatabaseConnection};
@@ -79,39 +84,63 @@ use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt;
 
 async fn start(database_connection: DatabaseConnection, config: Config) -> anyhow::Result<()> {
+    let shutdown = shutdown::Shutdown::default();
+    let stop = shutdown.stop.clone();
+    let after = config.shutdown.after_seconds.map(Duration::from_secs);
+    let trigger = tokio::spawn(async move {
+        let reason = shutdown::wait_for_trigger(after).await;
+        tracing::info!(reason, "Graceful shutdown requested");
+        stop.cancel();
+    });
+    let result = serve_with_shutdown(database_connection, config, shutdown.clone()).await;
+    shutdown.stop.cancel();
+    trigger.abort();
+    let _ = trigger.await;
+    result
+}
+
+async fn serve_with_shutdown(
+    database_connection: DatabaseConnection,
+    config: Config,
+    shutdown: shutdown::Shutdown,
+) -> anyhow::Result<()> {
     tracing::info!("Starting up server");
     let prometheus = setup_metrics_recorder();
 
-    Migrator::up(&database_connection, None).await?;
+    tokio::select! { biased;
+        _ = shutdown.stop.cancelled() => return Ok(()),
+        result = Migrator::up(&database_connection, None) => result?,
+    }
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<OutboundWebSocketMessages>();
 
-    let state = AppState::new(
+    let mut state = AppState::new(
         database_connection.clone(),
         tx.clone(),
         config.tech_tier_research_map.clone(),
     );
+    state.shutdown = shutdown.clone();
 
     tracing::info!("App state initialized");
-    state.fill_state_from_db().await;
+    tokio::select! { biased;
+        _ = shutdown.stop.cancelled() => return Ok(()),
+        result = state.fill_state_from_db(None) => result?,
+    }
     tracing::info!("App state ready");
 
-    let server_url = config.server_url();
-
-    let server_url = if server_url.is_err() {
-        log::error!("Could not create socket {}", server_url.err().unwrap());
-        exit(1)
-    } else {
-        server_url?
-    };
+    let server_url = config.server_url()?;
+    // Bind before spawning workers: bind failure must not leave sync running.
+    let listener = tokio::net::TcpListener::bind(&server_url).await?;
+    let mut broadcaster = None;
 
     if config.live_updates_ws {
         if config.spacetimedb.databases.is_empty() {
             tracing::warn!("You need to set spacetimedb databases");
+            drop(rx);
         } else {
             tracing::info!("Staring Bitcraft websocket connection");
 
-            tokio::spawn(broadcast_message(state.clone(), rx));
+            broadcaster = Some(tokio::spawn(broadcast_message(state.clone(), rx)));
 
             let tmp_config = config.clone();
 
@@ -127,15 +156,79 @@ async fn start(database_connection: DatabaseConnection, config: Config) -> anyho
 
             websocket::start_websocket_bitcraft_logic(tmp_config, state.clone());
         }
+    } else {
+        drop(rx);
     }
+    drop(tx);
 
     let app = create_app(&config, state.clone(), prometheus);
 
     tracing::info!("Server started on http://{}", server_url);
 
-    let listener = tokio::net::TcpListener::bind(&server_url).await?;
-    axum::serve(listener, app).await?;
-
+    let stop = shutdown.stop.clone();
+    let mut server = tokio::spawn(async move {
+        axum::serve(listener, app)
+            .with_graceful_shutdown(stop.cancelled_owned())
+            .await
+    });
+    let mut server_result = None;
+    tokio::select! {
+        _ = shutdown.stop.cancelled() => {},
+        result = &mut server => { server_result = Some(result); shutdown.stop.cancel(); },
+    }
+    tracing::info!(
+        grace_seconds = config.shutdown.grace_seconds,
+        "Stopping connections and draining accepted work"
+    );
+    let memory = startup_memory::StartupMemory::new();
+    memory.snapshot("shutdown_requested");
+    let drain = async {
+        let http = async {
+            if server_result.is_none() {
+                server_result = Some((&mut server).await);
+            }
+        };
+        tokio::join!(http, shutdown.drain());
+        state.ranking_system.shutdown().await;
+        if let Some(task) = &mut broadcaster {
+            let _ = task.await;
+        }
+        memory.snapshot("shutdown_drained_state_retained");
+        // Pool closure is part of the same grace budget, not an unbounded wait
+        // after it (for example if a detached request still holds a connection).
+        database_connection.clone().close().await
+    };
+    let drained =
+        tokio::time::timeout(Duration::from_secs(config.shutdown.grace_seconds), drain).await;
+    if drained.is_err() {
+        tracing::error!(
+            "Shutdown grace period expired; cancelling unfinished work (queued writes may be lost)"
+        );
+        server.abort();
+        if let Some(task) = &broadcaster {
+            task.abort();
+        }
+        shutdown.force_stop().await;
+        if server_result.is_none() {
+            let _ = (&mut server).await;
+        }
+        if let Some(task) = &mut broadcaster {
+            if !task.is_finished() {
+                let _ = task.await;
+            }
+        }
+        // No further ranking writes can be accepted after tracked tasks stop.
+        state.ranking_system.shutdown().await;
+        return Err(anyhow::anyhow!("shutdown grace period expired"));
+    }
+    drained.unwrap()?;
+    drop(state);
+    drop(database_connection);
+    memory.snapshot("shutdown_state_dropped");
+    if let Some(result) = server_result {
+        result??;
+    }
+    tracing::info!("Graceful shutdown complete");
     Ok(())
 }
 
@@ -273,7 +366,8 @@ async fn websocket_handler(
     Query(websocket_options): Query<QueryWebsocketOptions>,
 ) -> impl IntoResponse {
     tracing::debug!("Websocket upgraded with version: {version:?}");
-    ws.on_upgrade(|socket| websocket(socket, state, websocket_options))
+    let clients = state.shutdown.clients.clone();
+    ws.on_upgrade(move |socket| clients.track_future(websocket(socket, state, websocket_options)))
 }
 
 #[allow(dead_code)]
@@ -288,6 +382,10 @@ struct ServerInstance {
 // receiving / sending chat messages).
 async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryWebsocketOptions) {
     use sea_orm::{ColumnTrait, QueryFilter};
+    if state.shutdown.stop.is_cancelled() {
+        return;
+    }
+    let stop = state.shutdown.stop.clone();
 
     // By splitting, we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
@@ -315,10 +413,18 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
     let internal_id = id.clone();
     let inner_state = state.clone();
+    let writer_stop = stop.clone();
     // Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client.
     let mut send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
+        loop {
+            let msg = tokio::select! { biased;
+                _ = writer_stop.cancelled() => {
+                    let _ = tokio::time::timeout(Duration::from_secs(1), sender.send(Message::Close(None))).await;
+                    break;
+                },
+                msg = rx.recv() => match msg { Ok(msg) => msg, Err(_) => break },
+            };
             let a = axum_codec::Codec(msg.clone());
             let encoding = inner_state
                 .clients_state
@@ -362,6 +468,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
     let inner_id = id.clone();
     let inner_state = state.clone();
+    let recv_state = state.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
             match serde_json::from_str::<InboundWebSocketMessages>(&text) {
@@ -383,7 +490,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                                     "player_username" => {
                                         let player_username = player_username_state::Entity::find()
                                             .filter(player_username_state::Column::EntityId.eq(id))
-                                            .one(&state.conn)
+                                            .one(&recv_state.conn)
                                             .await
                                             .expect("Cannot find player_username");
 
@@ -455,7 +562,21 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
+        _ = stop.cancelled() => {
+            recv_task.abort();
+            // Allow a close frame, but do not let a slow client hold shutdown.
+            if tokio::time::timeout(Duration::from_secs(2), &mut send_task).await.is_err() {
+                send_task.abort();
+            }
+        },
     };
+    // Await aborted tasks so their socket halves and app-state clones are gone.
+    if !send_task.is_finished() {
+        let _ = send_task.await;
+    }
+    if !recv_task.is_finished() {
+        let _ = recv_task.await;
+    }
 
     // Remove username from map so new clients can take it again.
     state.clients_state.remove_client(&id).await;
@@ -466,7 +587,10 @@ async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<OutboundWe
 
     loop {
         buffer.shrink_to(500);
-        let count = rx.recv_many(&mut buffer, 500).await;
+        let count = tokio::select! { biased;
+            _ = state.shutdown.broadcast_stop.cancelled(), if !rx.is_closed() => { rx.close(); continue; },
+            count = rx.recv_many(&mut buffer, 500) => count,
+        };
         if count == 0 {
             break;
         }
@@ -715,6 +839,7 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
 }
 
 fn record_app_state_metrics(app_state: &AppState) {
+    app_state.ranking_system.record_memory_metrics();
     metrics::gauge!("app_state_cache_size", &[("cache", "mobile_entity_state")])
         .set(app_state.mobile_entity_state.len() as f64);
     metrics::gauge!("app_state_cache_size", &[("cache", "player_state")])
@@ -814,6 +939,7 @@ fn record_app_state_metrics(app_state: &AppState) {
 
 #[derive(Clone)]
 struct AppState {
+    shutdown: shutdown::Shutdown,
     tech_tier_research_map: TechTierResearchMap,
     conn: DatabaseConnection,
     tx: UnboundedSender<OutboundWebSocketMessages>,
@@ -821,9 +947,8 @@ struct AppState {
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
     player_state: Arc<dashmap::DashMap<i64, entity::player_state::Model>>,
-    claim_member_state:
-        Arc<dashmap::DashMap<u64, dashmap::DashMap<i64, entity::claim_member_state::Model>>>,
-    player_to_claim_id_cache: Arc<dashmap::DashMap<u64, dashmap::DashSet<u64>>>,
+    claim_member_state: Arc<claims::member_cache::MembersByClaim>,
+    player_to_claim_id_cache: Arc<claims::member_cache::ClaimsByPlayer>,
     claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
     claim_state: Arc<dashmap::DashMap<i64, entity::claim_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
@@ -870,6 +995,7 @@ impl AppState {
             .unwrap();
 
         Self {
+            shutdown: shutdown::Shutdown::default(),
             tech_tier_research_map,
             conn,
             tx,
@@ -911,215 +1037,123 @@ impl AppState {
         }
     }
 
-    async fn fill_state_from_db(&self) {
-        let _ = tokio::join!(
-            async move {
-                ::entity::item_desc::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading item_desc in fill_state_from_db"
-                        );
+    async fn fill_state_from_db(
+        &self,
+        memory: Option<&startup_memory::StartupMemory>,
+    ) -> anyhow::Result<()> {
+        if let Some(memory) = memory {
+            memory.snapshot("fill_state_begin");
+        }
+        use state_loading::stream_into;
+        // Count before any ranking ingestion. This is a capacity hint, not a
+        // membership snapshot: experience-only/new players can still grow it.
+        let player_count = ::entity::player_state::Entity::find()
+            .count(&self.conn)
+            .await?;
+        self.ranking_system
+            .reserve_player_capacity(usize::try_from(player_count)?);
+        if let Some(memory) = memory {
+            memory.snapshot("ranking_capacity_reserved");
+            eprintln!("startup_ranking_capacity player_hint={player_count}");
+        }
+        tokio::try_join!(
+            stream_into(::entity::item_desc::Entity::find(), &self.conn, |value| {
+                self.item_desc.insert(value.id, value);
+            }),
+            stream_into(::entity::cargo_desc::Entity::find(), &self.conn, |value| {
+                self.cargo_desc.insert(value.id, value);
+            }),
+            stream_into(
+                ::entity::claim_local_state::Entity::find(),
+                &self.conn,
+                |value| {
+                    self.claim_local_state.insert(value.entity_id as u64, value);
+                }
+            ),
+            stream_into(::entity::skill_desc::Entity::find(), &self.conn, |value| {
+                self.skill_desc.insert(value.id, value);
+            }),
+            stream_into(
+                ::entity::building_desc::Entity::find(),
+                &self.conn,
+                |value| {
+                    self.building_desc.insert(value.id, value);
+                }
+            ),
+            stream_into(
+                ::entity::building_nickname_state::Entity::find(),
+                &self.conn,
+                |value| {
+                    self.building_nickname_state.insert(value.entity_id, value);
+                }
+            ),
+            stream_into(
+                ::entity::crafting_recipe::Entity::find(),
+                &self.conn,
+                |value| {
+                    self.crafting_recipe_desc.insert(value.id, value);
+                }
+            ),
+            stream_into(
+                ::entity::item_list_desc::Entity::find(),
+                &self.conn,
+                |value| {
+                    self.item_list_desc.insert(value.id, value);
+                }
+            ),
+            stream_into(
+                ::entity::player_state::Entity::find(),
+                &self.conn,
+                |value| {
+                    self.ranking_system
+                        .time_played
+                        .update(value.entity_id, i64::from(value.time_played));
+                    self.ranking_system
+                        .time_signed_in
+                        .update(value.entity_id, i64::from(value.time_signed_in));
+                    self.player_state.insert(value.entity_id, value);
+                }
+            ),
+        )?;
 
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.item_desc.insert(value.id, value.clone());
-                    });
-            },
-            async move {
-                ::entity::cargo_desc::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading cargo_desc in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.cargo_desc.insert(value.id, value.clone());
-                    });
-            },
-            // async move {
-            //     ::entity::inventory::Entity::find()
-            //         .all(&self.conn)
-            //         .await
-            //         .unwrap_or_else(|err| {
-            //             tracing::error!(
-            //                 error = err.to_string(),
-            //                 "Error loading inventory in fill_state_from_db"
-            //             );
-            //
-            //             vec![]
-            //         })
-            //         .into_iter()
-            //         .for_each(|value| {
-            //             self.inventory_state.insert(value.entity_id, value.clone());
-            //         });
-            // },
-            async move {
-                ::entity::claim_local_state::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading claim_local_state in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.claim_local_state
-                            .insert(value.entity_id as u64, value.clone());
-                    });
-            },
-            async move {
-                ::entity::skill_desc::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading skill_desc in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.skill_desc.insert(value.id, value.clone());
-                    });
-            },
-            async move {
-                ::entity::building_desc::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading building_desc in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.building_desc.insert(value.id, value.clone());
-                    });
-            },
-            async move {
-                ::entity::building_nickname_state::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading building_nickname_state in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.building_nickname_state
-                            .insert(value.entity_id, value.clone());
-                    });
-            },
-            async move {
-                ::entity::crafting_recipe::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading crafting_recipe in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.crafting_recipe_desc.insert(value.id, value.clone());
-                    });
-            },
-            async move {
-                ::entity::item_list_desc::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading item_list_desc in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.item_list_desc.insert(value.id, value.clone());
-                    });
-            },
-            async move {
-                ::entity::player_state::Entity::find()
-                    .all(&self.conn)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!(
-                            error = err.to_string(),
-                            "Error loading claim_local_state in fill_state_from_db"
-                        );
-
-                        vec![]
-                    })
-                    .into_iter()
-                    .for_each(|value| {
-                        self.player_state.insert(value.entity_id, value.clone());
-                        self.ranking_system
-                            .time_played
-                            .update(value.entity_id, value.time_played as i64);
-                        self.ranking_system
-                            .time_signed_in
-                            .update(value.entity_id, value.time_signed_in as i64);
-                    });
-            },
-        );
+        if let Some(memory) = memory {
+            memory.snapshot("parallel_cache_loads_complete");
+            eprintln!(
+                "startup_cache_counts items={} cargo={} claims={} skills={} buildings={} building_nicknames={} recipes={} item_lists={} players={}",
+                self.item_desc.len(),
+                self.cargo_desc.len(),
+                self.claim_local_state.len(),
+                self.skill_desc.len(),
+                self.building_desc.len(),
+                self.building_nickname_state.len(),
+                self.crafting_recipe_desc.len(),
+                self.item_list_desc.len(),
+                self.player_state.len()
+            );
+        }
 
         for skill in self.skill_desc.iter() {
             if skill.skill_category != 0 {
-                self.ranking_system
-                    .skill_leaderboards
-                    .insert(skill.id, Leaderboard::default());
+                self.ranking_system.ensure_skill_leaderboard(skill.id);
             }
         }
 
-        let items = match experience_state::Entity::find()
+        if let Some(memory) = memory {
+            memory.snapshot("experience_query_begin");
+        }
+        let mut items = experience_state::Entity::find()
             .filter(
                 experience_state::Column::EntityId
                     .is_not_in(EXCLUDED_USERS_FROM_LEADERBOARD.clone()),
             )
             .order_by_asc(experience_state::Column::EntityId)
             .order_by_asc(experience_state::Column::SkillId)
-            .all(&self.conn)
-            .await
-        {
-            Ok(items) => items,
-            Err(err) => {
-                tracing::error!(
-                    error = err.to_string(),
-                    "Error loading experience_state in fill_state_from_db"
-                );
-                return;
-            }
-        };
+            .stream(&self.conn)
+            .await?;
+
+        if let Some(memory) = memory {
+            memory.snapshot("experience_stream_opened");
+        }
 
         let update_totals = |player_id, total_xp, total_level, profession_xp, adventure_xp| {
             self.ranking_system
@@ -1153,7 +1187,9 @@ impl AppState {
         let mut profession_xp = 0i64;
         let mut adventure_xp = 0i64;
 
-        for item in items {
+        let mut experience_rows = 0usize;
+        while let Some(item) = items.try_next().await? {
+            experience_rows += 1;
             let Some(skill) = self.skill_desc.get(&i64::from(item.skill_id)) else {
                 tracing::error!(skill_id = item.skill_id, "This should never happen");
                 continue;
@@ -1204,50 +1240,28 @@ impl AppState {
                 adventure_xp,
             );
         }
+        drop(items);
+        if let Some(memory) = memory {
+            memory.snapshot("experience_stream_processed_and_dropped");
+            eprintln!("startup_experience rows={experience_rows}");
+        }
+        Ok(())
     }
 
     fn add_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
-        let claim_entity_id = claim_member_state.claim_entity_id;
-        let entity_id = claim_member_state.player_entity_id;
-
-        let cms = self.claim_member_state.get(&(claim_entity_id as u64));
-
-        if let Some(cms) = cms {
-            cms.insert(claim_member_state.entity_id, claim_member_state);
-        } else {
-            let dashset = dashmap::DashMap::new();
-            dashset.insert(claim_member_state.entity_id, claim_member_state);
-
-            self.claim_member_state
-                .insert(claim_entity_id as u64, dashset);
-        }
-
-        if let Some(claim_state_to_member_set) =
-            self.player_to_claim_id_cache.get_mut(&(entity_id as u64))
-        {
-            claim_state_to_member_set.insert(claim_entity_id as u64);
-        } else {
-            let claim_state_to_member_set = dashmap::DashSet::new();
-            claim_state_to_member_set.insert(claim_entity_id as u64);
-
-            self.player_to_claim_id_cache
-                .insert(entity_id as u64, claim_state_to_member_set);
-        };
+        claims::member_cache::insert(
+            &self.claim_member_state,
+            &self.player_to_claim_id_cache,
+            claim_member_state,
+        );
     }
 
     fn remove_claim_member(&self, claim_member_state: entity::claim_member_state::Model) {
-        let claim_entity_id = claim_member_state.claim_entity_id;
-        let entity_id = claim_member_state.entity_id;
-
-        self.claim_member_state.iter().for_each(|cms| {
-            cms.remove(&claim_member_state.entity_id);
-        });
-
-        if let Some(claim_state_to_member_set) =
-            self.player_to_claim_id_cache.get_mut(&(entity_id as u64))
-        {
-            claim_state_to_member_set.remove(&(claim_entity_id as u64));
-        };
+        claims::member_cache::remove(
+            &self.claim_member_state,
+            &self.player_to_claim_id_cache,
+            &claim_member_state,
+        );
     }
 }
 
@@ -1562,6 +1576,17 @@ pub struct Cli {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
+    #[command(
+        about = "Measure database state initialization, then exit (no migrations or services)"
+    )]
+    ProfileInit {
+        #[arg(
+            long,
+            default_value_t = 5,
+            help = "Seconds to observe RSS after loading; not a ranking-publication barrier"
+        )]
+        settle_seconds: u64,
+    },
     #[command(about = "Migration related commands", display_order = 20)]
     Migrate {
         #[arg(
@@ -1593,6 +1618,11 @@ you should provide the directory of that submodule.",
 
         #[arg(long, help = "Live updates")]
         live_updates_ws: Option<bool>,
+        #[arg(
+            long,
+            help = "Request graceful shutdown after N seconds of serve startup (360 = six minutes)"
+        )]
+        shutdown_after_seconds: Option<u64>,
     },
     PrintConfig {
         #[arg(long, help = "Format to print the config", default_value = "json", value_parser = ["yml","yaml","json","toml"])]
@@ -1617,6 +1647,7 @@ pub async fn main() -> anyhow::Result<()> {
     }
 
     match &cli.command {
+        Commands::ProfileInit { .. } => {}
         Commands::Migrate { .. } => {}
         Commands::PrintConfig { .. } => {}
         Commands::Serve {
@@ -1624,11 +1655,13 @@ pub async fn main() -> anyhow::Result<()> {
             host,
             storage_path,
             live_updates_ws,
+            shutdown_after_seconds,
         } => {
             cli_config_parameters.host = host.clone();
             cli_config_parameters.port = *port;
             cli_config_parameters.storage_path = storage_path.clone();
             cli_config_parameters.live_updates_ws = *live_updates_ws;
+            cli_config_parameters.shutdown_after_seconds = *shutdown_after_seconds;
         }
     }
 
@@ -1638,6 +1671,30 @@ pub async fn main() -> anyhow::Result<()> {
     setup_tracing(&config);
 
     match cli.command {
+        Commands::ProfileInit { settle_seconds } => {
+            let memory = startup_memory::StartupMemory::new();
+            memory.snapshot("before_database_connection");
+            let database_connection = create_db_connection(&config).await?;
+            memory.snapshot("database_connected");
+            let (tx, _rx) = tokio::sync::mpsc::unbounded_channel::<OutboundWebSocketMessages>();
+            let state = AppState::new(
+                database_connection,
+                tx,
+                config.tech_tier_research_map.clone(),
+            );
+            memory.snapshot("empty_app_state");
+            state.fill_state_from_db(Some(&memory)).await?;
+            memory.snapshot("fill_state_returned");
+            for _ in 0..settle_seconds {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                memory.snapshot("settling");
+            }
+            memory.snapshot("final_state_retained");
+            state.ranking_system.print_startup_memory_stats();
+            // Keep the caches alive through the final measurement, but do not
+            // start HTTP, SpacetimeDB, broadcaster, or metrics background tasks.
+            drop(state);
+        }
         Commands::Migrate {
             command,
             migration_dir,

@@ -1,6 +1,7 @@
 use crate::AppState;
-use crate::leaderboard::{Leaderboard, experience_to_level};
+use crate::leaderboard::experience_to_level;
 use crate::websocket::batched_worker::BatchedWorker;
+use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
 use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use entity::shared::Region;
 use game_module::module_bindings::ExperienceState;
@@ -8,7 +9,7 @@ use migration::{OnConflict, sea_query};
 use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, IntoActiveModel, QueryFilter};
 use std::ops::AddAssign;
 use std::time::Duration;
-use tokio::sync::mpsc::{Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel};
+use tokio::sync::mpsc::{Sender, channel};
 
 enum ExperienceStateDbOperation {
     Upsert(Vec<::entity::experience_state::ActiveModel>),
@@ -100,7 +101,7 @@ mod initial_tests {
 
     #[test]
     fn experience_rows_are_flattened_lazily_without_losing_totals() {
-        let (tx, _rx) = unbounded_channel();
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(
             sea_orm::DatabaseConnection::default(),
             tx,
@@ -173,7 +174,7 @@ mod initial_tests {
         let db = sea_orm::MockDatabase::new(sea_orm::DbBackend::Postgres)
             .append_query_results([vec![model.clone()]])
             .into_connection();
-        let (tx, _rx) = unbounded_channel();
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db.clone(), tx, Default::default());
         let worker = start_experience_state_db_worker(state);
         worker
@@ -211,7 +212,7 @@ fn start_experience_state_db_worker(
     ])
     .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 ExperienceStateDbOperation::Upsert(messages) => {
@@ -261,7 +262,8 @@ fn start_experience_state_db_worker(
 impl ExperienceStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_experience_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -270,9 +272,9 @@ impl ExperienceStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            ids: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            ids: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -618,18 +620,17 @@ impl ExperienceStateWorker {
             };
             if let Some(new_skill) = new_skill {
                 let new_level = experience_to_level(new_skill.quantity as i64);
-                if let Some(skill) = self.global_app_state.skill_desc.get(&(es.skill_id as i64)) {
-                    let skill_name = skill.to_owned().name;
-                    if old_level != new_level {
-                        let _ = self
-                            .global_app_state
-                            .tx
-                            .send(OutboundWebSocketMessages::Level {
-                                level: new_level as u64,
-                                skill_name: skill_name.clone(),
-                                user_id: id,
-                            });
-                    }
+                if old_level != new_level
+                    && let Some(skill) = self.global_app_state.skill_desc.get(&(es.skill_id as i64))
+                {
+                    let _ = self
+                        .global_app_state
+                        .tx
+                        .send(OutboundWebSocketMessages::Level {
+                            level: new_level as u64,
+                            skill_name: skill.name.clone(),
+                            user_id: id,
+                        });
                 }
 
                 if new_skill.quantity > es.quantity {
@@ -674,8 +675,7 @@ impl ExperienceStateWorker {
                         } else {
                             self.global_app_state
                                 .ranking_system
-                                .skill_leaderboards
-                                .insert(es.skill_id as i64, Leaderboard::default());
+                                .ensure_skill_leaderboard(es.skill_id as i64);
                             self.global_app_state
                                 .ranking_system
                                 .skill_leaderboards
@@ -710,7 +710,11 @@ impl ExperienceStateWorker {
                                 );
                             }
                             (None, None) => {
-                                tracing::error!("Skill EXP {skill_name} no rank?");
+                                tracing::debug!(
+                                    user_id = id,
+                                    skill_id = es.skill_id,
+                                    "Skill EXP rank not published yet"
+                                );
                             }
                         }
                         let _ =
@@ -757,7 +761,7 @@ impl ExperienceStateWorker {
                     tracing::debug!("Level rank changed no prev_rank to {post_rank}")
                 }
                 (None, None) => {
-                    tracing::error!("Level no rank?")
+                    tracing::debug!(user_id = id, "Level rank not published yet")
                 }
             }
         }
@@ -805,7 +809,7 @@ impl ExperienceStateWorker {
                     tracing::debug!("Total EXP rank changed no prev_rank to {post_rank}")
                 }
                 (None, None) => {
-                    tracing::error!("Total EXP no rank?")
+                    tracing::debug!(user_id = id, "Total EXP rank not published yet")
                 }
             }
 
@@ -900,8 +904,7 @@ impl ExperienceStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages).await;
     }
 
@@ -911,10 +914,7 @@ impl ExperienceStateWorker {
         }
 
         tracing::debug!("ExperienceState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete).await;
     }
 }
@@ -931,7 +931,7 @@ impl BatchedWorker for ExperienceStateWorker {
     }
 
     fn worker_name(&self) -> &'static str {
-        "player_state"
+        "experience_state"
     }
 
     fn batch_delay(&self) -> Duration {

@@ -21,6 +21,7 @@ use crate::item_list_desc::bitcraft::start_worker_item_list_desc;
 use crate::items::bitcraft::start_worker_item_desc;
 use crate::resource_desc::bitcraft::start_worker_resource_desc;
 
+use self::worker_channel::UnboundedSender;
 use crate::crafting::bitcraft::start_worker_progressive_action_state;
 use crate::mobile_entity_state::bitcraft::start_worker_mobile_entity_state;
 use crate::npc_desc::bitcraft::start_worker_npc_desc;
@@ -39,13 +40,14 @@ use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{Compression, DbContext, Error, Event, Table, TableWithPrimaryKey};
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Duration;
 use tokio::time::Instant;
 use ts_rs::TS;
 
 pub(crate) mod batched_worker;
+pub(crate) mod initial_batches;
 pub(crate) mod initial_sync;
+pub(crate) mod worker_channel;
 
 const MAX_RECONNECT_RETRIES: u32 = 15;
 const STABLE_CONNECTION_DURATION: Duration = Duration::from_secs(120);
@@ -193,7 +195,7 @@ fn on_connect_error(_ctx: &ErrorContext, err: Error) {
 }
 
 macro_rules! setup_spacetime_db_listeners {
-    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $database_region:expr, $worker_name:expr) => {
+    ($ctx:expr, $db_table_method:ident, $tx_channel:ident, $state_type:ty, $database_name_expr:expr, $database_region:expr, $worker_name:expr $(, $initial_batch_rows:expr)?) => {
         let table_name_str = stringify!($db_table_method);
         let database_name_runtime_string = $database_name_expr.to_string();
 
@@ -274,9 +276,11 @@ macro_rules! setup_spacetime_db_listeners {
 
         let temp_tx = $tx_channel.clone();
         let labels_database_name_initial = database_name_runtime_string.clone();
-        $ctx.db.$db_table_method().on_initial(
+        let initial_batch_rows = 0usize $(+ $initial_batch_rows)?;
+        $ctx.db.on_initial_owned::<$state_type>(
+            $worker_name,
             // Use $state_type for the new parameter
-            move |ctx: &EventContext, new: &[$state_type]| {
+            move |ctx: &EventContext, new: Vec<$state_type>| {
                 let reducer_name = match &ctx.event {
                     Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
                     Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
@@ -300,13 +304,12 @@ macro_rules! setup_spacetime_db_listeners {
                     return;
                 }
 
-                send_worker_message(
+                initial_batches::send_initial(
                     $worker_name,
                     &temp_tx,
-                    SpacetimeUpdateMessages::Initial {
-                        data: new.to_vec(),
-                        database_name: $database_region,
-                    },
+                    new,
+                    $database_region,
+                    initial_batch_rows,
                 );
             },
         );
@@ -353,6 +356,10 @@ fn connect_to_db_global(
     config: &Config,
     database: &str,
 ) -> anyhow::Result<()> {
+    let shutdown = global_app_state.shutdown.clone();
+    if shutdown.stop.is_cancelled() {
+        return Ok(());
+    }
     let ctx = connect_to_db(
         global_app_state,
         config.spacetimedb.password.clone(),
@@ -370,13 +377,55 @@ fn connect_to_db_global(
         anyhow::bail!("Connection to {database} is inactive");
     }
 
-    tokio::spawn(async move {
-        if let Err(error) = ctx.run_async().await {
+    shutdown.clone().spawn_connection(async move {
+        if let Err(error) = run_connection_until_shutdown(&ctx, &shutdown.stop).await {
             tracing::error!(%error, "Global database connection failed");
         }
     });
 
     Ok(())
+}
+
+async fn run_connection_until_shutdown(
+    ctx: &DbConnection,
+    stop: &tokio_util::sync::CancellationToken,
+) -> anyhow::Result<()> {
+    tokio::select! { biased;
+        _ = stop.cancelled() => {
+            // disconnect() queues a mutation; keep driving the SDK to apply it.
+            if ctx.is_active() { ctx.disconnect()?; }
+            ctx.run_async().await.map_err(anyhow::Error::from)
+        },
+        result = ctx.run_async() => result.map_err(anyhow::Error::from),
+    }
+}
+
+/// Filter before subscribing, not in callbacks: disabled tables must never be
+/// downloaded or retained in the SDK cache. Raw SQL names are explicit so joins
+/// cannot accidentally bypass the diagnostic switch.
+/// TEMPORARY: isolate connection/worker overhead with zero subscriptions.
+fn subscription_queries(
+    tables: &[&str],
+    sql: &[(&str, &str)],
+    remove_desc: bool,
+    skip_state_tables: bool,
+) -> Vec<String> {
+    // Keep the normal subscription path below so skip_state_tables=false still
+    // restores full synchronization for comparison.
+    if skip_state_tables {
+        return Vec::new();
+    }
+    tables
+        .iter()
+        .filter(|table| !remove_desc || !table.contains("_desc"))
+        .filter(|table| !skip_state_tables || table.ends_with("_desc"))
+        .map(|table| format!("select * from {table}"))
+        .chain(
+            sql.iter()
+                .filter(|(table, _)| !skip_state_tables || table.ends_with("_desc"))
+                .map(|(_, query)| (*query).to_owned()),
+        )
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -427,6 +476,9 @@ async fn connect_to_db_logic(
     extraction_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ExtractionRecipeDesc>>,
     progressive_action_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ProgressiveActionState>>,
 ) -> anyhow::Result<()> {
+    if global_app_state.shutdown.stop.is_cancelled() {
+        return Ok(());
+    }
     let ctx = connect_to_db(
         global_app_state.clone(),
         config.spacetimedb.password.clone(),
@@ -500,7 +552,8 @@ async fn connect_to_db_logic(
         InventoryState,
         database,
         region_number,
-        "inventory_state"
+        "inventory_state",
+        config.spacetimedb.initial_batch_rows
     );
     setup_spacetime_db_listeners!(
         ctx,
@@ -527,7 +580,8 @@ async fn connect_to_db_logic(
         VaultState,
         database,
         region_number,
-        "vault_state"
+        "vault_state",
+        config.spacetimedb.initial_batch_rows
     );
     setup_spacetime_db_listeners!(
         ctx,
@@ -794,7 +848,7 @@ async fn connect_to_db_logic(
     );
 
     let tables_to_subscribe = vec![
-        "user_state",
+        // "user_state",
         // "mobile_entity_state",
         // "claim_tile_state",
         // "combat_action_desc",
@@ -963,13 +1017,23 @@ async fn connect_to_db_logic(
     // "wind_params_desc"
 
     let sql_subscribe = vec![
-        "SELECT * FROM equipment_desc",
-        "SELECT * FROM equipment_state",
+        ("equipment_desc", "SELECT * FROM equipment_desc"),
+        ("equipment_state", "SELECT * FROM equipment_state"),
         // "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id",
         // "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id",
         // "SELECT * FROM location_state where dimension = 1",
-        "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
+        (
+            "mobile_entity_state",
+            "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
+        ),
     ];
+
+    if config.spacetimedb.skip_state_tables {
+        tracing::warn!(
+            region = database,
+            "RSS DIAGNOSTIC: zero table subscriptions; connection and workers only (spacetimedb.skip_state_tables=true)"
+        );
+    }
 
     // let tmp_region_number = region_number;
     // let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
@@ -1010,7 +1074,8 @@ async fn connect_to_db_logic(
     // let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
     // let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
 
-    ctx.subscription_builder()
+    let subscription_builder = ctx
+        .subscription_builder()
         // .on_applied(move |ctx: &SubscriptionEventContext| {
         //     tracing::debug!(region = region_number, "Handle Subscription response");
         //
@@ -1675,25 +1740,23 @@ async fn connect_to_db_logic(
                 ctx.event
             );
             // std::process::exit(1);
-        })
-        .subscribe(
-            tables_to_subscribe
-                .into_iter()
-                .filter_map(|table| {
-                    if *remove_desc && (table.contains("_desc")) {
-                        return None;
-                    }
-
-                    Some(format!("select * from {table}"))
-                })
-                .chain(sql_subscribe.into_iter().map(|s| s.to_string()))
-                .collect::<Vec<_>>(),
-        );
+        });
+    let queries = subscription_queries(
+        &tables_to_subscribe,
+        &sql_subscribe,
+        *remove_desc,
+        config.spacetimedb.skip_state_tables,
+    );
+    // Do not send an empty subscription request: keep the connection running
+    // without subscriptions when isolating connection/worker RSS.
+    if !queries.is_empty() {
+        subscription_builder.subscribe(queries);
+    }
 
     let tmp_disconnect_db_name = database.to_string().clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
 
-    let result = ctx.run_async().await;
+    let result = run_connection_until_shutdown(&ctx, &global_app_state.shutdown.stop).await;
 
     metrics::gauge!(
         "bitcraft_database_connected",
@@ -1709,11 +1772,15 @@ async fn connect_to_db_logic(
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
-    tokio::spawn(async move {
-        let (mobile_entity_state_tx, mobile_entity_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+    tracing::info!(
+        backend = worker_channel::BACKEND,
+        "Starting worker input queues"
+    );
+    global_app_state.shutdown.clone().spawn_connection(async move {
+        if global_app_state.shutdown.stop.is_cancelled() { return; }
+        let (mobile_entity_state_tx, mobile_entity_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (user_state_tx, user_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (user_state_tx, user_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         let player_state_worker = crate::player_state::bitcraft::PlayerStateWorker::new(
             global_app_state.clone(),
@@ -1745,15 +1812,14 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             Duration::from_millis(200),
         );
 
-        let (item_desc_tx, item_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (item_list_desc_tx, item_list_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (item_desc_tx, item_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (item_list_desc_tx, item_list_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (cargo_desc_tx, cargo_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (cargo_desc_tx, cargo_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (vault_state_collectibles_tx, vault_state_collectibles_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (vault_state_collectibles_tx, vault_state_collectibles_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (deployable_state_tx, deployable_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (deployable_state_tx, deployable_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         let claim_state_worker = bitcraft::ClaimStateWorker::new(
             global_app_state.clone(),
@@ -1773,7 +1839,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             Duration::from_millis(200),
         );
 
-        let (skill_desc_tx, skill_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (skill_desc_tx, skill_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         let claim_tech_state_worker = bitcraft::ClaimTechStateWorker::new(
             global_app_state.clone(),
@@ -1785,38 +1851,30 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             3000,
             Duration::from_millis(200),
         );
-        let (building_state_tx, building_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (building_desc_tx, building_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (building_state_tx, building_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (building_desc_tx, building_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (building_nickname_state_tx, building_nickname_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (building_nickname_state_tx, building_nickname_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (crafting_recipe_desc_tx, crafting_recipe_desc_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (crafting_recipe_desc_tx, crafting_recipe_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (traveler_task_desc_tx, traveler_task_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (traveler_task_state_tx, traveler_task_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
-        let (trade_order_state_tx, trade_order_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (buy_order_state_tx, buy_order_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (sell_order_state_tx, sell_order_state_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (traveler_task_desc_tx, traveler_task_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (traveler_task_state_tx, traveler_task_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (trade_order_state_tx, trade_order_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (buy_order_state_tx, buy_order_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (sell_order_state_tx, sell_order_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (npc_desc_tx, npc_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (collectible_desc_tx, collectible_desc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (npc_desc_tx, npc_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (collectible_desc_tx, collectible_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
-        let (interior_network_desc_tx, interior_network_desc_rx) =
-            tokio::sync::mpsc::unbounded_channel();
-        let (dimension_description_state_tx, dimension_description_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
-        let (player_housing_state_tx, player_housing_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
-        let (permission_state_tx, permission_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (portal_state_tx, portal_state_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (resource_desc_tx, resource_desc_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) =
-            tokio::sync::mpsc::unbounded_channel();
-        let (progressive_action_state_tx, progressive_action_state_rx) =
-            tokio::sync::mpsc::unbounded_channel();
+        let (interior_network_desc_tx, interior_network_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (dimension_description_state_tx, dimension_description_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (player_housing_state_tx, player_housing_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (permission_state_tx, permission_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (portal_state_tx, portal_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (resource_desc_tx, resource_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (progressive_action_state_tx, progressive_action_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         let mut remove_desc = false;
 
@@ -1883,7 +1941,9 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_remove_desc = remove_desc;
                 let tmp_database = database.clone();
 
-                tokio::spawn(async move {
+                tmp_global_app_state.shutdown.clone().spawn_connection(async move {
+                    let stop = tmp_global_app_state.shutdown.stop.clone();
+                    if stop.is_cancelled() { return; }
                     let startup_wait_ms = {
                         let startup_wait_ranges_ms =
                             [(0, 500), (500, 2_000), (2_000, 5_000), (5_000, 15_000)];
@@ -1901,7 +1961,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             spacetime_url = tmp_conf.spacetimedb_url(),
                             "Delaying websocket connection startup"
                         );
-                        tokio::time::sleep(Duration::from_millis(startup_wait_ms)).await;
+                        tokio::select! { biased;
+                            _ = stop.cancelled() => return,
+                            _ = tokio::time::sleep(Duration::from_millis(startup_wait_ms)) => {},
+                        }
                     }
 
                     let mut tries = 0;
@@ -1924,6 +1987,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                     );
 
                     loop {
+                        if stop.is_cancelled() { break; }
                         metrics::gauge!(
                             "bitcraft_database_connected",
                             &[("region", tmp_database.clone())]
@@ -1982,6 +2046,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         )
                         .await;
 
+                        if stop.is_cancelled() { break; }
+
                         if let Err(error) = result {
                             tracing::error!(
                                 region = tmp_database,
@@ -2019,7 +2085,10 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             spacetime_url = tmp_conf.spacetimedb_url(),
                             "Retrying websocket connection"
                         );
-                        tokio::time::sleep(wait).await;
+                        tokio::select! { biased;
+                            _ = stop.cancelled() => break,
+                            _ = tokio::time::sleep(wait) => {},
+                        }
                     }
                 });
 
@@ -2027,11 +2096,11 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             });
 
         start_worker_mobile_entity_state(global_app_state.clone(), mobile_entity_state_rx);
-        player_state_worker.start();
-        player_username_state_worker.start();
-        experience_state_worker.start();
-        location_state_worker.start();
-        inventory_state_worker.start();
+        player_state_worker.start(&global_app_state.shutdown);
+        player_username_state_worker.start(&global_app_state.shutdown);
+        experience_state_worker.start(&global_app_state.shutdown);
+        location_state_worker.start(&global_app_state.shutdown);
+        inventory_state_worker.start(&global_app_state.shutdown);
         start_worker_vault_state_collectibles(
             global_app_state.clone(),
             vault_state_collectibles_rx,
@@ -2056,17 +2125,17 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             3000,
             Duration::from_millis(200),
         );
-        claim_state_worker.start();
-        claim_local_state_worker.start();
-        claim_member_state_worker.start();
+        claim_state_worker.start(&global_app_state.shutdown);
+        claim_local_state_worker.start(&global_app_state.shutdown);
+        claim_member_state_worker.start(&global_app_state.shutdown);
         start_worker_skill_desc(
             global_app_state.clone(),
             skill_desc_rx,
             3000,
             Duration::from_millis(200),
         );
-        claim_tech_state_worker.start();
-        claim_tech_desc_worker.start();
+        claim_tech_state_worker.start(&global_app_state.shutdown);
+        claim_tech_desc_worker.start(&global_app_state.shutdown);
         start_worker_building_state(
             global_app_state.clone(),
             building_state_rx,
@@ -2229,6 +2298,7 @@ pub(crate) enum SpacetimeUpdateMessages<T> {
     Initial {
         data: Vec<T>,
         database_name: entity::shared::Region,
+        batches: Option<initial_batches::InitialBatches<T>>,
     },
     Insert {
         event: Option<Box<__sdk::Event<game_module::module_bindings::Reducer>>>,
@@ -2566,9 +2636,53 @@ mod tests {
     use super::{
         ConnectionTiming, Duration, InboundWebSocketMessages, MAX_RECONNECT_RETRIES,
         OutboundWebSocketMessages, STABLE_CONNECTION_DURATION, next_reconnect_failure_count,
-        reconnect_delay,
+        reconnect_delay, subscription_queries,
     };
     use serde_json::json;
+
+    #[test]
+    fn rss_diagnostic_has_zero_subscriptions_even_on_later_regions() {
+        let tables = [
+            "cargo_desc",
+            "item_desc",
+            "inventory_state",
+            "experience_state",
+            "dimension_description_state",
+            "identity_role",
+            "claim_treasury_event",
+        ];
+        let sql = [
+            ("equipment_desc", "SELECT * FROM equipment_desc"),
+            ("equipment_state", "SELECT * FROM equipment_state"),
+            (
+                "mobile_entity_state",
+                "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
+            ),
+        ];
+        assert!(subscription_queries(&tables, &sql, false, true).is_empty());
+        assert!(subscription_queries(&tables, &sql, true, true).is_empty());
+    }
+
+    #[test]
+    fn disabling_rss_diagnostic_restores_state_subscriptions() {
+        let tables = ["item_desc", "inventory_state"];
+        let sql = [("equipment_state", "SELECT * FROM equipment_state")];
+        assert_eq!(
+            subscription_queries(&tables, &sql, false, false),
+            [
+                "select * from item_desc",
+                "select * from inventory_state",
+                "SELECT * FROM equipment_state",
+            ]
+        );
+        assert_eq!(
+            subscription_queries(&tables, &sql, true, false),
+            [
+                "select * from inventory_state",
+                "SELECT * FROM equipment_state",
+            ]
+        );
+    }
 
     #[test]
     fn failed_connections_exhaust_the_retry_budget() {

@@ -1,19 +1,41 @@
 use crate::AppState;
+use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{OutboundWebSocketMessages, record_worker_received};
 use entity::mobile_entity_state;
 use game_module::module_bindings::MobileEntityState;
-use tokio::sync::mpsc::UnboundedReceiver;
 
 pub(crate) fn start_worker_mobile_entity_state(
     global_app_state: AppState,
     mut rx: UnboundedReceiver<crate::websocket::SpacetimeUpdateMessages<MobileEntityState>>,
 ) {
-    tokio::spawn(async move {
-        let mut buffer = Vec::with_capacity(500);
+    tracing::info!(
+        worker = "mobile_entity_state",
+        "Scheduling mobile entity worker"
+    );
+    global_app_state.shutdown.clone().spawn_worker(async move {
+        tracing::info!(
+            worker = "mobile_entity_state",
+            backend = crate::websocket::worker_channel::BACKEND,
+            "Mobile entity worker started"
+        );
+        let mut buffer = Vec::new();
         loop {
             buffer.shrink_to(500);
             let count = rx.recv_many(&mut buffer, 500).await;
             if count == 0 {
+                if global_app_state.shutdown.stop.is_cancelled() {
+                    tracing::info!(
+                        worker = "mobile_entity_state",
+                        channel_closed = rx.is_closed(),
+                        "Mobile entity worker input drained during shutdown; exiting"
+                    );
+                } else {
+                    tracing::error!(
+                        worker = "mobile_entity_state",
+                        channel_closed = rx.is_closed(),
+                        "Mobile entity worker input ended unexpectedly; exiting"
+                    );
+                }
                 break;
             }
             record_worker_received("mobile_entity_state", count);

@@ -4,10 +4,8 @@ use crate::{AppRouter, AppState, leaderboard};
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use crossbeam_channel::{Receiver, Sender, unbounded};
 use dashmap::DashMap;
 use log::error;
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use service::Query;
 use std::collections::{BTreeMap, HashMap};
@@ -189,43 +187,9 @@ pub(crate) struct BucketDistribution {
     pub(crate) count: usize,
 }
 
-// The message sent to the background worker
-enum LeaderboardOp {
-    Update {
-        user_id: i64,
-        old_xp: i64,
-        new_xp: i64,
-    },
-    Remove {
-        user_id: i64,
-        xp: i64,
-    },
-}
-
-pub(super) struct LeaderboardInner {
-    // ID -> XP
-    // pub(crate) scores: DashMap<i64, i64>,
-    // (XP, ID) for sorted iteration
-    sorted_ranks: BTreeMap<(i64, i64), ()>,
-    // Bucket ID -> Atomic Count (Ordered for range scans)
-    bucket_counts: BTreeMap<i64, usize>,
-    // XP -> Atomic Count (Ordered for range scans)
-    xp_counts: BTreeMap<i64, usize>,
-}
-
-pub(super) struct Leaderboard {
-    pub(crate) scores: DashMap<i64, i64>,
-    // Protected by RwLock, but only ONE writer (the worker thread)
-    // and many readers. This eliminates write-contention.
-    data: Arc<RwLock<LeaderboardInner>>,
-    tx: Sender<LeaderboardOp>,
-}
-
-impl Default for Leaderboard {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+mod compact;
+pub(super) use compact::Leaderboard;
+use compact::{PlayerRegistry, RankingWorker, ScoreWidth};
 
 impl Leaderboard {
     const BUCKET_RANGES: [(i64, i64); 5] = [
@@ -235,78 +199,6 @@ impl Leaderboard {
         (5_000_000, 100_000),
         (i64::MAX, 500_000),
     ];
-
-    pub fn new() -> Self {
-        let (tx, rx) = unbounded();
-        let inner = Arc::new(RwLock::new(LeaderboardInner {
-            sorted_ranks: BTreeMap::new(),
-            bucket_counts: BTreeMap::new(),
-            xp_counts: BTreeMap::new(),
-        }));
-
-        let inner_clone = Arc::clone(&inner);
-
-        std::thread::spawn(move || {
-            Self::worker_loop(inner_clone, rx);
-        });
-
-        Self {
-            scores: DashMap::new(),
-            data: inner,
-            tx,
-        }
-    }
-
-    fn worker_loop(inner: Arc<RwLock<LeaderboardInner>>, rx: Receiver<LeaderboardOp>) {
-        let mut batch = Vec::with_capacity(1024);
-
-        while let Ok(first_op) = rx.recv() {
-            // 1. Start a new batch with the first message (blocking)
-            batch.push(first_op);
-
-            // 2. "Drain" the channel of all currently pending messages (non-blocking)
-            // This prevents us from locking/unlocking 1000 times for 1000 messages.
-            while let Ok(op) = rx.try_recv() {
-                batch.push(op);
-                if batch.len() > 5000 {
-                    break;
-                } // Safety cap to prevent starvation
-            }
-
-            // 3. Apply the entire batch in ONE write lock
-            let mut guard = inner.write();
-            for op in batch.drain(..) {
-                match op {
-                    LeaderboardOp::Update {
-                        user_id,
-                        old_xp,
-                        new_xp,
-                    } => {
-                        if old_xp != 0 {
-                            guard.sorted_ranks.remove(&(old_xp, user_id));
-                            Self::decrement_btreemap(
-                                &mut guard.bucket_counts,
-                                Self::bucket_for(old_xp),
-                            );
-                            Self::decrement_btreemap(&mut guard.xp_counts, old_xp);
-                        }
-                        guard.sorted_ranks.insert((new_xp, user_id), ());
-                        *guard
-                            .bucket_counts
-                            .entry(Self::bucket_for(new_xp))
-                            .or_insert(0) += 1;
-                        *guard.xp_counts.entry(new_xp).or_insert(0) += 1;
-                    }
-                    LeaderboardOp::Remove { user_id, xp } => {
-                        guard.sorted_ranks.remove(&(xp, user_id));
-                        Self::decrement_btreemap(&mut guard.bucket_counts, Self::bucket_for(xp));
-                        Self::decrement_btreemap(&mut guard.xp_counts, xp);
-                    }
-                }
-            }
-            // Write lock is dropped here, allowing readers back in.
-        }
-    }
 
     fn bucket_for(xp: i64) -> i64 {
         let normalized = xp.max(0);
@@ -341,7 +233,7 @@ impl Leaderboard {
             if *range_max == i64::MAX {
                 let idx_in_range = bucket - offset;
                 let min = range_start + (idx_in_range * *bucket_size);
-                let max = min + *bucket_size - 1;
+                let max = min.saturating_add(*bucket_size - 1);
                 return (min, max);
             }
 
@@ -361,179 +253,337 @@ impl Leaderboard {
 
         (0, 0)
     }
+}
 
-    pub fn bucket_distribution(&self) -> Vec<BucketDistribution> {
-        let guard = self.data.read();
-        guard
-            .bucket_counts
-            .iter()
-            .map(|(&bucket, &count)| {
-                let (min_xp, max_xp) = Self::bucket_bounds(bucket);
-                BucketDistribution {
-                    bucket,
-                    min_xp,
-                    max_xp,
-                    count,
-                }
-            })
-            .collect()
+#[cfg(test)]
+mod bookkeeping_tests {
+    use super::compact::LeaderboardOp;
+    use super::*;
+    use crossbeam_channel::Receiver;
+
+    // Drain changes synchronously to make coalescing deterministic in tests.
+    fn board() -> (Leaderboard, Receiver<()>) {
+        Leaderboard::paused(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide)
     }
 
-    // fn increment_bucket(&self, bucket: i64) {
-    //     let mut bucket_counts = self
-    //         .bucket_counts
-    //         .write()
-    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    //     *bucket_counts.entry(bucket).or_insert(0) += 1;
-    // }
-    //
-    // fn decrement_bucket(&self, bucket: i64) {
-    //     let mut bucket_counts = self
-    //         .bucket_counts
-    //         .write()
-    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    //
-    //     if let Some(entry) = bucket_counts.get_mut(&bucket) {
-    //         if *entry > 0 {
-    //             *entry -= 1;
-    //         }
-    //
-    //         if *entry == 0 {
-    //             bucket_counts.remove(&bucket);
-    //         }
-    //     }
-    // }
-    //
-    // fn increment_xp_count(&self, xp: i64) {
-    //     let mut xp_counts = self
-    //         .xp_counts
-    //         .write()
-    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    //     *xp_counts.entry(xp).or_insert(0) += 1;
-    // }
-    //
-    // fn decrement_xp_count(&self, xp: i64) {
-    //     let mut xp_counts = self
-    //         .xp_counts
-    //         .write()
-    //         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    //
-    //     if let Some(entry) = xp_counts.get_mut(&xp) {
-    //         if *entry > 0 {
-    //             *entry -= 1;
-    //         }
-    //
-    //         if *entry == 0 {
-    //             xp_counts.remove(&xp);
-    //         }
-    //     }
-    // }
+    fn apply_pending(board: &Leaderboard, rx: &Receiver<()>) {
+        while rx.try_recv().is_ok() {}
+        let batch = std::mem::take(&mut board.state.lock().pending);
+        Leaderboard::apply_changes(&board.data, &board.players, batch);
+    }
 
-    pub(super) fn update(&self, user_id: i64, new_xp: i64) {
-        // We use a block here to ensure the DashMap 'entry' guard
-        // is dropped immediately after the value is updated.
-        let update_needed = {
-            let mut entry = self.scores.entry(user_id).or_insert(0);
-            let old_xp = *entry.value();
+    fn pending_op(board: &Leaderboard, user_id: i64) -> Option<LeaderboardOp> {
+        let index = board.players.get(user_id)?;
+        board.state.lock().pending.get(&index).copied()
+    }
 
-            if old_xp == new_xp && new_xp != 0 {
-                None
-            } else {
-                let old_val = old_xp;
-                *entry = new_xp;
-                // Return the data we need for the background worker
-                Some((old_val, new_xp))
+    fn assert_consistent(board: &Leaderboard) {
+        let expected = board
+            .score_entries()
+            .into_iter()
+            .map(|(id, xp)| ((xp, id), ()))
+            .collect::<BTreeMap<_, _>>();
+        let mut bucket_counts = BTreeMap::new();
+        for &(xp, _) in expected.keys() {
+            *bucket_counts
+                .entry(Leaderboard::bucket_for(xp))
+                .or_insert(0) += 1;
+        }
+        {
+            let data = board.data.read();
+            assert_eq!(data.bucket_counts, bucket_counts);
+        }
+        let entries = board.get_range(0, expected.len() + 1);
+        assert_eq!(entries.len(), expected.len());
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| ((entry.xp, entry.user_id), ()))
+                .collect::<BTreeMap<_, _>>(),
+            expected
+        );
+        for (index, entry) in entries.iter().enumerate() {
+            assert_eq!(entry.rank, index + 1);
+            assert_eq!(board.get_rank(entry.user_id), Some(index + 1));
+            assert_eq!(board.get_value(&entry.user_id), Some(entry.xp));
+        }
+    }
+
+    #[test]
+    fn first_zero_is_indexed_but_repeated_zero_updates_are_not_queued() {
+        let (board, rx) = board();
+        for _ in 0..100 {
+            board.update(1, 0);
+        }
+        assert_eq!(rx.len(), 1);
+        assert!(matches!(
+            pending_op(&board, 1),
+            Some(LeaderboardOp::Insert { new_xp: 0 })
+        ));
+        apply_pending(&board, &rx);
+        board.update(1, 0);
+        assert!(rx.is_empty());
+        assert_eq!(board.get_rank(1), Some(1));
+        assert_consistent(&board);
+    }
+
+    #[test]
+    fn zero_to_positive_removes_the_zero_index_and_counts() {
+        let (board, rx) = board();
+        board.update(1, 0);
+        apply_pending(&board, &rx);
+        board.update(1, 100_000);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        let entries = board.get_range(0, 10);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].xp, 100_000);
+    }
+
+    #[test]
+    fn positive_zero_and_positive_transitions_keep_exact_counts_and_tie_order() {
+        let (board, rx) = board();
+        board.update(1, 200_000);
+        board.update(2, 0);
+        board.update(3, 0);
+        board.update(1, 0);
+        board.update(1, 0);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert_eq!(
+            board
+                .get_range(0, 10)
+                .iter()
+                .filter(|entry| entry.xp == 0)
+                .count(),
+            3
+        );
+        assert_eq!(board.get_rank(3), Some(1));
+        assert_eq!(board.get_rank(2), Some(2));
+        assert_eq!(board.get_rank(1), Some(3));
+
+        board.update(1, 500_000);
+        board.update(1, 500_000);
+        assert_eq!(rx.len(), 1);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert_eq!(
+            board
+                .get_range(0, 10)
+                .iter()
+                .filter(|entry| entry.xp == 0)
+                .count(),
+            2
+        );
+        assert_eq!(board.get_rank(1), Some(1));
+    }
+
+    #[test]
+    fn zero_removal_and_reinsertion_leave_no_ghost_entries() {
+        let (board, rx) = board();
+        board.update(1, 0);
+        board.remove(1);
+        board.remove(1);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert!(board.get_range(0, 10).is_empty());
+        assert_eq!(board.get_rank(1), None);
+
+        board.update(1, 0);
+        board.update(1, 100);
+        board.remove(1);
+        board.update(1, 0);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert_eq!(board.get_rank(1), Some(1));
+        board.remove(1);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert!(board.data.read().bucket_counts.is_empty());
+    }
+
+    #[test]
+    fn concurrent_updates_and_removals_preserve_index_operation_order() {
+        let (board, rx) = board();
+        std::thread::scope(|scope| {
+            for thread in 0..8 {
+                let board = &board;
+                scope.spawn(move || {
+                    for iteration in 0..200 {
+                        let xp = if iteration % 2 == 0 {
+                            0
+                        } else {
+                            thread * 1_000 + iteration
+                        };
+                        board.update(1, xp);
+                        if iteration % 5 == 0 {
+                            board.remove(1);
+                        }
+                    }
+                });
             }
-        };
+        });
+        board.update(1, 0);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert_eq!(board.get_value(&1), Some(0));
+        assert_eq!(board.get_range(0, 10).len(), 1);
+    }
 
-        // NOW we send to the channel. The DashMap shard is already unlocked.
-        if let Some((old_xp, new_xp)) = update_needed {
-            let _ = self.tx.send(LeaderboardOp::Update {
-                user_id,
-                old_xp,
-                new_xp,
-            });
+    #[test]
+    fn repeated_player_updates_keep_one_pending_change_and_one_wakeup() {
+        let (board, rx) = board();
+        for xp in 0..100_000 {
+            board.update(1, xp);
         }
+        assert_eq!(board.state.lock().pending.len(), 1);
+        assert_eq!(rx.len(), 1);
+        assert_eq!(
+            board.get_value(&1),
+            Some(99_999),
+            "score lookup remains immediate"
+        );
+        assert!(
+            board.get_range(0, 10).is_empty(),
+            "index worker is paused in this test"
+        );
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert!(board.state.lock().pending.is_empty());
     }
 
-    #[allow(dead_code)]
-    pub(super) fn has(&self, user_id: &i64) -> bool {
-        self.scores.contains_key(user_id)
-    }
-
-    pub(super) fn get_value(&self, user_id: &i64) -> Option<i64> {
-        self.scores.get(user_id).map(|xp| *xp)
-    }
-
-    pub(super) fn get_rank(&self, user_id: i64) -> Option<usize> {
-        let xp = self.scores.get(&user_id).map(|r| *r.value())?;
-        let guard = self.data.read();
-
-        let bucket = Self::bucket_for(xp);
-        let (_, bucket_max) = Self::bucket_bounds(bucket);
-
-        let higher_count: usize = guard
-            .bucket_counts
-            .range((bucket + 1)..)
-            .map(|(_, &c)| c)
-            .sum();
-        let above_same_bucket_higher_xp: usize = if xp >= bucket_max {
-            0
-        } else {
-            guard
-                .xp_counts
-                .range((xp + 1)..=bucket_max)
-                .map(|(_, &c)| c)
-                .sum()
-        };
-
-        // Tie-break scan in BTreeMap is very fast (cache friendly)
-        let mut tie_rank = 0;
-        for ((_entry_xp, _), _) in guard.sorted_ranks.range((xp, user_id)..=(xp, i64::MAX)) {
-            tie_rank += 1;
-        }
-
-        Some(higher_count + above_same_bucket_higher_xp + tie_rank)
-    }
-
-    #[allow(dead_code)]
-    pub(super) fn remove(&self, user_id: i64) {
-        if let Some((_, xp)) = self.scores.remove(&user_id) {
-            let _ = self.tx.send(LeaderboardOp::Remove { user_id, xp });
-        }
-    }
-
-    pub(super) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
-        // Acquire the read lock.
-        // This will only block if the background thread is currently applying a batch.
-        let guard = self.data.read();
-
-        guard
-            .sorted_ranks
-            .iter()
-            .rev() // Highest XP first
-            .skip(offset)
-            .take(limit)
-            .enumerate()
-            .map(|(idx, (&(xp, user_id), _))| {
-                LeaderboardEntry {
-                    // rank is offset + current index + 1 (for 1-based ranking)
-                    rank: offset + idx + 1,
-                    user_id,
-                    xp,
-                }
-            })
-            .collect()
-    }
-
-    fn decrement_btreemap(map: &mut BTreeMap<i64, usize>, key: i64) {
-        if let Some(count) = map.get_mut(&key) {
-            if *count <= 1 {
-                map.remove(&key);
-            } else {
-                *count -= 1;
+    #[test]
+    fn pending_changes_grow_with_players_not_update_count() {
+        let (board, rx) = board();
+        for xp in 0..20 {
+            for user_id in 0..1_000 {
+                board.update(user_id, xp);
             }
         }
+        assert_eq!(board.state.lock().pending.len(), 1_000);
+        assert_eq!(rx.len(), 1);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+    }
+
+    #[test]
+    fn coalescing_preserves_original_score_and_cancels_round_trips() {
+        let (board, rx) = board();
+        board.update(1, 0);
+        apply_pending(&board, &rx);
+        board.update(1, 100);
+        board.update(1, 200);
+        assert!(matches!(
+            pending_op(&board, 1),
+            Some(LeaderboardOp::Update {
+                old_xp: 0,
+                new_xp: 200,
+                ..
+            })
+        ));
+        board.remove(1);
+        assert!(matches!(
+            pending_op(&board, 1),
+            Some(LeaderboardOp::Remove { xp: 0, .. })
+        ));
+        board.update(1, 300);
+        assert!(matches!(
+            pending_op(&board, 1),
+            Some(LeaderboardOp::Update {
+                old_xp: 0,
+                new_xp: 300,
+                ..
+            })
+        ));
+        board.update(1, 0);
+        assert!(board.state.lock().pending.is_empty());
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+    }
+
+    #[test]
+    fn insert_followed_by_remove_cancels_pending_index_work() {
+        let (board, rx) = board();
+        board.update(1, 0);
+        board.update(1, 100);
+        board.remove(1);
+        assert!(board.state.lock().pending.is_empty());
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert_eq!(board.get_rank(1), None);
+    }
+
+    #[test]
+    fn updates_after_worker_drain_use_the_in_flight_batches_final_score() {
+        let (board, rx) = board();
+        board.update(1, 0);
+        rx.try_recv().unwrap();
+        let in_flight = std::mem::take(&mut board.state.lock().pending);
+        // These mutations arrive after the worker takes its batch but before it
+        // applies it, so their baseline must be the in-flight score of zero.
+        board.update(1, 100);
+        board.remove(1);
+        board.update(1, 200);
+        assert!(matches!(
+            pending_op(&board, 1),
+            Some(LeaderboardOp::Update {
+                old_xp: 0,
+                new_xp: 200,
+                ..
+            })
+        ));
+        assert_eq!(
+            rx.len(),
+            1,
+            "mutations arriving after drain must wake the worker again"
+        );
+        Leaderboard::apply_changes(&board.data, &board.players, in_flight);
+        apply_pending(&board, &rx);
+        assert_consistent(&board);
+        assert_eq!(board.get_value(&1), Some(200));
+    }
+
+    #[test]
+    fn background_worker_handles_concurrent_writes_and_drains_on_shutdown() {
+        let (board, rx) = board();
+        let inner = Arc::clone(&board.data);
+        let state = Arc::clone(&board.state);
+        let players = Arc::clone(&board.players);
+        let worker_players = Arc::clone(&players);
+        let worker_inner = Arc::clone(&inner);
+        let worker = std::thread::spawn(move || {
+            Leaderboard::worker_loop(worker_inner, state, worker_players, rx)
+        });
+        std::thread::scope(|scope| {
+            for thread in 0..8 {
+                let board = &board;
+                scope.spawn(move || {
+                    for xp in 0..1_000 {
+                        board.update(1, xp);
+                        board.update(thread + 2, xp);
+                        if xp % 7 == 0 {
+                            board.remove(1);
+                        }
+                    }
+                });
+            }
+        });
+        board.update(1, 0);
+        let expected = board
+            .score_entries()
+            .into_iter()
+            .map(|(id, xp)| ((xp, id), ()))
+            .collect::<BTreeMap<_, _>>();
+        drop(board);
+        worker.join().unwrap();
+        let data = inner.read();
+        assert_eq!(data.sorted_players.len(), expected.len());
+        for (rank, &(_, id)) in expected.keys().rev().enumerate() {
+            let index = players.get(id).unwrap();
+            assert_eq!(data.sorted_players[rank], index);
+            assert_eq!(data.ranks[index as usize], (rank + 1) as u32);
+        }
+        assert_eq!(data.bucket_counts.values().sum::<usize>(), 9);
     }
 }
 
@@ -541,12 +591,15 @@ impl Leaderboard {
 pub struct LeaderboardBenchHarness {
     leaderboard: Leaderboard,
     user_ids: Vec<i64>,
+    wakeups: crossbeam_channel::Receiver<()>,
 }
 
 #[cfg(feature = "bench")]
 impl LeaderboardBenchHarness {
     pub fn new(player_count: usize) -> Self {
-        let leaderboard = Leaderboard::default();
+        // Fully publish the initial snapshot before timing rank lookups.
+        let (leaderboard, wakeups) =
+            Leaderboard::paused(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide);
         let mut user_ids = Vec::with_capacity(player_count);
 
         for idx in 0..player_count {
@@ -555,10 +608,14 @@ impl LeaderboardBenchHarness {
             leaderboard.update(user_id, xp);
             user_ids.push(user_id);
         }
+        let changes = std::mem::take(&mut leaderboard.state.lock().pending);
+        Leaderboard::apply_changes(&leaderboard.data, &leaderboard.players, changes);
+        while wakeups.try_recv().is_ok() {}
 
         Self {
             leaderboard,
             user_ids,
+            wakeups,
         }
     }
 
@@ -571,9 +628,32 @@ impl LeaderboardBenchHarness {
     pub fn get_rank(&self, user_id: i64) -> Option<usize> {
         self.leaderboard.get_rank(user_id)
     }
+
+    pub fn get_value(&self, user_id: i64) -> Option<i64> {
+        self.leaderboard.get_value(&user_id)
+    }
+
+    pub fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
+        self.leaderboard.get_range(offset, limit)
+    }
+
+    /// Time ingestion plus publication, not just queueing writes for later.
+    /// The live worker's 20 ms refresh pacing is intentionally not included.
+    pub fn update_and_publish(&mut self, users: &[i64], offset: i64) {
+        for (position, &user_id) in users.iter().enumerate() {
+            let index = user_id - 1;
+            let xp = index * 137 + (index % 53) * 17 + offset + position as i64;
+            self.leaderboard.update(user_id, xp);
+        }
+        while self.wakeups.try_recv().is_ok() {}
+        let changes = std::mem::take(&mut self.leaderboard.state.lock().pending);
+        Leaderboard::apply_changes(&self.leaderboard.data, &self.leaderboard.players, changes);
+    }
 }
 
 pub struct RankingSystem {
+    players: Arc<PlayerRegistry>,
+    worker: RankingWorker,
     pub skill_leaderboards: DashMap<i64, Leaderboard>,
     pub global_leaderboard: Leaderboard,
     pub profession_leaderboard: Leaderboard,
@@ -586,16 +666,140 @@ pub struct RankingSystem {
 
 impl Default for RankingSystem {
     fn default() -> Self {
+        let players = Arc::new(PlayerRegistry::default());
+        let worker = RankingWorker::new();
         Self {
             skill_leaderboards: DashMap::new(),
-            global_leaderboard: Leaderboard::default(),
-            profession_leaderboard: Leaderboard::default(),
-            adventure_leaderboard: Leaderboard::default(),
-            level_leaderboard: Leaderboard::default(),
-            xp_per_hour: Leaderboard::default(),
-            time_played: Leaderboard::default(),
-            time_signed_in: Leaderboard::default(),
+            global_leaderboard: Leaderboard::with_worker(
+                Arc::clone(&players),
+                ScoreWidth::Wide,
+                &worker,
+            ),
+            profession_leaderboard: Leaderboard::with_worker(
+                Arc::clone(&players),
+                ScoreWidth::Wide,
+                &worker,
+            ),
+            adventure_leaderboard: Leaderboard::with_worker(
+                Arc::clone(&players),
+                ScoreWidth::Wide,
+                &worker,
+            ),
+            level_leaderboard: Leaderboard::with_worker(
+                Arc::clone(&players),
+                ScoreWidth::Wide,
+                &worker,
+            ),
+            xp_per_hour: Leaderboard::with_worker(Arc::clone(&players), ScoreWidth::Wide, &worker),
+            time_played: Leaderboard::with_worker(Arc::clone(&players), ScoreWidth::Wide, &worker),
+            time_signed_in: Leaderboard::with_worker(
+                Arc::clone(&players),
+                ScoreWidth::Wide,
+                &worker,
+            ),
+            players,
+            worker,
         }
+    }
+}
+
+impl RankingSystem {
+    pub(crate) async fn shutdown(&self) {
+        if let Some(thread) = self.worker.stop() {
+            match tokio::task::spawn_blocking(move || thread.join()).await {
+                Ok(Ok(())) => {}
+                _ => tracing::error!("Ranking publisher failed during shutdown"),
+            }
+        }
+    }
+
+    /// Allocation hint only. Boards still grow for players absent from the
+    /// database count, and boards created later inherit the registry hint.
+    pub(crate) fn reserve_player_capacity(&self, count: usize) {
+        self.players.reserve_players(count);
+        for board in [
+            &self.global_leaderboard,
+            &self.profession_leaderboard,
+            &self.adventure_leaderboard,
+            &self.level_leaderboard,
+            &self.xp_per_hour,
+            &self.time_played,
+            &self.time_signed_in,
+        ] {
+            board.reserve_players(count);
+        }
+        for board in self.skill_leaderboards.iter() {
+            board.reserve_players(count);
+        }
+    }
+
+    pub(crate) fn print_startup_memory_stats(&self) {
+        let mut boards = 0usize;
+        let mut buffer_bytes = 0usize;
+        let mut pending_changes = 0usize;
+        let mut score_slots = 0usize;
+        let mut record = |board: &Leaderboard| {
+            let stats = board.memory_stats();
+            boards += 1;
+            buffer_bytes += stats.buffer_bytes;
+            pending_changes += stats.pending_changes;
+            score_slots += stats.score_slots;
+        };
+        for board in [
+            &self.global_leaderboard,
+            &self.profession_leaderboard,
+            &self.adventure_leaderboard,
+            &self.level_leaderboard,
+            &self.xp_per_hour,
+            &self.time_played,
+            &self.time_signed_in,
+        ] {
+            record(board);
+        }
+        for board in self.skill_leaderboards.iter() {
+            record(board.value());
+        }
+        eprintln!(
+            "startup_rankings boards={boards} registered_players={} buffer_capacity_bytes={buffer_bytes} score_slots={score_slots} pending_changes={pending_changes}",
+            self.players.len()
+        );
+    }
+
+    pub(crate) fn record_memory_metrics(&self) {
+        metrics::gauge!("leaderboard_registered_players").set(self.players.len() as f64);
+        let record = |name: &str, board: &Leaderboard| {
+            let stats = board.memory_stats();
+            metrics::gauge!("leaderboard_active_players", "leaderboard" => name.to_string())
+                .set(stats.active_players as f64);
+            metrics::gauge!("leaderboard_score_slots", "leaderboard" => name.to_string())
+                .set(stats.score_slots as f64);
+            // Vec payload capacities only: this is not allocator accounting or RSS.
+            metrics::gauge!("leaderboard_buffer_capacity_bytes", "leaderboard" => name.to_string())
+                .set(stats.buffer_bytes as f64);
+            metrics::gauge!("leaderboard_pending_changes", "leaderboard" => name.to_string())
+                .set(stats.pending_changes as f64);
+            metrics::gauge!("leaderboard_pending_change_capacity", "leaderboard" => name.to_string()).set(stats.pending_capacity as f64);
+        };
+        for (name, board) in [
+            ("global_experience", &self.global_leaderboard),
+            ("profession_experience", &self.profession_leaderboard),
+            ("adventure_experience", &self.adventure_leaderboard),
+            ("level", &self.level_leaderboard),
+            ("xp_per_hour", &self.xp_per_hour),
+            ("time_played", &self.time_played),
+            ("time_signed_in", &self.time_signed_in),
+        ] {
+            record(name, board);
+        }
+        for board in self.skill_leaderboards.iter() {
+            record(&format!("skill_{}", board.key()), board.value());
+        }
+    }
+
+    pub(crate) fn ensure_skill_leaderboard(&self, skill_id: i64) {
+        self.skill_leaderboards.entry(skill_id).or_insert_with(|| {
+            Leaderboard::with_worker(Arc::clone(&self.players), ScoreWidth::Skill, &self.worker)
+        });
     }
 }
 
@@ -964,9 +1168,7 @@ pub(crate) async fn player_leaderboard(
                 .skill_leaderboards
                 .get(&skill.id)
                 .unwrap()
-                .scores
-                .get(&player_id)
-                .map(|r| *r.value());
+                .get_value(&player_id);
 
             (a.unwrap(), rank)
         } else {
@@ -1001,10 +1203,9 @@ pub(crate) async fn player_leaderboard(
     let total_experience = if let Some(total_experience) = state
         .ranking_system
         .global_leaderboard
-        .scores
-        .get(&player_id)
+        .get_value(&player_id)
     {
-        *total_experience.value()
+        total_experience
     } else {
         tracing::warn!(player_id, "Could not find total experience xp for player");
 
@@ -1037,10 +1238,9 @@ pub(crate) async fn player_leaderboard(
     let total_profession_experience = if let Some(total_profession_experience) = state
         .ranking_system
         .profession_leaderboard
-        .scores
-        .get(&player_id)
+        .get_value(&player_id)
     {
-        *total_profession_experience.value()
+        total_profession_experience
     } else {
         tracing::warn!(player_id, "Could not find total profession xp for player");
 
@@ -1073,10 +1273,9 @@ pub(crate) async fn player_leaderboard(
     let total_adventure_experience = if let Some(total_adventure_experience) = state
         .ranking_system
         .adventure_leaderboard
-        .scores
-        .get(&player_id)
+        .get_value(&player_id)
     {
-        *total_adventure_experience.value()
+        total_adventure_experience
     } else {
         tracing::warn!(player_id, "Could not find total adventure xp for player");
 
@@ -1095,12 +1294,7 @@ pub(crate) async fn player_leaderboard(
     ));
 
     let rank = state.ranking_system.level_leaderboard.get_rank(player_id);
-    let level = state
-        .ranking_system
-        .level_leaderboard
-        .scores
-        .get(&player_id)
-        .map(|r| *r.value());
+    let level = state.ranking_system.level_leaderboard.get_value(&player_id);
 
     results.push((
         "Level".to_string(),

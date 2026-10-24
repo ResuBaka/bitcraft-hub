@@ -1,13 +1,14 @@
 use crate::AppState;
 use crate::websocket::SpacetimeUpdateMessages;
 use crate::websocket::batched_worker::BatchedWorker;
+use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
 use entity::shared::Region;
 use game_module::module_bindings::LocationState;
 use migration::OnConflict;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect};
 use std::collections::HashSet;
 use std::time::Duration;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::UnboundedSender as TokioUnboundedSender;
 
 // pub(crate) async fn insert_many_location_state(
 //     global_app_state: &AppState,
@@ -169,7 +170,7 @@ pub(crate) struct LocationStateWorker {
     global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: UnboundedSender<LocationStateDbOperation>,
+    db_tx: TokioUnboundedSender<LocationStateDbOperation>,
     messages: Vec<::entity::location_state::ActiveModel>,
     messages_delete: Vec<i64>,
 }
@@ -177,7 +178,8 @@ pub(crate) struct LocationStateWorker {
 impl LocationStateWorker {
     pub(crate) fn new(global_app_state: AppState, batch_size: usize, time_limit: Duration) -> Self {
         let db_tx = start_location_state_db_worker(global_app_state.clone());
-        let (tx, rx) = unbounded_channel();
+        let (tx, rx) =
+            crate::websocket::worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         Self {
             rx,
@@ -186,8 +188,8 @@ impl LocationStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::with_capacity(batch_size + 10),
-            messages_delete: Vec::with_capacity(batch_size + 10),
+            messages: Vec::new(),
+            messages_delete: Vec::new(),
         }
     }
 
@@ -222,6 +224,7 @@ impl LocationStateWorker {
             SpacetimeUpdateMessages::Initial {
                 data,
                 database_name,
+                ..
             } => {
                 self.handle_initial(data, database_name).await;
             }
@@ -277,19 +280,12 @@ impl LocationStateWorker {
                 local_messages.push(model.into_active_model());
             }
             if local_messages.len() >= self.batch_size {
-                let messages = std::mem::replace(
-                    &mut local_messages,
-                    Vec::with_capacity(self.batch_size + 10),
-                );
+                let messages = std::mem::take(&mut local_messages);
                 self.queue_upserts(messages);
             }
         }
         if !local_messages.is_empty() {
-            let messages = std::mem::replace(
-                &mut local_messages,
-                Vec::with_capacity(self.batch_size + 10),
-            );
-            self.queue_upserts(messages);
+            self.queue_upserts(local_messages);
         }
 
         self.queue_deletes(
@@ -360,8 +356,7 @@ impl LocationStateWorker {
             return;
         }
 
-        let messages =
-            std::mem::replace(&mut self.messages, Vec::with_capacity(self.batch_size + 10));
+        let messages = std::mem::take(&mut self.messages);
         self.queue_upserts(messages);
     }
 
@@ -371,10 +366,7 @@ impl LocationStateWorker {
         }
 
         tracing::debug!("LocationState::Remove");
-        let messages_delete = std::mem::replace(
-            &mut self.messages_delete,
-            Vec::with_capacity(self.batch_size + 10),
-        );
+        let messages_delete = std::mem::take(&mut self.messages_delete);
         self.queue_deletes(messages_delete);
     }
 }
@@ -420,8 +412,8 @@ impl BatchedWorker for LocationStateWorker {
 
 fn start_location_state_db_worker(
     global_app_state: AppState,
-) -> UnboundedSender<LocationStateDbOperation> {
-    let (tx, mut rx) = unbounded_channel();
+) -> TokioUnboundedSender<LocationStateDbOperation> {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let on_conflict =
         sea_orm::sea_query::OnConflict::columns([::entity::location_state::Column::EntityId])
             .update_columns([
@@ -433,7 +425,7 @@ fn start_location_state_db_worker(
             ])
             .to_owned();
 
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
                 LocationStateDbOperation::Upsert(messages) => {
@@ -474,7 +466,7 @@ async fn insert_multiple_location_state(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::location_state::ActiveModel>,
 ) {
-    let insert = ::entity::location_state::Entity::insert_many(messages.clone())
+    let insert = ::entity::location_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;

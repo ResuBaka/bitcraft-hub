@@ -1,11 +1,11 @@
 use crate::AppState;
+use crate::websocket::batched_worker::BatchTimer;
+use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use entity::resource_desc;
 use migration::OnConflict;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, sea_query};
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time::sleep;
 
 pub(crate) fn start_worker_resource_desc(
     global_app_state: AppState,
@@ -13,7 +13,7 @@ pub(crate) fn start_worker_resource_desc(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict = sea_query::OnConflict::column(resource_desc::Column::Id)
             .update_columns([
                 resource_desc::Column::Name,
@@ -27,15 +27,16 @@ pub(crate) fn start_worker_resource_desc(
             ])
             .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("resource_desc", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
@@ -94,7 +95,7 @@ pub(crate) fn start_worker_resource_desc(
                             }
                         }
                     }
-                    _ = &mut timer => {
+                    _ = timer.elapsed() => {
                         break;
                     }
                     else => {
@@ -127,7 +128,8 @@ pub(crate) fn start_worker_resource_desc(
                 messages_delete.clear();
             }
 
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }
@@ -139,7 +141,7 @@ async fn insert_multiple(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::resource_desc::ActiveModel>,
 ) {
-    let insert = ::entity::resource_desc::Entity::insert_many(messages.clone())
+    let insert = ::entity::resource_desc::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;

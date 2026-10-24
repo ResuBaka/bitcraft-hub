@@ -1,4 +1,6 @@
 use crate::AppState;
+use crate::websocket::batched_worker::BatchTimer;
+use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::{
     DimensionDescriptionState, InteriorNetworkDesc, PermissionState, PlayerHousingState,
@@ -7,8 +9,6 @@ use game_module::module_bindings::{
 use migration::{OnConflict, sea_query};
 use sea_orm::{ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time::sleep;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interior Network Desc Worker
@@ -20,7 +20,7 @@ pub(crate) fn start_worker_interior_network_desc(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict =
             sea_query::OnConflict::columns([::entity::interior_network_desc::Column::BuildingId])
                 .update_columns([
@@ -30,15 +30,16 @@ pub(crate) fn start_worker_interior_network_desc(
                 ])
                 .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("interior_network_desc", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
@@ -113,7 +114,7 @@ pub(crate) fn start_worker_interior_network_desc(
                             }
                         }
                     }
-                    _ = &mut timer => { break; }
+                    _ = timer.elapsed() => { break; }
                     else => { break; }
                 }
             }
@@ -157,7 +158,8 @@ pub(crate) fn start_worker_interior_network_desc(
                 messages_delete.clear();
             }
 
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }
@@ -173,7 +175,7 @@ async fn insert_many_interior_network_desc(
         return Ok(());
     }
 
-    ::entity::interior_network_desc::Entity::insert_many(messages.clone())
+    ::entity::interior_network_desc::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await?;
@@ -192,7 +194,7 @@ pub(crate) fn start_worker_dimension_description_state(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict = sea_query::OnConflict::columns([
             ::entity::dimension_description_state::Column::EntityId,
         ])
@@ -205,15 +207,16 @@ pub(crate) fn start_worker_dimension_description_state(
         ])
         .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("dimension_description_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
@@ -288,7 +291,7 @@ pub(crate) fn start_worker_dimension_description_state(
                             }
                         }
                     }
-                    _ = &mut timer => { break; }
+                    _ = timer.elapsed() => { break; }
                     else => { break; }
                 }
             }
@@ -328,7 +331,8 @@ pub(crate) fn start_worker_dimension_description_state(
                 messages_delete.clear();
             }
 
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }
@@ -344,7 +348,7 @@ async fn insert_many_dimension_description_state(
         return Ok(());
     }
 
-    ::entity::dimension_description_state::Entity::insert_many(messages.clone())
+    ::entity::dimension_description_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await?;
@@ -363,7 +367,7 @@ pub(crate) fn start_worker_player_housing_state(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict =
             sea_query::OnConflict::columns([::entity::player_housing_state::Column::EntityId])
                 .update_columns([
@@ -377,15 +381,16 @@ pub(crate) fn start_worker_player_housing_state(
                 ])
                 .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("player_housing_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
@@ -459,7 +464,7 @@ pub(crate) fn start_worker_player_housing_state(
                             }
                         }
                     }
-                    _ = &mut timer => { break; }
+                    _ = timer.elapsed() => { break; }
                     else => { break; }
                 }
             }
@@ -499,13 +504,16 @@ pub(crate) fn start_worker_player_housing_state(
                 messages_delete.clear();
             }
 
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }
     });
 }
 
+// Keep originals until exec succeeds, but clone rows lazily while SeaORM builds
+// the query rather than allocating a second full ActiveModel batch.
 async fn insert_many_player_housing_state(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
@@ -515,7 +523,7 @@ async fn insert_many_player_housing_state(
         return Ok(());
     }
 
-    ::entity::player_housing_state::Entity::insert_many(messages.clone())
+    ::entity::player_housing_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await?;
@@ -534,7 +542,7 @@ pub(crate) fn start_worker_permission_state(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict =
             sea_query::OnConflict::columns([::entity::permission_state::Column::EntityId])
                 .update_columns([
@@ -546,15 +554,16 @@ pub(crate) fn start_worker_permission_state(
                 ])
                 .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("permission_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
@@ -629,7 +638,7 @@ pub(crate) fn start_worker_permission_state(
                             }
                         }
                     }
-                    _ = &mut timer => { break; }
+                    _ = timer.elapsed() => { break; }
                     else => { break; }
                 }
             }
@@ -665,7 +674,8 @@ pub(crate) fn start_worker_permission_state(
                 messages_delete.clear();
             }
 
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }
@@ -681,7 +691,7 @@ async fn insert_many_permission_state(
         return Ok(());
     }
 
-    ::entity::permission_state::Entity::insert_many(messages.clone())
+    ::entity::permission_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await?;
@@ -700,7 +710,7 @@ pub(crate) fn start_worker_portal_state(
     batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         let on_conflict =
             sea_query::OnConflict::columns([::entity::portal_state::Column::EntityId])
                 .update_columns([
@@ -714,15 +724,16 @@ pub(crate) fn start_worker_portal_state(
                 ])
                 .to_owned();
 
+        let mut messages = Vec::new();
+        let mut messages_delete = Vec::new();
         loop {
-            let mut messages = Vec::with_capacity(batch_size + 10);
-            let mut messages_delete = Vec::with_capacity(batch_size + 10);
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("portal_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
@@ -797,7 +808,7 @@ pub(crate) fn start_worker_portal_state(
                             }
                         }
                     }
-                    _ = &mut timer => { break; }
+                    _ = timer.elapsed() => { break; }
                     else => { break; }
                 }
             }
@@ -834,7 +845,8 @@ pub(crate) fn start_worker_portal_state(
                 messages_delete.clear();
             }
 
-            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() {
+            if messages.is_empty() && messages_delete.is_empty() && rx.is_closed() && rx.is_empty()
+            {
                 break;
             }
         }
@@ -850,11 +862,119 @@ async fn insert_many_portal_state(
         return Ok(());
     }
 
-    ::entity::portal_state::Entity::insert_many(messages.clone())
+    ::entity::portal_state::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await?;
 
     messages.clear();
     Ok(())
+}
+
+#[cfg(test)]
+mod write_batch_tests {
+    use super::*;
+    use sea_orm::{DbBackend, MockDatabase, QueryTrait, Set, Transaction};
+
+    // Exercise the real helpers: failed writes keep the exact batch for retry,
+    // successful retries clear it without releasing its reusable allocation.
+    macro_rules! retry_test {
+        ($test:ident, $helper:ident, $table:ident, $field:ident, $column:ident, $id:ty) => {
+            #[tokio::test]
+            async fn $test() {
+                use entity::$table::{ActiveModel, Column, Entity};
+                let db = MockDatabase::new(DbBackend::Postgres)
+                    .append_query_errors([DbErr::Custom("write failed".into())])
+                    .append_query_results([vec![std::collections::BTreeMap::from([(
+                        stringify!($field).to_owned(),
+                        sea_orm::Value::from(2 as $id),
+                    )])]])
+                    .into_connection();
+                let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+                let state = AppState::new(db, tx, Default::default());
+                let on_conflict = OnConflict::column(Column::$column)
+                    .update_column(Column::$column)
+                    .to_owned();
+                let mut messages = vec![
+                    ActiveModel {
+                        $field: Set(1),
+                        ..Default::default()
+                    },
+                    ActiveModel {
+                        $field: Set(2),
+                        ..Default::default()
+                    },
+                ];
+                let original = messages.clone();
+                let allocation = messages.as_ptr();
+                let capacity = messages.capacity();
+                let mut expected = Entity::insert_many(messages.clone())
+                    .on_conflict(on_conflict.clone())
+                    .build(DbBackend::Postgres);
+                expected
+                    .sql
+                    .push_str(concat!(" RETURNING \"", stringify!($field), "\""));
+
+                assert!($helper(&state, &on_conflict, &mut messages).await.is_err());
+                assert_eq!(messages, original);
+                assert_eq!(messages.as_ptr(), allocation);
+                assert_eq!(messages.capacity(), capacity);
+
+                $helper(&state, &on_conflict, &mut messages).await.unwrap();
+                assert!(messages.is_empty());
+                assert_eq!(messages.as_ptr(), allocation);
+                assert_eq!(messages.capacity(), capacity);
+                // Empty batches must not issue an INSERT.
+                $helper(&state, &on_conflict, &mut messages).await.unwrap();
+                assert_eq!(
+                    state.conn.into_transaction_log(),
+                    [
+                        Transaction::one(expected.clone()),
+                        Transaction::one(expected)
+                    ]
+                );
+            }
+        };
+    }
+
+    retry_test!(
+        housing_retry,
+        insert_many_player_housing_state,
+        player_housing_state,
+        entity_id,
+        EntityId,
+        i64
+    );
+    retry_test!(
+        interior_retry,
+        insert_many_interior_network_desc,
+        interior_network_desc,
+        building_id,
+        BuildingId,
+        i32
+    );
+    retry_test!(
+        dimension_retry,
+        insert_many_dimension_description_state,
+        dimension_description_state,
+        entity_id,
+        EntityId,
+        i64
+    );
+    retry_test!(
+        permission_retry,
+        insert_many_permission_state,
+        permission_state,
+        entity_id,
+        EntityId,
+        i64
+    );
+    retry_test!(
+        portal_retry,
+        insert_many_portal_state,
+        portal_state,
+        entity_id,
+        EntityId,
+        i64
+    );
 }

@@ -1,12 +1,12 @@
 use crate::AppState;
+use crate::websocket::batched_worker::BatchTimer;
+use crate::websocket::worker_channel::UnboundedReceiver;
 use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
 use game_module::module_bindings::TradeOrderState;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use sea_orm::{EntityTrait, sea_query};
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time::sleep;
 
 pub(crate) fn start_worker_trade_order_state(
     global_app_state: AppState,
@@ -14,7 +14,7 @@ pub(crate) fn start_worker_trade_order_state(
     _batch_size: usize,
     time_limit: Duration,
 ) {
-    tokio::spawn(async move {
+    global_app_state.shutdown.clone().spawn_worker(async move {
         // let on_conflict = sea_query::OnConflict::column(::entity::trade_order::Column::EntityId)
         //     .update_columns([
         //         ::entity::trade_order::Column::TimePlayed,
@@ -30,12 +30,13 @@ pub(crate) fn start_worker_trade_order_state(
         loop {
             // let mut messages = Vec::new();
             // let mut ids = vec![];
-            let timer = sleep(time_limit);
-            tokio::pin!(timer);
+            let mut timer = BatchTimer::new(time_limit);
 
             loop {
                 tokio::select! {
-                    Some(msg) = rx.recv() => {
+                    msg = rx.recv() => {
+                        let Some(msg) = msg else { break; };
+                        timer.start();
                         record_worker_received("trade_order_state", 1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
@@ -144,7 +145,7 @@ pub(crate) fn start_worker_trade_order_state(
                             }
                         }
                     }
-                    _ = &mut timer => {
+                    _ = timer.elapsed() => {
                         // Time limit reached
                         break;
                     }
@@ -164,7 +165,7 @@ pub(crate) fn start_worker_trade_order_state(
 
             // If the channel is closed and we processed the last batch, exit the outer loop
             // if messages.is_empty() && rx.is_closed() {
-            if rx.is_closed() {
+            if rx.is_closed() && rx.is_empty() {
                 break;
             }
         }
@@ -177,7 +178,7 @@ async fn insert_multiple_trade_order(
     on_conflict: &sea_query::OnConflict,
     messages: &mut Vec<::entity::trade_order::ActiveModel>,
 ) {
-    let insert = ::entity::trade_order::Entity::insert_many(messages.clone())
+    let insert = ::entity::trade_order::Entity::insert_many(messages.iter().cloned())
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
         .await;

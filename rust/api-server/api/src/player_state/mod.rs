@@ -12,7 +12,6 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::collections::HashMap;
-use std::ops::Deref;
 use ts_rs::TS;
 
 pub(crate) fn get_routes() -> AppRouter {
@@ -227,12 +226,7 @@ pub async fn find_player_by_id(
         .get(&(player.entity_id as u64))
         .map_or(vec![], |ids| {
             ids.iter()
-                .filter_map(|id| {
-                    state
-                        .claim_state
-                        .get(&(*id.deref() as i64))
-                        .map(|cs| cs.clone())
-                })
+                .filter_map(|id| state.claim_state.get(&(*id as i64)).map(|cs| cs.clone()))
                 .collect()
         });
 

@@ -14034,6 +14034,375 @@ impl __sdk::DbUpdate for DbUpdate {
             );
         diff
     }
+    fn invoke_owned_initial_callbacks(
+        &mut self,
+        event: &EventContext,
+        callbacks: &mut __sdk::DbCallbacks<RemoteModule>,
+    ) {
+        // Same dispatch as the updated Rust generator, without regenerating all
+        // individual table handles. Version suffixes differ from accessor names.
+        macro_rules! table_name {
+            (deployable_state_v_2) => {
+                "deployable_state_v2"
+            };
+            (exploration_chunks_state_v_2) => {
+                "exploration_chunks_state_v2"
+            };
+            (extract_outcome_state_v_1) => {
+                "extract_outcome_state_v1"
+            };
+            (inter_module_message_v_2) => {
+                "inter_module_message_v2"
+            };
+            (inter_module_message_v_3) => {
+                "inter_module_message_v3"
+            };
+            (inter_module_message_v_4) => {
+                "inter_module_message_v4"
+            };
+            (inter_module_message_v_5) => {
+                "inter_module_message_v5"
+            };
+            ($table:ident) => {
+                stringify!($table)
+            };
+        }
+        macro_rules! dispatch {
+            ($($table:ident),* $(,)?) => { $(
+                callbacks.invoke_owned_initial_callbacks(table_name!($table), &mut self.$table, event);
+            )* };
+        }
+        dispatch!(
+            a_i_debug_state,
+            ability_custom_desc,
+            ability_state,
+            ability_unlock_desc,
+            achievement_desc,
+            action_bar_state,
+            action_state,
+            active_buff_state,
+            admin_broadcast,
+            alert_desc,
+            alert_state,
+            attached_herds_state,
+            attack_event,
+            attack_impact_event,
+            attack_impact_timer_migrated,
+            attack_outcome_state,
+            attack_timer,
+            bank_state,
+            barter_stall_inventory_event,
+            barter_stall_state,
+            biome_desc,
+            buff_desc,
+            buff_type_desc,
+            building_buff_activate_event,
+            building_buff_desc,
+            building_claim_desc,
+            building_deconstruct_start_event,
+            building_desc,
+            building_function_type_mapping_desc,
+            building_map_icon_desc,
+            building_nickname_state,
+            building_portal_desc,
+            building_repair_start_event,
+            building_repairs_desc,
+            building_spawn_desc,
+            building_state,
+            building_type_desc,
+            buy_order_state,
+            cargo_desc,
+            character_stat_desc,
+            character_stats_state,
+            chat_message_state,
+            chest_rarity_desc,
+            claim_local_state,
+            claim_local_supply_security_threshold_state,
+            claim_lowercase_name_state,
+            claim_member_state,
+            claim_recruitment_state,
+            claim_resupply_start_event,
+            claim_state,
+            claim_tech_desc,
+            claim_tech_state,
+            claim_tile_cost,
+            claim_tile_state,
+            claim_treasury_event,
+            climb_requirement_desc,
+            closed_listing_state,
+            clothing_desc,
+            collectible_desc,
+            combat_action_desc,
+            combat_action_multi_hit_desc,
+            combat_dimension_state,
+            combat_immunity_state,
+            combat_state,
+            construction_recipe_desc,
+            contribution_loot_desc,
+            contribution_state,
+            craft_completed_event,
+            craft_continue_start_event,
+            craft_event,
+            craft_initiate_start_event,
+            crafting_recipe_desc,
+            crumb_trail_contribution_lock_state,
+            crumb_trail_contribution_spent_state,
+            crumb_trail_exposed_state,
+            deconstruction_recipe_desc,
+            deployable_appearance_override_desc,
+            deployable_collectible_state,
+            deployable_deploy_start_event,
+            deployable_desc,
+            deployable_disembark_event,
+            deployable_mount_event,
+            deployable_move_event,
+            deployable_state,
+            deployable_state_v_2,
+            deployable_store_start_event,
+            dimension_description_state,
+            dimension_network_state,
+            distant_visible_entity,
+            distant_visible_entity_desc,
+            dropped_inventory_despawn_timer,
+            dropped_inventory_ownership_timer,
+            dropped_inventory_state,
+            duel_state,
+            dungeon_state,
+            elevator_desc,
+            emote_desc,
+            emote_start_event,
+            empire_chunk_state,
+            empire_color_desc,
+            empire_icon_desc,
+            empire_lowercase_name_state,
+            empire_node_siege_state,
+            empire_node_state,
+            empire_notification_desc,
+            empire_player_data_state,
+            empire_rank_desc,
+            empire_rank_state,
+            empire_resupply_node_start_event,
+            empire_settlement_state,
+            empire_state,
+            empire_supplies_desc,
+            empire_territory_desc,
+            enemy_ai_params_desc,
+            enemy_desc,
+            enemy_despawn_event,
+            enemy_mob_monitor_state,
+            enemy_move_event,
+            enemy_scaling_desc,
+            enemy_state,
+            entity_attack_start_event,
+            environment_debuff_desc,
+            equipment_desc,
+            equipment_preset_knowledge_desc,
+            equipment_preset_state,
+            equipment_state,
+            experience_state,
+            exploration_chunks_state,
+            exploration_chunks_state_v_2,
+            exposed_breadcrumbs,
+            extract_event,
+            extract_outcome_state,
+            extract_outcome_state_v_1,
+            extract_start_event,
+            extraction_recipe_desc,
+            floating_platform_desc,
+            food_desc,
+            footprint_tile_state,
+            gate_desc,
+            global_search_state,
+            globals,
+            growth_state,
+            health_state,
+            herd_state,
+            hexite_exchange_entry_desc,
+            identity_role,
+            inter_module_message,
+            inter_module_message_v_2,
+            inter_module_message_v_3,
+            inter_module_message_v_4,
+            inter_module_message_v_5,
+            interior_collapse_trigger_state,
+            interior_environment_desc,
+            interior_instance_desc,
+            interior_network_desc,
+            interior_player_count_state,
+            interior_portal_connections_desc,
+            interior_shape_desc,
+            interior_spawn_desc,
+            interior_spawn_destroy_trigger_desc,
+            interior_spawn_random_group_desc,
+            inventory_state,
+            item_conversion_recipe_desc,
+            item_convert_start_event,
+            item_desc,
+            item_list_desc,
+            knowledge_achievement_state,
+            knowledge_battle_action_state,
+            knowledge_building_state,
+            knowledge_cargo_state,
+            knowledge_claim_state,
+            knowledge_construction_state,
+            knowledge_craft_state,
+            knowledge_deployable_state,
+            knowledge_enemy_state,
+            knowledge_extract_state,
+            knowledge_item_state,
+            knowledge_lore_state,
+            knowledge_npc_state,
+            knowledge_paving_state,
+            knowledge_pillar_shaping_state,
+            knowledge_resource_placement_state,
+            knowledge_resource_state,
+            knowledge_ruins_state,
+            knowledge_scroll_desc,
+            knowledge_scroll_type_desc,
+            knowledge_secondary_state,
+            knowledge_stat_modifier_desc,
+            knowledge_vault_state,
+            light_source_state,
+            location_state,
+            loot_chest_desc,
+            loot_chest_state,
+            loot_rarity_desc,
+            loot_table_desc,
+            lost_items_state,
+            market_trade_event,
+            marketplace_state,
+            mobile_entity_state,
+            mounting_state,
+            npc_desc,
+            npc_state,
+            on_durability_zero_timer,
+            onboarding_reward_desc,
+            onboarding_state,
+            parameters_desc,
+            passive_craft_state,
+            pathfinding_desc,
+            paved_tile_state,
+            paving_destroy_tile_start_event,
+            paving_place_tile_start_event,
+            paving_tile_desc,
+            permission_state,
+            pillar_shaping_desc,
+            pillar_shaping_destroy_start_event,
+            pillar_shaping_place_pillar_start_event,
+            pillar_shaping_state,
+            placeable_desc,
+            placeable_group_desc,
+            placeable_growth_desc,
+            placeable_growth_timer,
+            placeable_interact_start_event,
+            placeable_interaction_desc,
+            placeable_place_start_event,
+            placeable_placement_desc,
+            placeable_state,
+            player_action_desc,
+            player_action_state,
+            player_climb_start_event,
+            player_death_event,
+            player_death_start_event,
+            player_housing_customization_state,
+            player_housing_desc,
+            player_housing_evict_player_timer,
+            player_housing_moving_cost_state,
+            player_housing_state,
+            player_lowercase_username_state,
+            player_move_event,
+            player_note_state,
+            player_notification_event,
+            player_prefs_state,
+            player_queue_state,
+            player_region_transfer_event,
+            player_set_name_outcome_event,
+            player_settings_state,
+            player_signed_out_event,
+            player_state,
+            player_teleport_event,
+            player_teleport_home_start_event,
+            player_teleport_waystone_start_event,
+            player_use_elevator_timer,
+            player_username_state,
+            player_vote_state,
+            portal_state,
+            premium_item_desc,
+            premium_service_desc,
+            progressive_action_state,
+            project_site_advance_project_start_event,
+            project_site_state,
+            prospect_start_event,
+            prospecting_desc,
+            prospecting_participants,
+            prospecting_state,
+            public_progressive_action_state,
+            quest_chain_desc,
+            quest_chain_state,
+            quest_drop_desc,
+            quest_stage_desc,
+            region_connection_info,
+            region_control_info,
+            region_exploration_info,
+            region_population_info,
+            region_sign_in_parameters,
+            rent_state,
+            reserved_name_desc,
+            resource_clump_desc,
+            resource_depleted_event,
+            resource_desc,
+            resource_growth_recipe_desc,
+            resource_growth_timer,
+            resource_health_state,
+            resource_placement_recipe_desc,
+            resource_state,
+            satiation_state,
+            secondary_knowledge_desc,
+            sell_order_state,
+            server_teleport_event,
+            set_home_event,
+            signed_in_player_state,
+            skill_desc,
+            skill_level_knowledge_desc,
+            sleep_event,
+            stage_rewards_desc,
+            stamina_state,
+            storage_log_state,
+            target_state,
+            targetable_state,
+            targeting_matrix_desc,
+            teleport_item_desc,
+            teleportation_energy_state,
+            terraform_progress_state,
+            terraform_recipe_desc,
+            terraform_start_event,
+            terrain_chunk_state,
+            the_great_placeholder_table,
+            threat_state,
+            tool_desc,
+            tool_type_desc,
+            toolbar_state,
+            trade_order_state,
+            trade_session_state,
+            traveler_task_credit_state,
+            traveler_task_desc,
+            traveler_task_knowledge_requirement_desc,
+            traveler_task_loop_timer,
+            traveler_task_state,
+            traveler_trade_order_desc,
+            user_state,
+            vault_state,
+            wall_desc,
+            waystone_state,
+            weapon_desc,
+            weapon_type_desc,
+            wind_dbg_desc,
+            wind_params_desc,
+            world_region_name_state,
+            world_region_state,
+        );
+    }
+
     fn mark_initial(&mut self) {
         self.a_i_debug_state.mark_initial();
         self.ability_custom_desc.mark_initial();
@@ -19002,6 +19371,67 @@ pub struct RemoteTables {
 
 impl __sdk::InModule for RemoteTables {
     type Module = RemoteModule;
+}
+
+impl RemoteTables {
+    /// Receive initial rows by ownership after SDK borrowed callbacks finish.
+    pub fn on_initial_owned<Row>(
+        &self,
+        table: &'static str,
+        callback: impl FnMut(&EventContext, Vec<Row>) + Send + 'static,
+    ) -> __sdk::CallbackId
+    where
+        Row: __sdk::InModule<Module = RemoteModule>
+            + Clone
+            + std::fmt::Debug
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.imp.get_table::<Row>(table).on_initial_owned(callback)
+    }
+
+    pub fn remove_on_initial_owned<Row>(&self, table: &'static str, callback: __sdk::CallbackId)
+    where
+        Row: __sdk::InModule<Module = RemoteModule>
+            + Clone
+            + std::fmt::Debug
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.imp.get_table::<Row>(table).remove_on_initial(callback)
+    }
+
+    /// Borrow initial rows without the SDK's full-snapshot clone. Kept in sync
+    /// with the Rust code generator; no individual table handles need changing.
+    pub fn on_initial_rows<Row>(
+        &self,
+        table: &'static str,
+        callback: impl FnMut(&EventContext, __sdk::InitialRows<'_, Row>) + Send + 'static,
+    ) -> __sdk::CallbackId
+    where
+        Row: __sdk::InModule<Module = RemoteModule>
+            + Clone
+            + std::fmt::Debug
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.imp.get_table::<Row>(table).on_initial_rows(callback)
+    }
+
+    pub fn remove_on_initial_rows<Row>(&self, table: &'static str, callback: __sdk::CallbackId)
+    where
+        Row: __sdk::InModule<Module = RemoteModule>
+            + Clone
+            + std::fmt::Debug
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.imp.get_table::<Row>(table).remove_on_initial(callback)
+    }
 }
 
 /// A connection to a remote module, including a materialized view of a subset of the database.
