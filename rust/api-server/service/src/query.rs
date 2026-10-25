@@ -2131,31 +2131,23 @@ impl Query {
     pub async fn find_inventory_by_owner_entity_ids(
         db: &DbConn,
         ids: Vec<i64>,
-    ) -> Result<(Vec<inventory::Model>, ItemsAndPagesNumber), DbErr> {
-        let paginator = inventory::Entity::find()
+    ) -> Result<Vec<inventory::Model>, DbErr> {
+        inventory::Entity::find()
             .filter(inventory::Column::OwnerEntityId.is_in(ids))
             .order_by_asc(inventory::Column::EntityId)
-            .paginate(db, 24);
-
-        let num_pages = paginator.num_items_and_pages().await?;
-
-        paginator.fetch_page(0).await.map(|p| (p, num_pages))
+            .all(db).await
     }
 
     pub async fn find_inventory_by_owner_entity_ids_and_index(
         db: &DbConn,
         ids: Vec<i64>,
         index: i64,
-    ) -> Result<(Vec<inventory::Model>, ItemsAndPagesNumber), DbErr> {
-        let paginator = inventory::Entity::find()
+    ) -> Result<Vec<inventory::Model>, DbErr> {
+        inventory::Entity::find()
             .filter(inventory::Column::OwnerEntityId.is_in(ids))
             .filter(inventory::Column::InventoryIndex.eq(index))
             .order_by_asc(inventory::Column::EntityId)
-            .paginate(db, 24);
-
-        let num_pages = paginator.num_items_and_pages().await?;
-
-        paginator.fetch_page(0).await.map(|p| (p, num_pages))
+            .all(db).await
     }
 
     pub async fn find_inventory_entity_ids_by_owner_entity_ids(
@@ -2175,15 +2167,11 @@ impl Query {
     pub async fn find_inventory_by_player_owner_entity_id(
         db: &DbConn,
         id: i64,
-    ) -> Result<(Vec<inventory::Model>, ItemsAndPagesNumber), DbErr> {
-        let paginator = inventory::Entity::find()
+    ) -> Result<Vec<inventory::Model>, DbErr> {
+        inventory::Entity::find()
             .filter(inventory::Column::PlayerOwnerEntityId.eq(id))
             .order_by_asc(inventory::Column::EntityId)
-            .paginate(db, 24);
-
-        let num_pages = paginator.num_items_and_pages().await?;
-
-        paginator.fetch_page(0).await.map(|p| (p, num_pages))
+            .all(db).await
     }
 
     pub async fn get_inventorys_by_owner_entity_id(

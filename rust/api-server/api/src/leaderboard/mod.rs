@@ -1139,15 +1139,14 @@ pub(crate) async fn get_top_100(
         }
     }
 
-    let players = Query::find_player_by_ids(&state.conn, player_ids.clone())
-        .await
-        .unwrap_or_else(|error| {
-            error!("Error loading players: {error}");
-
-            vec![]
-        })
+    let players = player_ids
         .iter()
-        .map(|player| (player.entity_id, player.clone()))
+        .filter_map(|player_id| {
+            state
+                .player_state
+                .get(player_id)
+                .map(|player| (*player_id, player.value().clone()))
+        })
         .collect::<HashMap<i64, entity::player_state::Model>>();
 
     Ok(axum_codec::Codec(GetTop100Response {
@@ -1179,13 +1178,11 @@ pub(crate) async fn player_leaderboard(
     state: State<AppState>,
     Path(player_id): Path<i64>,
 ) -> Result<axum_codec::Codec<PlayerLeaderboardResponse>, (StatusCode, &'static str)> {
-    let skills = Query::skill_descriptions(&state.conn)
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
+    let skills = state
+        .skill_desc
+        .iter()
+        .map(|skill| skill.value().clone())
+        .collect::<Vec<_>>();
 
     let has_player = state.player_state.contains_key(&player_id);
 
@@ -1423,30 +1420,26 @@ pub(crate) async fn get_claim_leaderboard(
     state: State<AppState>,
     Path(claim_id): Path<i64>,
 ) -> Result<axum_codec::Codec<GetTop100Response>, (StatusCode, &'static str)> {
-    let skills = Query::skill_descriptions(&state.conn)
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
+    let skills = state
+        .skill_desc
+        .iter()
+        .map(|skill| skill.value().clone())
+        .collect::<Vec<_>>();
 
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
+    let player_ids = state
+        .claim_member_state
+        .get(&(claim_id as u64))
+        .map(|members| {
+            members
+                .values()
+                .map(|member| member.player_entity_id)
+                .collect::<Vec<i64>>()
+        })
+        .unwrap_or_default();
 
-    let claim_member = Query::find_claim_member_by_claim_id(&state.conn, claim_id)
-        .await
-        .map_err(|error| {
-            error!("Error: {error}");
-
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?;
-
-    if claim_member.is_empty() {
+    if player_ids.is_empty() {
         return Err((StatusCode::NOT_FOUND, ""));
     }
-
-    let player_ids = claim_member
-        .iter()
-        .map(|member| member.player_entity_id)
-        .collect::<Vec<i64>>();
 
     let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();
 
@@ -1687,15 +1680,14 @@ pub(crate) async fn get_claim_leaderboard(
         }
     }
 
-    let players = Query::find_player_by_ids(&state.conn, player_ids.clone())
-        .await
-        .unwrap_or_else(|error| {
-            error!("Error loading players: {error}");
-
-            vec![]
-        })
+    let players = player_ids
         .iter()
-        .map(|player| (player.entity_id, player.clone()))
+        .filter_map(|player_id| {
+            state
+                .player_state
+                .get(player_id)
+                .map(|player| (*player_id, player.value().clone()))
+        })
         .collect::<HashMap<i64, entity::player_state::Model>>();
 
     Ok(axum_codec::Codec(GetTop100Response {

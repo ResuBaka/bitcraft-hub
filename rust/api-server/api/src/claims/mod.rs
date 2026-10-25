@@ -539,7 +539,7 @@ pub(crate) async fn get_claim(
         };
     }
     for member in &mut claim.members {
-        let (inventorys, _num_pages) = QueryCore::find_inventory_by_owner_entity_ids_and_index(
+        let inventory = QueryCore::find_inventory_by_owner_entity_ids_and_index(
             &state.conn,
             vec![member.entity_id],
             1,
@@ -550,7 +550,7 @@ pub(crate) async fn get_claim(
             (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
         })?;
         let mut pockets = vec![];
-        if let Some(inventory) = inventorys.first() {
+        if let Some(inventory) = inventory.first() {
             for pocket in &inventory.pockets {
                 pockets.push(resolve_pocket(pocket, &state.item_desc, &state.cargo_desc));
             }
@@ -583,11 +583,17 @@ pub(crate) async fn get_claim(
         .members
         .iter()
         .map(|member| member.entity_id)
-        .collect();
+        .collect::<Vec<_>>();
 
-    let current_players = QueryCore::find_player_by_ids(&state.conn, player_inventories_ids)
-        .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, ""))?;
+    let current_players = player_inventories_ids
+        .iter()
+        .filter_map(|player_id| {
+            state
+                .player_state
+                .get(player_id)
+                .map(|player| player.value().clone())
+        })
+        .collect::<Vec<entity::player_state::Model>>();
 
     let total_time_signed_in = current_players
         .iter()

@@ -144,10 +144,7 @@ pub async fn find_player_by_id(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<axum_codec::Codec<FindPlayerByIdResponse>, (StatusCode, &'static str)> {
-    let player = player_state::Entity::find_by_id(id)
-        .one(&state.conn)
-        .await
-        .expect("Cannot find player");
+    let player = state.player_state.get(&id);
 
     if player.is_none() {
         return Err((StatusCode::NOT_FOUND, "Player not found"));
@@ -253,7 +250,7 @@ pub async fn find_player_by_id(
         time_signed_in: player.time_signed_in,
         sign_in_timestamp: player.sign_in_timestamp,
         signed_in: player.signed_in,
-        teleport_location: player.teleport_location,
+        teleport_location: player.teleport_location.clone(),
         traveler_tasks_expiration: player.traveler_tasks_expiration,
         traveler_tasks,
         username: player_username,

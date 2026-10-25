@@ -205,19 +205,17 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     Path(id): Path<i64>,
 ) -> Result<axum_codec::Codec<InventorysResponse>, (StatusCode, &'static str)> {
     let mut inventory_ids = vec![id];
-    let player = QueryCore::find_player_by_id(&state.conn, id)
-        .await
-        .map_err(|e| {
-            error!("Error: {e:?}");
-
-            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-        })?;
+    let player_id = if let Some(player) = state.player_state.get(&id) {
+        Some(player.entity_id)
+    } else {
+        None
+    };
 
     let mut mobile_entiety_map: HashMap<i64, String> = HashMap::new();
 
-    if let Some(player) = &player {
+    if let Some(player_entity_id) = &player_id {
         let mobile_entiety_from_player =
-            QueryCore::find_deployable_entity_by_owner_entity_id(&state.conn, player.entity_id)
+            QueryCore::find_deployable_entity_by_owner_entity_id(&state.conn, *player_entity_id)
                 .await
                 .map_err(|e| {
                     error!("Error: {e:?}");
@@ -231,7 +229,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         }
     };
 
-    let (mut inventorys, num_pages) =
+    let mut inventorys =
         QueryCore::find_inventory_by_owner_entity_ids(&state.conn, inventory_ids)
             .await
             .map_err(|e| {
@@ -239,9 +237,9 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             })?;
 
-    if let Some(player) = &player {
+    if let Some(player_entity_id) = &player_id {
         let mobile_entiety_from_player =
-            QueryCore::find_inventory_by_player_owner_entity_id(&state.conn, player.entity_id)
+            QueryCore::find_inventory_by_player_owner_entity_id(&state.conn, *player_entity_id)
                 .await
                 .map_err(|e| {
                     error!("Error: {e:?}");
@@ -249,7 +247,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                     (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
                 })?;
 
-        for mobile_entiety in mobile_entiety_from_player.0 {
+        for mobile_entiety in mobile_entiety_from_player {
             inventorys.push(mobile_entiety);
         }
     };
@@ -284,18 +282,17 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
         let mut nickname = match mobile_entiety_map.get(&inventory.owner_entity_id) {
             Some(nickname) => Some(nickname.clone()),
-            None => match player.is_some() {
-                true => {
-                    let player = player.as_ref().unwrap();
-                    if inventory.owner_entity_id == player.entity_id
+            None => match player_id {
+                Some(player_entity_id) => {
+                    if inventory.owner_entity_id == player_entity_id
                         && inventory.inventory_index == 0
                     {
                         Some(String::from("Inventory"))
-                    } else if inventory.owner_entity_id == player.entity_id
+                    } else if inventory.owner_entity_id == player_entity_id
                         && inventory.inventory_index == 2
                     {
                         Some(String::from("Wallet"))
-                    } else if inventory.owner_entity_id == player.entity_id
+                    } else if inventory.owner_entity_id == player_entity_id
                         && inventory.inventory_index == 1
                     {
                         Some(String::from("Tool belt"))
@@ -303,7 +300,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
                         None
                     }
                 }
-                false => None,
+                None => None,
             },
         };
 
@@ -352,10 +349,10 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
     }
 
     resolved_inventory.sort_by_key(|a| a.entity_id);
-
+    let inventory_len = resolved_inventory.len();
     Ok(axum_codec::Codec(InventorysResponse {
         inventorys: resolved_inventory,
-        total: num_pages.number_of_items as i64,
+        total: inventory_len as i64,
         page: 1,
         per_page: 24,
     }))

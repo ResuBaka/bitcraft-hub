@@ -169,7 +169,7 @@ fn connect_to_db(
         // Set the URI of the SpacetimeDB host that's running our database.
         .with_uri(db_host)
         // Finalize configuration and connect!
-        .with_compression(Compression::Brotli)
+        .with_compression(Compression::Gzip)
         .build()
 }
 
@@ -940,9 +940,10 @@ async fn connect_to_db_logic(
     let sql_subscribe = vec![
         ("equipment_desc", "SELECT * FROM equipment_desc"),
         ("equipment_state", "SELECT * FROM equipment_state"),
-        // "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id",
-        // "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id",
-        // "SELECT * FROM location_state where dimension = 1",
+        // ("location_state", "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id"),
+        // ("location_state", "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id"),
+        ("location_state", "select location_state.* from location_state JOIN player_state ON player_state.entity_id = location_state.entity_id"),
+        // ("location_state", "SELECT * FROM location_state where dimension = 1"),
         (
             "mobile_entity_state",
             "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
