@@ -2,7 +2,7 @@
 //! players leave absent slots in their boards; registry indices are never
 //! renumbered or assigned to another player. Immediate scores and published
 //! rankings are separate snapshots.
-use super::{BucketDistribution, LeaderboardEntry};
+use super::{BucketDistribution, BucketLayout, LeaderboardEntry};
 use crossbeam_channel::{Receiver, Sender, bounded};
 use parking_lot::{Mutex, RwLock};
 use std::cmp::Ordering;
@@ -13,9 +13,31 @@ use std::time::{Duration, Instant};
 
 // Coalesce bursts so large batches can use one linear merge. Small batches use
 // targeted rotations instead of scanning and merging the entire ranking.
-const RANK_REFRESH_INTERVAL: Duration = Duration::from_millis(20);
+const RANK_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
 const SPARSE_UPDATE_LIMIT: usize = 128;
 const MAX_RETAINED_PENDING_CAPACITY: usize = 16_384;
+
+/// Check the adjacent player first: most score changes do not change rank.
+/// Fall back to the directional binary search for actual moves, preserving
+/// logarithmic search cost even for jumps across the entire board.
+fn sparse_update_position(
+    sorted: &[u32],
+    old_position: usize,
+    increasing: bool,
+    mut higher_than_new: impl FnMut(&u32) -> bool,
+) -> usize {
+    if increasing {
+        if old_position == 0 || higher_than_new(&sorted[old_position - 1]) {
+            old_position
+        } else {
+            sorted[..old_position].partition_point(higher_than_new)
+        }
+    } else if old_position + 1 == sorted.len() || !higher_than_new(&sorted[old_position + 1]) {
+        old_position
+    } else {
+        old_position + sorted[old_position + 1..].partition_point(higher_than_new)
+    }
+}
 
 /// Shared by every board in a RankingSystem. Indices are stable and never reused.
 #[derive(Default)]
@@ -28,6 +50,23 @@ pub(super) struct PlayerRegistry {
 struct PlayerIds {
     by_id: HashMap<i64, u32>,
     ids: Vec<i64>,
+}
+
+/// A stable identity slot, not a cached score/rank. Borrowing the registry ties
+/// its lifetime to the owner; slots are never renumbered or reused.
+pub(super) struct ResolvedPlayer<'a> {
+    registry: &'a PlayerRegistry,
+    index: u32,
+}
+
+impl ResolvedPlayer<'_> {
+    fn index_for(&self, board: &Leaderboard) -> u32 {
+        assert!(
+            std::ptr::eq(self.registry, board.players.as_ref()),
+            "player handle belongs to another ranking system"
+        );
+        self.index
+    }
 }
 
 impl PlayerRegistry {
@@ -301,6 +340,7 @@ impl RankingWorker {
 /// A consistent published ranking. Scores are separate from the immediate score
 /// array so reads never combine an old ordering with a newly updated score.
 pub(super) struct LeaderboardInner {
+    buckets: BucketLayout,
     scores: Scores,
     pub(super) sorted_players: Vec<u32>,
     scratch: Vec<u32>,
@@ -322,6 +362,7 @@ impl LeaderboardInner {
 
     fn new(width: ScoreWidth) -> Self {
         Self {
+            buckets: BucketLayout::default(),
             scores: Scores::new(width),
             sorted_players: Vec::new(),
             scratch: Vec::new(),
@@ -397,8 +438,11 @@ impl LeaderboardInner {
     }
 
     fn set_score(&mut self, index: u32, new: Option<i64>) {
-        let old_bucket = self.scores.get(index).map(Leaderboard::bucket_for);
-        let new_bucket = new.map(Leaderboard::bucket_for);
+        let old_bucket = self
+            .scores
+            .get(index)
+            .map(|score| self.buckets.bucket_for(score));
+        let new_bucket = new.map(|score| self.buckets.bucket_for(score));
         if old_bucket != new_bucket {
             if let Some(bucket) = old_bucket {
                 if let Some(count) = self.bucket_counts.get_mut(&bucket) {
@@ -438,16 +482,18 @@ impl LeaderboardInner {
             match (old, new) {
                 (Some(old_xp), Some(new_xp)) => {
                     let old_position = self.ranks[index as usize] as usize - 1;
-                    // Search only the side the player can move toward. Excluding
-                    // the player itself keeps the search slice correctly sorted.
-                    let new_position = if new_xp > old_xp {
-                        self.sorted_players[..old_position].partition_point(higher_than_new)
-                    } else {
-                        old_position
-                            + self.sorted_players[old_position + 1..]
-                                .partition_point(higher_than_new)
-                    };
+                    let new_position = sparse_update_position(
+                        &self.sorted_players,
+                        old_position,
+                        new_xp > old_xp,
+                        higher_than_new,
+                    );
                     self.set_score(index, new);
+                    if new_position == old_position {
+                        // Published scores and bucket counts still change, but
+                        // neither ordering nor rank positions need rewriting.
+                        continue;
+                    }
                     if new_position < old_position {
                         self.sorted_players[new_position..=old_position].rotate_right(1);
                     } else if new_position > old_position {
@@ -483,6 +529,180 @@ impl LeaderboardInner {
 mod tests {
     use super::*;
 
+    #[test]
+    fn resolved_player_reuses_identity_but_reads_current_board_presence_and_rank() {
+        let players = Arc::new(PlayerRegistry::default());
+        let (first, _rx) = Leaderboard::paused(players.clone(), ScoreWidth::Wide);
+        let player = first.resolve_player(7);
+        assert_eq!(first.get_rank_resolved(&player), None);
+        first.update_resolved(&player, 100);
+        assert_eq!(
+            first.get_rank_resolved(&player),
+            None,
+            "no rank until published"
+        );
+        first.update(8, 200);
+        flush(&first);
+        assert_eq!(first.get_rank_resolved(&player), Some(2));
+        first.update(8, 0);
+        flush(&first);
+        assert_eq!(
+            first.get_rank_resolved(&player),
+            Some(1),
+            "other players invalidate rank, not identity"
+        );
+
+        // Dynamically created boards and registry growth share the same stable
+        // slot, but membership and published ranks remain independent per board.
+        let (second, _rx) = Leaderboard::paused(players.clone(), ScoreWidth::Skill);
+        assert_eq!(second.get_rank_resolved(&player), None);
+        for id in 100..1000 {
+            players.register(id);
+        }
+        second.update_resolved(&player, 300);
+        flush(&second);
+        assert_eq!(second.get_value(&7), Some(300));
+        assert_eq!(second.get_rank_resolved(&player), Some(1));
+        first.remove(7);
+        assert_eq!(first.get_rank_resolved(&player), None);
+        assert_eq!(second.get_rank_resolved(&player), Some(1));
+        first.update_resolved(&player, -100);
+        flush(&first);
+        assert_eq!(first.get_rank_resolved(&player), first.get_rank(7));
+        assert_eq!(first.get_value(&7), Some(-100));
+    }
+
+    #[test]
+    #[should_panic(expected = "player handle belongs to another ranking system")]
+    fn resolved_player_cannot_alias_another_registry_slot() {
+        let (first, _rx) =
+            Leaderboard::paused(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide);
+        let (second, _rx) =
+            Leaderboard::paused(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide);
+        let player = first.resolve_player(7);
+        second.update_resolved(&player, 100);
+    }
+
+    #[test]
+    fn neighbor_fast_path_matches_directional_search_for_every_destination() {
+        for len in 1..=64 {
+            let sorted: Vec<u32> = (0..len).collect();
+            for old_position in 0..len as usize {
+                for boundary in 0..=len {
+                    // The predicate is true before the insertion boundary.
+                    // Excluding the player's own slot adjusts downward moves.
+                    let increasing = boundary as usize <= old_position;
+                    let expected = if increasing {
+                        boundary as usize
+                    } else {
+                        boundary as usize - 1
+                    };
+                    assert_eq!(
+                        sparse_update_position(&sorted, old_position, increasing, |other| *other
+                            < boundary),
+                        expected,
+                        "len={len} old={old_position} boundary={boundary}",
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn unchanged_position_needs_at_most_one_comparison() {
+        let sorted: Vec<u32> = (0..4096).collect();
+        for position in [0, 1, 2048, 4095] {
+            for increasing in [true, false] {
+                let mut comparisons = 0;
+                let boundary = position + usize::from(!increasing);
+                let result = sparse_update_position(&sorted, position, increasing, |other| {
+                    comparisons += 1;
+                    (*other as usize) < boundary
+                });
+                assert_eq!(result, position);
+                assert!(
+                    comparisons <= 1,
+                    "unchanged rank must not binary-search the board"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn custom_buckets_track_bulk_updates_moves_and_removals() {
+        let (board, _rx) =
+            Leaderboard::paused(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide);
+        board.data.write().buckets = BucketLayout::Fixed(std::num::NonZeroU32::new(1).unwrap());
+        for id in 1..=150 {
+            board.update(id, id);
+        }
+        let changes = std::mem::take(&mut board.state.lock().pending);
+        Leaderboard::apply_changes(&board.data, &board.players, changes);
+        let distribution = board.bucket_distribution();
+        assert_eq!(distribution.len(), 150);
+        for (level, bucket) in (1..=150).zip(distribution) {
+            assert_eq!(
+                (bucket.min_xp, bucket.max_xp, bucket.count),
+                (level, level, 1)
+            );
+        }
+        board.update(1, 150);
+        board.remove(2);
+        let changes = std::mem::take(&mut board.state.lock().pending);
+        Leaderboard::apply_changes(&board.data, &board.players, changes);
+        let distribution = board.bucket_distribution();
+        assert_eq!(distribution.len(), 148);
+        assert_eq!(distribution.last().unwrap().count, 2);
+        assert_eq!(
+            distribution
+                .iter()
+                .map(|bucket| bucket.count)
+                .sum::<usize>(),
+            149
+        );
+    }
+
+    #[test]
+    fn ranking_system_applies_bucket_config_to_aggregate_and_dynamic_boards() {
+        let config =
+            serde_json::from_str(r#"{"bucket_widths":{"level":5,"skill_1":100}}"#).unwrap();
+        let system = super::super::RankingSystem::with_bucket_config(config);
+        system.ensure_skill_leaderboard(1);
+        system.ensure_skill_leaderboard(2);
+        let bounds = |board: &Leaderboard| {
+            let buckets = board.data.read().buckets;
+            buckets.bucket_bounds(buckets.bucket_for(149))
+        };
+        assert_eq!(bounds(&system.level_leaderboard), (145, 149));
+        assert_eq!(bounds(&system.global_leaderboard), (0, 999));
+        assert_eq!(
+            bounds(&system.skill_leaderboards.get(&1).unwrap()),
+            (100, 199)
+        );
+        assert_eq!(
+            bounds(&system.skill_leaderboards.get(&2).unwrap()),
+            (0, 999)
+        );
+    }
+
+    #[test]
+    fn unchanged_rank_still_publishes_scores_and_bucket_changes() {
+        let (board, _rx) =
+            Leaderboard::paused(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide);
+        let mut expected = BTreeMap::from([(1, 1_000_000), (2, 5_000), (3, -1_000_000)]);
+        for (&id, &xp) in &expected {
+            board.update(id, xp);
+        }
+        flush(&board);
+        for xp in [10_000, 100, -100, -5_000, 5_000] {
+            board.update(2, xp);
+            expected.insert(2, xp);
+            flush(&board);
+            assert_eq!(board.get_rank(2), Some(2));
+            verify(&board, &expected);
+        }
+    }
+
     fn flush(board: &Leaderboard) {
         let changes = std::mem::take(&mut board.state.lock().pending);
         Leaderboard::apply_changes(&board.data, &board.players, changes);
@@ -507,7 +727,9 @@ mod tests {
             assert_eq!(board.get_rank(id), Some(position + 1));
             assert_eq!(board.get_value(&id), Some(xp));
             assert_eq!(actual[position].rank, position + 1);
-            *buckets.entry(Leaderboard::bucket_for(xp)).or_insert(0) += 1;
+            *buckets
+                .entry(BucketLayout::default().bucket_for(xp))
+                .or_insert(0) += 1;
         }
         let data = board.data.read();
         assert_eq!(data.bucket_counts, buckets);
@@ -1152,12 +1374,23 @@ impl Leaderboard {
         board
     }
 
+    #[cfg(test)]
     pub(super) fn with_worker(
         players: Arc<PlayerRegistry>,
         width: ScoreWidth,
         worker: &RankingWorker,
     ) -> Self {
+        Self::with_worker_and_buckets(players, width, worker, BucketLayout::default())
+    }
+
+    pub(super) fn with_worker_and_buckets(
+        players: Arc<PlayerRegistry>,
+        width: ScoreWidth,
+        worker: &RankingWorker,
+        buckets: BucketLayout,
+    ) -> Self {
         let board = Self::build(players, width, worker.wakeup.clone());
+        board.data.write().buckets = buckets;
         worker.register(&board);
         board
     }
@@ -1224,6 +1457,21 @@ impl Leaderboard {
 
     pub(crate) fn update(&self, user_id: i64, new_xp: i64) {
         let index = self.players.register(user_id);
+        self.update_index(index, new_xp);
+    }
+
+    pub(super) fn resolve_player(&self, user_id: i64) -> ResolvedPlayer<'_> {
+        ResolvedPlayer {
+            registry: self.players.as_ref(),
+            index: self.players.register(user_id),
+        }
+    }
+
+    pub(super) fn update_resolved(&self, player: &ResolvedPlayer<'_>, new_xp: i64) {
+        self.update_index(player.index_for(self), new_xp);
+    }
+
+    fn update_index(&self, index: u32, new_xp: i64) {
         let mut state = self.state.lock();
         let old = state.scores.get(index);
         if old == Some(new_xp) {
@@ -1275,6 +1523,14 @@ impl Leaderboard {
     /// asynchronous publisher processes their insertion.
     pub(crate) fn get_rank(&self, user_id: i64) -> Option<usize> {
         let index = self.players.get(user_id)?;
+        self.get_rank_index(index)
+    }
+
+    pub(super) fn get_rank_resolved(&self, player: &ResolvedPlayer<'_>) -> Option<usize> {
+        self.get_rank_index(player.index_for(self))
+    }
+
+    fn get_rank_index(&self, index: u32) -> Option<usize> {
         self.state.lock().scores.get(index)?;
         let rank = self
             .data
@@ -1318,12 +1574,11 @@ impl Leaderboard {
     }
 
     pub fn bucket_distribution(&self) -> Vec<BucketDistribution> {
-        self.data
-            .read()
-            .bucket_counts
+        let data = self.data.read();
+        data.bucket_counts
             .iter()
             .map(|(&bucket, &count)| {
-                let (min_xp, max_xp) = Self::bucket_bounds(bucket);
+                let (min_xp, max_xp) = data.buckets.bucket_bounds(bucket);
                 BucketDistribution {
                     bucket,
                     min_xp,

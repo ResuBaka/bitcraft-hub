@@ -280,8 +280,10 @@ The shared reconciler reuses incoming-row, existing-key and changed-active-model
 vectors plus its existing-row lookup map across comparison batches. Rows are moved
 with `drain(..)`; the map is cleared before awaiting writes so only its backing
 allocation survives. Scratch storage is local to one snapshot and grows only with
-the configured comparison batch size, not the snapshot length. SeaORM's full-row
-query result vector and SQL construction still allocate per batch.
+the configured comparison batch size, not the snapshot length. Full-row comparison
+queries now stream directly into the lookup map, avoiding intermediate result/model
+vectors. The stream is dropped before writes; partial/decode failures abort before
+observing the batch or deleting stale rows. SQL construction still allocates per batch.
 
 Composite-key filters sort one owned key copy and build exact per-entity groups
 from contiguous slices, replacing the grouping hash table and its per-entity
@@ -293,6 +295,61 @@ These changes have not yet been measured in a rebuilt equivalent six-minute
 Heaptrack run; no peak-heap or allocation-count savings are claimed. Incoming,
 comparison and write failures still prevent stale deletion, and a partial incoming
 batch is not observed or written after a stream error.
+
+### Housing-related query/write overlap
+
+The five housing helpers (interior networks, dimensions, player housing,
+permissions and portals) use `exec_without_returning()` because their callers
+discard generated primary keys. Zero affected rows still produce
+`RecordNotInserted`, preserving the old retry behavior. Original ActiveModels
+remain untouched until the helper succeeds; no retry payload is blanket-drained.
+
+Writes are split using an advisory 256 KiB estimated per-statement budget:
+ActiveModel size plus 128 bytes per column for SQL/bind overhead, and a conservative
+JSON-length estimate for interior-network child IDs. The estimate is not a hard
+encoded-byte or process-memory limit; oversized single rows remain supported.
+Split writes run sequentially in one transaction, preserving all-or-nothing
+behavior and retaining the entire retry batch on failure. A single-statement batch
+does not add an explicit transaction. This limits simultaneous query construction,
+not the memory of originals kept for retry, and may add round-trip/transaction
+overhead. Heaptrack/Samply comparisons are needed before claiming savings.
+
+### Inventory reconciliation scratch buffers
+
+The separate inventory reconciler now streams existing IDs directly into its
+stale-ID set. Typed JSON comparison rows stream directly into a reusable lookup
+map instead of passing through full-result/model vectors. Both streams are scoped
+and dropped before the next comparison or write, returning their pool connection.
+Incoming rows, comparison keys, existing-row lookup capacity and changed-model
+storage are reused within one snapshot; existing-row payloads are cleared before writes,
+and inserts consume changed models with `drain(..)` to retain vector capacity.
+
+Partial incoming/key/comparison failures abort before stale deletion. Snapshot
+upsert failures now also abort reconciliation rather than merely logging and
+continuing to stale deletion; live-update write behavior is unchanged. Region
+filters, typed pocket JSON decoding, bounded batches and chunk completion remain
+unchanged. This does not bound snapshot queues or remove the large decoded-pocket
+backlog. Whole-process CPU, allocation-count and peak-memory savings remain
+unmeasured until an equivalent rebuilt profiling run.
+
+### Sparse generated SDK updates
+
+The local Rust generator now stores `DbUpdate` and `AppliedDiff` table payloads
+in sparse vectors of typed enum variants rather than one field per schema table.
+Default wrappers are each one vector (24 bytes on x86-64), with zero heap capacity;
+nonempty updates allocate aggregate vectors for touched tables, not per-table boxes.
+This removes construction/drop and dispatch work for absent tables. It does not
+remove payload ownership or the cost of processing tables actually present.
+
+Repeated chunks for a table are merged in arrival order. Cache application still
+uses tables-then-views order; borrowed and owned callbacks retain accessor-name
+order. Present empty initial snapshots remain distinguishable from absent tables.
+The generator's opt-in compiled-fixture test covers both SDK cache modes and
+also compiles bindings for a module with no tables.
+
+These changes require regenerating Rust bindings with the updated local generator
+and rebuilding before profiling. The new aggregate-vector allocations are a CPU
+versus allocation tradeoff; whole-process improvements have not yet been measured.
 
 ### SDK decompression experiment (removed)
 
@@ -572,8 +629,8 @@ live allocation sizes. The probe uses separate processes, mimalloc, 25 boards
 The fix uses one publisher per `RankingSystem`, weak board registrations, and
 reuses normal pending/merge buffers instead of repeatedly allocating and freeing
 them across many producer/worker heaps. Oversized pending maps are not retained
-indefinitely. The 20 ms cadence and coalescing remain; all boards are now serviced
-by one worker, so simultaneous heavy publications can affect refresh latency.
+indefinitely. Those measurements used a 20 ms cadence with coalescing; all boards
+are serviced by one worker, so simultaneous heavy publications can affect refresh latency.
 The earlier CPU microbenchmarks do not measure that contention/latency trade-off.
 
 These figures are diagnostic, synthetic ranking-only measurements—not production
@@ -604,3 +661,128 @@ The `/metrics` endpoint now exposes:
 Compare active membership with slot counts to identify boards that would benefit
 from sparse/paged storage, and compare total buffer bytes with RSS to distinguish
 live ranking buffers from other allocations and allocator retention.
+
+### Live ranking publication: 100 ms and unchanged-position fast path
+
+The current publisher uses a 100 ms minimum interval between completed
+publications instead of 20 ms. An 800 ms experiment increased large-batch merge
+work; 100 ms is intended to keep more batches within the 128-player sparse-update
+threshold, but does not guarantee it under load. The first publication after startup/idle can run
+immediately. Immediate score updates and per-event WebSocket notifications are
+unchanged, but rank fields still use the last published ranking and can be older.
+This is pacing, not a hard latency bound: publishing and scheduling add time.
+Shutdown still drains pending rankings and can wait for the remaining interval.
+
+Sparse score updates first compare the adjacent player in the direction of
+movement, using the existing score/player-ID tie order. If the rank stays the
+same, only score/bucket bookkeeping changes: there is no binary search, array
+rotation, or rank-position rewrite. Actual moves retain directional binary search;
+insertions/deletions and the large-batch merge path are unchanged. Longer intervals
+may shift more batches into that merge path, so CPU gains require a rebuilt live
+capture; historical microbenchmarks above exclude refresh pacing.
+
+### Experience worker: indexed pending writes and per-event calculations
+
+Live persistence uses a reusable map of models and a set of deletes keyed by the
+actual `(entity_id, skill_id)` primary key, not by region. Upserts cancel pending
+deletes and replace earlier upserts; deletes cancel pending upserts and deduplicate
+repeated removals. ActiveModels are built only when draining to the existing
+bounded database-operation queue. Statement row order is unspecified, but per-key
+last-operation semantics, upserts-before-deletes flush order, and snapshot barriers
+are preserved. Error handling and the database queue capacity are unchanged.
+
+Level conversion binary-searches the sorted XP thresholds, preserving the old
+negative-XP fallback and exact-boundary results. Reusable per-event scratch stores
+new levels/categories; unchanged old quantities reuse the new level, and matching
+old skills reuse the category. Names/categories are never cached across events.
+Changed-skill notifications share one description lookup, and board updates use
+shared rather than exclusive skill-board map guards. Notifications remain per-event
+and in the original order; they are not coalesced with persistence.
+
+The audit also fixed XP-increase persistence queuing the old rather than new XP.
+The pre-existing update policies for XP decreases and added/removed skills are
+otherwise unchanged and remain a separate correctness audit, not an optimization.
+Tests cover primary-key/region supersession, flush order, snapshot draining,
+notification order, refreshed metadata, and all level thresholds. CPU/allocation
+effects still need a rebuilt equivalent-workload profile; retained indexes trade
+some worker memory for avoiding scans and repeated ActiveModel construction.
+
+### Broadcast routing, shared inventory descriptions, and crafting batches
+
+Broadcast topics now use a three-slot inline list. Fixed topic names are borrowed;
+skill-specific formatted names remain owned. Topics are built once per message.
+Fan-out scans matching clients directly under one read guard, without recipient
+vectors or awaits inside that guard. Topic order, overlapping-subscription duplicate
+deliveries, the 2,000-message in-flight bound, and slow-client disconnect behavior
+are preserved. Keyed subscriptions cannot match a global (`None`) topic. Socket
+writers encode borrowed messages rather than deep-cloning before serialization.
+Per-recipient owned messages remain, avoiding a broad channel/protocol redesign.
+
+Inventory expanded descriptions are immutable `Arc<Model>` snapshots with unchanged
+JSON, MessagePack, and TypeScript shapes. The inventory worker caches at most 256
+item and 256 cargo descriptions; cache pressure clears the corresponding map.
+Each lookup reads and compares the current source model before reusing an Arc.
+Changes replace the snapshot, removals fail resolution, and queued notifications
+retain their original descriptions. This works with all description writers without
+an invalidation side channel. It trades structural comparisons and bounded extra
+retention for fewer description/string clones across pockets, events, and recipients;
+HTTP resolution remains uncached. Missing descriptions still suppress the entire
+sync notification, never raw persistence.
+
+Progressive-action persistence now coalesces live upserts/deletes by entity primary
+key, builds ActiveModels at flush time, and reuses batch allocations. It emits no
+notifications itself. Live failures retain the existing logged best-effort policy.
+Before an initial snapshot, preceding live writes are flushed; a failure aborts
+snapshot processing. Snapshots use the shared streamed reconciler so key/comparison
+or upsert failures cannot proceed to stale deletion. Per-key last-operation semantics
+and upserts-before-deletes flush order remain; row order within statements is not
+specified. Tests cover routing/backpressure, wire-shape compatibility, snapshot
+refresh/retention bounds, coalescing, snapshot errors, and shutdown draining.
+CPU/allocation savings require a rebuilt equivalent-workload capture.
+
+### Database metric label parsing
+
+The statement callback reads only the first token for the method instead of
+collecting four tokens. Table extraction uses a single iterator pass without a
+token vector, returning a borrowed slice. It preserves the original heuristic's
+first-match behavior, `FROM > INTO > UPDATE > TABLE` precedence, trimming, and
+fallback labels; it is not a new SQL parser. Method recognition still accepts
+only the original all-uppercase/all-lowercase spellings, independently of the
+case-insensitive table-keyword matching.
+
+Method/failure/unknown labels borrow static storage. Runtime table names are
+owned once so metric keys remain valid after the statement callback. Counter and
+histogram names, labels, counts, and recorded duration units are unchanged; this
+does not add a statement/metric registry cache. Compatibility tests compare the
+new extractor against the former implementation over fixtures and generated
+keyword combinations. CPU/allocation impact still needs rebuilt profiling.
+
+### Inventory indexes, per-event player identity, and retained batch timers
+
+Inventory live upserts/deletes now have ID-to-vector-position indexes. Replacing
+an upsert is in-place; removals use `swap_remove` and repair the moved row's index.
+Repeated deletes coalesce and a later upsert cancels the delete. Payload vectors
+still transfer intact to the existing bounded DB queue and leave zero capacity
+behind; the small integer-only indexes retain reusable capacity. Notifications
+remain per-event and changelog rows remain an ordered, uncoalesced vector. Flush
+order remains upserts, changelog, then deletes; independent row order within a
+statement is unspecified. Snapshot reconciliation and changelog generation policy
+are not changed by this optimization.
+
+XP Update events lazily resolve one stable player slot shared by all boards in
+the same RankingSystem. The borrowed identity handle validates registry ownership
+and never caches rank or score; per-board membership and publication checks still
+run for every rank read. Unchanged events do not register unused slots. Previous
+rank reads used only by debug logging are gated by debug enablement; both level
+rank reads are skipped when debug is disabled because that branch emits no rank
+notification. Notification rank reads remain unconditional. Insert/snapshot paths
+continue using their existing player-ID APIs.
+
+BatchTimer keeps one pinned, boxed Sleep for each active batch instead of creating
+and dropping a Sleep after each cancelled select branch. Idle batches have no
+Sleep; the first message arms one fixed deadline, and later messages never reset
+it. The timer is released when the batch ends. This trades one allocation per
+active batch for less timer registration/cancellation churn. Tests cover timer
+identity across cancellation, deadlines, idle/size/shutdown flushes, index repairs,
+notification/changelog preservation, and resolved-player publication/ownership.
+CPU/allocation trade-offs require a rebuilt equivalent-workload profile.

@@ -114,10 +114,11 @@ async fn serve_with_shutdown(
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<OutboundWebSocketMessages>();
 
-    let mut state = AppState::new(
+    let mut state = AppState::with_leaderboard_config(
         database_connection.clone(),
         tx.clone(),
         config.tech_tier_research_map.clone(),
+        config.leaderboard.clone(),
     );
     state.shutdown = shutdown.clone();
 
@@ -254,76 +255,10 @@ pub(crate) async fn create_db_connection(config: &Config) -> anyhow::Result<Data
 
     connection.set_metric_callback(|arg| {
         let latency = arg.elapsed.as_secs_f64();
-        let first_parts = arg
-            .statement
-            .sql
-            .split_whitespace()
-            .take(4)
-            .collect::<Vec<&str>>();
-        let table = extract_table_name(&arg.statement.sql).unwrap_or_else(|| "UNKNOWN".to_string());
+        let labels = database_query_labels(&arg.statement.sql, arg.failed);
 
-        let labels = if let Some(possible_query_type) = first_parts.first() {
-            if possible_query_type.eq(&"SELECT") || possible_query_type.eq(&"select") {
-                let method = "SELECT".to_string();
-                [
-                    ("method", method),
-                    ("failed", arg.failed.to_string()),
-                    ("table", table),
-                ]
-            } else if possible_query_type.eq(&"UPDATE") || possible_query_type.eq(&"update") {
-                let method = "UPDATE".to_string();
-                [
-                    ("method", method),
-                    ("failed", arg.failed.to_string()),
-                    ("table", table),
-                ]
-            } else if possible_query_type.eq(&"INSERT") || possible_query_type.eq(&"insert") {
-                let method = "INSERT".to_string();
-                [
-                    ("method", method),
-                    ("failed", arg.failed.to_string()),
-                    ("table", table),
-                ]
-            } else if possible_query_type.eq(&"ALTER") || possible_query_type.eq(&"alter") {
-                let method = "ALTER".to_string();
-                [
-                    ("method", method),
-                    ("failed", arg.failed.to_string()),
-                    ("table", table),
-                ]
-            } else if possible_query_type.eq(&"CREATE") || possible_query_type.eq(&"create") {
-                let method = "CREATE".to_string();
-                [
-                    ("method", method),
-                    ("failed", arg.failed.to_string()),
-                    ("table", table),
-                ]
-            } else if possible_query_type.eq(&"DELETE") || possible_query_type.eq(&"delete") {
-                let method = "DELETE".to_string();
-                [
-                    ("method", method),
-                    ("failed", arg.failed.to_string()),
-                    ("table", table),
-                ]
-            } else {
-                tracing::info!("Could not find type for {possible_query_type}");
-                [
-                    ("method", "UNKNOWN".to_string()),
-                    ("failed", arg.failed.to_string()),
-                    ("table", table),
-                ]
-            }
-        } else {
-            tracing::info!("Could not find type for {}", arg.statement.sql);
-            [
-                ("method", "UNKNOWN".to_string()),
-                ("failed", arg.failed.to_string()),
-                ("table", table),
-            ]
-        };
-
-        metrics::counter!("database_query_total", &labels).increment(1);
-        metrics::histogram!("database_query_duration_seconds", &labels).record(latency);
+        metrics::counter!("database_query_total", labels.iter()).increment(1);
+        metrics::histogram!("database_query_duration_seconds", labels.iter()).record(latency);
     });
 
     connection.ping().await?;
@@ -331,27 +266,230 @@ pub(crate) async fn create_db_connection(config: &Config) -> anyhow::Result<Data
     Ok(connection)
 }
 
-fn extract_table_name(sql: &str) -> Option<String> {
-    let tokens: Vec<&str> = sql.split_whitespace().collect();
-    let find_next = |keyword: &str| -> Option<&str> {
-        tokens
-            .iter()
-            .position(|token| token.eq_ignore_ascii_case(keyword))
-            .and_then(|index| tokens.get(index + 1).copied())
+fn database_query_labels(sql: &str, failed: bool) -> [metrics::Label; 3] {
+    // Preserve the existing upper/lowercase-only method classification. Table
+    // extraction below has always accepted mixed-case keywords independently.
+    let method = match sql.split_whitespace().next() {
+        Some("SELECT" | "select") => "SELECT",
+        Some("UPDATE" | "update") => "UPDATE",
+        Some("INSERT" | "insert") => "INSERT",
+        Some("ALTER" | "alter") => "ALTER",
+        Some("CREATE" | "create") => "CREATE",
+        Some("DELETE" | "delete") => "DELETE",
+        Some(possible_query_type) => {
+            tracing::info!("Could not find type for {possible_query_type}");
+            "UNKNOWN"
+        }
+        None => {
+            tracing::info!("Could not find type for {sql}");
+            "UNKNOWN"
+        }
     };
+    [
+        metrics::Label::from_static_parts("method", method),
+        metrics::Label::from_static_parts("failed", if failed { "true" } else { "false" }),
+        match extract_table_name(sql) {
+            // The registry must own this runtime label after the callback exits.
+            Some(table) => metrics::Label::new("table", table.to_owned()),
+            None => metrics::Label::from_static_parts("table", "UNKNOWN"),
+        },
+    ]
+}
 
-    let candidate = find_next("from")
-        .or_else(|| find_next("into"))
-        .or_else(|| find_next("update"))
-        .or_else(|| find_next("table"));
+fn extract_table_name(sql: &str) -> Option<&str> {
+    let mut tokens = sql.split_whitespace().peekable();
+    let mut from = None;
+    let mut into = None;
+    let mut update = None;
+    let mut table = None;
+    // One pass without materializing tokens. FROM wins even if INTO/UPDATE/TABLE
+    // occurred earlier; each keyword's first following token wins, as before.
+    while let Some(token) = tokens.next() {
+        if token.eq_ignore_ascii_case("from") {
+            from = tokens.peek().copied();
+            break;
+        }
+        // Once a higher-priority fallback exists, only look for keywords that
+        // could supersede it. Large INSERT value lists then only check FROM.
+        if into.is_some() {
+            continue;
+        }
+        let candidate = if token.eq_ignore_ascii_case("into") {
+            &mut into
+        } else if update.is_some() {
+            continue;
+        } else if token.eq_ignore_ascii_case("update") {
+            &mut update
+        } else if table.is_none() && token.eq_ignore_ascii_case("table") {
+            &mut table
+        } else {
+            continue;
+        };
+        if candidate.is_none() {
+            *candidate = tokens.peek().copied();
+        }
+    }
 
-    candidate.map(|token| {
+    from.or(into).or(update).or(table).map(|token| {
         let token = token
             .trim_matches(|c: char| c == ';' || c == ',' || c == ')' || c == '(')
             .trim_matches(|c: char| c == '"' || c == '`' || c == '[' || c == ']');
-        let token = token.split('(').next().unwrap_or(token);
-        token.to_string()
+        token.split('(').next().unwrap_or(token)
     })
+}
+
+#[cfg(test)]
+mod database_metric_tests {
+    use super::{database_query_labels, extract_table_name};
+
+    // Keep the former implementation as an independent compatibility oracle:
+    // these are metric-label heuristics, not an SQL parser to fix in this patch.
+    fn legacy_table_name(sql: &str) -> Option<String> {
+        let tokens: Vec<&str> = sql.split_whitespace().collect();
+        let find_next = |keyword: &str| {
+            tokens
+                .iter()
+                .position(|token| token.eq_ignore_ascii_case(keyword))
+                .and_then(|index| tokens.get(index + 1).copied())
+        };
+        find_next("from")
+            .or_else(|| find_next("into"))
+            .or_else(|| find_next("update"))
+            .or_else(|| find_next("table"))
+            .map(|token| {
+                let token = token
+                    .trim_matches(|c: char| c == ';' || c == ',' || c == ')' || c == '(')
+                    .trim_matches(|c: char| c == '"' || c == '`' || c == '[' || c == ']');
+                token.split('(').next().unwrap_or(token).to_owned()
+            })
+    }
+
+    #[test]
+    fn table_extraction_preserves_priority_first_matches_and_trimming() {
+        for (sql, expected) in [
+            (
+                "SELECT * FROM \"inventory\" WHERE entity_id = $1",
+                Some("inventory"),
+            ),
+            (
+                "insert into inventory(entity_id) values ($1)",
+                Some("inventory"),
+            ),
+            (
+                "UPDATE `player_state` SET time_played = $1",
+                Some("player_state"),
+            ),
+            ("ALTER TABLE [experience_state];", Some("experience_state")),
+            (
+                "CREATE TABLE \"public\".\"inventory\" (id bigint)",
+                Some("public\".\"inventory"),
+            ),
+            (
+                "TABLE low UPDATE middle INTO high FROM highest",
+                Some("highest"),
+            ),
+            ("TABLE low UPDATE middle INTO high", Some("high")),
+            ("FROM first FROM second", Some("first")),
+            ("INTO first INTO second FROM", Some("first")),
+            ("INTO UPDATE FROM", Some("UPDATE")),
+            ("SELECT * FrOm (\"inventory\"),", Some("inventory")),
+            (
+                "\u{2003}SELECT\n*\tFROM\u{2003}\"inventory\"",
+                Some("inventory"),
+            ),
+            ("FROM (", Some("")),
+            ("SELECT 1", None),
+            ("FROM", None),
+            ("", None),
+        ] {
+            assert_eq!(extract_table_name(sql), expected, "SQL={sql}");
+            assert_eq!(
+                extract_table_name(sql).map(str::to_owned),
+                legacy_table_name(sql),
+                "SQL={sql}"
+            );
+        }
+    }
+
+    #[test]
+    fn iterator_parser_matches_legacy_for_keyword_combinations() {
+        let vocabulary = [
+            "FROM",
+            "from",
+            "iNtO",
+            "UPDATE",
+            "TaBlE",
+            "\"quoted\"",
+            "x(y)",
+            ";",
+            "FROM,",
+            "(",
+        ];
+        for length in 0..=4 {
+            for mut number in 0..vocabulary.len().pow(length) {
+                let mut sql = String::new();
+                for _ in 0..length {
+                    sql.push_str(vocabulary[number % vocabulary.len()]);
+                    sql.push_str(" \t");
+                    number /= vocabulary.len();
+                }
+                assert_eq!(
+                    extract_table_name(&sql).map(str::to_owned),
+                    legacy_table_name(&sql),
+                    "SQL={sql:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn extracted_table_borrows_the_original_sql_storage() {
+        let sql = String::from("SELECT * FROM \"inventory\" WHERE entity_id = $1");
+        let table = extract_table_name(&sql).unwrap();
+        assert_eq!(
+            table.as_ptr(),
+            sql[sql.find("inventory").unwrap()..].as_ptr()
+        );
+    }
+
+    #[test]
+    fn metric_labels_preserve_methods_booleans_unknowns_and_ownership() {
+        for method in ["SELECT", "UPDATE", "INSERT", "ALTER", "CREATE", "DELETE"] {
+            for token in [method.to_owned(), method.to_lowercase()] {
+                for failed in [false, true] {
+                    let sql = format!("  {token} FROM \"inventory\"  ");
+                    let labels = database_query_labels(&sql, failed);
+                    assert_eq!(
+                        labels
+                            .iter()
+                            .map(|label| (label.key(), label.value()))
+                            .collect::<Vec<_>>(),
+                        [
+                            ("method", method),
+                            ("failed", if failed { "true" } else { "false" }),
+                            ("table", "inventory")
+                        ]
+                    );
+                }
+            }
+        }
+        for sql in ["", "  \t", "WITH x AS (SELECT 1)", "SeLeCt 1", "BEGIN"] {
+            let labels = database_query_labels(sql, false);
+            assert_eq!(labels[0].value(), "UNKNOWN");
+            assert_eq!(labels[2].value(), "UNKNOWN");
+        }
+        let labels = {
+            let sql = String::from("SeLeCt * FROM inventory");
+            database_query_labels(&sql, true)
+        };
+        assert_eq!(labels[0].value(), "UNKNOWN");
+        assert_eq!(labels[1].value(), "true");
+        assert_eq!(
+            labels[2].value(),
+            "inventory",
+            "runtime label outlives SQL buffer"
+        );
+    }
 }
 
 #[derive(Deserialize)]
@@ -425,7 +563,6 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                 },
                 msg = rx.recv() => match msg { Ok(msg) => msg, Err(_) => break },
             };
-            let a = axum_codec::Codec(msg.clone());
             let encoding = inner_state
                 .clients_state
                 .get_encode_format_for_client(&internal_id)
@@ -440,7 +577,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
             let message = if encoding == WebsocketEncoding::Json {
                 Message::Text(serde_json::to_string(&msg).unwrap().into())
             } else if encoding == WebsocketEncoding::MessagePack {
-                Message::Binary(a.to_msgpack().unwrap().into())
+                Message::Binary(axum_codec::Codec(&msg).to_msgpack().unwrap().into())
             } else {
                 tracing::warn!("Unsupported encoding {encoding}");
                 continue;
@@ -594,24 +731,15 @@ async fn broadcast_message(state: AppState, mut rx: UnboundedReceiver<OutboundWe
         if count == 0 {
             break;
         }
-        for message in buffer.drain(..) {
-            if message.topics().is_none() {
-                continue;
+
+        if !state.clients_state.clients.read().await.is_empty() {
+            for message in buffer.drain(..) {
+                if let Some(topics) = message.topics() {
+                    state.clients_state.broadcast_topics(topics, &message).await;
+                }
             }
-
-            let topics = message.topics().unwrap();
-            let mut senders: Vec<AsyncSender<OutboundWebSocketMessages>> = vec![];
-
-            for (topic_name, topic_id) in topics {
-                senders.extend(
-                    state
-                        .clients_state
-                        .clients_listen_to_topic(&topic_name, topic_id)
-                        .await,
-                );
-            }
-
-            broadcast_to_clients(senders, &message);
+        } else {
+            buffer.clear();
         }
     }
 }
@@ -621,7 +749,7 @@ const WEBSOCKET_CLIENT_MAX_IN_FLIGHT: usize = 2_000;
 const WEBSOCKET_CLIENT_WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 fn broadcast_to_clients(
-    senders: Vec<AsyncSender<OutboundWebSocketMessages>>,
+    senders: impl IntoIterator<Item = AsyncSender<OutboundWebSocketMessages>>,
     message: &OutboundWebSocketMessages,
 ) {
     for sender in senders {
@@ -643,6 +771,132 @@ fn broadcast_to_clients(
 #[cfg(test)]
 mod websocket_broadcast_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn routing_preserves_overlap_order_global_topics_and_unsubscribe() {
+        let clients = ClientsState::new();
+        let (tx, rx) = kanal::bounded_async(10);
+        let id = "overlap".to_string();
+        clients
+            .add_client(id.clone(), tx, WebsocketEncoding::Json)
+            .await;
+        for topic in ["experience:Mining", "experience"] {
+            clients
+                .add_topic_to_client(&id, &topic.to_string(), Some(7))
+                .await;
+        }
+        for xp in [100, 200] {
+            let message = OutboundWebSocketMessages::Experience {
+                experience: xp,
+                level: 1,
+                rank: 2,
+                skill_name: "Mining".into(),
+                user_id: 7,
+            };
+            clients
+                .broadcast_topics(message.topics().unwrap(), &message)
+                .await;
+        }
+        for expected in [100, 100, 200, 200] {
+            assert!(
+                matches!(rx.try_recv().unwrap().unwrap(), OutboundWebSocketMessages::Experience { experience, .. } if experience == expected)
+            );
+        }
+        clients
+            .remove_topic_from_client(&id, &"experience".into(), Some(7))
+            .await;
+        let message = OutboundWebSocketMessages::Experience {
+            experience: 300,
+            level: 1,
+            rank: 2,
+            skill_name: "Mining".into(),
+            user_id: 7,
+        };
+        clients
+            .broadcast_topics(message.topics().unwrap(), &message)
+            .await;
+        assert!(matches!(
+            rx.try_recv().unwrap().unwrap(),
+            OutboundWebSocketMessages::Experience {
+                experience: 300,
+                ..
+            }
+        ));
+        assert!(rx.try_recv().unwrap().is_none());
+
+        let order = entity::auction_listing_state::AuctionListingState {
+            entity_id: 77,
+            item_id: 9,
+            owner_entity_id: 0,
+            claim_entity_id: 0,
+            item_type: 0,
+            price_threshold: 0,
+            quantity: 1,
+            stored_coins: 0,
+            region: 1,
+            timestamp: entity::shared::timestamp::Timestamp {
+                __timestamp_micros_since_unix_epoch__: chrono::DateTime::from_timestamp_micros(0)
+                    .unwrap(),
+            },
+        };
+        // A keyed subscription to this name must not panic or match None.
+        clients
+            .add_topic_to_client(&id, &"insert_sell_order".into(), Some(999))
+            .await;
+        let message = OutboundWebSocketMessages::InsertSellOrder(order);
+        clients
+            .broadcast_topics(message.topics().unwrap(), &message)
+            .await;
+        assert!(rx.try_recv().unwrap().is_none());
+        clients
+            .add_topic_to_client(&id, &"insert_sell_order".into(), None)
+            .await;
+        clients
+            .broadcast_topics(message.topics().unwrap(), &message)
+            .await;
+        assert!(matches!(
+            rx.try_recv().unwrap().unwrap(),
+            OutboundWebSocketMessages::InsertSellOrder(_)
+        ));
+        assert!(rx.try_recv().unwrap().is_none());
+        assert_eq!(
+            axum_codec::Codec(&message).to_msgpack().unwrap(),
+            axum_codec::Codec(message.clone()).to_msgpack().unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn routed_slow_client_does_not_block_healthy_clients() {
+        let clients = ClientsState::new();
+        let (slow_tx, slow_rx) = kanal::bounded_async(1);
+        let (healthy_tx, healthy_rx) = kanal::bounded_async(3);
+        for (id, tx) in [("slow", slow_tx), ("healthy", healthy_tx)] {
+            clients
+                .add_client(id.into(), tx, WebsocketEncoding::Json)
+                .await;
+            clients
+                .add_topic_to_client(&id.into(), &"total_experience".into(), Some(7))
+                .await;
+        }
+        for xp in [1, 2] {
+            let message = OutboundWebSocketMessages::TotalExperience {
+                user_id: 7,
+                experience: xp,
+                experience_per_hour: 0,
+                rank: 1,
+            };
+            clients
+                .broadcast_topics(message.topics().unwrap(), &message)
+                .await;
+        }
+        assert!(slow_rx.is_closed());
+        assert_eq!(slow_rx.len(), 0);
+        for xp in [1, 2] {
+            assert!(
+                matches!(healthy_rx.try_recv().unwrap().unwrap(), OutboundWebSocketMessages::TotalExperience { experience, .. } if experience == xp)
+            );
+        }
+    }
 
     #[tokio::test]
     async fn full_client_is_closed_without_blocking_healthy_clients() {
@@ -983,10 +1237,20 @@ struct AppState {
 }
 
 impl AppState {
+    #[cfg(test)]
     fn new(
         conn: DatabaseConnection,
         tx: UnboundedSender<OutboundWebSocketMessages>,
         tech_tier_research_map: TechTierResearchMap,
+    ) -> Self {
+        Self::with_leaderboard_config(conn, tx, tech_tier_research_map, Default::default())
+    }
+
+    fn with_leaderboard_config(
+        conn: DatabaseConnection,
+        tx: UnboundedSender<OutboundWebSocketMessages>,
+        tech_tier_research_map: TechTierResearchMap,
+        leaderboard_config: config::LeaderboardConfig,
     ) -> Self {
         let metrics_registry = prometheus::Registry::new();
 
@@ -1033,7 +1297,7 @@ impl AppState {
             user_state: Arc::new(dashmap::DashMap::new()),
             deployable_state: Arc::new(dashmap::DashMap::new()),
             npc_desc: Arc::new(dashmap::DashMap::new()),
-            ranking_system: Arc::new(RankingSystem::default()),
+            ranking_system: Arc::new(RankingSystem::with_bucket_config(leaderboard_config)),
         }
     }
 
@@ -1426,25 +1690,28 @@ impl ClientsState {
         }
     }
 
-    pub(crate) async fn clients_listen_to_topic(
+    async fn broadcast_topics(
         &self,
-        topic: &String,
-        topic_id: Option<i64>,
-    ) -> Vec<AsyncSender<crate::websocket::OutboundWebSocketMessages>> {
-        let mut senders = vec![];
+        topics: crate::websocket::BroadcastTopics,
+        message: &OutboundWebSocketMessages,
+    ) {
+        // No awaits while holding this guard. Preserve topic order and existing
+        // duplicate deliveries for clients subscribed to multiple matching topics.
         let clients = self.clients.read().await;
-
-        for (tx, topics, _, topic_with_out_id) in clients.values() {
-            if topic_id.is_none() && topic_with_out_id.contains(topic) {
-                senders.push(tx.clone());
-            } else if let Some(found_topic) = topics.get(topic)
-                && found_topic.contains(&topic_id.unwrap())
-            {
-                senders.push(tx.clone());
-            }
+        for (topic, topic_id) in topics {
+            let senders = clients
+                .values()
+                .filter_map(|(tx, subscriptions, _, global)| {
+                    let matches = match topic_id {
+                        None => global.contains(topic.as_ref()),
+                        Some(id) => subscriptions
+                            .get(topic.as_ref())
+                            .is_some_and(|ids| ids.contains(&id)),
+                    };
+                    matches.then(|| tx.clone())
+                });
+            broadcast_to_clients(senders, message);
         }
-
-        senders
     }
 
     pub(crate) async fn client_listen_to_topics(
@@ -1677,10 +1944,11 @@ pub async fn main() -> anyhow::Result<()> {
             let database_connection = create_db_connection(&config).await?;
             memory.snapshot("database_connected");
             let (tx, _rx) = tokio::sync::mpsc::unbounded_channel::<OutboundWebSocketMessages>();
-            let state = AppState::new(
+            let state = AppState::with_leaderboard_config(
                 database_connection,
                 tx,
                 config.tech_tier_research_map.clone(),
+                config.leaderboard.clone(),
             );
             memory.snapshot("empty_app_state");
             state.fill_state_from_db(Some(&memory)).await?;

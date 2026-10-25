@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use entity::building_state::ActiveModel;
 use game_module::module_bindings::{BuildingDesc, BuildingNicknameState, BuildingState};
 use migration::{OnConflict, sea_query};
@@ -16,6 +16,7 @@ pub(crate) fn start_worker_building_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("building_state");
         let on_conflict =
             sea_query::OnConflict::columns([::entity::building_state::Column::EntityId])
                 .update_columns([
@@ -37,7 +38,7 @@ pub(crate) fn start_worker_building_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("building_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 // Flush older live events before applying a newer snapshot.
@@ -191,6 +192,7 @@ pub(crate) fn start_worker_building_desc(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("building_desc");
         let on_conflict = sea_query::OnConflict::columns([::entity::building_desc::Column::Id])
             .update_columns([
                 ::entity::building_desc::Column::Functions,
@@ -227,7 +229,7 @@ pub(crate) fn start_worker_building_desc(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("building_desc", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 use crate::websocket::initial_sync::{flush_before_snapshot, reconcile_global, update_cache_if_changed};
@@ -361,6 +363,7 @@ pub(crate) fn start_worker_building_nickname_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("building_nickname_state");
         let on_conflict =
             sea_query::OnConflict::columns([::entity::building_nickname_state::Column::EntityId])
                 .update_columns([
@@ -379,7 +382,7 @@ pub(crate) fn start_worker_building_nickname_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("building_nickname_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

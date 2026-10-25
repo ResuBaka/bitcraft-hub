@@ -4,7 +4,7 @@ use crate::websocket::initial_sync::{
     flush_before_snapshot, reconcile_global, update_cache_if_changed,
 };
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use game_module::module_bindings::NpcDesc;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
@@ -17,6 +17,7 @@ pub(crate) fn start_worker_npc_desc(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("npc_desc");
         let on_conflict = sea_query::OnConflict::column(::entity::npc_desc::Column::NpcType)
             .update_columns([
                 ::entity::npc_desc::Column::Name,
@@ -41,7 +42,7 @@ pub(crate) fn start_worker_npc_desc(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("npc_desc", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let filter = |keys: &[i32]| sea_orm::Condition::all().add(::entity::npc_desc::Column::NpcType.is_in(keys.iter().copied()));

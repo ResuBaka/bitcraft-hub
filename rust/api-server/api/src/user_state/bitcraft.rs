@@ -1,6 +1,6 @@
 use crate::AppState;
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use game_module::module_bindings::UserState;
 
 pub(crate) fn start_worker_user_state(
@@ -8,8 +8,9 @@ pub(crate) fn start_worker_user_state(
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<UserState>>,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("user_state");
         while let Some(update) = rx.recv().await {
-            record_worker_received("user_state", 1);
+            receive_metrics.record(1);
             match update {
                 SpacetimeUpdateMessages::Initial { data, .. } => {
                     for item in data {

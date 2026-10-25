@@ -4,7 +4,7 @@ use crate::websocket::initial_sync::{
     flush_before_snapshot, reconcile_global, update_cache_if_changed,
 };
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use entity::item_list_desc;
 use game_module::module_bindings::ItemListDesc;
 use migration::{OnConflict, sea_query};
@@ -18,6 +18,7 @@ pub(crate) fn start_worker_item_list_desc(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("item_list_desc");
         let on_conflict = sea_query::OnConflict::column(item_list_desc::Column::Id)
             .update_columns([
                 item_list_desc::Column::Name,
@@ -35,7 +36,7 @@ pub(crate) fn start_worker_item_list_desc(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("item_list_desc", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let filter = |keys: &[i32]| sea_orm::Condition::all().add(item_list_desc::Column::Id.is_in(keys.iter().copied()));

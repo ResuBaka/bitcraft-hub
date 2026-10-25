@@ -27,7 +27,7 @@ macro_rules! generate_mysql_sum_level_sql_statement {
 }
 
 pub(crate) static EXCLUDED_USERS_FROM_LEADERBOARD: LazyLock<Vec<i64>> =
-    LazyLock::new(|| vec![360287970201941063, 504403158285774600]);
+    LazyLock::new(|| vec![360287970201941063, 504403158285774600, 1297036692699948244]);
 pub(crate) static EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 0];
 
 pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 110] = [
@@ -191,7 +191,14 @@ mod compact;
 pub(super) use compact::Leaderboard;
 use compact::{PlayerRegistry, RankingWorker, ScoreWidth};
 
-impl Leaderboard {
+#[derive(Clone, Copy, Default)]
+pub(super) enum BucketLayout {
+    #[default]
+    Tiered,
+    Fixed(std::num::NonZeroU32),
+}
+
+impl BucketLayout {
     const BUCKET_RANGES: [(i64, i64); 5] = [
         (50_000, 1_000),
         (250_000, 5_000),
@@ -200,8 +207,11 @@ impl Leaderboard {
         (i64::MAX, 500_000),
     ];
 
-    fn bucket_for(xp: i64) -> i64 {
+    fn bucket_for(self, xp: i64) -> i64 {
         let normalized = xp.max(0);
+        if let Self::Fixed(width) = self {
+            return normalized / i64::from(width.get());
+        }
         let mut range_start = 0i64;
         let mut offset = 0i64;
 
@@ -225,7 +235,12 @@ impl Leaderboard {
         offset
     }
 
-    fn bucket_bounds(bucket: i64) -> (i64, i64) {
+    fn bucket_bounds(self, bucket: i64) -> (i64, i64) {
+        if let Self::Fixed(width) = self {
+            let width = i64::from(width.get());
+            let min = bucket.saturating_mul(width);
+            return (min, min.saturating_add(width - 1));
+        }
         let mut range_start = 0i64;
         let mut offset = 0i64;
 
@@ -261,6 +276,35 @@ mod bookkeeping_tests {
     use super::*;
     use crossbeam_channel::Receiver;
 
+    #[test]
+    fn bucket_layout_defaults_overrides_and_extreme_scores() {
+        let config = crate::config::LeaderboardConfig::default();
+        let level = RankingSystem::bucket_layout(&config, "level");
+        for (score, bounds) in [
+            (0, (0, 49)),
+            (49, (0, 49)),
+            (50, (50, 99)),
+            (1_294, (1_250, 1_299)),
+            (1_800, (1_800, 1_849)),
+            (2_470, (2_450, 2_499)),
+        ] {
+            assert_eq!(level.bucket_bounds(level.bucket_for(score)), bounds);
+        }
+        let tiered = RankingSystem::bucket_layout(&config, "global_experience");
+        assert_eq!(tiered.bucket_bounds(tiered.bucket_for(150)), (0, 999));
+        let config: crate::config::LeaderboardConfig =
+            serde_json::from_str(r#"{"bucket_widths":{"level":5,"skill_1":100}}"#).unwrap();
+        let level = RankingSystem::bucket_layout(&config, "level");
+        assert_eq!(level.bucket_bounds(level.bucket_for(149)), (145, 149));
+        let skill = RankingSystem::bucket_layout(&config, "skill_1");
+        assert_eq!(skill.bucket_bounds(skill.bucket_for(150)), (100, 199));
+        for score in [0, i64::MAX] {
+            let (min, max) = skill.bucket_bounds(skill.bucket_for(score));
+            assert!(min <= score && score <= max);
+        }
+        assert_eq!(skill.bucket_for(-1), 0);
+    }
+
     // Drain changes synchronously to make coalescing deterministic in tests.
     fn board() -> (Leaderboard, Receiver<()>) {
         Leaderboard::paused(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide)
@@ -286,7 +330,7 @@ mod bookkeeping_tests {
         let mut bucket_counts = BTreeMap::new();
         for &(xp, _) in expected.keys() {
             *bucket_counts
-                .entry(Leaderboard::bucket_for(xp))
+                .entry(BucketLayout::default().bucket_for(xp))
                 .or_insert(0) += 1;
         }
         {
@@ -638,7 +682,7 @@ impl LeaderboardBenchHarness {
     }
 
     /// Time ingestion plus publication, not just queueing writes for later.
-    /// The live worker's 20 ms refresh pacing is intentionally not included.
+    /// The live worker's 100 ms refresh pacing is intentionally not included.
     pub fn update_and_publish(&mut self, users: &[i64], offset: i64) {
         for (position, &user_id) in users.iter().enumerate() {
             let index = user_id - 1;
@@ -652,6 +696,7 @@ impl LeaderboardBenchHarness {
 }
 
 pub struct RankingSystem {
+    bucket_config: crate::config::LeaderboardConfig,
     players: Arc<PlayerRegistry>,
     worker: RankingWorker,
     pub skill_leaderboards: DashMap<i64, Leaderboard>,
@@ -666,40 +711,46 @@ pub struct RankingSystem {
 
 impl Default for RankingSystem {
     fn default() -> Self {
+        Self::with_bucket_config(crate::config::LeaderboardConfig::default())
+    }
+}
+
+impl RankingSystem {
+    pub(crate) fn with_bucket_config(bucket_config: crate::config::LeaderboardConfig) -> Self {
         let players = Arc::new(PlayerRegistry::default());
         let worker = RankingWorker::new();
+        let board = |name: &str| {
+            Leaderboard::with_worker_and_buckets(
+                Arc::clone(&players),
+                ScoreWidth::Wide,
+                &worker,
+                Self::bucket_layout(&bucket_config, name),
+            )
+        };
         Self {
             skill_leaderboards: DashMap::new(),
-            global_leaderboard: Leaderboard::with_worker(
-                Arc::clone(&players),
-                ScoreWidth::Wide,
-                &worker,
-            ),
-            profession_leaderboard: Leaderboard::with_worker(
-                Arc::clone(&players),
-                ScoreWidth::Wide,
-                &worker,
-            ),
-            adventure_leaderboard: Leaderboard::with_worker(
-                Arc::clone(&players),
-                ScoreWidth::Wide,
-                &worker,
-            ),
-            level_leaderboard: Leaderboard::with_worker(
-                Arc::clone(&players),
-                ScoreWidth::Wide,
-                &worker,
-            ),
-            xp_per_hour: Leaderboard::with_worker(Arc::clone(&players), ScoreWidth::Wide, &worker),
-            time_played: Leaderboard::with_worker(Arc::clone(&players), ScoreWidth::Wide, &worker),
-            time_signed_in: Leaderboard::with_worker(
-                Arc::clone(&players),
-                ScoreWidth::Wide,
-                &worker,
-            ),
+            global_leaderboard: board("global_experience"),
+            profession_leaderboard: board("profession_experience"),
+            adventure_leaderboard: board("adventure_experience"),
+            level_leaderboard: board("level"),
+            xp_per_hour: board("xp_per_hour"),
+            time_played: board("time_played"),
+            time_signed_in: board("time_signed_in"),
+            bucket_config,
             players,
             worker,
         }
+    }
+
+    fn bucket_layout(config: &crate::config::LeaderboardConfig, name: &str) -> BucketLayout {
+        config
+            .bucket_widths
+            .get(name)
+            .copied()
+            // 19 skills × 130 levels = 2,470 total levels. Width 50 gives
+            // useful detail within the current top-100 range of 1,294–1,800.
+            .or_else(|| (name == "level").then(|| std::num::NonZeroU32::new(50).unwrap()))
+            .map_or(BucketLayout::Tiered, BucketLayout::Fixed)
     }
 }
 
@@ -798,7 +849,12 @@ impl RankingSystem {
 
     pub(crate) fn ensure_skill_leaderboard(&self, skill_id: i64) {
         self.skill_leaderboards.entry(skill_id).or_insert_with(|| {
-            Leaderboard::with_worker(Arc::clone(&self.players), ScoreWidth::Skill, &self.worker)
+            Leaderboard::with_worker_and_buckets(
+                Arc::clone(&self.players),
+                ScoreWidth::Skill,
+                &self.worker,
+                Self::bucket_layout(&self.bucket_config, &format!("skill_{skill_id}")),
+            )
         });
     }
 }
@@ -1108,17 +1164,11 @@ pub(crate) struct GetTop100Response {
 }
 
 pub(crate) fn experience_to_level(experience: i64) -> i32 {
-    if experience == 0 {
-        return 1;
-    }
-
-    for (level, xp) in EXPERIENCE_PER_LEVEL.iter().rev() {
-        if experience.gt(xp) || experience.eq(xp) {
-            return *level;
-        }
-    }
-
-    100i32
+    let boundary = EXPERIENCE_PER_LEVEL.partition_point(|(_, xp)| *xp <= experience);
+    // Preserve the existing fallback for negative XP as well as exact thresholds.
+    boundary
+        .checked_sub(1)
+        .map_or(100, |index| EXPERIENCE_PER_LEVEL[index].0)
 }
 
 #[derive(Serialize, TS)]

@@ -12,7 +12,7 @@ path = "src/lib.rs"
 [dependencies]
 spacetimedb-sdk = { workspace = true }
 sea-orm = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "rc"] }
 ts-rs = { workspace = true, features = ["chrono-impl"]}
 chrono =  { workspace = true }
 serde_json = { workspace = true }

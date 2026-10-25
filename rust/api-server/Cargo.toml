@@ -51,7 +51,7 @@ rand = "0.10.3"
 system-allocator = []
 
 [dependencies]
-api = { path = "api" }
+api = { path = "api", features = ["tokio-worker-queues"] }
 tokio = { version = "1.53.1", features = [ "full" ] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]

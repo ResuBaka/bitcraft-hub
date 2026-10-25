@@ -4,7 +4,7 @@ use crate::websocket::initial_sync::{
     flush_before_snapshot, reconcile_global, update_cache_if_changed,
 };
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use entity::crafting_recipe;
 use migration::OnConflict;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, sea_query};
@@ -19,6 +19,7 @@ pub(crate) fn start_worker_crafting_recipe_desc(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("crafting_recipe_desc");
         let on_conflict = sea_query::OnConflict::column(crafting_recipe::Column::Id)
             .update_columns([
                 crafting_recipe::Column::Name,
@@ -53,7 +54,7 @@ pub(crate) fn start_worker_crafting_recipe_desc(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("crafting_recipe_desc", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let filter = |keys: &[i32]| sea_orm::Condition::all().add(::entity::crafting_recipe::Column::Id.is_in(keys.iter().copied()));

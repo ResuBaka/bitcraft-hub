@@ -145,6 +145,38 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn recv_many_yields_with_a_continuous_backlog() {
+        let (tx, mut rx) = unbounded_channel();
+        for value in 0..1_024 {
+            tx.send(value).unwrap();
+        }
+        // A ready queue must eventually exhaust the task's cooperative budget,
+        // allowing unrelated workers and timers on this thread to run.
+        let yielded = tokio::spawn(async move {
+            let mut buffer = Vec::new();
+            for expected in 0..1_024 {
+                buffer.clear();
+                let received = {
+                    let receive = rx.recv_many(&mut buffer, 1);
+                    futures::pin_mut!(receive);
+                    futures::poll!(receive.as_mut())
+                };
+                match received {
+                    std::task::Poll::Pending => return true,
+                    std::task::Poll::Ready(count) => {
+                        assert_eq!(count, 1);
+                        assert_eq!(buffer, [expected]);
+                    }
+                }
+            }
+            false
+        })
+        .await
+        .unwrap();
+        assert!(yielded, "recv_many monopolized the task with a ready queue");
+    }
+
+    #[tokio::test]
     async fn close_rejects_new_messages_but_drains_fifo_with_senders_alive() {
         let (tx, mut rx) = unbounded_channel();
         tx.send(1).unwrap();

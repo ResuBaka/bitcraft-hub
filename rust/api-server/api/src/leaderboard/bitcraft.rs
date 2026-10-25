@@ -7,6 +7,7 @@ use entity::shared::Region;
 use game_module::module_bindings::ExperienceState;
 use migration::{OnConflict, sea_query};
 use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, IntoActiveModel, QueryFilter};
+use std::collections::{HashMap, HashSet};
 use std::ops::AddAssign;
 use std::time::Duration;
 use tokio::sync::mpsc::{Sender, channel};
@@ -17,6 +18,32 @@ enum ExperienceStateDbOperation {
     Barrier(tokio::sync::oneshot::Sender<()>),
 }
 
+/// The database key deliberately excludes region, just like the table's primary
+/// key. Keep only the last pending operation for each key, across all regions.
+#[derive(Default)]
+struct PendingExperienceWrites {
+    upserts: HashMap<(i64, i32), ::entity::experience_state::Model>,
+    deletes: HashSet<(i64, i32)>,
+}
+
+impl PendingExperienceWrites {
+    fn upsert(&mut self, model: ::entity::experience_state::Model) {
+        let key = (model.entity_id, model.skill_id);
+        self.deletes.remove(&key);
+        self.upserts.insert(key, model);
+    }
+
+    fn delete(&mut self, key: (i64, i32)) {
+        self.upserts.remove(&key);
+        self.deletes.insert(key);
+    }
+}
+
+struct SkillCalculation {
+    level: i32,
+    category: Option<i32>,
+}
+
 pub(crate) struct ExperienceStateWorker {
     rx: UnboundedReceiver<SpacetimeUpdateMessages<ExperienceState>>,
     tx: UnboundedSender<SpacetimeUpdateMessages<ExperienceState>>,
@@ -24,9 +51,10 @@ pub(crate) struct ExperienceStateWorker {
     batch_size: usize,
     time_limit: Duration,
     db_tx: Sender<ExperienceStateDbOperation>,
-    messages: Vec<::entity::experience_state::ActiveModel>,
-    ids: Vec<i64>,
-    messages_delete: Vec<(i64, i32)>,
+    pending: PendingExperienceWrites,
+    // Rebuilt for each event: skill descriptions can change, so do not retain
+    // calculated levels/categories across events. Reuse only the allocation.
+    skill_calculations: Vec<SkillCalculation>,
 }
 
 /// Flatten lazily: do not allocate a second region-wide experience row vector.
@@ -99,6 +127,318 @@ mod initial_tests {
     use super::*;
     use game_module::module_bindings::ExperienceStack;
 
+    fn experience(player: u64, skills: &[(i32, i32)]) -> ExperienceState {
+        ExperienceState {
+            entity_id: player,
+            experience_stacks: skills
+                .iter()
+                .map(|&(skill_id, quantity)| ExperienceStack { skill_id, quantity })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn level_conversion_matches_legacy_at_every_threshold_and_extreme() {
+        use crate::leaderboard::EXPERIENCE_PER_LEVEL;
+        assert!(
+            EXPERIENCE_PER_LEVEL
+                .windows(2)
+                .all(|pair| pair[0].1 < pair[1].1)
+        );
+        let values = [i64::MIN, -1, 0, 1, i64::MAX].into_iter().chain(
+            EXPERIENCE_PER_LEVEL
+                .iter()
+                .flat_map(|(_, xp)| [xp - 1, *xp, xp + 1]),
+        );
+        for xp in values {
+            let legacy = EXPERIENCE_PER_LEVEL
+                .iter()
+                .rev()
+                .find(|(_, threshold)| xp >= *threshold)
+                .map_or(100, |(level, _)| *level);
+            assert_eq!(experience_to_level(xp), legacy, "XP={xp}");
+        }
+    }
+
+    #[test]
+    fn pending_writes_keep_only_the_latest_operation_for_each_database_key() {
+        let mut pending = PendingExperienceWrites::default();
+        let row = |player, skill, xp, region| ::entity::experience_state::Model {
+            entity_id: player,
+            skill_id: skill,
+            experience: xp,
+            region,
+        };
+        pending.upsert(row(1, 10, 100, 7));
+        pending.upsert(row(1, 11, 200, 7));
+        pending.upsert(row(2, 10, 300, 7));
+        for xp in 101..=1000 {
+            pending.upsert(row(1, 10, xp, 8));
+        }
+        assert_eq!(pending.upserts.len(), 3);
+        assert_eq!(pending.upserts[&(1, 10)], row(1, 10, 1000, 8));
+        pending.delete((1, 10));
+        pending.delete((1, 10));
+        assert_eq!(pending.upserts.len(), 2);
+        assert_eq!(pending.deletes.len(), 1);
+        pending.upsert(row(1, 10, 1200, 9));
+        assert!(pending.deletes.is_empty());
+        assert_eq!(pending.upserts[&(1, 10)], row(1, 10, 1200, 9));
+        assert_eq!(pending.upserts[&(1, 11)], row(1, 11, 200, 7));
+        assert_eq!(pending.upserts[&(2, 10)], row(2, 10, 300, 7));
+    }
+
+    #[tokio::test]
+    async fn flushes_preserve_operation_order_latest_xp_and_reusable_indexes() {
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(
+            sea_orm::DatabaseConnection::default(),
+            tx,
+            Default::default(),
+        );
+        let mut worker = ExperienceStateWorker::new(state, 2, Duration::from_secs(10));
+        let (db_tx, mut operations) = channel(5);
+        worker.db_tx = db_tx;
+        worker
+            .handle_insert(experience(1, &[(10, 100), (11, 100)]), 7)
+            .await;
+        assert!(worker.should_flush());
+        worker
+            .handle_update(
+                experience(1, &[(10, 200), (11, 100)]),
+                8,
+                experience(1, &[(10, 100), (11, 100)]),
+            )
+            .await;
+        worker
+            .handle_update(
+                experience(1, &[(10, 300), (11, 100)]),
+                9,
+                experience(1, &[(10, 200), (11, 100)]),
+            )
+            .await;
+        worker
+            .handle_remove(experience(1, &[(11, 100), (11, 100)]), 7)
+            .await;
+        let capacity = worker.pending.upserts.capacity();
+        worker.flush().await;
+        assert!(worker.is_idle());
+        assert_eq!(worker.pending.upserts.capacity(), capacity);
+        match operations.try_recv().unwrap() {
+            ExperienceStateDbOperation::Upsert(rows) => {
+                assert_eq!(rows.len(), 1);
+                assert_eq!(
+                    rows[0],
+                    ::entity::experience_state::Model {
+                        entity_id: 1,
+                        skill_id: 10,
+                        experience: 300,
+                        region: 9
+                    }
+                    .into_active_model()
+                );
+            }
+            _ => panic!("upserts precede deletes"),
+        }
+        match operations.try_recv().unwrap() {
+            ExperienceStateDbOperation::Delete(keys) => assert_eq!(keys, [(1, 11)]),
+            _ => panic!("expected delete"),
+        }
+        worker.handle_insert(experience(1, &[(11, 400)]), 8).await;
+        worker.flush().await;
+        assert!(matches!(
+            operations.try_recv().unwrap(),
+            ExperienceStateDbOperation::Upsert(_)
+        ));
+        worker.flush().await;
+        assert!(
+            operations.try_recv().is_err(),
+            "empty flushes do not queue operations"
+        );
+    }
+
+    #[tokio::test]
+    async fn snapshot_drains_indexed_pending_writes_before_reading_keys() {
+        let model = ::entity::experience_state::Model {
+            entity_id: 1,
+            skill_id: 10,
+            experience: 200,
+            region: 7,
+        };
+        let db = sea_orm::MockDatabase::new(sea_orm::DbBackend::Postgres)
+            .append_query_results([vec![model], vec![]])
+            .into_connection();
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db.clone(), tx, Default::default());
+        let mut worker = ExperienceStateWorker::new(state, 100, Duration::from_secs(10));
+        worker
+            .handle_update(experience(1, &[(10, 200)]), 7, experience(1, &[(10, 100)]))
+            .await;
+        worker.handle_initial(vec![], 7).await;
+        assert!(worker.is_idle());
+        let log = db.into_transaction_log();
+        assert_eq!(log.len(), 2);
+        assert!(format!("{:?}", log[0]).contains("INSERT INTO"));
+        assert!(format!("{:?}", log[1]).contains("SELECT"));
+    }
+
+    #[tokio::test]
+    async fn reordered_skills_keep_notification_order_and_fresh_description_data() {
+        let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(
+            sea_orm::DatabaseConnection::default(),
+            tx,
+            Default::default(),
+        );
+        for (id, category) in [(10, 1), (11, 2), (12, 0)] {
+            state.skill_desc.insert(
+                id,
+                ::entity::skill_desc::Model {
+                    id,
+                    skill: id as i32,
+                    name: format!("skill-{id}"),
+                    skill_category: category,
+                    description: String::new(),
+                    icon_asset_name: String::new(),
+                    title: String::new(),
+                },
+            );
+        }
+        let mut worker = ExperienceStateWorker::new(state.clone(), 100, Duration::from_secs(10));
+        let old = experience(1, &[(10, 500), (11, 600), (12, 20)]);
+        let new = experience(1, &[(11, 700), (10, 600), (12, 20), (13, 25)]);
+        worker.handle_update(new.clone(), 7, old).await;
+        let mut events = Vec::new();
+        while let Ok(event) = notifications.try_recv() {
+            events.push(match event {
+                OutboundWebSocketMessages::Level {
+                    level, skill_name, ..
+                } => {
+                    assert_eq!(level, 2);
+                    format!("level:{skill_name}")
+                }
+                OutboundWebSocketMessages::Experience {
+                    experience,
+                    skill_name,
+                    ..
+                } => format!("xp:{skill_name}:{experience}"),
+                OutboundWebSocketMessages::TotalExperience { experience, .. } => {
+                    format!("total:{experience}")
+                }
+                OutboundWebSocketMessages::TotalAdventureExperience { experience, .. } => {
+                    format!("adventure:{experience}")
+                }
+                OutboundWebSocketMessages::TotalProfessionExperience { experience, .. } => {
+                    format!("profession:{experience}")
+                }
+                _ => panic!("unexpected notification"),
+            });
+        }
+        assert_eq!(
+            events,
+            [
+                "level:skill-10",
+                "xp:skill-10:600",
+                "xp:skill-11:700",
+                "total:1345",
+                "adventure:700",
+                "profession:600"
+            ]
+        );
+        assert_eq!(
+            state.ranking_system.level_leaderboard.get_value(&1),
+            Some(6)
+        );
+        assert_eq!(worker.pending.upserts.len(), 2);
+        assert!(
+            !worker.pending.upserts.contains_key(&(1, 13)),
+            "new/removed-skill persistence policy is not changed by this optimization"
+        );
+
+        {
+            let mut skill = state.skill_desc.get_mut(&10).unwrap();
+            skill.name = "renamed".into();
+            skill.skill_category = 2;
+        }
+        worker
+            .handle_update(
+                experience(1, &[(11, 700), (10, 1200), (12, 20), (13, 25)]),
+                7,
+                new,
+            )
+            .await;
+        assert!(
+            matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::Level { level: 3, skill_name, .. } if skill_name == "renamed")
+        );
+        assert!(
+            matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::Experience { experience: 1200, skill_name, .. } if skill_name == "renamed")
+        );
+        assert_eq!(
+            state.ranking_system.adventure_leaderboard.get_value(&1),
+            Some(1900)
+        );
+        assert!(matches!(
+            notifications.try_recv().unwrap(),
+            OutboundWebSocketMessages::TotalExperience {
+                experience: 1945,
+                ..
+            }
+        ));
+        assert!(matches!(
+            notifications.try_recv().unwrap(),
+            OutboundWebSocketMessages::TotalAdventureExperience {
+                experience: 1900,
+                ..
+            }
+        ));
+        assert!(notifications.try_recv().is_err());
+
+        worker
+            .handle_update(experience(1, &[(10, 100)]), 7, experience(1, &[(10, 1200)]))
+            .await;
+        assert!(matches!(
+            notifications.try_recv().unwrap(),
+            OutboundWebSocketMessages::Level { level: 1, .. }
+        ));
+        while let Ok(event) = notifications.try_recv() {
+            assert!(
+                !matches!(event, OutboundWebSocketMessages::Experience { .. }),
+                "XP decreases do not add skill-XP notifications"
+            );
+        }
+
+        // A removed skill has no new-side calculation. Its old XP/level must
+        // still contribute to the aggregate comparison, without a new policy
+        // for deleting skill rows as part of an Update event.
+        worker
+            .handle_update(
+                experience(1, &[(11, 700)]),
+                7,
+                experience(1, &[(10, 100), (11, 700)]),
+            )
+            .await;
+        assert_eq!(
+            state.ranking_system.level_leaderboard.get_value(&1),
+            Some(2)
+        );
+        assert!(matches!(
+            notifications.try_recv().unwrap(),
+            OutboundWebSocketMessages::TotalExperience {
+                experience: 700,
+                ..
+            }
+        ));
+        assert!(matches!(
+            notifications.try_recv().unwrap(),
+            OutboundWebSocketMessages::TotalAdventureExperience {
+                experience: 700,
+                ..
+            }
+        ));
+        assert!(notifications.try_recv().is_err());
+        assert!(worker.pending.deletes.is_empty());
+    }
+
     #[test]
     fn experience_rows_are_flattened_lazily_without_losing_totals() {
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
@@ -161,6 +501,171 @@ mod initial_tests {
             Some(400)
         );
         assert!(rows.next().is_none());
+    }
+
+    #[tokio::test]
+    async fn unchanged_event_does_not_register_an_unused_player_handle() {
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(
+            sea_orm::DatabaseConnection::default(),
+            tx,
+            Default::default(),
+        );
+        let mut worker = ExperienceStateWorker::new(state.clone(), 100, Duration::from_secs(10));
+        assert_eq!(state.ranking_system.players.len(), 0);
+        worker
+            .handle_update(experience(1, &[(10, 100)]), 7, experience(1, &[(10, 100)]))
+            .await;
+        assert_eq!(state.ranking_system.players.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn debug_rank_logging_does_not_change_notification_payloads_or_order() {
+        let mut runs = Vec::new();
+        for level in [tracing::Level::INFO, tracing::Level::DEBUG] {
+            let subscriber = tracing_subscriber::fmt()
+                .with_max_level(level)
+                .with_writer(std::io::sink)
+                .finish();
+            let _guard = tracing::subscriber::set_default(subscriber);
+            let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+            let state = AppState::new(
+                sea_orm::DatabaseConnection::default(),
+                tx,
+                Default::default(),
+            );
+            state.skill_desc.insert(
+                10,
+                ::entity::skill_desc::Model {
+                    id: 10,
+                    skill: 10,
+                    name: "Mining".into(),
+                    skill_category: 1,
+                    description: String::new(),
+                    icon_asset_name: String::new(),
+                    title: String::new(),
+                },
+            );
+            let mut worker = ExperienceStateWorker::new(state, 100, Duration::from_secs(10));
+            worker
+                .handle_update(experience(1, &[(10, 600)]), 7, experience(1, &[(10, 500)]))
+                .await;
+            let mut events = Vec::new();
+            while let Ok(event) = notifications.try_recv() {
+                let mut event = serde_json::to_value(event).unwrap();
+                // The asynchronous publisher may run at different instants in
+                // the two runs; compare notification data independently of rank.
+                if let Some(content) = event
+                    .get_mut("c")
+                    .and_then(serde_json::Value::as_object_mut)
+                {
+                    content.remove("rank");
+                }
+                events.push(event);
+            }
+            assert_eq!(events.len(), 4);
+            runs.push(events);
+        }
+        assert_eq!(runs[0], runs[1]);
+    }
+
+    #[tokio::test]
+    async fn live_updates_keep_each_notification_and_immediate_scores() {
+        let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(
+            sea_orm::DatabaseConnection::default(),
+            tx,
+            Default::default(),
+        );
+        let mut worker = ExperienceStateWorker::new(state.clone(), 100, Duration::from_secs(10));
+        let row = |quantity| ExperienceState {
+            entity_id: 1,
+            experience_stacks: vec![ExperienceStack {
+                skill_id: 10,
+                quantity,
+            }],
+        };
+        for (old, new) in [(100, 200), (200, 300)] {
+            worker.handle_update(row(new), 7, row(old)).await;
+            assert_eq!(
+                state.ranking_system.global_leaderboard.get_value(&1),
+                Some(i64::from(new))
+            );
+            match notifications
+                .try_recv()
+                .expect("notify without waiting for a batch or ranking publication")
+            {
+                OutboundWebSocketMessages::TotalExperience {
+                    experience,
+                    user_id,
+                    ..
+                } => {
+                    assert_eq!(user_id, 1);
+                    assert_eq!(experience, new as u64);
+                }
+                _ => panic!("expected total experience notification"),
+            }
+        }
+        assert!(notifications.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    async fn insert_keeps_xp_per_hour_for_online_and_offline_players() {
+        use entity::player_state::{
+            Model, OffsetCoordinatesSmallMessage, TeleportLocation, TeleportLocationType,
+        };
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(
+            sea_orm::DatabaseConnection::default(),
+            tx,
+            Default::default(),
+        );
+        let mut worker = ExperienceStateWorker::new(state.clone(), 100, Duration::from_secs(10));
+        for (id, signed_in, previous) in
+            [(1, true, None), (2, false, Some(50)), (3, true, Some(200))]
+        {
+            state.player_state.insert(
+                id,
+                Model {
+                    teleport_location: TeleportLocation {
+                        location: OffsetCoordinatesSmallMessage {
+                            x: 0,
+                            z: 0,
+                            dimension: 0,
+                        },
+                        location_type: TeleportLocationType::BirthLocation,
+                    },
+                    entity_id: id,
+                    time_played: 0,
+                    session_start_timestamp: 0,
+                    time_signed_in: 7200,
+                    sign_in_timestamp: 0,
+                    signed_in,
+                    traveler_tasks_expiration: 0,
+                    region: 7,
+                },
+            );
+            if let Some(previous) = previous {
+                state.ranking_system.global_leaderboard.update(id, previous);
+            }
+            worker
+                .handle_insert(
+                    ExperienceState {
+                        entity_id: id as u64,
+                        experience_stacks: vec![ExperienceStack {
+                            skill_id: 10,
+                            quantity: 100,
+                        }],
+                    },
+                    7,
+                )
+                .await;
+            assert_eq!(state.ranking_system.xp_per_hour.get_value(&id), Some(50));
+            assert_eq!(
+                state.ranking_system.global_leaderboard.get_value(&id),
+                Some(std::cmp::max(previous.unwrap_or(0), 100))
+            );
+        }
     }
 
     #[tokio::test]
@@ -272,9 +777,8 @@ impl ExperienceStateWorker {
             batch_size,
             time_limit,
             db_tx,
-            messages: Vec::new(),
-            ids: Vec::new(),
-            messages_delete: Vec::new(),
+            pending: PendingExperienceWrites::default(),
+            skill_calculations: Vec::new(),
         }
     }
 
@@ -447,23 +951,7 @@ impl ExperienceStateWorker {
                 region: database_name,
             };
 
-            if let Some(index) = self
-                .messages_delete
-                .iter()
-                .position(|value| value.0 == id && value.1 == es.skill_id)
-            {
-                self.messages_delete.remove(index);
-            }
-            if let Some(index) =
-                self.messages
-                    .iter()
-                    .position(|value: &::entity::experience_state::ActiveModel| {
-                        value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id
-                    })
-            {
-                self.messages.remove(index);
-            }
-            self.messages.push(model.into_active_model());
+            self.pending.upsert(model);
         });
 
         let current_score = self
@@ -501,38 +989,12 @@ impl ExperienceStateWorker {
                     .ranking_system
                     .global_leaderboard
                     .update(new.entity_id as i64, total_exp);
-                let mut xp_per_hour = 0;
-                if let Some(player_state) = self
-                    .global_app_state
-                    .player_state
-                    .get(&(new.entity_id as i64))
-                    && player_state.time_signed_in >= 3600
-                {
-                    xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
-                }
-                self.global_app_state
-                    .ranking_system
-                    .xp_per_hour
-                    .update(new.entity_id as i64, xp_per_hour);
             }
         } else {
             self.global_app_state
                 .ranking_system
                 .global_leaderboard
                 .update(new.entity_id as i64, total_exp);
-            let mut xp_per_hour = 0;
-            if let Some(player_state) = self
-                .global_app_state
-                .player_state
-                .get(&(new.entity_id as i64))
-                && player_state.time_signed_in >= 3600
-            {
-                xp_per_hour = total_exp / (player_state.time_signed_in as i64 / 3600);
-            }
-            self.global_app_state
-                .ranking_system
-                .xp_per_hour
-                .update(new.entity_id as i64, xp_per_hour);
         }
     }
 
@@ -565,15 +1027,32 @@ impl ExperienceStateWorker {
 
         let id = new.entity_id as i64;
         let mut new_total_exp = 0;
+        let ranking = &self.global_app_state.ranking_system;
+        let player = std::cell::OnceCell::new();
+        // Resolve only if this event actually updates a board. Every board in
+        // this RankingSystem shares the registry, while ranks remain fresh reads.
+        let resolve_player =
+            || player.get_or_init(|| ranking.global_leaderboard.resolve_player(id));
+        let debug_ranks = tracing::enabled!(tracing::Level::DEBUG);
         let mut new_total_level = 0;
         let mut new_profession_exp = 0;
         let mut new_adventure_exp = 0;
+        self.skill_calculations.clear();
         new.experience_stacks.iter().for_each(|es| {
             new_total_exp.add_assign(es.quantity as i64);
             let new_level = experience_to_level(es.quantity as i64);
             new_total_level.add_assign(new_level);
-            if let Some(skill_desc) = self.global_app_state.skill_desc.get(&(es.skill_id as i64)) {
-                match skill_desc.skill_category {
+            let category = self
+                .global_app_state
+                .skill_desc
+                .get(&(es.skill_id as i64))
+                .map(|skill| skill.skill_category);
+            self.skill_calculations.push(SkillCalculation {
+                level: new_level,
+                category,
+            });
+            if let Some(category) = category {
+                match category {
                     1 => {
                         new_profession_exp.add_assign(es.quantity as i64);
                     }
@@ -591,10 +1070,38 @@ impl ExperienceStateWorker {
         let mut old_adventure_exp = 0;
         for (index, es) in old.experience_stacks.iter().enumerate() {
             old_total_exp.add_assign(es.quantity as i64);
-            let old_level = experience_to_level(es.quantity as i64);
+            // Most updates preserve skill ordering. Only reordered stacks need
+            // the fallback scan, and notifications still follow old-stack order.
+            let new_index = if new
+                .experience_stacks
+                .get(index)
+                .is_some_and(|skill| skill.skill_id == es.skill_id)
+            {
+                Some(index)
+            } else {
+                new.experience_stacks
+                    .iter()
+                    .position(|skill| skill.skill_id == es.skill_id)
+            };
+            let new_skill = new_index.map(|index| &new.experience_stacks[index]);
+            let calculation = new_index.map(|index| &self.skill_calculations[index]);
+            let old_level = match (new_skill, calculation) {
+                (Some(new_skill), Some(calculation)) if new_skill.quantity == es.quantity => {
+                    calculation.level
+                }
+                _ => experience_to_level(es.quantity as i64),
+            };
             old_total_level.add_assign(old_level);
-            if let Some(skill_desc) = self.global_app_state.skill_desc.get(&(es.skill_id as i64)) {
-                match skill_desc.skill_category {
+            let category = match calculation {
+                Some(calculation) => calculation.category,
+                None => self
+                    .global_app_state
+                    .skill_desc
+                    .get(&(es.skill_id as i64))
+                    .map(|skill| skill.skill_category),
+            };
+            if let Some(category) = category {
+                match category {
                     1 => {
                         old_profession_exp.add_assign(es.quantity as i64);
                     }
@@ -605,23 +1112,15 @@ impl ExperienceStateWorker {
                 }
             };
 
-            let new_skill = if let Some(new_skill) = new.experience_stacks.get(index) {
-                if new_skill.skill_id == es.skill_id {
-                    Some(new_skill)
-                } else {
-                    new.experience_stacks
-                        .iter()
-                        .find(|new_level| new_level.skill_id == es.skill_id)
-                }
-            } else {
-                new.experience_stacks
-                    .iter()
-                    .find(|new_level| new_level.skill_id == es.skill_id)
-            };
             if let Some(new_skill) = new_skill {
-                let new_level = experience_to_level(new_skill.quantity as i64);
+                let new_level = calculation.expect("matched skill has a calculation").level;
+                let skill = if old_level != new_level || new_skill.quantity > es.quantity {
+                    self.global_app_state.skill_desc.get(&(es.skill_id as i64))
+                } else {
+                    None
+                };
                 if old_level != new_level
-                    && let Some(skill) = self.global_app_state.skill_desc.get(&(es.skill_id as i64))
+                    && let Some(skill) = &skill
                 {
                     let _ = self
                         .global_app_state
@@ -637,28 +1136,16 @@ impl ExperienceStateWorker {
                     let model = ::entity::experience_state::Model {
                         entity_id: id,
                         skill_id: es.skill_id,
-                        experience: es.quantity,
+                        experience: new_skill.quantity,
                         region: database_name,
                     };
 
-                    if let Some(index) = self
-                        .messages_delete
-                        .iter()
-                        .position(|value| value.0 == id && value.1 == es.skill_id)
-                    {
-                        self.messages_delete.remove(index);
-                    }
-                    if let Some(index) = self.messages.iter().position(|value| {
-                        value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id
-                    }) {
-                        self.messages.remove(index);
-                    }
-                    self.messages.push(model.into_active_model());
+                    self.pending.upsert(model);
 
-                    if let Some(skill) = self.global_app_state.skill_desc.get(&(es.skill_id as i64))
+                    if let Some(skill) = &skill
                         && skill.skill_category != 0
                     {
-                        let skill_name = skill.to_owned().name;
+                        let skill_name = skill.name.clone();
 
                         let mut prev_rank = None;
                         let post_rank;
@@ -666,29 +1153,27 @@ impl ExperienceStateWorker {
                             .global_app_state
                             .ranking_system
                             .skill_leaderboards
-                            .get_mut(&(es.skill_id as i64))
+                            .get(&(es.skill_id as i64))
                         {
-                            prev_rank = skill_leaderboard.get_rank(new.entity_id as i64);
+                            if debug_ranks {
+                                prev_rank = skill_leaderboard.get_rank_resolved(resolve_player());
+                            }
                             skill_leaderboard
-                                .update(new.entity_id as i64, new_skill.quantity as i64);
-                            post_rank = skill_leaderboard.get_rank(new.entity_id as i64);
+                                .update_resolved(resolve_player(), new_skill.quantity as i64);
+                            post_rank = skill_leaderboard.get_rank_resolved(resolve_player());
                         } else {
                             self.global_app_state
                                 .ranking_system
                                 .ensure_skill_leaderboard(es.skill_id as i64);
-                            self.global_app_state
-                                .ranking_system
-                                .skill_leaderboards
-                                .get_mut(&(es.skill_id as i64))
-                                .unwrap()
-                                .update(new.entity_id as i64, new_skill.quantity as i64);
-                            post_rank = self
+                            let skill_leaderboard = self
                                 .global_app_state
                                 .ranking_system
                                 .skill_leaderboards
-                                .get_mut(&(es.skill_id as i64))
-                                .unwrap()
-                                .get_rank(new.entity_id as i64);
+                                .get(&(es.skill_id as i64))
+                                .unwrap();
+                            skill_leaderboard
+                                .update_resolved(resolve_player(), new_skill.quantity as i64);
+                            post_rank = skill_leaderboard.get_rank_resolved(resolve_player());
                         }
 
                         match (prev_rank, post_rank) {
@@ -733,20 +1218,26 @@ impl ExperienceStateWorker {
         }
 
         if old_total_level != new_total_level {
-            let prev_rank = self
-                .global_app_state
-                .ranking_system
-                .level_leaderboard
-                .get_rank(new.entity_id as i64);
+            let prev_rank = if debug_ranks {
+                self.global_app_state
+                    .ranking_system
+                    .level_leaderboard
+                    .get_rank_resolved(resolve_player())
+            } else {
+                None
+            };
             self.global_app_state
                 .ranking_system
                 .level_leaderboard
-                .update(new.entity_id as i64, new_total_level as i64);
-            let post_rank = self
-                .global_app_state
-                .ranking_system
-                .level_leaderboard
-                .get_rank(new.entity_id as i64);
+                .update_resolved(resolve_player(), new_total_level as i64);
+            let post_rank = if debug_ranks {
+                self.global_app_state
+                    .ranking_system
+                    .level_leaderboard
+                    .get_rank_resolved(resolve_player())
+            } else {
+                None
+            };
 
             match (prev_rank, post_rank) {
                 (Some(prev_rank), Some(post_rank)) => {
@@ -767,15 +1258,18 @@ impl ExperienceStateWorker {
         }
 
         if old_total_exp != new_total_exp {
-            let prev_rank = self
-                .global_app_state
-                .ranking_system
-                .global_leaderboard
-                .get_rank(new.entity_id as i64);
+            let prev_rank = if debug_ranks {
+                self.global_app_state
+                    .ranking_system
+                    .global_leaderboard
+                    .get_rank_resolved(resolve_player())
+            } else {
+                None
+            };
             self.global_app_state
                 .ranking_system
                 .global_leaderboard
-                .update(new.entity_id as i64, new_total_exp);
+                .update_resolved(resolve_player(), new_total_exp);
             let mut xp_per_hour = 0;
             if let Some(player_state) = self
                 .global_app_state
@@ -788,13 +1282,13 @@ impl ExperienceStateWorker {
             self.global_app_state
                 .ranking_system
                 .xp_per_hour
-                .update(new.entity_id as i64, xp_per_hour);
+                .update_resolved(resolve_player(), xp_per_hour);
 
             let post_rank = self
                 .global_app_state
                 .ranking_system
                 .global_leaderboard
-                .get_rank(new.entity_id as i64);
+                .get_rank_resolved(resolve_player());
 
             match (prev_rank, post_rank) {
                 (Some(prev_rank), Some(post_rank)) => {
@@ -828,13 +1322,13 @@ impl ExperienceStateWorker {
             self.global_app_state
                 .ranking_system
                 .adventure_leaderboard
-                .update(new.entity_id as i64, new_adventure_exp);
+                .update_resolved(resolve_player(), new_adventure_exp);
 
             let post_rank = self
                 .global_app_state
                 .ranking_system
                 .adventure_leaderboard
-                .get_rank(new.entity_id as i64);
+                .get_rank_resolved(resolve_player());
 
             let _ = self.global_app_state.tx.send(
                 OutboundWebSocketMessages::TotalAdventureExperience {
@@ -849,13 +1343,13 @@ impl ExperienceStateWorker {
             self.global_app_state
                 .ranking_system
                 .profession_leaderboard
-                .update(new.entity_id as i64, new_profession_exp);
+                .update_resolved(resolve_player(), new_profession_exp);
 
             let post_rank = self
                 .global_app_state
                 .ranking_system
                 .profession_leaderboard
-                .get_rank(new.entity_id as i64);
+                .get_rank_resolved(resolve_player());
 
             let _ = self.global_app_state.tx.send(
                 OutboundWebSocketMessages::TotalProfessionExperience {
@@ -870,51 +1364,35 @@ impl ExperienceStateWorker {
     async fn handle_remove(
         &mut self,
         delete: ExperienceState,
-        database_name: entity::shared::Region,
+        _database_name: entity::shared::Region,
     ) {
         let id = delete.entity_id as i64;
-        let mut total_exp = 0;
-        let vec_es = delete
-            .experience_stacks
-            .iter()
-            .map(|es| {
-                if let Some(index) = self.messages.iter().position(|value| {
-                    value.skill_id.as_ref() == &es.skill_id && value.entity_id.as_ref() == &id
-                }) {
-                    self.messages.remove(index);
-                }
-                total_exp.add_assign(es.quantity);
-
-                ::entity::experience_state::Model {
-                    entity_id: id,
-                    skill_id: es.skill_id,
-                    experience: es.quantity,
-                    region: database_name,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        for es in vec_es {
-            self.messages_delete.push((es.entity_id, es.skill_id));
+        for es in delete.experience_stacks {
+            self.pending.delete((id, es.skill_id));
         }
     }
 
     async fn flush_messages(&mut self) {
-        if self.messages.is_empty() {
+        if self.pending.upserts.is_empty() {
             return;
         }
 
-        let messages = std::mem::take(&mut self.messages);
+        let messages = self
+            .pending
+            .upserts
+            .drain()
+            .map(|(_, model)| model.into_active_model())
+            .collect();
         self.queue_upserts(messages).await;
     }
 
     async fn flush_deletes(&mut self) {
-        if self.messages_delete.is_empty() {
+        if self.pending.deletes.is_empty() {
             return;
         }
 
         tracing::debug!("ExperienceState::Remove");
-        let messages_delete = std::mem::take(&mut self.messages_delete);
+        let messages_delete = self.pending.deletes.drain().collect();
         self.queue_deletes(messages_delete).await;
     }
 }
@@ -939,16 +1417,15 @@ impl BatchedWorker for ExperienceStateWorker {
     }
 
     fn should_flush(&self) -> bool {
-        self.messages.len() >= self.batch_size || self.messages_delete.len() >= self.batch_size
+        self.pending.upserts.len() >= self.batch_size
+            || self.pending.deletes.len() >= self.batch_size
     }
 
     fn is_idle(&self) -> bool {
-        self.messages.is_empty() && self.messages_delete.is_empty()
+        self.pending.upserts.is_empty() && self.pending.deletes.is_empty()
     }
 
-    fn reset_batch(&mut self) {
-        self.ids.clear();
-    }
+    fn reset_batch(&mut self) {}
 
     async fn handle_message(&mut self, msg: SpacetimeUpdateMessages<ExperienceState>) {
         self.process_message(msg).await;

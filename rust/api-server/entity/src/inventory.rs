@@ -121,8 +121,8 @@ pub enum ItemType {
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]
 #[serde(untagged)]
 pub enum ItemExpended {
-    Item(item_desc::Model),
-    Cargo(cargo_desc::Model),
+    Item(std::sync::Arc<item_desc::Model>),
+    Cargo(std::sync::Arc<cargo_desc::Model>),
 }
 
 #[derive(Clone, Debug, PartialEq, FromJsonQueryResult, Deserialize, Serialize, TS)]

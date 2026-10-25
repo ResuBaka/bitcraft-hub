@@ -75,7 +75,11 @@ impl<T> UnboundedSender<T> {
 
 impl<T: Send + 'static> UnboundedReceiver<T> {
     pub(crate) async fn recv(&mut self) -> Option<T> {
-        let value = self.stream.get_mut().next().await;
+        // Kanal does not participate in Tokio's cooperative scheduling. Without
+        // this, a worker with a continuously ready queue can run indefinitely
+        // without yielding, starving other workers and timers on its thread.
+        // Keep the receive itself in the persistent stream for cancellation safety.
+        let value = tokio::task::coop::cooperative(self.stream.get_mut().next()).await;
         if value.is_some() {
             self.outstanding.fetch_sub(1, Ordering::Relaxed);
         }
@@ -196,6 +200,43 @@ mod tests {
                 .unwrap(),
             Some(1)
         );
+    }
+
+    #[tokio::test]
+    async fn recv_many_wakes_after_draining_to_empty() {
+        let (tx, mut rx) = unbounded_channel();
+        for expected in 0..1_000 {
+            tx.send(expected).unwrap();
+            let mut buffer = Vec::new();
+            assert_eq!(rx.recv_many(&mut buffer, 500).await, 1);
+            assert_eq!(buffer, [expected]);
+
+            // recv_many's final try_recv registered a no-op waker. Poll the
+            // next receive to Pending BEFORE sending, so success requires a
+            // real wake-up rather than finding an already available value.
+            let (ready, started) = tokio::sync::oneshot::channel();
+            let task = tokio::spawn(async move {
+                let mut buffer = Vec::new();
+                let count = {
+                    let receive = rx.recv_many(&mut buffer, 500);
+                    futures::pin_mut!(receive);
+                    assert!(futures::poll!(receive.as_mut()).is_pending());
+                    ready.send(()).unwrap();
+                    receive.await
+                };
+                (rx, count, buffer)
+            });
+            started.await.unwrap();
+            tx.send(expected).unwrap();
+            let (receiver, count, buffer) =
+                tokio::time::timeout(std::time::Duration::from_secs(1), task)
+                    .await
+                    .expect("recv_many did not wake after send")
+                    .unwrap();
+            rx = receiver;
+            assert_eq!(count, 1);
+            assert_eq!(buffer, [expected]);
+        }
     }
 
     #[tokio::test]

@@ -8,10 +8,16 @@ import AutocompleteItem from "./autocomplete/AutocompleteItem.vue";
 import AutocompleteUser from "./autocomplete/AutocompleteUser.vue";
 import InventoryChanges from "./InventoryChanges.vue";
 import { rarityToBorderClass } from "~/utils";
+import { pocketMatchesSearch } from "~/utils/inventorySearch";
 
 const props = defineProps<{
   inventory: ResolvedInventory;
+  search?: string;
 }>();
+
+const visiblePockets = computed(() =>
+  props.inventory.pockets.filter((pocket) => pocketMatchesSearch(pocket, props.search ?? "")),
+);
 
 const showChangelog = ref(false);
 const playerId = ref<bigint | null>();
@@ -135,11 +141,7 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
 
       <div>
         <div class="inventory-grid">
-          <div
-            v-for="(pocket, index) in inventory.pockets.filter((pocket) => !!pocket.contents)"
-            :key="index"
-            class="inventory-slot"
-          >
+          <div v-for="(pocket, index) in visiblePockets" :key="index" class="inventory-slot">
             <UTooltip
               :ui="{
                 content: 'h-full',

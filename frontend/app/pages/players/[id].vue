@@ -12,6 +12,7 @@ import type { RankType } from "~/types/RankType";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import { useDelayedPending } from "~/utils";
 import HouseDetails from "~/components/Bitcraft/HouseDetails.vue";
+import { inventoryMatchesSearch } from "~/utils/inventorySearch";
 
 const toast = useToast();
 
@@ -273,6 +274,9 @@ const expeirence = computed(() => {
   return newExperience;
 });
 
+const inventorySearch = ref("");
+const inventorySearchQuery = computed(() => inventorySearch.value.trim());
+
 const inventoryList = computed(() => {
   return (
     inventoryData.value?.inventorys.filter((inventory) => {
@@ -282,6 +286,13 @@ const inventoryList = computed(() => {
 
       return !isWalletOrTool && hasContents;
     }) ?? []
+  );
+});
+
+const filteredInventoryList = computed(() => {
+  if (!inventorySearchQuery.value) return inventoryList.value;
+  return (inventoryData.value?.inventorys ?? []).filter((inventory) =>
+    inventoryMatchesSearch(inventory, inventorySearchQuery.value),
   );
 });
 
@@ -600,27 +611,56 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
           </div>
         </UCard>
 
-        <UCard v-if="inventoryList.length" :ui="{ body: 'p-4' }">
+        <UCard v-if="inventoryData?.inventorys.length || houses?.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventories</h2>
+            <UInput
+              v-model="inventorySearch"
+              icon="i-lucide-search"
+              placeholder="Search all inventories for an item or cargo…"
+              aria-label="Search all inventories for an item or cargo"
+              class="w-full"
+            >
+              <template v-if="inventorySearch" #trailing>
+                <UButton
+                  icon="i-lucide-x"
+                  color="neutral"
+                  variant="link"
+                  size="xs"
+                  aria-label="Clear inventory search"
+                  @click="inventorySearch = ''"
+                />
+              </template>
+            </UInput>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Search items and cargo by name across player inventories and house storage.
+            </p>
+            <UEmpty
+              v-if="inventorySearchQuery && !filteredInventoryList.length"
+              icon="i-lucide-search"
+              title="No matching items in player inventories"
+              description="Try another name, or check the house storage results below."
+            />
             <div
               class="gap-4 pt-2"
               :class="
-                inventoryList.length > 1 ? 'grid grid-cols-1 xl:grid-cols-2' : 'flex flex-col'
+                filteredInventoryList.length > 1
+                  ? 'grid grid-cols-1 xl:grid-cols-2'
+                  : 'flex flex-col'
               "
             >
               <div
-                v-for="(inventory, index) in inventoryList"
+                v-for="(inventory, index) in filteredInventoryList"
                 :key="inventory.entity_id"
                 :class="
-                  inventoryList.length > 1 &&
-                  inventoryList.length % 2 === 1 &&
-                  index === inventoryList.length - 1
+                  filteredInventoryList.length > 1 &&
+                  filteredInventoryList.length % 2 === 1 &&
+                  index === filteredInventoryList.length - 1
                     ? 'md:col-span-2'
                     : ''
                 "
               >
-                <Inventory :inventory="inventory" />
+                <Inventory :inventory="inventory" :search="inventorySearchQuery" />
               </div>
             </div>
           </div>
@@ -637,7 +677,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 :key="house.entity_id.toString()"
                 class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
               >
-                <house-details :house="house"></house-details>
+                <house-details :house="house" :search="inventorySearchQuery"></house-details>
               </div>
             </div>
           </div>

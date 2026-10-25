@@ -35,7 +35,6 @@ use crate::websocket::batched_worker::BatchedWorker;
 use game_module::module_bindings::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-use spacetimedb_sdk::__codegen::Reducer;
 use spacetimedb_sdk::__codegen::{self as __sdk};
 use spacetimedb_sdk::{Compression, DbContext, Error, Event, Table, TableWithPrimaryKey};
 use std::borrow::Cow;
@@ -47,6 +46,9 @@ use ts_rs::TS;
 pub(crate) mod batched_worker;
 pub(crate) mod initial_batches;
 pub(crate) mod initial_sync;
+mod metric_handles;
+pub(crate) use metric_handles::WorkerReceiveMetrics;
+use metric_handles::{ListenerMetrics, WorkerSendMetrics};
 pub(crate) mod worker_channel;
 
 const MAX_RECONNECT_RETRIES: u32 = 15;
@@ -95,23 +97,6 @@ fn send_worker_message<T>(
         )
         .increment(1);
     }
-}
-
-pub(crate) fn record_worker_received(worker_name: &str, count: usize) {
-    if count == 0 {
-        return;
-    }
-
-    metrics::counter!(
-        "worker_queue_received_total",
-        "worker" => worker_name.to_string()
-    )
-    .increment(count as u64);
-    metrics::gauge!(
-        "worker_queue_receive_batch_size",
-        &[("worker", worker_name.to_string())]
-    )
-    .set(count as f64);
 }
 
 fn connect_to_db(
@@ -200,30 +185,14 @@ macro_rules! setup_spacetime_db_listeners {
         let database_name_runtime_string = $database_name_expr.to_string();
 
         let temp_tx = $tx_channel.clone();
-        let labels_database_name_update = database_name_runtime_string.clone();
+        let event_metrics = ListenerMetrics::new(table_name_str, database_name_runtime_string.clone(), "update");
+        let send_metrics = WorkerSendMetrics::new($worker_name);
         $ctx.db.$db_table_method().on_update(
             // Use $state_type for the old and new parameters
             move |ctx: &EventContext, old: &$state_type, new: &$state_type| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::Transaction => Cow::Borrowed("transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_update: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone the runtime string for this specific label set
-                    ("database", Cow::Owned(labels_database_name_update.clone())),
-                    ("type", Cow::Borrowed("update")),
-                    ("reducer", reducer_name),
-                ];
-                metrics::counter!("game_message_events", &labels_update).increment(1);
+                event_metrics.record(&ctx.event);
 
-                send_worker_message(
-                    $worker_name,
+                send_metrics.send(
                     &temp_tx,
                     SpacetimeUpdateMessages::Update {
                         event: None,
@@ -236,34 +205,18 @@ macro_rules! setup_spacetime_db_listeners {
         );
 
         let temp_tx = $tx_channel.clone();
-        let labels_database_name_insert = database_name_runtime_string.clone();
+        let event_metrics = ListenerMetrics::new(table_name_str, database_name_runtime_string.clone(), "insert");
+        let send_metrics = WorkerSendMetrics::new($worker_name);
         $ctx.db.$db_table_method().on_insert(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::Transaction => Cow::Borrowed("transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_insert: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone again for this label set
-                    ("database", Cow::Owned(labels_database_name_insert.clone())),
-                    ("type", Cow::Borrowed("insert")),
-                    ("reducer", reducer_name),
-                ];
-                metrics::counter!("game_message_events", &labels_insert).increment(1);
+                event_metrics.record(&ctx.event);
 
                 if let Event::SubscribeApplied = ctx.event {
                     return;
                 }
 
-                send_worker_message(
-                    $worker_name,
+                send_metrics.send(
                     &temp_tx,
                     SpacetimeUpdateMessages::Insert {
                         event: None,
@@ -275,29 +228,13 @@ macro_rules! setup_spacetime_db_listeners {
         );
 
         let temp_tx = $tx_channel.clone();
-        let labels_database_name_initial = database_name_runtime_string.clone();
+        let event_metrics = ListenerMetrics::new(table_name_str, database_name_runtime_string.clone(), "initial");
         let initial_batch_rows = 0usize $(+ $initial_batch_rows)?;
         $ctx.db.on_initial_owned::<$state_type>(
             $worker_name,
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: Vec<$state_type>| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::Transaction => Cow::Borrowed("transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_initial: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone again for this label set
-                    ("database", Cow::Owned(labels_database_name_initial.clone())),
-                    ("type", Cow::Borrowed("initial")),
-                    ("reducer", reducer_name),
-                ];
-                metrics::counter!("game_message_events", &labels_initial).increment(1);
+                event_metrics.record(&ctx.event);
 
                 if let Event::SubscribeApplied = ctx.event {
                 } else {
@@ -315,30 +252,14 @@ macro_rules! setup_spacetime_db_listeners {
         );
 
         let temp_tx = $tx_channel.clone();
-        let labels_database_name_delete = database_name_runtime_string.clone();
+        let event_metrics = ListenerMetrics::new(table_name_str, database_name_runtime_string.clone(), "delete");
+        let send_metrics = WorkerSendMetrics::new($worker_name);
         $ctx.db.$db_table_method().on_delete(
             // Use $state_type for the new parameter
             move |ctx: &EventContext, new: &$state_type| {
-                let reducer_name = match &ctx.event {
-                    Event::Reducer(reducer) => Cow::Borrowed(reducer.reducer.reducer_name()),
-                    Event::SubscribeApplied => Cow::Borrowed("subscribe_applied"),
-                    Event::UnsubscribeApplied => Cow::Borrowed("unsubscribe_applied"),
-                    Event::Disconnected => Cow::Borrowed("disconnected"),
-                    Event::SubscribeError(_) => Cow::Borrowed("subscribe_error"),
-                    Event::Transaction => Cow::Borrowed("transaction"),
-                    _ => Cow::Borrowed("none"),
-                };
-                let labels_delete: [(&'static str, Cow<'static, str>); 4] = [
-                    ("table", Cow::Borrowed(table_name_str)),
-                    // Clone for the final label set
-                    ("database", Cow::Owned(labels_database_name_delete.clone())),
-                    ("type", Cow::Borrowed("delete")),
-                    ("reducer", reducer_name),
-                ];
-                metrics::counter!("game_message_events", &labels_delete).increment(1);
+                event_metrics.record(&ctx.event);
 
-                send_worker_message(
-                    $worker_name,
+                send_metrics.send(
                     &temp_tx,
                     SpacetimeUpdateMessages::Remove {
                         event: None,
@@ -2422,211 +2343,254 @@ pub(crate) enum OutboundWebSocketMessages {
     },
 }
 
+/// At most three routing topics; fixed names borrow static storage.
+#[derive(Debug, PartialEq)]
+pub(crate) struct BroadcastTopics([Option<(Cow<'static, str>, Option<i64>)>; 3]);
+
+impl BroadcastTopics {
+    fn new<const N: usize>(topics: [(Cow<'static, str>, Option<i64>); N]) -> Self {
+        assert!(N <= 3);
+        let mut topics = topics.into_iter();
+        Self(std::array::from_fn(|_| topics.next()))
+    }
+}
+
+impl IntoIterator for BroadcastTopics {
+    type Item = (Cow<'static, str>, Option<i64>);
+    type IntoIter = std::iter::Flatten<std::array::IntoIter<Option<Self::Item>, 3>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter().flatten()
+    }
+}
+
 impl OutboundWebSocketMessages {
-    pub fn topics(&self) -> Option<Vec<(String, Option<i64>)>> {
+    pub fn topics(&self) -> Option<BroadcastTopics> {
         match self {
             OutboundWebSocketMessages::Experience {
                 skill_name,
                 user_id,
                 ..
-            } => Some(vec![
-                (format!("experience:{skill_name}"), Some(*user_id)),
-                ("experience".to_string(), Some(*user_id)),
-            ]),
-            OutboundWebSocketMessages::ClaimLocalState(claim_local_state) => Some(vec![(
-                "claim_local_state".to_string(),
-                Some(claim_local_state.entity_id),
-            )]),
+            } => Some(BroadcastTopics::new([
+                (format!("experience:{skill_name}").into(), Some(*user_id)),
+                ("experience".into(), Some(*user_id)),
+            ])),
+            OutboundWebSocketMessages::ClaimLocalState(claim_local_state) => {
+                Some(BroadcastTopics::new([(
+                    "claim_local_state".into(),
+                    Some(claim_local_state.entity_id),
+                )]))
+            }
             OutboundWebSocketMessages::Level {
                 user_id,
                 skill_name,
                 ..
-            } => Some(vec![
-                (format!("level:{skill_name}"), Some(*user_id)),
-                ("level".to_string(), Some(*user_id)),
-            ]),
-            OutboundWebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => Some(vec![(
-                "player_moved_into_claim".to_string(),
-                Some(*user_id),
-            )]),
-            OutboundWebSocketMessages::PlayerMovedOutOfClaim { user_id, .. } => Some(vec![(
-                "player_moved_out_of_claim".to_string(),
-                Some(*user_id),
-            )]),
-            OutboundWebSocketMessages::MovedOutOfClaim { claim_id, .. } => Some(vec![(
-                "moved_out_of_claim".to_string(),
-                Some(*claim_id as i64),
-            )]),
-            OutboundWebSocketMessages::MovedIntoClaim { claim_id, .. } => Some(vec![(
-                "moved_into_claim".to_string(),
-                Some(*claim_id as i64),
-            )]),
-            OutboundWebSocketMessages::PlayerState(player) => {
-                Some(vec![("player_state".to_string(), Some(player.entity_id))])
+            } => Some(BroadcastTopics::new([
+                (format!("level:{skill_name}").into(), Some(*user_id)),
+                ("level".into(), Some(*user_id)),
+            ])),
+            OutboundWebSocketMessages::PlayerMovedIntoClaim { user_id, .. } => Some(
+                BroadcastTopics::new([("player_moved_into_claim".into(), Some(*user_id))]),
+            ),
+            OutboundWebSocketMessages::PlayerMovedOutOfClaim { user_id, .. } => Some(
+                BroadcastTopics::new([("player_moved_out_of_claim".into(), Some(*user_id))]),
+            ),
+            OutboundWebSocketMessages::MovedOutOfClaim { claim_id, .. } => Some(
+                BroadcastTopics::new([("moved_out_of_claim".into(), Some(*claim_id as i64))]),
+            ),
+            OutboundWebSocketMessages::MovedIntoClaim { claim_id, .. } => Some(
+                BroadcastTopics::new([("moved_into_claim".into(), Some(*claim_id as i64))]),
+            ),
+            OutboundWebSocketMessages::PlayerState(player) => Some(BroadcastTopics::new([(
+                "player_state".into(),
+                Some(player.entity_id),
+            )])),
+            OutboundWebSocketMessages::PlayerUsername { entity_id, .. } => Some(
+                BroadcastTopics::new([("player_username".into(), Some(*entity_id))]),
+            ),
+            OutboundWebSocketMessages::MobileEntityState(mobile_entity_state) => {
+                Some(BroadcastTopics::new([(
+                    "mobile_entity_state".into(),
+                    Some(mobile_entity_state.entity_id as i64),
+                )]))
             }
-            OutboundWebSocketMessages::PlayerUsername { entity_id, .. } => {
-                Some(vec![("player_username".to_string(), Some(*entity_id))])
-            }
-            OutboundWebSocketMessages::MobileEntityState(mobile_entity_state) => Some(vec![(
-                "mobile_entity_state".to_string(),
-                Some(mobile_entity_state.entity_id as i64),
-            )]),
             // WebSocketMessages::ClaimDescriptionState(claim) => {
             //     Some(vec![("claim".to_string(), claim.entity_id)])
             // }
-            OutboundWebSocketMessages::TotalExperience { user_id, .. } => {
-                Some(vec![("total_experience".to_string(), Some(*user_id))])
-            }
-            OutboundWebSocketMessages::TotalProfessionExperience { user_id, .. } => Some(vec![(
-                "total_profession_experience".to_string(),
-                Some(*user_id),
-            )]),
-            OutboundWebSocketMessages::TotalAdventureExperience { user_id, .. } => Some(vec![(
-                "total_adventure_experience".to_string(),
-                Some(*user_id),
-            )]),
+            OutboundWebSocketMessages::TotalExperience { user_id, .. } => Some(
+                BroadcastTopics::new([("total_experience".into(), Some(*user_id))]),
+            ),
+            OutboundWebSocketMessages::TotalProfessionExperience { user_id, .. } => Some(
+                BroadcastTopics::new([("total_profession_experience".into(), Some(*user_id))]),
+            ),
+            OutboundWebSocketMessages::TotalAdventureExperience { user_id, .. } => Some(
+                BroadcastTopics::new([("total_adventure_experience".into(), Some(*user_id))]),
+            ),
             OutboundWebSocketMessages::TimePlayed { user_id, .. } => {
-                Some(vec![("time_played".to_string(), Some(*user_id))])
+                Some(BroadcastTopics::new([(
+                    "time_played".into(),
+                    Some(*user_id),
+                )]))
             }
-            OutboundWebSocketMessages::TimeSignedIn { user_id, .. } => {
-                Some(vec![("time_signed_in".to_string(), Some(*user_id))])
+            OutboundWebSocketMessages::TimeSignedIn { user_id, .. } => Some(BroadcastTopics::new(
+                [("time_signed_in".into(), Some(*user_id))],
+            )),
+            OutboundWebSocketMessages::PlayerActionState(player_action_state) => {
+                Some(BroadcastTopics::new([(
+                    "player_action_state".into(),
+                    Some(player_action_state.entity_id as i64),
+                )]))
             }
-            OutboundWebSocketMessages::PlayerActionState(player_action_state) => Some(vec![(
-                "player_action_state".to_string(),
-                Some(player_action_state.entity_id as i64),
-            )]),
-            OutboundWebSocketMessages::PlayerActionStateChangeName(_, id) => Some(vec![(
-                "player_action_state_change_name".to_string(),
-                Some(*id as i64),
-            )]),
-            OutboundWebSocketMessages::ActionState(action_state) => Some(vec![(
-                "action_state".to_string(),
+            OutboundWebSocketMessages::PlayerActionStateChangeName(_, id) => {
+                Some(BroadcastTopics::new([(
+                    "player_action_state_change_name".into(),
+                    Some(*id as i64),
+                )]))
+            }
+            OutboundWebSocketMessages::ActionState(action_state) => Some(BroadcastTopics::new([(
+                "action_state".into(),
                 Some(action_state.owner_entity_id as i64),
-            )]),
-            OutboundWebSocketMessages::TravelerTaskState(traveler_task_state) => Some(vec![
-                (
-                    "traveler_task_state".to_string(),
-                    Some(traveler_task_state.entity_id),
-                ),
-                (
-                    "traveler_task_state:player".to_string(),
-                    Some(traveler_task_state.player_entity_id),
-                ),
-            ]),
-            OutboundWebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => Some(vec![
-                (
-                    "traveler_task_state".to_string(),
-                    Some(traveler_task_state.entity_id),
-                ),
-                (
-                    "traveler_task_state:player".to_string(),
-                    Some(traveler_task_state.player_entity_id),
-                ),
-            ]),
+            )])),
+            OutboundWebSocketMessages::TravelerTaskState(traveler_task_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "traveler_task_state".into(),
+                        Some(traveler_task_state.entity_id),
+                    ),
+                    (
+                        "traveler_task_state:player".into(),
+                        Some(traveler_task_state.player_entity_id),
+                    ),
+                ]))
+            }
+            OutboundWebSocketMessages::TravelerTaskStateDelete(traveler_task_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "traveler_task_state".into(),
+                        Some(traveler_task_state.entity_id),
+                    ),
+                    (
+                        "traveler_task_state:player".into(),
+                        Some(traveler_task_state.player_entity_id),
+                    ),
+                ]))
+            }
             OutboundWebSocketMessages::SubscribedTopics(_) => None,
             OutboundWebSocketMessages::Message(_) => None,
-            OutboundWebSocketMessages::InsertSellOrder(auction_listing_state) => Some(vec![
-                (
-                    "insert_sell_order".to_string(),
-                    Some(auction_listing_state.entity_id as i64),
-                ),
-                (
-                    "insert_sell_order:item_id".to_string(),
-                    Some(auction_listing_state.item_id as i64),
-                ),
-                ("insert_sell_order".to_string(), None),
-            ]),
-            OutboundWebSocketMessages::UpdateSellOrder(auction_listing_state) => Some(vec![
-                (
-                    "update_sell_order".to_string(),
-                    Some(auction_listing_state.entity_id as i64),
-                ),
-                (
-                    "update_sell_order:item_id".to_string(),
-                    Some(auction_listing_state.item_id as i64),
-                ),
-                ("update_sell_order".to_string(), None),
-            ]),
-            OutboundWebSocketMessages::RemoveSellOrder(auction_listing_state) => Some(vec![
-                (
-                    "remove_sell_order".to_string(),
-                    Some(auction_listing_state.entity_id as i64),
-                ),
-                (
-                    "remove_sell_order:item_id".to_string(),
-                    Some(auction_listing_state.item_id as i64),
-                ),
-                ("remove_sell_order".to_string(), None),
-            ]),
-            OutboundWebSocketMessages::InsertBuyOrder(auction_listing_state) => Some(vec![
-                (
-                    "update_buy_order".to_string(),
-                    Some(auction_listing_state.entity_id as i64),
-                ),
-                (
-                    "update_buy_order:item_id".to_string(),
-                    Some(auction_listing_state.item_id as i64),
-                ),
-                ("update_buy_order".to_string(), None),
-            ]),
-            OutboundWebSocketMessages::UpdateBuyOrder(auction_listing_state) => Some(vec![
-                (
-                    "update_buy_order".to_string(),
-                    Some(auction_listing_state.entity_id as i64),
-                ),
-                (
-                    "update_buy_order:item_id".to_string(),
-                    Some(auction_listing_state.item_id as i64),
-                ),
-                ("update_buy_order".to_string(), None),
-            ]),
-            OutboundWebSocketMessages::RemoveBuyOrder(auction_listing_state) => Some(vec![
-                (
-                    "remove_buy_order".to_string(),
-                    Some(auction_listing_state.entity_id as i64),
-                ),
-                (
-                    "remove_buy_order:item_id".to_string(),
-                    Some(auction_listing_state.item_id as i64),
-                ),
-                ("remove_buy_order".to_string(), None),
-            ]),
+            OutboundWebSocketMessages::InsertSellOrder(auction_listing_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "insert_sell_order".into(),
+                        Some(auction_listing_state.entity_id as i64),
+                    ),
+                    (
+                        "insert_sell_order:item_id".into(),
+                        Some(auction_listing_state.item_id as i64),
+                    ),
+                    ("insert_sell_order".into(), None),
+                ]))
+            }
+            OutboundWebSocketMessages::UpdateSellOrder(auction_listing_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "update_sell_order".into(),
+                        Some(auction_listing_state.entity_id as i64),
+                    ),
+                    (
+                        "update_sell_order:item_id".into(),
+                        Some(auction_listing_state.item_id as i64),
+                    ),
+                    ("update_sell_order".into(), None),
+                ]))
+            }
+            OutboundWebSocketMessages::RemoveSellOrder(auction_listing_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "remove_sell_order".into(),
+                        Some(auction_listing_state.entity_id as i64),
+                    ),
+                    (
+                        "remove_sell_order:item_id".into(),
+                        Some(auction_listing_state.item_id as i64),
+                    ),
+                    ("remove_sell_order".into(), None),
+                ]))
+            }
+            OutboundWebSocketMessages::InsertBuyOrder(auction_listing_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "update_buy_order".into(),
+                        Some(auction_listing_state.entity_id as i64),
+                    ),
+                    (
+                        "update_buy_order:item_id".into(),
+                        Some(auction_listing_state.item_id as i64),
+                    ),
+                    ("update_buy_order".into(), None),
+                ]))
+            }
+            OutboundWebSocketMessages::UpdateBuyOrder(auction_listing_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "update_buy_order".into(),
+                        Some(auction_listing_state.entity_id as i64),
+                    ),
+                    (
+                        "update_buy_order:item_id".into(),
+                        Some(auction_listing_state.item_id as i64),
+                    ),
+                    ("update_buy_order".into(), None),
+                ]))
+            }
+            OutboundWebSocketMessages::RemoveBuyOrder(auction_listing_state) => {
+                Some(BroadcastTopics::new([
+                    (
+                        "remove_buy_order".into(),
+                        Some(auction_listing_state.entity_id as i64),
+                    ),
+                    (
+                        "remove_buy_order:item_id".into(),
+                        Some(auction_listing_state.item_id as i64),
+                    ),
+                    ("remove_buy_order".into(), None),
+                ]))
+            }
             OutboundWebSocketMessages::InventoryUpdate {
                 resolved_inventory, ..
-            } => Some(vec![(
-                "inventory_update".to_string(),
+            } => Some(BroadcastTopics::new([(
+                "inventory_update".into(),
                 Some(resolved_inventory.entity_id),
-            )]),
+            )])),
             OutboundWebSocketMessages::InventoryRemove {
                 resolved_inventory, ..
-            } => Some(vec![
+            } => Some(BroadcastTopics::new([
                 (
-                    "inventory_remove".to_string(),
+                    "inventory_remove".into(),
                     Some(resolved_inventory.entity_id),
                 ),
                 (
-                    "inventory_remove_owner".to_string(),
+                    "inventory_remove_owner".into(),
                     Some(resolved_inventory.entity_id),
                 ),
-            ]),
+            ])),
             OutboundWebSocketMessages::InventoryInsert {
                 resolved_inventory,
                 player_owner_id,
                 ..
-            } => Some(vec![
+            } => Some(BroadcastTopics::new([
                 (
-                    "inventory_insert".to_string(),
+                    "inventory_insert".into(),
                     Some(resolved_inventory.entity_id),
                 ),
                 (
-                    "inventory_insert_owner".to_string(),
+                    "inventory_insert_owner".into(),
                     Some(resolved_inventory.owner_entity_id),
                 ),
                 (
-                    "inventory_insert_player_owner".to_string(),
+                    "inventory_insert_player_owner".into(),
                     Some(*player_owner_id),
                 ),
-            ]),
+            ])),
         }
     }
 }
@@ -2639,6 +2603,65 @@ mod tests {
         reconnect_delay, subscription_queries,
     };
     use serde_json::json;
+
+    #[test]
+    fn routing_topics_borrow_static_names_and_keep_dynamic_names_and_ids() {
+        use std::borrow::Cow;
+        let message = OutboundWebSocketMessages::Experience {
+            experience: 10,
+            level: 1,
+            rank: 2,
+            skill_name: "Mining".into(),
+            user_id: 7,
+        };
+        let topics: Vec<_> = message.topics().unwrap().into_iter().collect();
+        assert!(matches!(&topics[0].0, Cow::Owned(name) if name == "experience:Mining"));
+        assert!(matches!(&topics[1].0, Cow::Borrowed("experience")));
+        assert_eq!(topics[0].1, Some(7));
+        assert_eq!(topics[1].1, Some(7));
+        let inventory = entity::inventory::ResolvedInventory {
+            entity_id: 1,
+            pockets: vec![],
+            inventory_index: 2,
+            cargo_index: 3,
+            owner_entity_id: 4,
+            player_owner_entity_id: 5,
+            nickname: None,
+            claim: None,
+        };
+        let topics: Vec<_> = OutboundWebSocketMessages::InventoryInsert {
+            resolved_inventory: inventory.clone(),
+            player_owner_id: 6,
+        }
+        .topics()
+        .unwrap()
+        .into_iter()
+        .collect();
+        assert_eq!(
+            topics,
+            [
+                (Cow::Borrowed("inventory_insert"), Some(1)),
+                (Cow::Borrowed("inventory_insert_owner"), Some(4)),
+                (Cow::Borrowed("inventory_insert_player_owner"), Some(6))
+            ]
+        );
+        let topics: Vec<_> = OutboundWebSocketMessages::InventoryRemove {
+            resolved_inventory: inventory,
+        }
+        .topics()
+        .unwrap()
+        .into_iter()
+        .collect();
+        // Preserve the existing remove-owner routing ID, even though it differs
+        // from insert-owner routing. Fixing the protocol is a separate change.
+        assert_eq!(
+            topics,
+            [
+                (Cow::Borrowed("inventory_remove"), Some(1)),
+                (Cow::Borrowed("inventory_remove_owner"), Some(1))
+            ]
+        );
+    }
 
     #[test]
     fn rss_diagnostic_has_zero_subscriptions_even_on_later_regions() {

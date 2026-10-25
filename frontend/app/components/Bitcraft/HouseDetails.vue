@@ -2,9 +2,11 @@
 import type { HouseInventoriesResponse } from "~/types/HouseInventoriesResponse";
 import type { HouseResponse } from "~/types/HouseResponse";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
+import { inventoryMatchesSearch } from "~/utils/inventorySearch";
 
 const props = defineProps<{
   house: HouseResponse;
+  search?: string;
 }>();
 
 const tab = ref<"overview" | "permissions" | "inventories" | "changelog">("overview");
@@ -40,8 +42,10 @@ const inventoryCount = computed(() => inventories.value?.inventories?.length ?? 
 
 const occupiedInventories = computed(() => {
   const houseInventories = inventories.value?.inventories ?? [];
-  return houseInventories.filter((inventory) =>
-    inventory.pockets.some((pocket) => (pocket.contents?.quantity ?? 0) > 0),
+  return houseInventories.filter(
+    (inventory) =>
+      inventory.pockets.some((pocket) => (pocket.contents?.quantity ?? 0) > 0) &&
+      inventoryMatchesSearch(inventory, props.search ?? ""),
   );
 });
 
@@ -133,7 +137,7 @@ const getRankColor = (rank: number) => {
     </div>
 
     <div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-800">
-      <template v-if="tab === 'overview'">
+      <template v-if="!search && tab === 'overview'">
         <div class="grid gap-3 sm:grid-cols-2">
           <UCard :ui="{ body: 'p-3' }">
             <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Region</p>
@@ -150,7 +154,7 @@ const getRankColor = (rank: number) => {
         </div>
       </template>
 
-      <template v-else-if="tab === 'permissions'">
+      <template v-else-if="!search && tab === 'permissions'">
         <div
           v-if="house.permissions.length > 0"
           class="rounded-lg border border-gray-200 dark:border-gray-800"
@@ -182,7 +186,7 @@ const getRankColor = (rank: number) => {
         </p>
       </template>
 
-      <template v-else-if="tab === 'inventories'">
+      <template v-else-if="search || tab === 'inventories'">
         <div v-if="invPending" class="flex justify-center py-4">
           <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-gray-400" />
         </div>
@@ -194,10 +198,11 @@ const getRankColor = (rank: number) => {
             v-for="inv in occupiedInventories"
             :key="inv.entity_id.toString()"
             :inventory="inv"
+            :search="search"
           />
         </div>
         <p v-else class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-          No interior inventories found.
+          {{ search ? "No matching items in this house." : "No interior inventories found." }}
         </p>
       </template>
 

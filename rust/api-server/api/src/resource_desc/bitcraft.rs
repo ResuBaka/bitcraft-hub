@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use entity::resource_desc;
 use migration::OnConflict;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, sea_query};
@@ -14,6 +14,7 @@ pub(crate) fn start_worker_resource_desc(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("resource_desc");
         let on_conflict = sea_query::OnConflict::column(resource_desc::Column::Id)
             .update_columns([
                 resource_desc::Column::Name,
@@ -37,7 +38,7 @@ pub(crate) fn start_worker_resource_desc(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("resource_desc", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);

@@ -215,12 +215,15 @@ where
         existing_keys.clear();
         existing_keys.extend(batch.iter().map(&key).filter(|key| remaining.contains(key)));
         if !existing_keys.is_empty() {
-            let rows = E::find()
+            let query = E::find()
                 .filter(scope.clone())
-                .filter(filter(&existing_keys))
-                .all(conn)
-                .await?;
-            existing.extend(rows.into_iter().map(|model| (key(&model), model)));
+                .filter(filter(&existing_keys));
+            let mut rows = query.stream(conn).await?;
+            while let Some(model) = rows.try_next().await? {
+                existing.insert(key(&model), model);
+            }
+            // Return the stream's connection before any write. A partial read
+            // or decode error exits without observing this batch or deleting.
         }
         for model in batch.drain(..) {
             let model_key = key(&model);
@@ -936,6 +939,46 @@ mod tests {
         );
         let log = db.into_transaction_log();
         assert_eq!(log.len(), 1, "only the key SELECT may execute");
+    }
+
+    #[tokio::test]
+    async fn partial_comparison_decode_failure_never_observes_writes_or_deletes() {
+        let comparison_row = |id: i64, count: sea_orm::Value| {
+            std::collections::BTreeMap::<String, sea_orm::Value>::from([
+                ("entity_id".to_owned(), id.into()),
+                ("id".to_owned(), 10i32.into()),
+                ("activated".to_owned(), true.into()),
+                ("count".to_owned(), count),
+                ("region".to_owned(), 7i16.into()),
+            ])
+        };
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![key_row(1, 10), key_row(2, 10), key_row(9, 10)]])
+            .append_query_results([vec![
+                comparison_row(1, 1i32.into()),
+                comparison_row(2, "invalid count".into()),
+            ]])
+            .into_connection();
+        assert!(
+            reconcile::<Entity, _, _, _, _, _>(
+                &db,
+                Column::Region,
+                7,
+                &conflict(),
+                2,
+                vec![collectible(1, 10, 2), collectible(2, 10, 2)].into_iter(),
+                |model| (model.entity_id, model.id),
+                filter,
+                |_, _| panic!("partial comparison must not be observed"),
+            )
+            .await
+            .is_err()
+        );
+        assert_eq!(
+            db.into_transaction_log().len(),
+            2,
+            "only key and comparison SELECTs"
+        );
     }
 
     #[tokio::test]

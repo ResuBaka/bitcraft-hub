@@ -254,6 +254,8 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         }
     };
 
+    deduplicate_inventories(&mut inventorys);
+
     let mut item_ids = vec![];
     let mut cargo_ids = vec![];
 
@@ -357,6 +359,13 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         page: 1,
         per_page: 24,
     }))
+}
+
+// Owner and player-owner queries can return the same inventory (including
+// deployable inventories). Keep each entity only once before resolving it.
+fn deduplicate_inventories(inventories: &mut Vec<inventory::Model>) {
+    inventories.sort_by_key(|inventory| inventory.entity_id);
+    inventories.dedup_by_key(|inventory| inventory.entity_id);
 }
 
 #[derive(Serialize, Deserialize, TS)]
@@ -522,7 +531,7 @@ pub(crate) fn resolve_contents(
         if content.item_type == ItemType::Item {
             return Some(ExpendedRefrence {
                 item_id: content.item_id,
-                item: ItemExpended::Item(item_desc.get(&content.item_id)?.clone()),
+                item: ItemExpended::Item(Arc::new(item_desc.get(&content.item_id)?.clone())),
                 quantity: content.quantity,
                 item_type: ItemType::Item,
                 durability: content.durability,
@@ -530,7 +539,7 @@ pub(crate) fn resolve_contents(
         } else {
             return Some(ExpendedRefrence {
                 item_id: content.item_id,
-                item: ItemExpended::Cargo(cargo_desc.get(&content.item_id)?.clone()),
+                item: ItemExpended::Cargo(Arc::new(cargo_desc.get(&content.item_id)?.clone())),
                 quantity: content.quantity,
                 item_type: ItemType::Cargo,
                 durability: content.durability,
@@ -540,13 +549,47 @@ pub(crate) fn resolve_contents(
     None
 }
 
-/// Sync may receive inventories before the description workers have loaded.
-/// Skip the entire notification instead of presenting unresolved contents as empty
-/// pockets. Raw inventory persistence must continue independently of this result.
+/// Bounded immutable description snapshots for inventory notifications. Validation
+/// reads the live maps, so updates/removals need no separate invalidation signal.
+#[derive(Default)]
+pub(crate) struct InventoryDescriptionCache {
+    items: HashMap<i32, Arc<item_desc::Model>>,
+    cargo: HashMap<i32, Arc<cargo_desc::Model>>,
+}
+
+// Limit retention independently of the catalog size. Eviction affects reuse,
+// not correctness: each lookup first validates against the live description.
+const MAX_CACHED_DESCRIPTIONS: usize = 256;
+
+fn shared_description<M: Clone + PartialEq>(
+    cache: &mut HashMap<i32, Arc<M>>,
+    source: &dashmap::DashMap<i32, M>,
+    id: i32,
+) -> Option<Arc<M>> {
+    let Some(current) = source.get(&id) else {
+        cache.remove(&id);
+        return None;
+    };
+    if let Some(cached) = cache.get(&id)
+        && cached.as_ref() == current.value()
+    {
+        return Some(Arc::clone(cached));
+    }
+    if cache.len() >= MAX_CACHED_DESCRIPTIONS && !cache.contains_key(&id) {
+        cache.clear();
+    }
+    let description = Arc::new(current.value().clone());
+    cache.insert(id, Arc::clone(&description));
+    Some(description)
+}
+
+/// Skip incomplete resolution rather than presenting missing descriptions as
+/// empty pockets. Raw inventory persistence is independent of this result.
 pub(crate) fn resolve_pockets_for_sync(
     pockets: &[inventory::Pocket],
     item_desc: &Arc<dashmap::DashMap<i32, item_desc::Model>>,
     cargo_desc: &Arc<dashmap::DashMap<i32, cargo_desc::Model>>,
+    cache: &mut InventoryDescriptionCache,
 ) -> Option<Vec<ItemSlotResolved>> {
     if item_desc.is_empty() || cargo_desc.is_empty() {
         return None;
@@ -556,7 +599,24 @@ pub(crate) fn resolve_pockets_for_sync(
         .iter()
         .map(|pocket| {
             let contents = match &pocket.contents {
-                Some(_) => Some(resolve_contents(&pocket.contents, item_desc, cargo_desc)?),
+                Some(content) => Some(ExpendedRefrence {
+                    item_id: content.item_id,
+                    item: match content.item_type {
+                        ItemType::Item => ItemExpended::Item(shared_description(
+                            &mut cache.items,
+                            item_desc,
+                            content.item_id,
+                        )?),
+                        ItemType::Cargo => ItemExpended::Cargo(shared_description(
+                            &mut cache.cargo,
+                            cargo_desc,
+                            content.item_id,
+                        )?),
+                    },
+                    quantity: content.quantity,
+                    item_type: content.item_type.clone(),
+                    durability: content.durability,
+                }),
                 None => None,
             };
             Some(ItemSlotResolved {
@@ -572,7 +632,146 @@ pub(crate) fn resolve_pockets_for_sync(
 mod resolution_tests {
     use super::*;
 
-    fn item_description() -> item_desc::Model {
+    #[test]
+    fn overlapping_ownership_results_return_each_inventory_once() {
+        let inventory = |entity_id, owner_entity_id| inventory::Model {
+            entity_id,
+            pockets: vec![],
+            inventory_index: 0,
+            cargo_index: 0,
+            owner_entity_id,
+            player_owner_entity_id: 100,
+            region: 1,
+        };
+        let player_inventory = inventory(1, 100);
+        let deployable_inventory = inventory(2, 200);
+        let building_inventory = inventory(3, 300);
+        let mut inventories = vec![player_inventory.clone(), deployable_inventory.clone()];
+        inventories.extend([
+            building_inventory.clone(),
+            player_inventory.clone(),
+            deployable_inventory.clone(),
+        ]);
+
+        deduplicate_inventories(&mut inventories);
+
+        assert_eq!(
+            inventories,
+            vec![player_inventory, deployable_inventory, building_inventory]
+        );
+
+        deduplicate_inventories(&mut Vec::new());
+    }
+
+    #[test]
+    fn shared_descriptions_refresh_remove_and_bound_retained_entries() {
+        let source = dashmap::DashMap::new();
+        let mut cache = HashMap::new();
+        source.insert(1, "first".to_string());
+        let first = shared_description(&mut cache, &source, 1).unwrap();
+        assert!(Arc::ptr_eq(
+            &first,
+            &shared_description(&mut cache, &source, 1).unwrap()
+        ));
+        source.insert(1, "changed".to_string());
+        let changed = shared_description(&mut cache, &source, 1).unwrap();
+        assert!(!Arc::ptr_eq(&first, &changed));
+        assert_eq!(
+            first.as_str(),
+            "first",
+            "already queued snapshots remain immutable"
+        );
+        assert_eq!(changed.as_str(), "changed");
+        source.remove(&1);
+        assert!(shared_description(&mut cache, &source, 1).is_none());
+        assert!(!cache.contains_key(&1));
+        for id in 0..(MAX_CACHED_DESCRIPTIONS as i32 * 3) {
+            source.insert(id, id.to_string());
+            assert_eq!(
+                shared_description(&mut cache, &source, id)
+                    .unwrap()
+                    .as_str(),
+                id.to_string()
+            );
+            assert!(cache.len() <= MAX_CACHED_DESCRIPTIONS);
+        }
+    }
+
+    #[test]
+    fn inventory_snapshots_share_descriptions_and_preserve_wire_shapes() {
+        #[derive(Serialize, TS)]
+        #[serde(untagged)]
+        #[ts(rename = "ItemExpended")]
+        enum LegacyItemExpended {
+            Item(item_desc::Model),
+            Cargo(cargo_desc::Model),
+        }
+        let config = ts_rs::Config::default();
+        assert_eq!(
+            ItemExpended::decl(&config),
+            LegacyItemExpended::decl(&config)
+        );
+        let items = Arc::new(dashmap::DashMap::new());
+        let cargos = Arc::new(dashmap::DashMap::new());
+        items.insert(1, item_description());
+        cargos.insert(2, cargo_description());
+        let pockets = [
+            pocket(1, ItemType::Item),
+            pocket(1, ItemType::Item),
+            pocket(2, ItemType::Cargo),
+        ];
+        let mut cache = InventoryDescriptionCache::default();
+        let first = resolve_pockets_for_sync(&pockets, &items, &cargos, &mut cache).unwrap();
+        let next = resolve_pockets_for_sync(&pockets, &items, &cargos, &mut cache).unwrap();
+        let item_arc = |slots: &[ItemSlotResolved], index: usize| match &slots[index]
+            .contents
+            .as_ref()
+            .unwrap()
+            .item
+        {
+            ItemExpended::Item(value) => Arc::clone(value),
+            _ => panic!("expected item"),
+        };
+        assert!(Arc::ptr_eq(&item_arc(&first, 0), &item_arc(&first, 1)));
+        assert!(Arc::ptr_eq(&item_arc(&first, 0), &item_arc(&next, 0)));
+        let cloned = first.clone();
+        assert!(Arc::ptr_eq(&item_arc(&first, 0), &item_arc(&cloned, 0)));
+        for slot in &first {
+            let content = slot.contents.as_ref().unwrap();
+            let legacy = match content.item_type {
+                ItemType::Item => LegacyItemExpended::Item(item_description()),
+                ItemType::Cargo => LegacyItemExpended::Cargo(cargo_description()),
+            };
+            assert_eq!(
+                serde_json::to_value(&content.item).unwrap(),
+                serde_json::to_value(&legacy).unwrap()
+            );
+            let owned_bytes = axum_codec::Codec(content.item.clone())
+                .to_msgpack()
+                .unwrap();
+            assert_eq!(
+                owned_bytes,
+                axum_codec::Codec(&legacy).to_msgpack().unwrap()
+            );
+        }
+        items.get_mut(&1).unwrap().name = "new item".into();
+        cargos.get_mut(&2).unwrap().name = "new cargo".into();
+        let updated = resolve_pockets_for_sync(&pockets, &items, &cargos, &mut cache).unwrap();
+        assert_eq!(item_arc(&updated, 0).name, "new item");
+        assert_eq!(item_arc(&first, 0).name, "Item");
+        assert!(
+            matches!(&updated[2].contents.as_ref().unwrap().item, ItemExpended::Cargo(value) if value.name == "new cargo")
+        );
+        items.remove(&1);
+        items.insert(99, item_description()); // Leave the source nonempty.
+        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos, &mut cache).is_none());
+        items.insert(1, item_description());
+        cargos.remove(&2);
+        cargos.insert(99, cargo_description());
+        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos, &mut cache).is_none());
+    }
+
+    pub(super) fn item_description() -> item_desc::Model {
         item_desc::Model {
             id: 1,
             name: "Item".to_string(),
@@ -591,7 +790,7 @@ mod resolution_tests {
         }
     }
 
-    fn cargo_description() -> cargo_desc::Model {
+    pub(super) fn cargo_description() -> cargo_desc::Model {
         cargo_desc::Model {
             id: 2,
             name: "Cargo".to_string(),
@@ -648,14 +847,22 @@ mod resolution_tests {
         let items = Arc::new(dashmap::DashMap::new());
         let cargos = Arc::new(dashmap::DashMap::new());
         let pockets = [pocket(1, ItemType::Item)];
-        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+        assert!(
+            resolve_pockets_for_sync(&pockets, &items, &cargos, &mut Default::default()).is_none()
+        );
         items.insert(1, item_description());
-        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+        assert!(
+            resolve_pockets_for_sync(&pockets, &items, &cargos, &mut Default::default()).is_none()
+        );
         cargos.insert(2, cargo_description());
         items.clear();
-        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+        assert!(
+            resolve_pockets_for_sync(&pockets, &items, &cargos, &mut Default::default()).is_none()
+        );
         items.insert(1, item_description());
-        assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_some());
+        assert!(
+            resolve_pockets_for_sync(&pockets, &items, &cargos, &mut Default::default()).is_some()
+        );
     }
 
     #[test]
@@ -666,7 +873,10 @@ mod resolution_tests {
         cargos.insert(2, cargo_description());
         for missing_type in [ItemType::Item, ItemType::Cargo] {
             let pockets = [pocket(1, ItemType::Item), pocket(999, missing_type)];
-            assert!(resolve_pockets_for_sync(&pockets, &items, &cargos).is_none());
+            assert!(
+                resolve_pockets_for_sync(&pockets, &items, &cargos, &mut Default::default())
+                    .is_none()
+            );
         }
     }
 
@@ -685,7 +895,8 @@ mod resolution_tests {
                 locked: false,
             },
         ];
-        let resolved = resolve_pockets_for_sync(&pockets, &items, &cargos).unwrap();
+        let resolved =
+            resolve_pockets_for_sync(&pockets, &items, &cargos, &mut Default::default()).unwrap();
         assert_eq!(resolved.len(), 3);
         for (pocket, resolved) in pockets.iter().zip(&resolved) {
             assert_eq!(*resolved, resolve_pocket(pocket, &items, &cargos));

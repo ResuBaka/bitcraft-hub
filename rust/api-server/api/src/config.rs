@@ -15,6 +15,7 @@ pub(crate) struct Config {
     pub(crate) log_level: LogLevel,
     pub(crate) spacetimedb: SpacetimeDbConfig,
     pub(crate) shutdown: ShutdownConfig,
+    pub(crate) leaderboard: LeaderboardConfig,
     #[serde(default)]
     pub(crate) origins: AllowedOriginConfig,
     #[serde(alias = "liveupdatesws")]
@@ -43,11 +44,20 @@ impl Default for Config {
             log_level: LogLevel::default(),
             spacetimedb: SpacetimeDbConfig::default(),
             shutdown: ShutdownConfig::default(),
+            leaderboard: LeaderboardConfig::default(),
             origins: AllowedOriginConfig::default(),
             live_updates_ws: false,
             tech_tier_research_map,
         }
     }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub(crate) struct LeaderboardConfig {
+    /// Fixed bucket widths keyed by metric board name (e.g. level, skill_1).
+    /// Unspecified boards retain the existing tiered buckets; level defaults to 50.
+    pub(crate) bucket_widths: std::collections::HashMap<String, std::num::NonZeroU32>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -71,6 +81,22 @@ impl Default for ShutdownConfig {
 #[cfg(test)]
 mod shutdown_tests {
     use super::*;
+    #[test]
+    fn leaderboard_bucket_widths_are_optional_and_positive() {
+        let default: Config = serde_json::from_str("{}").unwrap();
+        assert!(default.leaderboard.bucket_widths.is_empty());
+        let configured: Config =
+            serde_json::from_str(r#"{"leaderboard":{"bucket_widths":{"level":5}}}"#).unwrap();
+        assert_eq!(configured.leaderboard.bucket_widths["level"].get(), 5);
+        for width in ["0", "-1", "1.5"] {
+            assert!(
+                serde_json::from_str::<Config>(&format!(
+                    r#"{{"leaderboard":{{"bucket_widths":{{"level":{width}}}}}}}"#
+                ))
+                .is_err()
+            );
+        }
+    }
     #[test]
     fn default_is_unlimited_and_six_minute_config_is_explicit() {
         let default: Config = serde_json::from_str("{}").unwrap();
@@ -127,11 +153,11 @@ impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
             url: "".to_string(),
-            max_connections: 200,
-            min_connections: 30,
+            max_connections: 50,
+            min_connections: 3,
             connect_timeout: 10,
-            idle_timeout: 60 * 5,
-            max_lifetime: None,
+            idle_timeout: 90,
+            max_lifetime: Some(150),
         }
     }
 }

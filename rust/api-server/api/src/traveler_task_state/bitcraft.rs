@@ -1,9 +1,7 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{
-    OutboundWebSocketMessages, SpacetimeUpdateMessages, record_worker_received,
-};
+use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use game_module::module_bindings::TravelerTaskState;
 use migration::sea_query;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
@@ -16,6 +14,7 @@ pub(crate) fn start_worker_traveler_task_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("traveler_task_state");
         let on_conflict =
             sea_query::OnConflict::column(::entity::traveler_task_state::Column::EntityId)
                 .update_columns([
@@ -37,7 +36,7 @@ pub(crate) fn start_worker_traveler_task_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("traveler_task_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages).await;

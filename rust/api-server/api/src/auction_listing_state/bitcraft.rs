@@ -1,9 +1,7 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{
-    OutboundWebSocketMessages, SpacetimeUpdateMessages, record_worker_received,
-};
+use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use game_module::module_bindings::AuctionListingState;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
@@ -17,6 +15,7 @@ pub(crate) fn start_worker_sell_order_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("sell_order_state");
         // let on_conflict = sea_query::OnConflict::column(::entity::trade_order::Column::EntityId)
         //     .update_columns([
         //         ::entity::trade_order::Column::TimePlayed,
@@ -39,7 +38,7 @@ pub(crate) fn start_worker_sell_order_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("sell_order_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 data.into_par_iter().for_each(|value| {
@@ -119,6 +118,7 @@ pub(crate) fn start_worker_buy_order_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("buy_order_state");
         // let on_conflict = sea_query::OnConflict::column(::entity::trade_order::Column::EntityId)
         //     .update_columns([
         //         ::entity::trade_order::Column::TimePlayed,
@@ -141,7 +141,7 @@ pub(crate) fn start_worker_buy_order_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("buy_order_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 data.into_par_iter().for_each(|value| {

@@ -83,7 +83,27 @@ impl<'ctx> DroppedInventoryOwnershipTimerTableHandle<'ctx> {
         DroppedInventoryOwnershipTimerInitialCallbackId(self.imp.on_initial(callback))
     }
 
-    /// Cancel a callback previously registered by [`Self::on_initial`].
+    /// Register a borrowed initial-row view without cloning the full snapshot.
+    pub fn on_initial_rows(
+        &self,
+        callback: impl FnMut(
+            &super::EventContext,
+            __sdk::InitialRows<'_, DroppedInventoryOwnershipTimer>,
+        ) + Send
+        + 'static,
+    ) -> DroppedInventoryOwnershipTimerInitialCallbackId {
+        DroppedInventoryOwnershipTimerInitialCallbackId(self.imp.on_initial_rows(callback))
+    }
+
+    /// Receive owned initial rows; cacheless single-listener dispatch moves payloads.
+    pub fn on_initial_owned(
+        &self,
+        callback: impl FnMut(&super::EventContext, Vec<DroppedInventoryOwnershipTimer>) + Send + 'static,
+    ) -> DroppedInventoryOwnershipTimerInitialCallbackId {
+        DroppedInventoryOwnershipTimerInitialCallbackId(self.imp.on_initial_owned(callback))
+    }
+
+    /// Cancel a callback registered by any initial-row registration method.
     pub fn remove_on_initial(&self, callback: DroppedInventoryOwnershipTimerInitialCallbackId) {
         self.imp.remove_on_initial(callback.0)
     }

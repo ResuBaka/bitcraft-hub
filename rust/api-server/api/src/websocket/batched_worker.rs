@@ -1,14 +1,16 @@
 use super::worker_channel::{UnboundedReceiver, UnboundedSender};
-use super::{SpacetimeUpdateMessages, record_worker_received};
+use super::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use std::future::Future;
+use std::pin::Pin;
 use tokio::time::Duration;
-use tokio::time::{Instant, sleep_until};
+use tokio::time::{Instant, Sleep, sleep_until};
 
 /// An idle batch has no timer. The first message starts one fixed window;
 /// subsequent messages do not extend it and starve the flush.
 pub(crate) struct BatchTimer {
     delay: Duration,
     deadline: Option<Instant>,
+    sleep: Option<Pin<Box<Sleep>>>,
 }
 
 impl BatchTimer {
@@ -16,17 +18,23 @@ impl BatchTimer {
         Self {
             delay,
             deadline: None,
+            sleep: None,
         }
     }
 
     pub(crate) fn start(&mut self) {
-        self.deadline
-            .get_or_insert_with(|| Instant::now() + self.delay);
+        if self.deadline.is_none() {
+            let deadline = Instant::now() + self.delay;
+            self.deadline = Some(deadline);
+            self.sleep = Some(Box::pin(sleep_until(deadline)));
+        }
     }
 
-    pub(crate) async fn elapsed(&self) {
-        match self.deadline {
-            Some(deadline) => sleep_until(deadline).await,
+    pub(crate) async fn elapsed(&mut self) {
+        // Cancelling this select branch drops only a borrow, not the registered
+        // Sleep. It is pinned once per active batch and never reset by messages.
+        match self.sleep.as_mut() {
+            Some(sleep) => sleep.as_mut().await,
             None => std::future::pending().await,
         }
     }
@@ -74,6 +82,7 @@ where
     W::Entity: Send + 'static,
 {
     tracing::info!(worker = worker.worker_name(), "Worker started");
+    let receive_metrics = WorkerReceiveMetrics::new(worker.worker_name());
     loop {
         let mut timer = BatchTimer::new(worker.batch_delay());
 
@@ -82,7 +91,7 @@ where
                 msg = worker.rx().recv() => {
                     let Some(msg) = msg else { break; };
                     timer.start();
-                    record_worker_received(worker.worker_name(), 1);
+                    receive_metrics.record(1);
                     worker.handle_message(msg).await;
                     if worker.should_flush() {
                         break;
@@ -169,11 +178,49 @@ mod tests {
     async fn batch_timer_is_unarmed_until_first_message_and_does_not_extend() {
         let mut timer = BatchTimer::new(Duration::from_secs(60));
         assert!(timer.deadline.is_none());
+        assert!(timer.sleep.is_none());
         assert!(futures::poll!(Box::pin(timer.elapsed())).is_pending());
+        assert!(
+            timer.sleep.is_none(),
+            "idle batches do not allocate a Sleep"
+        );
         timer.start();
         let deadline = timer.deadline;
         timer.start();
         assert_eq!(timer.deadline, deadline);
+    }
+
+    #[tokio::test]
+    async fn cancelling_elapsed_reuses_one_pinned_sleep_and_fixed_deadline() {
+        let mut timer = BatchTimer::new(Duration::from_secs(60));
+        timer.start();
+        let deadline = timer.deadline;
+        let allocation = timer.sleep.as_ref().unwrap().as_ref().get_ref() as *const Sleep;
+        for _ in 0..128 {
+            // Each poll drops a pending elapsed future, like a select whose
+            // receive branch won. The underlying timer must survive unchanged.
+            assert!(futures::poll!(Box::pin(timer.elapsed())).is_pending());
+            timer.start();
+            assert_eq!(timer.deadline, deadline);
+            assert_eq!(
+                timer.sleep.as_ref().unwrap().as_ref().get_ref() as *const Sleep,
+                allocation
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn messages_after_deadline_do_not_rearm_the_timer() {
+        let mut timer = BatchTimer::new(Duration::from_millis(5));
+        timer.start();
+        let deadline = timer.deadline.unwrap();
+        tokio::time::sleep_until(deadline).await;
+        timer.start();
+        assert_eq!(timer.deadline, Some(deadline));
+        tokio::time::timeout(Duration::from_secs(1), timer.elapsed())
+            .await
+            .unwrap();
+        assert!(timer.sleep.as_ref().unwrap().is_elapsed());
     }
 
     #[tokio::test]

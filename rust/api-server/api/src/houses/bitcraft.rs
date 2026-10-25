@@ -1,14 +1,97 @@
 use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use game_module::module_bindings::{
     DimensionDescriptionState, InteriorNetworkDesc, PermissionState, PlayerHousingState,
     PortalState,
 };
 use migration::{OnConflict, sea_query};
-use sea_orm::{ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel,
+    Iterable, QueryFilter, TransactionTrait,
+};
 use std::time::Duration;
+
+// Advisory budget for ActiveModel + SQL expression/bind storage, not a hard
+// process-memory limit. A single oversized row must still be written intact.
+const WRITE_BATCH_ESTIMATED_BYTES: usize = 256 * 1024;
+const ESTIMATED_SQL_BYTES_PER_COLUMN: usize = 128;
+
+fn write_batch_len<T>(rows: &[T], budget: usize, estimate: impl Fn(&T) -> usize) -> usize {
+    let mut bytes = 0usize;
+    let mut count = 0;
+    for row in rows {
+        let next = bytes.saturating_add(estimate(row).max(1));
+        if count != 0 && next > budget {
+            break;
+        }
+        bytes = next;
+        count += 1;
+    }
+    count
+}
+
+async fn write_housing_chunk<E: EntityTrait>(
+    conn: &impl ConnectionTrait,
+    on_conflict: &OnConflict,
+    rows: &[E::ActiveModel],
+) -> Result<u64, DbErr> {
+    E::insert_many(rows.iter().cloned())
+        .on_conflict(on_conflict.clone())
+        .exec_without_returning(conn)
+        .await
+}
+
+async fn write_housing_batches<E: EntityTrait>(
+    conn: &DatabaseConnection,
+    on_conflict: &OnConflict,
+    rows: &[E::ActiveModel],
+    extra_payload_bytes: impl Fn(&E::ActiveModel) -> usize + Send + Sync,
+    budget: usize,
+) -> Result<(), DbErr> {
+    if rows.is_empty() {
+        return Ok(());
+    }
+    let fixed_bytes = std::mem::size_of::<E::ActiveModel>()
+        .saturating_add(E::Column::iter().count() * ESTIMATED_SQL_BYTES_PER_COLUMN);
+    let estimate = |row: &E::ActiveModel| fixed_bytes.saturating_add(extra_payload_bytes(row));
+    let first_len = write_batch_len(rows, budget, &estimate);
+    if first_len == rows.len() {
+        if write_housing_chunk::<E>(conn, on_conflict, rows).await? == 0 {
+            // exec() previously reported this as RecordNotInserted. Do not
+            // accidentally clear a retry batch when removing RETURNING.
+            return Err(DbErr::RecordNotInserted);
+        }
+    } else {
+        // Keep the original helper's all-or-nothing write behavior when a batch
+        // is split. Failed/cancelled transactions leave the caller's rows intact.
+        let transaction = conn.begin().await?;
+        let mut remaining = rows;
+        let mut affected = 0u64;
+        while !remaining.is_empty() {
+            let len = write_batch_len(remaining, budget, &estimate);
+            affected = affected.saturating_add(
+                write_housing_chunk::<E>(&transaction, on_conflict, &remaining[..len]).await?,
+            );
+            remaining = &remaining[len..];
+        }
+        if affected == 0 {
+            return Err(DbErr::RecordNotInserted);
+        }
+        transaction.commit().await?;
+    }
+    Ok(())
+}
+
+fn interior_payload_bytes(model: &::entity::interior_network_desc::ActiveModel) -> usize {
+    use sea_orm::ActiveValue::{NotSet, Set, Unchanged};
+    match &model.child_interior_instances {
+        // JSON i32s require at most 11 digits/sign characters plus a comma.
+        Set(value) | Unchanged(value) => value.0.len().saturating_mul(12).saturating_add(2),
+        NotSet => 0,
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interior Network Desc Worker
@@ -21,6 +104,7 @@ pub(crate) fn start_worker_interior_network_desc(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("interior_network_desc");
         let on_conflict =
             sea_query::OnConflict::columns([::entity::interior_network_desc::Column::BuildingId])
                 .update_columns([
@@ -40,7 +124,7 @@ pub(crate) fn start_worker_interior_network_desc(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("interior_network_desc", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -175,10 +259,14 @@ async fn insert_many_interior_network_desc(
         return Ok(());
     }
 
-    ::entity::interior_network_desc::Entity::insert_many(messages.iter().cloned())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await?;
+    write_housing_batches::<::entity::interior_network_desc::Entity>(
+        &global_app_state.conn,
+        on_conflict,
+        messages,
+        interior_payload_bytes,
+        WRITE_BATCH_ESTIMATED_BYTES,
+    )
+    .await?;
 
     messages.clear();
     Ok(())
@@ -195,6 +283,7 @@ pub(crate) fn start_worker_dimension_description_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("dimension_description_state");
         let on_conflict = sea_query::OnConflict::columns([
             ::entity::dimension_description_state::Column::EntityId,
         ])
@@ -217,7 +306,7 @@ pub(crate) fn start_worker_dimension_description_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("dimension_description_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -348,10 +437,14 @@ async fn insert_many_dimension_description_state(
         return Ok(());
     }
 
-    ::entity::dimension_description_state::Entity::insert_many(messages.iter().cloned())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await?;
+    write_housing_batches::<::entity::dimension_description_state::Entity>(
+        &global_app_state.conn,
+        on_conflict,
+        messages,
+        |_| 0,
+        WRITE_BATCH_ESTIMATED_BYTES,
+    )
+    .await?;
 
     messages.clear();
     Ok(())
@@ -368,6 +461,7 @@ pub(crate) fn start_worker_player_housing_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("player_housing_state");
         let on_conflict =
             sea_query::OnConflict::columns([::entity::player_housing_state::Column::EntityId])
                 .update_columns([
@@ -391,7 +485,7 @@ pub(crate) fn start_worker_player_housing_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("player_housing_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -523,10 +617,14 @@ async fn insert_many_player_housing_state(
         return Ok(());
     }
 
-    ::entity::player_housing_state::Entity::insert_many(messages.iter().cloned())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await?;
+    write_housing_batches::<::entity::player_housing_state::Entity>(
+        &global_app_state.conn,
+        on_conflict,
+        messages,
+        |_| 0,
+        WRITE_BATCH_ESTIMATED_BYTES,
+    )
+    .await?;
 
     messages.clear();
     Ok(())
@@ -543,6 +641,7 @@ pub(crate) fn start_worker_permission_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("permission_state");
         let on_conflict =
             sea_query::OnConflict::columns([::entity::permission_state::Column::EntityId])
                 .update_columns([
@@ -564,7 +663,7 @@ pub(crate) fn start_worker_permission_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("permission_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -691,10 +790,14 @@ async fn insert_many_permission_state(
         return Ok(());
     }
 
-    ::entity::permission_state::Entity::insert_many(messages.iter().cloned())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await?;
+    write_housing_batches::<::entity::permission_state::Entity>(
+        &global_app_state.conn,
+        on_conflict,
+        messages,
+        |_| 0,
+        WRITE_BATCH_ESTIMATED_BYTES,
+    )
+    .await?;
 
     messages.clear();
     Ok(())
@@ -711,6 +814,7 @@ pub(crate) fn start_worker_portal_state(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("portal_state");
         let on_conflict =
             sea_query::OnConflict::columns([::entity::portal_state::Column::EntityId])
                 .update_columns([
@@ -734,7 +838,7 @@ pub(crate) fn start_worker_portal_state(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("portal_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 let mut local_messages = Vec::with_capacity(batch_size + 10);
@@ -862,10 +966,14 @@ async fn insert_many_portal_state(
         return Ok(());
     }
 
-    ::entity::portal_state::Entity::insert_many(messages.iter().cloned())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await?;
+    write_housing_batches::<::entity::portal_state::Entity>(
+        &global_app_state.conn,
+        on_conflict,
+        messages,
+        |_| 0,
+        WRITE_BATCH_ESTIMATED_BYTES,
+    )
+    .await?;
 
     messages.clear();
     Ok(())
@@ -874,7 +982,7 @@ async fn insert_many_portal_state(
 #[cfg(test)]
 mod write_batch_tests {
     use super::*;
-    use sea_orm::{DbBackend, MockDatabase, QueryTrait, Set, Transaction};
+    use sea_orm::{DbBackend, MockDatabase, MockExecResult, QueryTrait, Set, Transaction};
 
     // Exercise the real helpers: failed writes keep the exact batch for retry,
     // successful retries clear it without releasing its reusable allocation.
@@ -884,11 +992,11 @@ mod write_batch_tests {
             async fn $test() {
                 use entity::$table::{ActiveModel, Column, Entity};
                 let db = MockDatabase::new(DbBackend::Postgres)
-                    .append_query_errors([DbErr::Custom("write failed".into())])
-                    .append_query_results([vec![std::collections::BTreeMap::from([(
-                        stringify!($field).to_owned(),
-                        sea_orm::Value::from(2 as $id),
-                    )])]])
+                    .append_exec_errors([DbErr::Custom("write failed".into())])
+                    .append_exec_results([MockExecResult {
+                        last_insert_id: 0,
+                        rows_affected: 2,
+                    }])
                     .into_connection();
                 let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
                 let state = AppState::new(db, tx, Default::default());
@@ -908,12 +1016,10 @@ mod write_batch_tests {
                 let original = messages.clone();
                 let allocation = messages.as_ptr();
                 let capacity = messages.capacity();
-                let mut expected = Entity::insert_many(messages.clone())
+                let expected = Entity::insert_many(messages.clone())
                     .on_conflict(on_conflict.clone())
                     .build(DbBackend::Postgres);
-                expected
-                    .sql
-                    .push_str(concat!(" RETURNING \"", stringify!($field), "\""));
+                assert!(!expected.sql.contains("RETURNING"));
 
                 assert!($helper(&state, &on_conflict, &mut messages).await.is_err());
                 assert_eq!(messages, original);
@@ -977,4 +1083,122 @@ mod write_batch_tests {
         EntityId,
         i64
     );
+
+    #[test]
+    fn byte_budget_handles_variable_rows_oversized_rows_and_zero_budget() {
+        assert_eq!(write_batch_len(&[4, 6, 2], 10, |bytes| *bytes), 2);
+        assert_eq!(write_batch_len(&[11, 1], 10, |bytes| *bytes), 1);
+        assert_eq!(write_batch_len(&[0, 0], 0, |bytes| *bytes), 1);
+        assert_eq!(write_batch_len::<usize>(&[], 10, |bytes| *bytes), 0);
+        assert_eq!(write_batch_len(&[usize::MAX, 1], 10, |bytes| *bytes), 1);
+    }
+
+    #[tokio::test]
+    async fn split_writes_commit_together_without_returning_rows() {
+        use entity::player_housing_state::{ActiveModel, Column, Entity};
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results((0..3).map(|_| MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 1,
+            }))
+            .into_connection();
+        let rows = (1..=3)
+            .map(|id| ActiveModel {
+                entity_id: Set(id),
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
+        let conflict = OnConflict::column(Column::EntityId)
+            .update_column(Column::Rank)
+            .to_owned();
+        write_housing_batches::<Entity>(&db, &conflict, &rows, |_| 0, 1)
+            .await
+            .unwrap();
+        let log = format!("{:?}", db.into_transaction_log());
+        assert!(log.contains("BEGIN") && log.contains("COMMIT"));
+        assert_eq!(log.matches("INSERT INTO").count(), 3);
+        assert!(!log.contains("RETURNING"));
+        assert_eq!(rows.len(), 3, "the caller clears only after success");
+    }
+
+    #[tokio::test]
+    async fn split_write_failure_rolls_back_and_preserves_all_original_rows() {
+        use entity::player_housing_state::{ActiveModel, Column, Entity};
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results([MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 1,
+            }])
+            .append_exec_errors([DbErr::Custom("second chunk failed".into())])
+            .into_connection();
+        let rows = (1..=3)
+            .map(|id| ActiveModel {
+                entity_id: Set(id),
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
+        let original = rows.clone();
+        let allocation = rows.as_ptr();
+        let conflict = OnConflict::column(Column::EntityId)
+            .update_column(Column::Rank)
+            .to_owned();
+        assert!(
+            write_housing_batches::<Entity>(&db, &conflict, &rows, |_| 0, 1)
+                .await
+                .is_err()
+        );
+        assert_eq!(rows, original);
+        assert_eq!(rows.as_ptr(), allocation);
+        let log = format!("{:?}", db.into_transaction_log());
+        assert!(log.contains("ROLLBACK"));
+        assert!(!log.contains("COMMIT"));
+        assert_eq!(
+            log.matches("INSERT INTO").count(),
+            2,
+            "stop after the failed chunk"
+        );
+    }
+
+    #[tokio::test]
+    async fn zero_affected_rows_still_retain_the_retry_batch() {
+        use entity::player_housing_state::{ActiveModel, Column};
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results([MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 0,
+            }])
+            .into_connection();
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db, tx, Default::default());
+        let mut rows = vec![ActiveModel {
+            entity_id: Set(1),
+            ..Default::default()
+        }];
+        let original = rows.clone();
+        let conflict = OnConflict::column(Column::EntityId)
+            .update_column(Column::Rank)
+            .to_owned();
+        assert_eq!(
+            insert_many_player_housing_state(&state, &conflict, &mut rows)
+                .await
+                .unwrap_err(),
+            DbErr::RecordNotInserted
+        );
+        assert_eq!(rows, original);
+    }
+
+    #[test]
+    fn interior_json_payloads_contribute_to_the_budget_without_serialization() {
+        use entity::interior_network_desc::{ActiveModel, ChildInteriorInstances};
+        let mut row = ActiveModel::default();
+        assert_eq!(interior_payload_bytes(&row), 0);
+        row.child_interior_instances = Set(ChildInteriorInstances(vec![i32::MIN; 100]));
+        let estimate = interior_payload_bytes(&row);
+        assert!(
+            estimate
+                >= serde_json::to_vec(&ChildInteriorInstances(vec![i32::MIN; 100]))
+                    .unwrap()
+                    .len()
+        );
+    }
 }

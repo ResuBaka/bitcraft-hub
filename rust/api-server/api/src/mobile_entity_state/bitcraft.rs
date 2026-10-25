@@ -1,6 +1,6 @@
 use crate::AppState;
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{OutboundWebSocketMessages, record_worker_received};
+use crate::websocket::{OutboundWebSocketMessages, WorkerReceiveMetrics};
 use entity::mobile_entity_state;
 use game_module::module_bindings::MobileEntityState;
 
@@ -12,7 +12,9 @@ pub(crate) fn start_worker_mobile_entity_state(
         worker = "mobile_entity_state",
         "Scheduling mobile entity worker"
     );
-    global_app_state.shutdown.clone().spawn_worker(async move {
+    let shutdown = global_app_state.shutdown.clone();
+    let worker = shutdown.spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("mobile_entity_state");
         tracing::info!(
             worker = "mobile_entity_state",
             backend = crate::websocket::worker_channel::BACKEND,
@@ -38,7 +40,7 @@ pub(crate) fn start_worker_mobile_entity_state(
                 }
                 break;
             }
-            record_worker_received("mobile_entity_state", count);
+            receive_metrics.record(count);
             for msg in buffer.drain(..) {
                 match msg {
                     crate::websocket::SpacetimeUpdateMessages::Initial {
@@ -102,6 +104,31 @@ pub(crate) fn start_worker_mobile_entity_state(
                             .remove(&delete.entity_id);
                     }
                 }
+            }
+        }
+    });
+    tokio::spawn(async move {
+        match worker.await {
+            Ok(()) if shutdown.stop.is_cancelled() => {
+                tracing::info!(
+                    worker = "mobile_entity_state",
+                    "Mobile entity worker stopped during shutdown"
+                );
+            }
+            Ok(()) => {
+                tracing::error!(
+                    worker = "mobile_entity_state",
+                    "Mobile entity worker returned unexpectedly"
+                );
+            }
+            Err(error) => {
+                tracing::error!(
+                    worker = "mobile_entity_state",
+                    panicked = error.is_panic(),
+                    cancelled = error.is_cancelled(),
+                    %error,
+                    "Mobile entity worker task failed"
+                );
             }
         }
     });

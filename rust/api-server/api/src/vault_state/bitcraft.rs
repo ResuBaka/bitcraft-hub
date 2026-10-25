@@ -2,7 +2,7 @@ use crate::AppState;
 use crate::websocket::batched_worker::BatchTimer;
 use crate::websocket::initial_sync::{composite_filter, reconcile_stream};
 use crate::websocket::worker_channel::UnboundedReceiver;
-use crate::websocket::{SpacetimeUpdateMessages, record_worker_received};
+use crate::websocket::{SpacetimeUpdateMessages, WorkerReceiveMetrics};
 use entity::vault_state_collectibles;
 use futures::TryStreamExt;
 use game_module::module_bindings::VaultState;
@@ -18,6 +18,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
     time_limit: Duration,
 ) {
     global_app_state.shutdown.clone().spawn_worker(async move {
+        let receive_metrics = WorkerReceiveMetrics::new("vault_state");
         let on_conflict = sea_query::OnConflict::columns([
             vault_state_collectibles::Column::EntityId,
             vault_state_collectibles::Column::Id,
@@ -39,7 +40,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                     msg = rx.recv() => {
                         let Some(msg) = msg else { break; };
                         timer.start();
-                        record_worker_received("vault_state", 1);
+                        receive_metrics.record(1);
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, batches } => {
                                 // Older live events must not be written after the newer snapshot.

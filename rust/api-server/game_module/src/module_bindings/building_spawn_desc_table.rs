@@ -86,7 +86,25 @@ impl<'ctx> BuildingSpawnDescTableHandle<'ctx> {
         BuildingSpawnDescInitialCallbackId(self.imp.on_initial(callback))
     }
 
-    /// Cancel a callback previously registered by [`Self::on_initial`].
+    /// Register a borrowed initial-row view without cloning the full snapshot.
+    pub fn on_initial_rows(
+        &self,
+        callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuildingSpawnDesc>)
+        + Send
+        + 'static,
+    ) -> BuildingSpawnDescInitialCallbackId {
+        BuildingSpawnDescInitialCallbackId(self.imp.on_initial_rows(callback))
+    }
+
+    /// Receive owned initial rows; cacheless single-listener dispatch moves payloads.
+    pub fn on_initial_owned(
+        &self,
+        callback: impl FnMut(&super::EventContext, Vec<BuildingSpawnDesc>) + Send + 'static,
+    ) -> BuildingSpawnDescInitialCallbackId {
+        BuildingSpawnDescInitialCallbackId(self.imp.on_initial_owned(callback))
+    }
+
+    /// Cancel a callback registered by any initial-row registration method.
     pub fn remove_on_initial(&self, callback: BuildingSpawnDescInitialCallbackId) {
         self.imp.remove_on_initial(callback.0)
     }
