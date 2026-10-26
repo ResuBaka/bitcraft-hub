@@ -144,7 +144,10 @@ pub async fn find_player_by_id(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<axum_codec::Codec<FindPlayerByIdResponse>, (StatusCode, &'static str)> {
-    let player = state.player_state.get(&id);
+    let player = state
+        .player_state
+        .get(&id)
+        .map(|player| player.value().clone());
 
     if player.is_none() {
         return Err((StatusCode::NOT_FOUND, "Player not found"));
@@ -212,20 +215,22 @@ pub async fn find_player_by_id(
         .map(|player_action_state| player_action_state.action_type.get_action_name());
 
     //TODO FIX IT SO that it works with the correct type
-    #[allow(clippy::unnecessary_lazy_evaluations)]
-    let current_action_state = state.action_state.get(&(id as u64)).and_then(|_value| {
-        // @todo implement it correctly
-        None
-    });
+    let current_action_state = None;
 
-    let claims = state
+    let claim_ids = state
         .player_to_claim_id_cache
         .get(&(player.entity_id as u64))
-        .map_or(vec![], |ids| {
-            ids.iter()
-                .filter_map(|id| state.claim_state.get(&(*id as i64)).map(|cs| cs.clone()))
-                .collect()
-        });
+        .map(|ids| ids.iter().copied().collect::<Vec<_>>())
+        .unwrap_or_default();
+    let claims = claim_ids
+        .into_iter()
+        .filter_map(|id| {
+            state
+                .claim_state
+                .get(&(id as i64))
+                .map(|claim| claim.value().clone())
+        })
+        .collect();
 
     let traveler_tasks_db =
         QueryCore::get_traveler_task_state_by_player_entity_ids(&state.conn, vec![id])

@@ -1,3 +1,5 @@
+#![warn(clippy::await_holding_invalid_type)]
+
 mod auction_listing_state;
 mod buildings;
 mod cargo_desc;
@@ -1053,12 +1055,11 @@ fn create_app(config: &Config, state: AppState, prometheus: PrometheusHandle) ->
                     &app_state.ranking_system.time_signed_in,
                 );
 
-                for entry in app_state.ranking_system.skill_leaderboards.iter() {
-                    let skill_id = entry.key();
+                for (skill_id, board) in app_state.ranking_system.skill_boards() {
                     append_bucket_metrics(
                         &mut leaderboard_buckets,
                         &format!("skill_{skill_id}"),
-                        entry.value(),
+                        &board,
                     );
                 }
 
@@ -1164,11 +1165,15 @@ fn record_app_state_metrics(app_state: &AppState) {
     .set(app_state.building_nickname_state.len() as f64);
     metrics::gauge!("app_state_cache_size", &[("cache", "action_state")])
         .set(app_state.action_state.len() as f64);
+    let action_maps = app_state
+        .action_state
+        .iter()
+        .map(|entry| Arc::clone(entry.value()))
+        .collect::<Vec<_>>();
     metrics::gauge!("app_state_cache_size", &[("cache", "action_state_total")]).set(
-        app_state
-            .action_state
+        action_maps
             .iter()
-            .map(|entry| entry.value().len())
+            .map(|actions| actions.len())
             .sum::<usize>() as f64,
     );
     metrics::gauge!("app_state_cache_size", &[("cache", "location_state")])
@@ -1219,7 +1224,8 @@ struct AppState {
     building_desc: Arc<dashmap::DashMap<i64, entity::building_desc::Model>>,
     building_nickname_state: Arc<dashmap::DashMap<i64, entity::building_nickname_state::Model>>,
     cargo_tiers: Arc<dashmap::DashSet<i64>>,
-    action_state: Arc<dashmap::DashMap<u64, dashmap::DashMap<u64, entity::action_state::Model>>>,
+    action_state:
+        Arc<dashmap::DashMap<u64, Arc<dashmap::DashMap<u64, entity::action_state::Model>>>>,
     location_state: Arc<dashmap::DashMap<i64, entity::location::Model>>,
     // inventory_state: Arc<dashmap::DashMap<i64, ::entity::inventory::Model>>,
     #[allow(dead_code)]
@@ -1396,10 +1402,14 @@ impl AppState {
             );
         }
 
-        for skill in self.skill_desc.iter() {
-            if skill.skill_category != 0 {
-                self.ranking_system.ensure_skill_leaderboard(skill.id);
-            }
+        let ranked_skills = self
+            .skill_desc
+            .iter()
+            .filter(|skill| skill.skill_category != 0)
+            .map(|skill| skill.id)
+            .collect::<Vec<_>>();
+        for skill_id in ranked_skills {
+            self.ranking_system.ensure_skill_leaderboard(skill_id);
         }
 
         if let Some(memory) = memory {
@@ -1454,11 +1464,15 @@ impl AppState {
         let mut experience_rows = 0usize;
         while let Some(item) = items.try_next().await? {
             experience_rows += 1;
-            let Some(skill) = self.skill_desc.get(&i64::from(item.skill_id)) else {
+            let Some(skill_category) = self
+                .skill_desc
+                .get(&i64::from(item.skill_id))
+                .map(|skill| skill.skill_category)
+            else {
                 tracing::error!(skill_id = item.skill_id, "This should never happen");
                 continue;
             };
-            if skill.skill_category == 0 {
+            if skill_category == 0 {
                 continue;
             }
 
@@ -1480,7 +1494,7 @@ impl AppState {
             let experience = i64::from(item.experience);
             total_xp.add_assign(experience);
             total_level.add_assign(i64::from(experience_to_level(experience)));
-            match skill.skill_category {
+            match skill_category {
                 1 => profession_xp.add_assign(experience),
                 2 => adventure_xp.add_assign(experience),
                 _ => {}
@@ -1488,8 +1502,7 @@ impl AppState {
 
             if let Some(leaderboard) = self
                 .ranking_system
-                .skill_leaderboards
-                .get_mut(&i64::from(item.skill_id))
+                .skill_leaderboard(i64::from(item.skill_id))
             {
                 leaderboard.update(item.entity_id, experience);
             }

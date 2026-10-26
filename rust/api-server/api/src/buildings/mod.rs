@@ -215,15 +215,13 @@ pub(crate) async fn find_building_states(
                 building_name: state
                     .building_nickname_state
                     .get(&(building_state.entity_id))
-                    .map_or_else(
-                        || {
-                            state
-                                .building_desc
-                                .get(&(building_state.building_description_id as i64))
-                                .map_or("".into(), |building_desc| building_desc.name.clone())
-                        },
-                        |building_nickname_state| building_nickname_state.nickname.clone(),
-                    ),
+                    .map(|nickname| nickname.nickname.clone())
+                    .unwrap_or_else(|| {
+                        state
+                            .building_desc
+                            .get(&(building_state.building_description_id as i64))
+                            .map_or("".into(), |building_desc| building_desc.name.clone())
+                    }),
                 location: state
                     .location_state
                     .get(&(building_state.entity_id))

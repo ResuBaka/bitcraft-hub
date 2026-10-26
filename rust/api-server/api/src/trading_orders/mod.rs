@@ -19,11 +19,16 @@ pub(crate) fn get_routes() -> AppRouter {
 async fn get_trade_orders(
     state: State<AppState>,
 ) -> Result<axum_codec::Codec<TradeOrdersResponse>, (StatusCode, &'static str)> {
+    // Resolve item/cargo caches only after releasing the order-map iterator.
+    let orders = state
+        .trade_order_state
+        .iter()
+        .filter(|order| order.traveler_trade_order_id.is_none())
+        .map(|order| order.value().clone())
+        .collect::<Vec<_>>();
     Ok(axum_codec::Codec(TradeOrdersResponse {
-        trade_orders: state
-            .trade_order_state
-            .iter()
-            .filter(|trade_order| trade_order.traveler_trade_order_id.is_none())
+        trade_orders: orders
+            .into_iter()
             .map(|trade_order| {
                 Ok::<_, (StatusCode, &'static str)>(TradeOrdersWithExpendedRefrence {
                     entity_id: trade_order.entity_id,

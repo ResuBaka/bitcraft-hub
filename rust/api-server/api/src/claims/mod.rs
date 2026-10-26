@@ -213,11 +213,10 @@ pub(crate) async fn get_claim_tiles(
         .claim_tile_state
         .iter()
         .filter(|a| a.claim_id == id)
+        .map(|tile| tile.value().clone())
         .collect::<Vec<_>>();
 
-    Ok(axum_codec::Codec(
-        claim_tiles.iter().map(|a| a.value().clone()).collect(),
-    ))
+    Ok(axum_codec::Codec(claim_tiles))
 }
 
 pub(crate) async fn get_claim_auction_listings(
@@ -307,17 +306,22 @@ pub(crate) async fn get_claim_names(
 ) -> Result<axum_codec::Codec<HashMap<i64, ClaimSummaryResponse>>, (StatusCode, &'static str)> {
     let mut claims = HashMap::new();
 
-    for claim_state in state.claim_state.iter() {
+    let claim_summaries = state
+        .claim_state
+        .iter()
+        .map(|claim| (claim.entity_id, claim.name.clone(), claim.region))
+        .collect::<Vec<_>>();
+    for (id, name, region) in claim_summaries {
         let location = state
             .claim_local_state
-            .get(&(claim_state.entity_id as u64))
+            .get(&(id as u64))
             .and_then(|claim_local_state| claim_local_state.location.clone());
 
         claims.insert(
-            claim_state.entity_id,
+            id,
             ClaimSummaryResponse {
-                name: claim_state.name.clone(),
-                region: claim_state.region,
+                name,
+                region,
                 location,
             },
         );
@@ -333,8 +337,12 @@ pub(crate) async fn get_claim(
     axum_codec::Codec<ClaimDescriptionStateWithInventoryAndPlayTime>,
     (StatusCode, &'static str),
 > {
-    let claim = match state.claim_state.get(&(id as i64)) {
-        Some(claim) => claim.clone(),
+    let cached_claim = state
+        .claim_state
+        .get(&(id as i64))
+        .map(|claim| claim.value().clone());
+    let claim = match cached_claim {
+        Some(claim) => claim,
         None => {
             let claim = QueryCore::find_claim_state(&state.conn, id as i64)
                 .await
@@ -368,7 +376,10 @@ pub(crate) async fn get_claim(
         .iter()
         .find(|state| state.entity_id == claim.entity_id);
 
-    let claim_local_state = state.claim_local_state.get(&(claim.entity_id as u64));
+    let claim_local_state = state
+        .claim_local_state
+        .get(&(claim.entity_id as u64))
+        .map(|claim| claim.value().clone());
 
     let player_ids = state
         .claim_member_state
@@ -509,19 +520,21 @@ pub(crate) async fn get_claim(
         }
     }
 
-    for skill in state.skill_desc.iter() {
-        if skill.skill_category == 0 {
-            continue;
-        }
-
-        if let Some(a) = state.ranking_system.skill_leaderboards.get(&skill.id) {
+    let skills = state
+        .skill_desc
+        .iter()
+        .filter(|skill| skill.skill_category != 0)
+        .map(|skill| (skill.id, skill.name.clone()))
+        .collect::<Vec<_>>();
+    for (skill_id, skill_name) in skills {
+        if let Some(a) = state.ranking_system.skill_leaderboard(skill_id) {
             for member in claim.members.iter_mut() {
                 let xp = if let Some(xp) = a.get_value(&member.entity_id) {
                     xp
                 } else {
                     tracing::warn!(
                         member.entity_id,
-                        skill_id = skill.id,
+                        skill_id,
                         "Could not find player skill experience"
                     );
 
@@ -532,7 +545,7 @@ pub(crate) async fn get_claim(
                 }
 
                 let skills_ranks = member.skills_ranks.as_mut().unwrap();
-                skills_ranks.insert(skill.name.clone(), xp);
+                skills_ranks.insert(skill_name.clone(), xp);
             }
         } else {
             continue;
@@ -975,7 +988,8 @@ pub(crate) async fn list_claims(
 
             let claim_local_state = state
                 .claim_local_state
-                .get(&(claim_description.entity_id as u64));
+                .get(&(claim_description.entity_id as u64))
+                .map(|claim| claim.value().clone());
 
             let claim_member_state = state
                 .claim_member_state

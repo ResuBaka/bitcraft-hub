@@ -907,8 +907,7 @@ impl ExperienceStateWorker {
                 if changed {
                     if let Some(board) = state
                         .ranking_system
-                        .skill_leaderboards
-                        .get(&(model.skill_id as i64))
+                        .skill_leaderboard(model.skill_id as i64)
                     {
                         board.update(model.entity_id, model.experience as i64);
                     }
@@ -1115,19 +1114,22 @@ impl ExperienceStateWorker {
             if let Some(new_skill) = new_skill {
                 let new_level = calculation.expect("matched skill has a calculation").level;
                 let skill = if old_level != new_level || new_skill.quantity > es.quantity {
-                    self.global_app_state.skill_desc.get(&(es.skill_id as i64))
+                    self.global_app_state
+                        .skill_desc
+                        .get(&(es.skill_id as i64))
+                        .map(|skill| (skill.name.clone(), skill.skill_category))
                 } else {
                     None
                 };
                 if old_level != new_level
-                    && let Some(skill) = &skill
+                    && let Some((skill_name, _)) = &skill
                 {
                     let _ = self
                         .global_app_state
                         .tx
                         .send(OutboundWebSocketMessages::Level {
                             level: new_level as u64,
-                            skill_name: skill.name.clone(),
+                            skill_name: skill_name.clone(),
                             user_id: id,
                         });
                 }
@@ -1142,18 +1144,15 @@ impl ExperienceStateWorker {
 
                     self.pending.upsert(model);
 
-                    if let Some(skill) = &skill
-                        && skill.skill_category != 0
+                    if let Some((skill_name, skill_category)) = skill
+                        && skill_category != 0
                     {
-                        let skill_name = skill.name.clone();
-
                         let mut prev_rank = None;
                         let post_rank;
                         if let Some(skill_leaderboard) = self
                             .global_app_state
                             .ranking_system
-                            .skill_leaderboards
-                            .get(&(es.skill_id as i64))
+                            .skill_leaderboard(es.skill_id as i64)
                         {
                             if debug_ranks {
                                 prev_rank = skill_leaderboard.get_rank_resolved(resolve_player());
@@ -1162,15 +1161,10 @@ impl ExperienceStateWorker {
                                 .update_resolved(resolve_player(), new_skill.quantity as i64);
                             post_rank = skill_leaderboard.get_rank_resolved(resolve_player());
                         } else {
-                            self.global_app_state
-                                .ranking_system
-                                .ensure_skill_leaderboard(es.skill_id as i64);
                             let skill_leaderboard = self
                                 .global_app_state
                                 .ranking_system
-                                .skill_leaderboards
-                                .get(&(es.skill_id as i64))
-                                .unwrap();
+                                .ensure_skill_leaderboard(es.skill_id as i64);
                             skill_leaderboard
                                 .update_resolved(resolve_player(), new_skill.quantity as i64);
                             post_rank = skill_leaderboard.get_rank_resolved(resolve_player());

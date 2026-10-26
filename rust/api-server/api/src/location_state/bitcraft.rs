@@ -5,8 +5,7 @@ use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
 use entity::shared::Region;
 use game_module::module_bindings::LocationState;
 use migration::OnConflict;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect};
-use std::collections::HashSet;
+use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender as TokioUnboundedSender;
 
@@ -167,7 +166,6 @@ enum LocationStateDbOperation {
 pub(crate) struct LocationStateWorker {
     rx: UnboundedReceiver<SpacetimeUpdateMessages<LocationState>>,
     tx: UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
-    global_app_state: AppState,
     batch_size: usize,
     time_limit: Duration,
     db_tx: TokioUnboundedSender<LocationStateDbOperation>,
@@ -184,7 +182,6 @@ impl LocationStateWorker {
         Self {
             rx,
             tx,
-            global_app_state,
             batch_size,
             time_limit,
             db_tx,
@@ -249,50 +246,16 @@ impl LocationStateWorker {
     }
 
     async fn handle_initial(&mut self, data: Vec<LocationState>, database_name: Region) {
-        let mut local_messages = Vec::with_capacity(self.batch_size + 10);
-        let mut currently_known_location_state = ::entity::location_state::Entity::find()
-            .select_only()
-            .column(::entity::location_state::Column::EntityId)
-            .filter(::entity::location_state::Column::Region.eq(database_name))
-            .into_tuple()
-            .all(&self.global_app_state.conn)
-            .await
-            .unwrap_or_else(|error| {
-                tracing::error!(
-                    error = error.to_string(),
-                    "Error while query whole location_state state"
-                );
-                vec![]
-            })
-            .into_iter()
-            .collect::<HashSet<_>>();
-
-        for model in data.into_iter().map(|value| {
-            let model: ::entity::location_state::Model =
-                ::entity::location_state::ModelBuilder::new(value)
-                    .with_region(database_name)
-                    .build();
-
-            model
-        }) {
-            if currently_known_location_state.contains(&model.entity_id) {
-                currently_known_location_state.remove(&model.entity_id);
-                local_messages.push(model.into_active_model());
-            }
-            if local_messages.len() >= self.batch_size {
-                let messages = std::mem::take(&mut local_messages);
-                self.queue_upserts(messages);
+        // Each initial subscription covers only one chunk, not the whole region.
+        // Upsert all received rows (including new entities), but never interpret
+        // absent entities as deletions from other chunks. Live deletes still apply.
+        for location in data {
+            self.handle_insert(location, database_name).await;
+            if self.messages.len() >= self.batch_size {
+                self.flush_messages();
             }
         }
-        if !local_messages.is_empty() {
-            self.queue_upserts(local_messages);
-        }
-
-        self.queue_deletes(
-            currently_known_location_state
-                .into_iter()
-                .collect::<Vec<_>>(),
-        );
+        self.flush_messages();
     }
 
     async fn handle_insert(&mut self, new: LocationState, database_name: Region) {
@@ -301,37 +264,18 @@ impl LocationStateWorker {
                 .with_region(database_name)
                 .build();
 
-        if let Some(index) = self
-            .messages
-            .iter()
-            .position(|value| value.entity_id.as_ref() == &model.entity_id)
-        {
-            self.messages.remove(index);
-        }
-
-        if let Some(index) = self
-            .messages_delete
-            .iter()
-            .position(|value| *value == model.entity_id)
-        {
-            self.messages_delete.remove(index);
-        }
+        // The conflict key is entity_id alone, including across regions. A later
+        // operation supersedes every pending write/delete for this entity.
+        self.messages
+            .retain(|value| value.entity_id.as_ref() != &model.entity_id);
+        self.messages_delete.retain(|id| *id != model.entity_id);
         self.messages.push(model.into_active_model());
     }
 
     async fn handle_update(&mut self, new: LocationState, database_name: Region) {
-        let model: ::entity::location_state::Model =
-            ::entity::location_state::ModelBuilder::new(new)
-                .with_region(database_name)
-                .build();
-        if let Some(index) = self
-            .messages_delete
-            .iter()
-            .position(|value| *value == model.entity_id)
-        {
-            self.messages_delete.remove(index);
-        }
-        self.messages.push(model.into_active_model());
+        // PostgreSQL rejects duplicate conflict keys within one INSERT statement.
+        // Updates must coalesce exactly like inserts and initial chunk rows.
+        self.handle_insert(new, database_name).await;
     }
 
     async fn handle_remove(&mut self, delete: LocationState, database_name: Region) {
@@ -341,14 +285,11 @@ impl LocationStateWorker {
                 .build();
         let id = model.entity_id;
 
-        if let Some(index) = self
-            .messages
-            .iter()
-            .position(|value| value.entity_id.as_ref() == &model.entity_id)
-        {
-            self.messages.remove(index);
+        self.messages
+            .retain(|value| value.entity_id.as_ref() != &id);
+        if !self.messages_delete.contains(&id) {
+            self.messages_delete.push(id);
         }
-        self.messages_delete.push(id);
     }
 
     fn flush_messages(&mut self) {
@@ -476,4 +417,178 @@ async fn insert_multiple_location_state(
     }
 
     messages.clear();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn location(entity_id: u64, x: i32) -> LocationState {
+        LocationState {
+            entity_id,
+            chunk_index: 3003,
+            x,
+            z: 10,
+            dimension: 1,
+        }
+    }
+
+    fn model(entity_id: u64, x: i32, region: Region) -> ::entity::location_state::ActiveModel {
+        ::entity::location_state::ModelBuilder::new(location(entity_id, x))
+            .with_region(region)
+            .build()
+            .into_active_model()
+    }
+
+    fn worker() -> (
+        LocationStateWorker,
+        tokio::sync::mpsc::UnboundedReceiver<LocationStateDbOperation>,
+    ) {
+        let (tx, rx) = crate::websocket::worker_channel::unbounded_channel();
+        let (db_tx, db_rx) = tokio::sync::mpsc::unbounded_channel();
+        (
+            LocationStateWorker {
+                tx,
+                rx,
+                db_tx,
+                batch_size: 10,
+                time_limit: Duration::from_millis(200),
+                messages: Vec::new(),
+                messages_delete: Vec::new(),
+            },
+            db_rx,
+        )
+    }
+
+    #[tokio::test]
+    async fn repeated_updates_write_only_latest_row_per_conflict_key() {
+        use entity::location_state::{Column, Entity};
+        use sea_orm::{DbBackend, MockDatabase, QueryTrait, Transaction};
+        let (mut worker, mut operations) = worker();
+        worker.handle_insert(location(1, 10), 1).await;
+        worker.handle_insert(location(2, 20), 1).await;
+        worker.handle_update(location(1, 30), 1).await;
+        worker.handle_update(location(1, 40), 2).await;
+        worker.handle_update(location(1, 50), 3).await;
+        assert_eq!(worker.messages, [model(2, 20, 1), model(1, 50, 3)]);
+        worker.flush().await;
+        let LocationStateDbOperation::Upsert(mut rows) = operations.try_recv().unwrap() else {
+            panic!("expected upsert");
+        };
+        assert!(operations.try_recv().is_err());
+        assert_eq!(rows, [model(2, 20, 1), model(1, 50, 3)]);
+
+        let returned = ::entity::location_state::ModelBuilder::new(location(1, 50))
+            .with_region(3)
+            .build();
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![returned]])
+            .into_connection();
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db, tx, Default::default());
+        let conflict = sea_orm::sea_query::OnConflict::column(Column::EntityId)
+            .update_columns([
+                Column::ChunkIndex,
+                Column::X,
+                Column::Z,
+                Column::Dimension,
+                Column::Region,
+            ])
+            .to_owned();
+        let mut expected = Entity::insert_many([model(2, 20, 1), model(1, 50, 3)])
+            .on_conflict(conflict.clone())
+            .build(DbBackend::Postgres);
+        expected.sql.push_str(" RETURNING \"entity_id\"");
+        insert_multiple_location_state(&state, &conflict, &mut rows).await;
+        assert!(rows.is_empty());
+        assert_eq!(
+            state.conn.into_transaction_log(),
+            [Transaction::one(expected)]
+        );
+    }
+
+    #[tokio::test]
+    async fn later_deletes_and_upserts_cancel_all_prior_operations_for_entity() {
+        let (mut worker, mut operations) = worker();
+        worker
+            .messages
+            .extend([model(1, 10, 1), model(2, 20, 1), model(1, 30, 2)]);
+        worker.handle_remove(location(1, 30), 2).await;
+        worker.handle_remove(location(1, 30), 2).await;
+        assert_eq!(worker.messages, [model(2, 20, 1)]);
+        assert_eq!(worker.messages_delete, [1]);
+        worker.messages_delete.push(1); // Also repair duplicates already pending.
+        worker.handle_update(location(1, 40), 3).await;
+        assert!(worker.messages_delete.is_empty());
+        assert_eq!(worker.messages, [model(2, 20, 1), model(1, 40, 3)]);
+        worker.handle_remove(location(1, 40), 3).await;
+        worker.flush().await;
+        assert!(
+            matches!(operations.try_recv().unwrap(), LocationStateDbOperation::Upsert(rows) if rows == [model(2, 20, 1)])
+        );
+        assert!(
+            matches!(operations.try_recv().unwrap(), LocationStateDbOperation::Delete(ids) if ids == [1])
+        );
+        assert!(worker.is_idle());
+    }
+
+    #[tokio::test]
+    async fn initial_chunk_duplicates_and_live_updates_remain_ordered_across_flushes() {
+        let (mut worker, mut operations) = worker();
+        worker.handle_update(location(1, 10), 1).await;
+        worker
+            .handle_initial(vec![location(1, 20), location(1, 30)], 2)
+            .await;
+        assert!(
+            matches!(operations.try_recv().unwrap(), LocationStateDbOperation::Upsert(rows) if rows == [model(1, 30, 2)])
+        );
+        worker.handle_update(location(1, 40), 2).await;
+        worker.handle_update(location(1, 50), 2).await;
+        worker.flush().await;
+        assert!(
+            matches!(operations.try_recv().unwrap(), LocationStateDbOperation::Upsert(rows) if rows == [model(1, 50, 2)])
+        );
+        worker.handle_initial(vec![], 2).await;
+        assert!(
+            operations.try_recv().is_err(),
+            "empty chunk snapshots never imply stale deletion"
+        );
+    }
+
+    #[tokio::test]
+    async fn chunk_snapshots_upsert_new_entities_without_deleting_other_chunks() {
+        let (tx, rx) = crate::websocket::worker_channel::unbounded_channel();
+        let (db_tx, mut db_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut worker = LocationStateWorker {
+            tx,
+            rx,
+            db_tx,
+            batch_size: 10,
+            time_limit: Duration::from_millis(200),
+            messages: Vec::new(),
+            messages_delete: Vec::new(),
+        };
+        for (entity_id, chunk_index) in [(42, 3003), (43, 4003)] {
+            worker
+                .handle_initial(
+                    vec![LocationState {
+                        entity_id,
+                        chunk_index,
+                        x: 0,
+                        z: 0,
+                        dimension: 1,
+                    }],
+                    1,
+                )
+                .await;
+            let Some(LocationStateDbOperation::Upsert(rows)) = db_rx.recv().await else {
+                panic!("chunk snapshot must enqueue an upsert, not a delete");
+            };
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].entity_id.clone().unwrap(), entity_id as i64);
+        }
+        worker.handle_initial(Vec::new(), 1).await;
+        assert!(db_rx.try_recv().is_err());
+        assert!(worker.messages_delete.is_empty());
+    }
 }

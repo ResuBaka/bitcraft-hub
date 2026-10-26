@@ -699,7 +699,7 @@ pub struct RankingSystem {
     bucket_config: crate::config::LeaderboardConfig,
     players: Arc<PlayerRegistry>,
     worker: RankingWorker,
-    pub skill_leaderboards: DashMap<i64, Leaderboard>,
+    skill_leaderboards: DashMap<i64, Arc<Leaderboard>>,
     pub global_leaderboard: Leaderboard,
     pub profession_leaderboard: Leaderboard,
     pub adventure_leaderboard: Leaderboard,
@@ -779,7 +779,7 @@ impl RankingSystem {
         ] {
             board.reserve_players(count);
         }
-        for board in self.skill_leaderboards.iter() {
+        for (_, board) in self.skill_boards() {
             board.reserve_players(count);
         }
     }
@@ -807,8 +807,8 @@ impl RankingSystem {
         ] {
             record(board);
         }
-        for board in self.skill_leaderboards.iter() {
-            record(board.value());
+        for (_, board) in self.skill_boards() {
+            record(&board);
         }
         eprintln!(
             "startup_rankings boards={boards} registered_players={} buffer_capacity_bytes={buffer_bytes} score_slots={score_slots} pending_changes={pending_changes}",
@@ -842,20 +842,43 @@ impl RankingSystem {
         ] {
             record(name, board);
         }
-        for board in self.skill_leaderboards.iter() {
-            record(&format!("skill_{}", board.key()), board.value());
+        for (id, board) in self.skill_boards() {
+            record(&format!("skill_{id}"), &board);
         }
     }
 
-    pub(crate) fn ensure_skill_leaderboard(&self, skill_id: i64) {
-        self.skill_leaderboards.entry(skill_id).or_insert_with(|| {
-            Leaderboard::with_worker_and_buckets(
-                Arc::clone(&self.players),
-                ScoreWidth::Skill,
-                &self.worker,
-                Self::bucket_layout(&self.bucket_config, &format!("skill_{skill_id}")),
-            )
-        });
+    /// Do not let DashMap guards escape into code that locks a board, creates
+    /// another board, performs IO, or accesses another cache.
+    pub(crate) fn skill_leaderboard(&self, skill_id: i64) -> Option<Arc<Leaderboard>> {
+        self.skill_leaderboards
+            .get(&skill_id)
+            .map(|board| Arc::clone(board.value()))
+    }
+
+    pub(crate) fn skill_boards(&self) -> Vec<(i64, Arc<Leaderboard>)> {
+        self.skill_leaderboards
+            .iter()
+            .map(|board| (*board.key(), Arc::clone(board.value())))
+            .collect()
+    }
+
+    pub(crate) fn ensure_skill_leaderboard(&self, skill_id: i64) -> Arc<Leaderboard> {
+        if let Some(board) = self.skill_leaderboard(skill_id) {
+            return board;
+        }
+        // Construct/register outside the map write lock. Concurrent creators
+        // atomically retain the first board; unused weak registrations expire.
+        let candidate = Arc::new(Leaderboard::with_worker_and_buckets(
+            Arc::clone(&self.players),
+            ScoreWidth::Skill,
+            &self.worker,
+            Self::bucket_layout(&self.bucket_config, &format!("skill_{skill_id}")),
+        ));
+        use dashmap::mapref::entry::Entry;
+        match self.skill_leaderboards.entry(skill_id) {
+            Entry::Occupied(entry) => Arc::clone(entry.get()),
+            Entry::Vacant(entry) => Arc::clone(entry.insert(candidate).value()),
+        }
     }
 }
 
@@ -1037,8 +1060,7 @@ pub(crate) async fn get_top_100(
         // let db = state.conn.clone();
         let entries = state
             .ranking_system
-            .skill_leaderboards
-            .get(&skill.id)
+            .skill_leaderboard(skill.id)
             .unwrap()
             .get_range(0, 100);
 
@@ -1203,19 +1225,9 @@ pub(crate) async fn player_leaderboard(
 
         let player_name = None;
 
-        let (skill_exp, rank) = if let Some(rank) = state
-            .ranking_system
-            .skill_leaderboards
-            .get(&skill.id)
-            .unwrap()
-            .get_rank(player_id)
-        {
-            let a = state
-                .ranking_system
-                .skill_leaderboards
-                .get(&skill.id)
-                .unwrap()
-                .get_value(&player_id);
+        let board = state.ranking_system.skill_leaderboard(skill.id).unwrap();
+        let (skill_exp, rank) = if let Some(rank) = board.get_rank(player_id) {
+            let a = board.get_value(&player_id);
 
             (a.unwrap(), rank)
         } else {

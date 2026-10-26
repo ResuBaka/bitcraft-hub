@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use tracing::Level;
+use entity::shared::Region;
 
 pub(crate) type TechTierResearchMap = std::collections::HashMap<i32, i32>;
 
@@ -311,9 +312,8 @@ impl Config {
         )
     }
 
-    #[allow(dead_code)]
-    pub fn spacetimedb_url(&self) -> String {
-        format!("{}{}", self.spacetimedb.protocol, self.spacetimedb.domain)
+    pub fn spacetimedb_url(&self, region_number: Region) -> String {
+        format!("{}{}:{}", self.spacetimedb.protocol, self.spacetimedb.domain, region_number + 3000)
     }
 }
 

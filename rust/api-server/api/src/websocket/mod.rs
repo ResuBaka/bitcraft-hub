@@ -42,11 +42,14 @@ use std::sync::{Arc, Mutex};
 use tokio::time::Duration;
 use tokio::time::Instant;
 use ts_rs::TS;
+use entity::shared::Region;
 
 pub(crate) mod batched_worker;
 pub(crate) mod initial_batches;
 pub(crate) mod initial_sync;
 mod metric_handles;
+mod overworld;
+mod portal_locations;
 pub(crate) use metric_handles::WorkerReceiveMetrics;
 use metric_handles::{ListenerMetrics, WorkerSendMetrics};
 pub(crate) mod worker_channel;
@@ -105,6 +108,7 @@ fn connect_to_db(
     db_name: &str,
     db_host: &str,
     timing: ConnectionTiming,
+    region_number: Region,
 ) -> spacetimedb_sdk::Result<DbConnection> {
     let tmp_global_app_state = global_app_state.clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
@@ -129,7 +133,7 @@ fn connect_to_db(
                 .connection_state
                 .insert(tmp_db_name.clone(), true);
         })
-        .with_row_deduplication(false)
+        .with_row_deduplication(true)
         // Register our `on_connect_error` callback, which will print a message, then exit the process.
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
@@ -163,7 +167,7 @@ fn connect_to_db(
         // If the user has previously connected, we'll have saved a token in the `on_connect` callback.
         // In that case, we'll load it and pass it to `with_token`,
         // so we can re-authenticate as the same `Identity`.
-        .with_token(Some(token.trim()))
+        // .with_token(Some(token.trim()))
         // Set the database name we chose when we called `spacetime publish`.
         .with_database_name(db_name)
         // Set the URI of the SpacetimeDB host that's running our database.
@@ -285,15 +289,16 @@ fn connect_to_db_global(
         global_app_state,
         config.spacetimedb.password.clone(),
         database,
-        config.spacetimedb_url().as_ref(),
+        config.spacetimedb_url(0).as_ref(),
         ConnectionTiming::default(),
+        0
     )?;
 
     if !ctx.is_active() {
         tracing::error!(
             region = database,
             "Could not connect to the bitcraft server {} with module {database}",
-            config.spacetimedb_url()
+            config.spacetimedb_url(0)
         );
         anyhow::bail!("Connection to {database} is inactive");
     }
@@ -400,28 +405,30 @@ async fn connect_to_db_logic(
     if global_app_state.shutdown.stop.is_cancelled() {
         return Ok(());
     }
-    let ctx = connect_to_db(
-        global_app_state.clone(),
-        config.spacetimedb.password.clone(),
-        database,
-        config.spacetimedb_url().as_ref(),
-        timing,
-    )?;
-
-    if !ctx.is_active() {
-        tracing::error!(
-            region = database,
-            "Could not connect to the bitcraft server {} with module {database}",
-            config.spacetimedb_url()
-        );
-        anyhow::bail!("Connection to {database} is inactive");
-    }
 
     let region_number = database
         .split("-")
         .last()
         .unwrap()
         .parse::<entity::shared::Region>()?;
+
+    let ctx = connect_to_db(
+        global_app_state.clone(),
+        config.spacetimedb.password.clone(),
+        database,
+        config.spacetimedb_url(region_number).as_ref(),
+        timing,
+        region_number,
+    )?;
+
+    if !ctx.is_active() {
+        tracing::error!(
+            region = database,
+            "Could not connect to the bitcraft server {} with module {database}",
+            config.spacetimedb_url(region_number)
+        );
+        anyhow::bail!("Connection to {database} is inactive");
+    }
 
     crate::claims::events::register_listeners(
         &ctx,
@@ -940,9 +947,8 @@ async fn connect_to_db_logic(
     let sql_subscribe = vec![
         ("equipment_desc", "SELECT * FROM equipment_desc"),
         ("equipment_state", "SELECT * FROM equipment_state"),
-        // ("location_state", "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id"),
-        // ("location_state", "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id"),
-        ("location_state", "select location_state.* from location_state JOIN player_state ON player_state.entity_id = location_state.entity_id"),
+        ("location_state", "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id"),
+        ("location_state", "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id"),
         // ("location_state", "SELECT * FROM location_state where dimension = 1"),
         (
             "mobile_entity_state",
@@ -1671,6 +1677,8 @@ async fn connect_to_db_logic(
     );
     // Do not send an empty subscription request: keep the connection running
     // without subscriptions when isolating connection/worker RSS.
+    let portal_dimensions = (!config.spacetimedb.skip_state_tables)
+        .then(|| portal_locations::listen(&ctx));
     if !queries.is_empty() {
         subscription_builder.subscribe(queries);
     }
@@ -1678,7 +1686,24 @@ async fn connect_to_db_logic(
     let tmp_disconnect_db_name = database.to_string().clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
 
-    let result = run_connection_until_shutdown(&ctx, &global_app_state.shutdown.stop).await;
+    // The SDK must keep processing events while we wait for subscriptions to apply.
+    let connection = run_connection_until_shutdown(&ctx, &global_app_state.shutdown.stop);
+    tokio::pin!(connection);
+    let result = tokio::select! {
+        result = &mut connection => result,
+        result = async {
+            // if let Some(dimensions) = portal_dimensions {
+            //     tokio::try_join!(
+            //         overworld::subscribe(&ctx),
+            //         // portal_locations::subscribe(&ctx, dimensions),
+            //     )?;
+            // }
+            Ok::<(), anyhow::Error>(())
+        } => match result {
+            Ok(()) => connection.await,
+            Err(error) => Err(error),
+        },
+    };
 
     metrics::gauge!(
         "bitcraft_database_connected",
@@ -1804,16 +1829,16 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let tmp_global_app_state = global_app_state.clone();
         let tmp_database = config.spacetimedb.database.clone();
 
-        let result = connect_to_db_global(tmp_global_app_state, &tmp_conf, &tmp_database);
-
-        if let Err(error) = result {
-            tracing::error!(
-                region = tmp_database,
-                error = error.to_string(),
-                "Error creating connection to {tmp_database} on {}",
-                tmp_conf.spacetimedb_url()
-            )
-        };
+        // let result = connect_to_db_global(tmp_global_app_state, &tmp_conf, &tmp_database);
+        //
+        // if let Err(error) = result {
+        //     tracing::error!(
+        //         region = tmp_database,
+        //         error = error.to_string(),
+        //         "Error creating connection to {tmp_database} on {}",
+        //         tmp_conf.spacetimedb_url()
+        //     )
+        // };
 
         config
             .spacetimedb
@@ -1875,22 +1900,6 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         rand::rng().random_range(min_wait_ms..=max_wait_ms)
                     };
 
-                    if startup_wait_ms > 0 {
-                        tracing::debug!(
-                            region = tmp_database,
-                            wait_ms = startup_wait_ms,
-                            database_name = tmp_database.clone(),
-                            spacetime_url = tmp_conf.spacetimedb_url(),
-                            "Delaying websocket connection startup"
-                        );
-                        tokio::select! { biased;
-                            _ = stop.cancelled() => return,
-                            _ = tokio::time::sleep(Duration::from_millis(startup_wait_ms)) => {},
-                        }
-                    }
-
-                    let mut tries = 0;
-
                     let region = match tmp_database
                         .split('-')
                         .next_back()
@@ -1903,6 +1912,24 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             return;
                         }
                     };
+
+                    if startup_wait_ms > 0 {
+                        tracing::debug!(
+                            region = tmp_database,
+                            wait_ms = startup_wait_ms,
+                            database_name = tmp_database.clone(),
+                            spacetime_url = tmp_conf.spacetimedb_url(region),
+                            "Delaying websocket connection startup"
+                        );
+                        tokio::select! { biased;
+                            _ = stop.cancelled() => return,
+                            _ = tokio::time::sleep(Duration::from_millis(startup_wait_ms)) => {},
+                        }
+                    }
+
+                    let mut tries = 0;
+
+
                     let claim_event_tx = crate::claims::events::start_persistence_worker(
                         tmp_global_app_state.clone(),
                         region,
@@ -1975,7 +2002,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                                 region = tmp_database,
                                 error = error.to_string(),
                                 "Connection to {tmp_database} on {} failed",
-                                tmp_conf.spacetimedb_url()
+                                tmp_conf.spacetimedb_url(region)
                             );
 
                         }
@@ -1990,7 +2017,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                                 region = tmp_database,
                                 tries,
                                 database_name = tmp_database.clone(),
-                                spacetime_url = tmp_conf.spacetimedb_url(),
+                                spacetime_url = tmp_conf.spacetimedb_url(region),
                                 "Websocket reconnect retry budget exhausted"
                             );
                             break;
@@ -2004,7 +2031,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             tries,
                             wait = wait.as_secs(),
                             database_name = tmp_database.clone(),
-                            spacetime_url = tmp_conf.spacetimedb_url(),
+                            spacetime_url = tmp_conf.spacetimedb_url(region),
                             "Retrying websocket connection"
                         );
                         tokio::select! { biased;

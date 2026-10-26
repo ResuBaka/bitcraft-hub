@@ -675,14 +675,8 @@ mod tests {
         };
         assert_eq!(bounds(&system.level_leaderboard), (145, 149));
         assert_eq!(bounds(&system.global_leaderboard), (0, 999));
-        assert_eq!(
-            bounds(&system.skill_leaderboards.get(&1).unwrap()),
-            (100, 199)
-        );
-        assert_eq!(
-            bounds(&system.skill_leaderboards.get(&2).unwrap()),
-            (0, 999)
-        );
+        assert_eq!(bounds(&system.skill_leaderboard(1).unwrap()), (100, 199));
+        assert_eq!(bounds(&system.skill_leaderboard(2).unwrap()), (0, 999));
     }
 
     #[test]
@@ -952,7 +946,7 @@ mod tests {
         let system = super::super::RankingSystem::default();
         system.ensure_skill_leaderboard(10);
         system.ensure_skill_leaderboard(11);
-        let skill = system.skill_leaderboards.get(&10).unwrap();
+        let skill = system.skill_leaderboard(10).unwrap();
         skill.update(123, 0);
         for board in [
             &system.global_leaderboard,
@@ -969,15 +963,58 @@ mod tests {
         }
         assert!(Arc::ptr_eq(
             &skill.players,
-            &system.skill_leaderboards.get(&11).unwrap().players
+            &system.skill_leaderboard(11).unwrap().players
         ));
         drop(skill);
         system.ensure_skill_leaderboard(10);
         assert_eq!(
-            system.skill_leaderboards.get(&10).unwrap().get_value(&123),
+            system.skill_leaderboard(10).unwrap().get_value(&123),
             Some(0)
         );
     }
+    #[test]
+    fn skill_board_handles_do_not_retain_map_locks() {
+        let system = super::super::RankingSystem::default();
+        let board = system.ensure_skill_leaderboard(10);
+        let lookup = system.skill_leaderboard(10).unwrap();
+        let snapshot = system.skill_boards();
+        assert!(Arc::ptr_eq(&board, &lookup));
+        assert!(Arc::ptr_eq(&board, &snapshot[0].1));
+        // This must succeed while all returned handles remain alive.
+        assert!(matches!(
+            system.skill_leaderboards.try_get_mut(&10),
+            dashmap::try_result::TryResult::Present(_)
+        ));
+        system.skill_leaderboards.remove(&10);
+        board.update(123, 42);
+        assert_eq!(lookup.get_value(&123), Some(42));
+        assert_eq!(snapshot[0].1.get_value(&123), Some(42));
+    }
+
+    #[test]
+    fn concurrent_skill_board_creation_returns_the_same_board() {
+        let system = super::super::RankingSystem::default();
+        let barrier = std::sync::Barrier::new(8);
+        let boards = std::thread::scope(|scope| {
+            let threads = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        system.ensure_skill_leaderboard(10)
+                    })
+                })
+                .collect::<Vec<_>>();
+            threads
+                .into_iter()
+                .map(|thread| thread.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert_eq!(system.skill_boards().len(), 1);
+        for board in &boards {
+            assert!(Arc::ptr_eq(&boards[0], board));
+        }
+    }
+
     #[test]
     fn production_sized_boards_use_compact_array_payloads() {
         use std::mem::size_of;
@@ -1288,7 +1325,7 @@ mod tests {
             assert_eq!(board.memory_stats().active_players, 0);
         }
         for id in [1, 2] {
-            let board = system.skill_leaderboards.get(&id).unwrap();
+            let board = system.skill_leaderboard(id).unwrap();
             assert!(board.data.read().ranks.capacity() >= 1_000);
             assert_eq!(board.memory_stats().score_slots, 0);
         }

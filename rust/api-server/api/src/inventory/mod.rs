@@ -229,13 +229,12 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
         }
     };
 
-    let mut inventorys =
-        QueryCore::find_inventory_by_owner_entity_ids(&state.conn, inventory_ids)
-            .await
-            .map_err(|e| {
-                error!("Error: {e:?}");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-            })?;
+    let mut inventorys = QueryCore::find_inventory_by_owner_entity_ids(&state.conn, inventory_ids)
+        .await
+        .map_err(|e| {
+            error!("Error: {e:?}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+        })?;
 
     if let Some(player_entity_id) = &player_id {
         let mobile_entiety_from_player =
@@ -563,19 +562,23 @@ fn shared_description<M: Clone + PartialEq>(
     source: &dashmap::DashMap<i32, M>,
     id: i32,
 ) -> Option<Arc<M>> {
-    let Some(current) = source.get(&id) else {
-        cache.remove(&id);
-        return None;
+    let description = {
+        let Some(current) = source.get(&id) else {
+            cache.remove(&id);
+            return None;
+        };
+        if let Some(cached) = cache.get(&id)
+            && cached.as_ref() == current.value()
+        {
+            return Some(Arc::clone(cached));
+        }
+        Arc::new(current.value().clone())
     };
-    if let Some(cached) = cache.get(&id)
-        && cached.as_ref() == current.value()
-    {
-        return Some(Arc::clone(cached));
-    }
+    // Releasing snapshots can drop many descriptions; do it after the source
+    // shard guard is gone, not while blocking description writers.
     if cache.len() >= MAX_CACHED_DESCRIPTIONS && !cache.contains_key(&id) {
         cache.clear();
     }
-    let description = Arc::new(current.value().clone());
     cache.insert(id, Arc::clone(&description));
     Some(description)
 }
