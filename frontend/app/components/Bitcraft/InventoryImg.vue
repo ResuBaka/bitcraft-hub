@@ -4,7 +4,7 @@ import Item from "~/components/Bitcraft/Item.vue";
 
 const props = withDefaults(
   defineProps<{
-    item: ItemExpended;
+    item: Pick<ItemExpended, "name" | "icon_asset_name">;
     skipErrorText?: boolean;
     height?: number | string;
     width?: number | string;
@@ -17,7 +17,7 @@ const props = withDefaults(
 );
 
 const imagedErrored = ref(false);
-const iconUrl = (item: ItemExpended) => {
+const iconUrl = (item: Pick<ItemExpended, "name" | "icon_asset_name">) => {
   if (!item?.icon_asset_name) {
     return {
       url: "",

@@ -519,21 +519,29 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
         <UCard v-if="deployables && deployables.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Deployables</h2>
-            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <div
                 v-for="deployable in deployables"
                 :key="deployable.id"
-                class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+                class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-800"
               >
-                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {{ deployable.collectible_desc.name }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  Amount: {{ numberFormat.format(deployable.count) }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ deployable.activated ? "Activated" : "Not Activated" }}
-                </p>
+                <bitcraft-inventory-img
+                  :item="deployable.collectible_desc"
+                  :width="48"
+                  :height="48"
+                  class="size-12 shrink-0"
+                />
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {{ deployable.collectible_desc.name }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Amount: {{ numberFormat.format(deployable.count) }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ deployable.activated ? "Activated" : "Not Activated" }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
