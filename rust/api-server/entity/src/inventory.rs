@@ -44,6 +44,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, TS)]
 pub struct ResolvedInventory {
     pub entity_id: i64,
+    pub region: crate::shared::Region,
     pub pockets: Vec<ItemSlotResolved>,
     pub inventory_index: i32,
     pub cargo_index: i32,

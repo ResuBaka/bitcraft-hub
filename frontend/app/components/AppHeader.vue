@@ -28,18 +28,6 @@ const items = computed(() => [
 
 const websocketStore = useWebsocketStore();
 const configStore = useConfigStore();
-
-const websocketEnabled = computed({
-  get: () => configStore.websocket.enabled_default,
-  set: (enabled) => {
-    configStore.websocket.enabled_default = enabled;
-    if (enabled) {
-      websocketStore.open();
-    } else {
-      websocketStore.close();
-    }
-  },
-});
 </script>
 
 <template>
@@ -64,9 +52,10 @@ const websocketEnabled = computed({
             {{ websocketStore.isConnected ? "Connected" : "Disconnected" }}
           </UBadge>
         </div>
-        <USwitch v-model="websocketEnabled" />
+        <USwitch v-model="configStore.websocket.enabled_default" aria-label="Enable live updates" />
       </div>
       <UColorModeSelect />
+      <AppSettings />
     </template>
 
     <template #body>
@@ -80,7 +69,7 @@ const websocketEnabled = computed({
             {{ websocketStore.isConnected ? "Connected" : "Disconnected" }}
           </p>
         </div>
-        <USwitch v-model="websocketEnabled" />
+        <USwitch v-model="configStore.websocket.enabled_default" aria-label="Enable live updates" />
       </div>
       <UButton class="mt-4" label="Download App" variant="subtle" block />
     </template>

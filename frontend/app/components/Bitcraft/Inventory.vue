@@ -13,6 +13,7 @@ import { pocketMatchesSearch } from "~/utils/inventorySearch";
 const props = defineProps<{
   inventory: ResolvedInventory;
   search?: string;
+  showRegion?: boolean;
 }>();
 
 const visiblePockets = computed(() =>
@@ -134,6 +135,10 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
             </div>
           </div>
           <div class="inventory-controls">
+            <div v-if="showRegion && inventory.region != null" class="inventory-region">
+              <span>Region</span>
+              <bitcraft-region :region="inventory.region" />
+            </div>
             <USwitch v-model="showChangelog" label="Show changelog" />
           </div>
         </div>
@@ -231,6 +236,7 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
   margin: 0;
 }
 
+.inventory-region,
 .inventory-claim {
   display: flex;
   flex-wrap: wrap;

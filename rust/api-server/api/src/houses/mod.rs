@@ -370,6 +370,7 @@ pub(crate) async fn find_house_inventories(
 
             inventories.push(::entity::inventory::ResolvedInventory {
                 entity_id: inventory.entity_id,
+                region: inventory.region,
                 pockets,
                 inventory_index: inventory.inventory_index,
                 cargo_index: inventory.cargo_index,

@@ -313,6 +313,7 @@ impl InventoryStateWorker {
                 .send(OutboundWebSocketMessages::InventoryInsert {
                     resolved_inventory: ResolvedInventory {
                         entity_id: model.entity_id,
+                        region: model.region,
                         pockets,
                         inventory_index: model.inventory_index,
                         cargo_index: model.cargo_index,
@@ -354,6 +355,7 @@ impl InventoryStateWorker {
                 .send(OutboundWebSocketMessages::InventoryUpdate {
                     resolved_inventory: ResolvedInventory {
                         entity_id: model.entity_id,
+                        region: model.region,
                         pockets,
                         inventory_index: model.inventory_index,
                         cargo_index: model.cargo_index,
@@ -466,6 +468,7 @@ impl InventoryStateWorker {
                 .send(OutboundWebSocketMessages::InventoryRemove {
                     resolved_inventory: ResolvedInventory {
                         entity_id: model.entity_id,
+                        region: model.region,
                         pockets,
                         inventory_index: model.inventory_index,
                         cargo_index: model.cargo_index,

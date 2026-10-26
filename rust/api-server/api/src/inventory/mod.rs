@@ -337,6 +337,7 @@ pub(crate) async fn find_inventory_by_owner_entity_id(
 
         resolved_inventory.push(ResolvedInventory {
             entity_id: inventory.entity_id,
+            region: inventory.region,
             pockets,
             inventory_index: inventory.inventory_index,
             cargo_index: inventory.cargo_index,

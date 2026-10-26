@@ -4,6 +4,7 @@ import type { ItemSlotResolved } from "./ItemSlotResolved";
 
 export type ResolvedInventory = {
   entity_id: bigint;
+  region: number;
   pockets: Array<ItemSlotResolved>;
   inventory_index: number;
   cargo_index: number;

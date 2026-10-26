@@ -35,9 +35,17 @@ export const useWebsocketStore = defineStore("websocket", () => {
   );
 
   onMounted(() => {
-    if (configStore.websocket.enabled_default) {
-      open();
-    }
+    watch(
+      () => configStore.websocket.enabled_default,
+      (enabled) => {
+        if (enabled) {
+          open();
+        } else {
+          close();
+        }
+      },
+      { immediate: true },
+    );
   });
 
   async function handleMessage(_ws: WebSocket, event: MessageEvent) {

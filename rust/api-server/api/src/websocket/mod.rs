@@ -2649,6 +2649,7 @@ mod tests {
         assert_eq!(topics[1].1, Some(7));
         let inventory = entity::inventory::ResolvedInventory {
             entity_id: 1,
+            region: 1,
             pockets: vec![],
             inventory_index: 2,
             cargo_index: 3,

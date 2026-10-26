@@ -171,6 +171,7 @@ registerWebsocketMessageHandler("InventoryUpdate", inventoryUpdateTopics, (messa
 
   if (index !== -1) {
     inventoryData.value.inventorys[index].pockets = message.resolved_inventory.pockets;
+    inventoryData.value.inventorys[index].region = message.resolved_inventory.region;
   }
 });
 
@@ -204,6 +205,7 @@ registerWebsocketMessageHandler(
 
     if (index !== -1) {
       inventoryData.value.inventorys[index].pockets = message.resolved_inventory.pockets;
+      inventoryData.value.inventorys[index].region = message.resolved_inventory.region;
     } else {
       inventoryData.value.inventorys.push(message.resolved_inventory);
     }
@@ -668,7 +670,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                     : ''
                 "
               >
-                <Inventory :inventory="inventory" :search="inventorySearchQuery" />
+                <Inventory :inventory="inventory" :search="inventorySearchQuery" show-region />
               </div>
             </div>
           </div>
