@@ -50,6 +50,7 @@ pub(crate) mod initial_sync;
 mod metric_handles;
 mod overworld;
 mod portal_locations;
+mod startup;
 pub(crate) use metric_handles::WorkerReceiveMetrics;
 use metric_handles::{ListenerMetrics, WorkerSendMetrics};
 pub(crate) mod worker_channel;
@@ -58,15 +59,24 @@ const MAX_RECONNECT_RETRIES: u32 = 15;
 const STABLE_CONNECTION_DURATION: Duration = Duration::from_secs(120);
 
 #[derive(Clone, Default)]
-struct ConnectionTiming(Arc<Mutex<Option<Instant>>>);
+struct ConnectionTiming(Arc<Mutex<Option<Instant>>>, Arc<tokio::sync::Notify>);
 
 impl ConnectionTiming {
     fn connected(&self) {
         *self.0.lock().unwrap() = Some(Instant::now());
+        self.1.notify_one();
     }
 
     fn uptime(&self) -> Option<Duration> {
         self.0.lock().unwrap().map(|connected| connected.elapsed())
+    }
+
+    async fn wait_connected(&self) {
+        // Used only for the diagnostic path with no subscription callback.
+        let notified = self.1.notified();
+        if self.uptime().is_none() {
+            notified.await;
+        }
     }
 }
 
@@ -361,6 +371,8 @@ async fn connect_to_db_logic(
     database: &str,
     remove_desc: &bool,
     timing: ConnectionTiming,
+    startup_permit: &mut Option<tokio::sync::OwnedSemaphorePermit>,
+    startup_done: &mut Option<tokio::sync::oneshot::Sender<()>>,
     claim_event_tx: &tokio::sync::mpsc::Sender<entity::claim_event::ActiveModel>,
     mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
@@ -417,7 +429,7 @@ async fn connect_to_db_logic(
         config.spacetimedb.password.clone(),
         database,
         config.spacetimedb_url(region_number).as_ref(),
-        timing,
+        timing.clone(),
         region_number,
     )?;
 
@@ -1002,8 +1014,16 @@ async fn connect_to_db_logic(
     // let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
     // let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
 
+    let (initial_tx, initial_rx) = tokio::sync::oneshot::channel();
+    let initial_completion = Arc::new(Mutex::new(Some(initial_tx)));
+    let initial_failed = initial_completion.clone();
     let subscription_builder = ctx
         .subscription_builder()
+        .on_applied(move |_ctx: &SubscriptionEventContext| {
+            if let Some(tx) = initial_completion.lock().unwrap().take() {
+                let _ = tx.send(Ok(()));
+            }
+        })
         // .on_applied(move |ctx: &SubscriptionEventContext| {
         //     tracing::debug!(region = region_number, "Handle Subscription response");
         //
@@ -1667,6 +1687,9 @@ async fn connect_to_db_logic(
                 err,
                 ctx.event
             );
+            if let Some(tx) = initial_failed.lock().unwrap().take() {
+                let _ = tx.send(Err(anyhow::anyhow!("Initial subscription failed: {err}")));
+            }
             // std::process::exit(1);
         });
     let queries = subscription_queries(
@@ -1679,7 +1702,8 @@ async fn connect_to_db_logic(
     // without subscriptions when isolating connection/worker RSS.
     let portal_dimensions = (!config.spacetimedb.skip_state_tables)
         .then(|| portal_locations::listen(&ctx));
-    if !queries.is_empty() {
+    let has_subscription = !queries.is_empty();
+    if has_subscription {
         subscription_builder.subscribe(queries);
     }
 
@@ -1687,11 +1711,22 @@ async fn connect_to_db_logic(
     let tmp_disconnect_global_app_state = global_app_state.clone();
 
     // The SDK must keep processing events while we wait for subscriptions to apply.
-    let connection = run_connection_until_shutdown(&ctx, &global_app_state.shutdown.stop);
-    tokio::pin!(connection);
-    let result = tokio::select! {
-        result = &mut connection => result,
-        result = async {
+    let connection_stop = global_app_state.shutdown.stop.child_token();
+    let connection = run_connection_until_shutdown(&ctx, &connection_stop);
+    let result = startup::run(
+        connection,
+        async {
+            if has_subscription {
+                initial_rx
+                    .await
+                    .map_err(|_| anyhow::anyhow!("Initial subscription ended before applying"))??;
+            } else {
+                timing.wait_connected().await;
+            }
+            tracing::info!(region = database, "Connection startup complete; releasing startup slot");
+            if let Some(done) = startup_done.take() {
+                let _ = done.send(());
+            }
             // if let Some(dimensions) = portal_dimensions {
             //     tokio::try_join!(
             //         overworld::subscribe(&ctx),
@@ -1699,11 +1734,11 @@ async fn connect_to_db_logic(
             //     )?;
             // }
             Ok::<(), anyhow::Error>(())
-        } => match result {
-            Ok(()) => connection.await,
-            Err(error) => Err(error),
         },
-    };
+        &connection_stop,
+        startup_permit,
+    )
+    .await;
 
     metrics::gauge!(
         "bitcraft_database_connected",
@@ -1840,6 +1875,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         //     )
         // };
 
+        let startup_gate = Arc::new(tokio::sync::Semaphore::new(1));
+        let mut previous_startup = None;
         config
             .spacetimedb
             .databases
@@ -1887,10 +1924,15 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
                 let tmp_database = database.clone();
+                let startup_gate = startup_gate.clone();
+                let previous_initial = previous_startup.take();
+                let (startup_done, startup_ready) = tokio::sync::oneshot::channel();
+                previous_startup = Some(startup_ready);
 
                 tmp_global_app_state.shutdown.clone().spawn_connection(async move {
                     let stop = tmp_global_app_state.shutdown.stop.clone();
-                    if stop.is_cancelled() { return; }
+                    let mut startup_done = Some(startup_done);
+                    if !startup::wait_previous(previous_initial, &stop).await { return; }
                     let startup_wait_ms = {
                         let startup_wait_ranges_ms =
                             [(0, 500), (500, 2_000), (2_000, 5_000), (5_000, 15_000)];
@@ -1913,19 +1955,19 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                         }
                     };
 
-                    if startup_wait_ms > 0 {
-                        tracing::debug!(
-                            region = tmp_database,
-                            wait_ms = startup_wait_ms,
-                            database_name = tmp_database.clone(),
-                            spacetime_url = tmp_conf.spacetimedb_url(region),
-                            "Delaying websocket connection startup"
-                        );
-                        tokio::select! { biased;
-                            _ = stop.cancelled() => return,
-                            _ = tokio::time::sleep(Duration::from_millis(startup_wait_ms)) => {},
-                        }
-                    }
+                    tracing::debug!(
+                        region = tmp_database,
+                        wait_ms = startup_wait_ms,
+                        database_name = tmp_database.clone(),
+                        spacetime_url = tmp_conf.spacetimedb_url(region),
+                        "Waiting for startup slot, then delaying websocket connection"
+                    );
+                    let mut startup_permit = startup::acquire(
+                        &startup_gate,
+                        &stop,
+                        Duration::from_millis(startup_wait_ms),
+                    ).await;
+                    if startup_permit.is_none() { return; }
 
                     let mut tries = 0;
 
@@ -1937,6 +1979,12 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
                     loop {
                         if stop.is_cancelled() { break; }
+                        // Reconnects share the same gate too. Failed initial
+                        // attempts retain their slot across the retry backoff.
+                        if startup_permit.is_none() {
+                            startup_permit = startup::acquire(&startup_gate, &stop, Duration::ZERO).await;
+                            if startup_permit.is_none() { break; }
+                        }
                         metrics::gauge!(
                             "bitcraft_database_connected",
                             &[("region", tmp_database.clone())]
@@ -1954,6 +2002,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_database,
                             &tmp_remove_desc,
                             timing.clone(),
+                            &mut startup_permit,
+                            &mut startup_done,
                             &claim_event_tx,
                             &tmp_mobile_entity_state_tx,
                             &tmp_player_state_tx,
@@ -2771,6 +2821,20 @@ mod tests {
         assert_eq!(timing.uptime(), None);
         callback_timing.connected();
         assert!(timing.uptime().is_some());
+    }
+
+    #[tokio::test]
+    async fn diagnostic_startup_waits_for_on_connect_without_missing_an_early_callback() {
+        let timing = ConnectionTiming::default();
+        let connected = timing.wait_connected();
+        tokio::pin!(connected);
+        assert!(futures::poll!(connected.as_mut()).is_pending());
+        timing.connected();
+        tokio::time::timeout(Duration::from_secs(1), connected).await.unwrap();
+
+        let already_connected = ConnectionTiming::default();
+        already_connected.connected();
+        tokio::time::timeout(Duration::from_secs(1), already_connected.wait_connected()).await.unwrap();
     }
 
     #[test]
