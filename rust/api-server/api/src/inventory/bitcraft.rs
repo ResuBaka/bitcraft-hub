@@ -240,10 +240,10 @@ impl InventoryStateWorker {
                 let comparison = async {
                     let query = ::entity::inventory::Entity::find()
                         .filter(::entity::inventory::Column::Region.eq(database_name))
-                        .filter(
-                            ::entity::inventory::Column::EntityId
-                                .is_in(existing_ids.iter().copied()),
-                        )
+                        .filter(crate::websocket::initial_sync::bigint_keys_filter(
+                            ::entity::inventory::Column::EntityId,
+                            &existing_ids,
+                        ))
                         .into_model::<super::db_row::InventoryDbRow>();
                     let mut rows = query.stream(&self.global_app_state.conn).await?;
                     while let Some(row) = rows.try_next().await? {

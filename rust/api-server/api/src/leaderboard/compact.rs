@@ -2,7 +2,7 @@
 //! players leave absent slots in their boards; registry indices are never
 //! renumbered or assigned to another player. Immediate scores and published
 //! rankings are separate snapshots.
-use super::{BucketDistribution, BucketLayout, LeaderboardEntry};
+use super::{BucketDistribution, BucketLayout, EXCLUDED_USERS_FROM_LEADERBOARD, LeaderboardEntry};
 use crossbeam_channel::{Receiver, Sender, bounded};
 use parking_lot::{Mutex, RwLock};
 use std::cmp::Ordering;
@@ -56,11 +56,11 @@ struct PlayerIds {
 /// its lifetime to the owner; slots are never renumbered or reused.
 pub(super) struct ResolvedPlayer<'a> {
     registry: &'a PlayerRegistry,
-    index: u32,
+    index: Option<u32>,
 }
 
 impl ResolvedPlayer<'_> {
-    fn index_for(&self, board: &Leaderboard) -> u32 {
+    fn index_for(&self, board: &Leaderboard) -> Option<u32> {
         assert!(
             std::ptr::eq(self.registry, board.players.as_ref()),
             "player handle belongs to another ranking system"
@@ -528,6 +528,39 @@ impl LeaderboardInner {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn excluded_users_cannot_enter_any_board_through_direct_or_resolved_updates() {
+        let players = Arc::new(PlayerRegistry::default());
+        let (wide, _rx) = Leaderboard::paused(players.clone(), ScoreWidth::Wide);
+        let (skill, _rx) = Leaderboard::paused(players.clone(), ScoreWidth::Skill);
+
+        for &id in EXCLUDED_USERS_FROM_LEADERBOARD.iter() {
+            wide.update(id, 10_000);
+            let player = wide.resolve_player(id);
+            wide.update_resolved(&player, 20_000);
+            skill.update_resolved(&player, 30_000);
+            assert_eq!(wide.get_rank_resolved(&player), None);
+            assert_eq!(skill.get_rank_resolved(&player), None);
+        }
+        assert_eq!(players.len(), 0);
+
+        wide.update(1, 100);
+        let allowed = wide.resolve_player(1);
+        skill.update_resolved(&allowed, 200);
+        flush(&wide);
+        flush(&skill);
+        assert_eq!(wide.get_range(0, 10).len(), 1);
+        assert_eq!(skill.get_range(0, 10).len(), 1);
+        assert_eq!(wide.get_rank(1), Some(1));
+        assert_eq!(skill.get_rank(1), Some(1));
+        for &id in EXCLUDED_USERS_FROM_LEADERBOARD.iter() {
+            assert_eq!(wide.get_value(&id), None);
+            assert_eq!(skill.get_value(&id), None);
+            assert_eq!(wide.get_rank(id), None);
+            assert_eq!(skill.get_rank(id), None);
+        }
+    }
 
     #[test]
     fn resolved_player_reuses_identity_but_reads_current_board_presence_and_rank() {
@@ -1493,6 +1526,9 @@ impl Leaderboard {
     }
 
     pub(crate) fn update(&self, user_id: i64, new_xp: i64) {
+        if EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id) {
+            return;
+        }
         let index = self.players.register(user_id);
         self.update_index(index, new_xp);
     }
@@ -1500,12 +1536,15 @@ impl Leaderboard {
     pub(super) fn resolve_player(&self, user_id: i64) -> ResolvedPlayer<'_> {
         ResolvedPlayer {
             registry: self.players.as_ref(),
-            index: self.players.register(user_id),
+            index: (!EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id))
+                .then(|| self.players.register(user_id)),
         }
     }
 
     pub(super) fn update_resolved(&self, player: &ResolvedPlayer<'_>, new_xp: i64) {
-        self.update_index(player.index_for(self), new_xp);
+        if let Some(index) = player.index_for(self) {
+            self.update_index(index, new_xp);
+        }
     }
 
     fn update_index(&self, index: u32, new_xp: i64) {
@@ -1564,7 +1603,7 @@ impl Leaderboard {
     }
 
     pub(super) fn get_rank_resolved(&self, player: &ResolvedPlayer<'_>) -> Option<usize> {
-        self.get_rank_index(player.index_for(self))
+        player.index_for(self).and_then(|index| self.get_rank_index(index))
     }
 
     fn get_rank_index(&self, index: u32) -> Option<usize> {

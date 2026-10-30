@@ -462,16 +462,33 @@ const pagedInventoryPlayersOfflineTools = computed(() => {
 
 const claimOwner = computed(() => {
   if (claim.value === undefined) {
-    return "";
+    return undefined;
   }
 
   return claim.value.members[claim.value.owner_player_entity_id];
 });
 
+const claimTitle = computed(() => `Claim ${claim.value?.name ?? route.params.id}`);
+const claimDescription = computed(() => {
+  if (!claim.value) {
+    return `View ${claimTitle.value}, including members, buildings, inventory, and activity.`;
+  }
+
+  const ownerName = claimOwner.value?.user_name;
+  const owner = ownerName ? ` by ${ownerName}` : "";
+  const memberCount = Object.keys(claim.value.members ?? {}).length;
+  const buildingCount = buidlingsFetch.value?.buildings.length ?? 0;
+  const itemCount = claim.value.inventorys?.buildings?.length ?? 0;
+  return `${claimTitle.value}${owner} with ${memberCount} members, ${buildingCount} buildings, and ${itemCount} items.`;
+});
+
 useSeoMeta({
-  title: () => `Claim ${claimFetch.value?.name ?? route.params.id}`,
-  description: () =>
-    `Claim ${claimFetch.value?.name ?? route.params.id} by ${claimOwner.value} with members (${claim.value?.members?.length || 0})  buildings (${buildings.value.length}) and items (${inventorysBuildings.value.length}) `,
+  title: () => claimTitle.value,
+  description: () => claimDescription.value,
+  ogTitle: () => claimTitle.value,
+  ogDescription: () => claimDescription.value,
+  twitterTitle: () => claimTitle.value,
+  twitterDescription: () => claimDescription.value,
 });
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {

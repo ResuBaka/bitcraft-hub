@@ -56,7 +56,7 @@ pub(crate) fn start_worker_traveler_task_state(
                                     batch_size,
                                     incoming,
                                     |model| model.entity_id,
-                                    |ids| sea_query::Condition::all().add(::entity::traveler_task_state::Column::EntityId.is_in(ids.iter().copied())),
+                                    |ids| crate::websocket::initial_sync::bigint_keys_filter(::entity::traveler_task_state::Column::EntityId, ids),
                                     |_, _| {},
                                 ).await {
                                     tracing::error!(%error, region = database_name, "Could not reconcile initial traveler tasks");

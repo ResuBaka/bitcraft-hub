@@ -36,9 +36,8 @@ rayon = "1.12.0"
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 axum-codec = { version = "0.0.20", features = ["serde", "json", "msgpack"] }
-#spacetimedb-sdk = "1.12.0"
-#spacetimedb-sdk = { path = "../../../SpacetimeDB/sdks/rust", default-features = false }
-spacetimedb-sdk = { git = "https://github.com/ResuBaka/SpacetimeDB", branch = "feature/no-client-cache-feature", default-features = false }
+#spacetimedb-sdk = { path = "../../../SpacetimeDB/sdks/rust", default-features = false, features = ["streaming-decompression"] }
+spacetimedb-sdk = { git = "https://github.com/ResuBaka/SpacetimeDB", branch = "feature/no-client-cache-feature", default-features = false, features = ["streaming-decompression"] }
 ts-rs = "12.0.1"
 tracing = "0.1.44"
 chrono = "0.4.45"

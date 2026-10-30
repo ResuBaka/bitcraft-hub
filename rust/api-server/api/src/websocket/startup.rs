@@ -2,7 +2,6 @@
 //! failed attempts), but never for the lifetime of an established connection.
 use std::{future::Future, sync::Arc};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
-use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 pub(super) async fn wait_previous(
@@ -27,17 +26,10 @@ pub(super) async fn wait_previous(
 pub(super) async fn acquire(
     gate: &Arc<Semaphore>,
     stop: &CancellationToken,
-    delay: Duration,
 ) -> Option<OwnedSemaphorePermit> {
-    let permit = tokio::select! { biased;
-        _ = stop.cancelled() => return None,
-        permit = gate.clone().acquire_owned() => permit.ok()?,
-    };
-    // The delay starts only after the preceding connection finished its initial
-    // subscription. Waiting tasks must not consume their delay in parallel.
     tokio::select! { biased;
         _ = stop.cancelled() => None,
-        _ = tokio::time::sleep(delay) => Some(permit),
+        permit = gate.clone().acquire_owned() => permit.ok(),
     }
 }
 
@@ -84,6 +76,7 @@ where
 mod tests {
     use super::*;
     use tokio::sync::oneshot;
+    use tokio::time::Duration;
 
     #[tokio::test]
     async fn initial_connections_wait_for_the_previous_configured_database() {
@@ -105,20 +98,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn startup_delay_begins_after_previous_slot_is_released() {
+    async fn startup_slot_is_available_immediately_after_previous_release() {
         let gate = Arc::new(Semaphore::new(1));
         let previous = gate.clone().acquire_owned().await.unwrap();
         let stop = CancellationToken::new();
-        let delay = Duration::from_millis(20);
-        let pending = acquire(&gate, &stop, delay);
+        let pending = acquire(&gate, &stop);
         tokio::pin!(pending);
         assert!(futures::poll!(pending.as_mut()).is_pending());
-        tokio::time::sleep(delay).await;
-        assert!(futures::poll!(pending.as_mut()).is_pending());
-        let released = tokio::time::Instant::now();
         drop(previous);
-        let permit = pending.await.unwrap();
-        assert!(released.elapsed() >= delay);
+        let permit = match futures::poll!(pending.as_mut()) {
+            std::task::Poll::Ready(Some(permit)) => permit,
+            _ => panic!("startup must not add a delay after the slot is released"),
+        };
         assert!(gate.try_acquire().is_err());
         drop(permit);
         assert_eq!(gate.available_permits(), 1);
@@ -246,24 +237,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn shutdown_cancels_both_slot_wait_and_startup_delay() {
+    async fn shutdown_cancels_slot_wait() {
         let gate = Arc::new(Semaphore::new(1));
         let previous = gate.clone().acquire_owned().await.unwrap();
         let stop = CancellationToken::new();
-        let pending = acquire(&gate, &stop, Duration::from_secs(60));
+        let pending = acquire(&gate, &stop);
         tokio::pin!(pending);
         assert!(futures::poll!(pending.as_mut()).is_pending());
         stop.cancel();
         assert!(pending.await.is_none());
         drop(previous);
 
-        let stop = CancellationToken::new();
-        let pending = acquire(&gate, &stop, Duration::from_secs(60));
-        tokio::pin!(pending);
-        assert!(futures::poll!(pending.as_mut()).is_pending());
-        assert_eq!(gate.available_permits(), 0);
-        stop.cancel();
-        assert!(pending.await.is_none());
+        assert!(acquire(&gate, &stop).await.is_none());
         assert_eq!(gate.available_permits(), 1);
     }
 

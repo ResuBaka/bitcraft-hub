@@ -279,21 +279,33 @@ const expeirence = computed(() => {
 const inventorySearch = ref("");
 const inventorySearchQuery = computed(() => inventorySearch.value.trim());
 
-const inventoryList = computed(() => {
-  return (
-    inventoryData.value?.inventorys.filter((inventory) => {
-      const nickname = inventory.nickname;
-      const isWalletOrTool = nickname === "Wallet" || nickname === "Tool belt";
-      const hasContents = !!inventory.pockets.find((pocket) => pocket.contents?.quantity);
+const mainInventory = computed(() =>
+  inventoryData.value?.inventorys.find(
+    (inventory) =>
+      String(inventory.owner_entity_id) === String(route.params.id) &&
+      inventory.inventory_index === 0,
+  ),
+);
 
-      return !isWalletOrTool && hasContents;
-    }) ?? []
-  );
+const orderedInventories = computed(() =>
+  [...(inventoryData.value?.inventorys ?? [])].sort(
+    (a, b) => Number(b === mainInventory.value) - Number(a === mainInventory.value),
+  ),
+);
+
+const inventoryList = computed(() => {
+  return orderedInventories.value.filter((inventory) => {
+    const nickname = inventory.nickname;
+    const isWalletOrTool = nickname === "Wallet" || nickname === "Tool belt";
+    const hasContents = !!inventory.pockets.find((pocket) => pocket.contents?.quantity);
+
+    return !isWalletOrTool && hasContents;
+  });
 });
 
 const filteredInventoryList = computed(() => {
   if (!inventorySearchQuery.value) return inventoryList.value;
-  return (inventoryData.value?.inventorys ?? []).filter((inventory) =>
+  return orderedInventories.value.filter((inventory) =>
     inventoryMatchesSearch(inventory, inventorySearchQuery.value),
   );
 });
@@ -308,13 +320,6 @@ const tools = computed(() => {
 const wallet = computed(() => {
   return (
     inventoryData.value?.inventorys.find((inventory) => inventory.nickname === "Wallet") ??
-    undefined
-  );
-});
-
-const mainInventory = computed(() => {
-  return (
-    inventoryData.value?.inventorys.find((inventory) => inventory.nickname === "Inventory") ??
     undefined
   );
 });
@@ -670,7 +675,12 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                     : ''
                 "
               >
-                <Inventory :inventory="inventory" :search="inventorySearchQuery" show-region />
+                <Inventory
+                  :inventory="inventory"
+                  :label="inventory === mainInventory ? 'Player Inventory' : undefined"
+                  :search="inventorySearchQuery"
+                  show-region
+                />
               </div>
             </div>
           </div>

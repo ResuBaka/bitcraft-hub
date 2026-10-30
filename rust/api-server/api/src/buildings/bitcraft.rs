@@ -63,7 +63,7 @@ pub(crate) fn start_worker_building_state(
                                     batch_size,
                                     incoming,
                                     |model| model.entity_id,
-                                    |ids| sea_query::Condition::all().add(::entity::building_state::Column::EntityId.is_in(ids.iter().copied())),
+                                    |ids| crate::websocket::initial_sync::bigint_keys_filter(::entity::building_state::Column::EntityId, ids),
                                     |_, _| {},
                                 ).await {
                                     tracing::error!(%error, region = database_name, "Could not reconcile initial buildings");

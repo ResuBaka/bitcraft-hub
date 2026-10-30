@@ -29,6 +29,7 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    apiBase: "",
     bitcraft: {
       websocket: {
         enabled: false,

@@ -22,6 +22,28 @@ pub(crate) struct EventParams {
     page: Option<u64>,
     per_page: Option<u64>,
     region: Option<Region>,
+    group: Option<EventGroup>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum EventGroup {
+    Treasury,
+    Research,
+    Buildings,
+    Members,
+}
+
+impl EventGroup {
+    fn event_types(&self) -> Vec<ClaimEventType> {
+        use ClaimEventType::*;
+        match self {
+            Self::Treasury => vec![TreasuryDeposit, TreasuryWithdrawal],
+            Self::Research => vec![ResearchCompleted],
+            Self::Buildings => vec![BuildingPlaced, BuildingRemoved],
+            Self::Members => vec![MemberAdded, MemberRemoved, MemberPermissionsChanged],
+        }
+    }
 }
 
 #[derive(Serialize, TS)]
@@ -46,6 +68,9 @@ pub(crate) async fn list(
     let mut query = claim_event::Entity::find().filter(claim_event::Column::ClaimEntityId.eq(id));
     if let Some(region) = params.region {
         query = query.filter(claim_event::Column::Region.eq(region));
+    }
+    if let Some(group) = params.group {
+        query = query.filter(claim_event::Column::EventType.is_in(group.event_types()));
     }
     let paginator = query
         .order_by_desc(claim_event::Column::Timestamp)
@@ -459,6 +484,71 @@ pub(crate) fn register_listeners(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn event_groups_cover_each_event_type_once() {
+        use sea_orm::Iterable;
+        let groups = [
+            EventGroup::Treasury,
+            EventGroup::Research,
+            EventGroup::Buildings,
+            EventGroup::Members,
+        ];
+        let grouped: Vec<_> = groups.iter().flat_map(EventGroup::event_types).collect();
+        for event_type in ClaimEventType::iter() {
+            assert_eq!(
+                grouped.iter().filter(|value| **value == event_type).count(),
+                1
+            );
+        }
+        assert_eq!(
+            EventGroup::Treasury.event_types(),
+            vec![
+                ClaimEventType::TreasuryDeposit,
+                ClaimEventType::TreasuryWithdrawal
+            ]
+        );
+        assert_eq!(
+            EventGroup::Research.event_types(),
+            vec![ClaimEventType::ResearchCompleted]
+        );
+        assert_eq!(
+            EventGroup::Buildings.event_types(),
+            vec![
+                ClaimEventType::BuildingPlaced,
+                ClaimEventType::BuildingRemoved
+            ]
+        );
+        assert_eq!(
+            EventGroup::Members.event_types(),
+            vec![
+                ClaimEventType::MemberAdded,
+                ClaimEventType::MemberRemoved,
+                ClaimEventType::MemberPermissionsChanged
+            ]
+        );
+    }
+
+    #[test]
+    fn event_group_query_is_optional_and_validated() {
+        assert!(
+            serde_json::from_value::<EventParams>(serde_json::json!({}))
+                .unwrap()
+                .group
+                .is_none()
+        );
+        for group in ["treasury", "research", "buildings", "members"] {
+            assert!(
+                serde_json::from_value::<EventParams>(serde_json::json!({"group": group}))
+                    .unwrap()
+                    .group
+                    .is_some()
+            );
+        }
+        assert!(
+            serde_json::from_value::<EventParams>(serde_json::json!({"group": "unknown"})).is_err()
+        );
+    }
 
     fn persistence_event(claim_id: u64) -> claim_event::ActiveModel {
         new_event(claim_id, 2, Utc::now(), ClaimEventType::MemberAdded)

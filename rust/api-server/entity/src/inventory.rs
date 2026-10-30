@@ -139,7 +139,7 @@ impl From<game_module::module_bindings::Pocket> for crate::inventory::Pocket {
     fn from(value: game_module::module_bindings::Pocket) -> Self {
         crate::inventory::Pocket {
             volume: value.volume,
-            contents: value.contents.map(|value| value.clone().into()),
+            contents: value.contents.map(Into::into),
             locked: value.locked,
         }
     }

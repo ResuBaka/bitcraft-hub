@@ -12,6 +12,7 @@ import { pocketMatchesSearch } from "~/utils/inventorySearch";
 
 const props = defineProps<{
   inventory: ResolvedInventory;
+  label?: string;
   search?: string;
   showRegion?: boolean;
 }>();
@@ -46,6 +47,7 @@ const cargoPockets = computed(() => {
 });
 
 const inventoryLabel = computed(() => {
+  if (props.label) return props.label;
   if (!props.inventory) {
     return "Inventory";
   }

@@ -2,10 +2,10 @@
 
 # use the official Bun image
 # see all versions at https://hub.docker.com/r/oven/bun/tags
-FROM oven/bun:canary-alpine as base-alpine
+FROM oven/bun:1-alpine as base-alpine
 WORKDIR /usr/src/app
 
-FROM oven/bun:1 as base
+FROM oven/bun:1-alpine as base
 WORKDIR /usr/src/app
 
 # install dependencies into temp directory
@@ -13,7 +13,8 @@ WORKDIR /usr/src/app
 FROM base AS install
 RUN mkdir -p /temp/dev
 COPY package.json bun.lock /temp/dev/
-RUN cd /temp/dev && bun install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    cd /temp/dev && bun install --frozen-lockfile
 
 # install with --production (exclude devDependencies)
 #RUN mkdir -p /temp/prod
@@ -34,7 +35,7 @@ RUN bun run build
 
 # copy production dependencies and source code into final image
 FROM base-alpine AS release
-COPY --from=prerelease --exclude=node_modules --chown=bun:bun /usr/src/app/ .
+COPY --from=prerelease --chown=bun:bun /usr/src/app/.output ./.output
 
 RUN apk add ca-certificates
 # run the app

@@ -9,6 +9,17 @@ use sea_orm::{
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
+/// PostgreSQL array membership keeps the parameter count and SQL shape fixed.
+pub(crate) fn bigint_keys_filter<C: ColumnTrait>(column: C, keys: &[i64]) -> Condition {
+    Condition::all().add(migration::sea_query::Expr::cust_with_exprs(
+        "$1 = ANY($2::bigint[])",
+        [
+            migration::sea_query::Expr::col(column.as_column_ref()),
+            migration::sea_query::Expr::val(sea_orm::Value::from(keys.to_vec())),
+        ],
+    ))
+}
+
 /// Cache state is independent of database state: even a database-unchanged row
 /// may be missing/stale in the cache. Clone only when the cache needs a new value.
 pub(crate) fn update_cache_if_changed<K: Eq + Hash, M: Clone + PartialEq>(
@@ -292,6 +303,24 @@ mod tests {
     use super::*;
     use entity::vault_state_collectibles::{Column, Entity, Model};
     use sea_orm::{DbBackend, MockDatabase, MockExecResult, QueryTrait, Transaction};
+
+    #[test]
+    fn bigint_key_filter_uses_one_array_for_any_batch_size() {
+        use entity::building_state::{Column, Entity};
+        let query = |ids: &[i64]| {
+            Entity::find()
+                .filter(Column::Region.eq(3_i16))
+                .filter(bigint_keys_filter(Column::EntityId, ids))
+                .build(DbBackend::Postgres)
+        };
+        let one = query(&[1]);
+        let many = query(&[1, 2, 3]);
+        assert_eq!(one.sql, many.sql);
+        assert!(many.sql.contains("ANY($2::bigint[])"));
+        let values = many.values.unwrap().0;
+        assert_eq!(values.len(), 2);
+        assert_eq!(values[1], sea_orm::Value::from(vec![1_i64, 2, 3]));
+    }
 
     #[test]
     fn unchanged_cache_entries_are_not_cloned_or_replaced() {

@@ -1340,6 +1340,21 @@ impl AppState {
                     self.claim_local_state.insert(value.entity_id as u64, value);
                 }
             ),
+            stream_into(::entity::claim_state::Entity::find(), &self.conn, |value| {
+                self.claim_state.insert(value.entity_id, value);
+            }),
+            stream_into(
+                ::entity::claim_member_state::Entity::find(),
+                &self.conn,
+                |value| self.add_claim_member(value)
+            ),
+            stream_into(
+                ::entity::claim_tech_desc::Entity::find(),
+                &self.conn,
+                |value| {
+                    self.claim_tech_desc.insert(value.id, value);
+                }
+            ),
             stream_into(::entity::skill_desc::Entity::find(), &self.conn, |value| {
                 self.skill_desc.insert(value.id, value);
             }),

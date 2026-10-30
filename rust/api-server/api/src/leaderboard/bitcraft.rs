@@ -133,6 +133,55 @@ mod initial_tests {
         }
     }
 
+    #[tokio::test]
+    async fn excluded_experience_is_persisted_but_never_ranked() {
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(Default::default(), tx, Default::default());
+        state.skill_desc.insert(
+            10,
+            ::entity::skill_desc::Model {
+                id: 10,
+                skill: 10,
+                name: "skill-10".into(),
+                skill_category: 1,
+                description: String::new(),
+                icon_asset_name: String::new(),
+                title: String::new(),
+            },
+        );
+        let skill = state.ranking_system.ensure_skill_leaderboard(10);
+        let id = super::super::EXCLUDED_USERS_FROM_LEADERBOARD[0];
+        let snapshot = experience(id as u64, &[(10, 1200)]);
+        let rows: Vec<_> = initial_experience_rows(&state, vec![snapshot], 7).collect();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].entity_id, id);
+        assert_eq!(rows[0].experience, 1200);
+        skill.update(rows[0].entity_id, i64::from(rows[0].experience));
+
+        let mut worker = ExperienceStateWorker::new(state.clone(), 100, Duration::from_secs(10));
+        worker.handle_insert(experience(id as u64, &[(10, 1300)]), 7).await;
+        worker.handle_update(
+            experience(id as u64, &[(10, 1400)]),
+            7,
+            experience(id as u64, &[(10, 1300)]),
+        ).await;
+        assert_eq!(worker.pending.upserts.get(&(id, 10)).unwrap().experience, 1400);
+        for board in [
+            &state.ranking_system.global_leaderboard,
+            &state.ranking_system.level_leaderboard,
+            &state.ranking_system.profession_leaderboard,
+            &state.ranking_system.adventure_leaderboard,
+            &state.ranking_system.xp_per_hour,
+            &state.ranking_system.time_played,
+            &state.ranking_system.time_signed_in,
+        ] {
+            board.update(id, 500);
+            assert_eq!(board.get_value(&id), None);
+        }
+        assert_eq!(skill.get_value(&id), None);
+        assert_eq!(state.ranking_system.players.len(), 0);
+    }
+
     #[test]
     fn level_conversion_matches_legacy_at_every_threshold_and_extreme() {
         use crate::leaderboard::EXPERIENCE_PER_LEVEL;

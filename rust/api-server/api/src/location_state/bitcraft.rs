@@ -4,8 +4,9 @@ use crate::websocket::batched_worker::BatchedWorker;
 use crate::websocket::worker_channel::{UnboundedReceiver, UnboundedSender};
 use entity::shared::Region;
 use game_module::module_bindings::LocationState;
-use migration::OnConflict;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, QueryFilter, TryIntoModel,
+};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender as TokioUnboundedSender;
 
@@ -163,6 +164,43 @@ enum LocationStateDbOperation {
     Delete(Vec<i64>),
 }
 
+impl LocationStateDbOperation {
+    fn kind_and_rows(&self) -> (&'static str, usize) {
+        match self {
+            Self::Upsert(rows) => ("upsert", rows.len()),
+            Self::Delete(rows) => ("delete", rows.len()),
+        }
+    }
+}
+
+// Remains accurate even if forced shutdown cancels the database future.
+struct InFlightLocationDbOperation {
+    operations: metrics::Gauge,
+    rows: metrics::Gauge,
+    count: f64,
+}
+
+impl InFlightLocationDbOperation {
+    fn new(kind: &'static str, count: usize) -> Self {
+        let operations = metrics::gauge!("location_db_in_flight_operations", "operation" => kind);
+        let rows = metrics::gauge!("location_db_in_flight_rows", "operation" => kind);
+        operations.increment(1.0);
+        rows.increment(count as f64);
+        Self {
+            operations,
+            rows,
+            count: count as f64,
+        }
+    }
+}
+
+impl Drop for InFlightLocationDbOperation {
+    fn drop(&mut self) {
+        self.operations.decrement(1.0);
+        self.rows.decrement(self.count);
+    }
+}
+
 pub(crate) struct LocationStateWorker {
     rx: UnboundedReceiver<SpacetimeUpdateMessages<LocationState>>,
     tx: UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
@@ -195,11 +233,17 @@ impl LocationStateWorker {
             return;
         }
 
+        let count = messages.len();
         if let Err(error) = self.db_tx.send(LocationStateDbOperation::Upsert(messages)) {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue LocationState upserts"
             );
+        } else {
+            metrics::counter!("location_db_queued_operations_total", "operation" => "upsert")
+                .increment(1);
+            metrics::counter!("location_db_queued_rows_total", "operation" => "upsert")
+                .increment(count as u64);
         }
     }
 
@@ -208,11 +252,17 @@ impl LocationStateWorker {
             return;
         }
 
+        let count = ids.len();
         if let Err(error) = self.db_tx.send(LocationStateDbOperation::Delete(ids)) {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue LocationState deletes"
             );
+        } else {
+            metrics::counter!("location_db_queued_operations_total", "operation" => "delete")
+                .increment(1);
+            metrics::counter!("location_db_queued_rows_total", "operation" => "delete")
+                .increment(count as u64);
         }
     }
 
@@ -354,25 +404,18 @@ impl BatchedWorker for LocationStateWorker {
 fn start_location_state_db_worker(
     global_app_state: AppState,
 ) -> TokioUnboundedSender<LocationStateDbOperation> {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    let on_conflict =
-        sea_orm::sea_query::OnConflict::columns([::entity::location_state::Column::EntityId])
-            .update_columns([
-                ::entity::location_state::Column::ChunkIndex,
-                ::entity::location_state::Column::X,
-                ::entity::location_state::Column::Z,
-                ::entity::location_state::Column::Dimension,
-                ::entity::location_state::Column::Region,
-            ])
-            .to_owned();
-
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<LocationStateDbOperation>();
     global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
+            let (kind, count) = operation.kind_and_rows();
+            metrics::counter!("location_db_received_operations_total", "operation" => kind)
+                .increment(1);
+            metrics::counter!("location_db_received_rows_total", "operation" => kind)
+                .increment(count as u64);
+            let _in_flight = InFlightLocationDbOperation::new(kind, count);
             match operation {
                 LocationStateDbOperation::Upsert(messages) => {
-                    let mut messages = messages;
-                    insert_multiple_location_state(&global_app_state, &on_conflict, &mut messages)
-                        .await;
+                    insert_multiple_location_state(&global_app_state, messages).await;
                 }
                 LocationStateDbOperation::Delete(ids) => {
                     delete_multiple_location_state(&global_app_state, ids).await;
@@ -404,24 +447,141 @@ async fn delete_multiple_location_state(global_app_state: &AppState, ids: Vec<i6
 
 async fn insert_multiple_location_state(
     global_app_state: &AppState,
-    on_conflict: &OnConflict,
-    messages: &mut Vec<::entity::location_state::ActiveModel>,
+    messages: Vec<::entity::location_state::ActiveModel>,
 ) {
-    let insert = ::entity::location_state::Entity::insert_many(messages.iter().cloned())
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
+    let statement = match location_upsert_statement(messages) {
+        Ok(statement) => statement,
+        Err(err) => {
+            tracing::error!("Error preparing LocationState: {}", err);
+            return;
+        }
+    };
+    let insert = global_app_state.conn.execute_raw(statement).await;
 
     if let Err(err) = insert {
         tracing::error!("Error inserting LocationState: {}", err)
     }
+}
 
-    messages.clear();
+fn location_upsert_statement(
+    messages: Vec<::entity::location_state::ActiveModel>,
+) -> Result<sea_orm::Statement, sea_orm::DbErr> {
+    let mut entity_ids = Vec::with_capacity(messages.len());
+    let mut chunks = Vec::with_capacity(messages.len());
+    let mut xs = Vec::with_capacity(messages.len());
+    let mut zs = Vec::with_capacity(messages.len());
+    let mut dimensions = Vec::with_capacity(messages.len());
+    let mut regions = Vec::with_capacity(messages.len());
+    for message in messages {
+        let model = message.try_into_model()?;
+        entity_ids.push(model.entity_id);
+        chunks.push(model.chunk_index);
+        xs.push(model.x);
+        zs.push(model.z);
+        dimensions.push(model.dimension);
+        regions.push(model.region);
+    }
+    Ok(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DbBackend::Postgres,
+        r#"INSERT INTO "location_state" ("entity_id", "chunk_index", "x", "z", "dimension", "region")
+SELECT * FROM unnest($1::bigint[], $2::bigint[], $3::bigint[], $4::bigint[], $5::bigint[], $6::smallint[])
+ON CONFLICT ("entity_id") DO UPDATE SET "chunk_index" = EXCLUDED."chunk_index", "x" = EXCLUDED."x", "z" = EXCLUDED."z", "dimension" = EXCLUDED."dimension", "region" = EXCLUDED."region""#,
+        [
+            entity_ids.into(),
+            chunks.into(),
+            xs.into(),
+            zs.into(),
+            dimensions.into(),
+            regions.into(),
+        ],
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Run explicitly with FIXED_SHAPE_TEST_DATABASE_URL; all writes are to
+    // transaction-local temporary tables, and the transaction is rolled back.
+    #[tokio::test]
+    #[ignore = "requires PostgreSQL and FIXED_SHAPE_TEST_DATABASE_URL"]
+    async fn generated_fixed_shape_statements_execute_on_postgres() {
+        use sea_orm::{
+            ConnectionTrait, Database, DbBackend, QuerySelect, Statement, TransactionTrait,
+        };
+        let url = std::env::var("FIXED_SHAPE_TEST_DATABASE_URL").unwrap();
+        let db = Database::connect(url).await.unwrap();
+        let tx = db.begin().await.unwrap();
+        tx.execute_raw(Statement::from_string(DbBackend::Postgres,
+            "CREATE TEMP TABLE location_state (entity_id bigint PRIMARY KEY, chunk_index bigint NOT NULL, x bigint NOT NULL, z bigint NOT NULL, dimension bigint NOT NULL, region smallint NOT NULL) ON COMMIT DROP".to_owned())).await.unwrap();
+        tx.execute_raw(location_upsert_statement(vec![model(1, 10, 1)]).unwrap())
+            .await
+            .unwrap();
+        tx.execute_raw(location_upsert_statement(vec![model(1, 30, 2), model(2, 20, 3)]).unwrap())
+            .await
+            .unwrap();
+        let rows = tx
+            .query_all_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT entity_id, x, region FROM location_state ORDER BY entity_id".to_owned(),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].try_get::<i64>("", "x").unwrap(), 30);
+        assert_eq!(rows[0].try_get::<i16>("", "region").unwrap(), 2);
+        assert_eq!(rows[1].try_get::<i64>("", "x").unwrap(), 20);
+
+        tx.execute_raw(Statement::from_string(DbBackend::Postgres,
+            "CREATE TEMP TABLE building_state (entity_id bigint PRIMARY KEY, region smallint NOT NULL) ON COMMIT DROP".to_owned())).await.unwrap();
+        tx.execute_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "INSERT INTO building_state VALUES (1, 3), (2, 3), (3, 4)".to_owned(),
+        ))
+        .await
+        .unwrap();
+        let ids = entity::building_state::Entity::find()
+            .select_only()
+            .column(entity::building_state::Column::EntityId)
+            .filter(entity::building_state::Column::Region.eq(3_i16))
+            .filter(crate::websocket::initial_sync::bigint_keys_filter(
+                entity::building_state::Column::EntityId,
+                &[2, 3],
+            ))
+            .into_tuple::<i64>()
+            .all(&tx)
+            .await
+            .unwrap();
+        assert_eq!(ids, [2]);
+        tx.rollback().await.unwrap();
+    }
+
+    #[test]
+    fn database_queue_and_in_flight_metrics_count_operations_and_rows() {
+        let recorder = metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
+        let handle = recorder.handle();
+        metrics::with_local_recorder(&recorder, || {
+            let (worker, mut operations) = worker();
+            worker.queue_upserts(vec![model(1, 1, 1), model(2, 2, 1)]);
+            worker.queue_deletes(vec![3]);
+            let first = operations.try_recv().unwrap();
+            let (kind, count) = first.kind_and_rows();
+            let guard = InFlightLocationDbOperation::new(kind, count);
+            let rendered = handle.render();
+            assert!(
+                rendered.contains("location_db_queued_operations_total{operation=\"upsert\"} 1")
+            );
+            assert!(rendered.contains("location_db_queued_rows_total{operation=\"upsert\"} 2"));
+            assert!(rendered.contains("location_db_queued_rows_total{operation=\"delete\"} 1"));
+            assert!(rendered.contains("location_db_in_flight_rows{operation=\"upsert\"} 2"));
+            drop(guard);
+            assert!(
+                handle
+                    .render()
+                    .contains("location_db_in_flight_rows{operation=\"upsert\"} 0")
+            );
+        });
+    }
 
     fn location(entity_id: u64, x: i32) -> LocationState {
         LocationState {
@@ -462,8 +622,7 @@ mod tests {
 
     #[tokio::test]
     async fn repeated_updates_write_only_latest_row_per_conflict_key() {
-        use entity::location_state::{Column, Entity};
-        use sea_orm::{DbBackend, MockDatabase, QueryTrait, Transaction};
+        use sea_orm::{DbBackend, MockDatabase, MockExecResult, Transaction};
         let (mut worker, mut operations) = worker();
         worker.handle_insert(location(1, 10), 1).await;
         worker.handle_insert(location(2, 20), 1).await;
@@ -472,39 +631,38 @@ mod tests {
         worker.handle_update(location(1, 50), 3).await;
         assert_eq!(worker.messages, [model(2, 20, 1), model(1, 50, 3)]);
         worker.flush().await;
-        let LocationStateDbOperation::Upsert(mut rows) = operations.try_recv().unwrap() else {
+        let LocationStateDbOperation::Upsert(rows) = operations.try_recv().unwrap() else {
             panic!("expected upsert");
         };
         assert!(operations.try_recv().is_err());
         assert_eq!(rows, [model(2, 20, 1), model(1, 50, 3)]);
 
-        let returned = ::entity::location_state::ModelBuilder::new(location(1, 50))
-            .with_region(3)
-            .build();
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![returned]])
+            .append_exec_results([MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 2,
+            }])
             .into_connection();
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db, tx, Default::default());
-        let conflict = sea_orm::sea_query::OnConflict::column(Column::EntityId)
-            .update_columns([
-                Column::ChunkIndex,
-                Column::X,
-                Column::Z,
-                Column::Dimension,
-                Column::Region,
-            ])
-            .to_owned();
-        let mut expected = Entity::insert_many([model(2, 20, 1), model(1, 50, 3)])
-            .on_conflict(conflict.clone())
-            .build(DbBackend::Postgres);
-        expected.sql.push_str(" RETURNING \"entity_id\"");
-        insert_multiple_location_state(&state, &conflict, &mut rows).await;
-        assert!(rows.is_empty());
+        let expected = location_upsert_statement(vec![model(2, 20, 1), model(1, 50, 3)]).unwrap();
+        insert_multiple_location_state(&state, rows).await;
         assert_eq!(
             state.conn.into_transaction_log(),
             [Transaction::one(expected)]
         );
+    }
+
+    #[test]
+    fn location_upsert_uses_fixed_shape_and_paired_arrays() {
+        let one = location_upsert_statement(vec![model(1, 10, 1)]).unwrap();
+        let many = location_upsert_statement(vec![model(1, 10, 1), model(2, 20, 3)]).unwrap();
+        assert_eq!(one.sql, many.sql);
+        let values = many.values.unwrap().0;
+        assert_eq!(values.len(), 6);
+        assert_eq!(values[0], sea_orm::Value::from(vec![1_i64, 2]));
+        assert_eq!(values[2], sea_orm::Value::from(vec![10_i64, 20]));
+        assert_eq!(values[5], sea_orm::Value::from(vec![1_i16, 3]));
     }
 
     #[tokio::test]

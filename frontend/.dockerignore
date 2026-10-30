@@ -18,3 +18,5 @@ server/database
 .nuxt
 .dockerignore
 .nitro
+.data
+.git

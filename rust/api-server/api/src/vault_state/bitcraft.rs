@@ -7,9 +7,19 @@ use entity::vault_state_collectibles;
 use futures::TryStreamExt;
 use game_module::module_bindings::VaultState;
 use migration::sea_query;
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter};
 use std::collections::HashSet;
 use std::time::Duration;
+
+// Two array parameters keep PostgreSQL's statement shape independent of batch
+// size and entity distribution. Multi-argument unnest pairs corresponding keys.
+fn collectible_keys_filter(keys: &[(i64, i32)]) -> Condition {
+    let (entities, ids): (Vec<i64>, Vec<i32>) = keys.iter().copied().unzip();
+    Condition::all().add(sea_query::Expr::cust_with_values(
+        r#"("entity_id", "id") IN (SELECT * FROM unnest($1::bigint[], $2::integer[]))"#,
+        [sea_orm::Value::from(entities), sea_orm::Value::from(ids)],
+    ))
+}
 
 pub(crate) fn start_worker_vault_state_collectibles(
     global_app_state: AppState,
@@ -64,7 +74,7 @@ pub(crate) fn start_worker_vault_state_collectibles(
                                     batch_size,
                                     incoming,
                                     |model| (model.entity_id, model.id),
-                                    |keys| composite_filter(vault_state_collectibles::Column::EntityId, vault_state_collectibles::Column::Id, keys),
+                                    collectible_keys_filter,
                                     |_, _| {},
                                 ).await {
                                     tracing::error!(%error, region = database_name, "Could not reconcile initial vault collectibles");
@@ -236,6 +246,45 @@ async fn delete_collectibles(state: &AppState, deletes: &mut Vec<CollectibleDele
 mod tests {
     use super::*;
     use game_module::module_bindings::VaultCollectible;
+
+    #[test]
+    fn collectible_filter_has_fixed_sql_and_paired_array_parameters() {
+        use sea_orm::{DbBackend, QueryTrait};
+        let query = |keys: &[(i64, i32)]| {
+            vault_state_collectibles::Entity::find()
+                .filter(vault_state_collectibles::Column::Region.eq(7_i16))
+                .filter(collectible_keys_filter(keys))
+                .build(DbBackend::Postgres)
+        };
+        let one = query(&[(1, 10)]);
+        let many = query(&[(1, 10), (2, 20), (1, 11)]);
+        assert_eq!(one.sql, many.sql);
+        assert!(many.sql.contains("unnest($2::bigint[], $3::integer[])"));
+        let values = many.values.unwrap().0;
+        assert_eq!(values.len(), 3);
+        assert_eq!(values[1], sea_orm::Value::from(vec![1_i64, 2, 1]));
+        assert_eq!(values[2], sea_orm::Value::from(vec![10_i32, 20, 11]));
+
+        let keys: Vec<_> = (0..3000).map(|id| (i64::from(id), id)).collect();
+        let old = vault_state_collectibles::Entity::find()
+            .filter(vault_state_collectibles::Column::Region.eq(7_i16))
+            .filter(composite_filter(
+                vault_state_collectibles::Column::EntityId,
+                vault_state_collectibles::Column::Id,
+                &keys,
+            ))
+            .build(DbBackend::Postgres);
+        let fixed = query(&keys);
+        assert_eq!(old.values.as_ref().unwrap().0.len(), 6001);
+        assert_eq!(fixed.values.as_ref().unwrap().0.len(), 3);
+        println!(
+            "3000 distinct-entity keys: old {} parameters/{} SQL bytes; fixed {} parameters/{} SQL bytes",
+            old.values.unwrap().0.len(),
+            old.sql.len(),
+            fixed.values.unwrap().0.len(),
+            fixed.sql.len()
+        );
+    }
 
     fn model(entity_id: i64, id: i32, count: i32) -> vault_state_collectibles::Model {
         vault_state_collectibles::Model {
