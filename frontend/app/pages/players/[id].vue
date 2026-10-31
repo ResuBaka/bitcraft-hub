@@ -4,6 +4,7 @@ import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
 import type { HouseResponse } from "~/types/HouseResponse";
+import type { HouseInventoriesResponse } from "~/types/HouseInventoriesResponse";
 import type { InventorysResponse } from "~/types/InventorysResponse";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { NpcDesc } from "~/types/NpcDesc";
@@ -144,7 +145,12 @@ const { data: playerData, pending: playerPending } = useFetchMsPack<FindPlayerBy
 });
 
 const { data: houses } = await useLazyFetchMsPack<HouseResponse[]>(
-  () => `/api/bitcraft/houses/by_owner/${route.params.id}`,
+  () => `/api/bitcraft/houses/by_player/${route.params.id}`,
+);
+
+const { data: houseInventories } = useFetchMsPack<HouseInventoriesResponse[]>(
+  () => `/api/bitcraft/houses/by_player/${route.params.id}/inventories`,
+  { deep: true },
 );
 
 const { data: inventoryData } = useFetchMsPack<InventorysResponse>(
@@ -154,44 +160,104 @@ const { data: inventoryData } = useFetchMsPack<InventorysResponse>(
   { deep: true },
 );
 
-const inventoryUpdateTopics = computed(() => {
-  if (!inventoryData.value) {
-    return [];
-  }
+const houseSelection = ref<Record<string, boolean>>({});
+const houseSelectionKey = () => `b-tool@house-storage:${route.params.id}`;
 
-  return inventoryData.value?.inventorys.map(
-    (inventory) => `inventory_update.${inventory.entity_id}`,
-  );
+const loadHouseSelection = () => {
+  houseSelection.value = {};
+  if (import.meta.server) return;
+  try {
+    const stored = JSON.parse(localStorage.getItem(houseSelectionKey()) ?? "{}");
+    if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+      houseSelection.value = Object.fromEntries(
+        Object.entries(stored).filter(([, value]) => typeof value === "boolean"),
+      ) as Record<string, boolean>;
+    }
+  } catch {
+    // Keep the default selection if browser storage is unavailable or invalid.
+  }
+};
+
+onMounted(loadHouseSelection);
+watch(() => route.params.id, loadHouseSelection);
+
+const storageHouses = computed(() => {
+  const storageIds = new Set((houseInventories.value ?? []).map((house) => String(house.house_entity_id)));
+  return (houses.value ?? [])
+    .filter((house) => storageIds.has(String(house.entity_id)))
+    .sort((a, b) =>
+      Number(String(b.owner_entity_id) === String(route.params.id)) -
+      Number(String(a.owner_entity_id) === String(route.params.id)),
+    );
+});
+
+const isHouseSelected = (house: HouseResponse) =>
+  houseSelection.value[String(house.entity_id)] ??
+  String(house.owner_entity_id) === String(route.params.id);
+
+const setHouseSelected = (house: HouseResponse, selected: boolean | "indeterminate") => {
+  houseSelection.value[String(house.entity_id)] = selected === true;
+  try {
+    localStorage.setItem(houseSelectionKey(), JSON.stringify(houseSelection.value));
+  } catch {
+    // The selection still works for this visit if storage is unavailable.
+  }
+};
+
+const inventorySources = () => [
+  ...(inventoryData.value?.inventorys ?? []),
+  ...(houseInventories.value ?? []).flatMap((house) => house.inventories),
+];
+
+const allInventories = computed(() => {
+  const storageByInventory = new Map<string, string>();
+  for (const storage of houseInventories.value ?? []) {
+    for (const inventory of storage.inventories) {
+      storageByInventory.set(String(inventory.entity_id), String(storage.house_entity_id));
+    }
+  }
+  const selected = new Set(storageHouses.value.filter(isHouseSelected).map((house) => String(house.entity_id)));
+  return Array.from(new Map(inventorySources()
+    .filter((inventory) => {
+      const houseId = storageByInventory.get(String(inventory.entity_id));
+      return !houseId || selected.has(houseId);
+    })
+    .map((inventory) => [String(inventory.entity_id), inventory])).values());
+});
+
+const houseByInventory = computed(() => {
+  const result = new Map<string, HouseResponse>();
+  for (const storage of houseInventories.value ?? []) {
+    const house = houses.value?.find((entry) => String(entry.entity_id) === String(storage.house_entity_id));
+    if (house) {
+      for (const inventory of storage.inventories) result.set(String(inventory.entity_id), house);
+    }
+  }
+  return result;
+});
+
+const inventoryUpdateTopics = computed(() => {
+  return [...new Set(inventorySources().map((inventory) => `inventory_update.${inventory.entity_id}`))];
 });
 
 registerWebsocketMessageHandler("InventoryUpdate", inventoryUpdateTopics, (message) => {
-  const index = inventoryData.value.inventorys.findIndex(
-    (value) => message.resolved_inventory.entity_id === value.entity_id,
-  );
-
-  if (index !== -1) {
-    inventoryData.value.inventorys[index].pockets = message.resolved_inventory.pockets;
-    inventoryData.value.inventorys[index].region = message.resolved_inventory.region;
+  for (const inventory of inventorySources()) {
+    if (String(inventory.entity_id) === String(message.resolved_inventory.entity_id)) {
+      inventory.pockets = message.resolved_inventory.pockets;
+      inventory.region = message.resolved_inventory.region;
+    }
   }
 });
 
 const inventoryRemoveTopics = computed(() => {
-  if (!inventoryData.value) {
-    return [];
-  }
-
-  return inventoryData.value?.inventorys.map(
-    (inventory) => `inventory_remove.${inventory.entity_id}`,
-  );
+  return [...new Set(inventorySources().map((inventory) => `inventory_remove.${inventory.entity_id}`))];
 });
 
 registerWebsocketMessageHandler("InventoryRemove", inventoryRemoveTopics, (message) => {
-  const index = inventoryData.value.inventorys.findIndex(
-    (value) => message.resolved_inventory.entity_id === value.entity_id,
-  );
-
-  if (index !== -1) {
-    inventoryData.value.inventorys.splice(index, 1);
+  for (const list of [inventoryData.value?.inventorys, ...(houseInventories.value ?? []).map((house) => house.inventories)]) {
+    if (!list) continue;
+    const index = list.findIndex((value) => String(message.resolved_inventory.entity_id) === String(value.entity_id));
+    if (index !== -1) list.splice(index, 1);
   }
 });
 
@@ -288,8 +354,8 @@ const mainInventory = computed(() =>
 );
 
 const orderedInventories = computed(() =>
-  [...(inventoryData.value?.inventorys ?? [])].sort(
-    (a, b) => Number(b === mainInventory.value) - Number(a === mainInventory.value),
+  [...allInventories.value].sort(
+    (a, b) => Number(String(b.entity_id) === String(mainInventory.value?.entity_id)) - Number(String(a.entity_id) === String(mainInventory.value?.entity_id)),
   ),
 );
 
@@ -325,7 +391,10 @@ const wallet = computed(() => {
 });
 
 const deployables = computed(() => {
-  return playerData.value?.deployables ?? undefined;
+  return [...(playerData.value?.deployables ?? [])].sort((a, b) =>
+    a.collectible_desc.tag.localeCompare(b.collectible_desc.tag) ||
+    a.collectible_desc.name.localeCompare(b.collectible_desc.name, undefined, { numeric: true }),
+  );
 });
 
 const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
@@ -526,11 +595,11 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
         <UCard v-if="deployables && deployables.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Deployables</h2>
-            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
               <div
                 v-for="deployable in deployables"
                 :key="deployable.id"
-                class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+                class="flex max-w-full items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-800 sm:w-fit"
               >
                 <bitcraft-inventory-img
                   :item="deployable.collectible_desc"
@@ -539,14 +608,14 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                   class="size-12 shrink-0"
                 />
                 <div class="min-w-0">
-                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <p
+                    class="text-sm font-semibold"
+                    :class="deployable.activated ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-100'"
+                  >
                     {{ deployable.collectible_desc.name }}
                   </p>
                   <p class="text-xs text-gray-500 dark:text-gray-400">
                     Amount: {{ numberFormat.format(deployable.count) }}
-                  </p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ deployable.activated ? "Activated" : "Not Activated" }}
                   </p>
                 </div>
               </div>
@@ -626,7 +695,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
           </div>
         </UCard>
 
-        <UCard v-if="inventoryData?.inventorys.length || houses?.length" :ui="{ body: 'p-4' }">
+        <UCard v-if="inventoryData?.inventorys.length || houseInventories?.length || houses?.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventories</h2>
             <UInput
@@ -648,36 +717,40 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
               </template>
             </UInput>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Search items and cargo by name across player inventories and house storage.
+              Search items and cargo by name across player inventories and selected house storage.
             </p>
+            <fieldset v-if="storageHouses.length" class="flex flex-wrap gap-x-5 gap-y-2 py-2">
+              <legend class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                Include house storage
+              </legend>
+              <UCheckbox
+                v-for="house in storageHouses"
+                :key="house.entity_id.toString()"
+                :model-value="isHouseSelected(house)"
+                @update:model-value="setHouseSelected(house, $event)"
+              >
+                <template #label>
+                  {{ house.owner_username || "Unknown owner" }}
+                  (Region <bitcraft-region :region="house.region_index" />)
+                </template>
+              </UCheckbox>
+            </fieldset>
             <UEmpty
               v-if="inventorySearchQuery && !filteredInventoryList.length"
               icon="i-lucide-search"
-              title="No matching items in player inventories"
-              description="Try another name, or check the house storage results below."
+              title="No matching items in inventories"
+              description="Try another name."
             />
-            <div
-              class="gap-4 pt-2"
-              :class="
-                filteredInventoryList.length > 1
-                  ? 'grid grid-cols-1 xl:grid-cols-2'
-                  : 'flex flex-col'
-              "
-            >
+            <div class="inventory-masonry pt-2">
               <div
-                v-for="(inventory, index) in filteredInventoryList"
+                v-for="inventory in filteredInventoryList"
                 :key="inventory.entity_id"
-                :class="
-                  filteredInventoryList.length > 1 &&
-                  filteredInventoryList.length % 2 === 1 &&
-                  index === filteredInventoryList.length - 1
-                    ? 'md:col-span-2'
-                    : ''
-                "
+                class="inventory-masonry-item"
               >
                 <Inventory
                   :inventory="inventory"
-                  :label="inventory === mainInventory ? 'Player Inventory' : undefined"
+                  :label="String(inventory.entity_id) === String(mainInventory?.entity_id) ? 'Player Inventory' : undefined"
+                  :house="houseByInventory.get(String(inventory.entity_id))"
                   :search="inventorySearchQuery"
                   show-region
                 />
@@ -689,7 +762,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
         <UCard v-if="houses && houses.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Houses ({{ houses.length }})
+              Accessible houses ({{ houses.length }})
             </h2>
             <div class="flex flex-col gap-4 pt-2">
               <div
@@ -713,3 +786,20 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
     </template>
   </UContainer>
 </template>
+
+<style scoped>
+.inventory-masonry {
+  column-count: 1;
+  column-gap: 1rem;
+}
+
+.inventory-masonry-item {
+  break-inside: avoid;
+}
+
+@media (min-width: 80rem) {
+  .inventory-masonry:has(> .inventory-masonry-item:nth-child(2)) {
+    column-count: 2;
+  }
+}
+</style>

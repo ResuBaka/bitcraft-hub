@@ -3,6 +3,6 @@ import type { CargoDesc } from "./CargoDesc";
 import type { ItemDesc } from "./ItemDesc";
 
 export type AllInventoryStatsResponse = {
-  items: Array<[bigint, ItemDesc | null]>;
-  cargo: Array<[bigint, CargoDesc | null]>;
+  items: Array<[bigint, ItemDesc | null, { [key: number]: bigint }]>;
+  cargo: Array<[bigint, CargoDesc | null, { [key: number]: bigint }]>;
 };

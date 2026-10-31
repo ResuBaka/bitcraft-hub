@@ -2,6 +2,7 @@
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import type { CargoDesc } from "~/types/CargoDesc";
 import type { ItemDesc } from "~/types/ItemDesc";
+import { rarityToTextClass, tierToTextClass } from "~/utils";
 
 const props = defineProps<{
   id: number;
@@ -53,6 +54,19 @@ const iconUrl = computed(() => {
         {{ desc.name }}
       </p>
       <p class="text-xs text-gray-500 dark:text-gray-400">{{ type }} #{{ id }}</p>
+      <div class="mt-1 flex flex-wrap gap-2">
+        <UBadge v-if="desc.tier != null" color="neutral" variant="subtle">
+          <span :class="tierToTextClass(desc.tier)">Tier {{ desc.tier }}</span>
+        </UBadge>
+        <UBadge
+          v-if="desc.rarity"
+          color="neutral"
+          variant="subtle"
+          :aria-label="`Rarity: ${desc.rarity}`"
+        >
+          <span :class="rarityToTextClass(desc.rarity)">{{ desc.rarity }}</span>
+        </UBadge>
+      </div>
     </div>
     <UBadge color="neutral" variant="soft">
       {{ Intl.NumberFormat().format(quantity) }}

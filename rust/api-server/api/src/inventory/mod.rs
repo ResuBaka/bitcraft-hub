@@ -16,9 +16,8 @@ use sea_orm::{DbBackend, FromQueryResult, Statement};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use service::Query as QueryCore;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
-use std::ops::AddAssign;
 use std::sync::Arc;
 use ts_rs::TS;
 
@@ -368,8 +367,8 @@ fn deduplicate_inventories(inventories: &mut Vec<inventory::Model>) {
 #[derive(Serialize, Deserialize, TS)]
 #[ts(export)]
 pub(crate) struct AllInventoryStatsResponse {
-    items: Vec<(i64, Option<::entity::item_desc::Model>)>,
-    cargo: Vec<(i64, Option<::entity::cargo_desc::Model>)>,
+    items: Vec<(i64, Option<::entity::item_desc::Model>, BTreeMap<i16, i64>)>,
+    cargo: Vec<(i64, Option<::entity::cargo_desc::Model>, BTreeMap<i16, i64>)>,
 }
 
 pub(crate) async fn all_inventory_stats(
@@ -393,12 +392,13 @@ pub(crate) async fn all_inventory_stats(
         SELECT
             COALESCE(SUM((content->>'quantity')::bigint), 0)::bigint AS total_quantity,
             (content->>'item_id')::integer AS item_id,
-            content->'item_type' AS item_type
+            content->'item_type' AS item_type,
+            region
         FROM (
-            SELECT jsonb_path_query(pockets, '$[*].contents ? (@ != null)') AS content
+            SELECT region, jsonb_path_query(pockets, '$[*].contents ? (@ != null)') AS content
             FROM inventory
         ) AS item_extraction
-        GROUP BY item_id, item_type;
+        GROUP BY item_id, item_type, region;
     "#;
 
     let mut results = InventorySummary::find_by_statement(Statement::from_string(
@@ -412,35 +412,31 @@ pub(crate) async fn all_inventory_stats(
         (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
     })?;
 
-    let mut items: HashMap<i32, (i64, Option<::entity::item_desc::Model>)> = HashMap::new();
-    let mut cargo: HashMap<i32, (i64, Option<::entity::cargo_desc::Model>)> = HashMap::new();
+    let mut items = HashMap::new();
+    let mut cargo = HashMap::new();
 
     while let Some(contents) = results.try_next().await.map_err(|e| {
         error!("Error: {e:?}");
         (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
     })? {
         if contents.item_type == ItemType::Item {
-            items
-                .entry(contents.item_id)
-                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity))
-                .or_insert((
-                    contents.total_quantity,
-                    state
-                        .item_desc
-                        .get(&contents.item_id)
-                        .map(|item_desc| item_desc.to_owned()),
-                ));
+            let entry = items.entry(contents.item_id).or_insert_with(|| {
+                (
+                    0,
+                    state.item_desc.get(&contents.item_id).map(|desc| desc.to_owned()),
+                    BTreeMap::new(),
+                )
+            });
+            add_region_quantity(entry, contents.region, contents.total_quantity);
         } else {
-            cargo
-                .entry(contents.item_id)
-                .and_modify(|(qty, _)| qty.add_assign(contents.total_quantity))
-                .or_insert((
-                    contents.total_quantity,
-                    state
-                        .cargo_desc
-                        .get(&contents.item_id)
-                        .map(|cargo_desc| cargo_desc.to_owned()),
-                ));
+            let entry = cargo.entry(contents.item_id).or_insert_with(|| {
+                (
+                    0,
+                    state.cargo_desc.get(&contents.item_id).map(|desc| desc.to_owned()),
+                    BTreeMap::new(),
+                )
+            });
+            add_region_quantity(entry, contents.region, contents.total_quantity);
         }
     }
 
@@ -492,6 +488,26 @@ pub(crate) async fn all_inventory_stats(
         items,
         cargo,
     }))
+}
+
+fn add_region_quantity<T>(entry: &mut (i64, T, BTreeMap<i16, i64>), region: i16, quantity: i64) {
+    entry.0 += quantity;
+    *entry.2.entry(region).or_default() += quantity;
+}
+
+#[cfg(test)]
+mod stats_tests {
+    use super::*;
+
+    #[test]
+    fn regional_quantities_add_up_to_total() {
+        let mut entry = (0, (), BTreeMap::new());
+        add_region_quantity(&mut entry, 2, 7);
+        add_region_quantity(&mut entry, 1, 3);
+        add_region_quantity(&mut entry, 2, 5);
+        assert_eq!(entry.0, 15);
+        assert_eq!(entry.2, BTreeMap::from([(1, 3), (2, 12)]));
+    }
 }
 
 #[allow(dead_code)]

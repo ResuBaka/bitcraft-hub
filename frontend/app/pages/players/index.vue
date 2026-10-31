@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watchDebounced, watchThrottled } from "@vueuse/shared";
+import { watchDebounced } from "@vueuse/shared";
 import type { PlayersResponse } from "~/types/PlayersResponse";
 import { useDelayedPending } from "~/utils";
 
@@ -25,7 +25,6 @@ if (route.query.page) {
 const {
   data: players,
   pending,
-  refresh,
 } = await useLazyFetchMsPack<PlayersResponse>(
   () => {
     const url = `/api/bitcraft/players?`;
@@ -90,20 +89,11 @@ const changePage = (value: number) => {
       page: value,
     },
   });
-  refresh();
 };
 
-watchThrottled(
-  () => [search.value, showOnlyOnlinePlayers.value],
-  (value, oldValue) => {
-    if (value[0] !== oldValue[0] || value[1] !== oldValue[1]) {
-      page.value = 1;
-    }
-
-    refresh();
-  },
-  { throttle: 50 },
-);
+watch(showOnlyOnlinePlayers, () => {
+  page.value = 1;
+});
 
 watchDebounced(
   debouncedSearch,
@@ -113,9 +103,8 @@ watchDebounced(
     }
 
     search.value = debouncedSearch.value;
-    refresh();
   },
-  { debounce: 100, maxWait: 200 },
+  { debounce: 200, maxWait: 222 },
 );
 
 const currentPlayers = computed(() => {

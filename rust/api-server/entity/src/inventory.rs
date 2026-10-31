@@ -215,4 +215,5 @@ pub struct InventorySummary {
     pub total_quantity: i64,
     pub item_id: i32, // Adjust type (i64/String) based on your actual data
     pub item_type: ItemType,
+    pub region: crate::shared::Region,
 }

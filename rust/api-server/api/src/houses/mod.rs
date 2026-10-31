@@ -24,6 +24,18 @@ pub(crate) fn get_routes() -> AppRouter {
             "/api/bitcraft/houses/by_owner/{id}",
             axum_codec::routing::get(find_houses_by_owner_id).into(),
         )
+        .route(
+            "/houses/by_player/{id}",
+            axum_codec::routing::get(find_houses_by_player_id).into(),
+        )
+        .route(
+            "/api/bitcraft/houses/by_player/{id}",
+            axum_codec::routing::get(find_houses_by_player_id).into(),
+        )
+        .route(
+            "/api/bitcraft/houses/by_player/{id}/inventories",
+            axum_codec::routing::get(find_player_house_inventories).into(),
+        )
         .route("/houses/{id}", axum_codec::routing::get(find_house).into())
         .route(
             "/api/bitcraft/houses/{id}",
@@ -185,6 +197,100 @@ pub(crate) async fn find_houses_by_owner_id(
     }
 
     Ok(axum_codec::Codec(response))
+}
+
+/// Finds houses where the player has a granted permission, including ownership.
+pub(crate) async fn find_houses_by_player_id(
+    State(state): State<AppState>,
+    Path(player_id): Path<i64>,
+) -> Result<axum_codec::Codec<Vec<HouseResponse>>, (StatusCode, &'static str)> {
+    let building_ids: Vec<i64> = ::entity::permission_state::Entity::find()
+        .filter(::entity::permission_state::Column::AllowedEntityId.eq(player_id))
+        // Rank 0 is PendingVisitor, not yet a grant of access.
+        .filter(::entity::permission_state::Column::Rank.gt(0))
+        .all(&state.conn)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
+        .into_iter()
+        .map(|permission| permission.ordained_entity_id)
+        .collect();
+
+    let houses = ::entity::player_housing_state::Entity::find()
+        .filter(
+            sea_orm::Condition::any()
+                .add(
+                    ::entity::player_housing_state::Column::EntranceBuildingEntityId
+                        .is_in(building_ids.clone()),
+                )
+                .add(::entity::player_housing_state::Column::EntityId.is_in(building_ids)),
+        )
+        .all(&state.conn)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    let mut response = Vec::with_capacity(houses.len());
+    for house in houses {
+        let owner_id = get_owner_entity_id_for_house(&state, &house).await;
+        response.push(build_house_response(&state, house, owner_id).await?.0);
+    }
+    Ok(axum_codec::Codec(response))
+}
+
+/// Inventory permission is rank 3; higher ranks include storage access.
+pub(crate) async fn find_player_house_inventories(
+    State(state): State<AppState>,
+    Path(player_id): Path<i64>,
+) -> Result<axum_codec::Codec<Vec<HouseInventoriesResponse>>, (StatusCode, &'static str)> {
+    let houses = find_houses_by_player_id(State(state.clone()), Path(player_id))
+        .await?
+        .0;
+    let mut inventories = Vec::new();
+    for house in houses {
+        if has_direct_storage_access(&house.permissions, player_id) {
+            inventories.push(
+                find_house_inventories(State(state.clone()), Path(house.entity_id))
+                    .await?
+                    .0,
+            );
+        }
+    }
+    Ok(axum_codec::Codec(inventories))
+}
+
+fn has_direct_storage_access(permissions: &[PermissionEntry], player_id: i64) -> bool {
+    permissions.iter().any(|permission| {
+        permission.group == 0 && permission.allowed_entity_id == player_id && permission.rank >= 3
+    })
+}
+
+#[cfg(test)]
+mod access_tests {
+    use super::*;
+
+    #[test]
+    fn storage_requires_direct_inventory_permission() {
+        let mut permission = PermissionEntry {
+            allowed_entity_id: 42,
+            allowed_username: None,
+            group: 0,
+            rank: 2,
+        };
+        assert!(!has_direct_storage_access(&[permission], 42));
+        permission = PermissionEntry {
+            allowed_entity_id: 42,
+            allowed_username: None,
+            group: 0,
+            rank: 3,
+        };
+        assert!(has_direct_storage_access(&[permission], 42));
+        permission = PermissionEntry {
+            allowed_entity_id: 42,
+            allowed_username: None,
+            group: 1,
+            rank: 7,
+        };
+        assert!(!has_direct_storage_access(&[permission], 42));
+    }
 }
 
 /// GET /houses/{id}

@@ -28,6 +28,64 @@ use sea_orm::*;
 
 pub struct Query;
 
+fn player_name_search(
+    mut query: Select<player_state::Entity>,
+    value: &str,
+) -> Select<player_state::Entity> {
+    if value.is_empty() {
+        return query;
+    }
+    let pattern = format!(
+        "%{}%",
+        value.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+    );
+    let mut matches = Condition::any().add(Expr::cust_with_values(
+        "\"player_username_state\".\"username\" ILIKE $1 ESCAPE '\\'",
+        [pattern.clone()],
+    ));
+    if value.chars().count() >= 3 {
+        matches = matches.add(Expr::cust_with_values(
+            "\"player_username_state\".\"username\" % $1",
+            [value.to_owned()],
+        ));
+    }
+    query = query.filter(matches).order_by_asc(Expr::cust_with_values(
+        "CASE WHEN lower(\"player_username_state\".\"username\") = lower($1) THEN 0 WHEN \"player_username_state\".\"username\" ILIKE $2 ESCAPE '\\' THEN 1 ELSE 2 END",
+        [value.to_owned(), pattern],
+    ));
+    if value.chars().count() >= 3 {
+        query = query.order_by_desc(Expr::cust_with_values(
+            "similarity(\"player_username_state\".\"username\", $1)",
+            [value.to_owned()],
+        ));
+    }
+    query
+}
+
+#[cfg(test)]
+mod player_name_search_tests {
+    use super::*;
+
+    #[test]
+    fn long_search_uses_bound_trigram_and_escaped_substring() {
+        let query = player_name_search(PlayerState::find(), "O'_%");
+        let statement = query.build(DbBackend::Postgres);
+        assert!(statement.sql.as_str().contains("similarity("));
+        assert!(statement.sql.as_str().contains("\"username\" % $"));
+        assert!(!statement.sql.as_str().contains("O'_"));
+        let values = format!("{:?}", statement.values);
+        assert!(values.as_str().contains("\\\\_\\\\%"));
+    }
+
+    #[test]
+    fn short_search_does_not_use_trigrams() {
+        let statement = player_name_search(PlayerState::find(), "ab").build(DbBackend::Postgres);
+        assert!(statement.sql.as_str().contains("ILIKE"));
+        assert!(!statement.sql.as_str().contains("similarity("));
+        assert!(!statement.sql.as_str().contains("\"username\" %"));
+    }
+}
+
 impl Query {
     pub async fn find_player_by_id(
         db: &DbConn,
@@ -72,21 +130,20 @@ impl Query {
         DbErr,
     > {
         // Setup paginator
-        let paginator = PlayerState::find()
+        let mut query = PlayerState::find()
             .join_rev(
                 JoinType::LeftJoin,
                 player_username_state::Entity::belongs_to(player_state::Entity)
                     .from(player_username_state::Column::EntityId)
                     .to(player_state::Column::EntityId)
                     .into(),
-            )
+            );
+        if let Some(value) = search {
+            query = player_name_search(query, &value);
+        }
+        let paginator = query
             .order_by_asc(player_username_state::Column::Username)
-            .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => query.filter(
-                    Expr::col(player_username_state::Column::Username).ilike(format!("%{value}%")),
-                ),
-                _ => unreachable!(),
-            })
+            .order_by_asc(player_state::Column::EntityId)
             .apply_if(online, |query, value| {
                 query.filter(
                     player_username_state::Column::EntityId.in_subquery(
@@ -147,14 +204,26 @@ impl Query {
         search: Option<String>,
     ) -> Result<(Vec<item_desc::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
-        let paginator = Item::find()
+        let mut query = Item::find();
+        if let Some(value) = search.filter(|value| !value.is_empty()) {
+            let pattern = format!("%{}%", value.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"));
+            let mut matches = Condition::any().add(Expr::cust_with_values("name ILIKE $1 ESCAPE '\\'", [pattern.clone()]));
+            if value.chars().count() >= 3 {
+                matches = matches.add(Expr::cust_with_values(
+                    "(name % $1 AND similarity(name, $1) >= 0.5 AND (similarity(name, $1) >= 0.65 OR NOT EXISTS (SELECT 1 FROM item_desc AS strong WHERE strong.name ILIKE $2 ESCAPE '\\' OR (strong.name % $1 AND similarity(strong.name, $1) >= 0.65))))",
+                    [value.clone(), pattern.clone()],
+                ));
+            }
+            query = query.filter(matches).order_by_asc(Expr::cust_with_values(
+                "CASE WHEN lower(name) = lower($1) THEN 0 WHEN name ILIKE $2 ESCAPE '\\' THEN 1 ELSE 2 END",
+                [value.clone(), pattern],
+            ));
+            if value.chars().count() >= 3 {
+                query = query.order_by_desc(Expr::cust_with_values("similarity(name, $1)", [value]));
+            }
+        }
+        let paginator = query
             .order_by_asc(item_desc::Column::Id)
-            .apply_if(search, |query, value| match db.get_database_backend() {
-                DbBackend::Postgres => {
-                    query.filter(Expr::col(item_desc::Column::Name).ilike(format!("%{value}%")))
-                }
-                _ => unreachable!(),
-            })
             .paginate(db, per_page);
 
         let num_pages = paginator.num_items_and_pages().await?;

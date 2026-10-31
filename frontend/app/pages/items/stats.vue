@@ -168,6 +168,11 @@ const cargo = computed(() => {
 
 const numberFormat = new Intl.NumberFormat();
 
+const regionsByQuantity = (regions: { [key: number]: bigint }) =>
+  Object.entries(regions).sort((a, b) =>
+    a[1] > b[1] ? -1 : a[1] < b[1] ? 1 : Number(a[0]) - Number(b[0]),
+  );
+
 const imageErrors = ref(new Set<number>());
 
 const iconForItem = (item: ItemExpended) => {
@@ -296,6 +301,17 @@ useSeoMeta({
                 >
                   {{ item[1].rarity }}
                 </div>
+                <details class="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                  <summary class="cursor-pointer">By region</summary>
+                  <div
+                    v-for="[region, quantity] in regionsByQuantity(item[2])"
+                    :key="region"
+                    class="flex justify-between gap-3"
+                  >
+                    <span>Region <bitcraft-region :region="Number(region)" /></span>
+                    <span>{{ numberFormat.format(quantity) }}</span>
+                  </div>
+                </details>
               </div>
             </UCard>
           </div>
@@ -353,6 +369,17 @@ useSeoMeta({
                 >
                   {{ item[1].rarity }}
                 </div>
+                <details class="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                  <summary class="cursor-pointer">By region</summary>
+                  <div
+                    v-for="[region, quantity] in regionsByQuantity(item[2])"
+                    :key="region"
+                    class="flex justify-between gap-3"
+                  >
+                    <span>Region <bitcraft-region :region="Number(region)" /></span>
+                    <span>{{ numberFormat.format(quantity) }}</span>
+                  </div>
+                </details>
               </div>
             </UCard>
           </div>

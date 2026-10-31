@@ -4,6 +4,7 @@ import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { ItemCargo } from "~/types/ItemCargo";
 import type { ResolvedInventory } from "~/types/ResolvedInventory";
+import type { HouseResponse } from "~/types/HouseResponse";
 import AutocompleteItem from "./autocomplete/AutocompleteItem.vue";
 import AutocompleteUser from "./autocomplete/AutocompleteUser.vue";
 import InventoryChanges from "./InventoryChanges.vue";
@@ -15,6 +16,7 @@ const props = defineProps<{
   label?: string;
   search?: string;
   showRegion?: boolean;
+  house?: HouseResponse;
 }>();
 
 const visiblePockets = computed(() =>
@@ -97,12 +99,16 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
   <div v-if="inventory" v-bind="$attrs" class="inventory-root">
     <UCard
       class="mb-6"
-      :ui="{ header: 'p-4', body: 'p-0', footer: showChangelog ? 'p-4' : 'sm:p-0 p-4' }"
+      :ui="{ header: 'p-4', body: 'p-2 sm:p-2', footer: showChangelog ? 'p-4' : 'sm:p-0 p-4' }"
     >
       <template #header>
         <div class="inventory-header">
           <div class="inventory-title">
             <h3 class="inventory-name">{{ inventoryLabel }}</h3>
+            <div v-if="house" class="inventory-claim">
+              House: {{ house.owner_username || house.owner_entity_id || house.entity_id }}
+              <span>(<bitcraft-region :region="house.region_index" /> · {{ house.entity_id }})</span>
+            </div>
             <div class="inventory-stats-row">
               <div class="inventory-stat">
                 <span class="inventory-stat-label">Item</span>
@@ -177,7 +183,7 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
               >
                 <div class="tier-label">T{{ pocket.contents.item.tier }}</div>
                 <div class="item-icon">
-                  <InventoryImg :item="pocket.contents.item" width="70%" height="70%" />
+                  <InventoryImg :item="pocket.contents.item" width="85%" height="85%" />
                 </div>
                 <div
                   class="quantity-badge"
@@ -308,7 +314,7 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
 
 .inventory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 80px);
+  grid-template-columns: repeat(auto-fill, 68px);
   gap: 10px;
   justify-content: start;
 }
@@ -320,8 +326,8 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
 }
 
 .inventory-slot-box {
-  width: 80px;
-  height: 80px;
+  width: 68px;
+  height: 68px;
   cursor: default;
   overflow: hidden;
   transition: all 0.2s ease;
@@ -405,12 +411,12 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
   }
 
   .inventory-grid {
-    grid-template-columns: repeat(auto-fill, 72px);
+    grid-template-columns: repeat(auto-fill, 60px);
   }
 
   .inventory-slot-box {
-    width: 72px;
-    height: 72px;
+    width: 60px;
+    height: 60px;
   }
 }
 </style>

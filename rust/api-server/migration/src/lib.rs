@@ -48,6 +48,8 @@ mod m20260503_091149_remove_region_from_player_housing_state;
 mod m20260825_145603_move_to_v2_of_deployable_state;
 mod m20261003_000001_claim_event;
 mod m20261004_000001_claim_member_events;
+mod m20261031_000001_player_username_trigram;
+mod m20261031_000002_item_name_trigram;
 
 pub struct Migrator;
 
@@ -103,6 +105,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20260825_145603_move_to_v2_of_deployable_state::Migration),
             Box::new(m20261003_000001_claim_event::Migration),
             Box::new(m20261004_000001_claim_member_events::Migration),
+            Box::new(m20261031_000001_player_username_trigram::Migration),
+            Box::new(m20261031_000002_item_name_trigram::Migration),
         ]
     }
 }

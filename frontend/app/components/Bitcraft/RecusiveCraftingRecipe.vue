@@ -1,350 +1,282 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
-import type {
-  objectWithChildren,
-  PannelIndexs,
-  RecipeWithChildren,
-} from "~/pages/items/[type]/[id].vue";
 import type { CargoDesc } from "~/types/CargoDesc";
 import type { ItemDesc } from "~/types/ItemDesc";
-
-export type ResourceEffort = {
-  [itemKey: string]: number; // attempts needed per unit
-};
+import { itemKey, estimateCraftingAttempts } from "~/utils/craftingPlan";
+import { estimateDrop } from "~/utils/dropEstimates";
+import { rarityToTextClass, tierToTextClass } from "~/utils";
+import type { CraftingGraph, CraftingPlanNode } from "~/utils/craftingPlan";
 
 const props = defineProps<{
-  item: objectWithChildren;
-  item_desc: { [key in number]?: ItemDesc };
-  cargo_desc: { [key in number]?: CargoDesc };
-  item_list_desc?: { [key in number]?: any };
-  resourceEffortMap?: { [resourceId: number]: ResourceEffort };
-  pannel_indexs: PannelIndexs;
+  item: CraftingPlanNode;
+  graph: CraftingGraph;
+  item_desc: { [key: number]: ItemDesc | undefined };
+  cargo_desc: { [key: number]: CargoDesc | undefined };
 }>();
-
+const emit = defineEmits<{ select: [path: string, recipe: string | null] }>();
 defineOptions({ name: "RecusiveCraftingRecipe" });
-function getDesc(item: objectWithChildren) {
-  let desc: ItemDesc | CargoDesc | undefined;
-  if (item.type === "Item") {
-    desc = props.item_desc[item.id];
-  } else {
-    desc = props.cargo_desc[item.id];
-  }
-  return desc;
-}
-const desc = computed(() => {
-  let desc: ItemDesc | CargoDesc | undefined;
-  if (props.item.type === "Item") {
-    desc = props.item_desc[props.item.id];
-  } else {
-    desc = props.cargo_desc[props.item.id];
-  }
-  return desc;
+
+const numberFormat = new Intl.NumberFormat();
+const percent = new Intl.NumberFormat(undefined, { style: "percent", maximumSignificantDigits: 4 });
+const highPercent = new Intl.NumberFormat(undefined, {
+  style: "percent",
+  maximumFractionDigits: 2,
 });
-
-function getChildPannel(index: number) {
-  return props.pannel_indexs?.children?.[0]?.children?.[index];
+function formatOdds(value: number) {
+  const text = percent.format(value);
+  return value < 1 && text === percent.format(1) ? `>${highPercent.format(0.9999)}` : text;
 }
+const dropEstimate = computed(() => estimateDrop(props.item.probability, 0));
+const desc = computed(() =>
+  props.item.type === "Item" ? props.item_desc[props.item.id] : props.cargo_desc[props.item.id],
+);
+const graphItem = computed(() => props.graph.items.get(itemKey(props.item.type, props.item.id)));
+const outputs = computed(() => graphItem.value?.craftingRecipes ?? []);
+const hasOperations = computed(
+  () =>
+    !!graphItem.value?.operations.length ||
+    graphItem.value?.recipes.some(
+      (output) => props.graph.recipes.get(output.recipeId)?.kind !== "craft",
+    ),
+);
+const openedRecipePanels = ref<string>();
 
-function getChildPannelMulti(parentIndex: number, childIndex: number) {
-  return props.pannel_indexs?.children?.[parentIndex]?.children?.[childIndex];
+function openRecipe(value: unknown) {
+  openedRecipePanels.value = typeof value === "string" ? value : undefined;
+  if (typeof value === "string" && value !== props.item.recipeKey)
+    emit("select", props.item.path, value);
 }
-
-const getItemTotalActions = (item: objectWithChildren, pIndex: PannelIndexs): number => {
-  if (!item.children || item.children.length === 0) return 0;
-
-  const recipeIdx = pIndex.pannels;
-  const recipe = item.children[recipeIdx];
-  if (!recipe) return 0;
-
-  let total = recipe.shadow_actions_required;
-
-  const recipeMeta = pIndex.children[recipeIdx];
-  if (recipeMeta && recipe.children) {
-    for (let i = 0; i < recipe.children.length; i++) {
-      const ingredient = recipe.children[i];
-      const ingredientPIndex = recipeMeta.children[i];
-      if (ingredient && ingredientPIndex) {
-        total += getItemTotalActions(ingredient, ingredientPIndex);
-      }
-    }
-  }
-
-  return total;
-};
-
-const getRecipeTotalActions = (recipe: RecipeWithChildren, recipeIdx: number): number => {
-  let total = recipe.shadow_actions_required;
-
-  const recipeMeta = props.pannel_indexs.children[recipeIdx];
-  if (recipeMeta && recipe.children) {
-    for (let i = 0; i < recipe.children.length; i++) {
-      const ingredient = recipe.children[i];
-      const ingredientPIndex = recipeMeta.children[i];
-      if (ingredient && ingredientPIndex) {
-        total += getItemTotalActions(ingredient, ingredientPIndex);
-      }
-    }
-  }
-
-  return total;
-};
-
-const totalActions = computed(() => {
-  return getItemTotalActions(props.item, props.pannel_indexs);
-});
-
-const openedRecipePanels = ref<string | undefined>(undefined);
+function supplyDirectly() {
+  openedRecipePanels.value = undefined;
+  emit("select", props.item.path, null);
+}
 watch(
-  openedRecipePanels,
-  (v) => {
-    if (v !== undefined) props.pannel_indexs.pannels = Number(v);
+  () => props.item.recipeKey,
+  (key) => {
+    if (openedRecipePanels.value && openedRecipePanels.value !== key)
+      openedRecipePanels.value = key ?? undefined;
   },
-  { deep: true },
 );
 
-const displayActions = computed(() => {
-  // Prefer exact totalActions when > 0
-  if (totalActions.value && totalActions.value > 0) return totalActions.value;
-
-  // If multiple probability-backed alternatives exist, use weighted avg
-  if (hasMultipleAlternatives.value && avgTotalActions.value > 0) return avgTotalActions.value;
-
-  // Fallback: if there are recipes, use the first recipe total or shadow actions
-  if (props.item.children && props.item.children.length > 0) {
-    const first = props.item.children[0];
-    if (first) {
-      // compute total for first recipe using current pannel_indexs if possible
-      try {
-        const tot = getRecipeTotalActions(first, 0);
-        if (tot && tot > 0) return tot;
-      } catch (e) {
-        // ignore
-      }
-      if (first.shadow_actions_required && first.shadow_actions_required > 0)
-        return first.shadow_actions_required;
-    }
-  }
-
-  return 0;
-});
-
-const displayActionsString = computed(() => {
-  const v = displayActions.value || 0;
-  const formatted = Intl.NumberFormat().format(v);
-  return hasMultipleAlternatives.value ? `${formatted}*` : formatted;
-});
-
-const hasMultipleAlternatives = computed(() => {
-  // Only mark with * when the item is produced from an item list
-  // that contains multiple possibilities (i.e. probability-based options).
-  if (props.item.type !== "Item") return false;
-  const parentDesc = props.item_desc[props.item.id];
-  const listId = parentDesc?.item_list_id;
-  if (!listId || !props.item_list_desc) return false;
-  const list = props.item_list_desc[listId];
-  if (!list || !Array.isArray(list.possibilities)) return false;
-  return list.possibilities.length > 1;
-});
-
-function getProducedItemFromRecipe(recipe: any) {
-  return recipe?.children?.[0];
-}
-
-function getRecipeProbability(recipe: any): number {
-  const produced = getProducedItemFromRecipe(recipe);
-  if (!produced) return 1 / (props.item.children?.length || 1);
-
-  if (props.item.type === "Item") {
-    const parentDesc = props.item_desc[props.item.id];
-    const listId = parentDesc?.item_list_id;
-    if (listId && props.item_list_desc && props.item_list_desc[listId]) {
-      const list = props.item_list_desc[listId];
-      for (const possibility of list.possibilities || []) {
-        const found = (possibility.items || []).find(
-          (it: any) => it.item_id === produced.id && it.item_type === produced.type,
-        );
-        if (found) return possibility.probability || 0;
-      }
-    }
-  }
-
-  // fallback: uniform probability
-  return 1 / (props.item.children?.length || 1);
-}
-
-const avgShadowActions = computed(() => {
-  if (!props.item.children || props.item.children.length === 0) return 0;
-  let total = 0;
-  let weightSum = 0;
-  for (const r of props.item.children) {
-    const w = getRecipeProbability(r) || 0;
-    total += (r.shadow_actions_required || 0) * w;
-    weightSum += w;
-  }
-  if (weightSum === 0) return 0;
-  return Math.round(total / weightSum);
-});
-
-const avgTotalActions = computed(() => {
-  if (!props.item.children || props.item.children.length === 0) return 0;
-  let total = 0;
-  let weightSum = 0;
-  for (let i = 0; i < props.item.children.length; i++) {
-    const r = props.item.children[i];
-    const w = getRecipeProbability(r) || 0;
-    total += getRecipeTotalActions(r, i) * w;
-    weightSum += w;
-  }
-  if (weightSum === 0) return 0;
-  return Math.round(total / weightSum);
-});
-
-const displayQuantity = computed(() => {
-  const q = props.item.quantity ?? 0;
-  return hasMultipleAlternatives.value
-    ? `${Intl.NumberFormat().format(q)}*`
-    : Intl.NumberFormat().format(q);
-});
+// Alternatives use only graph metadata and direct step costs. Descendant
+// quantities and total actions exist exclusively on the currently selected plan.
+const recipeAccordionItems = computed(() =>
+  outputs.value.map((output, index) => {
+    const recipe = props.graph.recipes.get(output.recipeId)!;
+    const needed = output.recrafting ? props.item.requested : props.item.quantity;
+    const step = numberFormat.format(
+      recipe.actions * estimateCraftingAttempts(output, needed, props.item.expectedDemand),
+    );
+    const selected = props.item.recipeKey === output.key;
+    const total = selected
+      ? `${props.item.averageEstimate ? "Avg total" : "Total"}: ${numberFormat.format(props.item.totalActions)} `
+      : "";
+    const name = recipe.name.replace(/\{\d+\}/g, desc.value?.name ?? `#${props.item.id}`);
+    return {
+      value: output.key,
+      label: `[Recipe ${index + 1}] ${name} (${output.probability === null ? "odds unavailable" : `${formatOdds(output.probability)} chance`} · ${total}Step: ${step})`,
+      recipe,
+      output,
+    };
+  }),
+);
 
 const iconUrl = computed(() => {
-  const iconName = desc.value?.icon_asset_name;
-  if (!iconName) return null;
-  const icon = iconAssetUrlNameRandom(iconName);
+  if (!desc.value?.icon_asset_name) return null;
+  const icon = iconAssetUrlNameRandom(desc.value.icon_asset_name);
   return icon.show ? icon.url : null;
 });
-
 const iconLoadError = ref(false);
-
 watch(iconUrl, () => {
   iconLoadError.value = false;
 });
-
-const handleIconError = () => {
-  iconLoadError.value = true;
-};
-
-const recipeAccordionItems = computed(() => {
-  if (!props.item.children || props.item.children.length === 0) return [];
-  return props.item.children.map((recipe, index) => {
-    const produced = getDesc(recipe.children?.[0]);
-    const total = Intl.NumberFormat().format(getRecipeTotalActions(recipe, index));
-    const step = Intl.NumberFormat().format(recipe.shadow_actions_required || 0);
-    return {
-      label: `[Recipe ${index + 1}] ${produced?.name ?? "Unknown"} (Total: ${total} Step: ${step})`,
-      value: String(index),
-      recipe,
-      index,
-    };
-  });
-});
-
-function getMiningEffortForItem(itemId: number) {
-  // For now, return undefined as we need resource data to calculate this
-  // This would need to be calculated based on which resources produce this item
-  return undefined;
-}
-
-const miningEffort = computed(() => {
-  return getMiningEffortForItem(props.item.id);
-});
 </script>
+
 <template>
-  <div v-if="item.deleted !== true && desc" class="flex flex-col gap-3">
+  <div class="flex flex-col gap-3">
     <div
       class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white/70 p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900/40"
     >
       <div
-        class="flex h-14 w-14 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+        class="flex size-14 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
       >
         <picture v-if="iconUrl && !iconLoadError">
           <source :srcset="`${iconUrl}.jxl`" type="image/jxl" />
           <source :srcset="`${iconUrl}.avif`" type="image/avif" />
           <img
             :src="`${iconUrl}.webp`"
-            :alt="desc.name"
-            class="h-12 w-12 object-contain"
+            :alt="desc?.name ?? 'Item icon'"
+            class="size-12 object-contain"
             loading="lazy"
-            @error="handleIconError"
+            @error="iconLoadError = true"
           />
         </picture>
-        <UIcon v-else name="i-lucide-box" class="h-6 w-6 text-gray-400" />
+        <UIcon v-else name="i-lucide-box" class="size-6 text-gray-400" />
       </div>
-      <div class="flex-1">
+      <div class="min-w-0 flex-1 space-y-1">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="space-y-1">
-            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ desc.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Actions required: {{ displayActionsString }}
-              <span v-if="item.children?.length > 1" class="text-gray-400">
-                (Total recipes: {{ item.children.length }})
-              </span>
-            </p>
-            <p v-if="miningEffort !== undefined" class="text-xs text-gray-500 dark:text-gray-400">
-              Mining effort (avg attempts):
-              {{ Intl.NumberFormat().format(Math.round(miningEffort)) }}
-            </p>
-          </div>
-          <UBadge color="neutral" variant="soft">
-            {{ displayQuantity }}
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {{ desc?.name ?? `${item.type} #${item.id}` }}
+          </p>
+          <UBadge color="neutral" variant="soft"
+            >{{ item.expectedDemand ? "≈ " : "" }}{{ numberFormat.format(item.requested)
+            }}{{ graphItem?.probabilistic ? "*" : "" }}</UBadge
+          >
+        </div>
+        <div v-if="desc" class="flex flex-wrap gap-2">
+          <UBadge v-if="desc.tier != null" color="neutral" variant="subtle">
+            <span :class="tierToTextClass(desc.tier)">Tier {{ desc.tier }}</span>
+          </UBadge>
+          <UBadge
+            v-if="desc.rarity"
+            color="neutral"
+            variant="subtle"
+            :aria-label="`Rarity: ${desc.rarity}`"
+          >
+            <span :class="rarityToTextClass(desc.rarity)">{{ desc.rarity }}</span>
           </UBadge>
         </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          {{ item.averageEstimate ? "Estimated actions (average)" : "Actions required" }}:
+          {{ numberFormat.format(item.totalActions) }}
+        </p>
+        <div v-if="item.status === 'craft'" class="space-y-1 text-xs text-muted">
+          <p v-if="item.probability !== null" class="text-highlighted">
+            {{ formatOdds(item.probability) }} chance per craft for this exact item / rarity.
+          </p>
+          <p v-else>Drop odds unavailable; costs use the listed expected yield.</p>
+          <p>
+            {{ item.averageEstimate ? "Average crafting attempts" : "Crafting attempts" }}:
+            {{ numberFormat.format(item.attempts) }} for
+            {{ numberFormat.format(item.quantity) }} still needed.
+          </p>
+          <p v-if="item.variableYield">
+            Variable batch sizes: costs use an average-yield approximation.
+          </p>
+          <p v-if="item.expectedDemand">
+            This requirement includes average retries at the parent stage.
+          </p>
+          <details
+            v-if="
+              dropEstimate &&
+              item.probability !== null &&
+              item.probability > 0 &&
+              item.probability < 1
+            "
+          >
+            <summary class="cursor-pointer text-primary">Drop estimates for one item</summary>
+            <p class="pt-1">
+              {{ numberFormat.format(dropEstimate.averageAttempts) }} attempts on average for one
+              drop;
+              {{
+                dropEstimate.attempts95 === null
+                  ? "95% estimate unavailable"
+                  : `${numberFormat.format(dropEstimate.attempts95)} attempts for a 95% chance`
+              }}.
+            </p>
+            <p>
+              Local odds only, assuming independent attempts. This is not a 95% guarantee for the
+              entire crafting chain or for multiple copies.
+            </p>
+          </details>
+        </div>
+        <p v-if="item.owned" class="text-xs text-success">
+          {{ numberFormat.format(item.owned) }} covered by inventory;
+          {{ numberFormat.format(item.quantity) }} still needed.
+        </p>
+        <p v-if="item.status === 'requires-existing'" class="text-xs text-warning">
+          Requires an existing item. This branch cannot produce it without a cycle.
+        </p>
+        <p v-else-if="item.recrafting && item.status === 'craft'" class="text-xs text-muted">
+          Recrafting uses existing equipment as an input.
+        </p>
+        <p v-if="outputs.length > 1" class="text-xs text-muted">
+          {{ outputs.length }} recipes. Totals are calculated only for the selected recipe.
+        </p>
+        <p v-if="graphItem?.probabilistic" class="text-xs text-muted">
+          Rarity-specific drops are estimated separately; other rarities are not substitutes.
+        </p>
       </div>
     </div>
 
-    <div
-      v-if="item.children?.length === 1"
-      class="border-l border-gray-200 pl-4 dark:border-gray-800"
-    >
-      <div class="flex flex-col gap-3">
-        <template
-          v-for="(recipe_item, index) in item.children[0].children"
-          :key="`${recipe_item.type}-${recipe_item.id}-${index}`"
-        >
-          <RecusiveCraftingRecipe
-            v-if="getChildPannel(index)"
-            :item="recipe_item"
-            :item_desc="item_desc"
-            :cargo_desc="cargo_desc"
-            :item_list_desc="item_list_desc"
-            :resource-effort-map="resourceEffortMap"
-            :pannel_indexs="getChildPannel(index)!"
-          />
-        </template>
-      </div>
-    </div>
-
-    <div
-      v-else-if="item.children?.length"
-      class="border-l border-gray-200 pl-4 dark:border-gray-800"
-    >
+    <div v-if="outputs.length > 1" class="border-l border-gray-200 pl-4 dark:border-gray-800">
       <UAccordion
-        v-model="openedRecipePanels"
+        :model-value="openedRecipePanels"
         type="single"
-        :collapsible="false"
         :items="recipeAccordionItems"
         value-key="value"
         label-key="label"
+        @update:model-value="openRecipe"
       >
         <template #content="{ item: recipeItem }">
-          <div class="flex flex-col gap-3 py-2">
-            <template
-              v-for="(recipe_item, index2) in recipeItem.recipe?.children || []"
-              :key="`${recipe_item.type}-${recipe_item.id}-${index2}`"
-            >
-              <RecusiveCraftingRecipe
-                v-if="getChildPannelMulti(recipeItem.index, index2)"
-                :item="recipe_item"
-                :item_desc="item_desc"
-                :cargo_desc="cargo_desc"
-                :item_list_desc="item_list_desc"
-                :resource-effort-map="resourceEffortMap"
-                :pannel_indexs="getChildPannelMulti(recipeItem.index, index2)!"
-              />
-            </template>
+          <div v-if="recipeItem.value === item.recipeKey" class="flex flex-col gap-3 py-2">
+            <div class="flex flex-wrap gap-2">
+              <UBadge
+                v-for="(input, index) in recipeItem.recipe.ingredients"
+                :key="index"
+                color="neutral"
+                variant="subtle"
+              >
+                {{
+                  input.item_type === "Item"
+                    ? (item_desc[input.item_id]?.name ?? `Item #${input.item_id}`)
+                    : (cargo_desc[input.item_id]?.name ?? `Cargo #${input.item_id}`)
+                }}
+              </UBadge>
+            </div>
+            <RecusiveCraftingRecipe
+              v-for="child in item.children"
+              :key="child.path"
+              :item="child"
+              :graph="graph"
+              :item_desc="item_desc"
+              :cargo_desc="cargo_desc"
+              @select="(path, recipe) => emit('select', path, recipe)"
+            />
           </div>
         </template>
       </UAccordion>
     </div>
+    <div
+      v-else-if="item.children.length"
+      class="flex flex-col gap-3 border-l border-gray-200 pl-4 dark:border-gray-800"
+    >
+      <RecusiveCraftingRecipe
+        v-for="child in item.children"
+        :key="child.path"
+        :item="child"
+        :graph="graph"
+        :item_desc="item_desc"
+        :cargo_desc="cargo_desc"
+        @select="(path, recipe) => emit('select', path, recipe)"
+      />
+    </div>
+
+    <div v-if="outputs.length" class="flex flex-wrap gap-2">
+      <UButton
+        v-if="item.recipeKey !== null"
+        size="xs"
+        color="neutral"
+        variant="link"
+        :aria-label="`Use ${desc?.name ?? item.id} as a base material`"
+        @click="supplyDirectly"
+        >Use as a base material</UButton
+      >
+      <UButton
+        v-else
+        size="xs"
+        color="neutral"
+        variant="link"
+        @click="emit('select', item.path, graphItem?.defaultRecipe ?? outputs[0]!.key)"
+        >Choose a crafting recipe</UButton
+      >
+    </div>
+    <NuxtLink
+      v-if="hasOperations"
+      :to="`/items/${item.type}/${item.id}#item-operations`"
+      class="text-xs text-primary hover:underline"
+      >Recraft / scrap this item separately</NuxtLink
+    >
   </div>
 </template>

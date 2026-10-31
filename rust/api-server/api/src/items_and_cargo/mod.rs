@@ -6,6 +6,7 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use entity::cargo_desc;
 use entity::item_desc;
+use sea_orm::{DbBackend, FromQueryResult, Statement};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use ts_rs::TS;
@@ -31,6 +32,75 @@ pub(crate) fn get_routes() -> AppRouter {
 enum ItemCargo {
     Item(item_desc::Model),
     Cargo(cargo_desc::Model),
+}
+
+#[derive(FromQueryResult)]
+struct NameMatch {
+    id: i32,
+    is_cargo: bool,
+    match_rank: i32,
+    similarity: f32,
+}
+
+async fn search_names(
+    conn: &sea_orm::DatabaseConnection,
+    search: &str,
+    tier: Option<i32>,
+    tag: Option<&str>,
+) -> Result<HashMap<(bool, i32), (i32, f32)>, sea_orm::DbErr> {
+    let rows = NameMatch::find_by_statement(name_search_statement(search, tier, tag))
+        .all(conn)
+        .await?;
+    Ok(rows.into_iter().map(|row| ((row.is_cargo, row.id), (row.match_rank, row.similarity))).collect())
+}
+
+fn name_search_statement(search: &str, tier: Option<i32>, tag: Option<&str>) -> Statement {
+    let pattern = format!(
+        "%{}%",
+        search.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+    );
+    let fuzzy = search.chars().count() >= 3;
+    let match_clause = if fuzzy {
+        "name ILIKE $2 ESCAPE '\\' OR (name % $1 AND similarity(name, $1) >= 0.5)"
+    } else {
+        "name ILIKE $2 ESCAPE '\\'"
+    };
+    let score = if fuzzy { "similarity(name, $1)" } else { "0::real" };
+    let sql = format!(
+        "WITH candidates AS (\
+         SELECT id, false AS is_cargo, CASE WHEN lower(name) = lower($1) THEN 0 WHEN name ILIKE $2 ESCAPE '\\' THEN 1 ELSE 2 END AS match_rank, {score} AS similarity FROM item_desc WHERE item_list_id <= 0 AND ($3::integer IS NULL OR tier = $3) AND ($4::text IS NULL OR tag = $4) AND ({match_clause}) \
+         UNION ALL SELECT id, true AS is_cargo, CASE WHEN lower(name) = lower($1) THEN 0 WHEN name ILIKE $2 ESCAPE '\\' THEN 1 ELSE 2 END AS match_rank, {score} AS similarity FROM cargo_desc WHERE ($3::integer IS NULL OR tier = $3) AND ($4::text IS NULL OR tag = $4) AND ({match_clause})) \
+         SELECT * FROM candidates WHERE match_rank < 2 OR similarity >= 0.65 OR NOT EXISTS (SELECT 1 FROM candidates WHERE match_rank < 2 OR similarity >= 0.65)"
+    );
+    Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql,
+        [search.into(), pattern.into(), tier.into(), tag.map(str::to_owned).into()],
+    )
+}
+
+#[cfg(test)]
+mod name_search_tests {
+    use super::*;
+
+    #[test]
+    fn long_search_is_parameterized_and_searches_both_types() {
+        let statement = name_search_statement("O'_%", None, None);
+        assert!(statement.sql.as_str().contains("FROM item_desc"));
+        assert!(statement.sql.as_str().contains("FROM cargo_desc"));
+        assert!(statement.sql.as_str().contains("name % $1"));
+        assert!(statement.sql.as_str().contains("similarity(name, $1) >= 0.5"));
+        assert!(statement.sql.as_str().contains("NOT EXISTS"));
+        assert!(!statement.sql.as_str().contains("O'_%"));
+        assert!(format!("{:?}", statement.values).as_str().contains("\\\\_\\\\%"));
+    }
+
+    #[test]
+    fn short_search_is_substring_only() {
+        let statement = name_search_statement("ab", None, None);
+        assert!(!statement.sql.as_str().contains("name % $1"));
+        assert!(!statement.sql.as_str().contains("similarity(name"));
+    }
 }
 
 #[derive(Deserialize)]
@@ -97,7 +167,7 @@ pub(crate) async fn list_items_and_cargo(
     let search = params.search.map(|search| search.to_lowercase());
     let tier = params.tier;
     let tag = params.tag;
-    let no_item_list = params.no_item_list;
+    let _no_item_list = params.no_item_list;
     if state.cargo_tags.is_empty()
         || state.cargo_tiers.is_empty()
         || state.item_tags.is_empty()
@@ -134,8 +204,8 @@ pub(crate) async fn list_items_and_cargo(
 
     if state.item_desc.is_empty() || state.cargo_desc.is_empty() {
         let (items, cargos) = tokio::join!(
-            QueryCore::search_items_desc(&state.conn, &search, &tier, &tag, &no_item_list),
-            QueryCore::search_cargos_desc(&state.conn, &search, &tier, &tag),
+            QueryCore::all_items(&state.conn),
+            QueryCore::all_cargos_desc(&state.conn),
         );
 
         let items = items.expect("Cannot find items");
@@ -170,6 +240,14 @@ pub(crate) async fn list_items_and_cargo(
             .map(|tier| tier.to_owned())
             .collect(),
     );
+    let name_matches = if let Some(search) = search.as_deref().filter(|search| !search.is_empty()) {
+        Some(search_names(&state.conn, search, tier, tag.as_deref()).await.map_err(|error| {
+            tracing::error!(%error, "Failed to search item and cargo names");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+        })?)
+    } else {
+        None
+    };
     let mut merged_items_and_cargo = merge_items_and_cargo(
         state
             .item_desc
@@ -191,11 +269,8 @@ pub(crate) async fn list_items_and_cargo(
                     return None;
                 };
 
-                if let Some(search) = &search
-                    && !item
-                        .name
-                        .to_lowercase()
-                        .contains(search.to_lowercase().as_str())
+                if let Some(matches) = &name_matches
+                    && !matches.contains_key(&(false, item.id))
                 {
                     return None;
                 };
@@ -219,11 +294,8 @@ pub(crate) async fn list_items_and_cargo(
                     return None;
                 };
 
-                if let Some(search) = &search
-                    && !cargo
-                        .name
-                        .to_lowercase()
-                        .contains(search.to_lowercase().as_str())
+                if let Some(matches) = &name_matches
+                    && !matches.contains_key(&(true, cargo.id))
                 {
                     return None;
                 };
@@ -239,6 +311,18 @@ pub(crate) async fn list_items_and_cargo(
     );
 
     merged_items_and_cargo.sort_by(|a, b| {
+        if let Some(matches) = &name_matches {
+            let key = |item: &ItemCargo| match item {
+                ItemCargo::Item(item) => (false, item.id),
+                ItemCargo::Cargo(cargo) => (true, cargo.id),
+            };
+            let (a_rank, a_score) = matches[&key(a)];
+            let (b_rank, b_score) = matches[&key(b)];
+            let ordering = a_rank.cmp(&b_rank).then_with(|| b_score.total_cmp(&a_score));
+            if !ordering.is_eq() {
+                return ordering;
+            }
+        }
         let (a_tier, b_tier, a_id, b_id) = match (a, b) {
             (ItemCargo::Cargo(a), ItemCargo::Cargo(b)) => (a.tier, b.tier, a.id, b.id),
             (ItemCargo::Cargo(a), ItemCargo::Item(b)) => (a.tier, b.tier, a.id, b.id),
