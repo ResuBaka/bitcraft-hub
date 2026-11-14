@@ -12,6 +12,7 @@ import ClaimTabMembers from "~/components/Bitcraft/Claim/ClaimTabMembers.vue";
 import ClaimTabTravelerTasks from "~/components/Bitcraft/Claim/ClaimTabTravelerTasks.vue";
 import ClaimTabUpgrades from "~/components/Bitcraft/Claim/ClaimTabUpgrades.vue";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
+import PlayerExperienceHistory from "~/components/Bitcraft/PlayerExperienceHistory.vue";
 import { iconAssetUrlNameRandom } from "~/composables/iconAssetName";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
@@ -46,6 +47,10 @@ const perPage = 1500;
 const search = ref<string | null>("");
 
 const route = useRoute();
+const configStore = useConfigStore();
+const isHighlighted = computed(() =>
+  configStore.highlighted_claims.some((claim) => claim.id === String(route.params.id)),
+);
 const router = useRouter();
 
 const player_id = ref<bigint | null>();
@@ -537,6 +542,7 @@ const validTabs = new Set([
   "player_offline_tools",
   "buildings",
   "leaderboards",
+  "xp_history",
   "upgrades",
   "inventory_changelogs",
   "events",
@@ -754,6 +760,7 @@ const tabItems = computed(() => {
     },
     { value: "buildings", label: `Buildings (${buildings.value.length || 0})` },
     { value: "leaderboards", label: "Leaderboards" },
+    { value: "xp_history", label: "XP history" },
     {
       value: "upgrades",
       label: `Upgrades (${upgradesSorted.value.length || 0})`,
@@ -1127,8 +1134,9 @@ watch(
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 class="text-2xl font-semibold tracking-tight" :class="tierToColor[claimTier]">
+              <h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight" :class="tierToColor[claimTier]">
                 {{ claim.name }}
+                <UIcon v-if="isHighlighted" name="i-lucide-star" class="size-4 shrink-0 text-amber-500" aria-label="Highlighted claim" />
               </h1>
               <div
                 v-if="claim?.location && claim?.location.x !== 0 && claim?.location.z !== 0"
@@ -1141,7 +1149,7 @@ watch(
             <div class="flex flex-wrap gap-2">
               <UBadge color="neutral" variant="soft">
                 <span class="text-gray-800 dark:text-gray-100">Owner:</span>
-                {{ claimOwner?.user_name ?? "Unknown" }}
+                <BitcraftPlayerName :player-id="claim.owner_player_entity_id">{{ claimOwner?.user_name ?? "Unknown" }}</BitcraftPlayerName>
               </UBadge>
               <UBadge color="neutral" variant="soft">
                 <span class="text-gray-800 dark:text-gray-100">Members: </span>
@@ -1343,6 +1351,11 @@ watch(
                 :claim-id="claim?.entity_id"
               />
 
+              <PlayerExperienceHistory
+                v-else-if="tab === 'xp_history'"
+                :claim-id="route.params.id.toString()"
+              />
+
               <ClaimTabUpgrades
                 v-else-if="tab === 'upgrades'"
                 :claim-tier="claimTier"
@@ -1430,7 +1443,8 @@ watch(
                 <div class="font-semibold text-gray-900 dark:text-gray-100">
                   <template v-if="locationOwnerLink(location)">
                     <NuxtLink :to="locationOwnerLink(location)" class="hover:underline">
-                      {{ formatLocationOwner(location) }}
+                      <BitcraftPlayerName v-if="location.owner_type === 'Player'" :player-id="location.owner_entity_id">{{ formatLocationOwner(location) }}</BitcraftPlayerName>
+                      <template v-else>{{ formatLocationOwner(location) }}</template>
                     </NuxtLink>
                   </template>
                   <template v-else>
@@ -1440,7 +1454,7 @@ watch(
                 <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   <template v-if="isBankLocation(location)">
                     <NuxtLink :to="bankOwnerLink(location)" class="hover:underline">
-                      Bank owner: {{ getPlayerNameById(location.player_owner_entity_id) }}
+                      Bank owner: <BitcraftPlayerName :player-id="location.player_owner_entity_id">{{ getPlayerNameById(location.player_owner_entity_id) }}</BitcraftPlayerName>
                     </NuxtLink>
                     <span class="mx-1">•</span>
                   </template>

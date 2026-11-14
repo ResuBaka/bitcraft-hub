@@ -12,6 +12,7 @@ pub struct InteriorSpawnDestroyTriggerDesc {
     pub destroyed_interior_spawn_ids: Vec<i32>,
     pub trigger_interior_spawn_ids: Vec<i32>,
     pub require_all_triggers: bool,
+    pub track_on_destroy_spawned_resources: bool,
 }
 
 impl __sdk::InModule for InteriorSpawnDestroyTriggerDesc {
@@ -29,6 +30,8 @@ pub struct InteriorSpawnDestroyTriggerDescCols {
     pub trigger_interior_spawn_ids:
         __sdk::__query_builder::Col<InteriorSpawnDestroyTriggerDesc, Vec<i32>>,
     pub require_all_triggers: __sdk::__query_builder::Col<InteriorSpawnDestroyTriggerDesc, bool>,
+    pub track_on_destroy_spawned_resources:
+        __sdk::__query_builder::Col<InteriorSpawnDestroyTriggerDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for InteriorSpawnDestroyTriggerDesc {
@@ -48,6 +51,10 @@ impl __sdk::__query_builder::HasCols for InteriorSpawnDestroyTriggerDesc {
             require_all_triggers: __sdk::__query_builder::Col::new(
                 table_name,
                 "require_all_triggers",
+            ),
+            track_on_destroy_spawned_resources: __sdk::__query_builder::Col::new(
+                table_name,
+                "track_on_destroy_spawned_resources",
             ),
         }
     }

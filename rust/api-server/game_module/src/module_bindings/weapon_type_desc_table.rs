@@ -85,8 +85,8 @@ impl<'ctx> WeaponTypeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, WeaponTypeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> WeaponTypeDescInitialCallbackId {
         WeaponTypeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -85,8 +85,8 @@ impl<'ctx> ActionBarStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ActionBarState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ActionBarStateInitialCallbackId {
         ActionBarStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

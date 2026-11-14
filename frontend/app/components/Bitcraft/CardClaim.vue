@@ -71,7 +71,7 @@ const claimOwner = computed(() => {
     <div class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
       <div class="flex items-start justify-between gap-3 py-2">
         <span class="text-gray-500 dark:text-gray-400">Owner</span>
-        <span class="text-gray-900 dark:text-gray-100">{{ claimOwner }}</span>
+        <span class="text-gray-900 dark:text-gray-100"><BitcraftPlayerName :player-id="claim.owner_player_entity_id">{{ claimOwner }}</BitcraftPlayerName></span>
       </div>
       <div class="flex items-start justify-between gap-3 py-2">
         <span class="text-gray-500 dark:text-gray-400">Supplies</span>
@@ -91,7 +91,7 @@ const claimOwner = computed(() => {
               class="font-medium text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-200"
               :to="{ name: 'players-id', params: { id: member.entity_id } }"
             >
-              {{ member.user_name }}
+              <BitcraftPlayerName :player-id="member.entity_id">{{ member.user_name }}</BitcraftPlayerName>
             </NuxtLink>
             {{ index + 1 < members.length ? ", " : "" }}
             {{

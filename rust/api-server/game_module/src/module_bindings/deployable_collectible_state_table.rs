@@ -88,8 +88,8 @@ impl<'ctx> DeployableCollectibleStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, DeployableCollectibleState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DeployableCollectibleStateInitialCallbackId {
         DeployableCollectibleStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

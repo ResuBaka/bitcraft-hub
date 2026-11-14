@@ -10,6 +10,8 @@ pub struct InteriorSpawnedResourceState {
     pub entity_id: u64,
     pub interior_spawn_desc_id: i32,
     pub dimension_id: u32,
+    pub destroy_trigger_completed: bool,
+    pub original_resource_id: i32,
 }
 
 impl __sdk::InModule for InteriorSpawnedResourceState {
@@ -23,6 +25,8 @@ pub struct InteriorSpawnedResourceStateCols {
     pub entity_id: __sdk::__query_builder::Col<InteriorSpawnedResourceState, u64>,
     pub interior_spawn_desc_id: __sdk::__query_builder::Col<InteriorSpawnedResourceState, i32>,
     pub dimension_id: __sdk::__query_builder::Col<InteriorSpawnedResourceState, u32>,
+    pub destroy_trigger_completed: __sdk::__query_builder::Col<InteriorSpawnedResourceState, bool>,
+    pub original_resource_id: __sdk::__query_builder::Col<InteriorSpawnedResourceState, i32>,
 }
 
 impl __sdk::__query_builder::HasCols for InteriorSpawnedResourceState {
@@ -35,6 +39,14 @@ impl __sdk::__query_builder::HasCols for InteriorSpawnedResourceState {
                 "interior_spawn_desc_id",
             ),
             dimension_id: __sdk::__query_builder::Col::new(table_name, "dimension_id"),
+            destroy_trigger_completed: __sdk::__query_builder::Col::new(
+                table_name,
+                "destroy_trigger_completed",
+            ),
+            original_resource_id: __sdk::__query_builder::Col::new(
+                table_name,
+                "original_resource_id",
+            ),
         }
     }
 }

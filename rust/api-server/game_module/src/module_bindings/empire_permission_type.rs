@@ -27,6 +27,8 @@ pub enum EmpirePermission {
     HarvestEmpireResources,
 
     WithdrawEmpireCurrency,
+
+    ManageBlacklist,
 }
 
 impl __sdk::InModule for EmpirePermission {

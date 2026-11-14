@@ -87,8 +87,8 @@ impl<'ctx> PlayerHousingDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlayerHousingDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerHousingDescInitialCallbackId {
         PlayerHousingDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

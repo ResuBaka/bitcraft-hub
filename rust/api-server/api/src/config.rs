@@ -174,6 +174,8 @@ pub(crate) struct SpacetimeDbConfig {
     pub(crate) skip_state_tables: bool,
     pub(crate) domain: String,
     pub(crate) protocol: String,
+    /// When set, add the region number to this base port.
+    pub(crate) base_port: Option<u16>,
     pub(crate) database: String,
     pub(crate) databases: Vec<String>,
     pub(crate) password: String,
@@ -189,6 +191,7 @@ impl Default for SpacetimeDbConfig {
             initial_batch_rows: 1_000,
             domain: "localhost".to_string(),
             protocol: "https://".to_string(),
+            base_port: None,
             database: "".to_string(),
             databases: vec![],
             password: "".to_string(),
@@ -313,7 +316,28 @@ impl Config {
     }
 
     pub fn spacetimedb_url(&self, region_number: Region) -> String {
-        format!("{}{}:{}", self.spacetimedb.protocol, self.spacetimedb.domain, region_number + 3000)
+        let host = format!("{}{}", self.spacetimedb.protocol, self.spacetimedb.domain);
+        match self.spacetimedb.base_port {
+            Some(base_port) => format!("{host}:{}", i32::from(region_number) + i32::from(base_port)),
+            None => host,
+        }
+    }
+}
+
+#[cfg(test)]
+mod spacetimedb_url_tests {
+    use super::Config;
+
+    #[test]
+    fn uses_default_or_configured_base_port() {
+        let default: Config = serde_json::from_str("{}").unwrap();
+        assert_eq!(default.spacetimedb_url(0), "https://localhost");
+        assert_eq!(default.spacetimedb_url(2), "https://localhost");
+
+        let configured: Config =
+            serde_json::from_str(r#"{"spacetimedb":{"base_port":4000}}"#).unwrap();
+        assert_eq!(configured.spacetimedb_url(0), "https://localhost:4000");
+        assert_eq!(configured.spacetimedb_url(2), "https://localhost:4002");
     }
 }
 

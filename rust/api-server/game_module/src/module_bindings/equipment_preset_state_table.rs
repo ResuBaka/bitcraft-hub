@@ -88,8 +88,8 @@ impl<'ctx> EquipmentPresetStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EquipmentPresetState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EquipmentPresetStateInitialCallbackId {
         EquipmentPresetStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

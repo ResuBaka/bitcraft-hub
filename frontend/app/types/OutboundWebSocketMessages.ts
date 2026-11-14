@@ -3,6 +3,7 @@ import type { ActionState } from "./ActionState";
 import type { AuctionListingState } from "./AuctionListingState";
 import type { ClaimLocalState } from "./ClaimLocalState";
 import type { MobileEntityState } from "./MobileEntityState";
+import type { PlayerLocationUpdate } from "./PlayerLocationUpdate";
 import type { PlayerActionState } from "./PlayerActionState";
 import type { PlayerState } from "./PlayerState";
 import type { ResolvedInventory } from "./ResolvedInventory";
@@ -11,6 +12,9 @@ import type { TravelerTaskState } from "./TravelerTaskState";
 export type OutboundWebSocketMessages =
   | { t: "SubscribedTopics"; c: Array<string> }
   | { t: "MobileEntityState"; c: MobileEntityState }
+  | { t: "PlayerLocation"; c: PlayerLocationUpdate }
+  | { t: "ExperienceHistoryChanged"; c: { user_id: bigint } }
+  | { t: "ClaimExperienceHistoryChanged"; c: { claim_id: bigint } }
   | {
       t: "Experience";
       c: { experience: bigint; level: bigint; rank: bigint; skill_name: string; user_id: bigint };

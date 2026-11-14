@@ -87,8 +87,8 @@ impl<'ctx> RegionConnectionInfoTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, RegionConnectionInfo>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> RegionConnectionInfoInitialCallbackId {
         RegionConnectionInfoInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -87,8 +87,8 @@ impl<'ctx> HexiteExchangeEntryDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, HexiteExchangeEntryDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> HexiteExchangeEntryDescInitialCallbackId {
         HexiteExchangeEntryDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

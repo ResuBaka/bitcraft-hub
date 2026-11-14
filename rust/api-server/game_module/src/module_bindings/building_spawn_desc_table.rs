@@ -90,8 +90,8 @@ impl<'ctx> BuildingSpawnDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuildingSpawnDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingSpawnDescInitialCallbackId {
         BuildingSpawnDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

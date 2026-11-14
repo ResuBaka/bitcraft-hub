@@ -129,7 +129,7 @@ pub trait deployable_disembark_eventQueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `DeployableDisembarkEvent`.
     fn deployable_disembark_event(&self)
-    -> __sdk::__query_builder::Table<DeployableDisembarkEvent>;
+        -> __sdk::__query_builder::Table<DeployableDisembarkEvent>;
 }
 
 impl deployable_disembark_eventQueryTableAccess for __sdk::QueryTableAccessor {

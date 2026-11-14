@@ -7,6 +7,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         for sql in [
+            "CREATE EXTENSION IF NOT EXISTS pg_trgm",
             "CREATE INDEX IF NOT EXISTS item_desc_name_trgm_idx ON item_desc USING GIN (name gin_trgm_ops)",
             "CREATE INDEX IF NOT EXISTS cargo_desc_name_trgm_idx ON cargo_desc USING GIN (name gin_trgm_ops)",
         ] {

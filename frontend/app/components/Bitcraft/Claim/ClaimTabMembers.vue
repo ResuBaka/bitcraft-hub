@@ -137,7 +137,7 @@ const emit = defineEmits<{
               : 'text-gray-900 dark:text-gray-100'
           "
         >
-          {{ row.original.user_name }}
+          <BitcraftPlayerName :player-id="row.original.entity_id">{{ row.original.user_name }}</BitcraftPlayerName>
         </NuxtLink>
         <div class="text-xs text-gray-500 dark:text-gray-400">{{ row.original.online_state }}</div>
       </template>

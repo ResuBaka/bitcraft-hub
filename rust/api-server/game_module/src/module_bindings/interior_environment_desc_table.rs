@@ -87,8 +87,8 @@ impl<'ctx> InteriorEnvironmentDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, InteriorEnvironmentDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> InteriorEnvironmentDescInitialCallbackId {
         InteriorEnvironmentDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -87,8 +87,8 @@ impl<'ctx> SignedInPlayerStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, SignedInPlayerState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> SignedInPlayerStateInitialCallbackId {
         SignedInPlayerStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

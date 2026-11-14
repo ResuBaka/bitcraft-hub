@@ -19,6 +19,7 @@ pub struct QuestChainDesc {
     pub implicit_rewards: Vec<QuestReward>,
     pub unstartable: bool,
     pub is_secret: bool,
+    pub recommended_priority: u32,
 }
 
 impl __sdk::InModule for QuestChainDesc {
@@ -38,6 +39,7 @@ pub struct QuestChainDescCols {
     pub implicit_rewards: __sdk::__query_builder::Col<QuestChainDesc, Vec<QuestReward>>,
     pub unstartable: __sdk::__query_builder::Col<QuestChainDesc, bool>,
     pub is_secret: __sdk::__query_builder::Col<QuestChainDesc, bool>,
+    pub recommended_priority: __sdk::__query_builder::Col<QuestChainDesc, u32>,
 }
 
 impl __sdk::__query_builder::HasCols for QuestChainDesc {
@@ -53,6 +55,10 @@ impl __sdk::__query_builder::HasCols for QuestChainDesc {
             implicit_rewards: __sdk::__query_builder::Col::new(table_name, "implicit_rewards"),
             unstartable: __sdk::__query_builder::Col::new(table_name, "unstartable"),
             is_secret: __sdk::__query_builder::Col::new(table_name, "is_secret"),
+            recommended_priority: __sdk::__query_builder::Col::new(
+                table_name,
+                "recommended_priority",
+            ),
         }
     }
 }

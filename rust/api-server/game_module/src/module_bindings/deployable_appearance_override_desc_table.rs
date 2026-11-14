@@ -90,11 +90,9 @@ impl<'ctx> DeployableAppearanceOverrideDescTableHandle<'ctx> {
     /// Register a borrowed initial-row view without cloning the full snapshot.
     pub fn on_initial_rows(
         &self,
-        callback: impl FnMut(
-            &super::EventContext,
-            __sdk::InitialRows<'_, DeployableAppearanceOverrideDesc>,
-        ) + Send
-        + 'static,
+        callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, DeployableAppearanceOverrideDesc>)
+            + Send
+            + 'static,
     ) -> DeployableAppearanceOverrideDescInitialCallbackId {
         DeployableAppearanceOverrideDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }
@@ -103,8 +101,8 @@ impl<'ctx> DeployableAppearanceOverrideDescTableHandle<'ctx> {
     pub fn on_initial_owned(
         &self,
         callback: impl FnMut(&super::EventContext, Vec<DeployableAppearanceOverrideDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DeployableAppearanceOverrideDescInitialCallbackId {
         DeployableAppearanceOverrideDescInitialCallbackId(self.imp.on_initial_owned(callback))
     }

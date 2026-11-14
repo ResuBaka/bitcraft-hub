@@ -1,5 +1,6 @@
 pub(crate) mod bitcraft;
 pub(crate) mod claim_local_state;
+pub(crate) mod claim_location;
 pub(crate) mod claim_member_state;
 pub(crate) mod claim_state;
 pub(crate) mod events;

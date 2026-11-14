@@ -85,8 +85,8 @@ impl<'ctx> TravelerTaskKnowledgeRequirementDescTableHandle<'ctx> {
     pub fn on_initial(
         &self,
         callback: impl FnMut(&super::EventContext, &[TravelerTaskKnowledgeRequirementDesc])
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TravelerTaskKnowledgeRequirementDescInitialCallbackId {
         TravelerTaskKnowledgeRequirementDescInitialCallbackId(self.imp.on_initial(callback))
     }
@@ -95,10 +95,10 @@ impl<'ctx> TravelerTaskKnowledgeRequirementDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(
-            &super::EventContext,
-            __sdk::InitialRows<'_, TravelerTaskKnowledgeRequirementDesc>,
-        ) + Send
-        + 'static,
+                &super::EventContext,
+                __sdk::InitialRows<'_, TravelerTaskKnowledgeRequirementDesc>,
+            ) + Send
+            + 'static,
     ) -> TravelerTaskKnowledgeRequirementDescInitialCallbackId {
         TravelerTaskKnowledgeRequirementDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }
@@ -107,8 +107,8 @@ impl<'ctx> TravelerTaskKnowledgeRequirementDescTableHandle<'ctx> {
     pub fn on_initial_owned(
         &self,
         callback: impl FnMut(&super::EventContext, Vec<TravelerTaskKnowledgeRequirementDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TravelerTaskKnowledgeRequirementDescInitialCallbackId {
         TravelerTaskKnowledgeRequirementDescInitialCallbackId(self.imp.on_initial_owned(callback))
     }

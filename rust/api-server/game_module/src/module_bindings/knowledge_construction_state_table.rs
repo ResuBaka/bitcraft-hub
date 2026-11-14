@@ -88,8 +88,8 @@ impl<'ctx> KnowledgeConstructionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, KnowledgeConstructionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> KnowledgeConstructionStateInitialCallbackId {
         KnowledgeConstructionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

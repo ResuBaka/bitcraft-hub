@@ -85,8 +85,8 @@ impl<'ctx> EmpireChunkStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EmpireChunkState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EmpireChunkStateInitialCallbackId {
         EmpireChunkStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

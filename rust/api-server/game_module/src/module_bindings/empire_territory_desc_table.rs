@@ -87,8 +87,8 @@ impl<'ctx> EmpireTerritoryDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EmpireTerritoryDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EmpireTerritoryDescInitialCallbackId {
         EmpireTerritoryDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

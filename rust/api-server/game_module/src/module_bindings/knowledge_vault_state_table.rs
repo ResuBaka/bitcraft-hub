@@ -88,8 +88,8 @@ impl<'ctx> KnowledgeVaultStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, KnowledgeVaultState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> KnowledgeVaultStateInitialCallbackId {
         KnowledgeVaultStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -1,4 +1,5 @@
 pub(crate) mod bitcraft;
+pub(crate) mod snapshots;
 
 use crate::{AppRouter, AppState, leaderboard};
 use axum::Router;
@@ -27,7 +28,7 @@ macro_rules! generate_mysql_sum_level_sql_statement {
 }
 
 pub(crate) static EXCLUDED_USERS_FROM_LEADERBOARD: LazyLock<Vec<i64>> =
-    LazyLock::new(|| vec![360287970201941063, 504403158285774600, 1297036692699948244]);
+    LazyLock::new(|| vec![576460752390479914]);
 pub(crate) static EXCLUDED_SKILLS_FROM_GLOBAL_LEADERBOARD_SKILLS_CATEGORY: [i64; 2] = [0, 0];
 
 pub(crate) const EXPERIENCE_PER_LEVEL: [(i32, i64); 110] = [
@@ -150,6 +151,10 @@ pub(crate) fn get_routes() -> AppRouter {
             axum_codec::routing::get(leaderboard::get_top_100).into(),
         )
         .route(
+            "/leaderboard/rank-snapshots",
+            axum_codec::routing::get(leaderboard_rank_snapshots).into(),
+        )
+        .route(
             "/experience/{player_id}",
             axum_codec::routing::get(player_leaderboard).into(),
         )
@@ -158,9 +163,255 @@ pub(crate) fn get_routes() -> AppRouter {
             axum_codec::routing::get(player_leaderboard).into(),
         )
         .route(
+            "/api/bitcraft/experience/{player_id}/history",
+            axum_codec::routing::get(experience_history).into(),
+        )
+        .route(
+            "/api/bitcraft/claims/{claim_id}/experience/history",
+            axum_codec::routing::get(claim_experience_history).into(),
+        )
+        .route(
+            "/api/bitcraft/experience/{player_id}/rank-snapshot",
+            axum_codec::routing::get(player_rank_snapshot).into(),
+        )
+        .route(
+            "/api/bitcraft/experience/history/skills",
+            axum_codec::routing::get(experience_history_skills).into(),
+        )
+        .route(
             "/api/bitcraft/leaderboard/claims/{claim_id}",
             axum_codec::routing::get(get_claim_leaderboard).into(),
         )
+}
+
+#[derive(sea_orm::FromQueryResult)]
+struct StoredRankSnapshot {
+    board: String,
+    rank: i64,
+    captured_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize)]
+struct PlayerRankSnapshot {
+    board: String,
+    label: String,
+    previous_rank: i64,
+    current_rank: Option<u64>,
+    captured_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+struct LeaderboardSnapshotParams {
+    board: String,
+    players: String,
+}
+
+#[derive(Serialize, sea_orm::FromQueryResult)]
+struct LeaderboardSnapshotRow {
+    player_id: i64,
+    rank: i64,
+    captured_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize)]
+struct LeaderboardSnapshots {
+    board: String,
+    entries: Vec<LeaderboardSnapshotRow>,
+}
+
+async fn leaderboard_rank_snapshots(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<LeaderboardSnapshotParams>,
+) -> Result<axum_codec::Codec<LeaderboardSnapshots>, (StatusCode, &'static str)> {
+    use sea_orm::FromQueryResult;
+    let board = match params.board.as_str() {
+        "Experience" => "global_experience".to_string(),
+        "Professions" => "profession_experience".to_string(),
+        "Skills" => "adventure_experience".to_string(),
+        "Level" => "level".to_string(),
+        "Experience Per Hour" => "xp_per_hour".to_string(),
+        "Time Played" => "time_played".to_string(),
+        "Time Online" => "time_signed_in".to_string(),
+        name => match state.skill_desc.iter().find(|skill| skill.name == name) {
+            Some(skill) => format!("skill_{}", skill.id),
+            None => return Ok(axum_codec::Codec(LeaderboardSnapshots { board: params.board, entries: Vec::new() })),
+        },
+    };
+    if params.players.is_empty() {
+        return Ok(axum_codec::Codec(LeaderboardSnapshots { board: params.board, entries: Vec::new() }));
+    }
+    let ids: Vec<i64> = params.players.split(',')
+        .map(str::parse)
+        .collect::<Result<_, _>>()
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid player IDs"))?;
+    if ids.len() > 100 {
+        return Err((StatusCode::BAD_REQUEST, "Too many player IDs"));
+    }
+    let ids = ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",");
+    let rows = LeaderboardSnapshotRow::find_by_statement(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DbBackend::Postgres,
+        "SELECT player_id, rank, captured_at FROM leaderboard_rank_snapshot WHERE snapshot_at = date_trunc('day', now(), 'UTC') AND board = $1 AND player_id = ANY(string_to_array($2, ',')::bigint[])",
+        [board.into(), ids.into()],
+    )).all(&state.conn).await.map_err(|error| {
+        tracing::error!(%error, "Failed to read leaderboard snapshots");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+    })?;
+    Ok(axum_codec::Codec(LeaderboardSnapshots { board: params.board, entries: rows }))
+}
+
+async fn player_rank_snapshot(
+    State(state): State<AppState>,
+    Path(player_id): Path<i64>,
+) -> Result<axum_codec::Codec<Vec<PlayerRankSnapshot>>, (StatusCode, &'static str)> {
+    use sea_orm::FromQueryResult;
+    let rows = StoredRankSnapshot::find_by_statement(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DbBackend::Postgres,
+        "SELECT board, rank, captured_at FROM leaderboard_rank_snapshot WHERE player_id = $1 AND snapshot_at = date_trunc('day', now(), 'UTC')",
+        [player_id.into()],
+    )).all(&state.conn).await.map_err(|error| {
+        tracing::error!(%error, "Failed to read leaderboard snapshot");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+    })?;
+    let mut result = Vec::with_capacity(rows.len());
+    for row in rows {
+        let (label, current_rank) = if let Some(id) = row.board.strip_prefix("skill_").and_then(|id| id.parse::<i64>().ok()) {
+            let name = state.skill_desc.get(&id).map(|skill| skill.name.clone()).unwrap_or_else(|| format!("Skill {id}"));
+            (name, state.ranking_system.skill_leaderboard(id).and_then(|board| board.get_rank(player_id)))
+        } else {
+            let label = match row.board.as_str() {
+                "global_experience" => "Experience",
+                "profession_experience" => "Professions",
+                "adventure_experience" => "Skills",
+                "level" => "Level",
+                "xp_per_hour" => "Experience Per Hour",
+                "time_played" => "Time Played",
+                "time_signed_in" => "Time Online",
+                _ => continue,
+            };
+            (label.to_string(), snapshots::aggregate_board(&state.ranking_system, &row.board).and_then(|board| board.get_rank(player_id)))
+        };
+        result.push(PlayerRankSnapshot {
+            board: row.board, label, previous_rank: row.rank,
+            current_rank: current_rank.map(|rank| rank as u64), captured_at: row.captured_at,
+        });
+    }
+    Ok(axum_codec::Codec(result))
+}
+
+#[derive(Serialize)]
+struct ExperienceHistorySkill {
+    id: i64,
+    name: String,
+}
+
+async fn experience_history_skills(
+    State(state): State<AppState>,
+) -> axum_codec::Codec<Vec<ExperienceHistorySkill>> {
+    let mut skills: Vec<_> = state.skill_desc.iter().filter(|skill| skill.skill_category != 0)
+        .map(|skill| ExperienceHistorySkill { id: skill.id, name: skill.name.clone() }).collect();
+    skills.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+    axum_codec::Codec(skills)
+}
+
+#[derive(Deserialize)]
+struct ExperienceHistoryParams {
+    skill_id: Option<i32>,
+    group_by_skill: Option<bool>,
+    days: Option<u32>,
+    scale: Option<ExperienceHistoryScale>,
+    location: Option<ExperienceLocationFilter>,
+    claim_id: Option<i64>,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum ExperienceLocationFilter { Claim, Unclaimed, Unknown }
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+enum ExperienceHistoryScale {
+    Hour,
+    Day,
+    Week,
+    Month,
+}
+
+#[derive(Serialize, sea_orm::FromQueryResult)]
+struct ExperienceHistoryPoint {
+    day: chrono::DateTime<chrono::Utc>,
+    experience_gained: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skill_id: Option<i32>,
+}
+
+async fn experience_history(
+    State(state): State<AppState>,
+    Path(player_id): Path<i64>,
+    axum::extract::Query(params): axum::extract::Query<ExperienceHistoryParams>,
+) -> Result<axum_codec::Codec<Vec<ExperienceHistoryPoint>>, (StatusCode, &'static str)> {
+    query_experience_history(state, player_id, params, false).await
+}
+
+async fn claim_experience_history(
+    State(state): State<AppState>,
+    Path(claim_id): Path<i64>,
+    axum::extract::Query(params): axum::extract::Query<ExperienceHistoryParams>,
+) -> Result<axum_codec::Codec<Vec<ExperienceHistoryPoint>>, (StatusCode, &'static str)> {
+    query_experience_history(state, claim_id, params, true).await
+}
+
+async fn query_experience_history(
+    state: AppState, id: i64, params: ExperienceHistoryParams, claim_scope: bool,
+) -> Result<axum_codec::Codec<Vec<ExperienceHistoryPoint>>, (StatusCode, &'static str)> {
+    use sea_orm::FromQueryResult;
+    let scale = params.scale.unwrap_or(ExperienceHistoryScale::Day);
+    let location = match (params.location, params.claim_id) {
+        (Some(ExperienceLocationFilter::Unclaimed | ExperienceLocationFilter::Unknown), Some(_)) => {
+            return Err((StatusCode::BAD_REQUEST, "claim_id requires claim location"));
+        }
+        (Some(value), _) => Some(match value { ExperienceLocationFilter::Claim => "claim", ExperienceLocationFilter::Unclaimed => "unclaimed", ExperienceLocationFilter::Unknown => "unknown" }),
+        (None, Some(_)) => Some("claim"),
+        (None, None) => None,
+    };
+    let filtered = claim_scope || location.is_some();
+    let (interval, table, time_column, xp_expression, lookback, default_days, max_days) = match (scale, filtered) {
+        (ExperienceHistoryScale::Hour, false) => ("5 minutes", "player_experience_history", "recorded_at", "experience::bigint - previous_experience::bigint", "hours", 1, 1),
+        (ExperienceHistoryScale::Day, false) => ("30 minutes", "player_xp_30m", "bucket", "experience_gained", "days", 1, 30),
+        (ExperienceHistoryScale::Week, false) => ("3 hours", "player_xp_30m", "bucket", "experience_gained", "days", 7, 30),
+        (ExperienceHistoryScale::Month, false) => ("1 week", "player_xp_weekly", "bucket", "experience_gained", "days", 180, 3650),
+        (ExperienceHistoryScale::Hour, true) => ("5 minutes", "player_experience_history", "recorded_at", "COALESCE(attributed_experience, experience::bigint - previous_experience::bigint)", "hours", 1, 1),
+        (ExperienceHistoryScale::Day, true) => ("30 minutes", "player_xp_location_30m", "bucket", "experience_gained", "days", 1, 30),
+        (ExperienceHistoryScale::Week, true) => ("3 hours", "player_xp_location_30m", "bucket", "experience_gained", "days", 7, 30),
+        (ExperienceHistoryScale::Month, true) => ("1 week", "(SELECT bucket, player_id, skill_id, location_status, claim_id, experience_gained FROM player_xp_location_weekly UNION ALL SELECT bucket, player_id, skill_id, location_status, claim_id, experience_gained FROM player_xp_legacy_claim_weeks) AS location_history", "bucket", "experience_gained", "days", 180, 3650),
+    };
+    let days = params.days.unwrap_or(default_days).clamp(1, max_days);
+    let (skill_select, grouping) = if params.group_by_skill.unwrap_or(false) {
+        ("skill_id", "day, skill_id")
+    } else {
+        ("NULL::integer AS skill_id", "day")
+    };
+    let location_filter = if claim_scope { "AND location_status = 'claim'" } else if filtered { "AND location_status = $4 AND ($5::bigint IS NULL OR claim_id = $5)" } else { "" };
+    let id_column = if claim_scope { "claim_id" } else { "player_id" };
+    let sql = format!(
+        "SELECT time_bucket(INTERVAL '{interval}', {time_column}) AS day, \
+         SUM({xp_expression})::bigint AS experience_gained, {skill_select} FROM {table} \
+         WHERE {id_column} = $1 AND {time_column} >= time_bucket(INTERVAL '{interval}', now() - make_interval({lookback} => $2)) \
+         AND ({xp_expression}) IS NOT NULL AND ($3::integer IS NULL OR skill_id = $3) {location_filter} GROUP BY {grouping} ORDER BY day"
+    );
+    let mut values = vec![id.into(), (days as i32).into(), params.skill_id.into()];
+    if !claim_scope { if let Some(location) = location { values.extend([location.into(), params.claim_id.into()]); } }
+    let rows = ExperienceHistoryPoint::find_by_statement(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DbBackend::Postgres,
+        sql,
+        values,
+    ))
+    .all(&state.conn)
+    .await
+    .map_err(|error| {
+        tracing::error!(%error, "Failed to query experience history");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+    })?;
+    Ok(axum_codec::Codec(rows))
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
@@ -1057,12 +1308,11 @@ pub(crate) async fn get_top_100(
             continue;
         }
 
-        // let db = state.conn.clone();
         let entries = state
             .ranking_system
             .skill_leaderboard(skill.id)
-            .unwrap()
-            .get_range(0, 100);
+            .map(|board| board.get_range(0, 100))
+            .unwrap_or_default();
 
         let mut leaderboard: Vec<RankType> = Vec::new();
 
@@ -1225,12 +1475,12 @@ pub(crate) async fn player_leaderboard(
 
         let player_name = None;
 
-        let board = state.ranking_system.skill_leaderboard(skill.id).unwrap();
-        let (skill_exp, rank) = if let Some(rank) = board.get_rank(player_id) {
-            let a = board.get_value(&player_id);
-
-            (a.unwrap(), rank)
-        } else {
+        let Some((skill_exp, rank)) = state
+            .ranking_system
+            .skill_leaderboard(skill.id)
+            .and_then(|board| board.get_rank(player_id).zip(board.get_value(&player_id)))
+            .map(|(rank, experience)| (experience, rank))
+        else {
             tracing::warn!(
                 player_id,
                 skill_id = skill.id,

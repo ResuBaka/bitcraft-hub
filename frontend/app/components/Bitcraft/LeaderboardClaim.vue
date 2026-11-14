@@ -396,7 +396,7 @@ const columnsForSkill = computed(() => {
                 class="font-semibold hover:underline"
                 :to="{ path: '/players/' + row.original.player_id }"
               >
-                {{ row.original.player_name }}
+                <BitcraftPlayerName :player-id="row.original.player_id">{{ row.original.player_name }}</BitcraftPlayerName>
               </NuxtLink>
             </template>
 

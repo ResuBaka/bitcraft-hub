@@ -90,8 +90,8 @@ impl<'ctx> PlayerActionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlayerActionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerActionStateInitialCallbackId {
         PlayerActionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

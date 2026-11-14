@@ -6,16 +6,27 @@ use crate::websocket::{OutboundWebSocketMessages, SpacetimeUpdateMessages};
 use entity::shared::Region;
 use game_module::module_bindings::{ExperienceStack, ExperienceState};
 use migration::{OnConflict, sea_query};
-use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, ExprTrait, IntoActiveModel, QueryFilter, Statement, TransactionTrait};
 use std::collections::{HashMap, HashSet};
 use std::ops::AddAssign;
 use std::time::Duration;
 use tokio::sync::mpsc::{Sender, channel};
 
 enum ExperienceStateDbOperation {
-    Upsert(Vec<::entity::experience_state::ActiveModel>),
+    Upsert(Vec<::entity::experience_state::ActiveModel>, Vec<ObservedClaimExperience>),
     Delete(Vec<(i64, i32)>),
     Barrier(tokio::sync::oneshot::Sender<()>),
+}
+
+#[derive(Clone, Debug)]
+struct ObservedClaimExperience {
+    recorded_at: chrono::DateTime<chrono::Utc>,
+    player_id: i64,
+    skill_id: i32,
+    previous_experience: i32,
+    experience: i32,
+    region: Region,
+    location: crate::claims::claim_location::ClaimAtLocation,
 }
 
 /// The database key deliberately excludes region, just like the table's primary
@@ -24,6 +35,7 @@ enum ExperienceStateDbOperation {
 struct PendingExperienceWrites {
     upserts: HashMap<(i64, i32), ::entity::experience_state::Model>,
     deletes: HashSet<(i64, i32)>,
+    claim_history: Vec<ObservedClaimExperience>,
 }
 
 impl PendingExperienceWrites {
@@ -131,6 +143,34 @@ mod initial_tests {
                 .map(|&(skill_id, quantity)| ExperienceStack { skill_id, quantity })
                 .collect(),
         }
+    }
+
+    #[tokio::test]
+    async fn claim_history_preserves_location_for_each_update_before_batching() {
+        use crate::claims::claim_location::ClaimAtLocation;
+        use game_module::module_bindings::{ClaimTileState, LocationState};
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(Default::default(), tx, Default::default());
+        state.claim_locations.reset(7);
+        state.claim_locations.finish_initial(7);
+        state.claim_locations.claims_initial(7, &[ClaimTileState { entity_id: 42, claim_id: 99 }]);
+        state.claim_locations.locations_initial(7, &[LocationState { entity_id: 42, chunk_index: 5, x: 1, z: 2, dimension: 1 }]);
+        state.mobile_entity_state.insert(1, entity::mobile_entity_state::Model {
+            entity_id: 1, chunk_index: 5, timestamp: 0, location_x: 1000, location_z: 2000,
+            destination_x: 1000, destination_z: 2000, dimension: 1, is_walking: false, region: 7,
+        });
+        let mut worker = ExperienceStateWorker::new(state.clone(), 100, Duration::from_secs(10));
+        worker.handle_update(experience(1, &[(10, 120)]), 7, experience(1, &[(10, 100)])).await;
+        state.mobile_entity_state.get_mut(&1).unwrap().location_x = 9000;
+        worker.handle_update(experience(1, &[(10, 150)]), 7, experience(1, &[(10, 120)])).await;
+        state.mobile_entity_state.get_mut(&1).unwrap().region = 8;
+        worker.handle_update(experience(1, &[(10, 160)]), 7, experience(1, &[(10, 150)])).await;
+        let history = &worker.pending.claim_history;
+        assert_eq!(history.len(), 3);
+        assert_eq!((history[0].experience - history[0].previous_experience, history[0].location), (20, ClaimAtLocation::Claim(99)));
+        assert_eq!((history[1].experience - history[1].previous_experience, history[1].location), (30, ClaimAtLocation::Unclaimed));
+        assert_eq!((history[2].experience - history[2].previous_experience, history[2].location), (10, ClaimAtLocation::Unknown));
+        assert_eq!(worker.pending.upserts[&(1, 10)].experience, 160);
     }
 
     #[tokio::test]
@@ -270,8 +310,9 @@ mod initial_tests {
         assert!(worker.is_idle());
         assert_eq!(worker.pending.upserts.capacity(), capacity);
         match operations.try_recv().unwrap() {
-            ExperienceStateDbOperation::Upsert(rows) => {
+            ExperienceStateDbOperation::Upsert(rows, history) => {
                 assert_eq!(rows.len(), 1);
+                assert_eq!(history.len(), 2);
                 assert_eq!(
                     rows[0],
                     ::entity::experience_state::Model {
@@ -293,7 +334,7 @@ mod initial_tests {
         worker.flush().await;
         assert!(matches!(
             operations.try_recv().unwrap(),
-            ExperienceStateDbOperation::Upsert(_)
+            ExperienceStateDbOperation::Upsert(_, _)
         ));
         worker.flush().await;
         assert!(
@@ -355,6 +396,11 @@ mod initial_tests {
                 username: "Bris".into(),
                 region: 7,
             }]])
+            .append_query_results([vec![::entity::player_username_state::Model {
+                entity_id: ID,
+                username: "Bris".into(),
+                region: 7,
+            }]])
             .into_connection();
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db.clone(), tx, Default::default());
@@ -373,6 +419,19 @@ mod initial_tests {
             );
             state.ranking_system.ensure_skill_leaderboard(id);
         }
+        // A newly discovered skill may not have received any experience yet.
+        state.skill_desc.insert(
+            12,
+            ::entity::skill_desc::Model {
+                id: 12,
+                skill: 12,
+                name: "skill-12".into(),
+                skill_category: 1,
+                description: String::new(),
+                icon_asset_name: String::new(),
+                title: String::new(),
+            },
+        );
         state.player_state.insert(
             ID,
             ::entity::player_state::Model {
@@ -426,7 +485,7 @@ mod initial_tests {
             );
         }
         state.ranking_system.shutdown().await;
-        let response = super::super::player_leaderboard(State(state), Path(ID))
+        let response = super::super::player_leaderboard(State(state.clone()), Path(ID))
             .await
             .unwrap()
             .0
@@ -437,8 +496,11 @@ mod initial_tests {
         assert!(
             matches!(&response["Level"], super::super::RankType::Level(value) if value.level == 5 && value.rank == 1)
         );
+        assert!(!response.contains_key("skill-12"));
+        let top = super::super::get_top_100(State(state)).await.unwrap().0;
+        assert!(top.leaderboard["skill-12"].is_empty());
         let queries = db.into_transaction_log();
-        assert_eq!(queries.len(), 3);
+        assert_eq!(queries.len(), 4);
         assert!(
             queries
                 .iter()
@@ -976,7 +1038,7 @@ mod initial_tests {
         worker
             .send(ExperienceStateDbOperation::Upsert(vec![
                 model.into_active_model(),
-            ]))
+            ], vec![]))
             .await
             .unwrap();
         let (done, drained) = tokio::sync::oneshot::channel();
@@ -991,6 +1053,54 @@ mod initial_tests {
         let log = db.into_transaction_log();
         assert_eq!(log.len(), 1);
         assert!(format!("{:?}", log[0]).contains("INSERT INTO"));
+    }
+
+    #[tokio::test]
+    async fn claim_history_and_xp_are_written_in_one_transaction() {
+        let model = ::entity::experience_state::Model { entity_id: 1, skill_id: 10, experience: 120, region: 7 };
+        let db = sea_orm::MockDatabase::new(sea_orm::DbBackend::Postgres)
+            .append_query_results([vec![model.clone()]])
+            .append_exec_results([sea_orm::MockExecResult { last_insert_id: 0, rows_affected: 1 }])
+            .into_connection();
+        let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db.clone(), tx, Default::default());
+        let worker = start_experience_state_db_worker(state);
+        let event = ObservedClaimExperience {
+            recorded_at: chrono::Utc::now(), player_id: 1, skill_id: 10, previous_experience: 100, experience: 120,
+            region: 7, location: crate::claims::claim_location::ClaimAtLocation::Claim(99),
+        };
+        worker.send(ExperienceStateDbOperation::Upsert(vec![model.into_active_model()], vec![event.clone(), event])).await.unwrap();
+        let (done, drained) = tokio::sync::oneshot::channel();
+        worker.send(ExperienceStateDbOperation::Barrier(done)).await.unwrap();
+        drained.await.unwrap();
+        assert!(matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::ExperienceHistoryChanged { user_id: 1 }));
+        assert!(matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::ClaimExperienceHistoryChanged { claim_id: 99 }));
+        assert!(notifications.try_recv().is_err());
+        let log = db.into_transaction_log();
+        assert_eq!(log.len(), 1);
+        let transaction = format!("{:?}", log[0]);
+        assert!(transaction.as_str().contains("experience_state"));
+        assert!(transaction.as_str().contains("player_experience_history"));
+        assert!(transaction.as_str().contains("COMMIT"));
+    }
+
+    #[tokio::test]
+    async fn failed_history_commit_does_not_notify_player() {
+        let db = sea_orm::MockDatabase::new(sea_orm::DbBackend::Postgres)
+            .append_exec_errors([sea_orm::DbErr::Custom("history write failed".into())])
+            .into_connection();
+        let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db, tx, Default::default());
+        let worker = start_experience_state_db_worker(state);
+        worker.send(ExperienceStateDbOperation::Upsert(vec![], vec![ObservedClaimExperience {
+            recorded_at: chrono::Utc::now(), player_id: 1, skill_id: 10,
+            previous_experience: 100, experience: 120, region: 7,
+            location: crate::claims::claim_location::ClaimAtLocation::Unknown,
+        }])).await.unwrap();
+        let (done, drained) = tokio::sync::oneshot::channel();
+        worker.send(ExperienceStateDbOperation::Barrier(done)).await.unwrap();
+        drained.await.unwrap();
+        assert!(notifications.try_recv().is_err());
     }
 }
 
@@ -1011,9 +1121,23 @@ fn start_experience_state_db_worker(
     global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             match operation {
-                ExperienceStateDbOperation::Upsert(messages) => {
-                    insert_multiple_experience_state(&global_app_state, &on_conflict, messages)
-                        .await;
+                ExperienceStateDbOperation::Upsert(messages, history) => {
+                    let players: HashSet<i64> = history.iter().map(|event| event.player_id).collect();
+                    let claims: HashSet<i64> = history.iter().filter_map(|event| match event.location {
+                        crate::claims::claim_location::ClaimAtLocation::Claim(id) => Some(id as i64),
+                        _ => None,
+                    }).collect();
+                    match insert_multiple_experience_state(&global_app_state, &on_conflict, messages, history).await {
+                        Ok(()) => {
+                            for user_id in players {
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::ExperienceHistoryChanged { user_id });
+                            }
+                            for claim_id in claims {
+                                let _ = global_app_state.tx.send(OutboundWebSocketMessages::ClaimExperienceHistoryChanged { claim_id });
+                            }
+                        }
+                        Err(error) => tracing::error!(%error, "Error while saving experience_state and history"),
+                    }
                 }
                 ExperienceStateDbOperation::Delete(ids) => {
                     tracing::debug!("ExperienceState::Remove");
@@ -1072,14 +1196,14 @@ impl ExperienceStateWorker {
         }
     }
 
-    async fn queue_upserts(&self, messages: Vec<::entity::experience_state::ActiveModel>) {
-        if messages.is_empty() {
+    async fn queue_upserts(&self, messages: Vec<::entity::experience_state::ActiveModel>, history: Vec<ObservedClaimExperience>) {
+        if messages.is_empty() && history.is_empty() {
             return;
         }
 
         if let Err(error) = self
             .db_tx
-            .send(ExperienceStateDbOperation::Upsert(messages))
+            .send(ExperienceStateDbOperation::Upsert(messages, history))
             .await
         {
             tracing::error!(
@@ -1329,6 +1453,13 @@ impl ExperienceStateWorker {
         // }
 
         let id = new.entity_id as i64;
+        let observed_at = chrono::Utc::now();
+        let observed_claim = self.global_app_state.mobile_entity_state.get(&new.entity_id)
+            .filter(|location| location.region == database_name)
+            .map(|location| self.global_app_state.claim_locations.lookup(
+                location.region, location.dimension, location.location_x, location.location_z,
+            ))
+            .unwrap_or(crate::claims::claim_location::ClaimAtLocation::Unknown);
         let mut new_total_exp = 0;
         let ranking = &self.global_app_state.ranking_system;
         let player = std::cell::OnceCell::new();
@@ -1435,6 +1566,15 @@ impl ExperienceStateWorker {
                 }
 
                 if new_skill.quantity > es.quantity {
+                    self.pending.claim_history.push(ObservedClaimExperience {
+                        recorded_at: observed_at,
+                        player_id: id,
+                        skill_id: es.skill_id,
+                        previous_experience: es.quantity,
+                        experience: new_skill.quantity,
+                        region: database_name,
+                        location: observed_claim,
+                    });
                     let model = ::entity::experience_state::Model {
                         entity_id: id,
                         skill_id: es.skill_id,
@@ -1667,7 +1807,7 @@ impl ExperienceStateWorker {
     }
 
     async fn flush_messages(&mut self) {
-        if self.pending.upserts.is_empty() {
+        if self.pending.upserts.is_empty() && self.pending.claim_history.is_empty() {
             return;
         }
 
@@ -1677,7 +1817,8 @@ impl ExperienceStateWorker {
             .drain()
             .map(|(_, model)| model.into_active_model())
             .collect();
-        self.queue_upserts(messages).await;
+        let history = std::mem::take(&mut self.pending.claim_history);
+        self.queue_upserts(messages, history).await;
     }
 
     async fn flush_deletes(&mut self) {
@@ -1712,11 +1853,12 @@ impl BatchedWorker for ExperienceStateWorker {
 
     fn should_flush(&self) -> bool {
         self.pending.upserts.len() >= self.batch_size
+            || self.pending.claim_history.len() >= self.batch_size
             || self.pending.deletes.len() >= self.batch_size
     }
 
     fn is_idle(&self) -> bool {
-        self.pending.upserts.is_empty() && self.pending.deletes.is_empty()
+        self.pending.upserts.is_empty() && self.pending.deletes.is_empty() && self.pending.claim_history.is_empty()
     }
 
     fn reset_batch(&mut self) {}
@@ -1735,16 +1877,33 @@ async fn insert_multiple_experience_state(
     global_app_state: &AppState,
     on_conflict: &OnConflict,
     messages: Vec<::entity::experience_state::ActiveModel>,
-) {
-    let result = ::entity::experience_state::Entity::insert_many(messages)
-        .on_conflict(on_conflict.clone())
-        .exec(&global_app_state.conn)
-        .await;
-
-    if let Err(error) = result {
-        tracing::error!(
-            error = error.to_string(),
-            "Error while saving experience_state"
-        );
-    }
+    history: Vec<ObservedClaimExperience>,
+) -> Result<(), sea_orm::DbErr> {
+        let txn = global_app_state.conn.begin().await?;
+        if !messages.is_empty() {
+            ::entity::experience_state::Entity::insert_many(messages)
+                .on_conflict(on_conflict.clone())
+                .exec(&txn)
+                .await?;
+        }
+        for chunk in history.chunks(500) {
+            let mut values = Vec::<sea_orm::Value>::with_capacity(chunk.len() * 8);
+            let mut rows = Vec::with_capacity(chunk.len());
+            for event in chunk {
+                let (status, claim_id) = match event.location {
+                    crate::claims::claim_location::ClaimAtLocation::Claim(id) => ("claim", Some(id as i64)),
+                    crate::claims::claim_location::ClaimAtLocation::Unclaimed => ("unclaimed", None),
+                    crate::claims::claim_location::ClaimAtLocation::Unknown => ("unknown", None),
+                };
+                let start = values.len();
+                rows.push(format!("(${},${},${},${},${},${},${},${})", start+1,start+2,start+3,start+4,start+5,start+6,start+7,start+8));
+                values.extend([
+                    event.recorded_at.into(), event.player_id.into(), event.skill_id.into(),
+                    event.previous_experience.into(), event.experience.into(), event.region.into(), status.into(), claim_id.into(),
+                ]);
+            }
+            let sql = format!("INSERT INTO player_experience_history (recorded_at, player_id, skill_id, previous_experience, experience, region, location_status, claim_id) VALUES {}", rows.join(","));
+            txn.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres, sql, values)).await?;
+        }
+        txn.commit().await
 }

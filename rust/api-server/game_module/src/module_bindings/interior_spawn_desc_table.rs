@@ -90,8 +90,8 @@ impl<'ctx> InteriorSpawnDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, InteriorSpawnDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> InteriorSpawnDescInitialCallbackId {
         InteriorSpawnDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

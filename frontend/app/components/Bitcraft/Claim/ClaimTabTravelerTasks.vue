@@ -80,7 +80,7 @@ defineProps<{
             :to="{ name: 'players-id', params: { id: playerId } }"
             class="text-sm font-semibold text-gray-900 hover:underline dark:text-gray-100"
           >
-            {{ claimMembers[playerId.toString()]?.user_name }}
+            <BitcraftPlayerName :player-id="playerId">{{ claimMembers[playerId.toString()]?.user_name }}</BitcraftPlayerName>
           </NuxtLink>
         </div>
       </template>

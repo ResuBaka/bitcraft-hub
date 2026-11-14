@@ -7,16 +7,29 @@ import { inventoryMatchesSearch } from "~/utils/inventorySearch";
 const props = defineProps<{
   house: HouseResponse;
   search?: string;
+  sharedInventories?: HouseInventoriesResponse;
+  sharedInventoriesPending?: boolean;
 }>();
 
 const tab = ref<"overview" | "permissions" | "inventories" | "changelog">("overview");
 const changelogStartDay = ref<string>();
 const changelogEndDay = ref<string>();
 
-const { data: inventories, pending: invPending } =
+const { data: fetchedInventories, pending: fetchPending, execute: fetchInventories } =
   await useLazyFetchMsPack<HouseInventoriesResponse>(
     () => `/api/bitcraft/houses/${props.house.entity_id}/inventories`,
+    { immediate: false },
   );
+
+watch(
+  () => [props.sharedInventories, props.sharedInventoriesPending, props.house.entity_id] as const,
+  ([shared, pending]) => {
+    if (!shared && !pending) fetchInventories();
+  },
+  { immediate: true },
+);
+const inventories = computed(() => props.sharedInventories ?? fetchedInventories.value);
+const invPending = computed(() => !inventories.value && (props.sharedInventoriesPending || fetchPending.value));
 
 const {
   data: changelog,
@@ -93,7 +106,7 @@ const getRankColor = (rank: number) => {
   <UCard class="mb-4" :ui="{ header: 'p-4', body: 'p-4' }">
     <template #header>
       <div class="flex flex-wrap items-center gap-3">
-        <span class="text-lg font-black">House {{ house.owner_username ?? house.entity_id }}</span>
+        <span class="text-lg font-black">House <BitcraftPlayerName :player-id="house.owner_entity_id">{{ house.owner_username ?? house.entity_id }}</BitcraftPlayerName></span>
         <UBadge color="primary" variant="soft">{{ house.region }}</UBadge>
         <UBadge :color="house.is_empty ? 'neutral' : 'success'" variant="soft">
           {{ house.is_empty ? "Empty" : "Occupied" }}
@@ -168,7 +181,7 @@ const getRankColor = (rank: number) => {
                   params: { id: row.original.allowed_entity_id.toString() },
                 }"
               >
-                {{ row.original.allowed_username || "Unknown" }}
+                <BitcraftPlayerName :player-id="row.original.allowed_entity_id">{{ row.original.allowed_username || "Unknown" }}</BitcraftPlayerName>
               </NuxtLink>
             </template>
             <template #group-cell="{ row }">

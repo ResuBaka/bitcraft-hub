@@ -87,8 +87,8 @@ impl<'ctx> PlayerRegionTransferEventTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlayerRegionTransferEvent>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerRegionTransferEventInitialCallbackId {
         PlayerRegionTransferEventInitialCallbackId(self.imp.on_initial_rows(callback))
     }

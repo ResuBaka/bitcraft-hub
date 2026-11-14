@@ -86,8 +86,8 @@ impl<'ctx> WaystoneStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, WaystoneState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> WaystoneStateInitialCallbackId {
         WaystoneStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

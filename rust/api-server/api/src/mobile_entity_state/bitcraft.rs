@@ -57,6 +57,10 @@ pub(crate) fn start_worker_mobile_entity_state(
                                 .mobile_entity_state
                                 .insert(model.entity_id, model.clone());
 
+                            let _ = global_app_state.tx.send(OutboundWebSocketMessages::PlayerLocation(
+                                crate::player_state::resolve_player_location(&global_app_state, model.entity_id, Some(model.clone())),
+                            ));
+
                             let _ = global_app_state
                                 .tx
                                 .send(OutboundWebSocketMessages::MobileEntityState(model));
@@ -76,6 +80,10 @@ pub(crate) fn start_worker_mobile_entity_state(
                             .mobile_entity_state
                             .insert(model.entity_id, model.clone());
 
+                        let _ = global_app_state.tx.send(OutboundWebSocketMessages::PlayerLocation(
+                            crate::player_state::resolve_player_location(&global_app_state, model.entity_id, Some(model.clone())),
+                        ));
+
                         let _ = global_app_state
                             .tx
                             .send(OutboundWebSocketMessages::MobileEntityState(model));
@@ -94,6 +102,10 @@ pub(crate) fn start_worker_mobile_entity_state(
                             .mobile_entity_state
                             .insert(model.entity_id, model.clone());
 
+                        let _ = global_app_state.tx.send(OutboundWebSocketMessages::PlayerLocation(
+                            crate::player_state::resolve_player_location(&global_app_state, model.entity_id, Some(model.clone())),
+                        ));
+
                         let _ = global_app_state
                             .tx
                             .send(OutboundWebSocketMessages::MobileEntityState(model));
@@ -102,6 +114,9 @@ pub(crate) fn start_worker_mobile_entity_state(
                         global_app_state
                             .mobile_entity_state
                             .remove(&delete.entity_id);
+                        let _ = global_app_state.tx.send(OutboundWebSocketMessages::PlayerLocation(
+                            crate::player_state::resolve_player_location(&global_app_state, delete.entity_id, None),
+                        ));
                     }
                 }
             }

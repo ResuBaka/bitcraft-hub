@@ -91,8 +91,8 @@ impl<'ctx> DeconstructionRecipeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, DeconstructionRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DeconstructionRecipeDescInitialCallbackId {
         DeconstructionRecipeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }
@@ -269,7 +269,7 @@ pub trait deconstruction_recipe_descQueryTableAccess {
     #[allow(non_snake_case)]
     /// Get a query builder for the table `DeconstructionRecipeDesc`.
     fn deconstruction_recipe_desc(&self)
-    -> __sdk::__query_builder::Table<DeconstructionRecipeDesc>;
+        -> __sdk::__query_builder::Table<DeconstructionRecipeDesc>;
 }
 
 impl deconstruction_recipe_descQueryTableAccess for __sdk::QueryTableAccessor {

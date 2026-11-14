@@ -36,6 +36,8 @@ pub struct PlaceableInteractionDesc {
     pub on_destroy_spawned_placeable_chance: f32,
     pub on_destroy_outcomes: Option<Vec<PlaceableGrowthOutcomeV2>>,
     pub self_buffs: Option<Vec<PlaceableSelfBuffChance>>,
+    pub tool_mesh_index: i32,
+    pub on_destroy_yield: Option<Vec<ItemStack>>,
 }
 
 impl __sdk::InModule for PlaceableInteractionDesc {
@@ -76,6 +78,9 @@ pub struct PlaceableInteractionDescCols {
     >,
     pub self_buffs:
         __sdk::__query_builder::Col<PlaceableInteractionDesc, Option<Vec<PlaceableSelfBuffChance>>>,
+    pub tool_mesh_index: __sdk::__query_builder::Col<PlaceableInteractionDesc, i32>,
+    pub on_destroy_yield:
+        __sdk::__query_builder::Col<PlaceableInteractionDesc, Option<Vec<ItemStack>>>,
 }
 
 impl __sdk::__query_builder::HasCols for PlaceableInteractionDesc {
@@ -133,6 +138,8 @@ impl __sdk::__query_builder::HasCols for PlaceableInteractionDesc {
                 "on_destroy_outcomes",
             ),
             self_buffs: __sdk::__query_builder::Col::new(table_name, "self_buffs"),
+            tool_mesh_index: __sdk::__query_builder::Col::new(table_name, "tool_mesh_index"),
+            on_destroy_yield: __sdk::__query_builder::Col::new(table_name, "on_destroy_yield"),
         }
     }
 }
@@ -142,7 +149,6 @@ impl __sdk::__query_builder::HasCols for PlaceableInteractionDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct PlaceableInteractionDescIxCols {
     pub id: __sdk::__query_builder::IxCol<PlaceableInteractionDesc, i32>,
-    pub placeable_id: __sdk::__query_builder::IxCol<PlaceableInteractionDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for PlaceableInteractionDesc {
@@ -150,7 +156,6 @@ impl __sdk::__query_builder::HasIxCols for PlaceableInteractionDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         PlaceableInteractionDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            placeable_id: __sdk::__query_builder::IxCol::new(table_name, "placeable_id"),
         }
     }
 }

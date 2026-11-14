@@ -5,7 +5,7 @@ import { watch } from "vue";
 
 const numberFormat = new Intl.NumberFormat(undefined);
 
-const { data: leaderboard, pending } = await useLazyFetchMsPack<GetTop100Response>(
+const { data: leaderboard, pending, refresh } = await useLazyFetchMsPack<GetTop100Response>(
   () => {
     return `/leaderboard`;
   },
@@ -36,6 +36,37 @@ const skills = computed(() => {
 let selectedSkills = ref("Professions");
 if (route.query.skill) {
   selectedSkills.value = route.query.skill as string;
+}
+
+type LeaderboardSnapshots = {
+  board: string;
+  entries: { player_id: number | bigint; rank: number | bigint; captured_at: string }[];
+};
+const snapshotPlayerIds = computed(() =>
+  (leaderboard.value?.leaderboard?.[selectedSkills.value] ?? [])
+    .map((entry) => String(entry.player_id)).sort().join(","),
+);
+const { data: snapshots, refresh: refreshSnapshots } = useLazyFetchMsPack<LeaderboardSnapshots>(
+  () => `/leaderboard/rank-snapshots?board=${encodeURIComponent(selectedSkills.value)}&players=${snapshotPlayerIds.value}`,
+  { server: false },
+);
+const snapshotsByPlayer = computed(() => new Map(
+  snapshots.value?.board === selectedSkills.value
+    ? snapshots.value.entries.map((entry) => [String(entry.player_id), entry])
+    : [],
+));
+function rankChange(playerId: number | bigint, rank: number) {
+  const snapshot = snapshotsByPlayer.value.get(String(playerId));
+  return snapshot ? Number(snapshot.rank) - rank : null;
+}
+function snapshotTitle(playerId: number | bigint) {
+  const snapshot = snapshotsByPlayer.value.get(String(playerId));
+  if (!snapshot) return undefined;
+  const date = new Date(snapshot.captured_at);
+  const time = Number.isNaN(date.getTime()) ? "unknown time" : new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium", timeStyle: "short", timeZone: "UTC",
+  }).format(date) + " UTC";
+  return `Previously #${numberFormat.format(snapshot.rank)} · Snapshot ${time}`;
 }
 
 const animateNumbers = ref(true);
@@ -72,32 +103,40 @@ const topics = computed(() => {
   return Array.from(topicsSet);
 });
 
-function swapArrayRank(arr, indexA, indexB) {
-  var temp = arr[indexA];
-  arr[indexA] = arr[indexB];
-  arr[indexB] = temp;
+// Ranks are published asynchronously on the server. Refresh after publication
+// instead of applying the rank carried by an XP event, which may still be old.
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+let periodicRefresh: ReturnType<typeof setInterval> | undefined;
+
+function scheduleLeaderboardRefresh() {
+  if (refreshTimer) return;
+  refreshTimer = setTimeout(() => {
+    refreshTimer = undefined;
+    void refresh({ dedupe: "defer" });
+  }, 1000);
 }
 
-registerWebsocketMessageHandler("Experience", topics, (message) => {
-  const skill = leaderboard.value?.leaderboard[message.skill_name].findIndex(
-    (item) => item.player_id === message.user_id,
-  );
+onMounted(() => {
+  // Players outside the current top 100 have no per-player subscription and
+  // can enter the board without generating an event visible to this page.
+  periodicRefresh = setInterval(() => {
+    void refresh({ dedupe: "defer" });
+    void refreshSnapshots({ dedupe: "defer" });
+  }, 30_000);
+});
 
-  if (skill) {
-    leaderboard.value.leaderboard[message.skill_name][skill].experience = message.experience;
-    leaderboard.value.leaderboard[message.skill_name][skill].rank = message.rank;
-    leaderboard.value.leaderboard[message.skill_name][skill].experience_per_hour =
-      message.experience_per_hour;
-    if (
-      Number(leaderboard.value.leaderboard[message.skill_name][skill].rank) !== Number(message.rank)
-    ) {
-      swapArrayRank(
-        leaderboard.value.leaderboard[message.skill_name],
-        skill,
-        Number(message.rank) - 1,
-      );
-    }
-  }
+onUnmounted(() => {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  if (periodicRefresh) clearInterval(periodicRefresh);
+});
+
+registerWebsocketMessageHandler("Experience", topics, (message) => {
+  const list = leaderboard.value?.leaderboard?.[message.skill_name];
+  const entry = list?.find((item) => String(item.player_id) === String(message.user_id));
+  if (!entry || !("experience" in entry) || !("level" in entry)) return;
+  entry.experience = message.experience;
+  entry.level = message.level;
+  scheduleLeaderboardRefresh();
 });
 
 const totalExperienceTopics = computed(() => {
@@ -118,23 +157,13 @@ const totalExperienceTopics = computed(() => {
 });
 
 registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (message) => {
-  const index = leaderboard.value?.leaderboard["Experience"].findIndex((item) => {
-    if (item === undefined) {
-      return false;
-    }
-
-    return item.player_id === message.user_id;
-  });
-
-  if (index) {
-    leaderboard.value.leaderboard["Experience"][index].experience = message.experience;
-    leaderboard.value.leaderboard["Experience"][index].experience_per_hour =
-      message.experience_per_hour;
-    leaderboard.value.leaderboard["Experience"][index].rank = message.rank;
-    if (leaderboard.value.leaderboard["Experience"][index].rank !== message.rank) {
-      swapArrayRank(leaderboard.value.leaderboard["Experience"], index, Number(message.rank) - 1);
-    }
-  }
+  const entry = leaderboard.value?.leaderboard?.Experience?.find(
+    (item) => String(item.player_id) === String(message.user_id),
+  );
+  if (!entry || !("experience" in entry) || !("experience_per_hour" in entry)) return;
+  entry.experience = message.experience;
+  entry.experience_per_hour = message.experience_per_hour;
+  scheduleLeaderboardRefresh();
 });
 
 const totalProfessionExperienceTopics = computed(() => {
@@ -158,25 +187,12 @@ registerWebsocketMessageHandler(
   "TotalProfessionExperience",
   totalProfessionExperienceTopics,
   (message) => {
-    const index = leaderboard.value?.leaderboard["Professions"].findIndex((item) => {
-      if (item === undefined) {
-        return false;
-      }
-
-      return item.player_id === message.user_id;
-    });
-
-    if (index) {
-      leaderboard.value.leaderboard["Professions"][index].experience = message.experience;
-      leaderboard.value.leaderboard["Professions"][index].rank = message.rank;
-      if (leaderboard.value.leaderboard["Professions"][index].rank !== message.rank) {
-        swapArrayRank(
-          leaderboard.value.leaderboard["Professions"],
-          index,
-          Number(message.rank) - 1,
-        );
-      }
-    }
+    const entry = leaderboard.value?.leaderboard?.Professions?.find(
+      (item) => String(item.player_id) === String(message.user_id),
+    );
+    if (!entry || !("experience" in entry)) return;
+    entry.experience = message.experience;
+    scheduleLeaderboardRefresh();
   },
 );
 
@@ -201,21 +217,12 @@ registerWebsocketMessageHandler(
   "TotalAdventureExperience",
   totalAdventureExperienceTopics,
   (message) => {
-    const index = leaderboard.value?.leaderboard["Skills"].findIndex((item) => {
-      if (item === undefined) {
-        return false;
-      }
-
-      return item.player_id === message.user_id;
-    });
-
-    if (index) {
-      leaderboard.value.leaderboard["Skills"][index].experience = message.experience;
-      leaderboard.value.leaderboard["Skills"][index].rank = message.rank;
-      if (leaderboard.value.leaderboard["Skills"][index].rank !== message.rank) {
-        swapArrayRank(leaderboard.value.leaderboard["Skills"], index, Number(message.rank) - 1);
-      }
-    }
+    const entry = leaderboard.value?.leaderboard?.Skills?.find(
+      (item) => String(item.player_id) === String(message.user_id),
+    );
+    if (!entry || !("experience" in entry)) return;
+    entry.experience = message.experience;
+    scheduleLeaderboardRefresh();
   },
 );
 
@@ -559,13 +566,18 @@ const columnsForSkill = (skill: string) => {
                   <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {{ row.index + 1 }}
                   </span>
+                  <span v-if="rankChange(row.original.player_id, row.index + 1) !== null" class="ml-1.5 text-xs font-medium" :class="rankChange(row.original.player_id, row.index + 1)! > 0 ? 'text-green-600 dark:text-green-400' : rankChange(row.original.player_id, row.index + 1)! < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500'" :title="snapshotTitle(row.original.player_id)">
+                    <template v-if="rankChange(row.original.player_id, row.index + 1)! > 0">▲ {{ numberFormat.format(rankChange(row.original.player_id, row.index + 1)!) }}</template>
+                    <template v-else-if="rankChange(row.original.player_id, row.index + 1)! < 0">▼ {{ numberFormat.format(-rankChange(row.original.player_id, row.index + 1)!) }}</template>
+                    <template v-else>—</template>
+                  </span>
                 </template>
                 <template #player-cell="{ row }">
                   <NuxtLink
                     :to="{ path: 'players/' + row.original.player_id }"
                     :class="playerLinkClass(row.original.player_id)"
                   >
-                    {{ row.original.player_name }}
+                    <BitcraftPlayerName :player-id="row.original.player_id">{{ row.original.player_name }}</BitcraftPlayerName>
                   </NuxtLink>
                 </template>
                 <template #experiencePerHour-cell="{ row }">

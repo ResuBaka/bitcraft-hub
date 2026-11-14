@@ -86,8 +86,8 @@ impl<'ctx> QuestStageDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, QuestStageDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> QuestStageDescInitialCallbackId {
         QuestStageDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

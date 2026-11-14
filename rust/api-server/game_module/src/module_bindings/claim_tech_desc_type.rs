@@ -24,6 +24,9 @@ pub struct ClaimTechDesc {
     pub supplies: i32,
     pub xp_to_mint_hex_coin: u32,
     pub unlocks_techs: Vec<i32>,
+    pub cannot_be_researched: bool,
+    pub blocking_claim_techs: Option<Vec<i32>>,
+    pub not_shown_in_ui: bool,
 }
 
 impl __sdk::InModule for ClaimTechDesc {
@@ -48,6 +51,9 @@ pub struct ClaimTechDescCols {
     pub supplies: __sdk::__query_builder::Col<ClaimTechDesc, i32>,
     pub xp_to_mint_hex_coin: __sdk::__query_builder::Col<ClaimTechDesc, u32>,
     pub unlocks_techs: __sdk::__query_builder::Col<ClaimTechDesc, Vec<i32>>,
+    pub cannot_be_researched: __sdk::__query_builder::Col<ClaimTechDesc, bool>,
+    pub blocking_claim_techs: __sdk::__query_builder::Col<ClaimTechDesc, Option<Vec<i32>>>,
+    pub not_shown_in_ui: __sdk::__query_builder::Col<ClaimTechDesc, bool>,
 }
 
 impl __sdk::__query_builder::HasCols for ClaimTechDesc {
@@ -71,6 +77,15 @@ impl __sdk::__query_builder::HasCols for ClaimTechDesc {
                 "xp_to_mint_hex_coin",
             ),
             unlocks_techs: __sdk::__query_builder::Col::new(table_name, "unlocks_techs"),
+            cannot_be_researched: __sdk::__query_builder::Col::new(
+                table_name,
+                "cannot_be_researched",
+            ),
+            blocking_claim_techs: __sdk::__query_builder::Col::new(
+                table_name,
+                "blocking_claim_techs",
+            ),
+            not_shown_in_ui: __sdk::__query_builder::Col::new(table_name, "not_shown_in_ui"),
         }
     }
 }
@@ -80,6 +95,7 @@ impl __sdk::__query_builder::HasCols for ClaimTechDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct ClaimTechDescIxCols {
     pub id: __sdk::__query_builder::IxCol<ClaimTechDesc, i32>,
+    pub tier: __sdk::__query_builder::IxCol<ClaimTechDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for ClaimTechDesc {
@@ -87,6 +103,7 @@ impl __sdk::__query_builder::HasIxCols for ClaimTechDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         ClaimTechDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
+            tier: __sdk::__query_builder::IxCol::new(table_name, "tier"),
         }
     }
 }

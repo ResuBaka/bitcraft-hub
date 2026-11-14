@@ -86,11 +86,9 @@ impl<'ctx> PlayerHousingCustomizationStateTableHandle<'ctx> {
     /// Register a borrowed initial-row view without cloning the full snapshot.
     pub fn on_initial_rows(
         &self,
-        callback: impl FnMut(
-            &super::EventContext,
-            __sdk::InitialRows<'_, PlayerHousingCustomizationState>,
-        ) + Send
-        + 'static,
+        callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlayerHousingCustomizationState>)
+            + Send
+            + 'static,
     ) -> PlayerHousingCustomizationStateInitialCallbackId {
         PlayerHousingCustomizationStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }
@@ -99,8 +97,8 @@ impl<'ctx> PlayerHousingCustomizationStateTableHandle<'ctx> {
     pub fn on_initial_owned(
         &self,
         callback: impl FnMut(&super::EventContext, Vec<PlayerHousingCustomizationState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerHousingCustomizationStateInitialCallbackId {
         PlayerHousingCustomizationStateInitialCallbackId(self.imp.on_initial_owned(callback))
     }

@@ -86,8 +86,8 @@ impl<'ctx> EmpireNodeStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EmpireNodeState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EmpireNodeStateInitialCallbackId {
         EmpireNodeStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

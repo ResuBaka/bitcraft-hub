@@ -87,8 +87,8 @@ impl<'ctx> EmpireLowercaseNameStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EmpireLowercaseNameState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EmpireLowercaseNameStateInitialCallbackId {
         EmpireLowercaseNameStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

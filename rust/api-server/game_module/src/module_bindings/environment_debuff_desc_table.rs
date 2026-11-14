@@ -88,8 +88,8 @@ impl<'ctx> EnvironmentDebuffDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EnvironmentDebuffDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EnvironmentDebuffDescInitialCallbackId {
         EnvironmentDebuffDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

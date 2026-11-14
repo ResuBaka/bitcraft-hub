@@ -87,8 +87,8 @@ impl<'ctx> TerrainChunkStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TerrainChunkState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TerrainChunkStateInitialCallbackId {
         TerrainChunkStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

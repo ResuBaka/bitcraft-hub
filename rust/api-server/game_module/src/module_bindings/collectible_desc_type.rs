@@ -104,7 +104,6 @@ impl __sdk::__query_builder::HasCols for CollectibleDesc {
 /// Provides typed access to indexed columns for query building.
 pub struct CollectibleDescIxCols {
     pub id: __sdk::__query_builder::IxCol<CollectibleDesc, i32>,
-    pub item_deed_id: __sdk::__query_builder::IxCol<CollectibleDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasIxCols for CollectibleDesc {
@@ -112,7 +111,6 @@ impl __sdk::__query_builder::HasIxCols for CollectibleDesc {
     fn ix_cols(table_name: &'static str) -> Self::IxCols {
         CollectibleDescIxCols {
             id: __sdk::__query_builder::IxCol::new(table_name, "id"),
-            item_deed_id: __sdk::__query_builder::IxCol::new(table_name, "item_deed_id"),
         }
     }
 }

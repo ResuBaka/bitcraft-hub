@@ -6,7 +6,11 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // pg_trgm must be installed by an administrator before this migration runs.
+        // PostgreSQL requires CREATE privilege on the database to install pg_trgm.
+        manager
+            .get_connection()
+            .execute_unprepared("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+            .await?;
         manager
             .get_connection()
             .execute_unprepared(

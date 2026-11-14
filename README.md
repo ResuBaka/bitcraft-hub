@@ -52,6 +52,10 @@ bun run .output/server/index.mjs
 
 We are using **Rust** for the frontend part which can be found in the rust/api-server folder.
 
+The PostgreSQL migrations install the `pg_trgm` extension for search indexes.
+The database user needs `CREATE` permission on the database, or an administrator
+must install the extension beforehand with `CREATE EXTENSION IF NOT EXISTS pg_trgm`.
+
 To get the default config you can run the command bellow.
 
 ```bash
@@ -67,11 +71,16 @@ url = ""
 [spacetimedb]
 domain = "localhost"
 protocol = "https://"
+# Optional: add the region number to this base port. If omitted, no port is appended.
+# base_port = 3000
 databases = []
 password = ""
 websocket_protocol = "wss://"
 cleanup = false
 ```
+
+The optional base port can also be set with the environment variable
+`BITCRAFT_HUB_API__SPACETIMEDB__BASE_PORT`.
 
 ### Development Server
 

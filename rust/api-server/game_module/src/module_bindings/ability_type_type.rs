@@ -30,6 +30,8 @@ pub enum AbilityType {
     Emote(i32),
 
     EquipPreset(i32),
+
+    PlaceablePlace(i32),
 }
 
 impl __sdk::InModule for AbilityType {

@@ -89,8 +89,8 @@ impl<'ctx> ResourceDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ResourceDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ResourceDescInitialCallbackId {
         ResourceDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

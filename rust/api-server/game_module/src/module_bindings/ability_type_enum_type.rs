@@ -33,6 +33,8 @@ pub enum AbilityTypeEnum {
     Emote,
 
     EquipPreset,
+
+    PlaceablePlace,
 }
 
 impl __sdk::InModule for AbilityTypeEnum {

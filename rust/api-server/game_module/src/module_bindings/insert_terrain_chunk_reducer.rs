@@ -62,11 +62,9 @@ pub trait insert_terrain_chunk {
         buildings: Vec<WorldGenGeneratedBuilding>,
         resources: Vec<WorldGenGeneratedResourceDeposit>,
 
-        callback: impl FnOnce(
-            &super::ReducerEventContext,
-            Result<Result<(), String>, __sdk::InternalError>,
-        ) + Send
-        + 'static,
+        callback: impl FnOnce(&super::ReducerEventContext, Result<Result<(), String>, __sdk::InternalError>)
+            + Send
+            + 'static,
     ) -> __sdk::Result<()>;
 }
 
@@ -77,11 +75,9 @@ impl insert_terrain_chunk for super::RemoteReducers {
         buildings: Vec<WorldGenGeneratedBuilding>,
         resources: Vec<WorldGenGeneratedResourceDeposit>,
 
-        callback: impl FnOnce(
-            &super::ReducerEventContext,
-            Result<Result<(), String>, __sdk::InternalError>,
-        ) + Send
-        + 'static,
+        callback: impl FnOnce(&super::ReducerEventContext, Result<Result<(), String>, __sdk::InternalError>)
+            + Send
+            + 'static,
     ) -> __sdk::Result<()> {
         self.imp.invoke_reducer_with_callback(
             InsertTerrainChunkArgs {

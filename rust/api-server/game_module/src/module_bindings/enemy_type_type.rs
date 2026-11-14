@@ -115,6 +115,22 @@ pub enum EnemyType {
     DistractedTundraOx,
 
     DistractedDesertTerrorbird,
+
+    StarseekerBaseT1,
+
+    StarseekerLightT1,
+
+    ImmortalBaseT1,
+
+    ImmortalHeavyT1,
+
+    ImmortalBaseT2,
+
+    ImmortalHeavyT2,
+
+    SentinelStarseekerSkirmisher,
+
+    SentinelStarseekerCaptain,
 }
 
 impl __sdk::InModule for EnemyType {

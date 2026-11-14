@@ -89,8 +89,8 @@ impl<'ctx> TerraformRecipeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TerraformRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TerraformRecipeDescInitialCallbackId {
         TerraformRecipeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -86,8 +86,8 @@ impl<'ctx> EquipmentStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EquipmentState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EquipmentStateInitialCallbackId {
         EquipmentStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

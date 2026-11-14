@@ -91,8 +91,8 @@ impl<'ctx> ConstructionRecipeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ConstructionRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ConstructionRecipeDescInitialCallbackId {
         ConstructionRecipeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

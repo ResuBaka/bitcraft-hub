@@ -87,8 +87,8 @@ impl<'ctx> DimensionNetworkStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, DimensionNetworkState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DimensionNetworkStateInitialCallbackId {
         DimensionNetworkStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

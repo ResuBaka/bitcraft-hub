@@ -28,9 +28,24 @@ const props = defineProps<{
   xp_info: LeaderboardSkill;
   skill: keyof typeof skillToToolIndex;
   tools: ResolvedInventory;
+  previousRank?: number | bigint;
+  snapshotRank?: number | bigint | null;
+  snapshotTime?: string;
 }>();
 const numberFormat = new Intl.NumberFormat(undefined);
 const tierColor = useTierColor();
+const currentRank = computed(() => Number(props.snapshotRank ?? props.xp_info.rank));
+const rankChange = computed(() => props.previousRank == null || currentRank.value <= 0
+  ? null
+  : Number(props.previousRank) - currentRank.value);
+const formattedSnapshotTime = computed(() => {
+  if (!props.snapshotTime) return null;
+  const date = new Date(props.snapshotTime);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium", timeStyle: "short", timeZone: "UTC",
+  }).format(date) + " UTC";
+});
 
 const itemForSkill = computed(() => {
   const index = skillToToolIndex[props.skill as keyof typeof skillToToolIndex];
@@ -82,10 +97,18 @@ const expUntilNextTenLevel = computed(() => {
           {{ skill }}
         </p>
       </div>
-      <UBadge color="neutral" variant="soft">
-        Rank #{{ numberFormat.format(xp_info.rank) }}
-      </UBadge>
+      <div class="flex items-center gap-1.5">
+        <UBadge color="neutral" variant="soft">Rank #{{ numberFormat.format(currentRank) }}</UBadge>
+        <span v-if="rankChange !== null" class="text-xs font-medium" :class="rankChange > 0 ? 'text-green-600 dark:text-green-400' : rankChange < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500'">
+          <template v-if="rankChange > 0">▲ {{ numberFormat.format(rankChange) }}</template>
+          <template v-else-if="rankChange < 0">▼ {{ numberFormat.format(-rankChange) }}</template>
+          <template v-else>—</template>
+        </span>
+      </div>
     </div>
+    <p v-if="rankChange !== null" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      Was #{{ numberFormat.format(previousRank!) }}<template v-if="formattedSnapshotTime"> · Snapshot {{ formattedSnapshotTime }}</template>
+    </p>
     <div
       class="mt-2 flex flex-wrap items-start justify-between gap-3 text-xs text-gray-500 dark:text-gray-400"
     >

@@ -89,8 +89,8 @@ impl<'ctx> TradeSessionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TradeSessionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TradeSessionStateInitialCallbackId {
         TradeSessionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

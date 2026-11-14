@@ -87,8 +87,8 @@ impl<'ctx> SkillLevelKnowledgeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, SkillLevelKnowledgeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> SkillLevelKnowledgeDescInitialCallbackId {
         SkillLevelKnowledgeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

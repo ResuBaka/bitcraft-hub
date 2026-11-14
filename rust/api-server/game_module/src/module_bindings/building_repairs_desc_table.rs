@@ -87,8 +87,8 @@ impl<'ctx> BuildingRepairsDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuildingRepairsDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingRepairsDescInitialCallbackId {
         BuildingRepairsDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

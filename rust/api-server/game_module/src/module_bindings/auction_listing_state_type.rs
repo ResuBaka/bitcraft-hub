@@ -60,6 +60,7 @@ impl __sdk::__query_builder::HasCols for AuctionListingState {
 pub struct AuctionListingStateIxCols {
     pub claim_entity_id: __sdk::__query_builder::IxCol<AuctionListingState, u64>,
     pub entity_id: __sdk::__query_builder::IxCol<AuctionListingState, u64>,
+    pub owner_entity_id: __sdk::__query_builder::IxCol<AuctionListingState, u64>,
 }
 
 impl __sdk::__query_builder::HasIxCols for AuctionListingState {
@@ -68,6 +69,7 @@ impl __sdk::__query_builder::HasIxCols for AuctionListingState {
         AuctionListingStateIxCols {
             claim_entity_id: __sdk::__query_builder::IxCol::new(table_name, "claim_entity_id"),
             entity_id: __sdk::__query_builder::IxCol::new(table_name, "entity_id"),
+            owner_entity_id: __sdk::__query_builder::IxCol::new(table_name, "owner_entity_id"),
         }
     }
 }

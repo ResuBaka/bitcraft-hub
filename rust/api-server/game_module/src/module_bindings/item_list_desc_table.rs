@@ -86,8 +86,8 @@ impl<'ctx> ItemListDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ItemListDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ItemListDescInitialCallbackId {
         ItemListDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

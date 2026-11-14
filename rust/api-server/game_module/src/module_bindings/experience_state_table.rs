@@ -86,8 +86,8 @@ impl<'ctx> ExperienceStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ExperienceState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ExperienceStateInitialCallbackId {
         ExperienceStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

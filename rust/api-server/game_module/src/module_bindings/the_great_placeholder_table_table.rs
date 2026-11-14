@@ -95,8 +95,8 @@ impl<'ctx> TheGreatPlaceholderTableTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TheGreatPlaceHolderTable>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TheGreatPlaceholderTableInitialCallbackId {
         TheGreatPlaceholderTableInitialCallbackId(self.imp.on_initial_rows(callback))
     }

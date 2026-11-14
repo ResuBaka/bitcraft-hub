@@ -38,7 +38,7 @@ pub trait InteriorSpawnDestroyTriggerDescTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`InteriorSpawnDestroyTriggerDescTableHandle`], which mediates access to the table `interior_spawn_destroy_trigger_desc`.
     fn interior_spawn_destroy_trigger_desc(&self)
-    -> InteriorSpawnDestroyTriggerDescTableHandle<'_>;
+        -> InteriorSpawnDestroyTriggerDescTableHandle<'_>;
 }
 
 impl InteriorSpawnDestroyTriggerDescTableAccess for super::RemoteTables {
@@ -89,11 +89,9 @@ impl<'ctx> InteriorSpawnDestroyTriggerDescTableHandle<'ctx> {
     /// Register a borrowed initial-row view without cloning the full snapshot.
     pub fn on_initial_rows(
         &self,
-        callback: impl FnMut(
-            &super::EventContext,
-            __sdk::InitialRows<'_, InteriorSpawnDestroyTriggerDesc>,
-        ) + Send
-        + 'static,
+        callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, InteriorSpawnDestroyTriggerDesc>)
+            + Send
+            + 'static,
     ) -> InteriorSpawnDestroyTriggerDescInitialCallbackId {
         InteriorSpawnDestroyTriggerDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }
@@ -102,8 +100,8 @@ impl<'ctx> InteriorSpawnDestroyTriggerDescTableHandle<'ctx> {
     pub fn on_initial_owned(
         &self,
         callback: impl FnMut(&super::EventContext, Vec<InteriorSpawnDestroyTriggerDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> InteriorSpawnDestroyTriggerDescInitialCallbackId {
         InteriorSpawnDestroyTriggerDescInitialCallbackId(self.imp.on_initial_owned(callback))
     }

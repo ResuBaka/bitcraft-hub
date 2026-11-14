@@ -87,8 +87,8 @@ impl<'ctx> ContributionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ContributionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ContributionStateInitialCallbackId {
         ContributionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

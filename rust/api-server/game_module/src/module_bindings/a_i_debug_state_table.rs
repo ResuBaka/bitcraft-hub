@@ -86,8 +86,8 @@ impl<'ctx> AIDebugStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, AiDebugState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AIDebugStateInitialCallbackId {
         AIDebugStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

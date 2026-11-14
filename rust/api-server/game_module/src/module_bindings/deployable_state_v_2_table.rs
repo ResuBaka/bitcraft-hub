@@ -87,8 +87,8 @@ impl<'ctx> DeployableStateV2TableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, DeployableStateV2>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DeployableStateV2InitialCallbackId {
         DeployableStateV2InitialCallbackId(self.imp.on_initial_rows(callback))
     }

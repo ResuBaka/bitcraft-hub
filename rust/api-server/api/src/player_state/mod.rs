@@ -30,6 +30,10 @@ pub(crate) fn get_routes() -> AppRouter {
             axum_codec::routing::get(find_player_by_id).into(),
         )
         .route(
+            "/api/bitcraft/players/{id}/location",
+            axum_codec::routing::get(player_location).into(),
+        )
+        .route(
             "/api/bitcraft/players/all",
             axum_codec::routing::get(get_all).into(),
         )
@@ -133,11 +137,89 @@ pub(crate) struct FindPlayerByIdResponse {
     pub username: String,
     pub deployables: Vec<VaultStateCollectibleWithDesc>,
     pub claim_id: Option<u64>,
+    pub current_claim: CurrentClaim,
     pub claims: Vec<entity::claim_state::Model>,
     pub player_location: Option<mobile_entity_state::Model>,
     pub player_action_state: Option<String>,
     pub player_action_state2: Option<entity::player_action_state::Model>,
     pub current_action_state: Option<entity::player_action_state::Model>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub(crate) enum CurrentClaim {
+    Unknown,
+    Unclaimed,
+    Claim { claim_id: u64, name: Option<String> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub(crate) struct PlayerLocationUpdate {
+    pub entity_id: u64,
+    pub location: Option<mobile_entity_state::Model>,
+    pub current_claim: CurrentClaim,
+}
+
+pub(crate) fn resolve_player_location(
+    state: &AppState,
+    entity_id: u64,
+    location: Option<mobile_entity_state::Model>,
+) -> PlayerLocationUpdate {
+    use crate::claims::claim_location::ClaimAtLocation;
+    let current_claim = match location.as_ref().map(|location| {
+        state.claim_locations.lookup(location.region, location.dimension, location.location_x, location.location_z)
+    }).unwrap_or(ClaimAtLocation::Unknown) {
+        ClaimAtLocation::Unknown => CurrentClaim::Unknown,
+        ClaimAtLocation::Unclaimed => CurrentClaim::Unclaimed,
+        ClaimAtLocation::Claim(claim_id) => CurrentClaim::Claim {
+            claim_id,
+            name: state.claim_state.get(&(claim_id as i64)).map(|claim| claim.name.clone()),
+        },
+    };
+    PlayerLocationUpdate { entity_id, location, current_claim }
+}
+
+async fn player_location(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<axum_codec::Codec<PlayerLocationUpdate>, (StatusCode, &'static str)> {
+    if !state.player_state.contains_key(&id) {
+        return Err((StatusCode::NOT_FOUND, "Player not found"));
+    }
+    let location = state.mobile_entity_state.get(&(id as u64)).map(|row| row.value().clone());
+    Ok(axum_codec::Codec(resolve_player_location(&state, id as u64, location)))
+}
+
+#[cfg(test)]
+mod current_location_tests {
+    use super::*;
+    use game_module::module_bindings::{ClaimTileState, LocationState};
+
+    #[test]
+    fn location_resolves_claim_unclaimed_and_unknown() {
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(Default::default(), tx, Default::default());
+        let location = mobile_entity_state::Model {
+            entity_id: 1, chunk_index: 5, timestamp: 0, location_x: 1000, location_z: 2000,
+            destination_x: 1000, destination_z: 2000, dimension: 1, is_walking: false, region: 2,
+        };
+        assert!(matches!(resolve_player_location(&state, 1, Some(location.clone())).current_claim, CurrentClaim::Unknown));
+        state.claim_locations.reset(2);
+        state.claim_locations.finish_initial(2);
+        state.claim_locations.claims_initial(2, &[ClaimTileState { entity_id: 42, claim_id: 99 }]);
+        state.claim_locations.locations_initial(2, &[LocationState { entity_id: 42, chunk_index: 5, x: 1, z: 2, dimension: 1 }]);
+        state.claim_state.insert(99, entity::claim_state::Model {
+            entity_id: 99, owner_player_entity_id: 1, owner_building_entity_id: 0,
+            name: "Test claim".into(), neutral: false, region: 2,
+        });
+        assert!(matches!(resolve_player_location(&state, 1, Some(location.clone())).current_claim,
+            CurrentClaim::Claim { claim_id: 99, name: Some(name) } if name == "Test claim"));
+        state.claim_locations.claim(2, 42, None);
+        assert!(matches!(resolve_player_location(&state, 1, Some(location)).current_claim, CurrentClaim::Unclaimed));
+        assert!(matches!(resolve_player_location(&state, 1, None).current_claim, CurrentClaim::Unknown));
+    }
 }
 
 pub async fn find_player_by_id(
@@ -191,18 +273,10 @@ pub async fn find_player_by_id(
         .get(&(id as u64))
         .map(|player_location| player_location.clone());
 
-    let chunk_index = player_location
-        .as_ref()
-        .map(|player_location| player_location.chunk_index);
-
-    let claim_id = if let Some(chunk_index) = chunk_index {
-        if let Some(claim_id) = state.claim_tile_state.get(&(chunk_index)) {
-            Some(claim_id.claim_id)
-        } else {
-            None
-        }
-    } else {
-        None
+    let resolved_location = resolve_player_location(&state, id as u64, player_location);
+    let claim_id = match &resolved_location.current_claim {
+        CurrentClaim::Claim { claim_id, .. } => Some(*claim_id),
+        _ => None,
     };
 
     let player_action_state2 = state
@@ -260,8 +334,9 @@ pub async fn find_player_by_id(
         traveler_tasks,
         username: player_username,
         deployables,
-        player_location,
+        player_location: resolved_location.location,
         claim_id,
+        current_claim: resolved_location.current_claim,
         claims,
         player_action_state,
         player_action_state2,

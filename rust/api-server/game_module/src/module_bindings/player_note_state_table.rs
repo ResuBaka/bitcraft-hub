@@ -85,8 +85,8 @@ impl<'ctx> PlayerNoteStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlayerNoteState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerNoteStateInitialCallbackId {
         PlayerNoteStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

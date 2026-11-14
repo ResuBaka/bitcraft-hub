@@ -85,8 +85,8 @@ impl<'ctx> BuffTypeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuffTypeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuffTypeDescInitialCallbackId {
         BuffTypeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

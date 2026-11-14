@@ -89,8 +89,8 @@ impl<'ctx> AbilityUnlockDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, AbilityUnlockDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AbilityUnlockDescInitialCallbackId {
         AbilityUnlockDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

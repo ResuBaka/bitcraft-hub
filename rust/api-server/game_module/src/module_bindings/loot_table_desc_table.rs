@@ -86,8 +86,8 @@ impl<'ctx> LootTableDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, LootTableDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> LootTableDescInitialCallbackId {
         LootTableDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -164,6 +164,8 @@ async fn serve_with_shutdown(
     }
     drop(tx);
 
+    leaderboard::snapshots::start(state.clone());
+
     let app = create_app(&config, state.clone(), prometheus);
 
     tracing::info!("Server started on http://{}", server_url);
@@ -1211,6 +1213,7 @@ struct AppState {
     claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
     claim_state: Arc<dashmap::DashMap<i64, entity::claim_state::Model>>,
     claim_tile_state: Arc<dashmap::DashMap<u64, entity::claim_tile_state::Model>>,
+    claim_locations: Arc<claims::claim_location::ClaimLocationSubscriptions>,
     player_action_state: Arc<dashmap::DashMap<u64, entity::player_action_state::Model>>,
     crafting_recipe_desc: Arc<dashmap::DashMap<i32, entity::crafting_recipe::Model>>,
     claim_tech_desc: Arc<dashmap::DashMap<i32, entity::claim_tech_desc::Model>>,
@@ -1278,6 +1281,7 @@ impl AppState {
             player_to_claim_id_cache: Arc::new(dashmap::DashMap::new()),
             claim_local_state: Arc::new(dashmap::DashMap::new()),
             claim_tile_state: Arc::new(dashmap::DashMap::new()),
+            claim_locations: Arc::new(claims::claim_location::ClaimLocationSubscriptions::default()),
             claim_state: Arc::new(dashmap::DashMap::new()),
             player_action_state: Arc::new(dashmap::DashMap::new()),
             crafting_recipe_desc: Arc::new(dashmap::DashMap::new()),

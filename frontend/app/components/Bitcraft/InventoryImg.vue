@@ -17,16 +17,16 @@ const props = withDefaults(
 );
 
 const imagedErrored = ref(false);
-const iconUrl = (item: Pick<ItemExpended, "name" | "icon_asset_name">) => {
-  if (!item?.icon_asset_name) {
+const iconUrl = computed(() => {
+  if (!props.item?.icon_asset_name) {
     return {
       url: "",
       show: false,
     };
   }
 
-  return iconAssetUrlNameRandom(item.icon_asset_name);
-};
+  return iconAssetUrlNameRandom(props.item.icon_asset_name);
+});
 
 const stippedName = computed<string>(() => {
   return props.item?.name?.replace(/[[(){}\]]/gi, "") ?? "";
@@ -54,11 +54,11 @@ const sizeValue = (value: number | string) => {
 
 <template>
   <div class="inventory-img" v-bind="$attrs">
-    <picture v-if="!imagedErrored && iconUrl(item).show">
-      <source :srcset="`${iconUrl(item).url}.jxl`" type="image/jxl" />
-      <source :srcset="`${iconUrl(item).url}.avif`" type="image/avif" />
+    <picture v-if="!imagedErrored && iconUrl.show">
+      <source :srcset="`${iconUrl.url}.jxl`" type="image/jxl" />
+      <source :srcset="`${iconUrl.url}.avif`" type="image/avif" />
       <img
-        :src="`${iconUrl(item).url}.webp`"
+        :src="`${iconUrl.url}.webp`"
         :alt="item?.name ?? 'Item icon'"
         :style="{
           maxWidth: sizeValue(width),

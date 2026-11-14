@@ -86,8 +86,8 @@ impl<'ctx> IdentityRoleTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, IdentityRole>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> IdentityRoleInitialCallbackId {
         IdentityRoleInitialCallbackId(self.imp.on_initial_rows(callback))
     }

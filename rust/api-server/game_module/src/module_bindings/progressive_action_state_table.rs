@@ -87,8 +87,8 @@ impl<'ctx> ProgressiveActionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ProgressiveActionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProgressiveActionStateInitialCallbackId {
         ProgressiveActionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

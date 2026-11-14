@@ -87,8 +87,8 @@ impl<'ctx> ParametersDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ParametersDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ParametersDescInitialCallbackId {
         ParametersDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

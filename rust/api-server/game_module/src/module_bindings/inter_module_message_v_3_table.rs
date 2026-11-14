@@ -88,8 +88,8 @@ impl<'ctx> InterModuleMessageV3TableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, InterModuleMessageV3>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> InterModuleMessageV3InitialCallbackId {
         InterModuleMessageV3InitialCallbackId(self.imp.on_initial_rows(callback))
     }

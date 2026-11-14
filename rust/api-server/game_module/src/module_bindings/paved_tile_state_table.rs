@@ -85,8 +85,8 @@ impl<'ctx> PavedTileStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PavedTileState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PavedTileStateInitialCallbackId {
         PavedTileStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

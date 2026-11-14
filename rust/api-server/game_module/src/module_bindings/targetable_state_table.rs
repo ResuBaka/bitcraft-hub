@@ -85,8 +85,8 @@ impl<'ctx> TargetableStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TargetableState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TargetableStateInitialCallbackId {
         TargetableStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

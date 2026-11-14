@@ -87,8 +87,8 @@ impl<'ctx> CollectibleDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, CollectibleDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CollectibleDescInitialCallbackId {
         CollectibleDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

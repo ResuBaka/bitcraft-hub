@@ -87,8 +87,8 @@ impl<'ctx> GlobalSearchStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, GlobalSearchState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> GlobalSearchStateInitialCallbackId {
         GlobalSearchStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

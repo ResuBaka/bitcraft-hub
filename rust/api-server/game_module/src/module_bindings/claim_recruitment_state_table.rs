@@ -87,8 +87,8 @@ impl<'ctx> ClaimRecruitmentStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ClaimRecruitmentState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimRecruitmentStateInitialCallbackId {
         ClaimRecruitmentStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

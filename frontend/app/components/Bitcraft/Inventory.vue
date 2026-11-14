@@ -59,6 +59,7 @@ const inventoryLabel = computed(() => {
 const { data: InventoryChangesFetch, refresh: InventoryChangesRefresh } = useFetchMsPack<
   InventoryChangelog[]
 >(() => `/api/bitcraft/inventorys/changes/${props.inventory.entity_id}`, {
+  immediate: false,
   onRequest: ({ options }) => {
     options.query = options.query || {};
     if (itemObjects.value.length) {
@@ -85,9 +86,13 @@ watchThrottled(
     inventoryChangesStartDay.value,
     inventoryChangesEndDay.value,
   ],
-  () => InventoryChangesRefresh(),
+  () => { if (showChangelog.value) InventoryChangesRefresh(); },
   { throttle: 50 },
 );
+
+watch(showChangelog, (visible) => {
+  if (visible) InventoryChangesRefresh();
+});
 
 const updateInventoryChangesRange = (range: { startDay: string; endDay: string }) => {
   inventoryChangesStartDay.value = range.startDay;
@@ -106,7 +111,7 @@ const updateInventoryChangesRange = (range: { startDay: string; endDay: string }
           <div class="inventory-title">
             <h3 class="inventory-name">{{ inventoryLabel }}</h3>
             <div v-if="house" class="inventory-claim">
-              House: {{ house.owner_username || house.owner_entity_id || house.entity_id }}
+              House: <BitcraftPlayerName :player-id="house.owner_entity_id">{{ house.owner_username || house.owner_entity_id || house.entity_id }}</BitcraftPlayerName>
               <span>(<bitcraft-region :region="house.region_index" /> · {{ house.entity_id }})</span>
             </div>
             <div class="inventory-stats-row">

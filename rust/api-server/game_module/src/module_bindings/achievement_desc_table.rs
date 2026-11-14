@@ -85,8 +85,8 @@ impl<'ctx> AchievementDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, AchievementDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AchievementDescInitialCallbackId {
         AchievementDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

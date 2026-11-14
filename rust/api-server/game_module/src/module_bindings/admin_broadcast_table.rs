@@ -85,8 +85,8 @@ impl<'ctx> AdminBroadcastTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, AdminBroadcast>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AdminBroadcastInitialCallbackId {
         AdminBroadcastInitialCallbackId(self.imp.on_initial_rows(callback))
     }

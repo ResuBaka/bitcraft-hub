@@ -88,8 +88,8 @@ impl<'ctx> DimensionDescriptionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, DimensionDescriptionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DimensionDescriptionStateInitialCallbackId {
         DimensionDescriptionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

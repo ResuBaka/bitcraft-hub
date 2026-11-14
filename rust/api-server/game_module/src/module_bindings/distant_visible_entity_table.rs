@@ -87,8 +87,8 @@ impl<'ctx> DistantVisibleEntityTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, DistantVisibleEntity>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> DistantVisibleEntityInitialCallbackId {
         DistantVisibleEntityInitialCallbackId(self.imp.on_initial_rows(callback))
     }

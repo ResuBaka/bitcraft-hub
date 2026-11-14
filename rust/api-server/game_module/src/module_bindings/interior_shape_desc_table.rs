@@ -88,8 +88,8 @@ impl<'ctx> InteriorShapeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, InteriorShapeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> InteriorShapeDescInitialCallbackId {
         InteriorShapeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

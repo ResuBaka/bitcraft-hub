@@ -85,8 +85,8 @@ impl<'ctx> StaminaStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, StaminaState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> StaminaStateInitialCallbackId {
         StaminaStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

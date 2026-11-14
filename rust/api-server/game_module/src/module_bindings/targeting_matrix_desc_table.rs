@@ -87,8 +87,8 @@ impl<'ctx> TargetingMatrixDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TargetingMatrixDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TargetingMatrixDescInitialCallbackId {
         TargetingMatrixDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

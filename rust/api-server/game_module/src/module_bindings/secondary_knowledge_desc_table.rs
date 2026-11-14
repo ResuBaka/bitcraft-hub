@@ -87,8 +87,8 @@ impl<'ctx> SecondaryKnowledgeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, SecondaryKnowledgeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> SecondaryKnowledgeDescInitialCallbackId {
         SecondaryKnowledgeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

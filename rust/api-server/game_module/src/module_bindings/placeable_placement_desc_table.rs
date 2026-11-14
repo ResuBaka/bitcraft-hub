@@ -92,8 +92,8 @@ impl<'ctx> PlaceablePlacementDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlaceablePlacementDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlaceablePlacementDescInitialCallbackId {
         PlaceablePlacementDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

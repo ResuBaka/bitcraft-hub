@@ -87,8 +87,8 @@ impl<'ctx> TerraformProgressStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TerraformProgressState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TerraformProgressStateInitialCallbackId {
         TerraformProgressStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

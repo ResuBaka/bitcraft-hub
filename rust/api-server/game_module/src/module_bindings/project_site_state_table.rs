@@ -86,8 +86,8 @@ impl<'ctx> ProjectSiteStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ProjectSiteState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProjectSiteStateInitialCallbackId {
         ProjectSiteStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

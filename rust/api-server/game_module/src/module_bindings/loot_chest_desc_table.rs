@@ -85,8 +85,8 @@ impl<'ctx> LootChestDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, LootChestDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> LootChestDescInitialCallbackId {
         LootChestDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

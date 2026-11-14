@@ -87,8 +87,8 @@ impl<'ctx> ContributionLootDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ContributionLootDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ContributionLootDescInitialCallbackId {
         ContributionLootDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

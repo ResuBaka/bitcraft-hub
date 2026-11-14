@@ -5,6 +5,7 @@ import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { FindPlayerByIdResponse } from "~/types/FindPlayerByIdResponse";
 import type { HouseResponse } from "~/types/HouseResponse";
 import type { HouseInventoriesResponse } from "~/types/HouseInventoriesResponse";
+import type { PlayerLocationUpdate } from "~/types/PlayerLocationUpdate";
 import type { InventorysResponse } from "~/types/InventorysResponse";
 import type { ItemsAndCargollResponse } from "~/types/ItemsAndCargollResponse";
 import type { NpcDesc } from "~/types/NpcDesc";
@@ -35,13 +36,16 @@ const tmpPage = (route.query.page as string) ?? null;
 const topics = reactive<string[]>([`experience.${route.params.id}`]);
 const topics_total_experience = reactive<string[]>([`total_experience.${route.params.id}`]);
 
-const mobileEntityStateTopics = computed(() => {
-  return [`mobile_entity_state.${route.params.id}`];
+const playerLocationTopics = computed(() => {
+  return [`player_location.${route.params.id}`];
 });
 
-registerWebsocketMessageHandler("MobileEntityState", mobileEntityStateTopics, (message) => {
-  if (playerData.value) {
-    playerData.value.player_location = message;
+let locationRevision = 0;
+registerWebsocketMessageHandler("PlayerLocation", playerLocationTopics, (message) => {
+  locationRevision++;
+  if (playerData.value && String(message.entity_id) === String(route.params.id)) {
+    playerData.value.player_location = message.location;
+    playerData.value.current_claim = message.current_claim;
   }
 });
 
@@ -144,14 +148,74 @@ const { data: playerData, pending: playerPending } = useFetchMsPack<FindPlayerBy
   return `/api/bitcraft/players/${route.params.id}`;
 });
 
+// Refresh claim resolution after subscriptions warm up and when claims change
+// without a movement event. Never let an older HTTP response undo a WS update.
+let locationRequestRevision = 0;
+const { data: polledLocation, refresh: refreshLocation } = useLazyFetchMsPack<PlayerLocationUpdate>(
+  () => `/api/bitcraft/players/${route.params.id}/location`,
+  { immediate: false, watch: false, onRequest: () => { locationRequestRevision = locationRevision; } },
+);
+watch(polledLocation, (location) => {
+  if (location && playerData.value && locationRequestRevision === locationRevision &&
+      String(location.entity_id) === String(route.params.id)) {
+    playerData.value.player_location = location.location;
+    playerData.value.current_claim = location.current_claim;
+  }
+});
+watch(() => route.params.id, () => { locationRevision++; refreshLocation(); });
+let locationRefreshTimer: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  refreshLocation();
+  locationRefreshTimer = setInterval(() => {
+    if (document.visibilityState === "visible") refreshLocation();
+  }, 30_000);
+});
+onUnmounted(() => { if (locationRefreshTimer) clearInterval(locationRefreshTimer); });
+
+type RankSnapshot = {
+  board: string;
+  label: string;
+  previous_rank: number | bigint;
+  current_rank: number | bigint | null;
+  captured_at: string;
+};
+const { data: rankSnapshots, refresh: refreshRankSnapshots } = useLazyFetchMsPack<RankSnapshot[]>(
+  () => `/api/bitcraft/experience/${route.params.id}/rank-snapshot`,
+);
+let rankSnapshotTimer: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  rankSnapshotTimer = setInterval(() => {
+    if (document.visibilityState === "visible") refreshRankSnapshots();
+  }, 60_000);
+});
+onUnmounted(() => {
+  if (rankSnapshotTimer) clearInterval(rankSnapshotTimer);
+});
+const rankSnapshotsByLabel = computed(() => new Map(
+  (rankSnapshots.value ?? []).map((snapshot) => [snapshot.label, snapshot]),
+));
+const rankSnapshotTime = (capturedAt: string) => {
+  const date = new Date(capturedAt);
+  return Number.isNaN(date.getTime()) ? "unknown time" : new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium", timeStyle: "short", timeZone: "UTC",
+  }).format(date) + " UTC";
+};
+const extraRankSnapshots = computed(() => (rankSnapshots.value ?? []).filter((snapshot) =>
+  ["xp_per_hour", "time_played", "time_signed_in"].includes(snapshot.board),
+));
+
 const { data: houses } = await useLazyFetchMsPack<HouseResponse[]>(
   () => `/api/bitcraft/houses/by_player/${route.params.id}`,
 );
 
-const { data: houseInventories } = useFetchMsPack<HouseInventoriesResponse[]>(
+const { data: houseInventories, status: houseInventoriesStatus } = useFetchMsPack<HouseInventoriesResponse[]>(
   () => `/api/bitcraft/houses/by_player/${route.params.id}/inventories`,
   { deep: true },
 );
+
+const houseInventoryById = computed(() => new Map(
+  (houseInventories.value ?? []).map((house) => [String(house.house_entity_id), house]),
+));
 
 const { data: inventoryData } = useFetchMsPack<InventorysResponse>(
   () => {
@@ -287,9 +351,9 @@ const { data: trevelerTasksData } = useFetchMsPack<{
   return `/traveler_tasks`;
 });
 
-const { data: itemsAndCargoAllData } = useFetchMsPack<ItemsAndCargollResponse>(() => {
+const { data: itemsAndCargoAllData, execute: loadItemsAndCargo } = useFetchMsPack<ItemsAndCargollResponse>(() => {
   return `/api/bitcraft/itemsAndCargo/all`;
-});
+}, { immediate: false });
 
 const { data: experienceData } = useFetchMsPack<PlayerLeaderboardResponse>(
   () => {
@@ -375,6 +439,13 @@ const filteredInventoryList = computed(() => {
     inventoryMatchesSearch(inventory, inventorySearchQuery.value),
   );
 });
+
+const inventoryPageSize = 8;
+const visibleInventoryCount = ref(inventoryPageSize);
+watch([inventorySearchQuery, houseSelection, () => route.params.id], () => {
+  visibleInventoryCount.value = inventoryPageSize;
+}, { deep: true });
+const visibleInventories = computed(() => filteredInventoryList.value.slice(0, visibleInventoryCount.value));
 
 const tools = computed(() => {
   return (
@@ -473,6 +544,9 @@ const travelerTaskGroups = computed(() => {
 });
 
 const showTravelerTasks = ref(false);
+watch(showTravelerTasks, (visible) => {
+  if (visible && !itemsAndCargoAllData.value) loadItemsAndCargo();
+});
 
 const travelerTaskSummary = computed(() => {
   const completed = travelerTaskGroups.value.reduce(
@@ -521,12 +595,12 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 Player
               </p>
               <h1
-                class="text-2xl font-semibold tracking-tight"
+                class="flex items-center gap-2 text-2xl font-semibold tracking-tight"
                 :class="
                   playerData.signed_in ? 'text-green-600' : 'text-gray-900 dark:text-gray-100'
                 "
               >
-                {{ playerData.username }}
+                <BitcraftPlayerName :player-id="String(route.params.id)">{{ playerData.username }}</BitcraftPlayerName>
               </h1>
               <div
                 v-if="playerData.player_location"
@@ -539,6 +613,16 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                   v-if="playerData.player_location.region"
                   :region="playerData.player_location.region"
                 />
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-300">
+                <span>Last observed claim: </span>
+                <NuxtLink
+                  v-if="playerData.current_claim?.status === 'claim'"
+                  class="text-primary-500 hover:underline"
+                  :to="{ name: 'claims-id', params: { id: String(playerData.current_claim.claim_id) } }"
+                >{{ playerData.current_claim.name || 'Claim' }}</NuxtLink>
+                <span v-else-if="playerData.current_claim?.status === 'unclaimed'">Unclaimed</span>
+                <span v-else>Unknown</span>
               </div>
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -623,6 +707,8 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
           </div>
         </UCard>
 
+        <BitcraftPlayerExperienceHistory :player-id="String(route.params.id)" />
+
         <UCard v-if="expeirence" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
@@ -633,7 +719,23 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 :xp_info="xp_info"
                 :skill="skill"
                 :tools="tools"
+                :previous-rank="rankSnapshotsByLabel.get(skill)?.previous_rank"
+                :snapshot-rank="rankSnapshotsByLabel.get(skill)?.current_rank"
+                :snapshot-time="rankSnapshotsByLabel.get(skill)?.captured_at"
               />
+            </div>
+            <p class="text-xs text-gray-500">Rank changes compare with the captured snapshot; the exact time of a rank change is not recorded. A missing change means no snapshot is available.</p>
+            <div v-if="extraRankSnapshots.length" class="grid gap-2 sm:grid-cols-3">
+              <div v-for="snapshot in extraRankSnapshots" :key="snapshot.board" class="rounded-lg bg-gray-200 p-3 text-sm dark:bg-zinc-900">
+                <p class="font-semibold">{{ snapshot.label }}</p>
+                <p v-if="snapshot.current_rank != null">Rank #{{ numberFormat.format(snapshot.current_rank) }}
+                  <span v-if="Number(snapshot.previous_rank) > Number(snapshot.current_rank)" class="text-green-600 dark:text-green-400">▲ {{ numberFormat.format(Number(snapshot.previous_rank) - Number(snapshot.current_rank)) }}</span>
+                  <span v-else-if="Number(snapshot.previous_rank) < Number(snapshot.current_rank)" class="text-red-600 dark:text-red-400">▼ {{ numberFormat.format(Number(snapshot.current_rank) - Number(snapshot.previous_rank)) }}</span>
+                  <span v-else> no change</span>
+                </p>
+                <p v-else>Current rank unavailable</p>
+                <p class="text-xs text-gray-500">Previously #{{ numberFormat.format(snapshot.previous_rank) }} · Snapshot {{ rankSnapshotTime(snapshot.captured_at) }}</p>
+              </div>
             </div>
           </div>
         </UCard>
@@ -730,7 +832,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 @update:model-value="setHouseSelected(house, $event)"
               >
                 <template #label>
-                  {{ house.owner_username || "Unknown owner" }}
+                  <BitcraftPlayerName :player-id="house.owner_entity_id">{{ house.owner_username || "Unknown owner" }}</BitcraftPlayerName>
                   (Region <bitcraft-region :region="house.region_index" />)
                 </template>
               </UCheckbox>
@@ -743,7 +845,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             />
             <div class="inventory-masonry pt-2">
               <div
-                v-for="inventory in filteredInventoryList"
+                v-for="inventory in visibleInventories"
                 :key="inventory.entity_id"
                 class="inventory-masonry-item"
               >
@@ -756,6 +858,15 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 />
               </div>
             </div>
+            <UButton
+              v-if="visibleInventoryCount < filteredInventoryList.length"
+              color="neutral"
+              variant="soft"
+              class="self-center"
+              @click="visibleInventoryCount += inventoryPageSize"
+            >
+              Show more inventories ({{ filteredInventoryList.length - visibleInventoryCount }} remaining)
+            </UButton>
           </div>
         </UCard>
 
@@ -770,7 +881,12 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 :key="house.entity_id.toString()"
                 class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
               >
-                <house-details :house="house" :search="inventorySearchQuery"></house-details>
+                <house-details
+                  :house="house"
+                  :search="inventorySearchQuery"
+                  :shared-inventories="houseInventoryById.get(String(house.entity_id))"
+                  :shared-inventories-pending="houseInventoriesStatus === 'pending' || houseInventoriesStatus === 'idle'"
+                ></house-details>
               </div>
             </div>
           </div>

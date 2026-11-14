@@ -87,8 +87,8 @@ impl<'ctx> ProspectingDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ProspectingDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ProspectingDescInitialCallbackId {
         ProspectingDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

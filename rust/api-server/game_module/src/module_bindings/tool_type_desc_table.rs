@@ -85,8 +85,8 @@ impl<'ctx> ToolTypeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ToolTypeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ToolTypeDescInitialCallbackId {
         ToolTypeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

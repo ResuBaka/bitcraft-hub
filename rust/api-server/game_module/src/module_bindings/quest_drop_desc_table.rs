@@ -86,8 +86,8 @@ impl<'ctx> QuestDropDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, QuestDropDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> QuestDropDescInitialCallbackId {
         QuestDropDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

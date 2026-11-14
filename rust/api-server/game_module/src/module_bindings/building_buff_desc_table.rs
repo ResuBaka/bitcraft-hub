@@ -86,8 +86,8 @@ impl<'ctx> BuildingBuffDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuildingBuffDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingBuffDescInitialCallbackId {
         BuildingBuffDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

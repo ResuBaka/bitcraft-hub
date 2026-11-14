@@ -87,8 +87,8 @@ impl<'ctx> ExplorationChunksStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ExplorationChunksState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ExplorationChunksStateInitialCallbackId {
         ExplorationChunksStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

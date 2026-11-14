@@ -86,8 +86,8 @@ impl<'ctx> PathfindingDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PathfindingDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PathfindingDescInitialCallbackId {
         PathfindingDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

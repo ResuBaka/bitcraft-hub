@@ -89,8 +89,8 @@ impl<'ctx> EnemyAiParamsDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, EnemyAiParamsDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> EnemyAiParamsDescInitialCallbackId {
         EnemyAiParamsDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

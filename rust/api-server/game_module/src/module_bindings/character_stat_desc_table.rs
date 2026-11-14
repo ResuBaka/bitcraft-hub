@@ -87,8 +87,8 @@ impl<'ctx> CharacterStatDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, CharacterStatDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CharacterStatDescInitialCallbackId {
         CharacterStatDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -58,6 +58,11 @@ pub enum ClaimTechType {
     TownBank = 22,
     LargeHouse = 23,
     TownMarket = 24,
+    Homestead = 25,
+    OneWayWaystones = 26,
+    DestinationWaystones = 27,
+    StarterTech = 28,
+    RegionalBank = 29,
 }
 
 impl From<game_module::module_bindings::ClaimTechType> for ClaimTechType {
@@ -87,6 +92,11 @@ impl From<game_module::module_bindings::ClaimTechType> for ClaimTechType {
             game_module::module_bindings::ClaimTechType::TownBank => ClaimTechType::TownBank,
             game_module::module_bindings::ClaimTechType::LargeHouse => ClaimTechType::LargeHouse,
             game_module::module_bindings::ClaimTechType::TownMarket => ClaimTechType::TownMarket,
+            game_module::module_bindings::ClaimTechType::Homestead => ClaimTechType::Homestead,
+            game_module::module_bindings::ClaimTechType::OneWayWaystones => ClaimTechType::OneWayWaystones,
+            game_module::module_bindings::ClaimTechType::DestinationWaystones => ClaimTechType::DestinationWaystones,
+            game_module::module_bindings::ClaimTechType::StarterTech => ClaimTechType::StarterTech,
+            game_module::module_bindings::ClaimTechType::RegionalBank => ClaimTechType::RegionalBank,
         }
     }
 }

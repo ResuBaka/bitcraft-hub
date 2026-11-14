@@ -1005,10 +1005,10 @@ registerWebsocketMessageHandler("PlayerUsername", userIdsTopics, (message) => {
                   <template #quantity-cell="{ row }">{{
                     row.original.quantity.toLocaleString()
                   }}</template>
-                  <template #owner_entity_id-cell="{ row }">{{
+                  <template #owner_entity_id-cell="{ row }"><BitcraftPlayerName :player-id="row.original.owner_entity_id">{{
                     usernames[row.original.owner_entity_id.toString()] ||
                     row.original.owner_entity_id
-                  }}</template>
+                  }}</BitcraftPlayerName></template>
                   <template #price_threshold-cell="{ row }">{{
                     row.original.price_threshold.toLocaleString()
                   }}</template>
@@ -1110,10 +1110,10 @@ registerWebsocketMessageHandler("PlayerUsername", userIdsTopics, (message) => {
                       }}
                     </NuxtLink>
                   </template>
-                  <template #owner_entity_id-cell="{ row }">{{
+                  <template #owner_entity_id-cell="{ row }"><BitcraftPlayerName :player-id="row.original.owner_entity_id">{{
                     usernames[row.original.owner_entity_id.toString()] ||
                     row.original.owner_entity_id
-                  }}</template>
+                  }}</BitcraftPlayerName></template>
                   <template #region-cell="{ row }">R{{ row.original.region }}</template>
                 </UTable>
                 <div class="flex justify-end border-t border-default pt-4 px-4">

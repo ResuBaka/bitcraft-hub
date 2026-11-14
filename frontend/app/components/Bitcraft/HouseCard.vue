@@ -28,7 +28,7 @@ const rankColorClass = computed(() => {
             class="text-base font-black text-gray-900 hover:underline dark:text-gray-100"
             :to="{ name: 'players-id', params: { id: house.owner_entity_id.toString() } }"
           >
-            {{ house.owner_username || "Unknown Owner" }}'s House
+            <BitcraftPlayerName :player-id="house.owner_entity_id">{{ house.owner_username || "Unknown Owner" }}</BitcraftPlayerName>'s House
           </NuxtLink>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Rank {{ house.rank }} | Region {{ house.region }}

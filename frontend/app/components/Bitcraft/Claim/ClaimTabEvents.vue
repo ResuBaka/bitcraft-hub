@@ -244,7 +244,7 @@ const treasuryColumns: TableColumn<ClaimEvent>[] = [
           :to="`/players/${row.original.actor_entity_id}`"
           class="text-primary hover:underline"
         >
-          {{ playerName(row.original.actor_entity_id) }}
+          <BitcraftPlayerName :player-id="row.original.actor_entity_id">{{ playerName(row.original.actor_entity_id) }}</BitcraftPlayerName>
         </NuxtLink>
         <span v-else class="text-muted">Not recorded</span>
       </template>
@@ -298,7 +298,7 @@ const treasuryColumns: TableColumn<ClaimEvent>[] = [
                 :to="`/players/${event.member_entity_id}`"
                 class="block font-semibold text-primary hover:underline"
               >
-                {{ subject(event) }}
+                <BitcraftPlayerName :player-id="event.member_entity_id">{{ subject(event) }}</BitcraftPlayerName>
               </NuxtLink>
               <h4 v-else class="break-words font-semibold text-highlighted">
                 {{ subject(event) }}
@@ -339,7 +339,7 @@ const treasuryColumns: TableColumn<ClaimEvent>[] = [
                 <NuxtLink
                   :to="`/players/${event.actor_entity_id}`"
                   class="text-primary hover:underline"
-                  >{{ playerName(event.actor_entity_id) }}</NuxtLink
+                  ><BitcraftPlayerName :player-id="event.actor_entity_id">{{ playerName(event.actor_entity_id) }}</BitcraftPlayerName></NuxtLink
                 >
               </template>
               <template v-else>Acting player not recorded</template>

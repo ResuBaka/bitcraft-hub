@@ -87,8 +87,8 @@ impl<'ctx> TravelerTaskCreditStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TravelerTaskCreditState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TravelerTaskCreditStateInitialCallbackId {
         TravelerTaskCreditStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

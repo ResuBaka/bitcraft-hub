@@ -86,8 +86,8 @@ impl<'ctx> ClothingDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ClothingDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClothingDescInitialCallbackId {
         ClothingDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

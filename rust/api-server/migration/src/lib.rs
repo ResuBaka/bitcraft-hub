@@ -50,6 +50,12 @@ mod m20261003_000001_claim_event;
 mod m20261004_000001_claim_member_events;
 mod m20261031_000001_player_username_trigram;
 mod m20261031_000002_item_name_trigram;
+mod m20261031_000003_experience_history;
+mod m20261031_000004_experience_aggregates;
+mod m20261101_000001_leaderboard_snapshots;
+mod m20261101_000002_experience_claim_history;
+mod m20261101_000003_unify_experience_history;
+mod m20261113_000001_fix_claim_tech_desc_identity;
 
 pub struct Migrator;
 
@@ -107,6 +113,12 @@ impl MigratorTrait for Migrator {
             Box::new(m20261004_000001_claim_member_events::Migration),
             Box::new(m20261031_000001_player_username_trigram::Migration),
             Box::new(m20261031_000002_item_name_trigram::Migration),
+            Box::new(m20261031_000003_experience_history::Migration),
+            Box::new(m20261031_000004_experience_aggregates::Migration),
+            Box::new(m20261101_000001_leaderboard_snapshots::Migration),
+            Box::new(m20261101_000002_experience_claim_history::Migration),
+            Box::new(m20261101_000003_unify_experience_history::Migration),
+            Box::new(m20261113_000001_fix_claim_tech_desc_identity::Migration),
         ]
     }
 }

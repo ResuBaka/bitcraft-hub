@@ -56,11 +56,9 @@ pub trait admin_set_sign_text_coord {
         coord: OffsetCoordinatesSmallMessage,
         new_name: String,
 
-        callback: impl FnOnce(
-            &super::ReducerEventContext,
-            Result<Result<(), String>, __sdk::InternalError>,
-        ) + Send
-        + 'static,
+        callback: impl FnOnce(&super::ReducerEventContext, Result<Result<(), String>, __sdk::InternalError>)
+            + Send
+            + 'static,
     ) -> __sdk::Result<()>;
 }
 
@@ -70,11 +68,9 @@ impl admin_set_sign_text_coord for super::RemoteReducers {
         coord: OffsetCoordinatesSmallMessage,
         new_name: String,
 
-        callback: impl FnOnce(
-            &super::ReducerEventContext,
-            Result<Result<(), String>, __sdk::InternalError>,
-        ) + Send
-        + 'static,
+        callback: impl FnOnce(&super::ReducerEventContext, Result<Result<(), String>, __sdk::InternalError>)
+            + Send
+            + 'static,
     ) -> __sdk::Result<()> {
         self.imp
             .invoke_reducer_with_callback(AdminSetSignTextCoordArgs { coord, new_name }, callback)

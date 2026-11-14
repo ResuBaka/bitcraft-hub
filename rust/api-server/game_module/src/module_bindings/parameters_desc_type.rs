@@ -106,6 +106,12 @@ pub struct ParametersDesc {
     pub rp_walk_speed: f32,
     pub traveler_task_weekly_credits: Option<Vec<TravelerWeeklyTaskCredits>>,
     pub traveler_task_reroll_credit_cost: i32,
+    pub min_distance_to_neutral_claims: i32,
+    pub claim_totem_spacing: i32,
+    pub empire_watchtower_upkeep_per_chunk: f64,
+    pub empire_watchtower_upkeep_per_total_chunks: f64,
+    pub empire_siege_delay_ticks: i32,
+    pub floating_platform_region_edge_margin_chunks: i32,
 }
 
 impl __sdk::InModule for ParametersDesc {
@@ -213,6 +219,13 @@ pub struct ParametersDescCols {
     pub traveler_task_weekly_credits:
         __sdk::__query_builder::Col<ParametersDesc, Option<Vec<TravelerWeeklyTaskCredits>>>,
     pub traveler_task_reroll_credit_cost: __sdk::__query_builder::Col<ParametersDesc, i32>,
+    pub min_distance_to_neutral_claims: __sdk::__query_builder::Col<ParametersDesc, i32>,
+    pub claim_totem_spacing: __sdk::__query_builder::Col<ParametersDesc, i32>,
+    pub empire_watchtower_upkeep_per_chunk: __sdk::__query_builder::Col<ParametersDesc, f64>,
+    pub empire_watchtower_upkeep_per_total_chunks: __sdk::__query_builder::Col<ParametersDesc, f64>,
+    pub empire_siege_delay_ticks: __sdk::__query_builder::Col<ParametersDesc, i32>,
+    pub floating_platform_region_edge_margin_chunks:
+        __sdk::__query_builder::Col<ParametersDesc, i32>,
 }
 
 impl __sdk::__query_builder::HasCols for ParametersDesc {
@@ -551,6 +564,30 @@ impl __sdk::__query_builder::HasCols for ParametersDesc {
             traveler_task_reroll_credit_cost: __sdk::__query_builder::Col::new(
                 table_name,
                 "traveler_task_reroll_credit_cost",
+            ),
+            min_distance_to_neutral_claims: __sdk::__query_builder::Col::new(
+                table_name,
+                "min_distance_to_neutral_claims",
+            ),
+            claim_totem_spacing: __sdk::__query_builder::Col::new(
+                table_name,
+                "claim_totem_spacing",
+            ),
+            empire_watchtower_upkeep_per_chunk: __sdk::__query_builder::Col::new(
+                table_name,
+                "empire_watchtower_upkeep_per_chunk",
+            ),
+            empire_watchtower_upkeep_per_total_chunks: __sdk::__query_builder::Col::new(
+                table_name,
+                "empire_watchtower_upkeep_per_total_chunks",
+            ),
+            empire_siege_delay_ticks: __sdk::__query_builder::Col::new(
+                table_name,
+                "empire_siege_delay_ticks",
+            ),
+            floating_platform_region_edge_margin_chunks: __sdk::__query_builder::Col::new(
+                table_name,
+                "floating_platform_region_edge_margin_chunks",
             ),
         }
     }

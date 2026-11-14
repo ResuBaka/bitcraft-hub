@@ -85,8 +85,8 @@ impl<'ctx> PermissionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PermissionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PermissionStateInitialCallbackId {
         PermissionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

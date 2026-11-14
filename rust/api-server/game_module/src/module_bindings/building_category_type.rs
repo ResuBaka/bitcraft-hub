@@ -57,6 +57,10 @@ pub enum BuildingCategory {
     PlayerHousing,
 
     PremiumBuilding,
+
+    OneWayWaystone,
+
+    RegionalBank,
 }
 
 impl __sdk::InModule for BuildingCategory {

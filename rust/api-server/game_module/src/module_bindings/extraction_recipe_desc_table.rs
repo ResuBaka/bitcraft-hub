@@ -95,8 +95,8 @@ impl<'ctx> ExtractionRecipeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ExtractionRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ExtractionRecipeDescInitialCallbackId {
         ExtractionRecipeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

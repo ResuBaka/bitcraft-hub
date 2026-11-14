@@ -87,8 +87,8 @@ impl<'ctx> CombatDimensionStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, CombatDimensionState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> CombatDimensionStateInitialCallbackId {
         CombatDimensionStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

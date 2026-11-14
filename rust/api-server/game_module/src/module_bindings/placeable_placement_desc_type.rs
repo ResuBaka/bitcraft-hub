@@ -39,6 +39,7 @@ pub struct PlaceablePlacementDesc {
     pub buildings: Vec<i32>,
     pub recipe_performance_id: i32,
     pub self_buffs: Option<Vec<PlaceableSelfBuffChance>>,
+    pub acceptable_pavements: Option<Vec<i32>>,
 }
 
 impl __sdk::InModule for PlaceablePlacementDesc {
@@ -79,6 +80,7 @@ pub struct PlaceablePlacementDescCols {
     pub recipe_performance_id: __sdk::__query_builder::Col<PlaceablePlacementDesc, i32>,
     pub self_buffs:
         __sdk::__query_builder::Col<PlaceablePlacementDesc, Option<Vec<PlaceableSelfBuffChance>>>,
+    pub acceptable_pavements: __sdk::__query_builder::Col<PlaceablePlacementDesc, Option<Vec<i32>>>,
 }
 
 impl __sdk::__query_builder::HasCols for PlaceablePlacementDesc {
@@ -147,6 +149,10 @@ impl __sdk::__query_builder::HasCols for PlaceablePlacementDesc {
                 "recipe_performance_id",
             ),
             self_buffs: __sdk::__query_builder::Col::new(table_name, "self_buffs"),
+            acceptable_pavements: __sdk::__query_builder::Col::new(
+                table_name,
+                "acceptable_pavements",
+            ),
         }
     }
 }

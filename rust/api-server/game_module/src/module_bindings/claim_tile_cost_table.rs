@@ -85,8 +85,8 @@ impl<'ctx> ClaimTileCostTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ClaimTileCost>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimTileCostInitialCallbackId {
         ClaimTileCostInitialCallbackId(self.imp.on_initial_rows(callback))
     }

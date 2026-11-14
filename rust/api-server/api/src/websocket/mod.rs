@@ -48,6 +48,7 @@ pub(crate) mod batched_worker;
 pub(crate) mod initial_batches;
 pub(crate) mod initial_sync;
 mod metric_handles;
+mod claim_locations;
 mod overworld;
 mod portal_locations;
 mod startup;
@@ -160,6 +161,7 @@ fn connect_to_db(
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
         .on_disconnect(move |_ctx, err| {
+            tmp_disconnect_global_app_state.claim_locations.invalidate(region_number);
             metrics::gauge!(
                 "bitcraft_database_connected",
                 &[("region", tmp_disconnect_db_name.clone())]
@@ -186,10 +188,8 @@ fn connect_to_db(
                 // std::process::exit(0);
             }
         })
-        // If the user has previously connected, we'll have saved a token in the `on_connect` callback.
-        // In that case, we'll load it and pass it to `with_token`,
-        // so we can re-authenticate as the same `Identity`.
-        // .with_token(Some(token.trim()))
+        // Authenticate with the configured token when one is provided.
+        .with_token(Some(token.trim()).filter(|token| !token.is_empty()))
         // Set the database name we chose when we called `spacetime publish`.
         .with_database_name(db_name)
         // Set the URI of the SpacetimeDB host that's running our database.
@@ -453,6 +453,9 @@ async fn connect_to_db_logic(
         );
         anyhow::bail!("Connection to {database} is inactive");
     }
+
+    global_app_state.claim_locations.reset(region_number);
+    claim_locations::listen(&ctx, region_number, global_app_state.claim_locations.clone());
 
     crate::claims::events::register_listeners(
         &ctx,
@@ -802,7 +805,7 @@ async fn connect_to_db_logic(
     let tables_to_subscribe = vec![
         // "user_state",
         // "mobile_entity_state",
-        // "claim_tile_state",
+        "claim_tile_state",
         // "combat_action_desc",
         "item_desc",
         "item_list_desc",
@@ -847,6 +850,7 @@ async fn connect_to_db_logic(
         "npc_desc",
         "interior_network_desc",
         "dimension_description_state",
+        "dimension_network_state",
         "player_housing_state",
         "permission_state",
         "portal_state",
@@ -855,12 +859,13 @@ async fn connect_to_db_logic(
     let sql_subscribe = vec![
         ("equipment_desc", "SELECT * FROM equipment_desc"),
         ("equipment_state", "SELECT * FROM equipment_state"),
-        ("location_state", "SELECT location_state.* FROM location_state JOIN building_state ON location_state.entity_id = building_state.entity_id"),
-        ("location_state", "SELECT location_state.* FROM location_state JOIN portal_state ON location_state.entity_id = portal_state.entity_id"),
+        ("location_state", "SELECT location_state.* FROM location_state JOIN building_state ON building_state.entity_id = location_state.entity_id"),
+        ("location_state", "SELECT location_state.* FROM location_state JOIN portal_state ON portal_state.entity_id = location_state.entity_id"),
+        ("location_state", "SELECT location_state.* FROM location_state JOIN claim_tile_state ON claim_tile_state.entity_id = location_state.entity_id"),
         // ("location_state", "SELECT * FROM location_state where dimension = 1"),
         (
             "mobile_entity_state",
-            "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON mobile_entity_state.entity_id = player_state.entity_id",
+            "SELECT mobile_entity_state.* FROM mobile_entity_state JOIN player_state ON player_state.entity_id = mobile_entity_state.entity_id",
         ),
     ];
 
@@ -875,14 +880,21 @@ async fn connect_to_db_logic(
     let (initial_tx, initial_rx) = tokio::sync::oneshot::channel();
     let initial_completion = Arc::new(Mutex::new(Some(initial_tx)));
     let initial_failed = initial_completion.clone();
+    let claim_locations = global_app_state.claim_locations.clone();
+    let claim_locations_on_error = global_app_state.claim_locations.clone();
+    let claim_locations_enabled = !config.spacetimedb.skip_state_tables;
     let subscription_builder = ctx
         .subscription_builder()
         .on_applied(move |_ctx: &SubscriptionEventContext| {
+            if claim_locations_enabled {
+                claim_locations.finish_initial(region_number);
+            }
             if let Some(tx) = initial_completion.lock().unwrap().take() {
                 let _ = tx.send(Ok(()));
             }
         })
         .on_error(move |ctx: &ErrorContext, err: Error| {
+            claim_locations_on_error.invalidate(region_number);
             tracing::warn!(
                 region = region_number,
                 "Subscription failed: {} {:?}",
@@ -1527,6 +1539,9 @@ pub(crate) enum InboundWebSocketMessages {
 pub(crate) enum OutboundWebSocketMessages {
     SubscribedTopics(Vec<String>),
     MobileEntityState(entity::mobile_entity_state::Model),
+    PlayerLocation(crate::player_state::PlayerLocationUpdate),
+    ExperienceHistoryChanged { user_id: i64 },
+    ClaimExperienceHistoryChanged { claim_id: i64 },
     Experience {
         experience: u64,
         level: u64,
@@ -1687,6 +1702,16 @@ impl OutboundWebSocketMessages {
                     Some(mobile_entity_state.entity_id as i64),
                 )]))
             }
+            OutboundWebSocketMessages::PlayerLocation(location) => Some(BroadcastTopics::new([(
+                "player_location".into(),
+                Some(location.entity_id as i64),
+            )])),
+            OutboundWebSocketMessages::ExperienceHistoryChanged { user_id } => Some(
+                BroadcastTopics::new([("experience_history".into(), Some(*user_id))]),
+            ),
+            OutboundWebSocketMessages::ClaimExperienceHistoryChanged { claim_id } => Some(
+                BroadcastTopics::new([("claim_experience_history".into(), Some(*claim_id))]),
+            ),
             // WebSocketMessages::ClaimDescriptionState(claim) => {
             //     Some(vec![("claim".to_string(), claim.entity_id)])
             // }

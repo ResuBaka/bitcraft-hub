@@ -85,8 +85,8 @@ impl<'ctx> SatiationStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, SatiationState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> SatiationStateInitialCallbackId {
         SatiationStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -85,8 +85,8 @@ impl<'ctx> ResourceStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ResourceState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ResourceStateInitialCallbackId {
         ResourceStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

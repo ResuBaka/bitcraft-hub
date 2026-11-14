@@ -240,7 +240,7 @@ useSeoMeta({
                 :class="player.signed_in ? 'text-green-600' : 'text-gray-900 dark:text-gray-100'"
                 class="text-sm font-semibold"
               >
-                {{ player.username }}
+                <BitcraftPlayerName :player-id="player.entity_id">{{ player.username }}</BitcraftPlayerName>
               </NuxtLink>
               <UBadge :color="player.signed_in ? 'success' : 'neutral'" variant="soft">
                 {{ player.signed_in ? "Online" : "Offline" }}

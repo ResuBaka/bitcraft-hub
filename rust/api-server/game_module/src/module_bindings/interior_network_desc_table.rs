@@ -88,8 +88,8 @@ impl<'ctx> InteriorNetworkDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, InteriorNetworkDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> InteriorNetworkDescInitialCallbackId {
         InteriorNetworkDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

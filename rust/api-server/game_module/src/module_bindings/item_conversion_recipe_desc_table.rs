@@ -88,8 +88,8 @@ impl<'ctx> ItemConversionRecipeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ItemConversionRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ItemConversionRecipeDescInitialCallbackId {
         ItemConversionRecipeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

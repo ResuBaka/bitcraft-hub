@@ -85,8 +85,8 @@ impl<'ctx> BuildingStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuildingState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingStateInitialCallbackId {
         BuildingStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

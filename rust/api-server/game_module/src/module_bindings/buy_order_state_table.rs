@@ -85,8 +85,8 @@ impl<'ctx> BuyOrderStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, AuctionListingState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuyOrderStateInitialCallbackId {
         BuyOrderStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

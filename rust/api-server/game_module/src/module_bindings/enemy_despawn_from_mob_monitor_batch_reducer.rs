@@ -50,11 +50,9 @@ pub trait enemy_despawn_from_mob_monitor_batch {
         &self,
         enemy_entity_ids: Vec<u64>,
 
-        callback: impl FnOnce(
-            &super::ReducerEventContext,
-            Result<Result<(), String>, __sdk::InternalError>,
-        ) + Send
-        + 'static,
+        callback: impl FnOnce(&super::ReducerEventContext, Result<Result<(), String>, __sdk::InternalError>)
+            + Send
+            + 'static,
     ) -> __sdk::Result<()>;
 }
 
@@ -63,11 +61,9 @@ impl enemy_despawn_from_mob_monitor_batch for super::RemoteReducers {
         &self,
         enemy_entity_ids: Vec<u64>,
 
-        callback: impl FnOnce(
-            &super::ReducerEventContext,
-            Result<Result<(), String>, __sdk::InternalError>,
-        ) + Send
-        + 'static,
+        callback: impl FnOnce(&super::ReducerEventContext, Result<Result<(), String>, __sdk::InternalError>)
+            + Send
+            + 'static,
     ) -> __sdk::Result<()> {
         self.imp.invoke_reducer_with_callback(
             EnemyDespawnFromMobMonitorBatchArgs { enemy_entity_ids },

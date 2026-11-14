@@ -87,8 +87,8 @@ impl<'ctx> MobileEntityStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, MobileEntityState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> MobileEntityStateInitialCallbackId {
         MobileEntityStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

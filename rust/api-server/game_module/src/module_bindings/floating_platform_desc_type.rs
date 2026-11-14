@@ -16,6 +16,7 @@ pub struct FloatingPlatformDesc {
     pub allowed_biomes: Vec<Biome>,
     pub supports_buildings: bool,
     pub max_per_player: i32,
+    pub target_elevation: i16,
 }
 
 impl __sdk::InModule for FloatingPlatformDesc {
@@ -33,6 +34,7 @@ pub struct FloatingPlatformDescCols {
     pub allowed_biomes: __sdk::__query_builder::Col<FloatingPlatformDesc, Vec<Biome>>,
     pub supports_buildings: __sdk::__query_builder::Col<FloatingPlatformDesc, bool>,
     pub max_per_player: __sdk::__query_builder::Col<FloatingPlatformDesc, i32>,
+    pub target_elevation: __sdk::__query_builder::Col<FloatingPlatformDesc, i16>,
 }
 
 impl __sdk::__query_builder::HasCols for FloatingPlatformDesc {
@@ -46,6 +48,7 @@ impl __sdk::__query_builder::HasCols for FloatingPlatformDesc {
             allowed_biomes: __sdk::__query_builder::Col::new(table_name, "allowed_biomes"),
             supports_buildings: __sdk::__query_builder::Col::new(table_name, "supports_buildings"),
             max_per_player: __sdk::__query_builder::Col::new(table_name, "max_per_player"),
+            target_elevation: __sdk::__query_builder::Col::new(table_name, "target_elevation"),
         }
     }
 }

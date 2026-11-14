@@ -87,8 +87,8 @@ impl<'ctx> PlayerVoteStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlayerVoteState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerVoteStateInitialCallbackId {
         PlayerVoteStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

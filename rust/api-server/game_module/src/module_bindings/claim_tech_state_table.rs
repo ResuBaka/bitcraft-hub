@@ -85,8 +85,8 @@ impl<'ctx> ClaimTechStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ClaimTechState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimTechStateInitialCallbackId {
         ClaimTechStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

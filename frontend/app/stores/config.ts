@@ -11,7 +11,11 @@ export type ConfigState = {
     enabled_default: boolean;
   };
   show_region_as_number: boolean;
+  highlighted_players: HighlightedEntity[];
+  highlighted_claims: HighlightedEntity[];
 };
+
+export type HighlightedEntity = { id: string; name: string };
 
 export const DEFAULT_CONFIG: ConfigState = {
   version: 1,
@@ -20,11 +24,18 @@ export const DEFAULT_CONFIG: ConfigState = {
     enabled_default: false,
   },
   show_region_as_number: true,
+  highlighted_players: [],
+  highlighted_claims: [],
 };
 
 export const useConfigStore = defineStore("config", () => {
   const state = reactive(deepMerge({}, DEFAULT_CONFIG));
+  const highlightedPlayerIds = computed(() => new Set(state.highlighted_players.map((player) => player.id)));
   let watchInitialized = false;
+
+  function isPlayerHighlighted(id: string | number | bigint | null | undefined) {
+    return id != null && highlightedPlayerIds.value.has(String(id));
+  }
 
   function initWatch() {
     if (watchInitialized) return;
@@ -79,5 +90,6 @@ export const useConfigStore = defineStore("config", () => {
     load,
     save,
     reset,
+    isPlayerHighlighted,
   };
 });

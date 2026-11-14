@@ -216,6 +216,13 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+        // Newer SeaQuery versions create auto-increment columns as PostgreSQL
+        // identity columns, which cannot also have a regular default.
+        if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+            manager.get_connection().execute_unprepared(
+                "ALTER TABLE claim_tech_desc ALTER COLUMN id DROP IDENTITY IF EXISTS",
+            ).await?;
+        }
         manager
             .alter_table(
                 Table::alter()

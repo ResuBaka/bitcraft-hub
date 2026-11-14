@@ -88,8 +88,8 @@ impl<'ctx> KnowledgeExtractStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, KnowledgeExtractState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> KnowledgeExtractStateInitialCallbackId {
         KnowledgeExtractStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

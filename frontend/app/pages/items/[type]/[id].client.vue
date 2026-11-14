@@ -3,7 +3,7 @@ import { watchThrottled } from "@vueuse/shared";
 import AutocompleteClaim from "~/components/Bitcraft/autocomplete/AutocompleteClaim.vue";
 import AutocompleteUser from "~/components/Bitcraft/autocomplete/AutocompleteUser.vue";
 import GetheringShopList from "~/components/Bitcraft/GetheringShopList.vue";
-import RecusiveCraftingRecipe from "~/components/Bitcraft/RecusiveCraftingRecipe.vue";
+import CraftingPlanTree from "~/components/Bitcraft/CraftingPlanTree.vue";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
 import type { ExtractionRecipeResponse } from "~/types/ExtractionRecipeResponse";
 import type { InventorysResponse } from "~/types/InventorysResponse";
@@ -282,11 +282,11 @@ useSeoMeta({ title: () => `Recipe Id -> ${route.params.id} Type -> ${route.param
             <div>
               <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recipe tree</h2>
               <p class="text-sm text-gray-600 dark:text-gray-300">
-                Only the selected plan is calculated. Select another recipe to update quantities and
-                total actions.
+                Explore the selected plan on the left and inspect an item to choose its recipe.
+                Quantities, rarity chances, and actions update together.
               </p>
             </div>
-            <RecusiveCraftingRecipe
+            <CraftingPlanTree
               :item="plan.root"
               :graph="graph"
               :item_desc="allRecipiesFetch.item_desc"

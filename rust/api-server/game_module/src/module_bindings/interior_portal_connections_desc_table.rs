@@ -86,11 +86,9 @@ impl<'ctx> InteriorPortalConnectionsDescTableHandle<'ctx> {
     /// Register a borrowed initial-row view without cloning the full snapshot.
     pub fn on_initial_rows(
         &self,
-        callback: impl FnMut(
-            &super::EventContext,
-            __sdk::InitialRows<'_, InteriorPortalConnectionsDesc>,
-        ) + Send
-        + 'static,
+        callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, InteriorPortalConnectionsDesc>)
+            + Send
+            + 'static,
     ) -> InteriorPortalConnectionsDescInitialCallbackId {
         InteriorPortalConnectionsDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

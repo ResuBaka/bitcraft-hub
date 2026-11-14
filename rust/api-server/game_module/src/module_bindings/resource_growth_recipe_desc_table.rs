@@ -87,8 +87,8 @@ impl<'ctx> ResourceGrowthRecipeDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ResourceGrowthRecipeDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ResourceGrowthRecipeDescInitialCallbackId {
         ResourceGrowthRecipeDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

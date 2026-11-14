@@ -38,7 +38,7 @@ pub trait BuildingFunctionTypeMappingDescTableAccess {
     #[allow(non_snake_case)]
     /// Obtain a [`BuildingFunctionTypeMappingDescTableHandle`], which mediates access to the table `building_function_type_mapping_desc`.
     fn building_function_type_mapping_desc(&self)
-    -> BuildingFunctionTypeMappingDescTableHandle<'_>;
+        -> BuildingFunctionTypeMappingDescTableHandle<'_>;
 }
 
 impl BuildingFunctionTypeMappingDescTableAccess for super::RemoteTables {
@@ -89,11 +89,9 @@ impl<'ctx> BuildingFunctionTypeMappingDescTableHandle<'ctx> {
     /// Register a borrowed initial-row view without cloning the full snapshot.
     pub fn on_initial_rows(
         &self,
-        callback: impl FnMut(
-            &super::EventContext,
-            __sdk::InitialRows<'_, BuildingFunctionTypeMappingDesc>,
-        ) + Send
-        + 'static,
+        callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuildingFunctionTypeMappingDesc>)
+            + Send
+            + 'static,
     ) -> BuildingFunctionTypeMappingDescInitialCallbackId {
         BuildingFunctionTypeMappingDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }
@@ -102,8 +100,8 @@ impl<'ctx> BuildingFunctionTypeMappingDescTableHandle<'ctx> {
     pub fn on_initial_owned(
         &self,
         callback: impl FnMut(&super::EventContext, Vec<BuildingFunctionTypeMappingDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingFunctionTypeMappingDescInitialCallbackId {
         BuildingFunctionTypeMappingDescInitialCallbackId(self.imp.on_initial_owned(callback))
     }

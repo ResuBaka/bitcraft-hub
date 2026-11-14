@@ -85,8 +85,8 @@ impl<'ctx> PremiumItemDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PremiumItemDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PremiumItemDescInitialCallbackId {
         PremiumItemDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

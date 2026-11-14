@@ -87,8 +87,8 @@ impl<'ctx> ExtractOutcomeStateV1TableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ExtractOutcomeState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ExtractOutcomeStateV1InitialCallbackId {
         ExtractOutcomeStateV1InitialCallbackId(self.imp.on_initial_rows(callback))
     }

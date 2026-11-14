@@ -88,8 +88,8 @@ impl<'ctx> ClosedListingStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ClosedListingState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClosedListingStateInitialCallbackId {
         ClosedListingStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

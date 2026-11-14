@@ -88,8 +88,8 @@ impl<'ctx> BuildingClaimDescTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, BuildingClaimDesc>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> BuildingClaimDescInitialCallbackId {
         BuildingClaimDescInitialCallbackId(self.imp.on_initial_rows(callback))
     }

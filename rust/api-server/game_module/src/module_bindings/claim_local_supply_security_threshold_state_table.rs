@@ -87,8 +87,8 @@ impl<'ctx> ClaimLocalSupplySecurityThresholdStateTableHandle<'ctx> {
     pub fn on_initial(
         &self,
         callback: impl FnMut(&super::EventContext, &[ClaimLocalSupplySecurityThresholdState])
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimLocalSupplySecurityThresholdStateInitialCallbackId {
         ClaimLocalSupplySecurityThresholdStateInitialCallbackId(self.imp.on_initial(callback))
     }
@@ -97,10 +97,10 @@ impl<'ctx> ClaimLocalSupplySecurityThresholdStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(
-            &super::EventContext,
-            __sdk::InitialRows<'_, ClaimLocalSupplySecurityThresholdState>,
-        ) + Send
-        + 'static,
+                &super::EventContext,
+                __sdk::InitialRows<'_, ClaimLocalSupplySecurityThresholdState>,
+            ) + Send
+            + 'static,
     ) -> ClaimLocalSupplySecurityThresholdStateInitialCallbackId {
         ClaimLocalSupplySecurityThresholdStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }
@@ -109,8 +109,8 @@ impl<'ctx> ClaimLocalSupplySecurityThresholdStateTableHandle<'ctx> {
     pub fn on_initial_owned(
         &self,
         callback: impl FnMut(&super::EventContext, Vec<ClaimLocalSupplySecurityThresholdState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ClaimLocalSupplySecurityThresholdStateInitialCallbackId {
         ClaimLocalSupplySecurityThresholdStateInitialCallbackId(self.imp.on_initial_owned(callback))
     }

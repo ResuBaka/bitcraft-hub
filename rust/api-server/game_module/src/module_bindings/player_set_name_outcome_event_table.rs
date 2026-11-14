@@ -87,8 +87,8 @@ impl<'ctx> PlayerSetNameOutcomeEventTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, PlayerSetNameOutcomeEvent>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> PlayerSetNameOutcomeEventInitialCallbackId {
         PlayerSetNameOutcomeEventInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -86,8 +86,8 @@ impl<'ctx> TradeOrderStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, TradeOrderState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> TradeOrderStateInitialCallbackId {
         TradeOrderStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

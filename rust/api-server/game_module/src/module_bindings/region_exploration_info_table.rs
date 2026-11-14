@@ -87,8 +87,8 @@ impl<'ctx> RegionExplorationInfoTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, RegionExplorationInfo>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> RegionExplorationInfoInitialCallbackId {
         RegionExplorationInfoInitialCallbackId(self.imp.on_initial_rows(callback))
     }

@@ -85,8 +85,8 @@ impl<'ctx> ChatMessageStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, ChatMessageState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> ChatMessageStateInitialCallbackId {
         ChatMessageStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }

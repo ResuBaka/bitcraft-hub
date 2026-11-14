@@ -87,8 +87,8 @@ impl<'ctx> AttachedHerdsStateTableHandle<'ctx> {
     pub fn on_initial_rows(
         &self,
         callback: impl FnMut(&super::EventContext, __sdk::InitialRows<'_, AttachedHerdsState>)
-        + Send
-        + 'static,
+            + Send
+            + 'static,
     ) -> AttachedHerdsStateInitialCallbackId {
         AttachedHerdsStateInitialCallbackId(self.imp.on_initial_rows(callback))
     }
