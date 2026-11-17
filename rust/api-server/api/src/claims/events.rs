@@ -101,12 +101,11 @@ fn live_event(event: &Event<Reducer>) -> bool {
 }
 
 fn event_timestamp(event: &Event<Reducer>) -> DateTime<Utc> {
-    if let Event::Reducer(reducer) = event {
-        if let Some(timestamp) =
+    if let Event::Reducer(reducer) = event
+        && let Some(timestamp) =
             DateTime::from_timestamp_micros(reducer.timestamp.to_micros_since_unix_epoch())
-        {
-            return timestamp;
-        }
+    {
+        return timestamp;
     }
     // Public transaction updates do not always include reducer metadata.
     Utc::now()
@@ -402,10 +401,10 @@ pub(crate) fn register_listeners(
 ) {
     let treasury_tx = tx.clone();
     EventTable::on_insert(&ctx.db.claim_treasury_event(), move |context, value| {
-        if live_event(&context.event) {
-            if let Some(event) = treasury_event(value, region) {
-                queue(&treasury_tx, event);
-            }
+        if live_event(&context.event)
+            && let Some(event) = treasury_event(value, region)
+        {
+            queue(&treasury_tx, event);
         }
     });
 

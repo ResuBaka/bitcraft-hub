@@ -54,10 +54,13 @@ pub(crate) struct InventoryChangesParams {
     pub user_id: Option<i64>,
 }
 
+type InventoryChangesResult<T> = Result<T, (StatusCode, &'static str)>;
+type InventoryItemFilter = (i32, inventory_changelog::ItemType);
+
 impl InventoryChangesParams {
     pub(crate) fn parsed_day_range(
         &self,
-    ) -> Result<(DateTime<Utc>, DateTime<Utc>), (StatusCode, &'static str)> {
+    ) -> InventoryChangesResult<(DateTime<Utc>, DateTime<Utc>)> {
         let start_day = parse_day_with_offset(self.start_day.as_deref())?;
         let end_day = parse_day_with_offset(self.end_day.as_deref())?;
         let today = (Utc::now().date_naive(), FixedOffset::east_opt(0).unwrap());
@@ -86,7 +89,7 @@ impl InventoryChangesParams {
 
     pub(crate) fn item_filters(
         &self,
-    ) -> Result<Option<Vec<(i32, inventory_changelog::ItemType)>>, (StatusCode, &'static str)> {
+    ) -> InventoryChangesResult<Option<Vec<InventoryItemFilter>>> {
         if self.item_id.is_none() || self.item_type.is_none() {
             return Ok(None);
         };

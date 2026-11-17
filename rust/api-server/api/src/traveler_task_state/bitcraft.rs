@@ -40,12 +40,11 @@ pub(crate) fn start_worker_traveler_task_state(
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 insert_multiple_traveler_task_state(&global_app_state, &on_conflict, &mut messages).await;
-                                if !messages_delete.is_empty() {
-                                    if let Err(error) = ::entity::traveler_task_state::Entity::delete_many()
+                                if !messages_delete.is_empty()
+                                    && let Err(error) = ::entity::traveler_task_state::Entity::delete_many()
                                         .filter(::entity::traveler_task_state::Column::EntityId.is_in(std::mem::take(&mut messages_delete)))
                                         .exec(&global_app_state.conn).await {
-                                        tracing::error!(%error, "Could not flush traveler task deletes before initial sync");
-                                    }
+                                    tracing::error!(%error, "Could not flush traveler task deletes before initial sync");
                                 }
                                 let incoming = data.into_iter().map(|value| ::entity::traveler_task_state::ModelBuilder::new(value).with_region(database_name).build());
                                 if let Err(error) = crate::websocket::initial_sync::reconcile::<::entity::traveler_task_state::Entity, _, _, _, _, _>(

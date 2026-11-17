@@ -24,62 +24,6 @@ fn apply_location(state: &AppState, model: mobile_entity_state::Model) {
         });
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn cache_updates_without_listeners_and_only_requested_payload_is_queued() {
-        let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
-        let state = AppState::new(Default::default(), tx, Default::default());
-        let mut model = mobile_entity_state::Model {
-            entity_id: 7,
-            chunk_index: 5,
-            timestamp: 0,
-            location_x: 1000,
-            location_z: 2000,
-            destination_x: 1000,
-            destination_z: 2000,
-            dimension: 1,
-            is_walking: false,
-            region: 7,
-        };
-        apply_location(&state, model.clone());
-        assert_eq!(state.mobile_entity_state.get(&7).unwrap().location_x, 1000);
-        assert!(notifications.try_recv().is_err());
-        let _subscriber = state
-            .subscribe_test_client(&[("mobile_entity_state", Some(7))])
-            .await;
-        model.location_x = 2000;
-        apply_location(&state, model.clone());
-        assert!(
-            matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::MobileEntityState(value) if value.location_x == 2000)
-        );
-        assert!(
-            notifications.try_recv().is_err(),
-            "player_location was not subscribed"
-        );
-        state
-            .clients_state
-            .add_topic_to_client(
-                &"test-subscriber".into(),
-                &"player_location".into(),
-                Some(7),
-            )
-            .await;
-        apply_location(&state, model);
-        assert!(matches!(
-            notifications.try_recv().unwrap(),
-            OutboundWebSocketMessages::PlayerLocation(_)
-        ));
-        assert!(matches!(
-            notifications.try_recv().unwrap(),
-            OutboundWebSocketMessages::MobileEntityState(_)
-        ));
-        assert!(notifications.try_recv().is_err());
-    }
-}
-
 pub(crate) fn start_worker_mobile_entity_state(
     global_app_state: AppState,
     mut rx: UnboundedReceiver<crate::websocket::SpacetimeUpdateMessages<MobileEntityState>>,
@@ -202,4 +146,60 @@ pub(crate) fn start_worker_mobile_entity_state(
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn cache_updates_without_listeners_and_only_requested_payload_is_queued() {
+        let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(Default::default(), tx, Default::default());
+        let mut model = mobile_entity_state::Model {
+            entity_id: 7,
+            chunk_index: 5,
+            timestamp: 0,
+            location_x: 1000,
+            location_z: 2000,
+            destination_x: 1000,
+            destination_z: 2000,
+            dimension: 1,
+            is_walking: false,
+            region: 7,
+        };
+        apply_location(&state, model.clone());
+        assert_eq!(state.mobile_entity_state.get(&7).unwrap().location_x, 1000);
+        assert!(notifications.try_recv().is_err());
+        let _subscriber = state
+            .subscribe_test_client(&[("mobile_entity_state", Some(7))])
+            .await;
+        model.location_x = 2000;
+        apply_location(&state, model.clone());
+        assert!(
+            matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::MobileEntityState(value) if value.location_x == 2000)
+        );
+        assert!(
+            notifications.try_recv().is_err(),
+            "player_location was not subscribed"
+        );
+        state
+            .clients_state
+            .add_topic_to_client(
+                &"test-subscriber".into(),
+                "player_location",
+                Some(7),
+            )
+            .await;
+        apply_location(&state, model);
+        assert!(matches!(
+            notifications.try_recv().unwrap(),
+            OutboundWebSocketMessages::PlayerLocation(_)
+        ));
+        assert!(matches!(
+            notifications.try_recv().unwrap(),
+            OutboundWebSocketMessages::MobileEntityState(_)
+        ));
+        assert!(notifications.try_recv().is_err());
+    }
 }

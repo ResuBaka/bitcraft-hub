@@ -164,17 +164,17 @@ pub(crate) fn register_listeners(
     let cache = context.clone();
     let hit_tx = tx.clone();
     EventTable::on_insert(&ctx.db.craft_event(), move |event, value| {
-        if let Some(time) = timestamp(&event.event) {
-            if hit_tx.send(hit(value, region, time, &cache)).is_err() {
-                tracing::warn!(region, "Could not queue craft hit");
-            }
+        if let Some(time) = timestamp(&event.event)
+            && hit_tx.send(hit(value, region, time, &cache)).is_err()
+        {
+            tracing::warn!(region, "Could not queue craft hit");
         }
     });
     EventTable::on_insert(&ctx.db.craft_completed_event(), move |event, value| {
-        if let Some(time) = timestamp(&event.event) {
-            if tx.send(completed(value, region, time, &context)).is_err() {
-                tracing::warn!(region, "Could not queue craft completion");
-            }
+        if let Some(time) = timestamp(&event.event)
+            && tx.send(completed(value, region, time, &context)).is_err()
+        {
+            tracing::warn!(region, "Could not queue craft completion");
         }
     });
 }

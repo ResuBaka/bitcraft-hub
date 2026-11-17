@@ -399,7 +399,9 @@ async fn query_experience_history(
          AND ({xp_expression}) IS NOT NULL AND ($3::integer IS NULL OR skill_id = $3) {location_filter} GROUP BY {grouping} ORDER BY day"
     );
     let mut values = vec![id.into(), (days as i32).into(), params.skill_id.into()];
-    if !claim_scope { if let Some(location) = location { values.extend([location.into(), params.claim_id.into()]); } }
+    if !claim_scope && let Some(location) = location {
+        values.extend([location.into(), params.claim_id.into()]);
+    }
     let rows = ExperienceHistoryPoint::find_by_statement(sea_orm::Statement::from_sql_and_values(
         sea_orm::DbBackend::Postgres,
         sql,
@@ -946,7 +948,7 @@ impl LeaderboardBenchHarness {
     }
 }
 
-pub struct RankingSystem {
+pub(crate) struct RankingSystem {
     bucket_config: crate::config::LeaderboardConfig,
     players: Arc<PlayerRegistry>,
     worker: RankingWorker,

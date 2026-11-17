@@ -263,36 +263,6 @@ fn has_direct_storage_access(permissions: &[PermissionEntry], player_id: i64) ->
     })
 }
 
-#[cfg(test)]
-mod access_tests {
-    use super::*;
-
-    #[test]
-    fn storage_requires_direct_inventory_permission() {
-        let mut permission = PermissionEntry {
-            allowed_entity_id: 42,
-            allowed_username: None,
-            group: 0,
-            rank: 2,
-        };
-        assert!(!has_direct_storage_access(&[permission], 42));
-        permission = PermissionEntry {
-            allowed_entity_id: 42,
-            allowed_username: None,
-            group: 0,
-            rank: 3,
-        };
-        assert!(has_direct_storage_access(&[permission], 42));
-        permission = PermissionEntry {
-            allowed_entity_id: 42,
-            allowed_username: None,
-            group: 1,
-            rank: 7,
-        };
-        assert!(!has_direct_storage_access(&[permission], 42));
-    }
-}
-
 /// GET /houses/{id}
 ///
 /// Returns the house details for the given house entity id.
@@ -604,4 +574,34 @@ async fn get_usernames_for_ids(state: &AppState, user_ids: &[i64]) -> HashMap<i6
         .into_iter()
         .map(|u| (u.entity_id, u.username))
         .collect()
+}
+
+#[cfg(test)]
+mod access_tests {
+    use super::*;
+
+    #[test]
+    fn storage_requires_direct_inventory_permission() {
+        let mut permission = PermissionEntry {
+            allowed_entity_id: 42,
+            allowed_username: None,
+            group: 0,
+            rank: 2,
+        };
+        assert!(!has_direct_storage_access(&[permission], 42));
+        permission = PermissionEntry {
+            allowed_entity_id: 42,
+            allowed_username: None,
+            group: 0,
+            rank: 3,
+        };
+        assert!(has_direct_storage_access(&[permission], 42));
+        permission = PermissionEntry {
+            allowed_entity_id: 42,
+            allowed_username: None,
+            group: 1,
+            rank: 7,
+        };
+        assert!(!has_direct_storage_access(&[permission], 42));
+    }
 }

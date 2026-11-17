@@ -42,17 +42,15 @@ pub(crate) fn start_worker_building_state(
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 // Flush older live events before applying a newer snapshot.
-                                if !messages.is_empty() {
-                                    if let Err(error) = insert_multiple_building_state(&global_app_state, &on_conflict, &mut messages).await {
-                                        tracing::error!(%error, "Could not flush building updates before initial sync");
-                                    }
+                                if !messages.is_empty()
+                                    && let Err(error) = insert_multiple_building_state(&global_app_state, &on_conflict, &mut messages).await {
+                                    tracing::error!(%error, "Could not flush building updates before initial sync");
                                 }
-                                if !messages_delete.is_empty() {
-                                    if let Err(error) = ::entity::building_state::Entity::delete_many()
+                                if !messages_delete.is_empty()
+                                    && let Err(error) = ::entity::building_state::Entity::delete_many()
                                         .filter(::entity::building_state::Column::EntityId.is_in(std::mem::take(&mut messages_delete)))
                                         .exec(&global_app_state.conn).await {
-                                        tracing::error!(%error, "Could not flush building deletes before initial sync");
-                                    }
+                                    tracing::error!(%error, "Could not flush building deletes before initial sync");
                                 }
                                 let incoming = data.into_iter().map(|value| ::entity::building_state::ModelBuilder::new(value).with_region(database_name).build());
                                 if let Err(error) = crate::websocket::initial_sync::reconcile::<::entity::building_state::Entity, _, _, _, _, _>(
@@ -177,12 +175,10 @@ async fn insert_multiple_building_state(
     on_conflict: &OnConflict,
     messages: &mut Vec<::entity::building_state::ActiveModel>,
 ) -> Result<InsertManyResult<ActiveModel>, DbErr> {
-    let insert = ::entity::building_state::Entity::insert_many(std::mem::take(messages))
+    ::entity::building_state::Entity::insert_many(std::mem::take(messages))
         .on_conflict(on_conflict.clone())
         .exec(&global_app_state.conn)
-        .await;
-
-    insert
+        .await
 }
 
 pub(crate) fn start_worker_building_desc(

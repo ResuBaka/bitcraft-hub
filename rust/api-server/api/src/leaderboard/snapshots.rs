@@ -54,21 +54,6 @@ pub(crate) fn start(state: AppState) {
     });
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::TimeZone;
-
-    #[test]
-    fn only_recovers_snapshot_within_ten_minutes_of_midnight_utc() {
-        let midnight = Utc.with_ymd_and_hms(2026, 11, 1, 0, 0, 0).unwrap();
-        assert_eq!(capture_target(midnight), midnight);
-        assert_eq!(capture_target(midnight + TimeDelta::seconds(599)), midnight);
-        assert_eq!(capture_target(midnight + TimeDelta::seconds(600)), midnight + TimeDelta::days(1));
-        assert_eq!(capture_target(midnight - TimeDelta::seconds(1)), midnight);
-    }
-}
-
 async fn capture(state: &AppState, snapshot_at: DateTime<Utc>) -> anyhow::Result<bool> {
     if state.ranking_system.global_leaderboard.get_range(0, 1).is_empty() {
         anyhow::bail!("leaderboards have not published any players");
@@ -129,4 +114,19 @@ pub(super) fn aggregate_board<'a>(ranking: &'a RankingSystem, name: &str) -> Opt
         "time_signed_in" => &ranking.time_signed_in,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn only_recovers_snapshot_within_ten_minutes_of_midnight_utc() {
+        let midnight = Utc.with_ymd_and_hms(2026, 11, 1, 0, 0, 0).unwrap();
+        assert_eq!(capture_target(midnight), midnight);
+        assert_eq!(capture_target(midnight + TimeDelta::seconds(599)), midnight);
+        assert_eq!(capture_target(midnight + TimeDelta::seconds(600)), midnight + TimeDelta::days(1));
+        assert_eq!(capture_target(midnight - TimeDelta::seconds(1)), midnight);
+    }
 }

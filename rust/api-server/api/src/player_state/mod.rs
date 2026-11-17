@@ -193,36 +193,6 @@ async fn player_location(
     Ok(axum_codec::Codec(resolve_player_location(&state, id as u64, location)))
 }
 
-#[cfg(test)]
-mod current_location_tests {
-    use super::*;
-    use game_module::module_bindings::{ClaimTileState, LocationState};
-
-    #[test]
-    fn location_resolves_claim_unclaimed_and_unknown() {
-        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
-        let state = AppState::new(Default::default(), tx, Default::default());
-        let location = mobile_entity_state::Model {
-            entity_id: 1, chunk_index: 5, timestamp: 0, location_x: 1000, location_z: 2000,
-            destination_x: 1000, destination_z: 2000, dimension: 1, is_walking: false, region: 2,
-        };
-        assert!(matches!(resolve_player_location(&state, 1, Some(location.clone())).current_claim, CurrentClaim::Unknown));
-        state.claim_locations.reset(2);
-        state.claim_locations.finish_initial(2);
-        state.claim_locations.claims_initial(2, &[ClaimTileState { entity_id: 42, claim_id: 99 }]);
-        state.claim_locations.locations_initial(2, &[LocationState { entity_id: 42, chunk_index: 5, x: 1, z: 2, dimension: 1 }]);
-        state.claim_state.insert(99, entity::claim_state::Model {
-            entity_id: 99, owner_player_entity_id: 1, owner_building_entity_id: 0,
-            name: "Test claim".into(), neutral: false, region: 2,
-        });
-        assert!(matches!(resolve_player_location(&state, 1, Some(location.clone())).current_claim,
-            CurrentClaim::Claim { claim_id: 99, name: Some(name) } if name == "Test claim"));
-        state.claim_locations.claim(2, 42, None);
-        assert!(matches!(resolve_player_location(&state, 1, Some(location)).current_claim, CurrentClaim::Unclaimed));
-        assert!(matches!(resolve_player_location(&state, 1, None).current_claim, CurrentClaim::Unknown));
-    }
-}
-
 pub async fn find_player_by_id(
     State(state): State<AppState>,
     Path(id): Path<i64>,
@@ -343,4 +313,34 @@ pub async fn find_player_by_id(
         player_action_state2,
         current_action_state,
     }))
+}
+
+#[cfg(test)]
+mod current_location_tests {
+    use super::*;
+    use game_module::module_bindings::{ClaimTileState, LocationState};
+
+    #[test]
+    fn location_resolves_claim_unclaimed_and_unknown() {
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(Default::default(), tx, Default::default());
+        let location = mobile_entity_state::Model {
+            entity_id: 1, chunk_index: 5, timestamp: 0, location_x: 1000, location_z: 2000,
+            destination_x: 1000, destination_z: 2000, dimension: 1, is_walking: false, region: 2,
+        };
+        assert!(matches!(resolve_player_location(&state, 1, Some(location.clone())).current_claim, CurrentClaim::Unknown));
+        state.claim_locations.reset(2);
+        state.claim_locations.finish_initial(2);
+        state.claim_locations.claims_initial(2, &[ClaimTileState { entity_id: 42, claim_id: 99 }]);
+        state.claim_locations.locations_initial(2, &[LocationState { entity_id: 42, chunk_index: 5, x: 1, z: 2, dimension: 1 }]);
+        state.claim_state.insert(99, entity::claim_state::Model {
+            entity_id: 99, owner_player_entity_id: 1, owner_building_entity_id: 0,
+            name: "Test claim".into(), neutral: false, region: 2,
+        });
+        assert!(matches!(resolve_player_location(&state, 1, Some(location.clone())).current_claim,
+            CurrentClaim::Claim { claim_id: 99, name: Some(name) } if name == "Test claim"));
+        state.claim_locations.claim(2, 42, None);
+        assert!(matches!(resolve_player_location(&state, 1, Some(location)).current_claim, CurrentClaim::Unclaimed));
+        assert!(matches!(resolve_player_location(&state, 1, None).current_claim, CurrentClaim::Unknown));
+    }
 }

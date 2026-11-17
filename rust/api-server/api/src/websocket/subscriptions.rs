@@ -83,14 +83,14 @@ impl OutboundSender {
     pub(crate) fn send(
         &self,
         message: OutboundWebSocketMessages,
-    ) -> Result<(), SendError<OutboundWebSocketMessages>> {
+    ) -> Result<(), Box<SendError<OutboundWebSocketMessages>>> {
         // Avoid even dynamic topic-name allocation in the no-subscriber case.
         if self.interest.has_any()
             && message
                 .topics()
                 .is_some_and(|topics| self.is_interested(&topics))
         {
-            self.inner.send(message)
+            self.inner.send(message).map_err(Box::new)
         } else {
             Ok(())
         }
@@ -103,9 +103,9 @@ impl OutboundSender {
         &self,
         topics: BroadcastTopics,
         make_message: impl FnOnce() -> OutboundWebSocketMessages,
-    ) -> Result<(), SendError<OutboundWebSocketMessages>> {
+    ) -> Result<(), Box<SendError<OutboundWebSocketMessages>>> {
         if self.is_interested(&topics) {
-            self.inner.send(make_message())
+            self.inner.send(make_message()).map_err(Box::new)
         } else {
             Ok(())
         }
@@ -162,7 +162,7 @@ mod tests {
         clients.remove_topic_from_client(&a, &topic, Some(7)).await;
         assert!(clients.interest.matches(&routes), "b still subscribes");
         clients
-            .add_topic_to_client(&a, &"insert_sell_order".into(), None)
+            .add_topic_to_client(&a, "insert_sell_order", None)
             .await;
         clients.remove_client(&a).await;
         clients.remove_client(&a).await;
@@ -177,15 +177,15 @@ mod tests {
         let clients = ClientsState::new();
         let _old = client(&clients, "a").await;
         clients
-            .add_topic_to_client(&"a".into(), &"experience".into(), Some(7))
+            .add_topic_to_client(&"a".into(), "experience", Some(7))
             .await;
         clients
-            .add_topic_to_client(&"a".into(), &"insert_sell_order".into(), None)
+            .add_topic_to_client(&"a".into(), "insert_sell_order", None)
             .await;
         let _replacement = client(&clients, "a").await;
         assert!(!clients.interest.has_any());
         clients
-            .add_topic_to_client(&"a".into(), &"experience".into(), Some(8))
+            .add_topic_to_client(&"a".into(), "experience", Some(8))
             .await;
         assert!(!clients.interest.matches(&experience(7).topics().unwrap()));
         assert!(clients.interest.matches(&experience(8).topics().unwrap()));
@@ -203,11 +203,11 @@ mod tests {
             .send_if_interested(routes(), || panic!("no interested client"))
             .unwrap();
         clients
-            .add_topic_to_client(&id, &"experience".into(), Some(8))
+            .add_topic_to_client(&id, "experience", Some(8))
             .await;
         // An unscoped subscription is not a wildcard for per-player messages.
         clients
-            .add_topic_to_client(&id, &"experience".into(), None)
+            .add_topic_to_client(&id, "experience", None)
             .await;
         sender
             .send_if_interested(routes(), || panic!("wrong player or scope"))
@@ -215,7 +215,7 @@ mod tests {
         assert!(rx.try_recv().is_err());
         for topic in ["experience:Mining", "experience"] {
             clients
-                .add_topic_to_client(&id, &topic.into(), Some(7))
+                .add_topic_to_client(&id, topic, Some(7))
                 .await;
         }
         sender
@@ -251,7 +251,7 @@ mod tests {
         let _rx = client(&clients, "a").await;
         let id = "a".to_owned();
         clients
-            .add_topic_to_client(&id, &"insert_sell_order".into(), None)
+            .add_topic_to_client(&id, "insert_sell_order", None)
             .await;
         assert!(
             clients
@@ -267,7 +267,7 @@ mod tests {
             .await;
         // Repeated removal with a scoped subscription for the same name must not panic.
         clients
-            .add_topic_to_client(&id, &"insert_sell_order".into(), Some(1))
+            .add_topic_to_client(&id, "insert_sell_order", Some(1))
             .await;
         clients
             .remove_topic_from_client(&id, &"insert_sell_order".into(), None)
@@ -278,7 +278,7 @@ mod tests {
             "inventory_insert_player_owner",
         ] {
             clients
-                .add_topic_to_client(&id, &topic.into(), Some(42))
+                .add_topic_to_client(&id, topic, Some(42))
                 .await;
             assert!(
                 clients

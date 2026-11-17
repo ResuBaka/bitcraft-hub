@@ -259,15 +259,14 @@ impl InventoryStateWorker {
                 }
             }
             compare_initial_batch(&mut batch, &mut existing, &mut known_ids, &mut changes);
-            if !changes.is_empty() {
-                if let Err(error) = ::entity::inventory::Entity::insert_many(changes.drain(..))
+            if !changes.is_empty()
+                && let Err(error) = ::entity::inventory::Entity::insert_many(changes.drain(..))
                     .on_conflict(self.on_conflict.clone())
                     .exec(&self.global_app_state.conn)
                     .await
-                {
-                    tracing::error!(%error, region = database_name, "Could not write inventory snapshot batch; skipping stale-row deletion");
-                    return;
-                }
+            {
+                tracing::error!(%error, region = database_name, "Could not write inventory snapshot batch; skipping stale-row deletion");
+                return;
             }
         }
 
@@ -1323,10 +1322,8 @@ mod initial_reconciliation_tests {
             .collect::<HashMap<_, _>>();
         let expected = incoming
             .iter()
-            .filter_map(|model| {
-                (whole_snapshot.remove(&model.entity_id).as_ref() != Some(model))
-                    .then(|| model.clone().into_active_model())
-            })
+            .filter(|&model| whole_snapshot.remove(&model.entity_id).as_ref() != Some(model))
+            .map(|model| model.clone().into_active_model())
             .collect::<Vec<_>>();
         let expected_deletes = whole_snapshot.into_keys().collect::<HashSet<_>>();
 

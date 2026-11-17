@@ -34,15 +34,14 @@ impl Pending {
             .map(|(_, row)| row.into_active_model())
             .collect();
         let mut success = true;
-        if !rows.is_empty() {
-            if let Err(error) = Entity::insert_many(rows)
+        if !rows.is_empty()
+            && let Err(error) = Entity::insert_many(rows)
                 .on_conflict(conflict.clone())
                 .exec(&state.conn)
                 .await
-            {
-                tracing::error!(%error, "Could not persist passive crafts");
-                success = false;
-            }
+        {
+            tracing::error!(%error, "Could not persist passive crafts");
+            success = false;
         }
         let ids: Vec<_> = self.deletes.drain().collect();
         for chunk in ids.chunks(1000) {

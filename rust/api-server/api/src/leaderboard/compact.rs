@@ -453,12 +453,12 @@ impl LeaderboardInner {
             .map(|score| self.buckets.bucket_for(score));
         let new_bucket = new.map(|score| self.buckets.bucket_for(score));
         if old_bucket != new_bucket {
-            if let Some(bucket) = old_bucket {
-                if let Some(count) = self.bucket_counts.get_mut(&bucket) {
-                    *count -= 1;
-                    if *count == 0 {
-                        self.bucket_counts.remove(&bucket);
-                    }
+            if let Some(bucket) = old_bucket
+                && let Some(count) = self.bucket_counts.get_mut(&bucket)
+            {
+                *count -= 1;
+                if *count == 0 {
+                    self.bucket_counts.remove(&bucket);
                 }
             }
             if let Some(bucket) = new_bucket {
@@ -531,6 +531,321 @@ impl LeaderboardInner {
             }
         }
         debug_assert_eq!(self.sorted_players.len(), self.scores.len);
+    }
+}
+
+pub(crate) struct Leaderboard {
+    pub(super) players: Arc<PlayerRegistry>,
+    pub(super) state: Arc<Mutex<BoardState>>,
+    pub(super) data: Arc<RwLock<LeaderboardInner>>,
+    tx: Sender<()>,
+}
+
+pub(super) struct BoardMemory {
+    pub active_players: usize,
+    pub score_slots: usize,
+    pub buffer_bytes: usize,
+    pub pending_changes: usize,
+    pub pending_capacity: usize,
+}
+
+impl Default for Leaderboard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Leaderboard {
+    pub(super) fn reserve_players(&self, count: usize) {
+        {
+            let mut state = self.state.lock();
+            state.scores.reserve_players(count);
+            // Pending maps are swapped through the shared publisher and large
+            // batches are trimmed there. Avoid full-player maps on every board.
+            let pending_count = count.min(MAX_RETAINED_PENDING_CAPACITY);
+            let additional = pending_count.saturating_sub(state.pending.len());
+            state.pending.reserve(additional);
+        }
+        self.data.write().reserve_players(count);
+    }
+
+    pub(super) fn memory_stats(&self) -> BoardMemory {
+        let mut stats = {
+            let state = self.state.lock();
+            BoardMemory {
+                active_players: state.scores.len,
+                score_slots: state.scores.slots(),
+                buffer_bytes: state.scores.buffer_bytes(),
+                pending_changes: state.pending.len(),
+                pending_capacity: state.pending.capacity(),
+            }
+        };
+        let data = self.data.read();
+        stats.buffer_bytes += data.scores.buffer_bytes()
+            + (data.sorted_players.capacity()
+                + data.scratch.capacity()
+                + data.updated_players.capacity()
+                + data.ranks.capacity())
+                * std::mem::size_of::<u32>();
+        stats
+    }
+    pub fn new() -> Self {
+        Self::with_players(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide)
+    }
+
+    pub(super) fn paused(players: Arc<PlayerRegistry>, width: ScoreWidth) -> (Self, Receiver<()>) {
+        let (tx, rx) = bounded(1);
+        (Self::build(players, width, tx), rx)
+    }
+
+    fn build(players: Arc<PlayerRegistry>, width: ScoreWidth, tx: Sender<()>) -> Self {
+        let count = players.capacity_hint.load(AtomicOrdering::Relaxed);
+        let board = Self {
+            players,
+            state: Arc::new(Mutex::new(BoardState {
+                scores: Scores::new(width),
+                pending: HashMap::new(),
+            })),
+            data: Arc::new(RwLock::new(LeaderboardInner::new(width))),
+            tx,
+        };
+        board.reserve_players(count);
+        board
+    }
+
+    #[cfg(test)]
+    pub(super) fn with_worker(
+        players: Arc<PlayerRegistry>,
+        width: ScoreWidth,
+        worker: &RankingWorker,
+    ) -> Self {
+        Self::with_worker_and_buckets(players, width, worker, BucketLayout::default())
+    }
+
+    pub(super) fn with_worker_and_buckets(
+        players: Arc<PlayerRegistry>,
+        width: ScoreWidth,
+        worker: &RankingWorker,
+        buckets: BucketLayout,
+    ) -> Self {
+        let board = Self::build(players, width, worker.wakeup.clone());
+        board.data.write().buckets = buckets;
+        worker.register(&board);
+        board
+    }
+
+    pub(super) fn with_players(players: Arc<PlayerRegistry>, width: ScoreWidth) -> Self {
+        let (board, rx) = Self::paused(players, width);
+        let data = Arc::clone(&board.data);
+        let state = Arc::clone(&board.state);
+        let players = Arc::clone(&board.players);
+        std::thread::spawn(move || Self::worker_loop(data, state, players, rx));
+        board
+    }
+
+    pub(super) fn worker_loop(
+        data: Arc<RwLock<LeaderboardInner>>,
+        state: Arc<Mutex<BoardState>>,
+        players: Arc<PlayerRegistry>,
+        rx: Receiver<()>,
+    ) {
+        let mut last_refresh: Option<Instant> = None;
+        let mut changes = HashMap::new();
+        while rx.recv().is_ok() {
+            if let Some(last_refresh) = last_refresh
+                && let Some(wait) = RANK_REFRESH_INTERVAL.checked_sub(last_refresh.elapsed())
+            {
+                std::thread::sleep(wait);
+            }
+            std::mem::swap(&mut changes, &mut state.lock().pending);
+            if !changes.is_empty() {
+                Self::apply_reused(&data, &players, &mut changes);
+                // Recycle normal batches rather than allocating/freeing a new
+                // map across producer/worker threads every refresh. Do not keep
+                // an unusually large startup map indefinitely.
+                if changes.capacity() > MAX_RETAINED_PENDING_CAPACITY {
+                    changes.shrink_to(4_096);
+                }
+                last_refresh = Some(Instant::now());
+            }
+        }
+    }
+
+    // Deterministic tests and standalone benchmarks publish owned batches.
+    #[allow(dead_code)]
+    pub(super) fn apply_changes(
+        data: &RwLock<LeaderboardInner>,
+        players: &PlayerRegistry,
+        mut changes: HashMap<u32, LeaderboardOp>,
+    ) {
+        Self::apply_reused(data, players, &mut changes);
+    }
+
+    fn apply_reused(
+        data: &RwLock<LeaderboardInner>,
+        players: &PlayerRegistry,
+        changes: &mut HashMap<u32, LeaderboardOp>,
+    ) {
+        if !changes.is_empty() {
+            // No producer holds the registry lock while locking board state.
+            let mut data = data.write();
+            let players = players.inner.read();
+            data.apply(&players, changes);
+        }
+    }
+
+    pub(crate) fn update(&self, user_id: i64, new_xp: i64) {
+        if EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id) {
+            return;
+        }
+        let index = self.players.register(user_id);
+        self.update_index(index, new_xp);
+    }
+
+    pub(super) fn resolve_player(&self, user_id: i64) -> ResolvedPlayer<'_> {
+        ResolvedPlayer {
+            registry: self.players.as_ref(),
+            index: (!EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id))
+                .then(|| self.players.register(user_id)),
+        }
+    }
+
+    pub(super) fn update_resolved(&self, player: &ResolvedPlayer<'_>, new_xp: i64) {
+        if let Some(index) = player.index_for(self) {
+            self.update_index(index, new_xp);
+        }
+    }
+
+    fn update_index(&self, index: u32, new_xp: i64) {
+        let mut state = self.state.lock();
+        let old = state.scores.get(index);
+        if old == Some(new_xp) {
+            return;
+        }
+        state.scores.set(index, Some(new_xp));
+        Self::queue_change(&mut state, index, old, Some(new_xp));
+        drop(state);
+        let _ = self.tx.try_send(());
+    }
+
+    fn queue_change(
+        state: &mut BoardState,
+        index: u32,
+        previous: Option<i64>,
+        latest: Option<i64>,
+    ) {
+        let previous = state
+            .pending
+            .get(&index)
+            .copied()
+            .map(LeaderboardOp::previous_score)
+            .unwrap_or(previous);
+        if previous == latest {
+            state.pending.remove(&index);
+        } else {
+            let op = match (previous, latest) {
+                (None, Some(new_xp)) => LeaderboardOp::Insert { new_xp },
+                (Some(old_xp), Some(new_xp)) => LeaderboardOp::Update { old_xp, new_xp },
+                (Some(xp), None) => LeaderboardOp::Remove { xp },
+                (None, None) => unreachable!(),
+            };
+            state.pending.insert(index, op);
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn has(&self, user_id: &i64) -> bool {
+        self.get_value(user_id).is_some()
+    }
+
+    pub(crate) fn get_value(&self, user_id: &i64) -> Option<i64> {
+        let index = self.players.get(*user_id)?;
+        self.state.lock().scores.get(index)
+    }
+
+    /// Return the last published rank, not a read-your-write rank. In particular,
+    /// a newly inserted player has a score immediately but no rank until the
+    /// asynchronous publisher processes their insertion.
+    pub(crate) fn get_rank(&self, user_id: i64) -> Option<usize> {
+        let index = self.players.get(user_id)?;
+        self.get_rank_index(index)
+    }
+
+    pub(super) fn get_rank_resolved(&self, player: &ResolvedPlayer<'_>) -> Option<usize> {
+        player.index_for(self).and_then(|index| self.get_rank_index(index))
+    }
+
+    fn get_rank_index(&self, index: u32) -> Option<usize> {
+        self.state.lock().scores.get(index)?;
+        let rank = self
+            .data
+            .read()
+            .ranks
+            .get(index as usize)
+            .copied()
+            .unwrap_or(0);
+        (rank != 0).then_some(rank as usize)
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn remove(&self, user_id: i64) {
+        let Some(index) = self.players.get(user_id) else {
+            return;
+        };
+        let mut state = self.state.lock();
+        let Some(old) = state.scores.get(index) else {
+            return;
+        };
+        state.scores.set(index, None);
+        Self::queue_change(&mut state, index, Some(old), None);
+        drop(state);
+        let _ = self.tx.try_send(());
+    }
+
+    pub(crate) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
+        let data = self.data.read();
+        let players = self.players.inner.read();
+        data.sorted_players
+            .iter()
+            .skip(offset)
+            .take(limit)
+            .enumerate()
+            .map(|(position, &index)| LeaderboardEntry {
+                rank: offset + position + 1,
+                user_id: players.ids[index as usize],
+                xp: data.scores.get(index).expect("ranked player has a score"),
+            })
+            .collect()
+    }
+
+    pub fn bucket_distribution(&self) -> Vec<BucketDistribution> {
+        let data = self.data.read();
+        data.bucket_counts
+            .iter()
+            .map(|(&bucket, &count)| {
+                let (min_xp, max_xp) = data.buckets.bucket_bounds(bucket);
+                BucketDistribution {
+                    bucket,
+                    min_xp,
+                    max_xp,
+                    count,
+                }
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(super) fn score_entries(&self) -> Vec<(i64, i64)> {
+        let state = self.state.lock();
+        let players = self.players.inner.read();
+        (0..state.scores.slots())
+            .filter_map(|index| {
+                state
+                    .scores
+                    .get(index as u32)
+                    .map(|xp| (players.ids[index], xp))
+            })
+            .collect()
     }
 }
 
@@ -966,7 +1281,7 @@ mod tests {
         for step in 0..10_000 {
             seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
             let id = ((seed >> 32) % 150) as i64 * 1_000_000_000_000;
-            if seed % 5 == 0 {
+            if seed.is_multiple_of(5) {
                 board.remove(id);
                 reference.remove(&id);
             } else {
@@ -1388,320 +1703,5 @@ mod tests {
             assert!(board.data.read().ranks.capacity() >= 1_000);
             assert_eq!(board.memory_stats().score_slots, 0);
         }
-    }
-}
-
-pub(crate) struct Leaderboard {
-    pub(super) players: Arc<PlayerRegistry>,
-    pub(super) state: Arc<Mutex<BoardState>>,
-    pub(super) data: Arc<RwLock<LeaderboardInner>>,
-    tx: Sender<()>,
-}
-
-pub(super) struct BoardMemory {
-    pub active_players: usize,
-    pub score_slots: usize,
-    pub buffer_bytes: usize,
-    pub pending_changes: usize,
-    pub pending_capacity: usize,
-}
-
-impl Default for Leaderboard {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Leaderboard {
-    pub(super) fn reserve_players(&self, count: usize) {
-        {
-            let mut state = self.state.lock();
-            state.scores.reserve_players(count);
-            // Pending maps are swapped through the shared publisher and large
-            // batches are trimmed there. Avoid full-player maps on every board.
-            let pending_count = count.min(MAX_RETAINED_PENDING_CAPACITY);
-            let additional = pending_count.saturating_sub(state.pending.len());
-            state.pending.reserve(additional);
-        }
-        self.data.write().reserve_players(count);
-    }
-
-    pub(super) fn memory_stats(&self) -> BoardMemory {
-        let mut stats = {
-            let state = self.state.lock();
-            BoardMemory {
-                active_players: state.scores.len,
-                score_slots: state.scores.slots(),
-                buffer_bytes: state.scores.buffer_bytes(),
-                pending_changes: state.pending.len(),
-                pending_capacity: state.pending.capacity(),
-            }
-        };
-        let data = self.data.read();
-        stats.buffer_bytes += data.scores.buffer_bytes()
-            + (data.sorted_players.capacity()
-                + data.scratch.capacity()
-                + data.updated_players.capacity()
-                + data.ranks.capacity())
-                * std::mem::size_of::<u32>();
-        stats
-    }
-    pub fn new() -> Self {
-        Self::with_players(Arc::new(PlayerRegistry::default()), ScoreWidth::Wide)
-    }
-
-    pub(super) fn paused(players: Arc<PlayerRegistry>, width: ScoreWidth) -> (Self, Receiver<()>) {
-        let (tx, rx) = bounded(1);
-        (Self::build(players, width, tx), rx)
-    }
-
-    fn build(players: Arc<PlayerRegistry>, width: ScoreWidth, tx: Sender<()>) -> Self {
-        let count = players.capacity_hint.load(AtomicOrdering::Relaxed);
-        let board = Self {
-            players,
-            state: Arc::new(Mutex::new(BoardState {
-                scores: Scores::new(width),
-                pending: HashMap::new(),
-            })),
-            data: Arc::new(RwLock::new(LeaderboardInner::new(width))),
-            tx,
-        };
-        board.reserve_players(count);
-        board
-    }
-
-    #[cfg(test)]
-    pub(super) fn with_worker(
-        players: Arc<PlayerRegistry>,
-        width: ScoreWidth,
-        worker: &RankingWorker,
-    ) -> Self {
-        Self::with_worker_and_buckets(players, width, worker, BucketLayout::default())
-    }
-
-    pub(super) fn with_worker_and_buckets(
-        players: Arc<PlayerRegistry>,
-        width: ScoreWidth,
-        worker: &RankingWorker,
-        buckets: BucketLayout,
-    ) -> Self {
-        let board = Self::build(players, width, worker.wakeup.clone());
-        board.data.write().buckets = buckets;
-        worker.register(&board);
-        board
-    }
-
-    pub(super) fn with_players(players: Arc<PlayerRegistry>, width: ScoreWidth) -> Self {
-        let (board, rx) = Self::paused(players, width);
-        let data = Arc::clone(&board.data);
-        let state = Arc::clone(&board.state);
-        let players = Arc::clone(&board.players);
-        std::thread::spawn(move || Self::worker_loop(data, state, players, rx));
-        board
-    }
-
-    pub(super) fn worker_loop(
-        data: Arc<RwLock<LeaderboardInner>>,
-        state: Arc<Mutex<BoardState>>,
-        players: Arc<PlayerRegistry>,
-        rx: Receiver<()>,
-    ) {
-        let mut last_refresh: Option<Instant> = None;
-        let mut changes = HashMap::new();
-        while rx.recv().is_ok() {
-            if let Some(last_refresh) = last_refresh
-                && let Some(wait) = RANK_REFRESH_INTERVAL.checked_sub(last_refresh.elapsed())
-            {
-                std::thread::sleep(wait);
-            }
-            std::mem::swap(&mut changes, &mut state.lock().pending);
-            if !changes.is_empty() {
-                Self::apply_reused(&data, &players, &mut changes);
-                // Recycle normal batches rather than allocating/freeing a new
-                // map across producer/worker threads every refresh. Do not keep
-                // an unusually large startup map indefinitely.
-                if changes.capacity() > MAX_RETAINED_PENDING_CAPACITY {
-                    changes.shrink_to(4_096);
-                }
-                last_refresh = Some(Instant::now());
-            }
-        }
-    }
-
-    // Deterministic tests and standalone benchmarks publish owned batches.
-    #[allow(dead_code)]
-    pub(super) fn apply_changes(
-        data: &RwLock<LeaderboardInner>,
-        players: &PlayerRegistry,
-        mut changes: HashMap<u32, LeaderboardOp>,
-    ) {
-        Self::apply_reused(data, players, &mut changes);
-    }
-
-    fn apply_reused(
-        data: &RwLock<LeaderboardInner>,
-        players: &PlayerRegistry,
-        changes: &mut HashMap<u32, LeaderboardOp>,
-    ) {
-        if !changes.is_empty() {
-            // No producer holds the registry lock while locking board state.
-            let mut data = data.write();
-            let players = players.inner.read();
-            data.apply(&players, changes);
-        }
-    }
-
-    pub(crate) fn update(&self, user_id: i64, new_xp: i64) {
-        if EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id) {
-            return;
-        }
-        let index = self.players.register(user_id);
-        self.update_index(index, new_xp);
-    }
-
-    pub(super) fn resolve_player(&self, user_id: i64) -> ResolvedPlayer<'_> {
-        ResolvedPlayer {
-            registry: self.players.as_ref(),
-            index: (!EXCLUDED_USERS_FROM_LEADERBOARD.contains(&user_id))
-                .then(|| self.players.register(user_id)),
-        }
-    }
-
-    pub(super) fn update_resolved(&self, player: &ResolvedPlayer<'_>, new_xp: i64) {
-        if let Some(index) = player.index_for(self) {
-            self.update_index(index, new_xp);
-        }
-    }
-
-    fn update_index(&self, index: u32, new_xp: i64) {
-        let mut state = self.state.lock();
-        let old = state.scores.get(index);
-        if old == Some(new_xp) {
-            return;
-        }
-        state.scores.set(index, Some(new_xp));
-        Self::queue_change(&mut state, index, old, Some(new_xp));
-        drop(state);
-        let _ = self.tx.try_send(());
-    }
-
-    fn queue_change(
-        state: &mut BoardState,
-        index: u32,
-        previous: Option<i64>,
-        latest: Option<i64>,
-    ) {
-        let previous = state
-            .pending
-            .get(&index)
-            .copied()
-            .map(LeaderboardOp::previous_score)
-            .unwrap_or(previous);
-        if previous == latest {
-            state.pending.remove(&index);
-        } else {
-            let op = match (previous, latest) {
-                (None, Some(new_xp)) => LeaderboardOp::Insert { new_xp },
-                (Some(old_xp), Some(new_xp)) => LeaderboardOp::Update { old_xp, new_xp },
-                (Some(xp), None) => LeaderboardOp::Remove { xp },
-                (None, None) => unreachable!(),
-            };
-            state.pending.insert(index, op);
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn has(&self, user_id: &i64) -> bool {
-        self.get_value(user_id).is_some()
-    }
-
-    pub(crate) fn get_value(&self, user_id: &i64) -> Option<i64> {
-        let index = self.players.get(*user_id)?;
-        self.state.lock().scores.get(index)
-    }
-
-    /// Return the last published rank, not a read-your-write rank. In particular,
-    /// a newly inserted player has a score immediately but no rank until the
-    /// asynchronous publisher processes their insertion.
-    pub(crate) fn get_rank(&self, user_id: i64) -> Option<usize> {
-        let index = self.players.get(user_id)?;
-        self.get_rank_index(index)
-    }
-
-    pub(super) fn get_rank_resolved(&self, player: &ResolvedPlayer<'_>) -> Option<usize> {
-        player.index_for(self).and_then(|index| self.get_rank_index(index))
-    }
-
-    fn get_rank_index(&self, index: u32) -> Option<usize> {
-        self.state.lock().scores.get(index)?;
-        let rank = self
-            .data
-            .read()
-            .ranks
-            .get(index as usize)
-            .copied()
-            .unwrap_or(0);
-        (rank != 0).then_some(rank as usize)
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn remove(&self, user_id: i64) {
-        let Some(index) = self.players.get(user_id) else {
-            return;
-        };
-        let mut state = self.state.lock();
-        let Some(old) = state.scores.get(index) else {
-            return;
-        };
-        state.scores.set(index, None);
-        Self::queue_change(&mut state, index, Some(old), None);
-        drop(state);
-        let _ = self.tx.try_send(());
-    }
-
-    pub(crate) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
-        let data = self.data.read();
-        let players = self.players.inner.read();
-        data.sorted_players
-            .iter()
-            .skip(offset)
-            .take(limit)
-            .enumerate()
-            .map(|(position, &index)| LeaderboardEntry {
-                rank: offset + position + 1,
-                user_id: players.ids[index as usize],
-                xp: data.scores.get(index).expect("ranked player has a score"),
-            })
-            .collect()
-    }
-
-    pub fn bucket_distribution(&self) -> Vec<BucketDistribution> {
-        let data = self.data.read();
-        data.bucket_counts
-            .iter()
-            .map(|(&bucket, &count)| {
-                let (min_xp, max_xp) = data.buckets.bucket_bounds(bucket);
-                BucketDistribution {
-                    bucket,
-                    min_xp,
-                    max_xp,
-                    count,
-                }
-            })
-            .collect()
-    }
-
-    #[cfg(test)]
-    pub(super) fn score_entries(&self) -> Vec<(i64, i64)> {
-        let state = self.state.lock();
-        let players = self.players.inner.read();
-        (0..state.scores.slots())
-            .filter_map(|index| {
-                state
-                    .scores
-                    .get(index as u32)
-                    .map(|xp| (players.ids[index], xp))
-            })
-            .collect()
     }
 }

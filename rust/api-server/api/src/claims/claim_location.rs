@@ -196,7 +196,7 @@ impl ClaimLocationSubscriptions {
 /// HexCoordinates rounding -> OffsetCoordinatesSmall conversion.
 pub(crate) fn mobile_tile(location_x: i32, location_z: i32) -> (i32, i32) {
     const OUTER: f32 = 10.0 / 3.0;
-    const INNER: f32 = OUTER * 0.866025404_f32;
+    const INNER: f32 = OUTER * 0.866_025_4_f32;
     let axial_x = (location_x - location_z / 2) as f32 / 1000.0;
     let axial_z = location_z as f32 / 1000.0;
     let world_x = 2.0 * axial_x * INNER + axial_z * INNER;

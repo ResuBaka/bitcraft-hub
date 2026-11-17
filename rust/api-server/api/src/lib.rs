@@ -218,10 +218,10 @@ async fn serve_with_shutdown(
         if server_result.is_none() {
             let _ = (&mut server).await;
         }
-        if let Some(task) = &mut broadcaster {
-            if !task.is_finished() {
-                let _ = task.await;
-            }
+        if let Some(task) = &mut broadcaster
+            && !task.is_finished()
+        {
+            let _ = task.await;
         }
         // No further ranking writes can be accepted after tracked tasks stop.
         state.ranking_system.shutdown().await;
@@ -624,7 +624,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
 
                                 inner_state
                                     .clients_state
-                                    .add_topic_to_client(&inner_id, &topic.to_string(), Some(id))
+                                    .add_topic_to_client(&inner_id, topic, Some(id))
                                     .await;
 
                                 #[allow(clippy::single_match)]
@@ -656,7 +656,7 @@ async fn websocket(stream: WebSocket, state: AppState, websocket_options: QueryW
                             } else {
                                 inner_state
                                     .clients_state
-                                    .add_topic_to_client(&inner_id, &topic.to_string(), None)
+                                    .add_topic_to_client(&inner_id, &topic, None)
                                     .await;
                             }
                         }
@@ -787,7 +787,7 @@ mod websocket_broadcast_tests {
             .await;
         for topic in ["experience:Mining", "experience"] {
             clients
-                .add_topic_to_client(&id, &topic.to_string(), Some(7))
+                .add_topic_to_client(&id, topic, Some(7))
                 .await;
         }
         for xp in [100, 200] {
@@ -846,7 +846,7 @@ mod websocket_broadcast_tests {
         };
         // A keyed subscription to this name must not panic or match None.
         clients
-            .add_topic_to_client(&id, &"insert_sell_order".into(), Some(999))
+            .add_topic_to_client(&id, "insert_sell_order", Some(999))
             .await;
         let message = OutboundWebSocketMessages::InsertSellOrder(order);
         clients
@@ -854,7 +854,7 @@ mod websocket_broadcast_tests {
             .await;
         assert!(rx.try_recv().unwrap().is_none());
         clients
-            .add_topic_to_client(&id, &"insert_sell_order".into(), None)
+            .add_topic_to_client(&id, "insert_sell_order", None)
             .await;
         clients
             .broadcast_topics(message.topics().unwrap(), &message)
@@ -880,7 +880,7 @@ mod websocket_broadcast_tests {
                 .add_client(id.into(), tx, WebsocketEncoding::Json)
                 .await;
             clients
-                .add_topic_to_client(&id.into(), &"total_experience".into(), Some(7))
+                .add_topic_to_client(&id.into(), "total_experience", Some(7))
                 .await;
         }
         for xp in [1, 2] {
@@ -1256,7 +1256,7 @@ impl AppState {
         let (tx, rx) = kanal::bounded_async(100);
         self.clients_state.add_client(id.clone(), tx, WebsocketEncoding::Json).await;
         for &(topic, topic_id) in topics {
-            self.clients_state.add_topic_to_client(&id, &topic.to_owned(), topic_id).await;
+            self.clients_state.add_topic_to_client(&id, topic, topic_id).await;
         }
         rx
     }
@@ -1679,15 +1679,15 @@ impl ClientsState {
     pub(crate) async fn add_topic_to_client(
         &self,
         id: &String,
-        topic: &String,
+        topic: &str,
         topic_id: Option<i64>,
     ) {
         let mut clients = self.clients.write().await;
         if let Some(client) = clients.get_mut(id) {
             let added = if let Some(topic_id) = topic_id {
-                client.1.entry(topic.clone()).or_default().insert(topic_id)
+                client.1.entry(topic.to_owned()).or_default().insert(topic_id)
             } else {
-                client.3.insert(topic.clone())
+                client.3.insert(topic.to_owned())
             };
             if added {
                 self.interest.add(topic, topic_id);

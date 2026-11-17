@@ -35,15 +35,14 @@ impl Pending {
             .drain()
             .map(|(_, model)| model.into_active_model())
             .collect();
-        if !rows.is_empty() {
-            if let Err(error) = Entity::insert_many(rows)
+        if !rows.is_empty()
+            && let Err(error) = Entity::insert_many(rows)
                 .on_conflict(conflict.clone())
                 .exec(&state.conn)
                 .await
-            {
-                tracing::error!(%error, "Could not insert public progressive actions");
-                success = false;
-            }
+        {
+            tracing::error!(%error, "Could not insert public progressive actions");
+            success = false;
         }
         let ids: Vec<_> = self.deletes.drain().collect();
         for chunk in ids.chunks(1000) {

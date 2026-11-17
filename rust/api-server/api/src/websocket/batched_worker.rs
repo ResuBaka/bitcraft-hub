@@ -160,9 +160,8 @@ mod tests {
             self.messages.push(new);
         }
         async fn flush(&mut self) {
-            self.flushed
-                .send(self.messages.drain(..).collect())
-                .unwrap();
+            // Keep the worker's reusable allocation across batch flushes.
+            self.flushed.send(self.messages.split_off(0)).unwrap();
         }
     }
 
@@ -264,7 +263,7 @@ mod tests {
             .unwrap();
         assert_eq!(batches.recv().await, Some(vec![2]));
         assert!(worker.messages.is_empty());
-        assert!(worker.messages.capacity() > 0); // drain preserved the allocation
+        assert!(worker.messages.capacity() > 0); // flush preserved the allocation
     }
 
     #[tokio::test]

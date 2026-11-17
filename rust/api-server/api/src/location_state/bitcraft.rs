@@ -730,7 +730,7 @@ mod tests {
             random = random.wrapping_mul(6364136223846793005).wrapping_add(1);
             let id = (random >> 32) % 31;
             let region = (step % 9 + 1) as Region;
-            if random % 3 == 0 {
+            if random.is_multiple_of(3) {
                 worker.handle_remove(location(id, step), region).await;
                 expected.insert(id as i64, None);
             } else {

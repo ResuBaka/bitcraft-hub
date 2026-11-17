@@ -8,6 +8,110 @@ pub(crate) struct WorkerReceiveMetrics {
     handles: OnceLock<(metrics::Counter, metrics::Gauge)>,
 }
 
+impl WorkerReceiveMetrics {
+    pub(crate) fn new(worker: &'static str) -> Self {
+        Self {
+            worker,
+            handles: OnceLock::new(),
+        }
+    }
+
+    pub(crate) fn record(&self, count: usize) {
+        if count == 0 {
+            return;
+        }
+        let (received, batch_size) = self.handles.get_or_init(|| {
+            (
+                metrics::counter!("worker_queue_received_total", "worker" => self.worker),
+                metrics::gauge!("worker_queue_receive_batch_size", "worker" => self.worker),
+            )
+        });
+        received.increment(count as u64);
+        batch_size.set(count as f64);
+    }
+}
+
+pub(super) struct WorkerSendMetrics {
+    worker: &'static str,
+    sent: OnceLock<metrics::Counter>,
+    errors: OnceLock<metrics::Counter>,
+}
+
+impl WorkerSendMetrics {
+    pub(super) fn new(worker: &'static str) -> Self {
+        Self {
+            worker,
+            sent: OnceLock::new(),
+            errors: OnceLock::new(),
+        }
+    }
+
+    pub(super) fn send<T>(
+        &self,
+        tx: &super::worker_channel::UnboundedSender<super::SpacetimeUpdateMessages<T>>,
+        message: super::SpacetimeUpdateMessages<T>,
+    ) {
+        self.sent
+            .get_or_init(|| metrics::counter!("worker_queue_sent_total", "worker" => self.worker))
+            .increment(1);
+        if tx.send(message).is_err() {
+            self.errors
+                .get_or_init(
+                    || metrics::counter!("worker_queue_send_errors_total", "worker" => self.worker),
+                )
+                .increment(1);
+        }
+    }
+}
+
+pub(super) struct ListenerMetrics {
+    table: &'static str,
+    database: String,
+    kind: &'static str,
+    // Fixed event kinds use direct slots rather than a per-message hash lookup.
+    events: [OnceLock<metrics::Counter>; 6],
+}
+
+impl ListenerMetrics {
+    pub(super) fn new(table: &'static str, database: String, kind: &'static str) -> Self {
+        Self {
+            table,
+            database,
+            kind,
+            events: std::array::from_fn(|_| OnceLock::new()),
+        }
+    }
+
+    pub(super) fn record(
+        &self,
+        event: &spacetimedb_sdk::Event<game_module::module_bindings::Reducer>,
+    ) {
+        use spacetimedb_sdk::__codegen::Reducer;
+        use spacetimedb_sdk::Event;
+        let (slot, reducer) = match event {
+            Event::Reducer(event) => {
+                // Reducer names are dynamic. Keep their original registration
+                // path rather than introducing a locked cache in each callback.
+                self.counter(event.reducer.reducer_name()).increment(1);
+                return;
+            }
+            Event::SubscribeApplied => (0, "subscribe_applied"),
+            Event::UnsubscribeApplied => (1, "unsubscribe_applied"),
+            Event::Disconnected => (2, "disconnected"),
+            Event::SubscribeError(_) => (3, "subscribe_error"),
+            Event::Transaction => (4, "transaction"),
+            _ => (5, "none"),
+        };
+        self.events[slot]
+            .get_or_init(|| self.counter(reducer))
+            .increment(1);
+    }
+
+    fn counter(&self, reducer: &str) -> metrics::Counter {
+        metrics::counter!("game_message_events", "table" => self.table, "database" => self.database.clone(), "type" => self.kind, "reducer" => reducer.to_owned())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,109 +257,5 @@ mod tests {
                 .count(),
             16
         );
-    }
-}
-
-impl WorkerReceiveMetrics {
-    pub(crate) fn new(worker: &'static str) -> Self {
-        Self {
-            worker,
-            handles: OnceLock::new(),
-        }
-    }
-
-    pub(crate) fn record(&self, count: usize) {
-        if count == 0 {
-            return;
-        }
-        let (received, batch_size) = self.handles.get_or_init(|| {
-            (
-                metrics::counter!("worker_queue_received_total", "worker" => self.worker),
-                metrics::gauge!("worker_queue_receive_batch_size", "worker" => self.worker),
-            )
-        });
-        received.increment(count as u64);
-        batch_size.set(count as f64);
-    }
-}
-
-pub(super) struct WorkerSendMetrics {
-    worker: &'static str,
-    sent: OnceLock<metrics::Counter>,
-    errors: OnceLock<metrics::Counter>,
-}
-
-impl WorkerSendMetrics {
-    pub(super) fn new(worker: &'static str) -> Self {
-        Self {
-            worker,
-            sent: OnceLock::new(),
-            errors: OnceLock::new(),
-        }
-    }
-
-    pub(super) fn send<T>(
-        &self,
-        tx: &super::worker_channel::UnboundedSender<super::SpacetimeUpdateMessages<T>>,
-        message: super::SpacetimeUpdateMessages<T>,
-    ) {
-        self.sent
-            .get_or_init(|| metrics::counter!("worker_queue_sent_total", "worker" => self.worker))
-            .increment(1);
-        if tx.send(message).is_err() {
-            self.errors
-                .get_or_init(
-                    || metrics::counter!("worker_queue_send_errors_total", "worker" => self.worker),
-                )
-                .increment(1);
-        }
-    }
-}
-
-pub(super) struct ListenerMetrics {
-    table: &'static str,
-    database: String,
-    kind: &'static str,
-    // Fixed event kinds use direct slots rather than a per-message hash lookup.
-    events: [OnceLock<metrics::Counter>; 6],
-}
-
-impl ListenerMetrics {
-    pub(super) fn new(table: &'static str, database: String, kind: &'static str) -> Self {
-        Self {
-            table,
-            database,
-            kind,
-            events: std::array::from_fn(|_| OnceLock::new()),
-        }
-    }
-
-    pub(super) fn record(
-        &self,
-        event: &spacetimedb_sdk::Event<game_module::module_bindings::Reducer>,
-    ) {
-        use spacetimedb_sdk::__codegen::Reducer;
-        use spacetimedb_sdk::Event;
-        let (slot, reducer) = match event {
-            Event::Reducer(event) => {
-                // Reducer names are dynamic. Keep their original registration
-                // path rather than introducing a locked cache in each callback.
-                self.counter(event.reducer.reducer_name()).increment(1);
-                return;
-            }
-            Event::SubscribeApplied => (0, "subscribe_applied"),
-            Event::UnsubscribeApplied => (1, "unsubscribe_applied"),
-            Event::Disconnected => (2, "disconnected"),
-            Event::SubscribeError(_) => (3, "subscribe_error"),
-            Event::Transaction => (4, "transaction"),
-            _ => (5, "none"),
-        };
-        self.events[slot]
-            .get_or_init(|| self.counter(reducer))
-            .increment(1);
-    }
-
-    fn counter(&self, reducer: &str) -> metrics::Counter {
-        metrics::counter!("game_message_events", "table" => self.table, "database" => self.database.clone(), "type" => self.kind, "reducer" => reducer.to_owned())
     }
 }

@@ -667,10 +667,10 @@ async fn assemble(
                 .get(&building.4)
                 .is_some_and(|members| members.contains(&p.owner_entity_id)),
             recipe_id: p.recipe_id,
-            recipe_name: recipe.as_ref().map(|r| recipe_name(&state, r)),
+            recipe_name: recipe.as_ref().map(|r| recipe_name(state, r)),
             outputs: recipe
                 .as_ref()
-                .map(|r| recipe_outputs(&state, r))
+                .map(|r| recipe_outputs(state, r))
                 .unwrap_or_default(),
             kind: "Active",
             status,
@@ -706,10 +706,10 @@ async fn assemble(
                 .get(&building.4)
                 .is_some_and(|members| members.contains(&p.owner_entity_id)),
             recipe_id: p.recipe_id,
-            recipe_name: recipe.as_ref().map(|r| recipe_name(&state, r)),
+            recipe_name: recipe.as_ref().map(|r| recipe_name(state, r)),
             outputs: recipe
                 .as_ref()
-                .map(|r| recipe_outputs(&state, r))
+                .map(|r| recipe_outputs(state, r))
                 .unwrap_or_default(),
             kind: "Passive",
             status: match p.status {

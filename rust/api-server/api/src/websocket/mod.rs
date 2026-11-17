@@ -51,7 +51,9 @@ pub(crate) mod initial_batches;
 pub(crate) mod initial_sync;
 mod metric_handles;
 mod claim_locations;
+#[expect(dead_code, reason = "Full overworld subscriptions are currently disabled")]
 mod overworld;
+#[expect(dead_code, reason = "Portal dimension subscriptions are currently disabled")]
 mod portal_locations;
 mod startup;
 pub(crate) use metric_handles::WorkerReceiveMetrics;
@@ -102,9 +104,8 @@ fn next_reconnect_failure_count(previous: u32, uptime: Option<Duration>) -> u32 
     }
 }
 
-fn reconnect_delay(tries: u32, jitter_secs: u64) -> Duration {
-    let base_wait_secs = (u64::from(tries.max(1)) * rand::rng().random_range(15..=45)).min(60);
-    Duration::from_secs(base_wait_secs + jitter_secs.min(0))
+fn reconnect_delay(tries: u32, base_wait_secs: u64) -> Duration {
+    Duration::from_secs((u64::from(tries.max(1)) * base_wait_secs.clamp(15, 45)).min(60))
 }
 
 fn send_worker_message<T>(
@@ -300,6 +301,7 @@ macro_rules! setup_spacetime_db_listeners {
     };
 }
 
+#[expect(dead_code, reason = "The global database connection is currently disabled")]
 fn connect_to_db_global(
     global_app_state: AppState,
     config: &Config,
@@ -933,7 +935,7 @@ async fn connect_to_db_logic(
     );
     // Do not send an empty subscription request: keep the connection running
     // without subscriptions when isolating connection/worker RSS.
-    let portal_dimensions = (!config.spacetimedb.skip_state_tables)
+    let _portal_dimensions = (!config.spacetimedb.skip_state_tables)
         .then(|| portal_locations::listen(&ctx));
     let has_subscription = !queries.is_empty();
     if has_subscription {
@@ -960,7 +962,7 @@ async fn connect_to_db_logic(
             if let Some(done) = startup_done.take() {
                 let _ = done.send(());
             }
-            // if let Some(dimensions) = portal_dimensions {
+            // if let Some(dimensions) = _portal_dimensions {
             //     tokio::try_join!(
             //         overworld::subscribe(&ctx),
             //         // portal_locations::subscribe(&ctx, dimensions),
@@ -983,7 +985,7 @@ async fn connect_to_db_logic(
         .connection_state
         .insert(tmp_disconnect_db_name.clone(), false);
 
-    result.map_err(anyhow::Error::from)
+    result
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
@@ -1096,10 +1098,9 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let mut remove_desc = false;
 
-        let tmp_conf = config.clone();
-        let tmp_global_app_state = global_app_state.clone();
-        let tmp_database = config.spacetimedb.database.clone();
-
+        // let tmp_conf = config.clone();
+        // let tmp_global_app_state = global_app_state.clone();
+        // let tmp_database = config.spacetimedb.database.clone();
         // let result = connect_to_db_global(tmp_global_app_state, &tmp_conf, &tmp_database);
         //
         // if let Err(error) = result {
@@ -1309,8 +1310,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             break;
                         }
 
-                        let jitter_secs = rand::rng().random_range(0..=15);
-                        let wait = reconnect_delay(tries, jitter_secs);
+                        let base_wait_secs = rand::rng().random_range(15..=45);
+                        let wait = reconnect_delay(tries, base_wait_secs);
 
                         tracing::warn!(
                             region = tmp_database,
@@ -2149,14 +2150,15 @@ mod tests {
     }
 
     #[test]
-    fn reconnect_backoff_is_capped_and_jitter_is_bounded() {
-        assert_eq!(reconnect_delay(0, 0), Duration::from_secs(45));
-        assert_eq!(reconnect_delay(1, 90), Duration::from_secs(135));
-        assert_eq!(reconnect_delay(2, 0), Duration::from_secs(90));
-        assert_eq!(reconnect_delay(7, 0), Duration::from_secs(300));
+    fn reconnect_backoff_is_capped_and_random_base_is_bounded() {
+        assert_eq!(reconnect_delay(0, 0), Duration::from_secs(15));
+        assert_eq!(reconnect_delay(1, 45), Duration::from_secs(45));
+        assert_eq!(reconnect_delay(2, 15), Duration::from_secs(30));
+        assert_eq!(reconnect_delay(2, 45), Duration::from_secs(60));
+        assert_eq!(reconnect_delay(7, 15), Duration::from_secs(60));
         assert_eq!(
             reconnect_delay(u32::MAX, u64::MAX),
-            Duration::from_secs(390)
+            Duration::from_secs(60)
         );
         assert_eq!(next_reconnect_failure_count(u32::MAX, None), u32::MAX);
     }

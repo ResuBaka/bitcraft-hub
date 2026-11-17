@@ -56,7 +56,7 @@ async fn write_housing_batches<E: EntityTrait>(
     let fixed_bytes = std::mem::size_of::<E::ActiveModel>()
         .saturating_add(E::Column::iter().count() * ESTIMATED_SQL_BYTES_PER_COLUMN);
     let estimate = |row: &E::ActiveModel| fixed_bytes.saturating_add(extra_payload_bytes(row));
-    let first_len = write_batch_len(rows, budget, &estimate);
+    let first_len = write_batch_len(rows, budget, estimate);
     if first_len == rows.len() {
         if write_housing_chunk::<E>(conn, on_conflict, rows).await? == 0 {
             // exec() previously reported this as RecordNotInserted. Do not
@@ -70,7 +70,7 @@ async fn write_housing_batches<E: EntityTrait>(
         let mut remaining = rows;
         let mut affected = 0u64;
         while !remaining.is_empty() {
-            let len = write_batch_len(remaining, budget, &estimate);
+            let len = write_batch_len(remaining, budget, estimate);
             affected = affected.saturating_add(
                 write_housing_chunk::<E>(&transaction, on_conflict, &remaining[..len]).await?,
             );
