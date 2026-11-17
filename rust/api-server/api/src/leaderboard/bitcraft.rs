@@ -135,6 +135,14 @@ mod initial_tests {
     use super::*;
     use game_module::module_bindings::ExperienceStack;
 
+    async fn subscribe_xp(state: &AppState) -> kanal::AsyncReceiver<OutboundWebSocketMessages> {
+        state.subscribe_test_client(&[
+            ("level", Some(1)), ("experience", Some(1)),
+            ("total_experience", Some(1)), ("total_adventure_experience", Some(1)),
+            ("total_profession_experience", Some(1)),
+        ]).await
+    }
+
     fn experience(player: u64, skills: &[(i32, i32)]) -> ExperienceState {
         ExperienceState {
             entity_id: player,
@@ -484,6 +492,8 @@ mod initial_tests {
                 Some(i64::from(row.experience))
             );
         }
+        state.ranking_system.time_played.update(ID, 100);
+        state.ranking_system.time_signed_in.update(ID, 7200);
         state.ranking_system.shutdown().await;
         let response = super::super::player_leaderboard(State(state.clone()), Path(ID))
             .await
@@ -499,6 +509,12 @@ mod initial_tests {
         assert!(!response.contains_key("skill-12"));
         let top = super::super::get_top_100(State(state)).await.unwrap().0;
         assert!(top.leaderboard["skill-12"].is_empty());
+        assert!(
+            matches!(&top.leaderboard["Time Online"][0], super::super::RankType::Time(value) if value.player_id == ID && value.time_played == 7200 && value.rank == 1)
+        );
+        assert!(
+            matches!(&top.leaderboard["Time Played"][0], super::super::RankType::Time(value) if value.player_id == ID && value.time_played == 100 && value.rank == 1)
+        );
         let queries = db.into_transaction_log();
         assert_eq!(queries.len(), 4);
         assert!(
@@ -534,6 +550,7 @@ mod initial_tests {
             tx,
             Default::default(),
         );
+        let _subscriber = subscribe_xp(&state).await;
         for (id, category) in [(10, 1), (11, 2), (12, 0)] {
             state.skill_desc.insert(
                 id,
@@ -700,6 +717,7 @@ mod initial_tests {
         for &(old, new) in cases {
             let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
             let state = AppState::new(Default::default(), tx, Default::default());
+            let _subscriber = subscribe_xp(&state).await;
             for (id, category) in [(10, 1), (11, 2), (12, 0)] {
                 state.skill_desc.insert(
                     id,
@@ -887,6 +905,7 @@ mod initial_tests {
                 tx,
                 Default::default(),
             );
+            let _subscriber = subscribe_xp(&state).await;
             state.skill_desc.insert(
                 10,
                 ::entity::skill_desc::Model {
@@ -930,6 +949,7 @@ mod initial_tests {
             tx,
             Default::default(),
         );
+        let _subscriber = subscribe_xp(&state).await;
         let mut worker = ExperienceStateWorker::new(state.clone(), 100, Duration::from_secs(10));
         let row = |quantity| ExperienceState {
             entity_id: 1,
@@ -1064,6 +1084,9 @@ mod initial_tests {
             .into_connection();
         let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db.clone(), tx, Default::default());
+        let _subscriber = state.subscribe_test_client(&[
+            ("experience_history", Some(1)), ("claim_experience_history", Some(99)),
+        ]).await;
         let worker = start_experience_state_db_worker(state);
         let event = ObservedClaimExperience {
             recorded_at: chrono::Utc::now(), player_id: 1, skill_id: 10, previous_experience: 100, experience: 120,

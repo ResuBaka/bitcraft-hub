@@ -255,6 +255,7 @@ struct WorkerTask {
 pub(super) struct RankingWorker {
     tasks: Arc<Mutex<Vec<WorkerTask>>>,
     wakeup: Sender<()>,
+    published: tokio::sync::watch::Sender<u64>,
     stopping: Arc<AtomicBool>,
     thread: Mutex<Option<std::thread::JoinHandle<()>>>,
 }
@@ -264,6 +265,8 @@ impl RankingWorker {
         let tasks = Arc::new(Mutex::new(Vec::<WorkerTask>::new()));
         let worker_tasks = Arc::clone(&tasks);
         let (wakeup, rx) = bounded(1);
+        let (published, _) = tokio::sync::watch::channel(0u64);
+        let publication = published.clone();
         let stopping = Arc::new(AtomicBool::new(false));
         let stop = stopping.clone();
         let thread = std::thread::spawn(move || {
@@ -305,6 +308,7 @@ impl RankingWorker {
                 }
                 if published {
                     last_refresh = Some(Instant::now());
+                    publication.send_modify(|revision| *revision = revision.wrapping_add(1));
                 }
                 if final_pass {
                     break;
@@ -314,9 +318,14 @@ impl RankingWorker {
         Self {
             tasks,
             wakeup,
+            published,
             stopping,
             thread: Mutex::new(Some(thread)),
         }
+    }
+
+    pub(super) fn subscribe(&self) -> tokio::sync::watch::Receiver<u64> {
+        self.published.subscribe()
     }
 
     /// Call only after score producers stop. The final wake publishes pending
@@ -1166,6 +1175,23 @@ mod tests {
             );
             std::thread::yield_now();
         }
+    }
+
+    #[test]
+    fn publication_notification_follows_applied_rankings() {
+        let worker = RankingWorker::new();
+        let mut published = worker.subscribe();
+        let board = Leaderboard::with_worker(
+            Arc::new(PlayerRegistry::default()),
+            ScoreWidth::Wide,
+            &worker,
+        );
+        board.update(42, 100);
+        wait_for(|| published.has_changed().unwrap());
+        published.borrow_and_update();
+        assert_eq!(board.get_rank(42), Some(1));
+        assert_eq!(board.get_range(0, 1)[0].xp, 100);
+        worker.stop().unwrap().join().unwrap();
     }
 
     #[test]

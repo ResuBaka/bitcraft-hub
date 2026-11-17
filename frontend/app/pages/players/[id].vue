@@ -14,12 +14,17 @@ import type { RankType } from "~/types/RankType";
 import type { TravelerTaskDesc } from "~/types/TravelerTaskDesc";
 import { useDelayedPending } from "~/utils";
 import HouseDetails from "~/components/Bitcraft/HouseDetails.vue";
+import ClaimTabCrafting from "~/components/Bitcraft/Claim/ClaimTabCrafting.vue";
 import { inventoryMatchesSearch } from "~/utils/inventorySearch";
+import { socialUrls } from "~/utils/socialMetadata";
 
 const toast = useToast();
 
 const page = ref(1);
 const route = useRoute();
+const selectedSection = ref("overview");
+const sectionsOpen = ref(false);
+const desktopSidebarOpen = ref(true);
 const numberFormat = new Intl.NumberFormat(undefined);
 const nDate = Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -510,9 +515,24 @@ const getRankName = (rank: number) => {
   }
 };
 
+const playerTitle = computed(() => `Player ${playerData.value?.username || route.params.id}`);
+const playerDescription = computed(() => `View ${playerTitle.value} on BitCraft Hub, including skills, claims, crafting projects and inventories.`);
+const requestUrl = useRequestURL();
+const socialConfig = useRuntimeConfig();
+const playerSocial = computed(() => socialUrls(requestUrl.origin, socialConfig.public.siteUrl, `/players/${route.params.id}`, socialConfig.public.socialImage));
 useSeoMeta({
-  title: () => `Player ${playerData.value?.username ?? route.params.id}`,
-  description: () => `Player ${playerData.value?.username ?? route.params.id}`,
+  title: () => playerTitle.value,
+  description: () => playerDescription.value,
+  ogTitle: () => playerTitle.value,
+  ogDescription: () => playerDescription.value,
+  ogType: "website",
+  ogSiteName: "BitCraft Hub",
+  ogUrl: () => playerSocial.value.url,
+  ogImage: () => playerSocial.value.image,
+  twitterCard: "summary",
+  twitterTitle: () => playerTitle.value,
+  twitterDescription: () => playerDescription.value,
+  twitterImage: () => playerSocial.value.image,
 });
 
 const showPlayerPending = useDelayedPending(playerPending, 150);
@@ -650,7 +670,29 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
           </div>
         </div>
 
-        <UCard :ui="{ body: 'p-4' }">
+        <div class="flex flex-col gap-4">
+          <div class="lg:hidden">
+              <USlideover v-model:open="sectionsOpen" side="left" title="Player information" description="Choose a section or pin favorites for quick access.">
+                <UButton icon="i-lucide-panel-left-open" color="neutral" variant="soft" label="Player information" />
+                <template #body>
+                  <BitcraftPlayerSectionsMenu v-model="selectedSection" @select="sectionsOpen = false" />
+                </template>
+              </USlideover>
+          </div>
+          <div class="flex items-start gap-4">
+          <aside id="desktop-player-menu"
+            class="sticky top-4 hidden shrink-0 rounded-xl border border-gray-200 bg-white/70 p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900/40 lg:block"
+            :class="desktopSidebarOpen ? 'w-64' : 'w-16'">
+            <div class="flex items-center gap-2 py-1" :class="desktopSidebarOpen ? 'justify-between px-2' : 'justify-center'">
+              <p v-if="desktopSidebarOpen" class="text-sm font-semibold">Player information</p>
+              <UButton :icon="desktopSidebarOpen ? 'i-lucide-panel-left-close' : 'i-lucide-panel-left-open'" color="neutral" variant="ghost" size="sm"
+                :aria-label="desktopSidebarOpen ? 'Collapse player menu' : 'Expand player menu'" :aria-expanded="desktopSidebarOpen" aria-controls="desktop-player-menu"
+                @click="desktopSidebarOpen = !desktopSidebarOpen" />
+            </div>
+            <BitcraftPlayerSectionsMenu v-model="selectedSection" :collapsed="!desktopSidebarOpen" />
+          </aside>
+          <div class="min-w-0 flex-1">
+        <UCard v-show="selectedSection === 'overview'" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Overview</h2>
@@ -676,6 +718,7 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
           </div>
         </UCard>
 
+        <div v-show="selectedSection === 'deployables'">
         <UCard v-if="deployables && deployables.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Deployables</h2>
@@ -706,9 +749,16 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </div>
           </div>
         </UCard>
+        <UEmpty v-else icon="i-lucide-package" title="No deployables" />
+        </div>
 
-        <BitcraftPlayerExperienceHistory :player-id="String(route.params.id)" />
+        <UCard v-if="selectedSection === 'crafting'" :ui="{ body: 'p-4' }">
+          <template #header><h2 class="text-lg font-semibold">Crafting projects</h2></template>
+          <ClaimTabCrafting :player-id="String(route.params.id)" />
+        </UCard>
+        <BitcraftPlayerExperienceHistory v-if="selectedSection === 'xp_history'" :player-id="String(route.params.id)" />
 
+        <div v-show="selectedSection === 'skills'">
         <UCard v-if="expeirence" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
@@ -739,7 +789,10 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </div>
           </div>
         </UCard>
+        <UEmpty v-else icon="i-lucide-chart-line" title="No skills available" />
+        </div>
 
+        <div v-show="selectedSection === 'traveler_tasks'">
         <UCard v-if="travelerTaskGroups.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -796,7 +849,10 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </div>
           </div>
         </UCard>
+        <UEmpty v-else icon="i-lucide-list" title="No traveler tasks available" />
+        </div>
 
+        <div v-show="selectedSection === 'inventories'">
         <UCard v-if="inventoryData?.inventorys.length || houseInventories?.length || houses?.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventories</h2>
@@ -869,7 +925,10 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </UButton>
           </div>
         </UCard>
+        <UEmpty v-else icon="i-lucide-package" title="No inventories available" />
+        </div>
 
+        <div v-show="selectedSection === 'houses'">
         <UCard v-if="houses && houses.length" :ui="{ body: 'p-4' }">
           <div class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -891,6 +950,11 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
             </div>
           </div>
         </UCard>
+        <UEmpty v-else icon="i-lucide-house" title="No accessible houses" />
+        </div>
+          </div>
+        </div>
+        </div>
       </div>
     </template>
     <template v-else>

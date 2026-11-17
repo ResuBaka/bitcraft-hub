@@ -1,3 +1,5 @@
+pub(crate) mod subscriptions;
+
 use crate::AppState;
 use crate::auction_listing_state::bitcraft::{
     start_worker_buy_order_state, start_worker_sell_order_state,
@@ -386,6 +388,8 @@ async fn connect_to_db_logic(
     startup_permit: &mut Option<tokio::sync::OwnedSemaphorePermit>,
     startup_done: &mut Option<tokio::sync::oneshot::Sender<()>>,
     claim_event_tx: &tokio::sync::mpsc::Sender<entity::claim_event::ActiveModel>,
+    craft_activity_tx: &UnboundedSender<entity::craft_activity::ActiveModel>,
+    passive_craft_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PassiveCraftState>>,
     mobile_entity_state_tx: &UnboundedSender<SpacetimeUpdateMessages<MobileEntityState>>,
     player_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerState>>,
     player_username_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PlayerUsernameState>>,
@@ -425,6 +429,7 @@ async fn connect_to_db_logic(
     resource_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ResourceDesc>>,
     extraction_recipe_desc_tx: &UnboundedSender<SpacetimeUpdateMessages<ExtractionRecipeDesc>>,
     progressive_action_state_tx: &UnboundedSender<SpacetimeUpdateMessages<ProgressiveActionState>>,
+    public_progressive_action_state_tx: &UnboundedSender<SpacetimeUpdateMessages<PublicProgressiveActionState>>,
 ) -> anyhow::Result<()> {
     if global_app_state.shutdown.stop.is_cancelled() {
         return Ok(());
@@ -463,6 +468,7 @@ async fn connect_to_db_logic(
         region_number,
         claim_event_tx.clone(),
     );
+    crate::crafting::events::register_listeners(&ctx, region_number, craft_activity_tx.clone());
 
     setup_spacetime_db_listeners!(
         ctx,
@@ -801,6 +807,16 @@ async fn connect_to_db_logic(
         region_number,
         "progressive_action_state"
     );
+    setup_spacetime_db_listeners!(
+        ctx,
+        public_progressive_action_state,
+        public_progressive_action_state_tx,
+        PublicProgressiveActionState,
+        database,
+        region_number,
+        "public_progressive_action_state"
+    );
+    setup_spacetime_db_listeners!(ctx, passive_craft_state, passive_craft_state_tx, PassiveCraftState, database, region_number, "passive_craft_state");
 
     let tables_to_subscribe = vec![
         // "user_state",
@@ -835,6 +851,10 @@ async fn connect_to_db_logic(
         "resource_desc",
         "extraction_recipe_desc",
         "progressive_action_state",
+        "public_progressive_action_state",
+        "craft_event",
+        "craft_completed_event",
+        "passive_craft_state",
         "character_stats_state",
         "identity_role",
         // "claim_description_state", -> claim_state
@@ -1070,6 +1090,9 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
         let (resource_desc_tx, resource_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (extraction_recipe_desc_tx, extraction_recipe_desc_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
         let (progressive_action_state_tx, progressive_action_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let (public_progressive_action_state_tx, public_progressive_action_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
+        let craft_activity_tx = crate::crafting::events::start_worker(global_app_state.clone());
+        let (passive_craft_state_tx, passive_craft_state_rx) = worker_channel::shutdown_channel(&global_app_state.shutdown);
 
         let mut remove_desc = false;
 
@@ -1138,6 +1161,9 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                 let tmp_resource_desc_tx = resource_desc_tx.clone();
                 let tmp_extraction_recipe_desc_tx = extraction_recipe_desc_tx.clone();
                 let tmp_progressive_action_state_tx = progressive_action_state_tx.clone();
+                let tmp_public_progressive_action_state_tx = public_progressive_action_state_tx.clone();
+                let tmp_craft_activity_tx = craft_activity_tx.clone();
+                let tmp_passive_craft_state_tx = passive_craft_state_tx.clone();
                 let tmp_conf = config.clone();
                 let tmp_global_app_state = global_app_state.clone();
                 let tmp_remove_desc = remove_desc;
@@ -1212,6 +1238,8 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &mut startup_permit,
                             &mut startup_done,
                             &claim_event_tx,
+                            &tmp_craft_activity_tx,
+                            &tmp_passive_craft_state_tx,
                             &tmp_mobile_entity_state_tx,
                             &tmp_player_state_tx,
                             &tmp_player_username_state_tx,
@@ -1249,6 +1277,7 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
                             &tmp_resource_desc_tx,
                             &tmp_extraction_recipe_desc_tx,
                             &tmp_progressive_action_state_tx,
+                            &tmp_public_progressive_action_state_tx,
                         )
                         .await;
 
@@ -1469,6 +1498,13 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
             3000,
             Duration::from_millis(200),
         );
+        crate::crafting::public_progressive_action::start_worker(
+            global_app_state.clone(),
+            public_progressive_action_state_rx,
+            3000,
+            Duration::from_millis(200),
+        );
+        crate::crafting::passive::start_worker(global_app_state.clone(), passive_craft_state_rx, 3000, Duration::from_millis(200));
     });
 }
 
@@ -1538,10 +1574,15 @@ pub(crate) enum InboundWebSocketMessages {
 #[serde(tag = "t", content = "c")]
 pub(crate) enum OutboundWebSocketMessages {
     SubscribedTopics(Vec<String>),
+    LeaderboardUpdated(crate::leaderboard::GetTop100Response),
     MobileEntityState(entity::mobile_entity_state::Model),
     PlayerLocation(crate::player_state::PlayerLocationUpdate),
     ExperienceHistoryChanged { user_id: i64 },
     ClaimExperienceHistoryChanged { claim_id: i64 },
+    ClaimCraftingChanged { claim_id: Option<String> },
+    PlayerCraftingChanged { player_id: Option<String> },
+    CraftProgressChanged { claim_id: Option<String>, player_id: String, craft_id: String, progress: i32, lock_expiration: String },
+    PassiveCraftChanged { claim_id: Option<String>, player_id: String, craft_id: String, status: String, slot: Option<u32>, timestamp: String },
     Experience {
         experience: u64,
         level: u64,
@@ -1636,10 +1677,42 @@ pub(crate) enum OutboundWebSocketMessages {
 pub(crate) struct BroadcastTopics([Option<(Cow<'static, str>, Option<i64>)>; 3]);
 
 impl BroadcastTopics {
-    fn new<const N: usize>(topics: [(Cow<'static, str>, Option<i64>); N]) -> Self {
+    pub(crate) fn new<const N: usize>(topics: [(Cow<'static, str>, Option<i64>); N]) -> Self {
         assert!(N <= 3);
         let mut topics = topics.into_iter();
         Self(std::array::from_fn(|_| topics.next()))
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(Cow<'static, str>, Option<i64>)> {
+        self.0.iter().flatten()
+    }
+
+    pub(crate) fn player_location(id: u64) -> Self {
+        Self::new([("player_location".into(), Some(id as i64))])
+    }
+
+    pub(crate) fn mobile_entity(id: u64) -> Self {
+        Self::new([("mobile_entity_state".into(), Some(id as i64))])
+    }
+
+    pub(crate) fn inventory_update(id: i64) -> Self {
+        Self::new([("inventory_update".into(), Some(id))])
+    }
+
+    pub(crate) fn inventory_remove(id: i64) -> Self {
+        // Preserve the existing inventory_remove_owner route's entity ID.
+        Self::new([
+            ("inventory_remove".into(), Some(id)),
+            ("inventory_remove_owner".into(), Some(id)),
+        ])
+    }
+
+    pub(crate) fn inventory_insert(id: i64, owner: i64, player_owner: i64) -> Self {
+        Self::new([
+            ("inventory_insert".into(), Some(id)),
+            ("inventory_insert_owner".into(), Some(owner)),
+            ("inventory_insert_player_owner".into(), Some(player_owner)),
+        ])
     }
 }
 
@@ -1655,6 +1728,9 @@ impl IntoIterator for BroadcastTopics {
 impl OutboundWebSocketMessages {
     pub fn topics(&self) -> Option<BroadcastTopics> {
         match self {
+            OutboundWebSocketMessages::LeaderboardUpdated(_) => Some(
+                BroadcastTopics::new([("leaderboard".into(), None)]),
+            ),
             OutboundWebSocketMessages::Experience {
                 skill_name,
                 user_id,
@@ -1697,21 +1773,37 @@ impl OutboundWebSocketMessages {
                 BroadcastTopics::new([("player_username".into(), Some(*entity_id))]),
             ),
             OutboundWebSocketMessages::MobileEntityState(mobile_entity_state) => {
-                Some(BroadcastTopics::new([(
-                    "mobile_entity_state".into(),
-                    Some(mobile_entity_state.entity_id as i64),
-                )]))
+                Some(BroadcastTopics::mobile_entity(mobile_entity_state.entity_id))
             }
-            OutboundWebSocketMessages::PlayerLocation(location) => Some(BroadcastTopics::new([(
-                "player_location".into(),
-                Some(location.entity_id as i64),
-            )])),
+            OutboundWebSocketMessages::PlayerLocation(location) => Some(BroadcastTopics::player_location(location.entity_id)),
             OutboundWebSocketMessages::ExperienceHistoryChanged { user_id } => Some(
                 BroadcastTopics::new([("experience_history".into(), Some(*user_id))]),
             ),
             OutboundWebSocketMessages::ClaimExperienceHistoryChanged { claim_id } => Some(
                 BroadcastTopics::new([("claim_experience_history".into(), Some(*claim_id))]),
             ),
+            OutboundWebSocketMessages::ClaimCraftingChanged { claim_id } => Some(
+                BroadcastTopics::new([("claim_crafting".into(), claim_id.as_ref().and_then(|id| id.parse().ok()))]),
+            ),
+            OutboundWebSocketMessages::PlayerCraftingChanged { player_id } => Some(
+                BroadcastTopics::new([("player_crafting".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),
+            ),
+            OutboundWebSocketMessages::CraftProgressChanged { claim_id, player_id, .. } => {
+                let player = player_id.parse::<i64>().ok()?;
+                if let Some(claim) = claim_id.as_ref().and_then(|id| id.parse::<i64>().ok()) {
+                    Some(BroadcastTopics::new([("player_craft_progress".into(), Some(player)), ("claim_craft_progress".into(), Some(claim))]))
+                } else {
+                    Some(BroadcastTopics::new([("player_craft_progress".into(), Some(player))]))
+                }
+            },
+            OutboundWebSocketMessages::PassiveCraftChanged { claim_id, player_id, .. } => {
+                let player = player_id.parse::<i64>().ok()?;
+                if let Some(claim) = claim_id.as_ref().and_then(|id| id.parse::<i64>().ok()) {
+                    Some(BroadcastTopics::new([("player_passive_craft".into(), Some(player)), ("claim_passive_craft".into(), Some(claim))]))
+                } else {
+                    Some(BroadcastTopics::new([("player_passive_craft".into(), Some(player))]))
+                }
+            },
             // WebSocketMessages::ClaimDescriptionState(claim) => {
             //     Some(vec![("claim".to_string(), claim.entity_id)])
             // }
@@ -1855,40 +1947,19 @@ impl OutboundWebSocketMessages {
             }
             OutboundWebSocketMessages::InventoryUpdate {
                 resolved_inventory, ..
-            } => Some(BroadcastTopics::new([(
-                "inventory_update".into(),
-                Some(resolved_inventory.entity_id),
-            )])),
+            } => Some(BroadcastTopics::inventory_update(resolved_inventory.entity_id)),
             OutboundWebSocketMessages::InventoryRemove {
                 resolved_inventory, ..
-            } => Some(BroadcastTopics::new([
-                (
-                    "inventory_remove".into(),
-                    Some(resolved_inventory.entity_id),
-                ),
-                (
-                    "inventory_remove_owner".into(),
-                    Some(resolved_inventory.entity_id),
-                ),
-            ])),
+            } => Some(BroadcastTopics::inventory_remove(resolved_inventory.entity_id)),
             OutboundWebSocketMessages::InventoryInsert {
                 resolved_inventory,
                 player_owner_id,
                 ..
-            } => Some(BroadcastTopics::new([
-                (
-                    "inventory_insert".into(),
-                    Some(resolved_inventory.entity_id),
-                ),
-                (
-                    "inventory_insert_owner".into(),
-                    Some(resolved_inventory.owner_entity_id),
-                ),
-                (
-                    "inventory_insert_player_owner".into(),
-                    Some(*player_owner_id),
-                ),
-            ])),
+            } => Some(BroadcastTopics::inventory_insert(
+                resolved_inventory.entity_id,
+                resolved_inventory.owner_entity_id,
+                *player_owner_id,
+            )),
         }
     }
 }

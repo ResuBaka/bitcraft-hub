@@ -1006,6 +1006,10 @@ impl RankingSystem {
 }
 
 impl RankingSystem {
+    pub(crate) fn subscribe_publications(&self) -> tokio::sync::watch::Receiver<u64> {
+        self.worker.subscribe()
+    }
+
     pub(crate) async fn shutdown(&self) {
         if let Some(thread) = self.worker.stop() {
             match tokio::task::spawn_blocking(move || thread.join()).await {
@@ -1220,6 +1224,7 @@ pub(crate) async fn get_top_100(
             rank: rank as u64,
         }));
     }
+    results.push(("Time Online".to_string(), leaderboard));
 
     let entries_profession_leaderboard = state
         .ranking_system
@@ -1425,6 +1430,36 @@ pub(crate) async fn get_top_100(
         player_map: players,
         leaderboard: leaderboard_result,
     }))
+}
+
+/// Publish the same consistent, named rows as the HTTP endpoint after ranking
+/// publication. Coalesce busy periods and do no database work without viewers.
+pub(crate) fn start_live_updates(state: AppState) {
+    let mut publications = state.ranking_system.subscribe_publications();
+    let shutdown = state.shutdown.clone();
+    shutdown.spawn_worker(async move {
+        let topics = crate::websocket::BroadcastTopics::new([("leaderboard".into(), None)]);
+        loop {
+            tokio::select! {
+                _ = state.shutdown.stop.cancelled() => break,
+                result = publications.changed() => if result.is_err() { break },
+            }
+            tokio::select! {
+                _ = state.shutdown.stop.cancelled() => break,
+                _ = tokio::time::sleep(std::time::Duration::from_secs(2)) => {}
+            }
+            publications.borrow_and_update();
+            if !state.tx.is_interested(&topics) {
+                continue;
+            }
+            match get_top_100(State(state.clone())).await {
+                Ok(axum_codec::Codec(board)) => {
+                    let _ = state.tx.send(crate::websocket::OutboundWebSocketMessages::LeaderboardUpdated(board));
+                }
+                Err(error) => tracing::warn!(?error, "Failed to publish leaderboard"),
+            }
+        }
+    });
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

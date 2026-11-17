@@ -2,6 +2,7 @@
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
+  devServer: { host: 'localhost' },
   nitro: {
     preset: "bun"
   },
@@ -45,6 +46,8 @@ export default defineNuxtConfig({
     },
     public: {
       iconDomain: "",
+      siteUrl: "",
+      socialImage: "/Icons/SkillIconANY.png",
       api: {
         base: "",
         websocket: "",

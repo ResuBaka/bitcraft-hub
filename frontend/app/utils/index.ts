@@ -82,7 +82,7 @@ export const tierToBorderClass = (tier?: number | null) => {
 };
 
 export const tierToBorderClassByLevel = (level: number) => {
-  return `border-tier-${level % 10}`;
+  return tierToBorderClass(levelToTier(level));
 };
 
 export const rarityToTextClass = (rarity?: string | null) => {

@@ -72,7 +72,7 @@ use spacetimedb_sdk::unstable::CLIENT_METRICS;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt::{Display, Write};
-use std::ops::{AddAssign, SubAssign};
+use std::ops::AddAssign;
 use std::process::exit;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -144,6 +144,7 @@ async fn serve_with_shutdown(
             tracing::info!("Staring Bitcraft websocket connection");
 
             broadcaster = Some(tokio::spawn(broadcast_message(state.clone(), rx)));
+            leaderboard::start_live_updates(state.clone());
 
             let tmp_config = config.clone();
 
@@ -1203,7 +1204,7 @@ struct AppState {
     shutdown: shutdown::Shutdown,
     tech_tier_research_map: TechTierResearchMap,
     conn: DatabaseConnection,
-    tx: UnboundedSender<OutboundWebSocketMessages>,
+    tx: websocket::subscriptions::OutboundSender,
     connection_state: Arc<dashmap::DashMap<String, bool>>,
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
@@ -1247,6 +1248,20 @@ struct AppState {
 
 impl AppState {
     #[cfg(test)]
+    pub(crate) async fn subscribe_test_client(
+        &self,
+        topics: &[(&str, Option<i64>)],
+    ) -> kanal::AsyncReceiver<OutboundWebSocketMessages> {
+        let id = "test-subscriber".to_owned();
+        let (tx, rx) = kanal::bounded_async(100);
+        self.clients_state.add_client(id.clone(), tx, WebsocketEncoding::Json).await;
+        for &(topic, topic_id) in topics {
+            self.clients_state.add_topic_to_client(&id, &topic.to_owned(), topic_id).await;
+        }
+        rx
+    }
+
+    #[cfg(test)]
     fn new(
         conn: DatabaseConnection,
         tx: UnboundedSender<OutboundWebSocketMessages>,
@@ -1267,6 +1282,8 @@ impl AppState {
             .register(Box::new(&*CLIENT_METRICS))
             .unwrap();
 
+        let clients_state = Arc::new(ClientsState::new());
+        let tx = websocket::subscriptions::OutboundSender::new(tx, clients_state.interest.clone());
         Self {
             shutdown: shutdown::Shutdown::default(),
             tech_tier_research_map,
@@ -1275,7 +1292,7 @@ impl AppState {
             metrics_registry,
             connection_state: Arc::new(dashmap::DashMap::new()),
             player_state: Arc::new(dashmap::DashMap::new()),
-            clients_state: Arc::new(ClientsState::new()),
+            clients_state,
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
             claim_member_state: Arc::new(dashmap::DashMap::new()),
             player_to_claim_id_cache: Arc::new(dashmap::DashMap::new()),
@@ -1589,14 +1606,14 @@ type WebsocketClient = (
 
 struct ClientsState {
     clients: Arc<RwLock<HashMap<String, WebsocketClient>>>,
-    topics_listen_to: Arc<RwLock<HashMap<String, HashMap<i64, u64>>>>,
+    interest: Arc<websocket::subscriptions::SubscriptionInterest>,
 }
 
 impl ClientsState {
     fn new() -> Self {
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
-            topics_listen_to: Arc::new(RwLock::new(HashMap::new())),
+            interest: Arc::new(Default::default()),
         }
     }
 
@@ -1606,24 +1623,31 @@ impl ClientsState {
         tx: AsyncSender<OutboundWebSocketMessages>,
         encoding: WebsocketEncoding,
     ) {
-        self.clients
-            .write()
-            .await
-            .insert(id, (tx, HashMap::new(), encoding, HashSet::new()));
-        metrics::gauge!("websocket_clients_connected_total").increment(1);
+        let mut clients = self.clients.write().await;
+        if let Some(previous) = clients.insert(id, (tx, HashMap::new(), encoding, HashSet::new())) {
+            self.remove_interest(&previous);
+        } else {
+            metrics::gauge!("websocket_clients_connected_total").increment(1);
+        }
     }
 
     pub(crate) async fn remove_client(&self, id: &String) {
-        let current_topics = self.clients.read().await.get(id).unwrap().1.clone();
-        for (topic, topic_ids) in current_topics {
-            for topic_id in topic_ids {
-                self.remove_topic_from_client(id, &topic, Some(topic_id))
-                    .await;
+        let mut clients = self.clients.write().await;
+        if let Some(client) = clients.remove(id) {
+            self.remove_interest(&client);
+            metrics::gauge!("websocket_clients_connected_total").decrement(1);
+        }
+    }
+
+    fn remove_interest(&self, client: &WebsocketClient) {
+        for (topic, ids) in &client.1 {
+            for &id in ids {
+                self.interest.remove(topic, Some(id));
             }
         }
-
-        self.clients.write().await.remove(id);
-        metrics::gauge!("websocket_clients_connected_total").decrement(1);
+        for topic in &client.3 {
+            self.interest.remove(topic, None);
+        }
     }
 
     pub(crate) async fn get_encode_format_for_client(
@@ -1658,39 +1682,16 @@ impl ClientsState {
         topic: &String,
         topic_id: Option<i64>,
     ) {
-        if self
-            .client_listen_to_topics(id, vec![(topic.clone(), topic_id)])
-            .await
-        {
-            return;
-        }
-
         let mut clients = self.clients.write().await;
         if let Some(client) = clients.get_mut(id) {
-            if let Some(topic_id) = topic_id {
-                if let Some(topics) = client.1.get_mut(topic) {
-                    topics.insert(topic_id);
-                } else {
-                    client.1.insert(topic.clone(), HashSet::from([topic_id]));
-                }
+            let added = if let Some(topic_id) = topic_id {
+                client.1.entry(topic.clone()).or_default().insert(topic_id)
             } else {
-                client.3.insert(topic.clone());
+                client.3.insert(topic.clone())
+            };
+            if added {
+                self.interest.add(topic, topic_id);
             }
-        }
-
-        if topic_id.is_none() {
-            return;
-        }
-
-        let mut topics_listen_to = self.topics_listen_to.write().await;
-        if let Some(found_topic) = topics_listen_to.get_mut(topic) {
-            if let Some(current_topic) = found_topic.get_mut(&topic_id.unwrap()) {
-                current_topic.add_assign(1);
-            } else {
-                found_topic.insert(topic_id.unwrap(), 1);
-            }
-        } else {
-            topics_listen_to.insert(topic.clone(), HashMap::from([(topic_id.unwrap(), 1)]));
         }
     }
 
@@ -1702,23 +1703,19 @@ impl ClientsState {
     ) {
         let mut clients = self.clients.write().await;
         if let Some(client) = clients.get_mut(id) {
-            if topic_id.is_none() && client.3.contains(topic) {
-                client.3.remove(topic);
-            } else if let Some(topics) = client.1.get_mut(topic) {
-                topics.remove(&topic_id.unwrap());
+            let removed = match topic_id {
+                None => client.3.remove(topic),
+                Some(id) => {
+                    let removed = client.1.get_mut(topic).is_some_and(|ids| ids.remove(&id));
+                    if client.1.get(topic).is_some_and(HashSet::is_empty) {
+                        client.1.remove(topic);
+                    }
+                    removed
+                }
+            };
+            if removed {
+                self.interest.remove(topic, topic_id);
             }
-        }
-
-        if topic_id.is_none() {
-            return;
-        }
-
-        let mut topics_listen_to = self.topics_listen_to.write().await;
-        if let Some(found_topic) = topics_listen_to.get_mut(topic)
-            && let Some(current_topic) = found_topic.get_mut(&topic_id.unwrap())
-            && current_topic > &mut 0u64
-        {
-            current_topic.sub_assign(1);
         }
     }
 
@@ -1746,40 +1743,6 @@ impl ClientsState {
         }
     }
 
-    pub(crate) async fn client_listen_to_topics(
-        &self,
-        id: &String,
-        topics: Vec<(String, Option<i64>)>,
-    ) -> bool {
-        if let Some(client) = self.clients.read().await.get(id) {
-            for (topic, id) in topics {
-                if id.is_none() {
-                    return client.3.contains(&topic);
-                }
-
-                if let Some(found_topic) = client.1.get(&topic) {
-                    return found_topic.contains(&id.unwrap());
-                }
-            }
-        }
-
-        false
-    }
-
-    #[allow(dead_code)]
-    pub(crate) async fn listeners_for_topic(&self, topics: Vec<(String, i64)>) -> bool {
-        let topics_listen_to = self.topics_listen_to.read().await;
-        for (topic, id) in topics {
-            if let Some(found_topic) = topics_listen_to.get(&topic)
-                && let Some(current_topic) = found_topic.get(&id)
-                && current_topic > &0u64
-            {
-                return true;
-            }
-        }
-
-        false
-    }
 }
 
 #[derive(Deserialize)]
@@ -1967,7 +1930,7 @@ pub async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let config: Config = Config::new(Some(cli_config_parameters))?;
 
-    setup_tracing(&config);
+    let _tracing_guard = setup_tracing(&config);
 
     match cli.command {
         Commands::ProfileInit { settle_seconds } => {
@@ -2081,7 +2044,7 @@ pub async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn setup_tracing(cfg: &Config) {
+fn setup_tracing(cfg: &Config) -> tracing_appender::non_blocking::WorkerGuard {
     let filter_directive = std::env::var("RUST_LOG").unwrap_or_else(|e| {
         if let std::env::VarError::NotUnicode(_) = e {
             eprintln!("RUST_LOG is not unicode");
@@ -2096,9 +2059,14 @@ fn setup_tracing(cfg: &Config) {
         // format!("{CRATE_NAME}={log_level},axum={log_level}",)
     });
 
+    let (writer, guard) = tracing_appender::non_blocking::NonBlockingBuilder::default()
+        .lossy(false)
+        .finish(std::io::stdout());
+
     match cfg.log_type {
         config::LogType::Default => {
             let stdout_layer = tracing_subscriber::fmt::layer()
+                .with_writer(writer)
                 .with_file(true)
                 .with_line_number(true);
 
@@ -2116,6 +2084,7 @@ fn setup_tracing(cfg: &Config) {
             let json_fields = tracing_subscriber::fmt::format::JsonFields::new();
 
             let stdout_layer = tracing_subscriber::fmt::layer()
+                .with_writer(writer)
                 .event_format(fmt)
                 .fmt_fields(json_fields);
 
@@ -2132,6 +2101,7 @@ fn setup_tracing(cfg: &Config) {
             let json_fields = tracing_subscriber::fmt::format::JsonFields::new();
 
             let stdout_layer = tracing_subscriber::fmt::layer()
+                .with_writer(writer)
                 .event_format(fmt)
                 .fmt_fields(json_fields);
 
@@ -2141,6 +2111,8 @@ fn setup_tracing(cfg: &Config) {
                 .init()
         }
     };
+
+    guard
 }
 
 fn handle_error<E>(error: E)

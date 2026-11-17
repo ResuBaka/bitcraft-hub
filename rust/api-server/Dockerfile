@@ -6,6 +6,10 @@ COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
+# Use the measured CPU-optimized profile for dependencies and the application.
+ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=3 \
+    CARGO_PROFILE_RELEASE_LTO=true
+
 COPY --from=planner /usr/src/api-server/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN apt update && apt install cmake binutils -y
@@ -21,6 +25,10 @@ RUN --mount=type=cache,target=/usr/src/api-server/target/ \
 
 
 FROM debian:trixie-slim
+
+# Return freed memory promptly without retaining transparent huge pages.
+ENV MIMALLOC_ALLOW_THP=0 \
+    MIMALLOC_PURGE_DELAY=0
 
 WORKDIR /usr/src/api-server
 

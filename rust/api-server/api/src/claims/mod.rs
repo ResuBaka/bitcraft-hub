@@ -22,13 +22,197 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use service::Query as QueryCore;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 use ts_rs::TS;
 
+fn claim_progression(upgrades: &[claim_tech_desc::Model], learned: &[i32], building_tiers: &HashSet<i32>) -> (i32, i32) {
+    use claim_tech_desc::ClaimTechType;
+
+    let starter_tier = upgrades
+        .iter()
+        .filter(|upgrade| upgrade.tech_type == ClaimTechType::StarterTech)
+        .min_by_key(|upgrade| upgrade.id)
+        .map_or(2, |upgrade| upgrade.tier);
+
+    let learned_upgrades = upgrades
+        .iter()
+        .filter(|upgrade| {
+            matches!(upgrade.tech_type, ClaimTechType::Homestead | ClaimTechType::Settlement)
+                && learned.contains(&upgrade.id)
+        });
+    let tier = learned_upgrades.clone().map(|upgrade| upgrade.tier).max().unwrap_or(starter_tier);
+    // Even ranks are Townships; the preceding odd rank is the same-tier Homestead.
+    let rank = learned_upgrades
+        .filter(|upgrade| building_tiers.contains(&upgrade.tier))
+        .map(|upgrade| {
+            upgrade.tier * 2 - i32::from(upgrade.tech_type == ClaimTechType::Homestead)
+        })
+        .max()
+        .unwrap_or(starter_tier * 2);
+    (tier, rank)
+}
+
+async fn building_tiers_by_claim(
+    conn: &sea_orm::DatabaseConnection,
+    buildings: &[building_state::Model],
+) -> Result<(HashMap<i64, HashSet<i32>>, HashMap<i64, Vec<ClaimStation>>), sea_orm::DbErr> {
+    let ids: HashSet<i64> = buildings.iter().map(|building| building.building_description_id as i64).collect();
+    let descs = entity::building_desc::Entity::find()
+        .filter(entity::building_desc::Column::Id.is_in(ids))
+        .all(conn)
+        .await?
+        .into_iter()
+        .map(|desc| (desc.id, desc))
+        .collect::<HashMap<_, _>>();
+    let mut tiers: HashMap<i64, HashSet<i32>> = HashMap::new();
+    let mut stations: HashMap<i64, HashMap<(i32, bool), ClaimStation>> = HashMap::new();
+    for building in buildings {
+        if let Some(desc) = descs.get(&(building.building_description_id as i64)) {
+            tiers.entry(building.claim_entity_id).or_default()
+                .extend(desc.functions.iter().map(|function| function.level));
+            let mut seen = HashSet::new();
+            for function in &desc.functions {
+                for passive in [false, true] {
+                    let has_slots = if passive {
+                        function.refining_slots > 0 || function.refining_cargo_slots > 0
+                    } else {
+                        function.crafting_slots > 0
+                    };
+                    let key = (function.function_type, passive);
+                    if has_slots && seen.insert(key) {
+                        add_station(stations.entry(building.claim_entity_id).or_default(), ClaimStation {
+                            id: desc.id,
+                            function_type: function.function_type,
+                            tier: function.level,
+                            name: desc.name.clone(),
+                            icon_asset_name: desc.icon_asset_name.clone(),
+                            crafting: !passive,
+                            passive,
+                            count: 1,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    let stations = stations.into_iter().map(|(claim_id, stations)| {
+        let mut stations: Vec<_> = stations.into_values().collect();
+        stations.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+        (claim_id, stations)
+    }).collect();
+    Ok((tiers, stations))
+}
+
+fn add_station(stations: &mut HashMap<(i32, bool), ClaimStation>, candidate: ClaimStation) {
+    let key = (candidate.function_type, candidate.passive);
+    match stations.entry(key) {
+        std::collections::hash_map::Entry::Vacant(entry) => { entry.insert(candidate); }
+        std::collections::hash_map::Entry::Occupied(mut entry) => {
+            let current = entry.get_mut();
+            let count = current.count + 1;
+            if candidate.tier > current.tier || (candidate.tier == current.tier && candidate.id < current.id) {
+                *current = candidate;
+            }
+            current.count = count;
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ClaimStation {
+    pub id: i64,
+    pub function_type: i32,
+    pub tier: i32,
+    pub name: String,
+    pub icon_asset_name: String,
+    pub crafting: bool,
+    pub passive: bool,
+    pub count: u32,
+}
+
+#[cfg(test)]
+mod claim_tier_tests {
+    use super::*;
+    use claim_tech_desc::ClaimTechType;
+
+    #[test]
+    fn station_summary_keeps_highest_tier_and_counts_all_tiers() {
+        let mut stations = HashMap::new();
+        let station = |id, tier, function_type, passive: bool| ClaimStation {
+            id, function_type, tier, name: format!("Station {id}"), icon_asset_name: String::new(),
+            crafting: !passive, passive, count: 1,
+        };
+        add_station(&mut stations, station(10, 3, 20, false));
+        add_station(&mut stations, station(11, 5, 20, false));
+        add_station(&mut stations, station(12, 2, 20, false));
+        add_station(&mut stations, station(13, 4, 20, true));
+        assert_eq!(stations[&(20, false)].tier, 5);
+        assert_eq!(stations[&(20, false)].id, 11);
+        assert_eq!(stations[&(20, false)].count, 3);
+        assert_eq!(stations[&(20, true)].count, 1);
+    }
+
+    fn upgrade(id: i32, tier: i32, tech_type: ClaimTechType) -> claim_tech_desc::Model {
+        claim_tech_desc::Model {
+            id,
+            name: String::new(),
+            description: String::new(),
+            tier,
+            tech_type,
+            supplies_cost: 0,
+            research_time: 0,
+            requirements: vec![],
+            input: vec![],
+            members: 0,
+            area: 0,
+            supplies: 0,
+            xp_to_mint_hex_coin: 0,
+            unlocks_techs: vec![],
+        }
+    }
+
+    #[test]
+    fn uses_starter_tier_until_a_claim_upgrade_is_learned() {
+        let upgrades = vec![
+            upgrade(1, 2, ClaimTechType::StarterTech),
+            upgrade(300, 3, ClaimTechType::TierUpgrade),
+            upgrade(2, 3, ClaimTechType::Homestead),
+        ];
+        let tiers = HashSet::from([3]);
+        assert_eq!(claim_progression(&upgrades, &[], &tiers), (2, 4));
+        assert_eq!(claim_progression(&upgrades, &[300], &tiers), (2, 4));
+        assert_eq!(claim_progression(&[], &[], &tiers), (2, 4));
+    }
+
+    #[test]
+    fn uses_highest_learned_homestead_or_township_tier() {
+        let upgrades = vec![
+            upgrade(1, 2, ClaimTechType::StarterTech),
+            upgrade(2, 3, ClaimTechType::Homestead),
+            upgrade(3, 5, ClaimTechType::Homestead),
+            upgrade(4, 4, ClaimTechType::Settlement),
+            upgrade(5, 9, ClaimTechType::Mining),
+        ];
+        let tiers = HashSet::from([3, 4, 5]);
+        assert_eq!(claim_progression(&upgrades, &[3, 2, 5], &tiers), (5, 9));
+        assert_eq!(claim_progression(&upgrades, &[4], &tiers), (4, 8));
+        assert_eq!(claim_progression(&upgrades, &[5], &tiers), (2, 4));
+        assert_eq!(claim_progression(&upgrades, &[2], &tiers), (3, 5));
+        let township = upgrade(6, 3, ClaimTechType::Settlement);
+        assert_eq!(claim_progression(&[township], &[6], &tiers), (3, 6));
+        assert_eq!(claim_progression(&upgrades, &[3, 2], &HashSet::from([3])), (5, 5));
+        assert_eq!(claim_progression(&upgrades, &[3, 2], &HashSet::from([4])), (5, 4));
+    }
+
+}
+
 pub(crate) fn get_routes() -> AppRouter {
     Router::new()
+        .route("/api/bitcraft/claims/{id}/crafting", axum_codec::routing::get(crate::crafting::claim::list).into())
+        .route("/api/bitcraft/claims/{id}/crafting/activity", axum_codec::routing::get(crate::crafting::claim::activity).into())
         .route(
             "/claims/{id}/events",
             axum_codec::routing::get(events::list).into(),
@@ -89,6 +273,8 @@ pub struct ClaimDescriptionState {
     pub running_upgrade: Option<claim_tech_desc::Model>,
     pub running_upgrade_started: Option<entity::shared::timestamp::Timestamp>,
     pub tier: Option<i32>,
+    pub rank: i32,
+    pub stations: Vec<ClaimStation>,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub xp_gained_since_last_coin_minting: i32,
     pub region: entity::shared::Region,
@@ -122,6 +308,7 @@ pub struct ClaimDescriptionStateWithInventoryAndPlayTime {
     pub running_upgrade: Option<claim_tech_desc::Model>,
     pub running_upgrade_started: Option<entity::shared::timestamp::Timestamp>,
     pub tier: Option<i32>,
+    pub rank: i32,
     pub upgrades: Vec<claim_tech_desc::Model>,
     pub learned_upgrades: Vec<i32>,
     pub inventorys: HashMap<String, Vec<entity::inventory::ExpendedRefrence>>,
@@ -254,6 +441,29 @@ struct InventoryJobResult {
 
 type FlatInventoryTasks = Vec<JoinHandle<anyhow::Result<InventoryJobResult>>>;
 type FlatTravelerTasks = Vec<JoinHandle<anyhow::Result<(String, HashMap<i32, Vec<i64>>)>>>;
+
+// Both Bank and Regional Bank use this building function.
+const BANK_FUNCTION_TYPE: i32 = 622_192_982;
+const SETTLEMENT_STASH_FUNCTION_TYPE: i32 = 1_721_785_854;
+
+fn is_excluded_building_inventory(function_types: impl IntoIterator<Item = i32>) -> bool {
+    function_types
+        .into_iter()
+        .any(|id| matches!(id, BANK_FUNCTION_TYPE | SETTLEMENT_STASH_FUNCTION_TYPE))
+}
+
+#[cfg(test)]
+mod excluded_building_inventory_tests {
+    use super::*;
+
+    #[test]
+    fn identifies_excluded_functions_among_other_building_functions() {
+        assert!(is_excluded_building_inventory([1, BANK_FUNCTION_TYPE]));
+        assert!(is_excluded_building_inventory([1, SETTLEMENT_STASH_FUNCTION_TYPE]));
+        assert!(!is_excluded_building_inventory([1, 3]));
+        assert!(!is_excluded_building_inventory([]));
+    }
+}
 
 pub(crate) async fn get_claim_inventory_change_log(
     state: State<AppState>,
@@ -441,6 +651,8 @@ pub(crate) async fn get_claim(
         running_upgrade: None,
         running_upgrade_started: None,
         tier: None,
+        rank: 4,
+        stations: vec![],
         upgrades: vec![],
         xp_gained_since_last_coin_minting: 0,
     };
@@ -464,6 +676,14 @@ pub(crate) async fn get_claim(
     }
 
     let mut learned_upgrades = Vec::new();
+    let building_states = QueryCore::find_building_state_by_claim_id(&state.conn, claim.entity_id)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Cannot load claim buildings"))?;
+    let (building_tiers, _) = building_tiers_by_claim(&state.conn, &building_states)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Cannot load building descriptions"))?;
+    let empty_tiers = HashSet::new();
+    let claim_building_tiers = building_tiers.get(&claim.entity_id).unwrap_or(&empty_tiers);
 
     match claim_tech_state {
         Some(claim_tech_state) => {
@@ -484,26 +704,15 @@ pub(crate) async fn get_claim(
             };
             claim.running_upgrade_started = Some(claim_tech_state.start_timestamp.clone());
             learned_upgrades = claim_tech_state.learned.clone();
-            let found_tiers = learned_upgrades
-                .iter()
-                .filter(|id| state.tech_tier_research_map.contains_key(&(**id)))
-                .copied()
-                .collect::<Vec<i32>>();
-
-            if !found_tiers.is_empty() {
-                claim.tier = Some(
-                    *state
-                        .tech_tier_research_map
-                        .get(&found_tiers[found_tiers.len() - 1])
-                        .unwrap(),
-                );
-            } else {
-                claim.tier = Some(1);
-            }
+            let (tier, rank) = claim_progression(&claim.upgrades, &learned_upgrades, claim_building_tiers);
+            claim.tier = Some(tier);
+            claim.rank = rank;
         }
         None => {
             claim.running_upgrade = None;
-            claim.tier = Some(1);
+            let (tier, rank) = claim_progression(&claim.upgrades, &[], claim_building_tiers);
+            claim.tier = Some(tier);
+            claim.rank = rank;
         }
     };
 
@@ -582,15 +791,18 @@ pub(crate) async fn get_claim(
         }
     }
 
-    let building_states = QueryCore::find_building_state_by_claim_id(&state.conn, claim.entity_id)
-        .await
-        .unwrap_or_else(|err| {
-            error!("Error loading building states: {err}");
-            vec![]
-        });
-
     let building_inventories_ids = building_states
         .iter()
+        .filter(|building| {
+            state
+                .building_desc
+                .get(&(building.building_description_id as i64))
+                .is_none_or(|desc| {
+                    !is_excluded_building_inventory(
+                        desc.functions.iter().map(|function| function.function_type),
+                    )
+                })
+        })
         .map(|building| building.entity_id)
         .collect();
 
@@ -666,6 +878,7 @@ pub(crate) async fn get_claim(
         running_upgrade_started: claim.running_upgrade_started,
         xp_gained_since_last_coin_minting: claim.xp_gained_since_last_coin_minting,
         tier: claim.tier,
+        rank: claim.rank,
         upgrades: claim.upgrades,
         learned_upgrades,
         inventorys: HashMap::new(),
@@ -980,6 +1193,15 @@ pub(crate) async fn list_claims(
     let claim_tech_descs = QueryCore::all_claim_tech_desc(&state.conn)
         .await
         .expect("Cannot find claim tech descs");
+    let buildings = building_state::Entity::find()
+        .filter(building_state::Column::ClaimEntityId.is_in(claims.iter().map(|claim| claim.entity_id)))
+        .all(&state.conn)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Cannot load claim buildings"))?;
+    let (building_tiers, stations_by_claim) = building_tiers_by_claim(&state.conn, &buildings)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Cannot load building descriptions"))?;
+    let empty_tiers = HashSet::new();
 
     let claims = claims
         .into_iter()
@@ -1030,6 +1252,8 @@ pub(crate) async fn list_claims(
                 running_upgrade: None,
                 running_upgrade_started: None,
                 tier: None,
+                rank: 4,
+                stations: stations_by_claim.get(&claim_description.entity_id).cloned().unwrap_or_default(),
                 upgrades: vec![],
                 xp_gained_since_last_coin_minting: 0,
             };
@@ -1067,27 +1291,16 @@ pub(crate) async fn list_claims(
                         .filter_map(|id| claim_tech_descs.iter().find(|desc| desc.id == (*id)))
                         .cloned()
                         .collect::<Vec<claim_tech_desc::Model>>();
-                    let found_tiers = learned
-                        .iter()
-                        .filter(|id| state.tech_tier_research_map.contains_key(&(**id)))
-                        .cloned()
-                        .collect::<Vec<i32>>();
-
-                    if !found_tiers.is_empty() {
-                        claim_description.tier = Some(
-                            *state
-                                .tech_tier_research_map
-                                .get(&found_tiers[found_tiers.len() - 1])
-                                .unwrap(),
-                        );
-                    } else {
-                        claim_description.tier = Some(1);
-                    }
+                    let (tier, rank) = claim_progression(&claim_tech_descs, &learned, building_tiers.get(&claim_description.entity_id).unwrap_or(&empty_tiers));
+                    claim_description.tier = Some(tier);
+                    claim_description.rank = rank;
                 }
                 None => {
                     claim_description.running_upgrade = None;
                     claim_description.upgrades = vec![];
-                    claim_description.tier = Some(1);
+                    let (tier, rank) = claim_progression(&claim_tech_descs, &[], building_tiers.get(&claim_description.entity_id).unwrap_or(&empty_tiers));
+                    claim_description.tier = Some(tier);
+                    claim_description.rank = rank;
                 }
             };
 

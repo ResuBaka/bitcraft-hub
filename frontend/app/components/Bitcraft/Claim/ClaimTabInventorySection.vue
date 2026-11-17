@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
-import { rarityToTextClass, tierToBorderClassByLevel } from "~/utils";
+import { rarityToTextClass, tierToBorderClass } from "~/utils";
 import InventoryImg from "~/components/Bitcraft/InventoryImg.vue";
 
 const props = defineProps<{
@@ -79,7 +79,7 @@ const openLocation = (inventory: ExpendedRefrence) => {
         v-for="inventory in items"
         :key="`${inventory.item_id}-${inventory.item_type}`"
         class="inventory-card border-l-4"
-        :class="tierToBorderClassByLevel(inventory.item.tier)"
+        :class="tierToBorderClass(inventory.item.tier)"
         role="button"
         tabindex="0"
         :ui="{ header: 'p-3', body: 'hidden' }"

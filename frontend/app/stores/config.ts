@@ -13,6 +13,7 @@ export type ConfigState = {
   show_region_as_number: boolean;
   highlighted_players: HighlightedEntity[];
   highlighted_claims: HighlightedEntity[];
+  favorite_player_sections: string[];
 };
 
 export type HighlightedEntity = { id: string; name: string };
@@ -26,6 +27,7 @@ export const DEFAULT_CONFIG: ConfigState = {
   show_region_as_number: true,
   highlighted_players: [],
   highlighted_claims: [],
+  favorite_player_sections: [],
 };
 
 export const useConfigStore = defineStore("config", () => {

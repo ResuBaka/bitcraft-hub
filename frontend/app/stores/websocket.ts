@@ -30,6 +30,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
           console.log("Connected to websocket", topics_currently_subscribed.value);
         }
         sendMessage({ t: "Subscribe", c: { topics: topics_currently_subscribed.value } });
+        sendMessage({ t: "ListSubscribedTopics" });
       },
     },
   );

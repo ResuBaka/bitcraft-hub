@@ -56,6 +56,11 @@ mod m20261101_000001_leaderboard_snapshots;
 mod m20261101_000002_experience_claim_history;
 mod m20261101_000003_unify_experience_history;
 mod m20261113_000001_fix_claim_tech_desc_identity;
+mod m20261115_000001_public_progressive_action_state;
+mod m20261115_000002_craft_activity;
+mod m20261115_000003_passive_craft_state;
+mod m20261115_000004_progressive_action_building_index;
+mod m20261115_000005_craft_owner_indexes;
 
 pub struct Migrator;
 
@@ -119,6 +124,11 @@ impl MigratorTrait for Migrator {
             Box::new(m20261101_000002_experience_claim_history::Migration),
             Box::new(m20261101_000003_unify_experience_history::Migration),
             Box::new(m20261113_000001_fix_claim_tech_desc_identity::Migration),
+            Box::new(m20261115_000001_public_progressive_action_state::Migration),
+            Box::new(m20261115_000002_craft_activity::Migration),
+            Box::new(m20261115_000003_passive_craft_state::Migration),
+            Box::new(m20261115_000004_progressive_action_building_index::Migration),
+            Box::new(m20261115_000005_craft_owner_indexes::Migration),
         ]
     }
 }

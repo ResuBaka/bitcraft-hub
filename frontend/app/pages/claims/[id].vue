@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { SortingState } from "@tanstack/vue-table";
-import { watchThrottled } from "@vueuse/shared";
 
 const toast = useToast();
 
 import ClaimTabBuildings from "~/components/Bitcraft/Claim/ClaimTabBuildings.vue";
 import ClaimTabEvents from "~/components/Bitcraft/Claim/ClaimTabEvents.vue";
+import ClaimTabCrafting from "~/components/Bitcraft/Claim/ClaimTabCrafting.vue";
 import ClaimTabInventoryChangelogs from "~/components/Bitcraft/Claim/ClaimTabInventoryChangelogs.vue";
 import ClaimTabLeaderboards from "~/components/Bitcraft/Claim/ClaimTabLeaderboards.vue";
 import ClaimTabMembers from "~/components/Bitcraft/Claim/ClaimTabMembers.vue";
@@ -18,6 +18,7 @@ import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import type { BuildingStatesResponse } from "~/types/BuildingStatesResponse";
 import type { ClaimDescriptionStateWithInventoryAndPlayTime } from "~/types/ClaimDescriptionStateWithInventoryAndPlayTime";
 import type { ClaimTechDesc } from "~/types/ClaimTechDesc";
+import { getClaimMaxSupplies } from "~/utils/claimSupplies";
 import type { ExpendedRefrence } from "~/types/ExpendedRefrence";
 import type { InventoryChangelog } from "~/types/InventoryChangelog";
 import type { InventoryItemLocation } from "~/types/InventoryItemLocation";
@@ -30,6 +31,7 @@ import type { BuildingDescriptionsResponse } from "~/types/BuildingDescriptionsR
 import type { ClaimDescriptionStateMember } from "~/types/ClaimDescriptionStateMember";
 import type { ItemExpended } from "~/types/ItemExpended";
 import ClaimTabInventorySection from "~/components/Bitcraft/Claim/ClaimTabInventorySection.vue";
+import { socialUrls } from "~/utils/socialMetadata";
 
 const {
   public: { iconDomain },
@@ -174,39 +176,31 @@ const travelerTaskRows = computed(() => {
     );
 });
 
-const { data: InventoryChangelogFetch, refresh: InventoryChangelogRefresh } = useFetchMsPack<
+const inventoryChangelogQuery = computed(() => ({
+  per_page: 20,
+  ...(item_objects.value.length ? { item_id: item_objects.value.map((item) => item.id), item_type: item_objects.value.map((item) => item.type) } : {}),
+  ...(player_id.value != null ? { user_id: player_id.value.toString() } : {}),
+  ...(inventory_changes_start_day.value ? { start_day: inventory_changes_start_day.value } : {}),
+  ...(inventory_changes_end_day.value ? { end_day: inventory_changes_end_day.value } : {}),
+}));
+watch(inventoryChangelogQuery, (filters) => {
+  const query = { ...route.query };
+  for (const key of ["item_id", "item_type", "user_id", "start_day", "end_day"]) delete query[key];
+  if (filters.item_id) query.item_id = filters.item_id.map(String);
+  if (filters.item_type) query.item_type = filters.item_type.map(String);
+  if (filters.user_id) query.user_id = filters.user_id;
+  if (filters.start_day) query.start_day = filters.start_day;
+  if (filters.end_day) query.end_day = filters.end_day;
+  void router.replace({ query });
+});
+
+const { data: InventoryChangelogFetch } = useFetchMsPack<
   InventoryChangelog[]
 >(
   () => {
     return `/claims/inventory_changelog/${route.params.id.toString()}`;
   },
-  {
-    onRequest: ({ options }) => {
-      options.query = options.query || {};
-      if (item_objects.value.length) {
-        options.query.item_id = item_objects.value.map((item) => item.id);
-        options.query.item_type = item_objects.value.map((item) => item.type);
-      }
-      if (player_id.value !== undefined && player_id.value !== null) {
-        options.query.user_id = player_id.value.toString();
-      }
-      if (inventory_changes_start_day.value) {
-        options.query.start_day = inventory_changes_start_day.value;
-      }
-      if (inventory_changes_end_day.value) {
-        options.query.end_day = inventory_changes_end_day.value;
-      }
-      options.query.per_page = 20;
-
-      if (Object.keys(options.query).length > 1) {
-        const query = { ...options.query };
-        delete query.per_page;
-        router.push({ query });
-      } else if (options.query.page < 1) {
-        router.push({});
-      }
-    },
-  },
+  { query: inventoryChangelogQuery },
 );
 
 const { data: buidlingsFetch, pending: buildingsPending } = useFetchMsPack<BuildingStatesResponse>(
@@ -280,8 +274,18 @@ registerWebsocketMessageHandler("Level", topicsLevel, (message) => {
       title: `Player ${claimFetch.value?.members[message.user_id].user_name} Level ${message.level} reached for Skill ${message.skill_name}`,
     });
 
-    claimFetch.value.members[message.user_id].skills_ranks[message.skill_name].level =
-      message.level;
+  }
+});
+
+const topicsExperience = computed(() =>
+  topicsLevel.value.map((topic) => topic.replace(/^level\./, "experience.")),
+);
+
+registerWebsocketMessageHandler("Experience", topicsExperience, (message) => {
+  const member = claimFetch.value?.members[message.user_id];
+  if (member) {
+    member.skills_ranks ??= {};
+    member.skills_ranks[message.skill_name] = Number(message.experience);
     triggerRef(claimFetch);
   }
 });
@@ -474,6 +478,9 @@ const claimOwner = computed(() => {
 });
 
 const claimTitle = computed(() => `Claim ${claim.value?.name ?? route.params.id}`);
+const requestUrl = useRequestURL();
+const socialConfig = useRuntimeConfig();
+const claimSocial = computed(() => socialUrls(requestUrl.origin, socialConfig.public.siteUrl, `/claims/${route.params.id}`, socialConfig.public.socialImage));
 const claimDescription = computed(() => {
   if (!claim.value) {
     return `View ${claimTitle.value}, including members, buildings, inventory, and activity.`;
@@ -492,6 +499,12 @@ useSeoMeta({
   description: () => claimDescription.value,
   ogTitle: () => claimTitle.value,
   ogDescription: () => claimDescription.value,
+  ogType: "website",
+  ogSiteName: "BitCraft Hub",
+  ogUrl: () => claimSocial.value.url,
+  ogImage: () => claimSocial.value.image,
+  twitterCard: "summary",
+  twitterImage: () => claimSocial.value.image,
   twitterTitle: () => claimTitle.value,
   twitterDescription: () => claimDescription.value,
 });
@@ -541,6 +554,7 @@ const validTabs = new Set([
   "player_offline_items",
   "player_offline_tools",
   "buildings",
+  "crafting",
   "leaderboards",
   "xp_history",
   "upgrades",
@@ -697,7 +711,10 @@ const memberColumns = computed(() => {
   ];
 });
 
-const claimTier = computed(() => claimFetch.value?.tier ?? 1);
+const claimTier = computed(() => claimFetch.value?.tier ?? 2);
+const claimMaxSupplies = computed(() =>
+  getClaimMaxSupplies(claimFetch.value?.upgrades ?? [], claimFetch.value?.learned_upgrades ?? []),
+);
 
 const upgradesSorted = computed<ClaimTechDesc[]>(() => {
   if (!claimFetch.value?.upgrades?.length) {
@@ -759,6 +776,7 @@ const tabItems = computed(() => {
       label: `Building items (${inventorysBuildings.value.length || 0})`,
     },
     { value: "buildings", label: `Buildings (${buildings.value.length || 0})` },
+    { value: "crafting", label: "Crafting" },
     { value: "leaderboards", label: "Leaderboards" },
     { value: "xp_history", label: "XP history" },
     {
@@ -1018,19 +1036,6 @@ const skillToToolIndex = {
 
 const numberFormat = new Intl.NumberFormat(undefined);
 
-watchThrottled(
-  () => [
-    item_objects.value,
-    player_id.value,
-    inventory_changes_start_day.value,
-    inventory_changes_end_day.value,
-  ],
-  () => {
-    InventoryChangelogRefresh();
-  },
-  { throttle: 50 },
-);
-
 const updateInventoryChangesRange = (range: { startDay: string; endDay: string }) => {
   inventory_changes_start_day.value = range.startDay;
   inventory_changes_end_day.value = range.endDay;
@@ -1159,7 +1164,7 @@ watch(
                 }}</span>
               </UBadge>
               <UBadge color="neutral" variant="soft">
-                Supplies: {{ numberFormat.format(claim.supplies ?? 0) }}
+                Supplies: {{ numberFormat.format(claim.supplies ?? 0) }}<template v-if="claimMaxSupplies !== null"> / {{ numberFormat.format(claimMaxSupplies) }}</template>
               </UBadge>
               <UBadge color="neutral" variant="soft">
                 Tiles: {{ numberFormat.format(claim.num_tiles ?? 0) }}
@@ -1205,6 +1210,7 @@ watch(
                 :member-sorting="memberSorting"
                 :member-columns="memberColumns"
                 :members-for-table="membersForTable"
+                :all-members="Object.values(claimFetch?.members ?? {})"
                 :member-skills="memberSkills"
                 :member-secondary-skills="memberSecondarySkills"
                 :tier-to-color="tierToColor"
@@ -1344,6 +1350,12 @@ watch(
                 :get-building-icon="getBuildingIcon"
                 @update:search="(value) => (search = value)"
                 @update:page="(value) => (page = value)"
+              />
+
+              <ClaimTabCrafting
+                v-else-if="tab === 'crafting'"
+                :claim-id="route.params.id.toString()"
+                :claim-xp-remainder="claimFetch.xp_gained_since_last_coin_minting"
               />
 
               <ClaimTabLeaderboards

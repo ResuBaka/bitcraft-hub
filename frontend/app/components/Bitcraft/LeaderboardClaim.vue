@@ -81,7 +81,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 };
 
 const now = useNow({ interval: 1000, controls: true });
-const game_start = new Date("2026-02-26T17:00:00Z");
+const game_start = new Date("2026-11-13T15:09:56Z");
 
 const countDownUntilResearchIsFinished = computed(() => {
   const diff = now.now.value.getTime() - game_start.getTime();

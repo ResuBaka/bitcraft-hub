@@ -8,6 +8,12 @@ use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, sea_query};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
+fn progress_only(old: &ProgressiveActionState, new: &ProgressiveActionState) -> bool {
+    old.entity_id == new.entity_id && old.building_entity_id == new.building_entity_id
+        && old.owner_entity_id == new.owner_entity_id && old.recipe_id == new.recipe_id
+        && old.craft_count == new.craft_count && old.function_type == new.function_type
+}
+
 pub(crate) fn start_worker_progressive_action_state(
     global_app_state: AppState,
     mut rx: UnboundedReceiver<SpacetimeUpdateMessages<ProgressiveActionState>>,
@@ -33,6 +39,9 @@ pub(crate) fn start_worker_progressive_action_state(
                 .to_owned();
 
         let mut pending = PendingActions::default();
+        let mut changed_buildings = HashSet::new();
+        let mut changed_players = HashSet::new();
+        let mut progress_updates = HashMap::new();
         loop {
             let mut timer = BatchTimer::new(time_limit);
 
@@ -45,9 +54,28 @@ pub(crate) fn start_worker_progressive_action_state(
                         match msg {
                             SpacetimeUpdateMessages::Initial { data, database_name, .. } => {
                                 pending.reconcile_snapshot(&global_app_state, &on_conflict, data, database_name, batch_size).await;
+                                changed_buildings.clear();
+                                changed_players.clear();
+                                progress_updates.clear();
+                                crate::crafting::notifications::all(&global_app_state);
                             }
-                            SpacetimeUpdateMessages::Insert { new, database_name, .. }
-                            | SpacetimeUpdateMessages::Update { new, database_name, .. } => {
+                            SpacetimeUpdateMessages::Update { old, new, database_name, .. } => {
+                                if progress_only(&old, &new) {
+                                    progress_updates.insert(new.entity_id as i64, new.clone());
+                                } else {
+                                    changed_buildings.insert(old.building_entity_id as i64);
+                                    changed_buildings.insert(new.building_entity_id as i64);
+                                    changed_players.insert(old.owner_entity_id as i64);
+                                    changed_players.insert(new.owner_entity_id as i64);
+                                    progress_updates.remove(&(new.entity_id as i64));
+                                }
+                                let model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name).build();
+                                pending.upsert(model);
+                                if pending.upserts.len() >= batch_size { break; }
+                            }
+                            SpacetimeUpdateMessages::Insert { new, database_name, .. } => {
+                                changed_buildings.insert(new.building_entity_id as i64);
+                                changed_players.insert(new.owner_entity_id as i64);
                                 let model: ::entity::progressive_action_state::Model = ::entity::progressive_action_state::ModelBuilder::new(new).with_region(database_name).build();
                                 pending.upsert(model);
                                 if pending.upserts.len() >= batch_size {
@@ -55,6 +83,9 @@ pub(crate) fn start_worker_progressive_action_state(
                                 }
                             }
                             SpacetimeUpdateMessages::Remove { delete, .. } => {
+                                changed_buildings.insert(delete.building_entity_id as i64);
+                                changed_players.insert(delete.owner_entity_id as i64);
+                                progress_updates.remove(&(delete.entity_id as i64));
                                 pending.delete(delete.entity_id as i64);
                                 if pending.deletes.len() >= batch_size {
                                     break;
@@ -73,7 +104,11 @@ pub(crate) fn start_worker_progressive_action_state(
                 }
             }
 
-            pending.flush(&global_app_state, &on_conflict).await;
+            if pending.flush(&global_app_state, &on_conflict).await {
+                crate::crafting::notifications::progress(&global_app_state, &mut progress_updates).await;
+                crate::crafting::notifications::players(&global_app_state, &mut changed_players);
+                crate::crafting::notifications::buildings(&global_app_state, &mut changed_buildings).await;
+            } else { changed_buildings.clear(); changed_players.clear(); progress_updates.clear(); }
 
             // If the channel is closed and we processed the last batch, exit the outer loop
             if pending.upserts.is_empty() && pending.deletes.is_empty() && rx.is_closed() && rx.is_empty()
@@ -235,6 +270,44 @@ mod tests {
         sea_query::OnConflict::column(Column::EntityId)
             .update_columns([Column::Progress, Column::Region])
             .to_owned()
+    }
+
+    #[tokio::test]
+    async fn live_progress_notifies_the_claim_after_database_write() {
+        use crate::websocket::OutboundWebSocketMessages;
+        let building = entity::building_state::Model {
+            entity_id: 2, claim_entity_id: 42, direction_index: 0,
+            building_description_id: 3, constructed_by_player_entity_id: 0, region: 7,
+        };
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![model(1, 200, 7)]])
+            .append_query_results([vec![building]])
+            .into_connection();
+        let (out, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(db.clone(), out, Default::default());
+        let _client = state.subscribe_test_client(&[("claim_crafting", None), ("claim_craft_progress", Some(42)), ("player_craft_progress", Some(6))]).await;
+        let (tx, rx) = crate::websocket::worker_channel::shutdown_channel(&state.shutdown);
+        start_worker_progressive_action_state(state.clone(), rx, 100, Duration::from_secs(60));
+        tx.send(SpacetimeUpdateMessages::Update { old: wire(1, 100), new: wire(1, 200), database_name: 7, event: None }).unwrap();
+        tokio::time::timeout(Duration::from_secs(1), state.shutdown.drain()).await.unwrap();
+        assert!(matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::CraftProgressChanged { claim_id: Some(claim), player_id, craft_id, progress: 200, .. } if claim == "42" && player_id == "6" && craft_id == "1"));
+        assert!(notifications.try_recv().is_err());
+        let log = db.into_transaction_log();
+        assert_eq!(log.len(), 2);
+        assert!(format!("{:?}", log[0]).contains("INSERT INTO"));
+        assert!(format!("{:?}", log[1]).contains("SELECT"));
+    }
+
+    #[test]
+    fn progress_updates_do_not_hide_structural_changes() {
+        let old = wire(1, 10);
+        let mut new = wire(1, 20);
+        assert!(progress_only(&old, &new));
+        new.recipe_id += 1;
+        assert!(!progress_only(&old, &new));
+        new = wire(1, 20);
+        new.owner_entity_id += 1;
+        assert!(!progress_only(&old, &new));
     }
 
     fn state(db: sea_orm::DatabaseConnection) -> AppState {

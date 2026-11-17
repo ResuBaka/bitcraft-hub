@@ -428,107 +428,41 @@ impl Query {
     ) -> Result<(Vec<claim_state::Model>, ItemsAndPagesNumber), DbErr> {
         // Setup paginator
         let paginator = claim_state::Entity::find()
+            .order_by_desc(Expr::cust("claim_tier"))
+            .order_by_desc(Expr::cust("claim_rank"))
             .order_by_desc(Expr::cust("boost"))
             .order_by_asc(claim_state::Column::EntityId)
             .expr_as(
+                Expr::cust(
+                    "COALESCE((SELECT MAX(d.tier) FROM claim_tech_desc d \
+                     WHERE d.tech_type IN (5, 25) AND d.id = ANY(claim_tech_state.learned)), \
+                     (SELECT tier FROM claim_tech_desc WHERE tech_type = 28 ORDER BY id LIMIT 1), 2)",
+                ),
+                "claim_tier",
+            )
+            .expr_as(
+                Expr::cust(
+                    "COALESCE((SELECT MAX(d.tier * 2 - CASE WHEN d.tech_type = 25 THEN 1 ELSE 0 END) \
+                     FROM claim_tech_desc d WHERE d.tech_type IN (5, 25) \
+                     AND d.id = ANY(claim_tech_state.learned) \
+                     AND EXISTS (SELECT 1 FROM building_state b \
+                     JOIN building_desc bd ON bd.id = b.building_description_id \
+                     CROSS JOIN LATERAL jsonb_array_elements(bd.functions::jsonb) f \
+                     WHERE b.claim_entity_id = claim_state.entity_id \
+                     AND (f->>'level')::integer = d.tier)), \
+                     (SELECT tier * 2 FROM claim_tech_desc WHERE tech_type = 28 ORDER BY id LIMIT 1), 4)",
+                ),
+                "claim_rank",
+            )
+            .expr_as(
                 Expr::case(
                     ExprTrait::eq(
-                        Expr::val(200),
+                        Expr::val(2136582402),
                         Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
                     ),
-                    1000,
+                    5,
                 )
                 .finally(0)
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(300),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(400),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(500),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(600),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(700),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(800),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(900),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(1000),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        1000,
-                    )
-                    .finally(0),
-                )
-                .add(
-                    Expr::case(
-                        ExprTrait::eq(
-                            Expr::val(2136582402),
-                            Expr::expr(PgFunc::any(Expr::col(claim_tech_state::Column::Learned))),
-                        ),
-                        5,
-                    )
-                    .finally(0),
-                )
                 .add(
                     Expr::case(
                         ExprTrait::eq(

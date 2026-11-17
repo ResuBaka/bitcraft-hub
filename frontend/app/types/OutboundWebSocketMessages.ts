@@ -8,13 +8,19 @@ import type { PlayerActionState } from "./PlayerActionState";
 import type { PlayerState } from "./PlayerState";
 import type { ResolvedInventory } from "./ResolvedInventory";
 import type { TravelerTaskState } from "./TravelerTaskState";
+import type { GetTop100Response } from "./GetTop100Response";
 
 export type OutboundWebSocketMessages =
   | { t: "SubscribedTopics"; c: Array<string> }
+  | { t: "LeaderboardUpdated"; c: GetTop100Response }
   | { t: "MobileEntityState"; c: MobileEntityState }
   | { t: "PlayerLocation"; c: PlayerLocationUpdate }
   | { t: "ExperienceHistoryChanged"; c: { user_id: bigint } }
   | { t: "ClaimExperienceHistoryChanged"; c: { claim_id: bigint } }
+  | { t: "ClaimCraftingChanged"; c: { claim_id: string | null } }
+  | { t: "PlayerCraftingChanged"; c: { player_id: string | null } }
+  | { t: "CraftProgressChanged"; c: { claim_id: string | null; player_id: string; craft_id: string; progress: number; lock_expiration: string } }
+  | { t: "PassiveCraftChanged"; c: { claim_id: string | null; player_id: string; craft_id: string; status: string; slot: number | null; timestamp: string } }
   | {
       t: "Experience";
       c: { experience: bigint; level: bigint; rank: bigint; skill_name: string; user_id: bigint };

@@ -82,149 +82,52 @@ watch(selectedSkills, async () => {
   animateNumbers.value = true;
 });
 
-const topics = computed(() => {
-  let topicsSet = new Set<string>();
-
-  if (!leaderboard.value?.leaderboard) {
-    return [];
+// Published rankings include entrants and ordering from every board. The initial
+// HTTP request remains the fallback when live updates are disabled.
+let latestLiveBoard: GetTop100Response | undefined;
+let resynchronizing = false;
+function applyLiveBoard() {
+  if (!pending.value && !resynchronizing && latestLiveBoard) {
+    leaderboard.value = latestLiveBoard;
+    latestLiveBoard = undefined;
   }
-
-  if (!leaderboard.value?.leaderboard[selectedSkills.value]) {
-    return [];
-  }
-
-  for (const player of leaderboard.value.leaderboard[selectedSkills.value]) {
-    if (player === undefined) {
-      continue;
-    }
-    topicsSet.add(`experience:${selectedSkills.value}.${player.player_id.toString()}`);
-  }
-
-  return Array.from(topicsSet);
-});
-
-// Ranks are published asynchronously on the server. Refresh after publication
-// instead of applying the rank carried by an XP event, which may still be old.
-let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-let periodicRefresh: ReturnType<typeof setInterval> | undefined;
-
-function scheduleLeaderboardRefresh() {
-  if (refreshTimer) return;
-  refreshTimer = setTimeout(() => {
-    refreshTimer = undefined;
-    void refresh({ dedupe: "defer" });
-  }, 1000);
 }
+watch(pending, applyLiveBoard);
+registerWebsocketMessageHandler("LeaderboardUpdated", "leaderboard", (message) => {
+  latestLiveBoard = message;
+  applyLiveBoard();
+});
 
+// Resynchronize after subscribing (including reconnects), covering updates that
+// occurred between the initial HTTP request and the WebSocket subscription.
+registerWebsocketMessageHandler("SubscribedTopics", [], async (topics) => {
+  if (topics.includes("leaderboard") && !resynchronizing) {
+    resynchronizing = true;
+    try {
+      await refresh({ dedupe: "defer" });
+    } finally {
+      resynchronizing = false;
+      applyLiveBoard();
+    }
+  }
+});
 onMounted(() => {
-  // Players outside the current top 100 have no per-player subscription and
-  // can enter the board without generating an event visible to this page.
-  periodicRefresh = setInterval(() => {
-    void refresh({ dedupe: "defer" });
+  const websocket = useWebsocketStore();
+  if (websocket.isConnected) websocket.sendMessage({ t: "ListSubscribedTopics" });
+});
+
+// Rank comparison snapshots change once per UTC day, not every 30 seconds.
+let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleSnapshotRefresh() {
+  const now = new Date();
+  const nextMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  snapshotTimer = setTimeout(() => {
     void refreshSnapshots({ dedupe: "defer" });
-  }, 30_000);
-});
-
-onUnmounted(() => {
-  if (refreshTimer) clearTimeout(refreshTimer);
-  if (periodicRefresh) clearInterval(periodicRefresh);
-});
-
-registerWebsocketMessageHandler("Experience", topics, (message) => {
-  const list = leaderboard.value?.leaderboard?.[message.skill_name];
-  const entry = list?.find((item) => String(item.player_id) === String(message.user_id));
-  if (!entry || !("experience" in entry) || !("level" in entry)) return;
-  entry.experience = message.experience;
-  entry.level = message.level;
-  scheduleLeaderboardRefresh();
-});
-
-const totalExperienceTopics = computed(() => {
-  if (!leaderboard.value?.leaderboard || selectedSkills.value !== "Experience") {
-    return [];
-  }
-
-  let topicsSet = new Set<string>();
-
-  for (const player of leaderboard.value.leaderboard["Experience"]) {
-    if (player === undefined) {
-      continue;
-    }
-    topicsSet.add(`total_experience.${player.player_id.toString()}`);
-  }
-
-  return Array.from(topicsSet);
-});
-
-registerWebsocketMessageHandler("TotalExperience", totalExperienceTopics, (message) => {
-  const entry = leaderboard.value?.leaderboard?.Experience?.find(
-    (item) => String(item.player_id) === String(message.user_id),
-  );
-  if (!entry || !("experience" in entry) || !("experience_per_hour" in entry)) return;
-  entry.experience = message.experience;
-  entry.experience_per_hour = message.experience_per_hour;
-  scheduleLeaderboardRefresh();
-});
-
-const totalProfessionExperienceTopics = computed(() => {
-  if (!leaderboard.value?.leaderboard || selectedSkills.value !== "Professions") {
-    return [];
-  }
-
-  let topicsSet = new Set<string>();
-
-  for (const player of leaderboard.value.leaderboard["Professions"]) {
-    if (player === undefined) {
-      continue;
-    }
-    topicsSet.add(`total_profession_experience.${player.player_id.toString()}`);
-  }
-
-  return Array.from(topicsSet);
-});
-
-registerWebsocketMessageHandler(
-  "TotalProfessionExperience",
-  totalProfessionExperienceTopics,
-  (message) => {
-    const entry = leaderboard.value?.leaderboard?.Professions?.find(
-      (item) => String(item.player_id) === String(message.user_id),
-    );
-    if (!entry || !("experience" in entry)) return;
-    entry.experience = message.experience;
-    scheduleLeaderboardRefresh();
-  },
-);
-
-const totalAdventureExperienceTopics = computed(() => {
-  if (!leaderboard.value?.leaderboard || selectedSkills.value !== "Skills") {
-    return [];
-  }
-
-  let topicsSet = new Set<string>();
-
-  for (const player of leaderboard.value.leaderboard["Skills"]) {
-    if (player === undefined) {
-      continue;
-    }
-    topicsSet.add(`total_adventure_experience.${player.player_id.toString()}`);
-  }
-
-  return Array.from(topicsSet);
-});
-
-registerWebsocketMessageHandler(
-  "TotalAdventureExperience",
-  totalAdventureExperienceTopics,
-  (message) => {
-    const entry = leaderboard.value?.leaderboard?.Skills?.find(
-      (item) => String(item.player_id) === String(message.user_id),
-    );
-    if (!entry || !("experience" in entry)) return;
-    entry.experience = message.experience;
-    scheduleLeaderboardRefresh();
-  },
-);
+    scheduleSnapshotRefresh();
+  }, nextMidnight - now.getTime() + 60_000);
+}
+onMounted(scheduleSnapshotRefresh);
+onUnmounted(() => { if (snapshotTimer) clearTimeout(snapshotTimer); });
 
 const playerStateTopics = computed(() => {
   if (!leaderboard.value?.leaderboard) {
@@ -325,7 +228,7 @@ const secondsToDaysMinutesSecondsFormat = (seconds: number) => {
 };
 
 const now = useNow({ interval: 1000, controls: true });
-const game_start = new Date("2026-02-26T17:00:00Z");
+const game_start = new Date("2026-11-13T15:09:56Z");
 
 const countDownUntilResearchIsFinished = computed(() => {
   const diff = now.now.value.getTime() - game_start.getTime();

@@ -288,6 +288,11 @@ impl InventoryStateWorker {
             .with_region(database_name)
             .build();
 
+        if !self.global_app_state.tx.has_subscribers() {
+            self.pending_upsert(model);
+            return;
+        }
+
         let mut player_owner_id = model.player_owner_entity_id;
         let mut nickname = None;
 
@@ -301,7 +306,9 @@ impl InventoryStateWorker {
             nickname = Some(deployable_state.nickname.clone());
         }
 
-        if let Some(pockets) = resolve_pockets_for_sync(
+        if self.global_app_state.tx.is_interested(&crate::websocket::BroadcastTopics::inventory_insert(
+            model.entity_id, model.owner_entity_id, player_owner_id,
+        )) && let Some(pockets) = resolve_pockets_for_sync(
             &model.pockets,
             &self.global_app_state.item_desc,
             &self.global_app_state.cargo_desc,
@@ -343,7 +350,8 @@ impl InventoryStateWorker {
             .with_region(database_name)
             .build();
 
-        if let Some(pockets) = resolve_pockets_for_sync(
+        if self.global_app_state.tx.is_interested(&crate::websocket::BroadcastTopics::inventory_update(model.entity_id))
+            && let Some(pockets) = resolve_pockets_for_sync(
             &model.pockets,
             &self.global_app_state.item_desc,
             &self.global_app_state.cargo_desc,
@@ -456,7 +464,8 @@ impl InventoryStateWorker {
             .build();
         let id = model.entity_id;
 
-        if let Some(pockets) = resolve_pockets_for_sync(
+        if self.global_app_state.tx.is_interested(&crate::websocket::BroadcastTopics::inventory_remove(model.entity_id))
+            && let Some(pockets) = resolve_pockets_for_sync(
             &model.pockets,
             &self.global_app_state.item_desc,
             &self.global_app_state.cargo_desc,
@@ -1149,10 +1158,43 @@ mod initial_reconciliation_tests {
     }
 
     #[tokio::test]
+    async fn unsubscribed_inventory_still_persists_and_owner_subscription_enables_notifications() {
+        use crate::inventory::resolution_tests::{cargo_description, item_description};
+        let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
+        let state = AppState::new(DatabaseConnection::default(), tx, Default::default());
+        state.item_desc.insert(1, item_description());
+        state.cargo_desc.insert(2, cargo_description());
+        let mut worker = InventoryStateWorker::new(state.clone(), 100, Duration::from_secs(60));
+        let (db_tx, mut operations) = channel(5);
+        worker.db_tx = db_tx;
+
+        worker.handle_insert(raw_inventory(1), 1).await;
+        worker.handle_update(raw_inventory(2), raw_inventory(2), 1).await;
+        worker.handle_remove(raw_inventory(3), 1).await;
+        assert!(notifications.try_recv().is_err());
+        worker.flush().await;
+        assert!(matches!(operations.try_recv().unwrap(), InventoryDbOperation::Upsert(rows) if rows.len() == 2));
+        assert!(matches!(operations.try_recv().unwrap(), InventoryDbOperation::Delete(ids) if ids == [3]));
+
+        let _subscriber = state.subscribe_test_client(&[("inventory_insert_owner", Some(10))]).await;
+        worker.handle_insert(raw_inventory(4), 1).await;
+        assert!(matches!(notifications.try_recv().unwrap(), OutboundWebSocketMessages::InventoryInsert { resolved_inventory, .. } if resolved_inventory.entity_id == 4));
+        worker.handle_update(raw_inventory(4), raw_inventory(4), 1).await;
+        worker.handle_remove(raw_inventory(4), 1).await;
+        assert!(notifications.try_recv().is_err(), "insert interest must not enable updates/removes");
+        assert_eq!(worker.messages_delete, [4]);
+    }
+
+    #[tokio::test]
     async fn persistence_coalesces_without_dropping_notifications_or_changelog_entries() {
         use crate::inventory::resolution_tests::{cargo_description, item_description};
         let (tx, mut notifications) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(DatabaseConnection::default(), tx, Default::default());
+        let _subscriber = state.subscribe_test_client(&[
+            ("inventory_insert", Some(1)), ("inventory_insert", Some(2)),
+            ("inventory_update", Some(1)), ("inventory_remove", Some(1)),
+            ("inventory_remove", Some(2)),
+        ]).await;
         state.item_desc.insert(1, item_description());
         state.cargo_desc.insert(2, cargo_description());
         let mut worker = InventoryStateWorker::new(state, 100, Duration::from_secs(60));

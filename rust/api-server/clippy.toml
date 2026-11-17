@@ -1,0 +1,18 @@
+# DashMap guards are Send, so ordinary async Send checks do not catch a shard
+# lock held across .await. Use cargo clippy to enforce this additional rule.
+await-holding-invalid-types = [
+    "dashmap::mapref::one::Ref",
+    "dashmap::mapref::one::RefMut",
+    "dashmap::mapref::one::MappedRef",
+    "dashmap::mapref::one::MappedRefMut",
+    "dashmap::mapref::multiple::RefMulti",
+    "dashmap::mapref::multiple::RefMutMulti",
+    "dashmap::mapref::entry::Entry",
+    "dashmap::mapref::entry::OccupiedEntry",
+    "dashmap::mapref::entry::VacantEntry",
+    "dashmap::setref::one::Ref",
+    "dashmap::setref::multiple::RefMulti",
+    "dashmap::iter::Iter",
+    "dashmap::iter::IterMut",
+    "dashmap::iter_set::Iter",
+]

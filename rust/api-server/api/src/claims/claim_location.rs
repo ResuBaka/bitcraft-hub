@@ -19,7 +19,10 @@ const MAX_UNMATCHED_LOCATIONS: usize = 4096;
 struct LiveRegion {
     claims: HashMap<u64, u64>,
     locations: HashMap<u64, TileCoordinates>,
-    coordinates: HashMap<TileCoordinates, HashMap<u64, u64>>,
+    // Almost every coordinate has one tile. Store its ID inline instead of
+    // allocating a separate hash table (and duplicating its claim) per tile.
+    coordinates: HashMap<TileCoordinates, u64>,
+    overlapping: HashMap<TileCoordinates, HashSet<u64>>,
     missing: HashSet<u64>,
     unmatched: VecDeque<u64>,
     descriptions: HashMap<u32, u64>,
@@ -33,18 +36,34 @@ struct LiveRegion {
 
 impl LiveRegion {
     fn detach(&mut self, id: u64) {
-        if let Some(coords) = self.locations.get(&id)
-            && let Some(entries) = self.coordinates.get_mut(coords)
-        {
-            entries.remove(&id);
-            if entries.is_empty() { self.coordinates.remove(coords); }
+        let Some(coords) = self.locations.get(&id) else { return; };
+        let Some(&representative) = self.coordinates.get(coords) else { return; };
+        if representative == id {
+            let replacement = self.overlapping.get_mut(coords).and_then(|others| {
+                let next = others.iter().next().copied()?;
+                others.remove(&next);
+                Some(next)
+            });
+            if let Some(next) = replacement {
+                self.coordinates.insert(*coords, next);
+            } else {
+                self.coordinates.remove(coords);
+            }
+        } else if let Some(others) = self.overlapping.get_mut(coords) {
+            others.remove(&id);
+        }
+        if self.overlapping.get(coords).is_some_and(HashSet::is_empty) {
+            self.overlapping.remove(coords);
         }
     }
 
     fn attach(&mut self, id: u64) {
         match (self.claims.get(&id), self.locations.get(&id)) {
-            (Some(&claim), Some(&coords)) => {
-                self.coordinates.entry(coords).or_default().insert(id, claim);
+            (Some(_), Some(&coords)) => {
+                let representative = self.coordinates.entry(coords).or_insert(id);
+                if *representative != id {
+                    self.overlapping.entry(coords).or_default().insert(id);
+                }
                 self.missing.remove(&id);
             }
             (Some(_), None) => { self.missing.insert(id); }
@@ -99,8 +118,12 @@ impl ClaimLocationSubscriptions {
     }
     pub(crate) fn claims_initial<'a>(&self, region: Region, rows: impl IntoIterator<Item = &'a game_module::module_bindings::ClaimTileState>) {
         if let Some(state) = self.regions.write().get_mut(&region) {
+            let rows = rows.into_iter();
+            state.claims.reserve(rows.size_hint().0);
+            state.coordinates.reserve(rows.size_hint().0);
             for row in rows { state.set_claim(row.entity_id, Some(row.claim_id)); }
             state.finish_claims_initial();
+            if state.locations_initial_received { state.missing.shrink_to_fit(); }
         }
     }
     pub(crate) fn claim(&self, region: Region, id: u64, claim: Option<u64>) {
@@ -108,8 +131,13 @@ impl ClaimLocationSubscriptions {
     }
     pub(crate) fn locations_initial<'a>(&self, region: Region, rows: impl IntoIterator<Item = &'a game_module::module_bindings::LocationState>) {
         if let Some(state) = self.regions.write().get_mut(&region) {
+            let rows = rows.into_iter();
+            state.locations.reserve(rows.size_hint().0);
             for row in rows { state.set_location(row.entity_id, Some((row.dimension, row.x, row.z))); }
             state.locations_initial_received = true;
+            // Claims usually arrive first, temporarily placing every tile in
+            // this set. Removing entries does not release the backing table.
+            state.missing.shrink_to_fit();
         }
     }
     pub(crate) fn location(&self, region: Region, id: u64, location: Option<TileCoordinates>) {
@@ -152,10 +180,12 @@ impl ClaimLocationSubscriptions {
         let (x, z) = mobile_tile(x, z);
         match state.coordinates.get(&(dimension, x, z)) {
             None => ClaimAtLocation::Unclaimed,
-            Some(entries) => {
-                let mut claims = entries.values();
-                let Some(&claim) = claims.next() else { return ClaimAtLocation::Unknown; };
-                if claims.all(|other| *other == claim) { ClaimAtLocation::Claim(claim) } else { ClaimAtLocation::Unknown }
+            Some(id) => {
+                let Some(&claim) = state.claims.get(id) else { return ClaimAtLocation::Unknown; };
+                let agrees = state.overlapping.get(&(dimension, x, z)).is_none_or(|others| {
+                    others.iter().all(|id| state.claims.get(id) == Some(&claim))
+                });
+                if agrees { ClaimAtLocation::Claim(claim) } else { ClaimAtLocation::Unknown }
             }
         }
     }
@@ -280,6 +310,79 @@ mod tests {
         assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unclaimed);
         index.invalidate(1);
         assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unknown);
+    }
+
+    #[test]
+    fn overlapping_tiles_preserve_ambiguity_through_moves_and_deletes() {
+        use game_module::module_bindings::{ClaimTileState, LocationState};
+        let index = ClaimLocationSubscriptions::default();
+        index.reset(1);
+        index.claims_initial(1, &(1..=3).map(|entity_id| ClaimTileState {
+            entity_id, claim_id: 99,
+        }).collect::<Vec<_>>());
+        index.locations_initial(1, &(1..=3).map(|entity_id| LocationState {
+            entity_id, chunk_index: 1, x: 1, z: 2, dimension: 1,
+        }).collect::<Vec<_>>());
+        index.finish_initial(1);
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Claim(99));
+        index.claim(1, 2, Some(100));
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unknown);
+        index.location(1, 2, Some((1, 5, 2)));
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Claim(99));
+        assert_eq!(index.lookup(1, 1, 5000, 2000), ClaimAtLocation::Claim(100));
+        index.claim(1, 1, None); // promote another tile at the old coordinate
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Claim(99));
+        index.claim(1, 3, Some(101));
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Claim(101));
+        index.claim(1, 3, None);
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unclaimed);
+        assert_eq!(index.lookup(1, 1, 5000, 2000), ClaimAtLocation::Claim(100));
+    }
+
+    #[test]
+    fn live_mutations_match_rebuilt_snapshot_with_duplicate_coordinates() {
+        let index = ClaimLocationSubscriptions::default();
+        index.reset(1);
+        index.claims_initial(1, []);
+        index.locations_initial(1, []);
+        index.finish_initial(1);
+        let mut claims = HashMap::new();
+        let mut locations = HashMap::new();
+        let mut random = 42u64;
+        for step in 0..2000 {
+            random = random.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let id = (random >> 32) % 16;
+            let x = ((random >> 40) % 4) as i32;
+            let claim = (random >> 48) % 3;
+            match (random >> 56) % 4 {
+                0 => { claims.insert(id, claim); index.claim(1, id, Some(claim)); }
+                1 => {
+                    claims.remove(&id);
+                    locations.remove(&id);
+                    index.claim(1, id, None);
+                }
+                2 => {
+                    locations.insert(id, (1, x, 0));
+                    index.location(1, id, Some((1, x, 0)));
+                }
+                _ => { locations.remove(&id); index.location(1, id, None); }
+            }
+            // Regularly complete outstanding joins to exercise known results,
+            // not just the conservative Unknown result for incomplete regions.
+            if step % 7 == 0 {
+                for &id in claims.keys() {
+                    let coords = *locations.entry(id).or_insert((1, (id % 4) as i32, 0));
+                    index.location(1, id, Some(coords));
+                }
+            }
+            let mut snapshot = ClaimLocationSnapshot::default();
+            snapshot.replace_region(1, claims.iter().map(|(&id, &claim)| (id, claim)),
+                locations.iter().map(|(&id, &(dim, x, z))| (id, dim, x, z)), []);
+            for x in 0..5 {
+                assert_eq!(index.lookup(1, 1, x * 1000, 0), snapshot.lookup(1, 1, x * 1000, 0),
+                    "step {step}, tile {x}");
+            }
+        }
     }
 
     #[test]

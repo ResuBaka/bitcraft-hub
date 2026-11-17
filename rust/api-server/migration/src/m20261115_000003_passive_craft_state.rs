@@ -1,0 +1,78 @@
+use sea_orm_migration::prelude::*;
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(PassiveCraftState::Table)
+                    .col(
+                        ColumnDef::new(PassiveCraftState::EntityId)
+                            .big_integer()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(PassiveCraftState::OwnerEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PassiveCraftState::RecipeId)
+                            .integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PassiveCraftState::BuildingEntityId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PassiveCraftState::Timestamp)
+                            .timestamp_with_time_zone()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(PassiveCraftState::Status)
+                            .small_integer()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(PassiveCraftState::Slot).big_integer())
+                    .col(
+                        ColumnDef::new(PassiveCraftState::Region)
+                            .small_integer()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("passive_craft_building_idx")
+                    .table(PassiveCraftState::Table)
+                    .col(PassiveCraftState::BuildingEntityId)
+                    .to_owned(),
+            )
+            .await
+    }
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(PassiveCraftState::Table).to_owned())
+            .await
+    }
+}
+#[derive(DeriveIden)]
+enum PassiveCraftState {
+    Table,
+    EntityId,
+    OwnerEntityId,
+    RecipeId,
+    BuildingEntityId,
+    Timestamp,
+    Status,
+    Slot,
+    Region,
+}

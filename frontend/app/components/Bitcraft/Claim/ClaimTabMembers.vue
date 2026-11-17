@@ -3,9 +3,9 @@ import type { SortingState } from "@tanstack/vue-table";
 import { getSortedRowModel } from "@tanstack/vue-table";
 import type { ClaimDescriptionStateMember } from "~/types/ClaimDescriptionStateMember";
 import type { ItemExpended } from "~/types/ItemExpended";
-import { expToLevel, levelToColor } from "~/utils";
+import { expToLevel, levelToColor, levelToTier } from "~/utils";
 
-defineProps<{
+const props = defineProps<{
   onlinePlayersCount: number;
   memberCount: number;
   memberSearch: string | null;
@@ -13,6 +13,7 @@ defineProps<{
   memberSorting: SortingState;
   memberColumns: any[];
   membersForTable: ({ permissions: number } & ClaimDescriptionStateMember)[];
+  allMembers: ClaimDescriptionStateMember[];
   memberSkills: readonly string[];
   memberSecondarySkills: readonly string[];
   tierToColor: Record<number, string>;
@@ -21,6 +22,38 @@ defineProps<{
   getSkillTool: (member: ClaimDescriptionStateMember, skill: string) => ItemExpended | undefined;
   getToolLabel: (item: ItemExpended | undefined) => string | null;
 }>();
+
+const skillMaxLevels = computed(() => {
+  const result: Record<string, { all: number | null; online: number | null }> = {};
+  for (const skill of [...props.memberSkills, ...props.memberSecondarySkills]) {
+    let all: number | null = null;
+    let online: number | null = null;
+    for (const member of props.allMembers) {
+      const xp = member.skills_ranks?.[skill];
+      if (xp == null) continue;
+      const level = expToLevel(xp);
+      all = Math.max(all ?? 0, level);
+      if (member.online_state === "Online") online = Math.max(online ?? 0, level);
+    }
+    result[skill] = { all, online };
+  }
+  return result;
+});
+
+const showToolHints = ref(false);
+
+const toolHint = (member: ClaimDescriptionStateMember, skill: string) => {
+  const xp = member.skills_ranks?.[skill];
+  if (props.skillToToolIndex[skill] === undefined || !member.inventory || xp == null) return null;
+
+  const expectedTier = levelToTier(expToLevel(xp));
+  const tool = props.getSkillTool(member, skill);
+  if (!tool) return `No tool equipped; skill level supports tier ${expectedTier}.`;
+  if (tool.tier && tool.tier < expectedTier) {
+    return `Tool is tier ${tool.tier}; skill level supports tier ${expectedTier}.`;
+  }
+  return null;
+};
 
 const emit = defineEmits<{
   "update:memberSearch": [value: string | null];
@@ -57,6 +90,7 @@ const emit = defineEmits<{
           label="Only online"
           @update:model-value="(value) => emit('update:showOnlyOnlineMembers', value)"
         />
+        <USwitch v-model="showToolHints" label="Tool hints" />
       </div>
     </div>
     <UTable
@@ -94,38 +128,27 @@ const emit = defineEmits<{
         </UButton>
       </template>
       <template
-        v-for="skill in memberSkills"
+        v-for="skill in [...memberSkills, ...memberSecondarySkills]"
         :key="`${skill}-header`"
         #[`skill_${skill}-header`]="{ column }"
       >
-        <UButton
-          variant="ghost"
-          size="xs"
-          class="-ml-2 font-semibold uppercase tracking-[0.08em]"
-          @click="column.toggleSorting(column.getIsSorted() === 'asc')"
-        >
-          {{ skill }}
-          <span class="ml-1 text-xs">{{
-            column.getIsSorted() === "asc" ? "▲" : column.getIsSorted() === "desc" ? "▼" : ""
-          }}</span>
-        </UButton>
-      </template>
-      <template
-        v-for="skill in memberSecondarySkills"
-        :key="`${skill}-header`"
-        #[`skill_${skill}-header`]="{ column }"
-      >
-        <UButton
-          variant="ghost"
-          size="xs"
-          class="-ml-2 font-semibold uppercase tracking-[0.08em]"
-          @click="column.toggleSorting(column.getIsSorted() === 'asc')"
-        >
-          {{ skill }}
-          <span class="ml-1 text-xs">{{
-            column.getIsSorted() === "asc" ? "▲" : column.getIsSorted() === "desc" ? "▼" : ""
-          }}</span>
-        </UButton>
+        <div class="flex flex-col items-center text-center">
+          <UButton
+            variant="ghost"
+            size="xs"
+            class="px-1 font-semibold uppercase tracking-normal"
+            @click="column.toggleSorting(column.getIsSorted() === 'asc')"
+          >
+            {{ skill }}
+            <span class="ml-1 text-xs">{{
+              column.getIsSorted() === "asc" ? "▲" : column.getIsSorted() === "desc" ? "▼" : ""
+            }}</span>
+          </UButton>
+          <div class="text-xs normal-case tracking-normal text-gray-500 dark:text-gray-400">
+            <div>Top: {{ skillMaxLevels[skill]?.all ?? "—" }}</div>
+            <div>Online: {{ skillMaxLevels[skill]?.online ?? "—" }}</div>
+          </div>
+        </div>
       </template>
       <template #user-cell="{ row }">
         <NuxtLink
@@ -150,11 +173,12 @@ const emit = defineEmits<{
         </div>
       </template>
       <template v-for="skill in memberSkills" :key="skill" #[`skill_${skill}-cell`]="{ row }">
-        <div class="flex items-center justify-center">
+        <div class="relative flex items-center justify-center">
           <span
-            class="rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
-            :class="levelToColor(row.original?.skills_ranks?.[skill] ?? 0)"
+            class="rounded-l-full px-2 py-1 text-sm font-bold"
+            :class="[levelToColor(row.original?.skills_ranks?.[skill] ?? 0), showToolHints && toolHint(row.original, skill) ? 'border-r-2 border-amber-500' : 'border-r-0']"
             :style="tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))"
+            :title="showToolHints ? toolHint(row.original, skill) ?? undefined : undefined"
           >
             {{ expToLevel(row.original?.skills_ranks?.[skill] ?? 0) }}
           </span>
@@ -176,11 +200,12 @@ const emit = defineEmits<{
         :key="skill"
         #[`skill_${skill}-cell`]="{ row }"
       >
-        <div class="flex items-center justify-center">
+        <div class="relative flex items-center justify-center">
           <span
-            class="rounded-l-full border-r-0 px-2 py-1 text-sm font-bold"
-            :class="`${levelToColor(row.original?.skills_ranks?.[skill] ?? 0)} ${skillToToolIndex[skill] ? '' : 'rounded-r-full'}`"
+            class="rounded-l-full px-2 py-1 text-sm font-bold"
+            :class="[levelToColor(row.original?.skills_ranks?.[skill] ?? 0), skillToToolIndex[skill] !== undefined ? '' : 'rounded-r-full', showToolHints && toolHint(row.original, skill) ? 'border-r-2 border-amber-500' : 'border-r-0']"
             :style="tierToBgStyle(levelToTier(row.original?.skills_ranks?.[skill] ?? 0))"
+            :title="showToolHints ? toolHint(row.original, skill) ?? undefined : undefined"
           >
             {{ expToLevel(row.original?.skills_ranks?.[skill] ?? 0) }}
           </span>
@@ -212,5 +237,9 @@ const emit = defineEmits<{
 }
 .claim-table :deep(tbody tr td) {
   vertical-align: top;
+}
+.claim-table :deep(thead tr th:nth-child(n + 3)),
+.claim-table :deep(tbody tr td:nth-child(n + 3)) {
+  padding-inline: 0.25rem;
 }
 </style>

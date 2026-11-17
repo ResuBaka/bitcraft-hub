@@ -26,6 +26,7 @@ export type ClaimDescriptionStateWithInventoryAndPlayTime = {
   running_upgrade: ClaimTechDesc | null;
   running_upgrade_started: Timestamp | null;
   tier: number | null;
+  rank: number;
   upgrades: Array<ClaimTechDesc>;
   learned_upgrades: Array<number>;
   inventorys: { [key in string]: Array<ExpendedRefrence> };

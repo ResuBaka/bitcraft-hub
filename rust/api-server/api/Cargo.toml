@@ -35,6 +35,7 @@ entity = { path = "../entity" }
 migration = { path = "../migration" }
 game_module = { path = "../game_module" }
 tracing-subscriber = { version = "0.3.23", features = ["json", "serde", "serde_json"] }
+tracing-appender = "0.2"
 tracing = { workspace = true }
 tower-http = { version = "0.7.1", features = ["fs", "cors", "compression-full"] }
 tower-cookies = "0.11.0"

@@ -7,8 +7,13 @@ use game_module::module_bindings::LocationState;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, QueryFilter, TryIntoModel,
 };
+use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedSender as TokioUnboundedSender;
+use tokio::sync::mpsc::Sender;
+
+// Backpressure the row-to-ActiveModel expansion while PostgreSQL catches up.
+// Each operation is at most one worker batch, rather than a full snapshot.
+const LOCATION_DB_QUEUE_CAPACITY: usize = 8;
 
 // pub(crate) async fn insert_many_location_state(
 //     global_app_state: &AppState,
@@ -206,9 +211,11 @@ pub(crate) struct LocationStateWorker {
     tx: UnboundedSender<SpacetimeUpdateMessages<LocationState>>,
     batch_size: usize,
     time_limit: Duration,
-    db_tx: TokioUnboundedSender<LocationStateDbOperation>,
+    db_tx: Sender<LocationStateDbOperation>,
     messages: Vec<::entity::location_state::ActiveModel>,
+    message_positions: HashMap<i64, usize>,
     messages_delete: Vec<i64>,
+    delete_positions: HashMap<i64, usize>,
 }
 
 impl LocationStateWorker {
@@ -224,17 +231,19 @@ impl LocationStateWorker {
             time_limit,
             db_tx,
             messages: Vec::new(),
+            message_positions: HashMap::new(),
             messages_delete: Vec::new(),
+            delete_positions: HashMap::new(),
         }
     }
 
-    fn queue_upserts(&self, messages: Vec<::entity::location_state::ActiveModel>) {
+    async fn queue_upserts(&self, messages: Vec<::entity::location_state::ActiveModel>) {
         if messages.is_empty() {
             return;
         }
 
         let count = messages.len();
-        if let Err(error) = self.db_tx.send(LocationStateDbOperation::Upsert(messages)) {
+        if let Err(error) = self.db_tx.send(LocationStateDbOperation::Upsert(messages)).await {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue LocationState upserts"
@@ -247,13 +256,13 @@ impl LocationStateWorker {
         }
     }
 
-    fn queue_deletes(&self, ids: Vec<i64>) {
+    async fn queue_deletes(&self, ids: Vec<i64>) {
         if ids.is_empty() {
             return;
         }
 
         let count = ids.len();
-        if let Err(error) = self.db_tx.send(LocationStateDbOperation::Delete(ids)) {
+        if let Err(error) = self.db_tx.send(LocationStateDbOperation::Delete(ids)).await {
             tracing::error!(
                 error = error.to_string(),
                 "Could not queue LocationState deletes"
@@ -302,10 +311,10 @@ impl LocationStateWorker {
         for location in data {
             self.handle_insert(location, database_name).await;
             if self.messages.len() >= self.batch_size {
-                self.flush_messages();
+                self.flush_messages().await;
             }
         }
-        self.flush_messages();
+        self.flush_messages().await;
     }
 
     async fn handle_insert(&mut self, new: LocationState, database_name: Region) {
@@ -316,10 +325,21 @@ impl LocationStateWorker {
 
         // The conflict key is entity_id alone, including across regions. A later
         // operation supersedes every pending write/delete for this entity.
-        self.messages
-            .retain(|value| value.entity_id.as_ref() != &model.entity_id);
-        self.messages_delete.retain(|id| *id != model.entity_id);
-        self.messages.push(model.into_active_model());
+        // Index the batch so initial snapshots do not scan all preceding rows
+        // for every insert. Ordering between different entity IDs is immaterial.
+        let id = model.entity_id;
+        if let Some(index) = self.delete_positions.remove(&id) {
+            self.messages_delete.swap_remove(index);
+            if let Some(&moved_id) = self.messages_delete.get(index) {
+                self.delete_positions.insert(moved_id, index);
+            }
+        }
+        if let Some(&index) = self.message_positions.get(&id) {
+            self.messages[index] = model.into_active_model();
+        } else {
+            self.message_positions.insert(id, self.messages.len());
+            self.messages.push(model.into_active_model());
+        }
     }
 
     async fn handle_update(&mut self, new: LocationState, database_name: Region) {
@@ -335,30 +355,38 @@ impl LocationStateWorker {
                 .build();
         let id = model.entity_id;
 
-        self.messages
-            .retain(|value| value.entity_id.as_ref() != &id);
-        if !self.messages_delete.contains(&id) {
+        if let Some(index) = self.message_positions.remove(&id) {
+            self.messages.swap_remove(index);
+            if let Some(moved) = self.messages.get(index) {
+                self.message_positions
+                    .insert(*moved.entity_id.as_ref(), index);
+            }
+        }
+        if !self.delete_positions.contains_key(&id) {
+            self.delete_positions.insert(id, self.messages_delete.len());
             self.messages_delete.push(id);
         }
     }
 
-    fn flush_messages(&mut self) {
+    async fn flush_messages(&mut self) {
         if self.messages.is_empty() {
             return;
         }
 
         let messages = std::mem::take(&mut self.messages);
-        self.queue_upserts(messages);
+        self.message_positions.clear();
+        self.queue_upserts(messages).await;
     }
 
-    fn flush_deletes(&mut self) {
+    async fn flush_deletes(&mut self) {
         if self.messages_delete.is_empty() {
             return;
         }
 
         tracing::debug!("LocationState::Remove");
         let messages_delete = std::mem::take(&mut self.messages_delete);
-        self.queue_deletes(messages_delete);
+        self.delete_positions.clear();
+        self.queue_deletes(messages_delete).await;
     }
 }
 
@@ -396,15 +424,15 @@ impl BatchedWorker for LocationStateWorker {
     }
 
     async fn flush(&mut self) {
-        self.flush_messages();
-        self.flush_deletes();
+        self.flush_messages().await;
+        self.flush_deletes().await;
     }
 }
 
 fn start_location_state_db_worker(
     global_app_state: AppState,
-) -> TokioUnboundedSender<LocationStateDbOperation> {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<LocationStateDbOperation>();
+) -> Sender<LocationStateDbOperation> {
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<LocationStateDbOperation>(LOCATION_DB_QUEUE_CAPACITY);
     global_app_state.shutdown.clone().spawn_worker(async move {
         while let Some(operation) = rx.recv().await {
             let (kind, count) = operation.kind_and_rows();
@@ -562,8 +590,8 @@ mod tests {
         let handle = recorder.handle();
         metrics::with_local_recorder(&recorder, || {
             let (worker, mut operations) = worker();
-            worker.queue_upserts(vec![model(1, 1, 1), model(2, 2, 1)]);
-            worker.queue_deletes(vec![3]);
+            futures::executor::block_on(worker.queue_upserts(vec![model(1, 1, 1), model(2, 2, 1)]));
+            futures::executor::block_on(worker.queue_deletes(vec![3]));
             let first = operations.try_recv().unwrap();
             let (kind, count) = first.kind_and_rows();
             let guard = InFlightLocationDbOperation::new(kind, count);
@@ -602,10 +630,10 @@ mod tests {
 
     fn worker() -> (
         LocationStateWorker,
-        tokio::sync::mpsc::UnboundedReceiver<LocationStateDbOperation>,
+        tokio::sync::mpsc::Receiver<LocationStateDbOperation>,
     ) {
         let (tx, rx) = crate::websocket::worker_channel::unbounded_channel();
-        let (db_tx, db_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (db_tx, db_rx) = tokio::sync::mpsc::channel(LOCATION_DB_QUEUE_CAPACITY);
         (
             LocationStateWorker {
                 tx,
@@ -614,7 +642,9 @@ mod tests {
                 batch_size: 10,
                 time_limit: Duration::from_millis(200),
                 messages: Vec::new(),
+                message_positions: HashMap::new(),
                 messages_delete: Vec::new(),
+                delete_positions: HashMap::new(),
             },
             db_rx,
         )
@@ -629,13 +659,13 @@ mod tests {
         worker.handle_update(location(1, 30), 1).await;
         worker.handle_update(location(1, 40), 2).await;
         worker.handle_update(location(1, 50), 3).await;
-        assert_eq!(worker.messages, [model(2, 20, 1), model(1, 50, 3)]);
+        assert_eq!(worker.messages, [model(1, 50, 3), model(2, 20, 1)]);
         worker.flush().await;
         let LocationStateDbOperation::Upsert(rows) = operations.try_recv().unwrap() else {
             panic!("expected upsert");
         };
         assert!(operations.try_recv().is_err());
-        assert_eq!(rows, [model(2, 20, 1), model(1, 50, 3)]);
+        assert_eq!(rows, [model(1, 50, 3), model(2, 20, 1)]);
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_exec_results([MockExecResult {
@@ -645,7 +675,7 @@ mod tests {
             .into_connection();
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let state = AppState::new(db, tx, Default::default());
-        let expected = location_upsert_statement(vec![model(2, 20, 1), model(1, 50, 3)]).unwrap();
+        let expected = location_upsert_statement(vec![model(1, 50, 3), model(2, 20, 1)]).unwrap();
         insert_multiple_location_state(&state, rows).await;
         assert_eq!(
             state.conn.into_transaction_log(),
@@ -668,14 +698,13 @@ mod tests {
     #[tokio::test]
     async fn later_deletes_and_upserts_cancel_all_prior_operations_for_entity() {
         let (mut worker, mut operations) = worker();
-        worker
-            .messages
-            .extend([model(1, 10, 1), model(2, 20, 1), model(1, 30, 2)]);
+        worker.handle_insert(location(1, 10), 1).await;
+        worker.handle_insert(location(2, 20), 1).await;
+        worker.handle_insert(location(1, 30), 2).await;
         worker.handle_remove(location(1, 30), 2).await;
         worker.handle_remove(location(1, 30), 2).await;
         assert_eq!(worker.messages, [model(2, 20, 1)]);
         assert_eq!(worker.messages_delete, [1]);
-        worker.messages_delete.push(1); // Also repair duplicates already pending.
         worker.handle_update(location(1, 40), 3).await;
         assert!(worker.messages_delete.is_empty());
         assert_eq!(worker.messages, [model(2, 20, 1), model(1, 40, 3)]);
@@ -688,6 +717,53 @@ mod tests {
             matches!(operations.try_recv().unwrap(), LocationStateDbOperation::Delete(ids) if ids == [1])
         );
         assert!(worker.is_idle());
+    }
+
+    #[tokio::test]
+    async fn mixed_operations_match_latest_entity_state_across_batch_reuse() {
+        use std::collections::{BTreeMap, HashSet};
+
+        let (mut worker, mut operations) = worker();
+        let mut expected = BTreeMap::new();
+        let mut random = 17_u64;
+        for step in 0..1_000 {
+            random = random.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let id = (random >> 32) % 31;
+            let region = (step % 9 + 1) as Region;
+            if random % 3 == 0 {
+                worker.handle_remove(location(id, step), region).await;
+                expected.insert(id as i64, None);
+            } else {
+                worker.handle_update(location(id, step), region).await;
+                expected.insert(id as i64, Some(model(id, step, region)));
+            }
+
+            if step % 37 == 0 || step == 999 {
+                worker.flush().await;
+                let mut actual = BTreeMap::new();
+                let mut seen = HashSet::new();
+                while let Ok(operation) = operations.try_recv() {
+                    match operation {
+                        LocationStateDbOperation::Upsert(rows) => {
+                            for row in rows {
+                                let id = *row.entity_id.as_ref();
+                                assert!(seen.insert(id), "duplicate conflict key {id}");
+                                actual.insert(id, Some(row));
+                            }
+                        }
+                        LocationStateDbOperation::Delete(ids) => {
+                            for id in ids {
+                                assert!(seen.insert(id), "conflicting pending operation {id}");
+                                actual.insert(id, None);
+                            }
+                        }
+                    }
+                }
+                assert_eq!(actual, expected);
+                expected.clear();
+                assert!(worker.is_idle());
+            }
+        }
     }
 
     #[tokio::test]
@@ -714,9 +790,48 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn initial_expansion_waits_for_database_capacity_and_preserves_every_row() {
+        let (mut worker, mut operations) = worker();
+        worker.batch_size = 2;
+        let batches = LOCATION_DB_QUEUE_CAPACITY + 3;
+        let count = batches * worker.batch_size;
+        let initial = worker.handle_initial((0..count as u64).map(|id| location(id, 10)).collect(), 1);
+        tokio::pin!(initial);
+        assert!(futures::poll!(initial.as_mut()).is_pending());
+        assert_eq!(operations.len(), LOCATION_DB_QUEUE_CAPACITY);
+
+        let (_, ids) = tokio::join!(initial, async {
+            let mut ids = Vec::new();
+            for _ in 0..batches {
+                let LocationStateDbOperation::Upsert(rows) = operations.recv().await.unwrap() else {
+                    panic!("expected an upsert batch");
+                };
+                assert_eq!(rows.len(), 2);
+                ids.extend(rows.into_iter().map(|row| row.entity_id.unwrap()));
+            }
+            ids
+        });
+        assert_eq!(ids, (0..count as i64).collect::<Vec<_>>());
+        assert!(operations.is_empty());
+    }
+
+    #[tokio::test]
+    async fn closed_database_queue_releases_a_blocked_snapshot_producer() {
+        let (mut worker, operations) = worker();
+        worker.batch_size = 1;
+        let initial = worker.handle_initial(
+            (0..LOCATION_DB_QUEUE_CAPACITY as u64 + 2).map(|id| location(id, 10)).collect(), 1,
+        );
+        tokio::pin!(initial);
+        assert!(futures::poll!(initial.as_mut()).is_pending());
+        drop(operations);
+        tokio::time::timeout(Duration::from_secs(1), initial).await.unwrap();
+    }
+
+    #[tokio::test]
     async fn chunk_snapshots_upsert_new_entities_without_deleting_other_chunks() {
         let (tx, rx) = crate::websocket::worker_channel::unbounded_channel();
-        let (db_tx, mut db_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (db_tx, mut db_rx) = tokio::sync::mpsc::channel(LOCATION_DB_QUEUE_CAPACITY);
         let mut worker = LocationStateWorker {
             tx,
             rx,
@@ -724,7 +839,9 @@ mod tests {
             batch_size: 10,
             time_limit: Duration::from_millis(200),
             messages: Vec::new(),
+            message_positions: HashMap::new(),
             messages_delete: Vec::new(),
+            delete_positions: HashMap::new(),
         };
         for (entity_id, chunk_index) in [(42, 3003), (43, 4003)] {
             worker

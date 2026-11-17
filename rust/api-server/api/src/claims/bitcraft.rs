@@ -1256,6 +1256,8 @@ fn start_claim_member_state_db_worker(
                         .await;
                 }
             }
+            // Membership in the crafting view is computed from the persisted rows.
+            crate::crafting::notifications::all(&global_app_state);
         }
     });
 
