@@ -6,7 +6,7 @@ use super::{BucketDistribution, BucketLayout, EXCLUDED_USERS_FROM_LEADERBOARD, L
 use crossbeam_channel::{Receiver, Sender, bounded};
 use parking_lot::{Mutex, RwLock};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
@@ -44,6 +44,21 @@ fn sparse_update_position(
 pub(super) struct PlayerRegistry {
     inner: RwLock<PlayerIds>,
     capacity_hint: AtomicUsize,
+    pub(super) staff: RwLock<StaffExclusions>,
+}
+
+#[derive(Default)]
+pub(super) struct StaffExclusions {
+    pub(super) pending: bool,
+    pub(super) player_ids: HashSet<i64>,
+}
+
+impl StaffExclusions {
+    pub(super) fn includes_player(&self, id: i64) -> bool {
+        !self.pending
+            && !self.player_ids.contains(&id)
+            && !EXCLUDED_USERS_FROM_LEADERBOARD.contains(&id)
+    }
 }
 
 #[derive(Default)]
@@ -326,6 +341,10 @@ impl RankingWorker {
 
     pub(super) fn subscribe(&self) -> tokio::sync::watch::Receiver<u64> {
         self.published.subscribe()
+    }
+
+    pub(super) fn notify_publication(&self) {
+        self.published.send_modify(|revision| *revision = revision.wrapping_add(1));
     }
 
     /// Call only after score producers stop. The final wake publishes pending
@@ -777,14 +796,24 @@ impl Leaderboard {
 
     fn get_rank_index(&self, index: u32) -> Option<usize> {
         self.state.lock().scores.get(index)?;
-        let rank = self
-            .data
-            .read()
-            .ranks
-            .get(index as usize)
-            .copied()
-            .unwrap_or(0);
-        (rank != 0).then_some(rank as usize)
+        let data = self.data.read();
+        let players = self.players.inner.read();
+        let staff = self.players.staff.read();
+        if !staff.includes_player(players.ids[index as usize]) {
+            return None;
+        }
+        let rank = data.ranks.get(index as usize).copied().unwrap_or(0);
+        if rank == 0 {
+            return None;
+        }
+        // Keep the underlying scores current even while staff are hidden, so
+        // removing a role restores the player without an XP or play-time update.
+        let hidden_above = staff.player_ids.iter()
+            .filter_map(|id| players.by_id.get(id))
+            .filter_map(|&index| data.ranks.get(index as usize))
+            .filter(|&&hidden_rank| hidden_rank != 0 && hidden_rank < rank)
+            .count();
+        Some(rank as usize - hidden_above)
     }
 
     #[allow(dead_code)]
@@ -805,9 +834,20 @@ impl Leaderboard {
     pub(crate) fn get_range(&self, offset: usize, limit: usize) -> Vec<LeaderboardEntry> {
         let data = self.data.read();
         let players = self.players.inner.read();
+        let staff = self.players.staff.read();
+        if staff.pending {
+            return Vec::new();
+        }
+        let (raw_skip, filtered_skip) = if staff.player_ids.is_empty() {
+            (offset, 0)
+        } else {
+            (0, offset)
+        };
         data.sorted_players
             .iter()
-            .skip(offset)
+            .skip(raw_skip)
+            .filter(|&&index| !staff.player_ids.contains(&players.ids[index as usize]))
+            .skip(filtered_skip)
             .take(limit)
             .enumerate()
             .map(|(position, &index)| LeaderboardEntry {

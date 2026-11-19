@@ -8,35 +8,4 @@ import type { SharedState } from "./SharedState";
 import type { Timestamp } from "./Timestamp";
 import type { TravelerTaskState } from "./TravelerTaskState";
 
-export type ClaimDescriptionStateWithInventoryAndPlayTime = {
-  entity_id: bigint;
-  owner_player_entity_id: bigint;
-  owner_building_entity_id: bigint;
-  name: string;
-  region: number;
-  supplies: number;
-  building_maintenance: number;
-  members: { [key in bigint]: ClaimDescriptionStateMember };
-  num_tiles: number;
-  extensions: number;
-  neutral: boolean;
-  location: SharedState | null;
-  treasury: number;
-  xp_gained_since_last_coin_minting: number;
-  running_upgrade: ClaimTechDesc | null;
-  running_upgrade_started: Timestamp | null;
-  tier: number | null;
-  rank: number;
-  upgrades: Array<ClaimTechDesc>;
-  learned_upgrades: Array<number>;
-  inventorys: { [key in string]: Array<ExpendedRefrence> };
-  inventory_locations: { [key in string]: Array<InventoryItemLocation> };
-  tool_inventorys: { [key in string]: Array<ExpendedRefrence> };
-  tool_inventory_locations: { [key in string]: Array<InventoryItemLocation> };
-  traveler_tasks: { [key in string]: { [key in number]: Array<bigint> } };
-  traveler_player_tasks: {
-    [key in string]: { [key in bigint]: { [key in number]: Array<TravelerTaskState> } };
-  };
-  time_signed_in: bigint;
-  building_states: Array<BuildingState>;
-};
+export type ClaimDescriptionStateWithInventoryAndPlayTime = { entity_id: bigint, owner_player_entity_id: bigint, owner_building_entity_id: bigint, name: string, region: number, supplies: number, building_maintenance: number, members: { [key in bigint]: ClaimDescriptionStateMember }, num_tiles: number, extensions: number, neutral: boolean, location: SharedState | null, treasury: number, xp_gained_since_last_coin_minting: number, running_upgrade: ClaimTechDesc | null, running_upgrade_started: Timestamp | null, tier: number | null, rank: number, upgrades: Array<ClaimTechDesc>, learned_upgrades: Array<number>, inventorys: { [key in string]: Array<ExpendedRefrence> }, inventory_locations: { [key in string]: Array<InventoryItemLocation> }, tool_inventorys: { [key in string]: Array<ExpendedRefrence> }, tool_inventory_locations: { [key in string]: Array<InventoryItemLocation> }, traveler_tasks: { [key in string]: { [key in number]: Array<bigint> } }, traveler_player_tasks: { [key in string]: { [key in bigint]: { [key in number]: Array<TravelerTaskState> } } }, time_signed_in: bigint, building_states: Array<BuildingState>, };

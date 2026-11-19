@@ -2,7 +2,4 @@
 import type { CargoDesc } from "./CargoDesc";
 import type { ItemDesc } from "./ItemDesc";
 
-export type AllInventoryStatsResponse = {
-  items: Array<[bigint, ItemDesc | null, { [key: number]: bigint }]>;
-  cargo: Array<[bigint, CargoDesc | null, { [key: number]: bigint }]>;
-};
+export type AllInventoryStatsResponse = { items: Array<[bigint, ItemDesc | null, { [key in number]: bigint }]>, cargo: Array<[bigint, CargoDesc | null, { [key in number]: bigint }]>, };

@@ -1,4 +1,6 @@
 pub(crate) mod bitcraft;
+pub(crate) mod activity;
+pub(crate) mod stats;
 
 use crate::{AppRouter, AppState};
 use axum::Router;
@@ -34,10 +36,53 @@ pub(crate) fn get_routes() -> AppRouter {
             axum_codec::routing::get(player_location).into(),
         )
         .route("/api/bitcraft/players/{id}/crafting", axum_codec::routing::get(crate::crafting::claim::player_crafts).into())
+        .route("/api/bitcraft/players/{id}/stats", axum_codec::routing::get(player_stats).into())
+        .route("/api/bitcraft/players/{id}/activity", axum_codec::routing::get(player_activity).into())
+        .route("/api/bitcraft/activity/recipe/{kind}/{id}", axum_codec::routing::get(activity_recipe).into())
         .route(
             "/api/bitcraft/players/all",
             axum_codec::routing::get(get_all).into(),
         )
+}
+
+async fn player_activity(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<axum_codec::Codec<activity::ActivitySnapshot>, (StatusCode, &'static str)> {
+    let id = u64::try_from(id).map_err(|_| (StatusCode::NOT_FOUND, "Player not found"))?;
+    activity::player_snapshot(&state, id).map(axum_codec::Codec).ok_or((StatusCode::NOT_FOUND, "Player not found"))
+}
+
+#[derive(Serialize)]
+struct ActivityRecipe { kind: String, id: i32, name: Option<String> }
+
+async fn activity_recipe(
+    State(state): State<AppState>,
+    Path((kind, id)): Path<(String, i32)>,
+) -> Result<axum_codec::Codec<ActivityRecipe>, (StatusCode, &'static str)> {
+    let name = match kind.as_str() {
+        "craft" => state.crafting_recipe_desc.get(&id).map(|recipe| crate::crafting::claim::recipe_name(&state, &recipe)),
+        "gather" => {
+            let recipe = entity::extraction_recipe_desc::Entity::find_by_id(id).one(&state.conn).await
+                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load extraction recipe"))?;
+            match recipe {
+                Some(recipe) if recipe.cargo_id.is_some_and(|id| id != 0) => recipe.cargo_id.and_then(|id| state.cargo_desc.get(&id).map(|cargo| cargo.name.clone())),
+                Some(recipe) => entity::resource_desc::Entity::find_by_id(recipe.resource_id).one(&state.conn).await
+                    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Could not load resource"))?.map(|resource| resource.name),
+                None => None,
+            }
+        }
+        _ => return Err((StatusCode::BAD_REQUEST, "Unknown activity recipe kind")),
+    };
+    Ok(axum_codec::Codec(ActivityRecipe { kind, id, name }))
+}
+
+async fn player_stats(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<axum_codec::Codec<stats::StatsSnapshot>, (StatusCode, &'static str)> {
+    let player = state.player_state.get(&id).ok_or((StatusCode::NOT_FOUND, "Player not found"))?;
+    Ok(axum_codec::Codec(state.player_stats.snapshot(player.region, id as u64, player.signed_in)))
 }
 
 #[derive(Deserialize)]

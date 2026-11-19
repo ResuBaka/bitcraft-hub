@@ -36,7 +36,7 @@ fn format_template(template: &str, values: &[Option<String>]) -> String {
     result
 }
 
-fn recipe_name(state: &AppState, recipe: &entity::crafting_recipe::Model) -> String {
+pub(crate) fn recipe_name(state: &AppState, recipe: &entity::crafting_recipe::Model) -> String {
     use entity::inventory::ItemType;
     let resolve = |id, kind: &ItemType| match kind {
         ItemType::Item => state.item_desc.get(&id).map(|item| item.name.clone()),

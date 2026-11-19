@@ -520,6 +520,83 @@ describe("choice state and extraction", () => {
       "Cargo:30": 2,
     });
   });
+
+  test("estimates crafting and gathering XP using the selected power and extraction source", () => {
+    const craft = recipe(1, 10, [[20, 3]]);
+    craft.actions_required = 7;
+    craft.experience_per_progress = [{ skill_id: 1, quantity: 0.5 }];
+    const sources = [
+      {
+        cargo_id: 0,
+        experience_per_progress: [{ skill_id: 2, quantity: 1.1 }],
+        extracted_item_stacks: [
+          { probability: 1, item_stack: { item_id: 20, item_type: "Item", quantity: 1 } },
+        ],
+      },
+      {
+        cargo_id: 0,
+        experience_per_progress: [{ skill_id: 2, quantity: 9 }],
+        extracted_item_stacks: [
+          { probability: 0.25, item_stack: { item_id: 20, item_type: "Item", quantity: 1 } },
+        ],
+      },
+    ] as ExtractionRecipeResponse[];
+    const input = data(craft);
+    const extraction = crafting.buildExtractionSources(sources, input);
+    const plan = crafting.buildCraftingPlan(crafting.buildCraftingGraph(input), "Item", 10, 1, {
+      extraction: extraction.effort,
+      extractionExperience: extraction.experience,
+      progressPerHit: 3,
+    });
+    expect(plan.root.experience).toBe(5); // ceil(1.5) twice, then ceil(0.5)
+    expect(plan.root.children[0].experience).toBe(4);
+    expect(plan.root.totalExperience).toBe(9);
+    expect(plan.root.experienceIncomplete).toBe(false);
+  });
+
+  test("marks missing gathering data and explicit supply partial, but inventory complete", () => {
+    const craft = recipe(1, 10, [[20, 1]]);
+    craft.experience_per_progress = [{ skill_id: 1, quantity: 2 }];
+    const graph = crafting.buildCraftingGraph(data(craft));
+    const missing = crafting.buildCraftingPlan(graph, "Item", 10, 1);
+    expect(missing.root.totalExperience).toBe(4);
+    expect(missing.root.experienceIncomplete).toBe(true);
+    const supplied = crafting.buildCraftingPlan(graph, "Item", 10, 1, {
+      extraction: { "Item:20": 1 },
+      extractionExperience: { "Item:20": 5 },
+      selections: new Map([["Item:10/1:1/0", null]]),
+    });
+    expect(supplied.root.experienceIncomplete).toBe(true);
+    const owned = crafting.buildCraftingPlan(graph, "Item", 10, 1, {
+      inventory: { Item: { 20: 1 }, Cargo: {} },
+    });
+    expect(owned.root.experienceIncomplete).toBe(false);
+  });
+
+  test("passive crafting and cargo extraction award no XP", () => {
+    const craft = recipe(1, 10, []);
+    craft.is_passive = true;
+    craft.building_requirement = { building_type: 1, tier: 1 };
+    craft.experience_per_progress = [{ skill_id: 1, quantity: 50 }];
+    const input = data(craft);
+    expect(
+      crafting.buildCraftingPlan(crafting.buildCraftingGraph(input), "Item", 10, 1).root
+        .totalExperience,
+    ).toBe(0);
+    const sources = crafting.buildExtractionSources(
+      [
+        {
+          cargo_id: 5,
+          experience_per_progress: [],
+          extracted_item_stacks: [
+            { probability: 1, item_stack: { item_id: 20, item_type: "Item", quantity: 1 } },
+          ],
+        } as ExtractionRecipeResponse,
+      ],
+      input,
+    );
+    expect(sources.experience["Item:20"]).toBe(0);
+  });
 });
 
 async function pageState(input: RecipesAllResponse) {

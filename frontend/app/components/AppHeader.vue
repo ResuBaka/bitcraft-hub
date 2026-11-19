@@ -24,6 +24,16 @@ const items = computed(() => [
     label: "Buildings",
     to: "/buildings",
   },
+  {
+    label: "Tools",
+    to: "/tools",
+    children: [
+      {
+        label: "Account Overview",
+        to: "/tools/account-overview",
+      },
+    ],
+  },
 ]);
 
 const websocketStore = useWebsocketStore();
@@ -41,7 +51,7 @@ const configStore = useConfigStore();
     </template>
 
     <template #right>
-      <UNavigationMenu :items="items" variant="link" class="hidden lg:block" />
+      <UNavigationMenu :items="items" variant="link" content-orientation="vertical" class="hidden lg:block" />
 
       <div class="hidden items-center gap-2 lg:flex">
         <div

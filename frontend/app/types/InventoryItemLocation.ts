@@ -3,10 +3,4 @@ import type { InventoryLocationEntry } from "./InventoryLocationEntry";
 import type { ItemExpended } from "./ItemExpended";
 import type { ItemType } from "./ItemType";
 
-export type InventoryItemLocation = {
-  item_id: number;
-  item: ItemExpended;
-  item_type: ItemType;
-  durability: number | null;
-  locations: Array<InventoryLocationEntry>;
-};
+export type InventoryItemLocation = { item_id: number, item: ItemExpended, item_type: ItemType, durability: number | null, locations: Array<InventoryLocationEntry>, };

@@ -1,13 +1,16 @@
 import type { OutboundWebSocketMessages } from "~/types/OutboundWebSocketMessages";
 import type { RefinedMessageContentType } from "~/types";
 
+let nextHandlerId = 0;
+
 export function registerWebsocketMessageHandler<T extends OutboundWebSocketMessages["t"]>(
   eventType: T,
   topics: MaybeRefOrGetter<string | string[]>,
   handler: (message: RefinedMessageContentType<T>) => void,
 ) {
   const store = useWebsocketStore();
-  const instanceId = getCurrentInstance()?.uid.toString() || "0";
+  // A component may register more than one handler for the same event type.
+  const instanceId = `${getCurrentInstance()?.uid ?? 0}:${++nextHandlerId}`;
 
   watch(
     () => toValue(topics),

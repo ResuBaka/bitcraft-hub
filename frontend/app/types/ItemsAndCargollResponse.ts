@@ -2,7 +2,4 @@
 import type { CargoDesc } from "./CargoDesc";
 import type { ItemDesc } from "./ItemDesc";
 
-export type ItemsAndCargollResponse = {
-  cargo_desc: { [key in number]: CargoDesc };
-  item_desc: { [key in number]: ItemDesc };
-};
+export type ItemsAndCargollResponse = { cargo_desc: { [key in number]: CargoDesc }, item_desc: { [key in number]: ItemDesc }, };

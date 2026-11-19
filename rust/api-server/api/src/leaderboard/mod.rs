@@ -9,7 +9,7 @@ use dashmap::DashMap;
 use log::error;
 use serde::{Deserialize, Serialize};
 use service::Query;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::LazyLock;
 use ts_rs::TS;
@@ -240,12 +240,16 @@ async fn leaderboard_rank_snapshots(
     if params.players.is_empty() {
         return Ok(axum_codec::Codec(LeaderboardSnapshots { board: params.board, entries: Vec::new() }));
     }
-    let ids: Vec<i64> = params.players.split(',')
+    let mut ids: Vec<i64> = params.players.split(',')
         .map(str::parse)
         .collect::<Result<_, _>>()
         .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid player IDs"))?;
     if ids.len() > 100 {
         return Err((StatusCode::BAD_REQUEST, "Too many player IDs"));
+    }
+    state.ranking_system.retain_ranked_players(&mut ids);
+    if ids.is_empty() {
+        return Ok(axum_codec::Codec(LeaderboardSnapshots { board: params.board, entries: Vec::new() }));
     }
     let ids = ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",");
     let rows = LeaderboardSnapshotRow::find_by_statement(sea_orm::Statement::from_sql_and_values(
@@ -264,6 +268,9 @@ async fn player_rank_snapshot(
     Path(player_id): Path<i64>,
 ) -> Result<axum_codec::Codec<Vec<PlayerRankSnapshot>>, (StatusCode, &'static str)> {
     use sea_orm::FromQueryResult;
+    if !state.ranking_system.player_is_rank_eligible(player_id) {
+        return Ok(axum_codec::Codec(Vec::new()));
+    }
     let rows = StoredRankSnapshot::find_by_statement(sea_orm::Statement::from_sql_and_values(
         sea_orm::DbBackend::Postgres,
         "SELECT board, rank, captured_at FROM leaderboard_rank_snapshot WHERE player_id = $1 AND snapshot_at = date_trunc('day', now(), 'UTC')",
@@ -1008,6 +1015,30 @@ impl RankingSystem {
 }
 
 impl RankingSystem {
+    pub(crate) fn await_staff_snapshot(&self) {
+        self.players.staff.write().pending = true;
+    }
+
+    pub(crate) fn replace_staff(&self, ids: HashSet<i64>) {
+        let mut staff = self.players.staff.write();
+        let changed = staff.pending || staff.player_ids != ids;
+        staff.pending = false;
+        staff.player_ids = ids;
+        drop(staff);
+        if changed {
+            self.worker.notify_publication();
+        }
+    }
+
+    fn player_is_rank_eligible(&self, player_id: i64) -> bool {
+        self.players.staff.read().includes_player(player_id)
+    }
+
+    fn retain_ranked_players(&self, ids: &mut Vec<i64>) {
+        let staff = self.players.staff.read();
+        ids.retain(|&id| staff.includes_player(id));
+    }
+
     pub(crate) fn subscribe_publications(&self) -> tokio::sync::watch::Receiver<u64> {
         self.worker.subscribe()
     }
@@ -1500,6 +1531,9 @@ pub(crate) async fn player_leaderboard(
 
         return Err((StatusCode::NOT_FOUND, "Not found"));
     };
+    if !state.ranking_system.player_is_rank_eligible(player_id) {
+        return Ok(axum_codec::Codec(PlayerLeaderboardResponse(BTreeMap::new())));
+    }
 
     let mut leaderboard_result: BTreeMap<String, RankType> = BTreeMap::new();
 
@@ -1725,7 +1759,7 @@ pub(crate) async fn get_claim_leaderboard(
         .map(|skill| skill.value().clone())
         .collect::<Vec<_>>();
 
-    let player_ids = state
+    let mut player_ids = state
         .claim_member_state
         .get(&(claim_id as u64))
         .map(|members| {
@@ -1738,6 +1772,13 @@ pub(crate) async fn get_claim_leaderboard(
 
     if player_ids.is_empty() {
         return Err((StatusCode::NOT_FOUND, ""));
+    }
+    state.ranking_system.retain_ranked_players(&mut player_ids);
+    if player_ids.is_empty() {
+        return Ok(axum_codec::Codec(GetTop100Response {
+            player_map: HashMap::new(),
+            leaderboard: BTreeMap::new(),
+        }));
     }
 
     let mut leaderboard_result: BTreeMap<String, Vec<RankType>> = BTreeMap::new();

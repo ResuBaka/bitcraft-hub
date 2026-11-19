@@ -2,6 +2,7 @@ import type { RecipesAllResponse } from "../types/RecipesAllResponse";
 import type { ExtractionRecipeResponse } from "../types/ExtractionRecipeResponse";
 import type { ItemStack } from "../types/ItemStack";
 import { resolveDropOutcomes } from "./dropEstimates";
+import type { ExperienceStackF32 } from "../types/ExperienceStackF32";
 
 export type ItemType = "Item" | "Cargo";
 export type ResourceEffort = Record<string, number>;
@@ -13,6 +14,7 @@ export type GraphRecipe = Readonly<{
   id: number;
   name: string;
   actions: number;
+  experience: readonly ExperienceStackF32[] | undefined;
   ingredients: readonly CraftingIngredient[];
   outputs: readonly CraftingIngredient[];
   kind: "craft" | "recraft" | "scrap";
@@ -96,6 +98,8 @@ export function buildCraftingGraph(data: RecipesAllResponse): CraftingGraph {
       id: source.id,
       name: source.name,
       actions: source.actions_required,
+      experience:
+        source.is_passive && source.building_requirement ? [] : source.experience_per_progress,
       ingredients,
       outputs: source.crafted_item_stacks,
       kind: /^scrap\b/i.test(source.name)
@@ -241,7 +245,15 @@ export function buildExtractionEffort(
   recipes: readonly ExtractionRecipeResponse[],
   data: RecipesAllResponse | undefined,
 ): ResourceEffort {
+  return buildExtractionSources(recipes, data).effort;
+}
+
+export function buildExtractionSources(
+  recipes: readonly ExtractionRecipeResponse[],
+  data: RecipesAllResponse | undefined,
+): { effort: ResourceEffort; experience: Record<string, number | null> } {
   const best: ResourceEffort = {};
+  const experience: Record<string, number | null> = {};
   for (const recipe of recipes) {
     const expected: ResourceEffort = {};
     function add(stack: CraftingIngredient, probability: number) {
@@ -265,10 +277,18 @@ export function buildExtractionEffort(
     }
     for (const [key, yieldAmount] of Object.entries(expected)) {
       const attempts = 1 / yieldAmount;
-      if (best[key] === undefined || attempts < best[key]) best[key] = attempts;
+      if (best[key] === undefined || attempts < best[key]) {
+        best[key] = attempts;
+        experience[key] =
+          recipe.cargo_id == null || recipe.experience_per_progress == null
+            ? null
+            : recipe.cargo_id !== 0
+              ? 0
+              : (recipe.experience_per_progress[0]?.quantity ?? 0);
+      }
     }
   }
-  return best;
+  return { effort: best, experience };
 }
 
 // Only overrides are retained. The path identifies an occurrence, not a cached
@@ -306,6 +326,10 @@ export type CraftingPlanNode = {
   status: "craft" | "gather" | "inventory" | "requires-existing";
   actions: number;
   totalActions: number;
+  experience: number;
+  totalExperience: number;
+  stepExperienceKnown: boolean;
+  experienceIncomplete: boolean;
   children: CraftingPlanNode[];
 };
 export type CraftingPlan = {
@@ -346,6 +370,8 @@ export function buildCraftingPlan(
     selections?: RecipeSelections;
     inventory?: InventoryQuantities;
     extraction?: ResourceEffort;
+    extractionExperience?: Record<string, number | null>;
+    progressPerHit?: number;
   } = {},
 ): CraftingPlan {
   const remaining = new Map<string, number>();
@@ -357,6 +383,17 @@ export function buildCraftingPlan(
   const shoppingList: InventoryQuantities = { Item: {}, Cargo: {} };
   const ancestors = new Set<string>();
   let nodeCount = 0;
+  const power =
+    Number.isFinite(options.progressPerHit) && (options.progressPerHit ?? 0) > 0
+      ? Math.max(1, Math.round(options.progressPerHit!))
+      : 1;
+
+  function estimateXp(progress: number, rate: number, average: boolean) {
+    const fullHitXp = Math.ceil(rate * power);
+    if (average) return (progress / power) * fullHitXp;
+    const hits = Math.floor(progress / power);
+    return hits * fullHitXp + Math.ceil((progress - hits * power) * rate);
+  }
 
   function visit(
     type: ItemType,
@@ -404,6 +441,10 @@ export function buildCraftingPlan(
       status: "gather",
       actions: 0,
       totalActions: 0,
+      experience: 0,
+      totalExperience: 0,
+      stepExperienceKnown: true,
+      experienceIncomplete: false,
       children: [],
     };
     if (needed <= 0) {
@@ -424,6 +465,14 @@ export function buildCraftingPlan(
       node.actions =
         effort === undefined ? 0 : expectedDemand ? effort * needed : Math.ceil(effort * needed);
       node.totalActions = node.actions;
+      const xp =
+        options.selections?.has(path) && chosen === null
+          ? null
+          : options.extractionExperience?.[key];
+      node.stepExperienceKnown = xp != null;
+      node.experienceIncomplete = xp == null;
+      // Resource health and random yield are unknown, so approximate full hits.
+      if (xp != null) node.experience = node.totalExperience = estimateXp(node.actions, xp, true);
       shoppingList[type][id] = (shoppingList[type][id] || 0) + needed;
       return node;
     }
@@ -436,6 +485,14 @@ export function buildCraftingPlan(
     node.attempts = estimateCraftingAttempts(output, needed, expectedDemand);
     node.actions = recipe.actions * node.attempts;
     node.totalActions = node.actions;
+    node.experienceIncomplete = recipe.experience == null;
+    node.stepExperienceKnown = !node.experienceIncomplete;
+    if (recipe.experience)
+      node.experience = node.totalExperience = estimateXp(
+        node.actions,
+        recipe.experience[0]?.quantity ?? 0,
+        averageDemand,
+      );
     ancestors.add(key);
     for (let i = 0; i < recipe.ingredients.length; i++) {
       const input = recipe.ingredients[i];
@@ -450,6 +507,8 @@ export function buildCraftingPlan(
       );
       node.children.push(child);
       node.totalActions += child.totalActions;
+      node.totalExperience += child.totalExperience;
+      node.experienceIncomplete ||= child.experienceIncomplete;
       node.averageEstimate ||= child.averageEstimate;
     }
     ancestors.delete(key);

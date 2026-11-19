@@ -2,19 +2,4 @@
 import type { ClaimTechType } from "./ClaimTechType";
 import type { ItemStack } from "./ItemStack";
 
-export type ClaimTechDesc = {
-  id: number;
-  name: string;
-  description: string;
-  tier: number;
-  tech_type: ClaimTechType;
-  supplies_cost: number;
-  research_time: number;
-  requirements: Array<number>;
-  input: Array<ItemStack>;
-  members: number;
-  area: number;
-  supplies: number;
-  xp_to_mint_hex_coin: number;
-  unlocks_techs: Array<number>;
-};
+export type ClaimTechDesc = { id: number, name: string, description: string, tier: number, tech_type: ClaimTechType, supplies_cost: number, research_time: number, requirements: Array<number>, input: Array<ItemStack>, members: number, area: number, supplies: number, xp_to_mint_hex_coin: number, unlocks_techs: Array<number>, };

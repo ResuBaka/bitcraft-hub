@@ -25,6 +25,9 @@ pub(crate) struct ExtractionRecipeResponse {
     pub allow_use_hands: bool,
     pub time_requirement: f32,
     pub stamina_requirement: f32,
+    pub cargo_id: Option<i32>,
+    pub experience_per_progress:
+        Option<Vec<entity::shared::experience_stack_f32::ExperienceStackF32>>,
 }
 
 pub(crate) async fn get_all(
@@ -49,6 +52,8 @@ pub(crate) async fn get_all(
             allow_use_hands: recipe.allow_use_hands,
             time_requirement: recipe.time_requirement,
             stamina_requirement: recipe.stamina_requirement,
+            cargo_id: recipe.cargo_id,
+            experience_per_progress: recipe.experience_per_progress,
         })
         .collect();
 

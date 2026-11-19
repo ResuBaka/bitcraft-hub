@@ -7,23 +7,4 @@ import type { TeleportLocation } from "./TeleportLocation";
 import type { TravelerTaskState } from "./TravelerTaskState";
 import type { VaultStateCollectibleWithDesc } from "./VaultStateCollectibleWithDesc";
 
-export type FindPlayerByIdResponse = {
-  teleport_location: TeleportLocation;
-  entity_id: bigint;
-  time_played: number;
-  session_start_timestamp: number;
-  time_signed_in: number;
-  sign_in_timestamp: number;
-  signed_in: boolean;
-  traveler_tasks_expiration: number;
-  traveler_tasks: { [key in number]: Array<TravelerTaskState> };
-  username: string;
-  deployables: Array<VaultStateCollectibleWithDesc>;
-  claim_id: bigint | null;
-  current_claim: CurrentClaim;
-  claims: Array<ClaimState>;
-  player_location: MobileEntityState | null;
-  player_action_state: string | null;
-  player_action_state2: PlayerActionState | null;
-  current_action_state: PlayerActionState | null;
-};
+export type FindPlayerByIdResponse = { teleport_location: TeleportLocation, entity_id: bigint, time_played: number, session_start_timestamp: number, time_signed_in: number, sign_in_timestamp: number, signed_in: boolean, traveler_tasks_expiration: number, traveler_tasks: { [key in number]: Array<TravelerTaskState> }, username: string, deployables: Array<VaultStateCollectibleWithDesc>, claim_id: bigint | null, current_claim: CurrentClaim, claims: Array<ClaimState>, player_location: MobileEntityState | null, player_action_state: string | null, player_action_state2: PlayerActionState | null, current_action_state: PlayerActionState | null, };

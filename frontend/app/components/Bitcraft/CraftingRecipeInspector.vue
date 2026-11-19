@@ -157,7 +157,27 @@ const recipeChoice = computed({
           {{ formatCraftingQuantity(item.totalActions, item.averageEstimate) }}
         </dd>
       </div>
+      <div>
+        <dt class="text-xs text-muted">Estimated step XP</dt>
+        <dd class="font-semibold tabular-nums">
+          {{ item.stepExperienceKnown ? formatCraftingQuantity(item.experience, true) : "Unknown" }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs text-muted">
+          Estimated total XP{{ item.experienceIncomplete ? " (partial)" : "" }}
+        </dt>
+        <dd class="font-semibold tabular-nums">
+          {{ formatCraftingQuantity(item.totalExperience, true) }}
+        </dd>
+      </div>
     </dl>
+    <p class="text-xs text-muted">
+      XP uses the chosen progress per hit for every step, a 100% XP rate, no critical hits, and
+      gathering from the lowest-progress source. Gathering assumes full hits. Different tools or
+      skills, resource health, rounding, critical hits, bonuses, and actual yields can change XP.
+      Supply and unavailable gathering data are excluded from partial totals.
+    </p>
 
     <UAlert
       v-if="item.status === 'requires-existing'"

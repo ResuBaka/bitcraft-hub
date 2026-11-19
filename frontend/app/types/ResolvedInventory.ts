@@ -2,14 +2,4 @@
 import type { ClaimState } from "./ClaimState";
 import type { ItemSlotResolved } from "./ItemSlotResolved";
 
-export type ResolvedInventory = {
-  entity_id: bigint;
-  region: number;
-  pockets: Array<ItemSlotResolved>;
-  inventory_index: number;
-  cargo_index: number;
-  owner_entity_id: bigint;
-  player_owner_entity_id: bigint;
-  nickname: string | null;
-  claim: ClaimState | null;
-};
+export type ResolvedInventory = { entity_id: bigint, region: number, pockets: Array<ItemSlotResolved>, inventory_index: number, cargo_index: number, owner_entity_id: bigint, player_owner_entity_id: bigint, nickname: string | null, claim: ClaimState | null, };

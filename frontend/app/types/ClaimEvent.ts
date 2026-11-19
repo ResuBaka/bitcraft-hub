@@ -2,20 +2,4 @@
 import type { ClaimEventType } from "./ClaimEventType";
 import type { ClaimMemberPermissions } from "./ClaimMemberPermissions";
 
-export type ClaimEvent = {
-  id: bigint;
-  claim_entity_id: bigint;
-  region: number;
-  timestamp: string;
-  event_type: ClaimEventType;
-  actor_entity_id: bigint | null;
-  amount: bigint | null;
-  treasury_after: bigint | null;
-  research_id: number | null;
-  building_entity_id: bigint | null;
-  building_description_id: number | null;
-  subject_name: string | null;
-  member_entity_id: bigint | null;
-  permissions_before: ClaimMemberPermissions | null;
-  permissions_after: ClaimMemberPermissions | null;
-};
+export type ClaimEvent = { id: bigint, claim_entity_id: bigint, region: number, timestamp: string, event_type: ClaimEventType, actor_entity_id: bigint | null, amount: bigint | null, treasury_after: bigint | null, research_id: number | null, building_entity_id: bigint | null, building_description_id: number | null, subject_name: string | null, member_entity_id: bigint | null, permissions_before: ClaimMemberPermissions | null, permissions_after: ClaimMemberPermissions | null, };

@@ -51,6 +51,9 @@ pub(crate) mod initial_batches;
 pub(crate) mod initial_sync;
 mod metric_handles;
 mod claim_locations;
+mod leaderboard_staff;
+mod player_stats;
+mod player_activity;
 #[expect(dead_code, reason = "Full overworld subscriptions are currently disabled")]
 mod overworld;
 #[expect(dead_code, reason = "Portal dimension subscriptions are currently disabled")]
@@ -133,7 +136,7 @@ fn connect_to_db(
     db_name: &str,
     db_host: &str,
     timing: ConnectionTiming,
-    region_number: Region,
+    region_number: Option<Region>,
 ) -> spacetimedb_sdk::Result<DbConnection> {
     let tmp_global_app_state = global_app_state.clone();
     let tmp_disconnect_global_app_state = global_app_state.clone();
@@ -164,7 +167,14 @@ fn connect_to_db(
         .on_connect_error(on_connect_error)
         // Our `on_disconnect` callback, which will print a message, then exit the process.
         .on_disconnect(move |_ctx, err| {
-            tmp_disconnect_global_app_state.claim_locations.invalidate(region_number);
+            if let Some(region_number) = region_number {
+                tmp_disconnect_global_app_state.claim_locations.invalidate(region_number);
+                tmp_disconnect_global_app_state.player_stats.invalidate(region_number);
+                tmp_disconnect_global_app_state.player_activity.invalidate(region_number);
+                player_activity::changed(&tmp_disconnect_global_app_state, None);
+                tmp_disconnect_global_app_state.player_stats.invalidate_food(region_number);
+                player_stats::changed(&tmp_disconnect_global_app_state, None);
+            }
             metrics::gauge!(
                 "bitcraft_database_connected",
                 &[("region", tmp_disconnect_db_name.clone())]
@@ -301,43 +311,6 @@ macro_rules! setup_spacetime_db_listeners {
     };
 }
 
-#[expect(dead_code, reason = "The global database connection is currently disabled")]
-fn connect_to_db_global(
-    global_app_state: AppState,
-    config: &Config,
-    database: &str,
-) -> anyhow::Result<()> {
-    let shutdown = global_app_state.shutdown.clone();
-    if shutdown.stop.is_cancelled() {
-        return Ok(());
-    }
-    let ctx = connect_to_db(
-        global_app_state,
-        config.spacetimedb.password.clone(),
-        database,
-        config.spacetimedb_url(0).as_ref(),
-        ConnectionTiming::default(),
-        0
-    )?;
-
-    if !ctx.is_active() {
-        tracing::error!(
-            region = database,
-            "Could not connect to the bitcraft server {} with module {database}",
-            config.spacetimedb_url(0)
-        );
-        anyhow::bail!("Connection to {database} is inactive");
-    }
-
-    shutdown.clone().spawn_connection(async move {
-        if let Err(error) = run_connection_until_shutdown(&ctx, &shutdown.stop).await {
-            tracing::error!(%error, "Global database connection failed");
-        }
-    });
-
-    Ok(())
-}
-
 async fn run_connection_until_shutdown(
     ctx: &DbConnection,
     stop: &tokio_util::sync::CancellationToken,
@@ -449,7 +422,7 @@ async fn connect_to_db_logic(
         database,
         config.spacetimedb_url(region_number).as_ref(),
         timing.clone(),
-        region_number,
+        Some(region_number),
     )?;
 
     if !ctx.is_active() {
@@ -463,6 +436,13 @@ async fn connect_to_db_logic(
 
     global_app_state.claim_locations.reset(region_number);
     claim_locations::listen(&ctx, region_number, global_app_state.claim_locations.clone());
+    global_app_state.player_stats.reset(region_number);
+    global_app_state.player_activity.reset(region_number);
+    player_activity::listen(&ctx, region_number, global_app_state.clone());
+    if !*remove_desc && !config.spacetimedb.skip_state_tables {
+        global_app_state.player_stats.begin_food(region_number);
+    }
+    player_stats::listen(&ctx, region_number, global_app_state.clone());
 
     crate::claims::events::register_listeners(
         &ctx,
@@ -857,8 +837,6 @@ async fn connect_to_db_logic(
         "craft_event",
         "craft_completed_event",
         "passive_craft_state",
-        "character_stats_state",
-        "identity_role",
         // "claim_description_state", -> claim_state
         // "location_state where dimension = 1", // This currently takes to much cpu to run
         // "select location_state.* from location_state JOIN player_state ps ON player_state.entity_id = location_state.entity_id", // This currently takes to much cpu to run
@@ -933,6 +911,70 @@ async fn connect_to_db_logic(
         *remove_desc,
         config.spacetimedb.skip_state_tables,
     );
+    if !config.spacetimedb.skip_state_tables {
+        let activity_on_applied = global_app_state.clone();
+        let activity_on_error = global_app_state.clone();
+        ctx.subscription_builder()
+            .on_applied(move |_: &SubscriptionEventContext| {
+                activity_on_applied.player_activity.ready(region_number);
+                player_activity::changed(&activity_on_applied, None);
+            })
+            .on_error(move |_: &ErrorContext, err: Error| {
+                activity_on_error.player_activity.invalidate(region_number);
+                player_activity::changed(&activity_on_error, None);
+                tracing::warn!(region = region_number, "Player activity subscription failed: {err}");
+            })
+            .subscribe(["SELECT player_action_state.* FROM player_action_state JOIN player_state ON player_state.entity_id = player_action_state.entity_id"]);
+        let stats_on_applied = global_app_state.clone();
+        let stats_on_error = global_app_state.clone();
+        ctx.subscription_builder()
+            .on_applied(move |_: &SubscriptionEventContext| {
+                stats_on_applied.player_stats.ready(region_number);
+                player_stats::changed(&stats_on_applied, None);
+            })
+            .on_error(move |_: &ErrorContext, err: Error| {
+                stats_on_error.player_stats.invalidate(region_number);
+                player_stats::changed(&stats_on_error, None);
+                tracing::warn!(region = region_number, "Player stats subscription failed: {err}");
+            })
+            .subscribe([
+                "SELECT health_state.* FROM health_state JOIN player_state ON player_state.entity_id = health_state.entity_id",
+                "SELECT stamina_state.* FROM stamina_state JOIN player_state ON player_state.entity_id = stamina_state.entity_id",
+                "SELECT active_buff_state.* FROM active_buff_state JOIN player_state ON player_state.entity_id = active_buff_state.entity_id",
+            ]);
+        let maxima_on_applied = global_app_state.clone();
+        let maxima_on_error = global_app_state.clone();
+        ctx.subscription_builder()
+            .on_applied(move |_: &SubscriptionEventContext| player_stats::changed(&maxima_on_applied, None))
+            .on_error(move |_: &ErrorContext, err: Error| {
+                maxima_on_error.player_stats.clear_character_stats(region_number);
+                player_stats::changed(&maxima_on_error, None);
+                tracing::warn!(region = region_number, "Player maximum stats subscription failed: {err}");
+            })
+            .subscribe(["SELECT character_stats_state.* FROM character_stats_state JOIN player_state ON player_state.entity_id = character_stats_state.entity_id"]);
+    }
+    if !*remove_desc && !config.spacetimedb.skip_state_tables {
+        let stats_on_applied = global_app_state.clone();
+        ctx.subscription_builder()
+            .on_applied(move |_: &SubscriptionEventContext| player_stats::changed(&stats_on_applied, None))
+            .on_error(move |_: &ErrorContext, err: Error| {
+                tracing::warn!(region = region_number, "Buff descriptions subscription failed: {err}");
+            })
+            .subscribe(["SELECT * FROM buff_desc", "SELECT * FROM buff_type_desc"]);
+        let food_on_applied = global_app_state.clone();
+        let food_on_error = global_app_state.clone();
+        ctx.subscription_builder()
+            .on_applied(move |_: &SubscriptionEventContext| {
+                food_on_applied.player_stats.finish_food(region_number);
+                player_stats::changed(&food_on_applied, None);
+            })
+            .on_error(move |_: &ErrorContext, err: Error| {
+                food_on_error.player_stats.invalidate_food(region_number);
+                player_stats::changed(&food_on_error, None);
+                tracing::warn!(region = region_number, "Food descriptions subscription failed: {err}");
+            })
+            .subscribe(["SELECT * FROM food_desc"]);
+    }
     // Do not send an empty subscription request: keep the connection running
     // without subscriptions when isolating connection/worker RSS.
     let _portal_dimensions = (!config.spacetimedb.skip_state_tables)
@@ -989,6 +1031,9 @@ async fn connect_to_db_logic(
 }
 
 pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState) {
+    if !config.spacetimedb.skip_state_tables && !config.spacetimedb.database.trim().is_empty() {
+        leaderboard_staff::start(&config, global_app_state.clone());
+    }
     tracing::info!(
         backend = worker_channel::BACKEND,
         "Starting worker input queues"
@@ -1098,32 +1143,16 @@ pub fn start_websocket_bitcraft_logic(config: Config, global_app_state: AppState
 
         let mut remove_desc = false;
 
-        // let tmp_conf = config.clone();
-        // let tmp_global_app_state = global_app_state.clone();
-        // let tmp_database = config.spacetimedb.database.clone();
-        // let result = connect_to_db_global(tmp_global_app_state, &tmp_conf, &tmp_database);
-        //
-        // if let Err(error) = result {
-        //     tracing::error!(
-        //         region = tmp_database,
-        //         error = error.to_string(),
-        //         "Error creating connection to {tmp_database} on {}",
-        //         tmp_conf.spacetimedb_url()
-        //     )
-        // };
-
         let startup_gate = Arc::new(tokio::sync::Semaphore::new(1));
         let mut previous_startup = None;
         // Register every configured region before spawning any connection task,
         // including regions still waiting behind the startup gate.
-        for database in config.spacetimedb.databases.iter().filter(|value| !value.trim().is_empty()) {
+        for database in config.spacetimedb.regional_databases() {
             initialize_connection_metrics(database);
         }
         config
             .spacetimedb
-            .databases
-            .iter()
-            .filter(|value| !value.trim().is_empty())
+            .regional_databases()
             .for_each(|database| {
                 let tmp_mobile_entity_state_tx = mobile_entity_state_tx.clone();
                 let tmp_player_state_tx = player_state_worker.tx();
@@ -1582,6 +1611,8 @@ pub(crate) enum OutboundWebSocketMessages {
     ClaimExperienceHistoryChanged { claim_id: i64 },
     ClaimCraftingChanged { claim_id: Option<String> },
     PlayerCraftingChanged { player_id: Option<String> },
+    PlayerStatsChanged { player_id: Option<String>, stats: Option<crate::player_state::stats::StatsSnapshot> },
+    PlayerActivityChanged { player_id: Option<String>, activity: Option<crate::player_state::activity::ActivitySnapshot> },
     CraftProgressChanged { claim_id: Option<String>, player_id: String, craft_id: String, progress: i32, lock_expiration: String },
     PassiveCraftChanged { claim_id: Option<String>, player_id: String, craft_id: String, status: String, slot: Option<u32>, timestamp: String },
     Experience {
@@ -1788,6 +1819,12 @@ impl OutboundWebSocketMessages {
             ),
             OutboundWebSocketMessages::PlayerCraftingChanged { player_id } => Some(
                 BroadcastTopics::new([("player_crafting".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),
+            ),
+            OutboundWebSocketMessages::PlayerStatsChanged { player_id, .. } => Some(
+                BroadcastTopics::new([("player_stats".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),
+            ),
+            OutboundWebSocketMessages::PlayerActivityChanged { player_id, .. } => Some(
+                BroadcastTopics::new([("player_activity".into(), player_id.as_ref().and_then(|id| id.parse().ok()))]),
             ),
             OutboundWebSocketMessages::CraftProgressChanged { claim_id, player_id, .. } => {
                 let player = player_id.parse::<i64>().ok()?;

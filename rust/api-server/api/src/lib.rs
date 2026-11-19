@@ -137,12 +137,19 @@ async fn serve_with_shutdown(
     let mut broadcaster = None;
 
     if config.live_updates_ws {
-        if config.spacetimedb.databases.is_empty() {
+        let has_global = !config.spacetimedb.database.trim().is_empty();
+        if !has_global && config.spacetimedb.regional_databases().next().is_none() {
             tracing::warn!("You need to set spacetimedb databases");
             drop(rx);
         } else {
             tracing::info!("Staring Bitcraft websocket connection");
 
+            if !config.spacetimedb.skip_state_tables {
+                state.ranking_system.await_staff_snapshot();
+                if !has_global {
+                    tracing::warn!("Set spacetimedb.database to the global database to enable leaderboards");
+                }
+            }
             broadcaster = Some(tokio::spawn(broadcast_message(state.clone(), rx)));
             leaderboard::start_live_updates(state.clone());
 
@@ -150,8 +157,7 @@ async fn serve_with_shutdown(
 
             config
                 .spacetimedb
-                .databases
-                .iter()
+                .regional_databases()
                 .for_each(|connection_state| {
                     state
                         .connection_state
@@ -1209,6 +1215,8 @@ struct AppState {
     clients_state: Arc<ClientsState>,
     mobile_entity_state: Arc<dashmap::DashMap<u64, entity::mobile_entity_state::Model>>,
     player_state: Arc<dashmap::DashMap<i64, entity::player_state::Model>>,
+    player_stats: Arc<player_state::stats::PlayerStats>,
+    player_activity: Arc<player_state::activity::PlayerActivity>,
     claim_member_state: Arc<claims::member_cache::MembersByClaim>,
     player_to_claim_id_cache: Arc<claims::member_cache::ClaimsByPlayer>,
     claim_local_state: Arc<dashmap::DashMap<u64, entity::claim_local_state::Model>>,
@@ -1292,6 +1300,8 @@ impl AppState {
             metrics_registry,
             connection_state: Arc::new(dashmap::DashMap::new()),
             player_state: Arc::new(dashmap::DashMap::new()),
+            player_stats: Arc::new(player_state::stats::PlayerStats::default()),
+            player_activity: Arc::new(player_state::activity::PlayerActivity::default()),
             clients_state,
             mobile_entity_state: Arc::new(dashmap::DashMap::new()),
             claim_member_state: Arc::new(dashmap::DashMap::new()),

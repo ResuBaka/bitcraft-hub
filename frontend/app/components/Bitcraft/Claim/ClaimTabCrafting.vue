@@ -8,6 +8,7 @@ import { registerWebsocketMessageHandler } from "~/composables/websocket";
 import { isCraftVisible } from "~/utils/claimCraftFilter";
 import { applyCraftProgress, applyPassiveCraftUpdate } from "~/utils/craftProgress";
 import { remainingHexCoins, type HexCoinEstimate } from "~/utils/hexCoinEstimate";
+import { passiveCraftTiming } from "~/utils/passiveCraftTiming";
 type Craft = {
   id: string;
   building_id: string;
@@ -48,6 +49,13 @@ const search = ref("");
 const showAllActiveCrafts = ref(!!props.playerId);
 const showFinishedActive = ref(!!props.playerId);
 const showPassiveCrafts = ref(!!props.playerId);
+const clock = ref(0);
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  clock.value = Date.now();
+  clockTimer = setInterval(() => { clock.value = Date.now(); }, 1000);
+});
+onBeforeUnmount(() => { if (clockTimer) clearInterval(clockTimer); });
 const { data, pending, error, refresh } = useFetchMsPack<Craft[]>(
   () => props.playerId ? `/api/bitcraft/players/${props.playerId}/crafting` : `/api/bitcraft/claims/${props.claimId}/crafting`,
 );
@@ -168,30 +176,12 @@ function detail(craft: Craft) {
     if (craft.progress_total === null) return `Progress: ${craft.progress ?? 0} / unknown`;
     return `Progress: ${craft.progress ?? 0} / ${craft.progress_total}`;
   }
-  if (craft.status === "Processing" && craft.timestamp && craft.duration_seconds !== null) {
-    const finish = new Date(new Date(craft.timestamp).getTime() + craft.duration_seconds * 1000);
-    if (!Number.isNaN(finish.getTime())) return `Estimated finish: ${finish.toLocaleString()}`;
-  }
-  if (craft.status === "Queued" && craft.timestamp) return `Queued: ${new Date(craft.timestamp).toLocaleString()}`;
-  return craft.status === "Complete" ? "Ready to collect" : "—";
+  return passiveCraftTiming([craft], clock.value);
 }
 
 function groupDetail(crafts: Craft[]) {
-  if (crafts.length === 1) return detail(crafts[0]!);
   const first = crafts[0]!;
-  if (first.status === "Complete") return "Ready to collect";
-  if (first.status !== "Queued" && first.status !== "Processing") return "—";
-  const times = crafts.map((craft) => {
-    if (!craft.timestamp || (craft.status === "Processing" && craft.duration_seconds === null)) return NaN;
-    const start = new Date(craft.timestamp).getTime();
-    return start + (craft.status === "Processing" ? craft.duration_seconds! * 1000 : 0);
-  });
-  const valid = times.filter(Number.isFinite).sort((a, b) => a - b);
-  if (!valid.length) return "—";
-  const label = first.status === "Processing" ? "Estimated finish" : "Queued";
-  const from = new Date(valid[0]!).toLocaleString();
-  const to = new Date(valid[valid.length - 1]!).toLocaleString();
-  return `${label}: ${from}${from !== to ? ` – ${to}` : ""}${valid.length < crafts.length ? " (some times unknown)" : ""}`;
+  return first.kind === "Passive" ? passiveCraftTiming(crafts, clock.value) : detail(first);
 }
 
 function slots(crafts: Craft[]) {
@@ -272,7 +262,7 @@ function slots(crafts: Craft[]) {
                       <td class="p-2"><div class="flex items-center gap-2"><div v-if="row[0]!.outputs?.length" class="flex shrink-0 flex-wrap gap-1"><InventoryImg v-for="(item, index) in row[0]!.outputs" :key="index" :item="item" :width="40" :height="40" :title="item.name" /></div><div><span :class="tierColor(row[0]!.outputs?.[0]?.tier)">{{ row[0]!.recipe_name ?? `Recipe #${row[0]!.recipe_id}` }}</span><div class="text-xs text-muted">{{ row[0]!.kind === 'Passive' ? `Projects: ${row.length}` : `Quantity: ${row[0]!.quantity}` }}</div></div></div></td>
                       <td class="p-2"><NuxtLink :to="`/players/${row[0]!.owner_id}`" class="text-primary hover:underline"><PlayerName :player-id="row[0]!.owner_id">{{ row[0]!.owner_name ?? `Player #${row[0]!.owner_id}` }}</PlayerName></NuxtLink><div><UBadge :color="row[0]!.is_member ? 'success' : 'warning'" variant="subtle">{{ row[0]!.is_member ? 'Member' : 'Non-member' }}</UBadge></div></td>
                       <td class="p-2">{{ row[0]!.kind }} · {{ row[0]!.status }}<div v-if="row[0]!.public !== null" class="text-xs text-muted">{{ row[0]!.public ? 'Public project' : 'Private project' }}</div><div v-if="slots(row)" class="text-xs text-muted">{{ row.length > 1 ? 'Slots' : 'Slot' }} {{ slots(row) }}</div></td>
-                      <td class="p-2">{{ groupDetail(row) }}</td>
+                      <td class="p-2"><ClientOnly v-if="row[0]!.kind === 'Passive'"><span>{{ groupDetail(row) }}</span><template #fallback>—</template></ClientOnly><span v-else>{{ groupDetail(row) }}</span></td>
                       <td v-if="!playerView" class="p-2">{{ remainingHexCoins(row[0]!, claimXpRemainder)?.toLocaleString() ?? 'Unknown' }}<div v-if="row[0]!.kind === 'Passive'" class="text-xs text-muted">Passive crafts do not mint</div></td>
                     </tr>
                   </tbody>

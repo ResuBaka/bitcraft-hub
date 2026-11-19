@@ -21,6 +21,12 @@ Named **Recraft** and **Scrap** recipes are excluded from normal production rank
 - The shopping list contains only remaining material requirements. Extraction action estimates use expected yields.
 - Filtering package ingredients must not make package-only unpack recipes appear to produce materials for free.
 
+## XP estimates
+
+XP uses the server's first experience-per-progress entry and sums selected crafting and gathering steps. The progress-per-hit input is shared across steps and means effective non-critical progress (tool plus skill power and other flat bonuses). The model assumes a 100% XP rate and no critical hits. Crafting rounds XP per hit and caps the final hit; probabilistic demands use an average full-hit approximation. Passive crafting awards no step XP.
+
+Gathering uses the same lowest-progress extraction source chosen for action estimates. Its expected yield is per progress, and XP is approximated using full hits; resource health, overproduction, random drops, and critical hits are not simulated. Explicit supply and sources without XP data are unknown, so totals containing them are marked partial. Inventory contributes zero XP. Extraction XP is nullable until the extraction data worker has synced the new fields after migration.
+
 Memory scales with shared graph metadata, the current selected occurrences, and small choice records—not all possible recipe paths. Separate occurrences are still needed for independent choices and inventory allocation. The page still downloads the existing full recipe payload; a scoped API endpoint would be a separate optimization.
 
 ## Rarity chances in normal crafting

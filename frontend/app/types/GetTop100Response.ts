@@ -2,7 +2,4 @@
 import type { PlayerState } from "./PlayerState";
 import type { RankType } from "./RankType";
 
-export type GetTop100Response = {
-  player_map: { [key in bigint]: PlayerState };
-  leaderboard: { [key in string]: Array<RankType> };
-};
+export type GetTop100Response = { player_map: { [key in bigint]: PlayerState }, leaderboard: { [key in string]: Array<RankType> }, };

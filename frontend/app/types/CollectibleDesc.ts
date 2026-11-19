@@ -2,26 +2,4 @@
 import type { CollectibleType } from "./CollectibleType";
 import type { Rarity } from "./Rarity";
 
-export type CollectibleDesc = {
-  id: number;
-  name: string;
-  description: string;
-  collectible_type: CollectibleType;
-  invalidates_type: CollectibleType;
-  auto_collect: boolean;
-  collectible_rarity: Rarity;
-  starting_loadout: boolean;
-  locked: boolean;
-  variant: number;
-  color: string;
-  emission: string;
-  max_equip_count: number;
-  model_asset_name: string;
-  variant_material: string;
-  icon_asset_name: string;
-  tag: string;
-  display_string: string;
-  item_deed_id: number;
-  required_knowledges_to_use: Array<number>;
-  required_knowledges_to_convert: Array<number>;
-};
+export type CollectibleDesc = { id: number, name: string, description: string, collectible_type: CollectibleType, invalidates_type: CollectibleType, auto_collect: boolean, collectible_rarity: Rarity, starting_loadout: boolean, locked: boolean, variant: number, color: string, emission: string, max_equip_count: number, model_asset_name: string, variant_material: string, icon_asset_name: string, tag: string, display_string: string, item_deed_id: number, required_knowledges_to_use: Array<number>, required_knowledges_to_convert: Array<number>, };

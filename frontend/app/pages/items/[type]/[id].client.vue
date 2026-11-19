@@ -11,7 +11,7 @@ import type { RecipesAllResponse } from "~/types/RecipesAllResponse";
 import {
   buildCraftingGraph,
   buildCraftingPlan,
-  buildExtractionEffort,
+  buildExtractionSources,
   changeCraftingSelection,
 } from "~/utils/craftingPlan";
 import type { InventoryQuantities, RecipeSelections } from "~/utils/craftingPlan";
@@ -21,6 +21,7 @@ import { rarityToTextClass, tierToTextClass } from "~/utils";
 const playerId = ref<bigint | null>(null);
 const claimId = ref<bigint | null | undefined>(null);
 const amount = ref<number>(1);
+const progressPerHit = ref<number>(1);
 const selections = shallowRef<RecipeSelections>(new Map());
 const route = useRoute();
 
@@ -61,8 +62,8 @@ const { data: extractionRecipesFetch } = useFetchMsPack<ExtractionRecipeResponse
 const graph = computed(() =>
   allRecipiesFetch.value ? markRaw(buildCraftingGraph(allRecipiesFetch.value)) : undefined,
 );
-const extractionEffort = computed(() =>
-  buildExtractionEffort(extractionRecipesFetch.value ?? [], allRecipiesFetch.value),
+const extractionSources = computed(() =>
+  buildExtractionSources(extractionRecipesFetch.value ?? [], allRecipiesFetch.value),
 );
 
 const inventoryQuantities = computed(() => {
@@ -95,7 +96,9 @@ const plan = computed(() => {
   return buildCraftingPlan(graph.value, type, Number(id), amount.value, {
     selections: selections.value,
     inventory: inventoryQuantities.value,
-    extraction: extractionEffort.value,
+    extraction: extractionSources.value.effort,
+    extractionExperience: extractionSources.value.experience,
+    progressPerHit: progressPerHit.value,
   });
 });
 
@@ -199,7 +202,7 @@ useSeoMeta({ title: () => `Recipe Id -> ${route.params.id} Type -> ${route.param
         </div>
       </div>
       <UCard :ui="{ body: 'p-4' }">
-        <div class="grid gap-4 lg:grid-cols-3">
+        <div class="grid gap-4 lg:grid-cols-4">
           <div class="flex flex-col gap-2">
             <p
               class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
@@ -229,6 +232,22 @@ useSeoMeta({ title: () => `Recipe Id -> ${route.params.id} Type -> ${route.param
               min="1"
               placeholder="Enter amount"
             />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label
+              class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400"
+              for="progress-per-hit"
+            >
+              XP estimate: progress per hit
+            </label>
+            <UInput
+              id="progress-per-hit"
+              v-model.number="progressPerHit"
+              type="number"
+              min="1"
+              step="1"
+            />
+            <p class="text-xs text-muted">Effective non-critical progress for all steps.</p>
           </div>
         </div>
       </UCard>

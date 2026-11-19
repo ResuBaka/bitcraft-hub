@@ -2,8 +2,4 @@
 import type { CurrentClaim } from "./CurrentClaim";
 import type { MobileEntityState } from "./MobileEntityState";
 
-export type PlayerLocationUpdate = {
-  entity_id: bigint;
-  location: MobileEntityState | null;
-  current_claim: CurrentClaim;
-};
+export type PlayerLocationUpdate = { entity_id: bigint, location: MobileEntityState | null, current_claim: CurrentClaim, };

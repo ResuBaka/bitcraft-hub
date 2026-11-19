@@ -25,6 +25,8 @@ pub(crate) fn start_worker_extraction_recipe_desc(
                 extraction_recipe_desc::Column::AllowUseHands,
                 extraction_recipe_desc::Column::TimeRequirement,
                 extraction_recipe_desc::Column::StaminaRequirement,
+                extraction_recipe_desc::Column::CargoId,
+                extraction_recipe_desc::Column::ExperiencePerProgress,
             ])
             .to_owned();
 

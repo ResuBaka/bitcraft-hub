@@ -2,7 +2,4 @@
 import type { OffsetCoordinatesSmallMessage } from "./OffsetCoordinatesSmallMessage";
 import type { TeleportLocationType } from "./TeleportLocationType";
 
-export type TeleportLocation = {
-  location: OffsetCoordinatesSmallMessage;
-  location_type: TeleportLocationType;
-};
+export type TeleportLocation = { location: OffsetCoordinatesSmallMessage, location_type: TeleportLocationType, };

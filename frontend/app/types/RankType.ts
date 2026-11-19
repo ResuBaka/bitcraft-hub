@@ -5,9 +5,4 @@ import type { LeaderboardLevel } from "./LeaderboardLevel";
 import type { LeaderboardSkill } from "./LeaderboardSkill";
 import type { LeaderboardTime } from "./LeaderboardTime";
 
-export type RankType =
-  | LeaderboardExperience
-  | LeaderboardExperiencePerHour
-  | LeaderboardLevel
-  | LeaderboardSkill
-  | LeaderboardTime;
+export type RankType = LeaderboardExperience | LeaderboardExperiencePerHour | LeaderboardLevel | LeaderboardSkill | LeaderboardTime;

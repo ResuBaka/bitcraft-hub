@@ -3,11 +3,14 @@ import { unpack } from "msgpackr/unpack";
 import type { WebSocketHandlerMessage, WebSocketMessageHandlers } from "~/types";
 import type { InboundWebSocketMessages } from "~/types/InboundWebSocketMessages";
 import type { OutboundWebSocketMessages } from "~/types/OutboundWebSocketMessages";
+import { WebsocketTopicRegistry } from "~/utils/websocketTopicRegistry";
 
 export const useWebsocketStore = defineStore("websocket", () => {
   const configStore = useConfigStore();
+  const sharedTrackingEnabled = ref(false);
   const websocket_message_event_handler: WebSocketMessageHandlers = {};
   const topics_currently_subscribed: Ref<string[]> = ref([]);
+  const topicRegistry = new WebsocketTopicRegistry();
 
   const readOnlyTopicsCurrentlySubscribed = computed(() => topics_currently_subscribed.value);
 
@@ -37,7 +40,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
 
   onMounted(() => {
     watch(
-      () => configStore.websocket.enabled_default,
+      () => configStore.websocket.enabled_default || sharedTrackingEnabled.value,
       (enabled) => {
         if (enabled) {
           open();
@@ -106,22 +109,12 @@ export const useWebsocketStore = defineStore("websocket", () => {
     instanceId: string,
     lazy: boolean = false,
   ) {
-    const newTopics = [];
     const unwrapped = toValue(topic);
-
-    if (typeof unwrapped === "string") {
-      if (!topics_currently_subscribed.value.includes(unwrapped)) {
-        newTopics.push(unwrapped);
-        topics_currently_subscribed.value.push(unwrapped);
-      }
-    } else {
-      for (const t of unwrapped) {
-        if (!topics_currently_subscribed.value.includes(t)) {
-          newTopics.push(t);
-          topics_currently_subscribed.value.push(t);
-        }
-      }
-    }
+    const newTopics = topicRegistry.add(
+      `${eventType}:${instanceId}`,
+      typeof unwrapped === "string" ? [unwrapped] : unwrapped,
+    );
+    topics_currently_subscribed.value.push(...newTopics);
 
     if (!websocket_message_event_handler[eventType]) {
       websocket_message_event_handler[eventType] = new Map();
@@ -138,22 +131,11 @@ export const useWebsocketStore = defineStore("websocket", () => {
   }
 
   function subscribeTopicsOnly(topic: MaybeRefOrGetter<string | string[]>, lazy: boolean = false) {
-    const newTopics = [];
     const unwrapped = toValue(topic);
-
-    if (typeof unwrapped === "string") {
-      if (!topics_currently_subscribed.value.includes(unwrapped)) {
-        newTopics.push(unwrapped);
-        topics_currently_subscribed.value.push(unwrapped);
-      }
-    } else {
-      for (const t of unwrapped) {
-        if (!topics_currently_subscribed.value.includes(t)) {
-          newTopics.push(t);
-          topics_currently_subscribed.value.push(t);
-        }
-      }
-    }
+    const newTopics = topicRegistry.addPermanent(
+      typeof unwrapped === "string" ? [unwrapped] : unwrapped,
+    );
+    topics_currently_subscribed.value.push(...newTopics);
 
     if (!lazy && newTopics.length > 0) {
       sendMessage({ t: "Subscribe", c: { topics: newTopics } });
@@ -167,21 +149,17 @@ export const useWebsocketStore = defineStore("websocket", () => {
   ) {
     const unwrapped = toValue(topic);
 
-    let topicsToUnsubscribe: MaybeRefOrGetter<string | string[]> = [];
-    if (typeof unwrapped === "string") {
-      topicsToUnsubscribe.push(unwrapped);
-    } else {
-      topicsToUnsubscribe = unwrapped;
-    }
+    const topics = typeof unwrapped === "string" ? [unwrapped] : unwrapped;
+    const { released, hasOwner } = topicRegistry.remove(`${eventType}:${instanceId}`, topics);
 
-    if (websocket_message_event_handler[eventType]) {
+    if (!hasOwner && websocket_message_event_handler[eventType]) {
       websocket_message_event_handler[eventType].delete(instanceId);
       if (websocket_message_event_handler[eventType].size === 0) {
         delete websocket_message_event_handler[eventType];
       }
     }
 
-    for (const topic of topicsToUnsubscribe) {
+    for (const topic of released) {
       sendMessage({ t: "Unsubscribe", c: { topic: topic } });
       if (topics_currently_subscribed.value.includes(topic)) {
         topics_currently_subscribed.value.splice(
@@ -193,6 +171,7 @@ export const useWebsocketStore = defineStore("websocket", () => {
   }
 
   return {
+    sharedTrackingEnabled,
     subscribedTopics: readOnlyTopicsCurrentlySubscribed,
     subscribeTopicsOnly,
     subscribe,

@@ -176,6 +176,7 @@ pub(crate) struct SpacetimeDbConfig {
     pub(crate) protocol: String,
     /// When set, add the region number to this base port.
     pub(crate) base_port: Option<u16>,
+    /// Global database name. Its connection uses the base port without an offset.
     pub(crate) database: String,
     pub(crate) databases: Vec<String>,
     pub(crate) password: String,
@@ -198,6 +199,14 @@ impl Default for SpacetimeDbConfig {
             username: "token".to_string(),
             websocket_protocol: "wss://".to_string(),
         }
+    }
+}
+
+impl SpacetimeDbConfig {
+    pub(crate) fn regional_databases(&self) -> impl Iterator<Item = &String> {
+        self.databases.iter().filter(|name| {
+            !name.trim().is_empty() && name.trim() != self.database.trim()
+        })
     }
 }
 
@@ -316,9 +325,17 @@ impl Config {
     }
 
     pub fn spacetimedb_url(&self, region_number: Region) -> String {
+        self.spacetimedb_url_with_offset(i32::from(region_number))
+    }
+
+    pub(crate) fn global_spacetimedb_url(&self) -> String {
+        self.spacetimedb_url_with_offset(0)
+    }
+
+    fn spacetimedb_url_with_offset(&self, port_offset: i32) -> String {
         let host = format!("{}{}", self.spacetimedb.protocol, self.spacetimedb.domain);
         match self.spacetimedb.base_port {
-            Some(base_port) => format!("{host}:{}", i32::from(region_number) + i32::from(base_port)),
+            Some(base_port) => format!("{host}:{}", port_offset + i32::from(base_port)),
             None => host,
         }
     }
@@ -331,6 +348,7 @@ mod spacetimedb_url_tests {
     #[test]
     fn uses_default_or_configured_base_port() {
         let default: Config = serde_json::from_str("{}").unwrap();
+        assert_eq!(default.global_spacetimedb_url(), "https://localhost");
         assert_eq!(default.spacetimedb_url(0), "https://localhost");
         assert_eq!(default.spacetimedb_url(2), "https://localhost");
 
@@ -338,6 +356,16 @@ mod spacetimedb_url_tests {
             serde_json::from_str(r#"{"spacetimedb":{"base_port":4000}}"#).unwrap();
         assert_eq!(configured.spacetimedb_url(0), "https://localhost:4000");
         assert_eq!(configured.spacetimedb_url(2), "https://localhost:4002");
+    }
+
+    #[test]
+    fn global_database_uses_the_base_port_without_a_numeric_suffix() {
+        let config: Config = serde_json::from_str(
+            r#"{"spacetimedb":{"base_port":3000,"database":"bitcraft-global","databases":["bitcraft-global","bitcraft-1","bitcraft-2"]}}"#,
+        ).unwrap();
+        assert_eq!(config.global_spacetimedb_url(), "https://localhost:3000");
+        assert_eq!(config.spacetimedb_url(1), "https://localhost:3001");
+        assert_eq!(config.spacetimedb.regional_databases().map(String::as_str).collect::<Vec<_>>(), ["bitcraft-1", "bitcraft-2"]);
     }
 }
 

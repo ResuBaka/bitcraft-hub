@@ -1,4 +1,5 @@
 use crate::crafting_recipe::ToolRequirement;
+use crate::shared::experience_stack_f32::ExperienceStackF32;
 use crate::shared::probabilistic_item_stack::ProbabilisticItemStack;
 use game_module::module_bindings::ExtractionRecipeDesc;
 use sea_orm::entity::prelude::*;
@@ -19,6 +20,9 @@ pub struct Model {
     pub allow_use_hands: bool,
     pub time_requirement: f32,
     pub stamina_requirement: f32,
+    pub cargo_id: Option<i32>,
+    #[sea_orm(column_type = "Json", nullable)]
+    pub experience_per_progress: Option<Vec<ExperienceStackF32>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -44,6 +48,14 @@ impl From<ExtractionRecipeDesc> for Model {
             allow_use_hands: value.allow_use_hands,
             time_requirement: value.time_requirement,
             stamina_requirement: value.stamina_requirement,
+            cargo_id: Some(value.cargo_id),
+            experience_per_progress: Some(
+                value
+                    .experience_per_progress
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            ),
         }
     }
 }

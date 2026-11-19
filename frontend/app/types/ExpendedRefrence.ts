@@ -2,10 +2,4 @@
 import type { ItemExpended } from "./ItemExpended";
 import type { ItemType } from "./ItemType";
 
-export type ExpendedRefrence = {
-  item_id: number;
-  item: ItemExpended;
-  quantity: number;
-  item_type: ItemType;
-  durability: number | null;
-};
+export type ExpendedRefrence = { item_id: number, item: ItemExpended, quantity: number, item_type: ItemType, durability: number | null, };
