@@ -30,7 +30,6 @@ const props = defineProps<{
   tools: ResolvedInventory;
   previousRank?: number | bigint;
   snapshotRank?: number | bigint | null;
-  snapshotTime?: string;
 }>();
 const numberFormat = new Intl.NumberFormat(undefined);
 const tierColor = useTierColor();
@@ -38,14 +37,6 @@ const currentRank = computed(() => Number(props.snapshotRank ?? props.xp_info.ra
 const rankChange = computed(() => props.previousRank == null || currentRank.value <= 0
   ? null
   : Number(props.previousRank) - currentRank.value);
-const formattedSnapshotTime = computed(() => {
-  if (!props.snapshotTime) return null;
-  const date = new Date(props.snapshotTime);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium", timeStyle: "short", timeZone: "UTC",
-  }).format(date) + " UTC";
-});
 
 const itemForSkill = computed(() => {
   const index = skillToToolIndex[props.skill as keyof typeof skillToToolIndex];
@@ -106,9 +97,6 @@ const expUntilNextTenLevel = computed(() => {
         </span>
       </div>
     </div>
-    <p v-if="rankChange !== null" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-      Was #{{ numberFormat.format(previousRank!) }}<template v-if="formattedSnapshotTime"> · Snapshot {{ formattedSnapshotTime }}</template>
-    </p>
     <div
       class="mt-2 flex flex-wrap items-start justify-between gap-3 text-xs text-gray-500 dark:text-gray-400"
     >

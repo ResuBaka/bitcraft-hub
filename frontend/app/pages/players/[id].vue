@@ -771,7 +771,6 @@ const formatQuantity = (value: number | bigint | null | undefined) => {
                 :tools="tools"
                 :previous-rank="rankSnapshotsByLabel.get(skill)?.previous_rank"
                 :snapshot-rank="rankSnapshotsByLabel.get(skill)?.current_rank"
-                :snapshot-time="rankSnapshotsByLabel.get(skill)?.captured_at"
               />
             </div>
             <p class="text-xs text-gray-500">Rank changes compare with the captured snapshot; the exact time of a rank change is not recorded. A missing change means no snapshot is available.</p>
