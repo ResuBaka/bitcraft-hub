@@ -12,18 +12,42 @@ pub(crate) enum ClaimAtLocation {
     Unknown,
 }
 
-type TileCoordinates = (u32, i32, i32);
+type TileCoordinates = (i32, i32);
 const MAX_UNMATCHED_LOCATIONS: usize = 4096;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TileLocation {
+    Overworld(TileCoordinates),
+    Interior,
+}
+
+impl From<(u32, i32, i32)> for TileLocation {
+    fn from((dimension, x, z): (u32, i32, i32)) -> Self {
+        if dimension == 1 {
+            Self::Overworld((x, z))
+        } else {
+            Self::Interior
+        }
+    }
+}
+
+struct OverworldTile {
+    claim: u64,
+    coords: TileCoordinates,
+}
 
 #[derive(Default)]
 struct LiveRegion {
-    claims: HashMap<u64, u64>,
-    locations: HashMap<u64, TileCoordinates>,
+    overworld_tiles: HashMap<u64, OverworldTile>,
     // Almost every coordinate has one tile. Store its ID inline instead of
     // allocating a separate hash table (and duplicating its claim) per tile.
     coordinates: HashMap<TileCoordinates, u64>,
     overlapping: HashMap<TileCoordinates, HashSet<u64>>,
-    missing: HashSet<u64>,
+    // Interior lookups use descriptions/networks, not tile coordinates. Keep
+    // the tile's claim here so a subsequent move can still be indexed.
+    interior_tiles: HashMap<u64, u64>,
+    missing_locations: HashMap<u64, u64>,
+    unmatched_locations: HashMap<u64, TileLocation>,
     unmatched: VecDeque<u64>,
     descriptions: HashMap<u32, u64>,
     networks: HashMap<u64, u64>,
@@ -35,69 +59,108 @@ struct LiveRegion {
 }
 
 impl LiveRegion {
-    fn detach(&mut self, id: u64) {
-        let Some(coords) = self.locations.get(&id) else { return; };
-        let Some(&representative) = self.coordinates.get(coords) else { return; };
+    fn detach(&mut self, id: u64, coords: TileCoordinates) {
+        let Some(&representative) = self.coordinates.get(&coords) else {
+            return;
+        };
         if representative == id {
-            let replacement = self.overlapping.get_mut(coords).and_then(|others| {
+            let replacement = self.overlapping.get_mut(&coords).and_then(|others| {
                 let next = others.iter().next().copied()?;
                 others.remove(&next);
                 Some(next)
             });
             if let Some(next) = replacement {
-                self.coordinates.insert(*coords, next);
+                self.coordinates.insert(coords, next);
             } else {
-                self.coordinates.remove(coords);
+                self.coordinates.remove(&coords);
             }
-        } else if let Some(others) = self.overlapping.get_mut(coords) {
+        } else if let Some(others) = self.overlapping.get_mut(&coords) {
             others.remove(&id);
         }
-        if self.overlapping.get(coords).is_some_and(HashSet::is_empty) {
-            self.overlapping.remove(coords);
+        if self.overlapping.get(&coords).is_some_and(HashSet::is_empty) {
+            self.overlapping.remove(&coords);
         }
     }
 
-    fn attach(&mut self, id: u64) {
-        match (self.claims.get(&id), self.locations.get(&id)) {
-            (Some(_), Some(&coords)) => {
+    fn insert_located(&mut self, id: u64, claim: u64, location: TileLocation) {
+        match location {
+            TileLocation::Overworld(coords) => {
+                self.overworld_tiles
+                    .insert(id, OverworldTile { claim, coords });
                 let representative = self.coordinates.entry(coords).or_insert(id);
                 if *representative != id {
                     self.overlapping.entry(coords).or_default().insert(id);
                 }
-                self.missing.remove(&id);
             }
-            (Some(_), None) => { self.missing.insert(id); }
-            _ => { self.missing.remove(&id); }
+            TileLocation::Interior => {
+                self.interior_tiles.insert(id, claim);
+            }
+        }
+    }
+
+    fn remove_claim(&mut self, id: u64) -> Option<u64> {
+        if let Some(tile) = self.overworld_tiles.remove(&id) {
+            self.detach(id, tile.coords);
+            Some(tile.claim)
+        } else {
+            self.interior_tiles
+                .remove(&id)
+                .or_else(|| self.missing_locations.remove(&id))
         }
     }
 
     fn set_claim(&mut self, id: u64, claim: Option<u64>) {
-        self.detach(id);
-        if let Some(claim) = claim { self.claims.insert(id, claim); }
-        else { self.claims.remove(&id); self.locations.remove(&id); }
-        self.attach(id);
+        let Some(claim) = claim else {
+            self.remove_claim(id);
+            self.unmatched_locations.remove(&id);
+            return;
+        };
+        if let Some(tile) = self.overworld_tiles.get_mut(&id) {
+            tile.claim = claim;
+        } else if let Some(tile_claim) = self.interior_tiles.get_mut(&id) {
+            *tile_claim = claim;
+        } else if let Some(location) = self.unmatched_locations.remove(&id) {
+            self.insert_located(id, claim, location);
+        } else {
+            self.missing_locations.insert(id, claim);
+        }
     }
 
-    fn set_location(&mut self, id: u64, location: Option<TileCoordinates>) {
-        self.detach(id);
-        if let Some(location) = location {
-            self.locations.insert(id, location);
-            if self.claims_initial_received && !self.claims.contains_key(&id) {
+    fn set_location(&mut self, id: u64, location: Option<TileLocation>) {
+        match (self.remove_claim(id), location) {
+            (Some(claim), Some(location)) => self.insert_located(id, claim, location),
+            (Some(claim), None) => {
+                self.missing_locations.insert(id, claim);
+            }
+            (None, Some(location)) => {
+                self.unmatched_locations.insert(id, location);
+                if !self.claims_initial_received {
+                    return;
+                }
                 self.unmatched.push_back(id);
                 while self.unmatched.len() > MAX_UNMATCHED_LOCATIONS {
-                    if let Some(old) = self.unmatched.pop_front() && !self.claims.contains_key(&old) {
-                        self.locations.remove(&old);
+                    if let Some(old) = self.unmatched.pop_front() {
+                        self.unmatched_locations.remove(&old);
                     }
                 }
             }
-        } else { self.locations.remove(&id); }
-        self.attach(id);
+            (None, None) => {
+                self.unmatched_locations.remove(&id);
+            }
+        }
     }
 
     fn finish_claims_initial(&mut self) {
         self.claims_initial_received = true;
-        self.locations.retain(|id, _| self.claims.contains_key(id));
+        // Matching locations moved into the tile indexes. Release the
+        // staging allocation for any remaining building/portal locations.
+        self.unmatched_locations = HashMap::new();
         self.unmatched.clear();
+    }
+
+    fn reserve_overworld_tiles(&mut self, additional: usize) {
+        self.overworld_tiles.reserve(additional);
+        self.coordinates.reserve(additional);
     }
 }
 
@@ -119,11 +182,16 @@ impl ClaimLocationSubscriptions {
     pub(crate) fn claims_initial<'a>(&self, region: Region, rows: impl IntoIterator<Item = &'a game_module::module_bindings::ClaimTileState>) {
         if let Some(state) = self.regions.write().get_mut(&region) {
             let rows = rows.into_iter();
-            state.claims.reserve(rows.size_hint().0);
-            state.coordinates.reserve(rows.size_hint().0);
+            if state.locations_initial_received {
+                state.reserve_overworld_tiles(rows.size_hint().0.min(state.unmatched_locations.len()));
+            } else {
+                state.missing_locations.reserve(rows.size_hint().0);
+            }
             for row in rows { state.set_claim(row.entity_id, Some(row.claim_id)); }
             state.finish_claims_initial();
-            if state.locations_initial_received { state.missing.shrink_to_fit(); }
+            if state.locations_initial_received {
+                state.missing_locations.shrink_to_fit();
+            }
         }
     }
     pub(crate) fn claim(&self, region: Region, id: u64, claim: Option<u64>) {
@@ -132,16 +200,25 @@ impl ClaimLocationSubscriptions {
     pub(crate) fn locations_initial<'a>(&self, region: Region, rows: impl IntoIterator<Item = &'a game_module::module_bindings::LocationState>) {
         if let Some(state) = self.regions.write().get_mut(&region) {
             let rows = rows.into_iter();
-            state.locations.reserve(rows.size_hint().0);
-            for row in rows { state.set_location(row.entity_id, Some((row.dimension, row.x, row.z))); }
+            let count = rows.size_hint().0;
+            if state.claims_initial_received {
+                state.reserve_overworld_tiles(count.min(state.missing_locations.len()));
+            } else {
+                state.unmatched_locations.reserve(count);
+            }
+            for row in rows {
+                state.set_location(row.entity_id, Some((row.dimension, row.x, row.z).into()));
+            }
             state.locations_initial_received = true;
             // Claims usually arrive first, temporarily placing every tile in
-            // this set. Removing entries does not release the backing table.
-            state.missing.shrink_to_fit();
+            // this map. Removing entries does not release the backing table.
+            state.missing_locations.shrink_to_fit();
         }
     }
-    pub(crate) fn location(&self, region: Region, id: u64, location: Option<TileCoordinates>) {
-        if let Some(state) = self.regions.write().get_mut(&region) { state.set_location(id, location); }
+    pub(crate) fn location(&self, region: Region, id: u64, location: Option<(u32, i32, i32)>) {
+        if let Some(state) = self.regions.write().get_mut(&region) {
+            state.set_location(id, location.map(Into::into));
+        }
     }
     pub(crate) fn descriptions_initial<'a>(&self, region: Region, rows: impl IntoIterator<Item = &'a game_module::module_bindings::DimensionDescriptionState>) {
         if let Some(state) = self.regions.write().get_mut(&region) {
@@ -176,16 +253,29 @@ impl ClaimLocationSubscriptions {
                 None => ClaimAtLocation::Unknown,
             };
         }
-        if !state.claims_initial_received || !state.locations_initial_received || !state.missing.is_empty() { return ClaimAtLocation::Unknown; }
-        let (x, z) = mobile_tile(x, z);
-        match state.coordinates.get(&(dimension, x, z)) {
+        if !state.claims_initial_received
+            || !state.locations_initial_received
+            || !state.missing_locations.is_empty()
+        {
+            return ClaimAtLocation::Unknown;
+        }
+        let coords = mobile_tile(x, z);
+        match state.coordinates.get(&coords) {
             None => ClaimAtLocation::Unclaimed,
             Some(id) => {
-                let Some(&claim) = state.claims.get(id) else { return ClaimAtLocation::Unknown; };
-                let agrees = state.overlapping.get(&(dimension, x, z)).is_none_or(|others| {
-                    others.iter().all(|id| state.claims.get(id) == Some(&claim))
+                let Some(OverworldTile { claim, .. }) = state.overworld_tiles.get(id) else {
+                    return ClaimAtLocation::Unknown;
+                };
+                let agrees = state.overlapping.get(&coords).is_none_or(|others| {
+                    others.iter().all(|id| {
+                        state.overworld_tiles.get(id).is_some_and(|tile| tile.claim == *claim)
+                    })
                 });
-                if agrees { ClaimAtLocation::Claim(claim) } else { ClaimAtLocation::Unknown }
+                if agrees {
+                    ClaimAtLocation::Claim(*claim)
+                } else {
+                    ClaimAtLocation::Unknown
+                }
             }
         }
     }
@@ -310,6 +400,56 @@ mod tests {
         assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unclaimed);
         index.invalidate(1);
         assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unknown);
+    }
+
+    #[test]
+    fn releases_unrelated_initial_locations_after_the_join() {
+        use game_module::module_bindings::{ClaimTileState, LocationState};
+
+        let index = ClaimLocationSubscriptions::default();
+        index.reset(1);
+        index.finish_initial(1);
+        let locations: Vec<_> = (0..128)
+            .map(|id| LocationState {
+                entity_id: id,
+                chunk_index: 1,
+                x: id as i32,
+                z: 0,
+                dimension: 1,
+            })
+            .collect();
+        // Building and portal locations may arrive alongside claim tiles.
+        index.locations_initial(1, &locations);
+        index.claims_initial(1, &[ClaimTileState { entity_id: 1, claim_id: 99 }]);
+        assert_eq!(index.lookup(1, 1, 1000, 0), ClaimAtLocation::Claim(99));
+        assert_eq!(index.lookup(1, 1, 2000, 0), ClaimAtLocation::Unclaimed);
+        let regions = index.regions.read();
+        assert_eq!(regions[&1].overworld_tiles.len(), 1);
+        assert_eq!(regions[&1].coordinates.len(), 1);
+        assert_eq!(regions[&1].unmatched_locations.capacity(), 0);
+        assert_eq!(regions[&1].missing_locations.capacity(), 0);
+    }
+
+    #[test]
+    fn tiles_can_move_between_the_overworld_and_interiors() {
+        let index = ClaimLocationSubscriptions::default();
+        index.reset(1);
+        index.claims_initial(1, []);
+        index.locations_initial(1, []);
+        index.finish_initial(1);
+        index.claim(1, 42, Some(99));
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unknown);
+        index.location(1, 42, Some((7, 1, 2)));
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unclaimed);
+        index.claim(1, 42, Some(101));
+        index.location(1, 42, Some((1, 1, 2)));
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Claim(101));
+        index.location(1, 42, Some((7, 1, 2)));
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unclaimed);
+        index.location(1, 42, None);
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unknown);
+        index.claim(1, 42, None);
+        assert_eq!(index.lookup(1, 1, 1000, 2000), ClaimAtLocation::Unclaimed);
     }
 
     #[test]

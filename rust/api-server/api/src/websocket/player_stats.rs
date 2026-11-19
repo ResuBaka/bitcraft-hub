@@ -34,14 +34,14 @@ pub(super) fn changed(state: &AppState, player_id: Option<u64>) {
 
 pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
     macro_rules! listen_table {
-        ($table:ident, $update:ident) => {{
+        ($table:ident, $update:ident, $convert:path) => {{
             let table = ctx.db.$table();
             let target = state.clone();
             table.on_initial_rows(move |_, rows| {
                 for row in rows.iter() {
                     target
                         .player_stats
-                        .$update(region, row.entity_id, Some(row.clone()));
+                        .$update(region, row.entity_id, Some($convert(row)));
                 }
             });
             let target = state.clone();
@@ -49,7 +49,7 @@ pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
                 if !matches!(ctx.event, Event::SubscribeApplied) {
                     target
                         .player_stats
-                        .$update(region, row.entity_id, Some(row.clone()));
+                        .$update(region, row.entity_id, Some($convert(row)));
                     changed(&target, Some(row.entity_id));
                 }
             });
@@ -57,7 +57,7 @@ pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
             table.on_update(move |_, _, row| {
                 target
                     .player_stats
-                    .$update(region, row.entity_id, Some(row.clone()));
+                    .$update(region, row.entity_id, Some($convert(row)));
                 changed(&target, Some(row.entity_id));
             });
             let target = state.clone();
@@ -67,10 +67,10 @@ pub(super) fn listen(ctx: &DbConnection, region: Region, state: AppState) {
             });
         }};
     }
-    listen_table!(health_state, health);
-    listen_table!(stamina_state, stamina);
-    listen_table!(active_buff_state, buffs);
-    listen_table!(character_stats_state, character_stats);
+    listen_table!(health_state, health, Clone::clone);
+    listen_table!(stamina_state, stamina, Clone::clone);
+    listen_table!(active_buff_state, buffs, std::convert::identity);
+    listen_table!(character_stats_state, character_stats, Clone::clone);
     macro_rules! listen_desc {
         ($table:ident, $update:ident) => {{
             let table = ctx.db.$table();

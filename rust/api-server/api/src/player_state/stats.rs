@@ -1,8 +1,8 @@
 //! Volatile player stat snapshots populated from regional game subscriptions.
 use entity::shared::Region;
 use game_module::module_bindings::{
-    ActiveBuffState, BuffDesc, BuffTypeDesc, CharacterStatType, CharacterStatsState, FoodDesc,
-    HealthState, StaminaState,
+    ActiveBuff, ActiveBuffState, BuffDesc, BuffTypeDesc, CharacterStatType, CharacterStatsState,
+    FoodDesc, HealthState, StaminaState,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -13,7 +13,9 @@ struct RegionStats {
     ready: bool,
     health: HashMap<u64, HealthState>,
     stamina: HashMap<u64, StaminaState>,
-    buffs: HashMap<u64, ActiveBuffState>,
+    buffs: HashMap<u64, Box<[ActiveBuff]>>,
+    // Keep known-empty rows distinct from rows we haven't received.
+    empty_buffs: HashSet<u64>,
     character_stats: HashMap<u64, (Option<f32>, Option<f32>)>,
 }
 
@@ -74,7 +76,11 @@ pub(crate) struct StatsSnapshot {
     pub food_metadata_available: bool,
 }
 
-// BitCraft stores deactivated entries with start and duration set to zero.
+// This check doesn't require the current time, sign-in state, or buff metadata.
+fn is_deactivated(start: i32, duration: i32) -> bool {
+    duration >= 0 && (duration == 0 || start == 0)
+}
+
 // Negative durations are persistent. Online-only timestamps are stored as
 // elapsed seconds while signed out, with -1 representing zero elapsed.
 fn buff_time(
@@ -87,7 +93,7 @@ fn buff_time(
     if duration < 0 {
         return Ok(Some((None, false)));
     }
-    if duration == 0 || start == 0 {
+    if is_deactivated(start, duration) {
         return Ok(None);
     }
     if !signed_in && online_only.is_none() && i64::from(start) + i64::from(duration) <= now {
@@ -132,13 +138,28 @@ impl PlayerStats {
             }
         }
     }
-    pub fn buffs(&self, region: Region, id: u64, row: Option<ActiveBuffState>) {
-        if let Some(state) = self.regions.write().get_mut(&region) {
-            if let Some(row) = row {
-                state.buffs.insert(id, row);
-            } else {
+    pub fn buffs(&self, region: Region, id: u64, row: Option<&ActiveBuffState>) {
+        let mut regions = self.regions.write();
+        let Some(state) = regions.get_mut(&region) else {
+            return;
+        };
+        if let Some(row) = row {
+            let buffs: Box<[_]> = row
+                .active_buffs
+                .iter()
+                .filter(|buff| !is_deactivated(buff.buff_start_timestamp.value, buff.buff_duration))
+                .cloned()
+                .collect();
+            if buffs.is_empty() {
                 state.buffs.remove(&id);
+                state.empty_buffs.insert(id);
+            } else {
+                state.empty_buffs.remove(&id);
+                state.buffs.insert(id, buffs);
             }
+        } else {
+            state.buffs.remove(&id);
+            state.empty_buffs.remove(&id);
         }
     }
     pub fn character_stats(&self, region: Region, id: u64, row: Option<CharacterStatsState>) {
@@ -231,6 +252,13 @@ impl PlayerStats {
         let types = self.buff_types.read();
         let food = self.food_buffs.read();
         let state = regions.get(&region).filter(|state| state.ready);
+        let buffs = state.and_then(|state| {
+            state
+                .buffs
+                .get(&id)
+                .map(Box::as_ref)
+                .or_else(|| state.empty_buffs.contains(&id).then_some(&[]))
+        });
         let mut buffs_complete = true;
         StatsSnapshot {
             player_id: id.to_string(),
@@ -247,8 +275,8 @@ impl PlayerStats {
             max_stamina: state
                 .and_then(|state| state.character_stats.get(&id))
                 .and_then(|values| values.1),
-            buffs: state.and_then(|state| state.buffs.get(&id)).map(|row| {
-                row.active_buffs
+            buffs: buffs.map(|buffs| {
+                buffs
                     .iter()
                     .filter_map(|buff| {
                         let desc = descriptions.get(&buff.buff_id);
@@ -386,7 +414,7 @@ mod tests {
         stats.buffs(
             1,
             42,
-            Some(ActiveBuffState {
+            Some(&ActiveBuffState {
                 entity_id: 42,
                 active_buffs: vec![
                     ActiveBuff {
@@ -409,7 +437,7 @@ mod tests {
                     },
                     ActiveBuff {
                         buff_id: 4,
-                        buff_start_timestamp: OnlineTimestamp { value: 900 },
+                        buff_start_timestamp: OnlineTimestamp { value: 0 },
                         buff_duration: -1,
                         values: vec![],
                     },
@@ -424,6 +452,51 @@ mod tests {
         );
         assert_eq!(buffs[0].remaining_seconds, Some(100));
         assert_eq!(buffs[1].remaining_seconds, None);
+        // An elapsed timed buff is still retained: its interpretation can depend
+        // on metadata and sign-in state. The zero-duration placeholder is not.
+        assert_eq!(stats.regions.read()[&1].buffs[&42].len(), 3);
+    }
+
+    #[test]
+    fn empty_buff_updates_evict_payload_without_hiding_known_empty_state() {
+        use game_module::module_bindings::OnlineTimestamp;
+
+        let stats = PlayerStats::default();
+        stats.reset(1);
+        stats.ready(1);
+        let active = ActiveBuff {
+            buff_id: 1,
+            buff_start_timestamp: OnlineTimestamp { value: -1 },
+            buff_duration: 100,
+            values: vec![42.0],
+        };
+        let inactive = ActiveBuff {
+            buff_start_timestamp: OnlineTimestamp { value: 0 },
+            ..active.clone()
+        };
+        let mut row = ActiveBuffState {
+            entity_id: 42,
+            active_buffs: vec![],
+        };
+        stats.buffs(1, 42, Some(&row));
+        assert!(!stats.regions.read()[&1].buffs.contains_key(&42));
+        let snapshot = stats.snapshot_at(1, 42, true, 1000);
+        assert!(snapshot.buffs.unwrap().is_empty());
+
+        row.active_buffs = vec![active];
+        stats.buffs(1, 42, Some(&row));
+        assert_eq!(stats.regions.read()[&1].buffs[&42].len(), 1);
+        assert!(!stats.regions.read()[&1].empty_buffs.contains(&42));
+
+        row.active_buffs = vec![inactive];
+        stats.buffs(1, 42, Some(&row));
+        assert!(!stats.regions.read()[&1].buffs.contains_key(&42));
+        let snapshot = stats.snapshot_at(1, 42, true, 1000);
+        assert!(snapshot.buffs.unwrap().is_empty());
+
+        stats.buffs(1, 42, None);
+        assert!(!stats.regions.read()[&1].empty_buffs.contains(&42));
+        assert!(stats.snapshot_at(1, 42, true, 1000).buffs.is_none());
     }
 
     #[test]
