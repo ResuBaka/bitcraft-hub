@@ -343,12 +343,61 @@ enum ExperienceHistoryScale {
     Month,
 }
 
-#[derive(Serialize, sea_orm::FromQueryResult)]
-struct ExperienceHistoryPoint {
+#[derive(Clone, Copy)]
+struct ExperienceHistoryTiming {
+    interval: &'static str,
+    bucket_seconds: u32,
+    rate_interval_seconds: u32,
+    sample_interval_seconds: u32,
+}
+
+impl ExperienceHistoryScale {
+    fn timing(self) -> ExperienceHistoryTiming {
+        let (interval, sample_interval_seconds, rate_interval_seconds) = match self {
+            Self::Hour => ("1 minute", 60, 60),
+            Self::Day => ("30 minutes", 30 * 60, 10 * 60),
+            Self::Week => ("3 hours", 3 * 3600, 3600),
+            Self::Month => ("1 week", 7 * 86400, 86400),
+        };
+        let bucket_seconds = if matches!(self, Self::Hour) { 5 * 60 } else { sample_interval_seconds };
+        ExperienceHistoryTiming { interval, bucket_seconds, rate_interval_seconds, sample_interval_seconds }
+    }
+}
+
+#[derive(sea_orm::FromQueryResult)]
+struct ExperienceHistoryRow {
     day: chrono::DateTime<chrono::Utc>,
     experience_gained: i64,
+    skill_id: Option<i32>,
+}
+
+#[derive(Serialize)]
+struct ExperienceHistoryPoint {
+    /// End of the rolling window for the hour view; bucket start otherwise.
+    day: chrono::DateTime<chrono::Utc>,
+    experience_gained: i64,
+    /// Average XP per `rate_interval_seconds`, using the full averaging window.
+    experience_rate: f64,
+    bucket_seconds: u32,
+    rate_interval_seconds: u32,
+    sample_interval_seconds: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     skill_id: Option<i32>,
+}
+
+impl ExperienceHistoryRow {
+    fn into_point(self, timing: ExperienceHistoryTiming) -> ExperienceHistoryPoint {
+        ExperienceHistoryPoint {
+            day: self.day,
+            experience_gained: self.experience_gained,
+            experience_rate: self.experience_gained as f64 * f64::from(timing.rate_interval_seconds)
+                / f64::from(timing.bucket_seconds),
+            bucket_seconds: timing.bucket_seconds,
+            rate_interval_seconds: timing.rate_interval_seconds,
+            sample_interval_seconds: timing.sample_interval_seconds,
+            skill_id: self.skill_id,
+        }
+    }
 }
 
 async fn experience_history(
@@ -381,35 +430,75 @@ async fn query_experience_history(
         (None, None) => None,
     };
     let filtered = claim_scope || location.is_some();
-    let (interval, table, time_column, xp_expression, lookback, default_days, max_days) = match (scale, filtered) {
-        (ExperienceHistoryScale::Hour, false) => ("5 minutes", "player_experience_history", "recorded_at", "experience::bigint - previous_experience::bigint", "hours", 1, 1),
-        (ExperienceHistoryScale::Day, false) => ("30 minutes", "player_xp_30m", "bucket", "experience_gained", "days", 1, 30),
-        (ExperienceHistoryScale::Week, false) => ("3 hours", "player_xp_30m", "bucket", "experience_gained", "days", 7, 30),
-        (ExperienceHistoryScale::Month, false) => ("1 week", "player_xp_weekly", "bucket", "experience_gained", "days", 180, 3650),
-        (ExperienceHistoryScale::Hour, true) => ("5 minutes", "player_experience_history", "recorded_at", "COALESCE(attributed_experience, experience::bigint - previous_experience::bigint)", "hours", 1, 1),
-        (ExperienceHistoryScale::Day, true) => ("30 minutes", "player_xp_location_30m", "bucket", "experience_gained", "days", 1, 30),
-        (ExperienceHistoryScale::Week, true) => ("3 hours", "player_xp_location_30m", "bucket", "experience_gained", "days", 7, 30),
-        (ExperienceHistoryScale::Month, true) => ("1 week", "(SELECT bucket, player_id, skill_id, location_status, claim_id, experience_gained FROM player_xp_location_weekly UNION ALL SELECT bucket, player_id, skill_id, location_status, claim_id, experience_gained FROM player_xp_legacy_claim_weeks) AS location_history", "bucket", "experience_gained", "days", 180, 3650),
+    let timing = scale.timing();
+    let interval = timing.interval;
+    let rolling = matches!(scale, ExperienceHistoryScale::Hour);
+    let (table, time_column, xp_expression, lookback, default_days, max_days) = match (scale, filtered) {
+        (ExperienceHistoryScale::Hour, false) => ("player_experience_history", "recorded_at", "experience::bigint - previous_experience::bigint", "hours", 1, 1),
+        (ExperienceHistoryScale::Day, false) => ("player_xp_30m", "bucket", "experience_gained", "days", 1, 30),
+        (ExperienceHistoryScale::Week, false) => ("player_xp_30m", "bucket", "experience_gained", "days", 7, 30),
+        (ExperienceHistoryScale::Month, false) => ("player_xp_weekly", "bucket", "experience_gained", "days", 180, 3650),
+        (ExperienceHistoryScale::Hour, true) => ("player_experience_history", "recorded_at", "COALESCE(attributed_experience, experience::bigint - previous_experience::bigint)", "hours", 1, 1),
+        (ExperienceHistoryScale::Day, true) => ("player_xp_location_30m", "bucket", "experience_gained", "days", 1, 30),
+        (ExperienceHistoryScale::Week, true) => ("player_xp_location_30m", "bucket", "experience_gained", "days", 7, 30),
+        (ExperienceHistoryScale::Month, true) => ("(SELECT bucket, player_id, skill_id, location_status, claim_id, experience_gained FROM player_xp_location_weekly UNION ALL SELECT bucket, player_id, skill_id, location_status, claim_id, experience_gained FROM player_xp_legacy_claim_weeks) AS location_history", "bucket", "experience_gained", "days", 180, 3650),
     };
     let days = params.days.unwrap_or(default_days).clamp(1, max_days);
-    let (skill_select, grouping) = if params.group_by_skill.unwrap_or(false) {
+    let group_by_skill = params.group_by_skill.unwrap_or(false);
+    let (skill_select, grouping) = if group_by_skill {
         ("skill_id", "day, skill_id")
     } else {
         ("NULL::integer AS skill_id", "day")
     };
     let location_filter = if claim_scope { "AND location_status = 'claim'" } else if filtered { "AND location_status = $4 AND ($5::bigint IS NULL OR claim_id = $5)" } else { "" };
     let id_column = if claim_scope { "claim_id" } else { "player_id" };
-    let sql = format!(
-        "SELECT time_bucket(INTERVAL '{interval}', {time_column}) AS day, \
-         SUM({xp_expression})::bigint AS experience_gained, {skill_select} FROM {table} \
-         WHERE {id_column} = $1 AND {time_column} >= time_bucket(INTERVAL '{interval}', now() - make_interval({lookback} => $2)) \
-         AND ({xp_expression}) IS NOT NULL AND ($3::integer IS NULL OR skill_id = $3) {location_filter} GROUP BY {grouping} ORDER BY day"
-    );
+    let sql = if rolling {
+        let window_seconds = timing.bucket_seconds;
+        let series = if group_by_skill {
+            "SELECT DISTINCT skill_id FROM minute_xp"
+        } else {
+            "SELECT NULL::integer AS skill_id"
+        };
+        // Only use completed minutes. Include data before the visible range so
+        // the first sample has a full trailing window as well.
+        format!(
+            "WITH bounds AS (
+                 SELECT time_bucket(INTERVAL '{interval}', now()) AS last_sample
+             ), minute_xp AS (
+                 SELECT time_bucket(INTERVAL '{interval}', {time_column}) AS day,
+                        SUM({xp_expression})::bigint AS experience_gained, {skill_select}
+                 FROM {table} CROSS JOIN bounds
+                 WHERE {id_column} = $1
+                   AND {time_column} >= last_sample - make_interval({lookback} => $2) - INTERVAL '{window_seconds} seconds'
+                   AND {time_column} < last_sample
+                   AND ({xp_expression}) IS NOT NULL AND ($3::integer IS NULL OR skill_id = $3) {location_filter}
+                 GROUP BY {grouping}
+             )
+             SELECT samples.day, COALESCE(SUM(minute_xp.experience_gained), 0)::bigint AS experience_gained,
+                    series.skill_id
+             FROM bounds
+             CROSS JOIN LATERAL generate_series(last_sample - make_interval({lookback} => $2),
+                                                last_sample, INTERVAL '{interval}') AS samples(day)
+             CROSS JOIN ({series}) AS series
+             LEFT JOIN minute_xp ON minute_xp.skill_id IS NOT DISTINCT FROM series.skill_id
+                 AND minute_xp.day >= samples.day - INTERVAL '{window_seconds} seconds'
+                 AND minute_xp.day < samples.day
+             GROUP BY samples.day, series.skill_id
+             ORDER BY samples.day, series.skill_id"
+        )
+    } else {
+        format!(
+            "SELECT time_bucket(INTERVAL '{interval}', {time_column}) AS day, \
+             SUM({xp_expression})::bigint AS experience_gained, {skill_select} FROM {table} \
+             WHERE {id_column} = $1 AND {time_column} >= time_bucket(INTERVAL '{interval}', now() - make_interval({lookback} => $2)) \
+             AND ({xp_expression}) IS NOT NULL AND ($3::integer IS NULL OR skill_id = $3) {location_filter} GROUP BY {grouping} ORDER BY day"
+        )
+    };
     let mut values = vec![id.into(), (days as i32).into(), params.skill_id.into()];
     if !claim_scope && let Some(location) = location {
         values.extend([location.into(), params.claim_id.into()]);
     }
-    let rows = ExperienceHistoryPoint::find_by_statement(sea_orm::Statement::from_sql_and_values(
+    let rows = ExperienceHistoryRow::find_by_statement(sea_orm::Statement::from_sql_and_values(
         sea_orm::DbBackend::Postgres,
         sql,
         values,
@@ -420,7 +509,30 @@ async fn query_experience_history(
         tracing::error!(%error, "Failed to query experience history");
         (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
     })?;
-    Ok(axum_codec::Codec(rows))
+    Ok(axum_codec::Codec(rows.into_iter().map(|row| row.into_point(timing)).collect()))
+}
+
+#[cfg(test)]
+#[test]
+fn experience_history_points_include_smoothed_rate_and_durations() {
+    for (scale, bucket_seconds, rate_interval_seconds, sample_interval_seconds, expected_rate) in [
+        (ExperienceHistoryScale::Hour, 300, 60, 60, 4.2),
+        (ExperienceHistoryScale::Day, 1800, 600, 1800, 7.0),
+        (ExperienceHistoryScale::Week, 10800, 3600, 10800, 7.0),
+        (ExperienceHistoryScale::Month, 604800, 86400, 604800, 3.0),
+    ] {
+        let point = ExperienceHistoryRow {
+            day: chrono::DateTime::UNIX_EPOCH,
+            experience_gained: 21,
+            skill_id: Some(3),
+        }.into_point(scale.timing());
+        assert_eq!(point.experience_gained, 21);
+        assert_eq!(point.skill_id, Some(3));
+        assert_eq!(point.bucket_seconds, bucket_seconds);
+        assert_eq!(point.rate_interval_seconds, rate_interval_seconds);
+        assert_eq!(point.sample_interval_seconds, sample_interval_seconds);
+        assert_eq!(point.experience_rate, expected_rate);
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]

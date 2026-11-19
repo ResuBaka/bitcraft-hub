@@ -3,11 +3,28 @@ import { watchDebounced } from "@vueuse/shared";
 import { registerWebsocketMessageHandler } from "~/composables/websocket";
 
 const props = defineProps<{ playerId?: string; claimId?: string }>();
-type Point = { day: string; experience_gained: number | bigint; skill_id?: number };
+type Point = {
+  day: string;
+  experience_rate: number;
+  bucket_seconds: number;
+  sample_interval_seconds?: number;
+  skill_id?: number;
+};
 type Skill = { id: number; name: string };
 type Scale = "hour" | "day" | "week" | "month";
 
+const minute = 60_000;
+const hour = 60 * minute;
+const day = 24 * hour;
+// Match the API's point spacing to fill periods where no XP was recorded.
+const buckets = {
+  hour: { interval: minute, label: "minute", unit: "1m" },
+  day: { interval: 30 * minute, label: "10 minutes", unit: "10m" },
+  week: { interval: 3 * hour, label: "hour", unit: "1h" },
+  month: { interval: 7 * day, label: "day", unit: "1d" },
+} satisfies Record<Scale, { interval: number; label: string; unit: string }>;
 const scale = ref<Scale>("hour");
+const selectedBucket = computed(() => buckets[scale.value]);
 const locationFilter = ref("all");
 const selectedSkills = ref<string[]>(["all"]);
 const { data: skills } = await useLazyFetchMsPack<Skill[]>(
@@ -50,6 +67,11 @@ const { data, pending, error, refresh } = await useLazyFetchMsPack<Point[]>(() =
     ? `/api/bitcraft/claims/${props.claimId}/experience/history?${query}`
     : `/api/bitcraft/experience/${props.playerId}/history?${query}`;
 });
+// Older API versions use five-minute buckets for the hour view and omit sample spacing.
+const legacyHour = computed(() => scale.value === "hour" && data.value?.some(
+  (point) => point.sample_interval_seconds == null && point.bucket_seconds === 5 * minute / 1000,
+));
+const rollingHour = computed(() => scale.value === "hour" && !legacyHour.value);
 
 const historyVersion = ref(0);
 if (props.claimId) {
@@ -86,29 +108,32 @@ onUnmounted(() => {
   document.removeEventListener("visibilitychange", refreshWhenVisible);
 });
 
-const format = new Intl.NumberFormat();
+const format = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat(undefined, {
   month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC",
 });
 const bars = computed(() => {
-  const interval = scale.value === "hour" ? 5 * 60_000 : scale.value === "day" ? 30 * 60_000 : scale.value === "week" ? 3 * 3_600_000 : 7 * 86_400_000;
-  const duration = scale.value === "hour" ? 3_600_000 : (scale.value === "day" ? 1 : scale.value === "week" ? 7 : 180) * 86_400_000;
+  const interval = legacyHour.value ? 5 * minute : selectedBucket.value.interval;
+  const duration = scale.value === "hour" ? hour : (scale.value === "day" ? 1 : scale.value === "week" ? 7 : 180) * day;
   // Weekly TimescaleDB buckets start on Monday, 1970-01-05 UTC.
-  const origin = scale.value === "month" ? 4 * 86_400_000 : 0;
+  const origin = scale.value === "month" ? 4 * day : 0;
   const bucket = (time: number) => Math.floor((time - origin) / interval) * interval + origin;
-  const now = Date.now();
-  const values = new Map<string, number>();
+  let latestSample: number | undefined;
+  const rates = new Map<string, number>();
   for (const point of data.value ?? []) {
+    if ((point.sample_interval_seconds ?? point.bucket_seconds) !== interval / 1000) continue;
     const time = Date.parse(point.day);
-    const xp = Number(point.experience_gained);
-    values.set(`${time}:${point.skill_id}`, xp);
-    values.set(`${time}:total`, (values.get(`${time}:total`) ?? 0) + xp);
+    latestSample = Math.max(latestSample ?? time, time);
+    rates.set(`${time}:${point.skill_id}`, point.experience_rate);
+    rates.set(`${time}:total`, (rates.get(`${time}:total`) ?? 0) + point.experience_rate);
   }
+  const now = (rollingHour.value ? latestSample : undefined) ?? Date.now();
+  const end = bucket(now);
   const result: { time: number; [key: string]: number }[] = [];
-  for (let time = bucket(now - duration); time <= bucket(now); time += interval) {
+  for (let time = bucket(now - duration); time <= end; time += interval) {
     const row: { time: number; [key: string]: number } = { time };
-    for (const skill of chartSkills.value) row[`skill_${skill.id}`] = values.get(`${time}:${skill.id}`) ?? 0;
-    row.total = values.get(`${time}:total`) ?? 0;
+    for (const skill of chartSkills.value) row[`skill_${skill.id}`] = rates.get(`${time}:${skill.id}`) ?? 0;
+    row.total = rates.get(`${time}:total`) ?? 0;
     result.push(row);
   }
   return result;
@@ -130,7 +155,7 @@ const chartCategories = computed(() => [
 ]);
 const chartData = computed(() => bars.value.map((bar) => ({
   ...bar,
-  period: `${dateFormat.format(bar.time)} UTC`,
+  period: `${dateFormat.format(bar.time)} UTC${rollingHour.value ? " · 5-minute rolling average" : ""}`,
 })));
 </script>
 
@@ -139,7 +164,7 @@ const chartData = computed(() => bars.value.map((bar) => ({
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold">Experience history</h2>
-        <p class="text-xs text-gray-500">UTC · XP changes since tracking began</p>
+        <p class="text-xs text-gray-500">UTC · Average XP rate since tracking began</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <USelect v-if="!claimId" v-model="locationFilter" aria-label="XP location" :items="[
@@ -179,15 +204,32 @@ const chartData = computed(() => bars.value.map((bar) => ({
         :categories="chartCategories"
         :height="200"
         :x-axis="false"
-        :format="(value: number) => format.format(value)"
-        aria-label="Experience gained by time period"
-      />
+        :y-label="`Average XP per ${selectedBucket.label}`"
+        :format="(value: number) => `${format.format(value)} XP / ${selectedBucket.unit}`"
+        :aria-label="`Average experience gained per ${selectedBucket.label}`"
+        :tooltip="{ content: { ariaLabel: '' } }"
+      >
+        <template #tooltip="{ title, rows, points }">
+          <p class="font-medium">{{ title }}</p>
+          <p v-if="points.every((point) => point.yValue === 0)" class="text-muted">No XP recorded for this period.</p>
+          <div
+            v-for="row in rows.filter((_, index) => points[index]?.yValue !== 0)"
+            :key="row.label"
+            class="flex items-center gap-2"
+          >
+            <span class="size-2 shrink-0 rounded-full" :style="{ backgroundColor: row.color }" />
+            <span>{{ row.label }}:</span>
+            <span class="ml-auto font-medium tabular-nums">{{ row.value }}</span>
+          </div>
+        </template>
+      </UChart>
       <p v-else class="mt-4 text-sm text-gray-500">Select at least one skill to show its history.</p>
       <div class="mt-2 flex justify-between text-xs text-gray-500">
         <span>{{ bars.length ? dateFormat.format(bars[0].time) : '' }} UTC</span>
         <span>{{ bars.length ? dateFormat.format(bars[bars.length - 1].time) : '' }} UTC</span>
       </div>
-      <p class="mt-2 text-xs text-gray-500">Hover over the chart for XP changes. Empty periods have no recorded changes.</p>
+      <p v-if="rollingHour" class="mt-2 text-xs text-gray-500">One point per minute, showing the average XP rate over the previous five completed minutes.</p>
+      <p v-else class="mt-2 text-xs text-gray-500">Each point is an average XP rate. The latest period is still in progress, and empty periods have no recorded gains.</p>
       <p v-if="claimId || locationFilter !== 'all'" class="mt-1 text-xs text-gray-500">Location-filtered XP uses the last observed position at each live XP update. Earlier and disconnected periods may be unavailable; unknown locations are kept separate.</p>
     </template>
   </UCard>
