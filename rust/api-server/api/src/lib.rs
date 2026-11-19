@@ -287,6 +287,7 @@ fn database_query_labels(sql: &str, failed: bool) -> [metrics::Label; 3] {
         Some("ALTER" | "alter") => "ALTER",
         Some("CREATE" | "create") => "CREATE",
         Some("DELETE" | "delete") => "DELETE",
+        Some("WITH" | "with") => "WITH",
         Some(possible_query_type) => {
             tracing::info!("Could not find type for {possible_query_type}");
             "UNKNOWN"
@@ -484,7 +485,7 @@ mod database_metric_tests {
                 }
             }
         }
-        for sql in ["", "  \t", "WITH x AS (SELECT 1)", "SeLeCt 1", "BEGIN"] {
+        for sql in ["", "  \t", "SeLeCt 1", "BEGIN"] {
             let labels = database_query_labels(sql, false);
             assert_eq!(labels[0].value(), "UNKNOWN");
             assert_eq!(labels[2].value(), "UNKNOWN");
@@ -500,6 +501,19 @@ mod database_metric_tests {
             "inventory",
             "runtime label outlives SQL buffer"
         );
+    }
+
+    #[test]
+    fn cte_query_is_labeled_with() {
+        for keyword in ["WITH", "with"] {
+            let sql = format!(
+                "{keyword} candidates AS (SELECT id FROM inventory WHERE available) \
+                 SELECT id FROM candidates"
+            );
+            let labels = database_query_labels(&sql, false);
+            assert_eq!(labels[0].value(), "WITH");
+            assert_eq!(labels[2].value(), "inventory");
+        }
     }
 }
 
