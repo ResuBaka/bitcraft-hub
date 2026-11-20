@@ -7,6 +7,7 @@ rust-version = "1.94.0"
 [features]
 bench = []
 tokio-worker-queues = []
+spacetimedb-tokio-websockets-rustls = ["spacetimedb-sdk/tokio-websockets-rustls"]
 
 [dependencies]
 sea-orm = { workspace = true }

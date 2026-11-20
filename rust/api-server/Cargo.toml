@@ -48,6 +48,8 @@ rand = "0.10.3"
 # Use Rust's system allocator so Heaptrack can intercept individual allocations.
 # Keep mimalloc as the default for normal server builds.
 system-allocator = []
+# Use Rustls instead of buffered native TLS for the upstream SpacetimeDB connection.
+spacetimedb-tokio-websockets-rustls = ["api/spacetimedb-tokio-websockets-rustls"]
 
 [dependencies]
 api = { path = "api", features = ["tokio-worker-queues"] }

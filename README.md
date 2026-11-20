@@ -97,3 +97,15 @@ Build the application for production:
 ```bash
 cargo build --release
 ```
+
+#### Upstream WebSocket TLS
+
+The native SpacetimeDB SDK uses `tokio-websockets`. For `wss://`, the default
+uses native TLS with a 16 KiB TCP read buffer below TLS. The optional Rustls
+connector uses ring and the platform certificate verifier over raw TCP.
+Plain `ws://` connections use raw TCP in either build. From `rust/api-server`:
+
+```bash
+cargo build --release --locked
+cargo build --release --locked --features spacetimedb-tokio-websockets-rustls
+```
